@@ -81,6 +81,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-062: Fins and rail buttons against OpenRocket; roll inertia explained][adr-062] | Probes of one tube and one part find the fins behind the roll inertia's gap: OpenRocket's shortcut for a fin set, inferred from its output, accounts for the corpus's 2.1%, and hpr keeps its exact integral. hpr keeps its rounded and airfoil sections and its exact ellipse, each pinned against OpenRocket's; a `.ork` rail button now sits where OpenRocket puts it (issue #151). [M2.2b2](#m2-2b2), the fins and rail buttons, split their remaining clusters, fillets and unread parts into [M2.2b4](#m2-2b4) | [Mass properties](physics/mass.md#fins-rail-buttons-and-roll-inertia) |
 | [ADR-063: Packed parts read and weighed as OpenRocket packs them][adr-063] | A parachute, streamer, shock cord or mass component whose file writes no packed size is 25 mm long and 12.5 mm in radius, as OpenRocket packs it, and a mass override on one that weighs nothing is spread over its packing, not put at a point; both measured on probe designs | [Mass properties](physics/mass.md#packed-parts) |
 | [ADR-064: Clusters, fillets and unread parts remain visible departures][adr-064] | A 3-ring cluster is read as one tube and pinned as a measured departure; 5 mm and 10 mm fin fillets are omitted and pinned; unread parts remain in `x-openrocket` and mark the design reduced. The 2026-09-23 scratch-excluding corpus rerun gives 58 of 71 within 1% in mass, 59 in centre, 50 in pitch inertia and 56 in roll with OpenRocket's fin rule | [Mass properties](physics/mass.md#clusters-and-fillets) |
+| [ADR-065: Stored results are references only when current and structurally plausible][adr-065] | Stored results remain readable, but only current runs with `RK4Simulator` and `BarrowmanCalculator` provenance markers and complete finite, internally consistent ascent summaries pass the stored-reference screen; the 2026-09-25 survey found 91 of 174 eligible and 83 excluded (47 inconsistent, 17 external, 11 outdated, 7 not-simulated and 1 missing simulator). Hpr reproduction is separate: 1 of those 91 is reproducible and 90 are not. | [`.ork` stored simulations](format/ork.md#what-openrocket-last-did-stored-simulations) |
 
 ## The roadmap
 
@@ -212,7 +213,7 @@ missing or its status disagrees.
 | <a id="m2-2b2"></a>[M2.2b2][phase-1] | Fins and rail buttons against OpenRocket: where the roll inertia's gap comes from, how each fin section is weighed, and where a rail button sits | done |
 | <a id="m2-2b3"></a>[M2.2b3][phase-1] | Packed parts (parachutes, streamers, shock cords, mass components) against OpenRocket: the size one takes when its file writes none, and a mass override on one that weighs nothing | done |
 | <a id="m2-2b4"></a>[M2.2b4][phase-1] | Motor clusters, fin fillets and the parts kept unread | done |
-| <a id="m2-2b5"></a>[M2.2b5][phase-1] | Stored results in a `.ork` used as a reference only when they are current and plausible | not yet done |
+| <a id="m2-2b5"></a>[M2.2b5][phase-1] | Stored results in a `.ork` used as a reference only when they are current and plausible | done |
 | <a id="m2-2c"></a>[M2.2c][phase-1] | The motors OpenRocket flies, for the configurations held back for want of a thrust curve | not yet done |
 | <a id="m2-2d"></a>[M2.2d][phase-1] | Flights to apogee on the public designs, against OpenRocket | not yet done |
 | <a id="m2-2e"></a>[M2.2e][phase-1] | The corpus, with a hypothesis for every apogee miss over 5% | not yet done |
@@ -397,6 +398,7 @@ is the milestone that added or will add that test.
 [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
 [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
 [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
+[adr-065]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-065-stored-results-are-references-only-when-current-and-structurally-plausible-2026-09-24
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

@@ -54,6 +54,170 @@ pub struct StoredSimulation {
     pub conditions: Option<LaunchConditions>,
     /// `<flightdata>`: what it gave, when OpenRocket saved it.
     pub results: Option<StoredResults>,
+    /// Whether reading this simulation required dropping or reinterpreting stored data.
+    #[serde(default)]
+    pub parser_warnings: bool,
+}
+
+/// Why a stored simulation cannot be used as a validation reference.
+///
+/// Reading a result and accepting it as a reference are separate operations. This enum covers
+/// status, summary and internal-consistency checks that can be made from the stored simulation
+/// alone. A caller that has the containing design must additionally reject reduced designs and
+/// unknown motor configurations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum StoredReferenceExclusion {
+    /// The simulation has no status, so it cannot be established as current.
+    MissingStatus,
+    /// The simulation was recorded before the design changed.
+    Outdated,
+    /// The file says that the simulation was not run.
+    NotSimulated,
+    /// The result came from an external simulator, not OpenRocket's own run.
+    External,
+    /// The result was loaded rather than produced by a current run.
+    Loaded,
+    /// The simulation could not be run.
+    CannotRun,
+    /// The simulation was aborted.
+    Aborted,
+    /// The file contains a status not recognized by this reader.
+    UnknownStatus,
+    /// The simulation has no `<simulator>`, so its producer cannot be established.
+    MissingSimulator,
+    /// The simulation names a producer other than the pinned OpenRocket RK4 simulator.
+    UnsupportedSimulator,
+    /// The simulation has no `<calculator>`, so its aerodynamic model cannot be established.
+    MissingCalculator,
+    /// The simulation names a calculator other than the pinned OpenRocket Barrowman calculator.
+    UnsupportedCalculator,
+    /// The simulation has no `<flightdata>`.
+    MissingResults,
+    /// The flightdata lacks one of the required ascent summary values.
+    MissingSummary,
+    /// A summary value is non-finite, negative, or otherwise impossible as a maximum.
+    ImpossibleSummary,
+    /// The summary and stored time series contradict one another.
+    InconsistentResults,
+    /// The parser had to drop or reinterpret data belonging to this simulation.
+    ParserWarning,
+    /// The stored flight ended with a fatal simulation event.
+    FatalEvent,
+    /// A stored time series has rows but no recognized time or altitude column.
+    UninspectableSeries,
+    /// The containing design is reduced, so hpr cannot reproduce its full geometry.
+    ReducedDesign,
+    /// The stored run does not name a motor configuration.
+    MissingConfiguration,
+    /// The stored run names a configuration absent from the design.
+    UnknownConfiguration,
+    /// The named configuration cannot be flown by hpr as read.
+    UnflyableConfiguration,
+}
+
+impl StoredReferenceExclusion {
+    /// The stable reason used by survey reports.
+    #[must_use]
+    pub const fn reason(self) -> &'static str {
+        match self {
+            Self::MissingStatus => "status-missing",
+            Self::Outdated => "status-outdated",
+            Self::NotSimulated => "status-not-simulated",
+            Self::External => "status-external",
+            Self::Loaded => "status-loaded",
+            Self::CannotRun => "status-cannot-run",
+            Self::Aborted => "status-aborted",
+            Self::UnknownStatus => "status-unknown",
+            Self::MissingSimulator => "simulator-missing",
+            Self::UnsupportedSimulator => "simulator-unsupported",
+            Self::MissingCalculator => "calculator-missing",
+            Self::UnsupportedCalculator => "calculator-unsupported",
+            Self::MissingResults => "missing-results",
+            Self::MissingSummary => "missing-summary",
+            Self::ImpossibleSummary => "impossible-summary",
+            Self::InconsistentResults => "inconsistent-results",
+            Self::ParserWarning => "parser-warning",
+            Self::FatalEvent => "fatal-event",
+            Self::UninspectableSeries => "uninspectable-series",
+            Self::ReducedDesign => "reduced-design",
+            Self::MissingConfiguration => "configuration-missing",
+            Self::UnknownConfiguration => "configuration-unknown",
+            Self::UnflyableConfiguration => "configuration-unflyable",
+        }
+    }
+}
+
+/// The simulator identifier accepted for an OpenRocket reference.
+///
+/// The public `.ork` file specification's Simulation Data example names this simulator. The
+/// identifier is a provenance check, not a claim that every OpenRocket release uses this integrator.
+pub const OPENROCKET_SIMULATOR: &str = "RK4Simulator";
+
+/// The aerodynamic calculator identifier accepted for an OpenRocket reference.
+///
+/// The public `.ork` file specification's Simulation Data example names this calculator. A stored
+/// result from another calculator is not interchangeable with the pinned reference provenance.
+pub const OPENROCKET_CALCULATOR: &str = "BarrowmanCalculator";
+
+impl StoredSimulation {
+    /// Returns why this stored result must not become a validation reference.
+    ///
+    /// Only an explicitly `uptodate` simulation with the accepted [`OPENROCKET_SIMULATOR`] and
+    /// [`OPENROCKET_CALCULATOR`] provenance markers and finite, positive ascent summary values is
+    /// eligible. The two identifiers establish the recorded producer names, not a complete identity
+    /// fingerprint for the OpenRocket version, settings or design. Optional summary values
+    /// are checked when present. A time series is not required: OpenRocket can save a useful
+    /// summary without one. When a time series includes time and altitude, its finite values must
+    /// be non-negative apart from a 1 mm ground-contact rounding allowance, and time must not run
+    /// backwards. The selected summary branch's maximum altitude must agree with the stored apogee
+    /// in both directions within `max(0.1% of apogee, 1 mm)`. When multiple branches record an
+    /// apogee, the first such branch in file order is selected; the reader does not infer branch
+    /// identity from a matching maximum. A single altitude-bearing branch is selected even without
+    /// an apogee event; multiple such
+    /// branches without an apogee event are uninspectable because the summary branch cannot be
+    /// identified. A branch with rows but no
+    /// recognized time or altitude column is not inspectable. No arbitrary lower altitude threshold
+    /// is used: a small but internally consistent flight is not impossible merely because it is
+    /// small. Fatal events and event times outside the stored flight are also rejected.
+    #[must_use]
+    pub fn reference_exclusion(&self) -> Option<StoredReferenceExclusion> {
+        let exclusion = match self.status.as_deref() {
+            Some("uptodate") => None,
+            None => Some(StoredReferenceExclusion::MissingStatus),
+            Some("outdated") => Some(StoredReferenceExclusion::Outdated),
+            Some("notsimulated") => Some(StoredReferenceExclusion::NotSimulated),
+            Some("external") => Some(StoredReferenceExclusion::External),
+            Some("loaded") => Some(StoredReferenceExclusion::Loaded),
+            Some("cantrun") => Some(StoredReferenceExclusion::CannotRun),
+            Some("aborted") => Some(StoredReferenceExclusion::Aborted),
+            Some(_) => Some(StoredReferenceExclusion::UnknownStatus),
+        };
+        if exclusion.is_some() {
+            return exclusion;
+        }
+        let Some(simulator) = self.simulator.as_deref() else {
+            return Some(StoredReferenceExclusion::MissingSimulator);
+        };
+        if simulator != OPENROCKET_SIMULATOR {
+            return Some(StoredReferenceExclusion::UnsupportedSimulator);
+        }
+        let Some(calculator) = self.calculator.as_deref() else {
+            return Some(StoredReferenceExclusion::MissingCalculator);
+        };
+        if calculator != OPENROCKET_CALCULATOR {
+            return Some(StoredReferenceExclusion::UnsupportedCalculator);
+        }
+        let Some(results) = self.results.as_ref() else {
+            return Some(StoredReferenceExclusion::MissingResults);
+        };
+        if let Some(exclusion) = results.reference_exclusion() {
+            return Some(exclusion);
+        }
+        self.parser_warnings
+            .then_some(StoredReferenceExclusion::ParserWarning)
+    }
 }
 
 /// The launch conditions a stored simulation was flown in. Each is `None` where the file does not
@@ -171,6 +335,187 @@ pub struct StoredResults {
     pub warnings: Vec<String>,
 }
 
+/// Small negative AGL values at the numerically interpolated ground event are accepted as
+/// rounding around zero, not as a negative flight. This is a data-integrity allowance for stored
+/// values, not a physics tolerance; materially negative altitude remains impossible.
+const STORED_GROUND_ALTITUDE_TOLERANCE_M: f64 = 1e-3;
+/// Stored times are rounded to milliseconds; allow one last-digit unit when reconciling them.
+const STORED_TIME_TOLERANCE_S: f64 = 1e-3;
+
+impl StoredResults {
+    fn reference_exclusion(&self) -> Option<StoredReferenceExclusion> {
+        let required = [
+            self.max_altitude_m,
+            self.max_speed_m_s,
+            self.time_to_apogee_s,
+        ];
+        if required.iter().any(Option::is_none) {
+            return Some(StoredReferenceExclusion::MissingSummary);
+        }
+        let all = [
+            self.max_altitude_m,
+            self.max_speed_m_s,
+            self.max_acceleration_m_s2,
+            self.max_mach,
+            self.time_to_apogee_s,
+            self.flight_time_s,
+            self.ground_hit_speed_m_s,
+            self.rod_exit_speed_m_s,
+            self.deployment_speed_m_s,
+            self.optimum_delay_s,
+        ];
+        if all
+            .iter()
+            .flatten()
+            .any(|value| !value.is_finite() || *value < 0.0)
+            || self.max_altitude_m == Some(0.0)
+            || self.max_speed_m_s == Some(0.0)
+            || self.time_to_apogee_s == Some(0.0)
+        {
+            return Some(StoredReferenceExclusion::ImpossibleSummary);
+        }
+        if let (Some(apogee_time), Some(flight_time)) = (self.time_to_apogee_s, self.flight_time_s)
+            && apogee_time > flight_time
+        {
+            return Some(StoredReferenceExclusion::InconsistentResults);
+        }
+        let Some(apogee) = self.max_altitude_m else {
+            return Some(StoredReferenceExclusion::MissingSummary);
+        };
+        // A multi-stage result has one branch per stage. The summary belongs to the first branch
+        // that records an apogee event: the surveyed cases put the primary flight branch first,
+        // while a separated booster can have a different height. For a single altitude-bearing branch, the
+        // series itself identifies the summary even when an old or hand-written file omitted the
+        // apogee event. Multiple branches without an apogee event cannot be mapped to the summary
+        // without guessing.
+        let mut altitude_branches = Vec::new();
+        let mut series_maxes = vec![None; self.branches.len()];
+        for (index, branch) in self.branches.iter().enumerate() {
+            let times = branch.column("Time");
+            let altitudes = branch.column("Altitude");
+            if branch
+                .rows
+                .iter()
+                .any(|row| row.iter().all(Option::is_none))
+                || (!branch.rows.is_empty() && times.is_none() && altitudes.is_none())
+            {
+                return Some(StoredReferenceExclusion::UninspectableSeries);
+            }
+            if let Some(times) = times {
+                let mut previous = None;
+                let mut observed = false;
+                for time in times.into_iter().flatten() {
+                    observed = true;
+                    if !time.is_finite() || time < 0.0 {
+                        return Some(StoredReferenceExclusion::ImpossibleSummary);
+                    }
+                    if previous.is_some_and(|old| time < old) {
+                        return Some(StoredReferenceExclusion::InconsistentResults);
+                    }
+                    if self.flight_time_s.is_some_and(|flight_time| {
+                        times_differ_more_than_allowed(time, flight_time) && time > flight_time
+                    }) {
+                        return Some(StoredReferenceExclusion::InconsistentResults);
+                    }
+                    previous = Some(time);
+                }
+                if !observed && !branch.rows.is_empty() {
+                    return Some(StoredReferenceExclusion::UninspectableSeries);
+                }
+            }
+            let Some(altitudes) = altitudes else {
+                continue;
+            };
+            if !altitudes.is_empty() {
+                altitude_branches.push(index);
+            }
+            let mut series_max = None;
+            for altitude in altitudes.into_iter().flatten() {
+                if !altitude.is_finite() || altitude < -STORED_GROUND_ALTITUDE_TOLERANCE_M {
+                    return Some(StoredReferenceExclusion::ImpossibleSummary);
+                }
+                if altitude >= 0.0 {
+                    series_max = Some(series_max.map_or(altitude, |old: f64| old.max(altitude)));
+                }
+            }
+            if series_max.is_none() && !branch.rows.is_empty() {
+                return Some(StoredReferenceExclusion::UninspectableSeries);
+            }
+            series_maxes[index] = series_max;
+        }
+        let apogee_branches: Vec<usize> = self
+            .branches
+            .iter()
+            .enumerate()
+            .filter(|(_, branch)| branch.events.iter().any(|event| event.kind == "apogee"))
+            .map(|(index, _)| index)
+            .collect();
+        let summary_branch = match apogee_branches.as_slice() {
+            [] => altitude_branches.first().copied(),
+            [index, ..] => Some(*index),
+        };
+        if let Some(index) = apogee_branches.first().copied()
+            && let Some(event) = self.branches[index]
+                .events
+                .iter()
+                .find(|event| event.kind == "apogee")
+            && times_differ_more_than_allowed(
+                event.time_s,
+                self.time_to_apogee_s.unwrap_or_default(),
+            )
+        {
+            return Some(StoredReferenceExclusion::InconsistentResults);
+        }
+        if apogee_branches.is_empty() && altitude_branches.len() > 1 {
+            return Some(StoredReferenceExclusion::UninspectableSeries);
+        }
+        for (index, series_max) in series_maxes.into_iter().enumerate() {
+            // Compare the first branch whose apogee event defines the summary. For a single branch
+            // without that event, the branch is the only available summary evidence. Stored values
+            // are rounded, so allow a small relative error in either direction, but not a series
+            // that demonstrably disagrees with the claimed apogee.
+            if summary_branch == Some(index)
+                && let Some(series_max) = series_max
+                && (series_max - apogee).abs() > 1e-3_f64.max(apogee * 1e-3)
+            {
+                return Some(StoredReferenceExclusion::InconsistentResults);
+            }
+        }
+        for event in self.branches.iter().flat_map(|branch| &branch.events) {
+            if !event.time_s.is_finite() || event.time_s < 0.0 {
+                return Some(StoredReferenceExclusion::ImpossibleSummary);
+            }
+            if self
+                .flight_time_s
+                .is_some_and(|flight_time| event.time_s > flight_time)
+            {
+                return Some(StoredReferenceExclusion::InconsistentResults);
+            }
+            if is_fatal_event(&event.kind) {
+                return Some(StoredReferenceExclusion::FatalEvent);
+            }
+        }
+        None
+    }
+}
+
+fn times_differ_more_than_allowed(first: f64, second: f64) -> bool {
+    let rounding = f64::EPSILON * first.abs().max(second.abs()).max(1.0) * 4.0;
+    (first - second).abs() > STORED_TIME_TOLERANCE_S + rounding
+}
+
+fn is_fatal_event(kind: &str) -> bool {
+    let normalized: String = kind
+        .chars()
+        .filter(|character| !matches!(character, '_' | '-'))
+        .flat_map(char::to_lowercase)
+        .collect();
+    matches!(
+        normalized.as_str(),
+        "exception" | "simabort" | "simulationabort"
+    )
+}
+
 /// One stage's stored time series.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -228,6 +573,7 @@ pub(super) fn read(document: &Document, warnings: &mut Vec<Warning>) -> Vec<Stor
 }
 
 fn simulation(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredSimulation {
+    let warning_count = warnings.len();
     // Looked up directly below, not through `Values`.
     super::reads::note(element, "conditions");
     super::reads::note(element, "flightdata");
@@ -248,6 +594,7 @@ fn simulation(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Store
         calculator,
         conditions,
         results,
+        parser_warnings: warnings.len() > warning_count,
     }
 }
 

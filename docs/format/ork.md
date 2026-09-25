@@ -731,7 +731,7 @@ tube beside it that overlaps it along the axis; a packed part fills the room lef
 Automatic **outer** radii resolve in a pass before any ring's automatic **bore**, so a ring's answer
 cannot depend on whether the tube inside it was written first —
 [Loft lesson L60](../decisions-and-roadmap.md#l60), where Loft resolved as it walked and a bulkhead
-inside a coupler stayed `NaN`.
+inside a coupler stayed `NaN` (not a number, meaning no numeric value was available).
 
 ### The surface finish
 
@@ -1291,9 +1291,19 @@ How this was decided is in [ADR-056][adr-056].
 
 **In short.** A `.ork` keeps the simulations OpenRocket last ran on the design, and hpr reads them
 back: the launch conditions each was flown in, the ten summary figures, and each stage's time
-series with its events. They are OpenRocket's answers, kept as it wrote them, for comparing against
-later ([M2.2](../decisions-and-roadmap.md#m2-2) uses them as a second reference). The reference
-library holds 174 of them, and every one is read.
+series with its events. Reading a result is not the same as validating it. [M2.2b5](../decisions-and-roadmap.md#m2-2b5) applies a
+**reference gate** (a screen deciding whether stored data may be used as a reference datum): it
+checks current status, two known OpenRocket provenance markers, plausible stored values, and
+internally consistent series data. It does not re-run OpenRocket or compare the stored flight with
+a fresh hpr or OpenRocket flight; an eligible stored run may still disagree with that later
+comparison. Every parseable result stays visible, including results that fail the screen.
+
+The reference screen and hpr's reproduction screen answer different questions. The first asks
+whether stored data is suitable as a reference datum. The second asks whether hpr can reproduce the
+named design and motor configuration. A complete OpenRocket result can pass the first and fail the
+second when its motor curve is absent or its airframe is reduced. A later flight-comparison gate
+must report both screens rather than treating either one as a physics validation.
+
 
 A stored simulation has three parts:
 
@@ -1307,9 +1317,13 @@ A stored simulation has three parts:
 ### What the numbers mean
 
 The file-format page gives units only for the multilevel wind (metres, m/s and radians), and its
-own example writes a launch rod's direction as `90.0` and a wind's as `1.5707963267948966`. The committed probe `validation/oracles/openrocket/conditions.py`
-runs OpenRocket 24.12, sets the conditions through its public setters, saves, loads them again and
-flies them. Its results are in `validation/fixtures/ork/openrocket-conditions.json`, and the test
+own example writes a launch rod's direction as `90.0` and a wind's as `1.5707963267948966`. In this
+section, **SI** means the International System of Units; lengths are metres, times seconds, speeds
+metres per second, pressures pascals and angles radians unless the table says otherwise. A **denominator**
+is the count of runs used to calculate a reference statistic. The
+committed probe `validation/oracles/openrocket/conditions.py` runs OpenRocket 24.12, sets the
+conditions through its public setters, saves, loads them again and flies them. Its results are in
+`validation/fixtures/ork/openrocket-conditions.json`, and the test
 `hpr_io::ork::tests::wind_direction_is_not_rod_direction` holds hpr's reader to them.
 
 | the file says | it means | hpr gives |
@@ -1320,7 +1334,9 @@ flies them. Its results are in `validation/fixtures/ork/openrocket-conditions.js
 | `<windturbulence>0.1</windturbulence>` | turbulence intensity: the wind speed's standard deviation over its mean | `wind_turbulence`, 0.1 |
 | `<atmosphere model="extendedisa">` with `<basetemperature>` and `<basepressure>` | the standard atmosphere from a temperature (K) and pressure (Pa) at the launch site | `Atmosphere::Extended` |
 
-The probe also flies the example, in three ways that settle what the directions mean:
+Here `ISA` means International Standard Atmosphere, the reference atmosphere; `K` means kelvin,
+`Pa` pascal and `rad` radian. The probe also flies the example, in three ways that settle what the
+directions mean:
 
 - **The rod's direction is a compass bearing.** In calm air, a rod tilted 10 degrees toward
   bearing 0 (north) lands the rocket 21.3 m north, and toward 90 (east), 21.3 m east, while the
@@ -1340,39 +1356,70 @@ The rod's direction and the wind's are different numbers in different units.
 ([L64](../decisions-and-roadmap.md#l64)). hpr reads each from its own tag.
 
 The probe saves a flight and compares one stored row with the same quantities as OpenRocket held
-them, in eight columns: time, altitude, vertical velocity, two angles, latitude, air temperature
-and air pressure. Those are SI, with the angles in radians and latitude in degrees; the other
-columns and the summary are taken to follow. Values are rounded when stored: to three decimal
-places (287.857 K, 0.218 rad), so a small quantity keeps few digits, and a large one to four
-significant figures (100,796.6 Pa is stored as 100,800). `NaN` marks a quantity OpenRocket did not
-compute at that step; hpr keeps it as `None`, so a design with stored results survives being saved
-as JSON and read back.
+in eight columns: time, altitude, vertical velocity, two angles, latitude, air temperature and air
+pressure. These are **SI** (the International System of Units): lengths in metres, times in seconds,
+pressures in pascals and speeds in metres per second; angles are in radians and latitude in degrees.
+Values are rounded when stored: to three decimal places (287.857 K, 0.218 rad), so a small quantity
+keeps few digits, and a large one to four significant figures (100,796.6 Pa is stored as 100,800).
+`NaN` means “not a number”: OpenRocket did not
+compute that quantity at that step; hpr stores it as Rust's `None` value, meaning no numeric
+value is available. A design with stored results therefore survives being saved as JSON and read back.
 
-This is from the test `hpr_io::ork::tests::stored_results_are_read_back`: a stored run reads back
-through `design.simulations`, and a column comes out by its name.
+This is from the test [`stored_results_are_read_back`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-io/src/ork/tests.rs#L2777): a stored run reads back through `design.simulations`, and a column comes out by its name.
 
-```rust
-let simulation = &design.value.simulations[0];
-let results = simulation.results.as_ref().expect("results");
-assert_eq!(results.max_altitude_m, Some(50.59));
-let branch = &results.branches[0];
-assert_eq!(branch.column("Altitude"), Some(vec![Some(0.0), Some(30.25)]));
-```
+[`hpr_io::ork::StoredSimulation::reference_exclusion`](https://nrdptel.github.io/hpr-sim/api/hpr_io/ork/simulations/struct.StoredSimulation.html#method.reference_exclusion) then classifies the stored run without
+altering it. An explicitly `uptodate` run must name both `RK4Simulator` and `BarrowmanCalculator`,
+the simulator and aerodynamic calculator markers shown in the public file specification's
+Simulation Data example. These strings identify recorded provenance, not the complete OpenRocket
+version, settings or design. The run must have finite, non-negative values, positive altitude, speed
+and time to apogee, and no contradiction between its summary and time series. A missing summary or
+flightdata, a backwards time series, or a time-series altitude materially different from the stored
+apogee is excluded with a stable reason. The comparison allows `max(0.1% of the stored apogee,
+1 mm)` for stored-value rounding; it is a data-integrity policy, not an accuracy claim about the
+flight model. For example, with a 100 m stored apogee, 100.05 m passes this screen and 100.2 m fails
+it; the [comparison test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-validate/src/openrocket.rs#L361)
+pins the two-sided allowance and its boundary. For this screen, hpr treats the first branch with an apogee event in file order as the summary
+branch; the [selection test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-validate/src/openrocket.rs#L326)
+exercises that implementation policy. The rule has not been independently validated against
+multi-stage OpenRocket output. A single
+altitude-bearing branch is checked even when its apogee event is missing. Multiple branches without
+an apogee event are uninspectable because their summary branch cannot be identified. Times in rows
+and events must be finite, non-negative and ordered. When the summary is present, no time may exceed
+the stored flight time beyond the 1 ms allowance for stored precision; the first apogee event must
+also agree with `timetoapogee` within 1 ms. Fatal events
+(such as `SIM_ABORT`, with case, underscore and hyphen variants normalized) are excluded. There is
+no arbitrary minimum apogee: a small but self-consistent flight is not rejected merely for being
+small.
+
+`Design::reproduction_exclusion` is a second, stricter screen. It excludes reduced designs, missing
+or unknown configurations, configurations hpr cannot assemble, and configurations left out while
+reading the design. These reasons describe hpr's current ability to reproduce the design, not the
+stored result's provenance or physical correctness.
+
 
 ### Stored simulations in the reference library
 
-`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-25:
 
 | quantity | count |
 |---|---|
 | stored simulations | 174, in 61 documents: 139 `uptodate`, 17 `external`, 11 `outdated`, 7 `notsimulated` |
+| stored reference screen | 91 eligible, 83 excluded: 47 inconsistent, 17 external, 11 outdated, 7 not-simulated and 1 missing simulator; only the 91 may enter a stored-data reference denominator (the count of runs used to calculate a reference statistic) |
+| hpr reproduction screen | of those 91, 1 reproducible and 90 not reproducible: 79 configurations unflyable and 11 designs reduced |
 | with launch conditions | 173; 129 state the wind's direction, and 135 launch into the wind |
 | atmosphere | 172 `isa`, 1 not written |
 | with a summary | 162 |
 | with a time series | 142, over 176 stage branches and 97,541 rows |
 
-How this was decided is in [ADR-057][adr-057].
+The screen counts are separate from the unconditional census below: conditions, summaries, time
+series, branches, rows and events are counted across all 174 stored simulations, including runs
+that fail either screen. The counts are an as-of snapshot of this private corpus, not a universal
+property of every OpenRocket file.
 
+How the stored-result policy was decided is in [ADR-065][adr-065]; the underlying read-back policy
+is in [ADR-057][adr-057].
+
+[adr-065]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-065-stored-results-are-references-only-when-current-and-structurally-plausible-2026-09-24
 [adr-057]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-057-a-ork-designs-stored-simulations-read-back-as-written-with-their-units-measured-2026-09-21
 
 ## What hpr keeps for writing the file back

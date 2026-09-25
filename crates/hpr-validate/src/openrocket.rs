@@ -83,7 +83,7 @@ fn rod_roll_kg_m2(
 #[cfg(test)]
 mod tests {
     use hpr_design::tree::{Layout, Part};
-    use hpr_io::ork;
+    use hpr_io::ork::{self, StoredReferenceExclusion, StoredSimulation};
     use serde_json::Value;
 
     fn record() -> Value {
@@ -135,6 +135,321 @@ mod tests {
 
     fn relative(ours: f64, theirs: f64) -> f64 {
         (ours - theirs) / theirs
+    }
+
+    fn stored(status: &str, results_xml: Option<&str>) -> StoredSimulation {
+        let xml = format!(
+            r#"<openrocket version="1.10"><rocket><name>R</name></rocket><simulations>
+              <simulation status="{status}"><name>stored</name><simulator>RK4Simulator</simulator><calculator>BarrowmanCalculator</calculator>{results}</simulation>
+            </simulations></openrocket>"#,
+            results = results_xml.unwrap_or_default(),
+        );
+        ork::design(
+            &ork::read(xml.as_bytes())
+                .expect("stored fixture reads")
+                .value,
+        )
+        .value
+        .simulations
+        .into_iter()
+        .next()
+        .expect("stored simulation")
+    }
+
+    fn plausible_results_xml() -> &'static str {
+        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>"#
+    }
+
+    fn stored_with_provenance(
+        simulator: Option<&str>,
+        calculator: Option<&str>,
+    ) -> StoredSimulation {
+        let simulator = simulator.map_or_else(String::new, |value| {
+            format!("<simulator>{value}</simulator>")
+        });
+        let calculator = calculator.map_or_else(String::new, |value| {
+            format!("<calculator>{value}</calculator>")
+        });
+        let xml = format!(
+            r#"<openrocket version="1.10"><rocket><name>R</name></rocket><simulations>
+              <simulation status="uptodate"><name>stored</name>{simulator}{calculator}{results}</simulation>
+            </simulations></openrocket>"#,
+            results = plausible_results_xml(),
+        );
+        ork::design(
+            &ork::read(xml.as_bytes())
+                .expect("stored fixture reads")
+                .value,
+        )
+        .value
+        .simulations
+        .into_iter()
+        .next()
+        .expect("stored simulation")
+    }
+
+    fn stored_with_results(results_xml: &str) -> StoredSimulation {
+        stored("uptodate", Some(results_xml))
+    }
+
+    fn results_with_branches(apogee: &str, branches: &str) -> String {
+        format!(
+            r#"<flightdata maxaltitude="{apogee}" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20">{branches}</flightdata>"#
+        )
+    }
+
+    /// Stored results remain readable, but stale, missing and physically contradictory values are
+    /// not allowed to become validation references or inflate a reference census.
+    #[test]
+    fn stale_and_implausible_stored_results_are_excluded_from_gates_and_census() {
+        let cases = [
+            (stored("uptodate", Some(plausible_results_xml())), None),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>1,1</datapoint><datapoint>2,1</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::InconsistentResults),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>1,100</datapoint><datapoint>2,100.05</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                None,
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>1,100</datapoint><datapoint>2,100.2</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::InconsistentResults),
+            ),
+            (
+                stored("outdated", Some(plausible_results_xml())),
+                Some(StoredReferenceExclusion::Outdated),
+            ),
+            (
+                stored("notsimulated", Some(plausible_results_xml())),
+                Some(StoredReferenceExclusion::NotSimulated),
+            ),
+            (
+                stored("uptodate", None),
+                Some(StoredReferenceExclusion::MissingResults),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="-1" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::ImpossibleSummary),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="NaN" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::MissingSummary),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>2,10</datapoint><datapoint>1,20</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::InconsistentResults),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>1,-1</datapoint><datapoint>2,20</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::ImpossibleSummary),
+            ),
+        ];
+        let classified = cases
+            .iter()
+            .filter(|(simulation, exclusion)| simulation.reference_exclusion() == *exclusion)
+            .count();
+        assert_eq!(classified, cases.len());
+        assert_eq!(
+            cases
+                .iter()
+                .filter(|(_, exclusion)| exclusion.is_none())
+                .count(),
+            2
+        );
+        assert_eq!(
+            StoredReferenceExclusion::Outdated.reason(),
+            "status-outdated"
+        );
+        assert_eq!(
+            StoredReferenceExclusion::MissingResults.reason(),
+            "missing-results"
+        );
+        assert_eq!(
+            stored_with_provenance(None, Some("BarrowmanCalculator")).reference_exclusion(),
+            Some(StoredReferenceExclusion::MissingSimulator)
+        );
+        assert_eq!(
+            stored_with_provenance(Some("OtherSimulator"), Some("BarrowmanCalculator"))
+                .reference_exclusion(),
+            Some(StoredReferenceExclusion::UnsupportedSimulator)
+        );
+        assert_eq!(
+            stored_with_provenance(Some("RK4Simulator"), None).reference_exclusion(),
+            Some(StoredReferenceExclusion::MissingCalculator)
+        );
+        assert_eq!(
+            stored_with_provenance(Some("RK4Simulator"), Some("OtherCalculator"))
+                .reference_exclusion(),
+            Some(StoredReferenceExclusion::UnsupportedCalculator)
+        );
+    }
+
+    /// The apogee summary maps to OpenRocket's primary branch, not whichever branch happens to
+    /// have the numerically closest maximum. Secondary stages may also record apogee events.
+    #[test]
+    fn stored_apogee_uses_the_first_apogee_branch() {
+        let branches = r#"
+          <databranch name="Sustainer" types="Time,Altitude">
+            <event time="5" type="apogee"/><datapoint>0,0</datapoint><datapoint>5,100</datapoint>
+          </databranch>
+          <databranch name="Booster" types="Time,Altitude">
+            <event time="4" type="apogee"/><datapoint>0,0</datapoint><datapoint>4,99.9</datapoint>
+          </databranch>"#;
+        let simulation = stored_with_results(&results_with_branches("100", branches));
+        assert_eq!(simulation.reference_exclusion(), None);
+    }
+
+    /// A single altitude-bearing branch identifies the summary without an apogee event, but two
+    /// such branches do not give enough information to identify which series owns it.
+    #[test]
+    fn stored_apogee_branch_requires_unambiguous_branch_evidence() {
+        let single = r#"<databranch name="Sustainer" types="Time,Altitude">
+          <datapoint>0,0</datapoint><datapoint>5,100</datapoint>
+        </databranch>"#;
+        assert_eq!(
+            stored_with_results(&results_with_branches("100", single)).reference_exclusion(),
+            None
+        );
+        let multiple = format!(
+            r#"{single}<databranch name="Booster" types="Time,Altitude"><datapoint>0,0</datapoint><datapoint>5,99</datapoint></databranch>"#
+        );
+        assert_eq!(
+            stored_with_results(&results_with_branches("100", &multiple)).reference_exclusion(),
+            Some(StoredReferenceExclusion::UninspectableSeries)
+        );
+    }
+
+    /// A stored maximum matches at the exact allowance boundary; just beyond it does not. The
+    /// relative allowance takes over at 1 m, where it equals the fixed 1 mm allowance.
+    #[test]
+    fn stored_apogee_comparison_uses_the_two_sided_allowance() {
+        let check = |apogee: &str, series: &str| {
+            let branch = format!(
+                r#"<databranch name="Sustainer" types="Time,Altitude"><datapoint>0,0</datapoint><datapoint>5,{series}</datapoint></databranch>"#
+            );
+            stored_with_results(&results_with_branches(apogee, &branch)).reference_exclusion()
+        };
+        assert_eq!(check("100", "100.1"), None);
+        assert_eq!(
+            check("100", "100.1000001"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
+        assert_eq!(check("1", "1.001"), None);
+        assert_eq!(
+            check("1", "1.0010001"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
+        assert_eq!(
+            check("0.5", "0.501"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
+        assert_eq!(check("0.5", "0.5009999"), None);
+        assert_eq!(check("100", "99.9"), None);
+        assert_eq!(
+            check("100", "99.8999999"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
+    }
+
+    #[test]
+    fn stored_times_agree_with_flight_and_apogee_summaries() {
+        let branch = |last_time: &str, apogee_time: &str| {
+            format!(
+                r#"<databranch name="Sustainer" types="Time,Altitude"><event time="{apogee_time}" type="apogee"/><datapoint>0,0</datapoint><datapoint>{last_time},100</datapoint></databranch>"#
+            )
+        };
+        let run = |last_time: &str, apogee_time: &str| {
+            stored_with_results(&results_with_branches(
+                "100",
+                &branch(last_time, apogee_time),
+            ))
+            .reference_exclusion()
+        };
+        assert_eq!(run("20.0009", "5"), None);
+        assert_eq!(run("20", "5.0009"), None);
+        assert_eq!(
+            run("20.0011", "5"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
+        assert_eq!(
+            run("20", "5.0011"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
+    }
+
+    #[test]
+    fn non_finite_event_times_exclude_stored_results() {
+        let mut simulation = stored_with_results(&results_with_branches(
+            "100",
+            r#"<databranch name="Sustainer" types="Time,Altitude"><event time="5" type="launch"/><datapoint>0,0</datapoint><datapoint>5,100</datapoint></databranch>"#,
+        ));
+        simulation.results.as_mut().unwrap().branches[0].events[0].time_s = f64::NAN;
+        assert_eq!(
+            simulation.reference_exclusion(),
+            Some(StoredReferenceExclusion::ImpossibleSummary)
+        );
+    }
+
+    #[test]
+    fn fatal_events_and_events_outside_the_flight_exclude_stored_results() {
+        let with_event = |time: &str, kind: &str| {
+            let branch = format!(
+                r#"<databranch name="Sustainer" types="Time,Altitude"><event time="{time}" type="{kind}"/><datapoint>0,0</datapoint><datapoint>5,100</datapoint></databranch>"#
+            );
+            stored_with_results(&results_with_branches("100", &branch)).reference_exclusion()
+        };
+        assert_eq!(
+            with_event("6", "SIM_ABORT"),
+            Some(StoredReferenceExclusion::FatalEvent)
+        );
+        assert_eq!(
+            with_event("6", "Simulation-Abort"),
+            Some(StoredReferenceExclusion::FatalEvent)
+        );
+        assert_eq!(
+            with_event("-0.1", "launch"),
+            Some(StoredReferenceExclusion::ImpossibleSummary)
+        );
+        assert_eq!(
+            with_event("21", "simulationend"),
+            Some(StoredReferenceExclusion::InconsistentResults)
+        );
     }
 
     /// The override probes, each with how far hpr's centre of mass is from OpenRocket's, in metres
