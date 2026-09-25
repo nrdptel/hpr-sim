@@ -59,8 +59,8 @@ pub use recovery::{
     SeparationEvent, StageSeparation, UnreadDevice,
 };
 pub use simulations::{
-    Atmosphere, LaunchConditions, StoredBranch, StoredEvent, StoredReferenceExclusion,
-    StoredResults, StoredSimulation, WindLevel,
+    Atmosphere, LaunchConditions, OPENROCKET_CALCULATOR, OPENROCKET_SIMULATOR, StoredBranch,
+    StoredEvent, StoredReferenceExclusion, StoredResults, StoredSimulation, WindLevel,
 };
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
@@ -126,18 +126,30 @@ impl Design {
 
     /// Returns why `simulation` cannot be used as a reference for this design.
     ///
-    /// In addition to the stored result's own status and numerical checks, this verifies that hpr
-    /// can reproduce the design named by the stored launch conditions. A stored result from a
-    /// reduced design or an unresolved motor configuration remains readable, but is not a
-    /// reference for hpr's simulation.
+    /// This combines the stored-result screen with hpr's design-reproduction screen. Use
+    /// [`StoredSimulation::reference_exclusion`] and [`Self::reproduction_exclusion`] separately
+    /// when those two questions need to be reported independently.
     #[must_use]
     pub fn reference_exclusion(
         &self,
         simulation: &StoredSimulation,
     ) -> Option<StoredReferenceExclusion> {
-        if let Some(exclusion) = simulation.reference_exclusion() {
-            return Some(exclusion);
-        }
+        simulation
+            .reference_exclusion()
+            .or_else(|| self.reproduction_exclusion(simulation))
+    }
+
+    /// Returns why hpr cannot reproduce the design named by a stored launch configuration.
+    ///
+    /// This is deliberately separate from [`StoredSimulation::reference_exclusion`]: a complete
+    /// OpenRocket result can be a useful stored reference even when hpr does not yet have its
+    /// motor curve or full airframe model. A caller that needs a result hpr can fly should apply
+    /// both classifiers.
+    #[must_use]
+    pub fn reproduction_exclusion(
+        &self,
+        simulation: &StoredSimulation,
+    ) -> Option<StoredReferenceExclusion> {
         if self.is_reduced() {
             return Some(StoredReferenceExclusion::ReducedDesign);
         }

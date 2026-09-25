@@ -2872,6 +2872,97 @@ fn stored_conditions_read_without_a_design() {
     );
 }
 
+/// A stored result can be eligible as OpenRocket data even when hpr cannot reproduce the design's
+/// selected configuration. The two screens must not collapse into one reason.
+#[test]
+fn stored_reference_and_reproduction_screens_are_separate() {
+    let stored_results = r#"<simulations>
+      <simulation status="uptodate"><name>Stored</name><simulator>RK4Simulator</simulator>
+        <calculator>BarrowmanCalculator</calculator><conditions><configid>c1</configid></conditions>
+        <flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>
+      </simulation>
+    </simulations>"#;
+    let stored_without_configuration = r#"<simulations>
+      <simulation status="uptodate"><name>Stored</name><simulator>RK4Simulator</simulator>
+        <calculator>BarrowmanCalculator</calculator>
+        <flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>
+      </simulation>
+    </simulations>"#;
+    let xml = motor_design(
+        r#"<motorconfiguration configid="c1" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='c1'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "",
+    )
+    .replace("</openrocket>", &format!("{stored_results}</openrocket>"));
+    let design = read_design(xml.as_bytes());
+    let simulation = &design.simulations[0];
+    assert_eq!(simulation.reference_exclusion(), None);
+    assert_eq!(design.reproduction_exclusion(simulation), None);
+    assert_eq!(design.reference_exclusion(simulation), None);
+
+    // The same stored result remains a valid reference when the configuration is absent from hpr's
+    // motor list; only the reproduction screen changes.
+    let missing = motor_design(
+        r#"<motorconfiguration configid="c1" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='other'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "",
+    )
+    .replace("</openrocket>", &format!("{stored_results}</openrocket>"));
+    let missing = read_design(missing.as_bytes());
+    let simulation = &missing.simulations[0];
+    assert_eq!(simulation.reference_exclusion(), None);
+    assert_eq!(
+        missing.reproduction_exclusion(simulation),
+        Some(StoredReferenceExclusion::UnflyableConfiguration)
+    );
+    assert_eq!(
+        missing.reference_exclusion(simulation),
+        Some(StoredReferenceExclusion::UnflyableConfiguration)
+    );
+
+    // A missing configuration has its own stable reason when the design is otherwise complete.
+    let missing_configuration = motor_design(
+        r#"<motorconfiguration configid="c1" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='c1'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "",
+    )
+    .replace(
+        "</openrocket>",
+        &format!("{stored_without_configuration}</openrocket>"),
+    );
+    let missing_configuration = read_design(missing_configuration.as_bytes());
+    let simulation = &missing_configuration.simulations[0];
+    assert_eq!(simulation.reference_exclusion(), None);
+    assert_eq!(
+        missing_configuration.reproduction_exclusion(simulation),
+        Some(StoredReferenceExclusion::MissingConfiguration)
+    );
+
+    // A reduced airframe takes precedence for reproduction even when the conditions name no
+    // configuration; it is a design limitation, not a stored-data failure.
+    let reduced = motor_design(
+        r#"<motorconfiguration configid="c1" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='c1'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "<podset><name>Pod</name><id>pod</id><instancecount>2</instancecount></podset>",
+    )
+    .replace("</openrocket>", &format!("{stored_results}</openrocket>"));
+    let reduced = read_design(reduced.as_bytes());
+    let simulation = &reduced.simulations[0];
+    assert_eq!(simulation.reference_exclusion(), None);
+    assert_eq!(
+        reduced.reproduction_exclusion(simulation),
+        Some(StoredReferenceExclusion::ReducedDesign)
+    );
+}
+
 /// Loft lesson L66: Loft dropped pods, parallel stages and booster sets, and its export then lost
 /// the note that the rocket was reduced. Here both are kept whole in `extensions.x-openrocket`, at
 /// paths that lead back to them, and the design says it is reduced.

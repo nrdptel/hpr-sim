@@ -85,6 +85,14 @@ pub enum StoredReferenceExclusion {
     Aborted,
     /// The file contains a status not recognized by this reader.
     UnknownStatus,
+    /// The simulation has no `<simulator>`, so its producer cannot be established.
+    MissingSimulator,
+    /// The simulation names a producer other than the pinned OpenRocket RK4 simulator.
+    UnsupportedSimulator,
+    /// The simulation has no `<calculator>`, so its aerodynamic model cannot be established.
+    MissingCalculator,
+    /// The simulation names a calculator other than the pinned OpenRocket Barrowman calculator.
+    UnsupportedCalculator,
     /// The simulation has no `<flightdata>`.
     MissingResults,
     /// The flightdata lacks one of the required ascent summary values.
@@ -122,6 +130,10 @@ impl StoredReferenceExclusion {
             Self::CannotRun => "status-cannot-run",
             Self::Aborted => "status-aborted",
             Self::UnknownStatus => "status-unknown",
+            Self::MissingSimulator => "simulator-missing",
+            Self::UnsupportedSimulator => "simulator-unsupported",
+            Self::MissingCalculator => "calculator-missing",
+            Self::UnsupportedCalculator => "calculator-unsupported",
             Self::MissingResults => "missing-results",
             Self::MissingSummary => "missing-summary",
             Self::ImpossibleSummary => "impossible-summary",
@@ -137,17 +149,38 @@ impl StoredReferenceExclusion {
     }
 }
 
+/// The simulator identifier accepted for an OpenRocket reference.
+///
+/// The public `.ork` file specification's Simulation Data example names this simulator. The
+/// identifier is a provenance check, not a claim that every OpenRocket release uses this integrator.
+pub const OPENROCKET_SIMULATOR: &str = "RK4Simulator";
+
+/// The aerodynamic calculator identifier accepted for an OpenRocket reference.
+///
+/// The public `.ork` file specification's Simulation Data example names this calculator. A stored
+/// result from another calculator is not interchangeable with the pinned reference provenance.
+pub const OPENROCKET_CALCULATOR: &str = "BarrowmanCalculator";
+
 impl StoredSimulation {
     /// Returns why this stored result must not become a validation reference.
     ///
-    /// Only an explicitly `uptodate` simulation with finite, positive ascent summary values is
-    /// eligible. Optional summary values are checked when present. A time series is not required:
-    /// OpenRocket can save a useful summary without one. When a time series includes time and
-    /// altitude, its finite values must be non-negative apart from a 1 mm ground-contact rounding
-    /// allowance, and time must not run backwards; a series maximum may not exceed the stored
-    /// apogee on the branch that records the apogee event. A branch with rows but no recognized
-    /// time or altitude column is not inspectable. No arbitrary lower altitude threshold is used:
-    /// a small but internally consistent flight is not impossible merely because it is small.
+    /// Only an explicitly `uptodate` simulation with the accepted [`OPENROCKET_SIMULATOR`] and
+    /// [`OPENROCKET_CALCULATOR`] provenance markers and finite, positive ascent summary values is
+    /// eligible. The two identifiers establish the recorded producer names, not a complete identity
+    /// fingerprint for the OpenRocket version, settings or design. Optional summary values
+    /// are checked when present. A time series is not required: OpenRocket can save a useful
+    /// summary without one. When a time series includes time and altitude, its finite values must
+    /// be non-negative apart from a 1 mm ground-contact rounding allowance, and time must not run
+    /// backwards. The selected summary branch's maximum altitude must agree with the stored apogee
+    /// in both directions within `max(0.1% of apogee, 1 mm)`. When multiple branches record an
+    /// apogee, the first such branch in file order is selected; the reader does not infer branch
+    /// identity from a matching maximum. A single altitude-bearing branch is selected even without
+    /// an apogee event; multiple such
+    /// branches without an apogee event are uninspectable because the summary branch cannot be
+    /// identified. A branch with rows but no
+    /// recognized time or altitude column is not inspectable. No arbitrary lower altitude threshold
+    /// is used: a small but internally consistent flight is not impossible merely because it is
+    /// small. Fatal events and event times outside the stored flight are also rejected.
     #[must_use]
     pub fn reference_exclusion(&self) -> Option<StoredReferenceExclusion> {
         let exclusion = match self.status.as_deref() {
@@ -163,6 +196,18 @@ impl StoredSimulation {
         };
         if exclusion.is_some() {
             return exclusion;
+        }
+        let Some(simulator) = self.simulator.as_deref() else {
+            return Some(StoredReferenceExclusion::MissingSimulator);
+        };
+        if simulator != OPENROCKET_SIMULATOR {
+            return Some(StoredReferenceExclusion::UnsupportedSimulator);
+        }
+        let Some(calculator) = self.calculator.as_deref() else {
+            return Some(StoredReferenceExclusion::MissingCalculator);
+        };
+        if calculator != OPENROCKET_CALCULATOR {
+            return Some(StoredReferenceExclusion::UnsupportedCalculator);
         }
         let Some(results) = self.results.as_ref() else {
             return Some(StoredReferenceExclusion::MissingResults);
@@ -294,6 +339,8 @@ pub struct StoredResults {
 /// rounding around zero, not as a negative flight. This is a data-integrity allowance for stored
 /// values, not a physics tolerance; materially negative altitude remains impossible.
 const STORED_GROUND_ALTITUDE_TOLERANCE_M: f64 = 1e-3;
+/// Stored times are rounded to milliseconds; allow one last-digit unit when reconciling them.
+const STORED_TIME_TOLERANCE_S: f64 = 1e-3;
 
 impl StoredResults {
     fn reference_exclusion(&self) -> Option<StoredReferenceExclusion> {
@@ -335,12 +382,14 @@ impl StoredResults {
         let Some(apogee) = self.max_altitude_m else {
             return Some(StoredReferenceExclusion::MissingSummary);
         };
-        // A multi-stage result has one branch per stage. The summary belongs to the primary
-        // branch that records the apogee event; a separated booster can reach a different height.
-        let summary_branch = self
-            .branches
-            .iter()
-            .position(|branch| branch.events.iter().any(|event| event.kind == "apogee"));
+        // A multi-stage result has one branch per stage. The summary belongs to the first branch
+        // that records an apogee event: the surveyed cases put the primary flight branch first,
+        // while a separated booster can have a different height. For a single altitude-bearing branch, the
+        // series itself identifies the summary even when an old or hand-written file omitted the
+        // apogee event. Multiple branches without an apogee event cannot be mapped to the summary
+        // without guessing.
+        let mut altitude_branches = Vec::new();
+        let mut series_maxes = vec![None; self.branches.len()];
         for (index, branch) in self.branches.iter().enumerate() {
             let times = branch.column("Time");
             let altitudes = branch.column("Altitude");
@@ -363,6 +412,11 @@ impl StoredResults {
                     if previous.is_some_and(|old| time < old) {
                         return Some(StoredReferenceExclusion::InconsistentResults);
                     }
+                    if self.flight_time_s.is_some_and(|flight_time| {
+                        times_differ_more_than_allowed(time, flight_time) && time > flight_time
+                    }) {
+                        return Some(StoredReferenceExclusion::InconsistentResults);
+                    }
                     previous = Some(time);
                 }
                 if !observed && !branch.rows.is_empty() {
@@ -372,6 +426,9 @@ impl StoredResults {
             let Some(altitudes) = altitudes else {
                 continue;
             };
+            if !altitudes.is_empty() {
+                altitude_branches.push(index);
+            }
             let mut series_max = None;
             for altitude in altitudes.into_iter().flatten() {
                 if !altitude.is_finite() || altitude < -STORED_GROUND_ALTITUDE_TOLERANCE_M {
@@ -384,32 +441,79 @@ impl StoredResults {
             if series_max.is_none() && !branch.rows.is_empty() {
                 return Some(StoredReferenceExclusion::UninspectableSeries);
             }
-            // Only compare the branch whose apogee event defines the summary. If a file omitted
-            // events, the stored series remains readable but cannot prove this cross-check.
+            series_maxes[index] = series_max;
+        }
+        let apogee_branches: Vec<usize> = self
+            .branches
+            .iter()
+            .enumerate()
+            .filter(|(_, branch)| branch.events.iter().any(|event| event.kind == "apogee"))
+            .map(|(index, _)| index)
+            .collect();
+        let summary_branch = match apogee_branches.as_slice() {
+            [] => altitude_branches.first().copied(),
+            [index, ..] => Some(*index),
+        };
+        if let Some(index) = apogee_branches.first().copied()
+            && let Some(event) = self.branches[index]
+                .events
+                .iter()
+                .find(|event| event.kind == "apogee")
+            && times_differ_more_than_allowed(
+                event.time_s,
+                self.time_to_apogee_s.unwrap_or_default(),
+            )
+        {
+            return Some(StoredReferenceExclusion::InconsistentResults);
+        }
+        if apogee_branches.is_empty() && altitude_branches.len() > 1 {
+            return Some(StoredReferenceExclusion::UninspectableSeries);
+        }
+        for (index, series_max) in series_maxes.into_iter().enumerate() {
+            // Compare the first branch whose apogee event defines the summary. For a single branch
+            // without that event, the branch is the only available summary evidence. Stored values
+            // are rounded, so allow a small relative error in either direction, but not a series
+            // that demonstrably disagrees with the claimed apogee.
             if summary_branch == Some(index)
                 && let Some(series_max) = series_max
-                // Stored values are rounded, so allow a small relative error but not a series that
-                // demonstrably reaches above the summary's claimed apogee.
-                && series_max > apogee + 1e-3_f64.max(apogee * 1e-3)
+                && (series_max - apogee).abs() > 1e-3_f64.max(apogee * 1e-3)
             {
                 return Some(StoredReferenceExclusion::InconsistentResults);
             }
         }
-        if self
-            .branches
-            .iter()
-            .flat_map(|branch| &branch.events)
-            .any(|event| {
-                matches!(
-                    event.kind.as_str(),
-                    "exception" | "simabort" | "simulationabort"
-                )
-            })
-        {
-            return Some(StoredReferenceExclusion::FatalEvent);
+        for event in self.branches.iter().flat_map(|branch| &branch.events) {
+            if !event.time_s.is_finite() || event.time_s < 0.0 {
+                return Some(StoredReferenceExclusion::ImpossibleSummary);
+            }
+            if self
+                .flight_time_s
+                .is_some_and(|flight_time| event.time_s > flight_time)
+            {
+                return Some(StoredReferenceExclusion::InconsistentResults);
+            }
+            if is_fatal_event(&event.kind) {
+                return Some(StoredReferenceExclusion::FatalEvent);
+            }
         }
         None
     }
+}
+
+fn times_differ_more_than_allowed(first: f64, second: f64) -> bool {
+    let rounding = f64::EPSILON * first.abs().max(second.abs()).max(1.0) * 4.0;
+    (first - second).abs() > STORED_TIME_TOLERANCE_S + rounding
+}
+
+fn is_fatal_event(kind: &str) -> bool {
+    let normalized: String = kind
+        .chars()
+        .filter(|character| !matches!(character, '_' | '-'))
+        .flat_map(char::to_lowercase)
+        .collect();
+    matches!(
+        normalized.as_str(),
+        "exception" | "simabort" | "simulationabort"
+    )
 }
 
 /// One stage's stored time series.
