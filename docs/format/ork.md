@@ -1508,9 +1508,9 @@ it. **Only OpenRocket 24.12's are measured.** A file's writer is its root `creat
 runs the OpenRocket 24.12 program file (its jar). It flies every motor configuration of the public
 designs: the 17 examples inside the jar and the seven Loft demos. Each flight uses the design's
 first stored launch conditions, in calm air (no wind, no turbulence). Of the demos, only one has a
-motor OpenRocket finds, and `demo-quirks.ork` does not open. That gives 57 runs. OpenRocket aborted
-one of them, *Pods--powered with recovery deployment* with a C6-7 and two A3-4s, at 1.81 s and 85 m
-up ("Stage began to tumble under thrust"). Its figures are where the run stopped, not a flight's,
+motor OpenRocket finds, and `demo-quirks.ork` does not open. That leaves 18 designs with 57 motor
+configurations between them, so 57 runs. OpenRocket aborted one of them, *Pods--powered with
+recovery deployment* `[C6-7; 2× A3-4, B6-0]`, at 1.81 s and 85 m up ("Stage began to tumble under thrust"). Its figures are where the run stopped, not a flight's,
 so it is not a reference, which leaves 56 complete flights. The record,
 `validation/fixtures/ork/openrocket-flights.json`, keeps each word beside the quantities of
 OpenRocket's own time series (its stored steps) that the word could mean. The test
@@ -1526,19 +1526,21 @@ readings.
 | `maxmach` | the largest Mach number | 56 of 56 |
 | `timetoapogee` | the time of the highest stored step | 56 of 56; the apogee event's time differs on 13 |
 | `flighttime` | the time of ground hit, the last step | 56 of 56 |
-| `launchrodvelocity` | the total speed at the first step past the rod's length | 56 of 56; 0.06% to 7.50% above the speed at the rod's end |
+| `launchrodvelocity` | the total speed at the first step past the rod's length | 56 of 56; 0.06% to 7.50% above the speed at the rod's end, placed by interpolating linearly in height |
 | `deploymentvelocity` | the total speed at the **last** deployment, interpolated between the steps either side | 56 of 56; 53 deployments fall between steps, and on 17 flights the first deployment's speed differs |
 | `groundhitvelocity` | the total speed at ground hit, the last step | 56 of 56 |
 | `maxacceleration` | the largest total acceleration before the first deployment | 56 of 56; over the whole flight it differs on 15, whose largest acceleration comes after a deployment |
-| `optimumdelay` | **not measured**: withheld | on 15 flights it is not the time of apogee less the time of the last burnout (each fires its ejection charge before apogee); on 28 it is not that of the same flight flown again with nothing deployed |
+| `optimumdelay` | **not measured**: withheld | on 15 flights it is not the time of apogee less the time of the last burnout, nor that of the same flight flown again with nothing deployed |
 | (no word) stability margin | the distance from the centre of gravity (CG) aft to the centre of pressure (CP), in calibres, at rod clearance | the stability column, 56 of 56 |
 
 The stability margin follows Niskanen's definition ([N09](../physics/aero.md#code-and-sources) p. 12): the
 CP's distance behind the [CG](../glossary.md#centre-of-gravity-cg), divided by the reference length
 and so counted in [calibres](../glossary.md#calibre-caliber). OpenRocket's reference length is by
 default the largest body diameter, and that is the setting on all 57 runs. The optimum delay is the
-best [ejection delay](../glossary.md#ejection-delay). Neither obvious reading of OpenRocket's figure
-holds on every flight, so what it measures is not known, and it is not used.
+best [ejection delay](../glossary.md#ejection-delay). Each of the 15 flights it misses fires its
+ejection charge before apogee. Flown again with nothing deployed, every one of the 56 gives an
+`optimumdelay` equal to its apogee less its last burnout. So the early charge is what changes the
+figure, but how is not known, and the figure is not used.
 
 OpenRocket does not say which point on the rocket its speeds belong to. RocketPy's are the
 [centre of dry mass](../glossary.md#centre-of-dry-mass)'s, and RocketPy's rail exit is where the
@@ -1560,8 +1562,8 @@ the *3D printable nose cone and fins* example with a B6-4, the one deployment is
 between steps at 4.86 s (0.6575 m/s) and 4.8625 s (0.6330 m/s). OpenRocket reports 0.6477 m/s, the
 value interpolated at 4.861 s, not either step's.
 
-**An event that never happened has no value.** The record has one more flight: the *A simple model
-rocket* example with its parachute set never to open. It flies to the ground, and OpenRocket writes
+**An event that never happened has no value.** The record also holds a 58th flight, outside the
+57: the *A simple model rocket* example edited so its parachute never opens. It flies to the ground, and OpenRocket writes
 `NaN` for `deploymentvelocity`. On every complete flight, a speed taken at an event is `NaN` exactly
 when the event is missing. Loft scored such values as 0
 ([L81](../decisions-and-roadmap.md#l81)). hpr's

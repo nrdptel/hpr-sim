@@ -6320,9 +6320,11 @@ the report needs its own session.
      (CP − CG) ÷ reference length (Niskanen 2009, p. 12), with OpenRocket's default reference.
 4. **One word has no definition.** The largest acceleration is the peak of total acceleration
    before the first deployment (56 of 56; over the whole flight it differs on 15). But the optimum
-   delay is neither apogee less the last burnout (15 flights differ, each firing its ejection charge
-   before apogee) nor that of the same configuration flown again with nothing deployed, which the
-   record also holds (28 differ). What it is instead is not measured, so it is withheld: M2.2d1's
+   delay is not the apogee event less the last burnout on 15 flights, each firing its ejection
+   charge before apogee, nor, on the same 15, the apogee event of the same configuration flown
+   again with nothing deployed, which the record also holds. Those re-flights' own optimum delay is
+   their apogee event less their last burnout on all 56, so the early charge changes the figure,
+   but how is not measured; it is withheld: M2.2d1's
    *done when* asks each word to be defined **or** withheld with the flights that rule out its
    candidates, so the gap stays visible rather than guessed.
 5. **Definitions are per tool and version.** `hpr_validate::flight_metrics::definition` gives

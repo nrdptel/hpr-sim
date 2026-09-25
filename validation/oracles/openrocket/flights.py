@@ -13,9 +13,9 @@ summary beside the quantities of its own time series that the summary could mean
 - the total velocity and time of the last row, the mass at the first, and the peaks of the total
   acceleration and Mach number columns;
 - whether OpenRocket aborted the run (a `SIM_ABORT` event), and why;
-- the peak total acceleration before the first deployment, and the time to apogee of the same
-  configuration flown again with nothing deployed: candidates for `maxacceleration` and
-  `optimumdelay`.
+- the peak total acceleration before the first deployment, a candidate for `maxacceleration`;
+- the same configuration flown again with nothing deployed: its apogee event, last burnout and
+  own `optimumdelay`, candidates for the first flight's `optimumdelay`.
 
 One more flight, `no_deployment`, is the simple example with its parachute set never to open: a
 complete flight whose deployment never happened.
@@ -165,7 +165,9 @@ def flight(document, configuration, base):
             a for t, a in zip(times, acceleration) if t <= first_deployment + 1e-9
         ),
         "max_mach": peak(mach),
-        "time_of_max_altitude_s": times[altitude.index(peak(altitude))],
+        "time_of_max_altitude_s": (
+            times[altitude.index(peak(altitude))] if peak(altitude) is not None else None
+        ),
         "last_total_velocity_m_s": finite(speed[-1]),
         "last_time_s": finite(times[-1]),
         "launch_mass_kg": finite(mass[0]),
@@ -261,9 +263,20 @@ def design(path, scratch):
             never_deploy(undeployed, configuration)
             stored_ = list(undeployed.getSimulations())
             again = flight(undeployed, configuration, stored_[0] if stored_ else None)
-            entry["undeployed_time_to_apogee_s"] = (again.get("summary") or {}).get(
-                "time_to_apogee_s"
-            )
+            found = again.get("events", [])
+
+            def last_time(kind, found=found):
+                times = [e["time_s"] for e in found if e["type"] == kind]
+                return times[-1] if times else None
+
+            entry["undeployed"] = {
+                "aborted": again.get("aborted"),
+                "apogee_time_s": next(
+                    (e["time_s"] for e in found if e["type"] == "APOGEE"), None
+                ),
+                "last_burnout_time_s": last_time("BURNOUT"),
+                "optimum_delay_s": (again.get("summary") or {}).get("optimum_delay_s"),
+            }
         flights.append(entry)
     record["flights"] = flights
     return record

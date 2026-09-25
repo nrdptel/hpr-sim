@@ -1461,6 +1461,7 @@ fn stored_metric_definitions_are_per_tool_and_version() {
     }
     let lowest = above.iter().copied().fold(f64::INFINITY, f64::min);
     let highest = above.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    // The rod's end is placed by interpolating the speed linearly in height between the steps.
     assert!(
         (0.0006..0.00062).contains(&lowest) && (0.0750..0.0751).contains(&highest),
         "rod clearance speed above the rod's end by {lowest} to {highest}"
@@ -1517,11 +1518,13 @@ fn stored_metric_definitions_are_per_tool_and_version() {
     assert_eq!(event_differs, 13);
 
     // The largest acceleration stops at the first deployment: over the whole flight it differs
-    // on these. The optimum delay has no definition: it is not apogee less the last burnout on
-    // these flights, each with an ejection charge before apogee, nor that of the same flight with
-    // nothing deployed on these.
-    let mut delay_differs = 0;
-    let mut undeployed_differs = 0;
+    // on these. The optimum delay has no definition: it is not the apogee event less the last
+    // burnout on these flights, each with an ejection charge before apogee, nor the same flight's
+    // with nothing deployed on the same flights. Flown with nothing deployed, every flight's own
+    // optimum delay is its apogee event less its last burnout: the early charge is what is not
+    // understood.
+    let mut delay_differs = Vec::new();
+    let mut undeployed_differs = Vec::new();
     let mut acceleration_differs = 0;
     for (file, flight) in &flights {
         let times = |kind: &str| -> Vec<f64> {
@@ -1536,19 +1539,23 @@ fn stored_metric_definitions_are_per_tool_and_version() {
             .expect("every complete flight burns out");
         let delay = number(&flight["summary"]["optimum_delay_s"]).expect("recorded");
         if !agree(delay, apogee - burnout) {
-            delay_differs += 1;
+            delay_differs.push(*file);
             assert!(times("EJECTION_CHARGE")[0] < apogee, "{file}");
         }
-        let undeployed = number(&flight["undeployed_time_to_apogee_s"]).expect("flown again");
-        undeployed_differs += usize::from(!agree(delay, undeployed - burnout));
+        let undeployed = &flight["undeployed"];
+        assert_eq!(undeployed["aborted"], false, "{file}");
+        let again = |key: &str| number(&undeployed[key]).expect("flown again");
+        if !agree(delay, again("apogee_time_s") - burnout) {
+            undeployed_differs.push(*file);
+        }
+        let own = again("apogee_time_s") - again("last_burnout_time_s");
+        assert!(agree(again("optimum_delay_s"), own), "{file}");
         let acceleration = number(&flight["summary"]["max_acceleration_m_s2"]).expect("recorded");
         let peak = number(&flight["series"]["max_total_acceleration_m_s2"]).expect("recorded");
         acceleration_differs += usize::from(!agree(acceleration, peak));
     }
-    assert_eq!(
-        (delay_differs, undeployed_differs, acceleration_differs),
-        (15, 28, 15)
-    );
+    assert_eq!((delay_differs.len(), acceleration_differs), (15, 15));
+    assert_eq!(undeployed_differs, delay_differs);
     assert_eq!(definition(&current, FlightMetric::OptimumDelay), None);
 
     // Another OpenRocket version, as a `.ork` names its writer, has no definition measured: its
@@ -1695,6 +1702,17 @@ fn metric_for_missing_event_is_withheld_not_scored() {
         compare(&current, FlightMetric::Apogee, apogee, None),
         MetricOutcome::Failed(Failure::NoValue {
             side: Side::Measured
+        })
+    );
+    assert_eq!(
+        compare(
+            &current,
+            FlightMetric::Apogee,
+            ReferenceReading::Complete(Some(f64::INFINITY)),
+            Some(300.0)
+        ),
+        MetricOutcome::Failed(Failure::NotANumber {
+            side: Side::Reference
         })
     );
     let scored = compare(&current, FlightMetric::Apogee, apogee, Some(297.0));

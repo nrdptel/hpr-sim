@@ -107,8 +107,7 @@ pub enum FlightMetric {
     /// The speed at ground hit, m/s.
     GroundHitSpeed,
     /// The motor delay that would fire the ejection charge at apogee, s. OpenRocket 24.12's
-    /// `optimumdelay` is neither apogee less burnout nor that with nothing deployed; see
-    /// [`definition`].
+    /// `optimumdelay` is not always apogee less burnout; see [`definition`].
     OptimumDelay,
 }
 
@@ -286,10 +285,11 @@ pub const ROCKETPY_MEASURED: &str = "1.13.0";
 /// | largest acceleration | the peak of total acceleration before the first deployment |
 /// | time to apogee | the time of the highest stored step, not the apogee event (13 flights differ) |
 /// | flight time | the time of ground hit, its last step |
-/// | rod clearance, deployment, ground-hit speed | total velocity at the event, interpolated in time |
-/// | deployment speed | at the **last** deployment (no flight has more than two) |
+/// | rod clearance, ground-hit speed | total velocity at the event, which is on a step |
+/// | deployment speed | total velocity interpolated in time between the steps either side |
+/// | which deployment | the **last** (no flight has more than two) |
 /// | stability margin | its stability column at rod clearance |
-/// | optimum delay | none: apogee less burnout misses on 15 flights, and the same with nothing deployed on 28 |
+/// | optimum delay | none: apogee less burnout misses on 15 flights, and so does the same flight's with nothing deployed |
 ///
 /// RocketPy 1.13.0: the apogee, largest speed and rail-exit speed of hpr's whole-flight cases,
 /// taken at the centre of dry mass ([ADR-021][adr-021]). Any other version: `None`.
@@ -344,6 +344,7 @@ pub fn definition(tool: &Tool, metric: FlightMetric) -> Option<Definition> {
 
 /// A reference flight's value for one metric.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 #[serde(tag = "flight", content = "value", rename_all = "snake_case")]
 pub enum ReferenceReading {
     /// The flight ran to its end. `None`, or OpenRocket's `NaN`, means it has no value: for a
@@ -394,9 +395,10 @@ pub enum Failure {
         /// The flight that had it.
         side: Side,
     },
-    /// hpr gave a value that is not a finite number.
+    /// A value that is not a number: any `NaN` or infinity from hpr, or an infinity from the
+    /// reference (whose `NaN` means its event did not happen).
     NotANumber {
-        /// Always [`Side::Measured`]: a reference's `NaN` means its event did not happen.
+        /// The side with the value.
         side: Side,
     },
     /// A metric that every complete flight has, such as the apogee, has no value on one side.
@@ -446,7 +448,7 @@ impl MetricOutcome {
 /// - A metric whose meaning in `tool`'s version is not measured is withheld ([Loft lesson
 ///   L80][l80]), and so is every metric of an aborted reference flight.
 /// - A reference `None` or `NaN` means its flight has no value; hpr's `None` means the same, but
-///   a `NaN` or infinity from hpr is a failure, never a missing event.
+///   a `NaN` or infinity from hpr, or an infinity from the reference, is a failure.
 /// - For a metric taken at an event, no value on both sides withholds it; on one side only, it
 ///   fails, since the flights disagree about what happened ([Loft lesson L81][l81]: never 0).
 /// - For a metric every complete flight has, such as the apogee, a missing value fails.
@@ -472,6 +474,11 @@ pub fn compare(
     if measured.is_some_and(|value| !value.is_finite()) {
         return MetricOutcome::Failed(Failure::NotANumber {
             side: Side::Measured,
+        });
+    }
+    if reference.is_some_and(f64::is_infinite) {
+        return MetricOutcome::Failed(Failure::NotANumber {
+            side: Side::Reference,
         });
     }
     let reference = reference.filter(|value| value.is_finite());
