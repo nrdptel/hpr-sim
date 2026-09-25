@@ -44,5 +44,8 @@ echo
 echo "== Open PRs"
 gh pr list --state open 2>/dev/null || echo "(gh unavailable)"
 echo
+echo "== Usage (at API list prices)"
+python3 scripts/autopilot-usage.py --summary 2>/dev/null || echo "(scripts/autopilot-usage.py failed)"
+echo
 echo "== Needs Neer"
 sed -n '/^## Needs Neer/,/^## /p' docs/STATUS.md 2>/dev/null | sed '1d;$d'

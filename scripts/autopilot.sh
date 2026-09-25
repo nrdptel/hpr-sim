@@ -574,6 +574,9 @@ while :; do
   swap_note="${peak_swap_mb} MB"; [ "$peak_swap_mb" -lt 0 ] && swap_note="not sampled"
   log "Cycle $cycle memory (sampled every 5 s): peak RSS of the session and its commands ${rss_note}, least ${free_note}, worst pressure level ${worst_pressure}, most swap ${swap_note}."
   log "Cycle $cycle usage: $(usage_line "$out")"
+  # Fold the cycle into the usage ledger now: Claude Code deletes transcripts after 30 days, and
+  # prune_logs gzips and later deletes this cycle's log.
+  python3 "$ROOT/scripts/autopilot-usage.py" --ingest >/dev/null 2>&1 || log "Usage ledger not updated (scripts/autopilot-usage.py failed)."
 
   if [ "$pmode" != "?" ] && [ "$pmode" != "$PERM_MODE" ]; then
     log "The session ran in '$pmode' mode instead of $PERM_MODE (mode unavailable or disabled by policy?). Stopping; headless runs can't edit files without it."
