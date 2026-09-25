@@ -73,6 +73,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-065 | Stored results are references only when current and structurally plausible | accepted |
 | ADR-066 | Every curve hpr flies is integrated as OpenRocket integrates it | accepted |
 | ADR-067 | Curves come from OpenRocket's own database by digest, each held to its impulse | accepted |
+| ADR-068 | OpenRocket's flights of the public designs, and what its metric words mean | accepted |
 
 ---
 
@@ -6273,3 +6274,55 @@ things are left:
 `Curve` is `#[non_exhaustive]`, so the new variant breaks no caller.
 
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
+
+---
+## ADR-068: OpenRocket's flights of the public designs, and what its metric words mean (2026-09-25)
+
+**Context.** M2.2d asks for the public designs that fly in a report against OpenRocket (apogee,
+largest speed, stability margin), with Loft lessons L80 and L81 live. Nothing yet asked OpenRocket
+to fly a design, and hpr had no written meaning for OpenRocket's summary words. L80 is Loft's
+finding that one word can be a different quantity in another tool or version; Loft took OpenRocket
+24.12's meanings from its source, which this project may not read. L81 is Loft scoring a metric as
+0 when its event never happened. hpr has no stability-margin output yet (M1.10), so hpr's side of
+the report needs its own session.
+
+**Decision.**
+
+1. **M2.2d splits in two.** d1 is OpenRocket's side: the flights, and a written definition for
+   each metric, with L80 and L81. d2 is hpr's side, carrying the parent's *done when* unchanged.
+2. **OpenRocket flies every public configuration in calm air.**
+   `validation/oracles/openrocket/flights.py` flies every motor configuration of the jar's 17
+   examples and the seven Loft demos. Each flight takes the launch conditions of the design's first
+   stored simulation, with no wind and no turbulence, so it can be repeated and flown by hpr.
+   Extensions are not carried over. The conditions used are recorded with each flight. Of the
+   demos, only `demo-payload-separation.ork` has a motor OpenRocket finds, and `demo-quirks.ork`
+   does not open (a booster set it refuses), so there are 57 flights. The record is committed, as
+   the automatic-radius record is, because every design is public; a second run is byte for byte
+   the same.
+3. **Each summary word is measured, not read.** The record keeps each word beside the
+   quantities of the time series it could mean, and the rows either side of every event. The test
+   holds OpenRocket 24.12's definitions to it on all 57 flights, to 1e-9:
+   - the apogee and largest speed are the peaks of the altitude and total-velocity columns;
+   - the rod-clearance, deployment and ground-hit speeds are the total velocity interpolated
+     linearly at the event;
+   - the deployment speed is the **last** deployment's; on 17 flights the first gives another
+     number, which a first-deployment reading would have compared;
+   - the stability margin, which has no summary word, is the column at rod clearance, exactly
+     (CP − CG) ÷ reference length (Niskanen 2009, p. 12).
+4. **The optimum delay has no definition.** It is not apogee less the last burnout on 16 of the 57
+   flights, and its fractions (4.0804296875 is 267415/65536) suggest a search. Its meaning is not
+   measured, so it is withheld.
+5. **Definitions are per tool and version.** `hpr_validate::flight_metrics::definition` gives
+   OpenRocket 24.12's and RocketPy 1.13.0's (at the centre of dry mass, ADR-021), and `None` for
+   any other version, read from a `.ork`'s `creator`. No older OpenRocket jar is pinned, so its
+   words are withheld rather than read as 24.12's. OpenRocket does not document which point its
+   speeds belong to, so its point is *unstated*, and its largest speed is not RocketPy's.
+6. **A metric whose event never happened is withheld** by `flight_metrics::compare`, with the event
+   and the side named, and never scored against 0. OpenRocket writes `NaN` exactly when the event
+   is missing: one flight never deploys, and one never records a ground hit in its first branch.
+
+**Consequences.** L80 and L81 are live, owned by M2.2d1. The record is the reference for M2.2d2,
+which flies hpr in the recorded conditions and compares the apogee, largest speed and margin at rod
+clearance by these definitions. The motor's centre of mass (ADR-067) meets the margin there. Stored
+results in files written by other OpenRocket versions stay readable, but their summary words are
+withheld until another version's jar is pinned and measured.

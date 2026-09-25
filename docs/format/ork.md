@@ -1485,6 +1485,64 @@ or unknown configurations, configurations hpr cannot assemble, and configuration
 reading the design. These reasons describe hpr's current ability to reproduce the design, not the
 stored result's provenance or physical correctness.
 
+### What the summary words mean
+
+A summary word names a quantity, but not how it was taken. `deploymentvelocity` could be the speed
+at the first parachute or at the last; `groundhitvelocity` could be the last row's speed or a speed
+at the ground-hit event. Another tool, or another OpenRocket version, can use the same word for a
+different quantity ([Loft lesson L80](../decisions-and-roadmap.md#l80)). So hpr compares a summary
+value only through a written definition for the version that wrote it. **Only OpenRocket 24.12's
+are measured.** A file's writer is its root `creator` attribute (`OpenRocket 24.12`). For any other
+version, every summary value is withheld, not compared.
+
+The oracle `validation/oracles/openrocket/flights.py` runs OpenRocket 24.12. It flies every motor
+configuration of the public designs: the 17 examples inside its jar and the seven Loft demos. Each
+flight uses the design's first stored launch conditions, in calm air (no wind, no turbulence). Of
+the demos, only one has a motor OpenRocket finds, and `demo-quirks.ork` does not open. That leaves
+57 flights. For each one, the record `validation/fixtures/ork/openrocket-flights.json` keeps the
+summary beside the quantities of OpenRocket's own time series that each word could mean. The test
+`hpr_validate::tests::stored_metric_definitions_are_per_tool_and_version` holds every word to its
+definition on all 57 flights.
+
+| word | OpenRocket 24.12 measures | how the record shows it |
+|---|---|---|
+| `maxaltitude` | the largest altitude above the launch site | equal to the column's peak, 57 of 57 |
+| `maxvelocity` | the largest total speed | equal to the column's peak, 57 of 57 |
+| `launchrodvelocity` | the total speed at rod clearance, interpolated between the rows either side | 57 of 57 |
+| `deploymentvelocity` | the total speed at the **last** recovery-device deployment, interpolated the same way | 56 of 56 that deploy; 17 of them have a different first-deployment speed |
+| `groundhitvelocity` | the total speed at ground hit, the last row | 56 of 56 that land |
+| `optimumdelay` | **not measured** | not apogee less burnout on 16 of 57 flights, so it is withheld |
+| (no word) stability margin | (CP − CG) ÷ reference length, calibres, at rod clearance (Niskanen 2009, p. 12) | the stability column, 57 of 57 |
+
+Here CP is the centre of pressure, CG the centre of gravity, and the reference length is the
+largest body diameter. OpenRocket does not say which point on the rocket its speeds belong to.
+RocketPy's are those of the centre of dry mass ([ADR-021](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18)),
+so the two tools' `max speed` are kept as two definitions.
+
+**A worked example.** The *Chute release* example with a G40W-7 fires its ejection charge near
+apogee and opens its main parachute lower down:
+
+| deployment | time, s | speed, m/s |
+|---|---|---|
+| first | 9.301 | 8.305 at the 9.3 s row, 8.329 at 9.3025 s: 8.314 interpolated |
+| last | 20.514 | 14.231, on a row |
+
+OpenRocket's `deploymentvelocity` is 14.231 m/s: the last deployment. A reader taking the first
+would have compared 8.31 m/s with it. The interpolation matters too. For the *3D printable nose cone
+and fins* example with a B6-4, the one deployment is at 4.861 s, between rows at 4.86 s
+(0.6575 m/s) and 4.8625 s (0.6330 m/s). OpenRocket reports 0.6477 m/s, the value interpolated at
+4.861 s, not either row's.
+
+**An event that never happened has no value.** When no parachute opens, OpenRocket writes `NaN` for
+`deploymentvelocity`; one of the 57 flights does. In another, the first branch never reaches the
+ground, and `groundhitvelocity` is `NaN`. Loft scored such values as 0 ([Loft lesson
+L81](../decisions-and-roadmap.md#l81)). hpr's
+[`compare`](https://nrdptel.github.io/hpr-sim/api/hpr_validate/flight_metrics/fn.compare.html)
+withholds them with the missing event named, on either side, and never scores them. The test
+`hpr_validate::tests::metric_for_missing_event_is_withheld_not_scored` checks this on both flights.
+hpr's own flights of these configurations, compared with this record, are the next increment,
+[M2.2d2](../decisions-and-roadmap.md#m2-2d2).
+
 
 ### Stored simulations in the reference library
 

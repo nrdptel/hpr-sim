@@ -5,24 +5,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M2.2d, now that M2.2c2 supplies the library's curves from OpenRocket's own
-  motor database (ADR-067).
-- **Order:** M1.8e16 waits on #108; then M2.2d, e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
-  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b5, M2.2c; the site is published.
+  follow-on work is M2.2d2, hpr's flights against the record M2.2d1 made of OpenRocket's (ADR-068).
+- **Order:** M1.8e16 waits on #108; then M2.2d2, e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
+  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to c, M2.2d1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2c complete, M2.2d next.
+- **Last updated:** 2026-09-25; M2.2d1 complete, M2.2d2 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.2d** on a fresh `m2.2d-<slug>` branch: fly the public designs to apogee against
-  OpenRocket (apogee, max velocity, stability margin) and make L80, L81 live; split it first if it
-  is big. M2.2c2 (ADR-067): `motor_database.py … refs --jar` writes the record (run it before
-  `cargo xtask ork`), and the survey supplies each solid curve by digest through
-  `ork::design_with` and `SuppliedCurves`. 68 of 170 configurations now fly; 40 of the 91 eligible
-  stored runs are reproducible; OR places each supplied curve in all 67 such configurations.
-  **Open for d:** a motor's CG and inertia are hpr's envelope model, not OR's (3 of the 31 flown
-  supplied motors off by up to 5 mm); the 20 no-digest motors stay unflown by design.
+- **Start M2.2d2** on a fresh `m2.2d2-<slug>` branch: fly hpr on each configuration of
+  `validation/fixtures/ork/openrocket-flights.json` that hpr flies (21, in 5 jar examples), in the
+  recorded conditions, and report apogee, largest speed and margin at rod clearance by
+  `hpr_validate::flight_metrics::definition` (withhold via `compare`). hpr has no margin output
+  yet: CP from `hpr_aero` `NormalForce.cp_station_m` at the rod-clearance Mach, CG from the layout.
+  **Open:** a motor's CG is hpr's mid-case, not OR's (ADR-067, up to 5 mm); OR's speed point is
+  unstated; `flights.py` is run with `validation/fixtures/ork/loft-demo --jar` (ADR-068).
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -55,16 +53,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-25: M2.2d1 OpenRocket's flights and what its words mean (ADR-068): 57 calm flights of
+  the public designs; each 24.12 summary word held to a definition, the last deployment's speed on
+  17; optimum delay and other versions withheld; L80, L81 live.
 - 2026-09-25: M2.2c2 Curves from OpenRocket's own database (ADR-067): supplied by digest, never by
   name; 3 embedded and 1,288 database curves bit for bit OR's impulse; of the 162 configurations
   held back for want of a curve, 66 fly, 72 wait on another reason, 24 are named.
 - 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): the oracle hands each bundled
   file to OpenRocket 24.12's own loader; on all 32, impulse, peak thrust, the 5% window and duration
   are bit for bit OpenRocket's, inside M2.2c's 0.1%; only average thrust differs (+0.0107% to +0.3147%).
-- 2026-09-25: M2.2b5 Stored results as found (ADR-065): complete, finite and internally consistent
-  `uptodate` runs with `RK4Simulator` and `BarrowmanCalculator` provenance markers are eligible:
-  91/174 pass the stored-reference screen; 83 excluded by stable reason. Hpr reproduction is
-  separate: 1/91 reproducible, 90 not. All remain readable; per-file detail stays private.
+- 2026-09-25: M2.2b5 Stored results as found (ADR-065): 91/174 pass the stored-reference screen,
+  83 excluded by stable reason; hpr reproduction is a separate screen.
 - 2026-09-23: M2.2b4 corpus rerun excluding generated `refs/scratch/`: 75 files, 73 read, 72 laid
   out, 71 compared; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1% (OR's fin rule).
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
@@ -72,15 +71,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
-- **OpenRocket example radii in a fixture** (no action if fine): `openrocket-automatic-radius.json`
-  commits 67 body radii OpenRocket computed: 63 for the jar's 17 GPL example designs, with their
-  names, and 4 for the Apache-2.0 parachute catalogue.
+- **OpenRocket example outputs in fixtures** (no action if fine): `openrocket-automatic-radius.json`
+  and `openrocket-flights.json` commit radii and flight numbers OR computed for its 17 GPL examples.
 - **A glance at GPL source** (no action if fine): M3.1d2's research read about 15 lines of
   `orhelper`'s (GPL-2.0) signatures before its licence was checked; nothing derived (ADR-059 §5).
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".
 - ADR-066: M2.2c split c1, c2; the oracle compares two integrations of one file, the committed
   record covers the public bundled curves only, and the two burn-time definitions are recorded.
 - ADR-065: M2.2b5 split; stored-data reference eligibility and hpr reproduction are separate screens,

@@ -619,34 +619,35 @@
   - [ ] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
     convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
     Split into b1 to b5 (ADR-061 to ADR-063).
-    - [x] **M2.2b1 What a `.ork` leaves unsaid, and overrides** (L51). Met (ADR-061), its done-when
-      bars kept: walls, shoulders and materials read as OpenRocket's on probe designs, two override
-      departures pinned, L51 live; the rerun had 61 and 62 of 74 within 1%, the 13 outside each a
-      cluster, fillets or unread.
-    - [x] **M2.2b2 Fins, rail buttons and roll inertia.** Met (ADR-062), its done-when bars kept:
-      the roll gap is OpenRocket's fin rule (hpr's exact integral kept); with it, median 0.001% and
-      each file outside 1% has a cause; #151 fixed.
-    - [x] **M2.2b3 Packed parts.** Met (ADR-063), its done-when bars kept: a packed part with no
-      size and an override on a weightless one are both OpenRocket's on probes, to 1e-12; roll
-      within 1% on 57 of 74 (was 55).
-    - [x] **M2.2b4 Clusters, fillets and unread parts.** Met (ADR-064), its done-when bars kept: the
-      3-ring cluster is read as one tube and pinned, 5 and 10 mm fillets omitted and pinned, unread
-      parts stay in `x-openrocket` and mark designs reduced; the 2026-09-23 scratch-excluding survey
-      gives 58/71 mass, 59/71 centre, 50/71 pitch and 56/71 roll within 1%.
+    - [x] **M2.2b1 What a `.ork` leaves unsaid, and overrides** (L51). Met (ADR-061), bars kept:
+      walls, shoulders, materials as OR's on probes; two override departures pinned; L51 live.
+    - [x] **M2.2b2 Fins, rail buttons and roll inertia.** Met (ADR-062), bars kept: the roll gap is
+      OR's fin rule (hpr's exact integral kept); median 0.001%, each file outside 1% has a cause.
+    - [x] **M2.2b3 Packed parts.** Met (ADR-063), bars kept: a packed part with no size and an
+      override on a weightless one are OR's on probes, to 1e-12; roll within 1% on 57 of 74.
+    - [x] **M2.2b4 Clusters, fillets and unread parts.** Met (ADR-064), bars kept: cluster, fillets
+      pinned, unread parts kept; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1%.
     - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain readable, but only current, provenance-bearing, structurally plausible results pass the stored-reference screen; hpr reproduction is a separate screen and both report stable reasons (ADR-065). *Result:* met (ADR-065): 91 of 174 stored runs pass the stored-reference screen; 83 are excluded by stable reason (47 inconsistent, 17 external, 11 outdated, 7 not-simulated, 1 missing simulator). Hpr reproduction is reported separately: 1 of those 91 is reproducible and 90 are not (79 unflyable configurations, 11 reduced designs).
   - [x] **M2.2c The motors OpenRocket flies.** Met (ADR-066, ADR-067), its done-when bars kept:
     every configuration held back only for want of a curve flies or is named with its reason, each
     curve's impulse within 0.1% of OR's. Split into c1 and c2.
-    - [x] **M2.2c1 Every curve as OpenRocket integrates it.** Met (ADR-066), its done-when bars kept:
-      OR 24.12 loads each bundled file; all 32 are bit for bit its impulse, peak, 5% window and
-      duration, in a record a test checks; average thrust +0.0107% to +0.3147%, a written departure.
-    - [x] **M2.2c2 The configurations held back for want of a curve.** *Done when:* the curves the
-      library embeds are held to the same 0.1% and every configuration held back only for want of
-      one flies or is named with its reason, both counted by `cargo xtask ork`. *Result:* met
-      (ADR-067): OR's own database supplied by digest; 3 embedded and 1,288 database curves bit for
-      bit OR's impulse; of the 162 held back, 66 fly, 72 wait on another reason, 24 are named.
-  - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly
-    are in a report against OR (apogee, max velocity, stability margin) and L80, L81 are live.
+    - [x] **M2.2c1 Every curve as OpenRocket integrates it.** Met (ADR-066), bars kept: all 32
+      bundled curves bit for bit OR's impulse, peak, 5% window and duration; average thrust departs.
+    - [x] **M2.2c2 The configurations held back for want of a curve.** Met (ADR-067), bars kept: OR's
+      database supplied by digest; of the 162 held back, 66 fly, 72 wait on another reason, 24 named.
+  - [ ] **M2.2d Flights to apogee on the public designs.** *Done when:* those that fly are in a
+    report against OR (apogee, max velocity, stability margin) and L80, L81 are live. Split in two
+    (ADR-068).
+    - [x] **M2.2d1 OpenRocket's flights, and what its words mean** (L80, L81). *Done when:* an
+      oracle flies every public configuration OR can in calm air, into a record a test pins; each
+      OR 24.12 summary word, and the margin at rod clearance, is held on every flight to a written
+      definition per tool and version, other versions withheld; a metric whose event never happened
+      is withheld. *Result:* met (ADR-068): 57 flights; 17 tell the last deployment from the first;
+      the optimum delay is unmeasured, withheld; 2 metrics withheld for events that never happened.
+      - Loft lessons: L80, L81.
+    - [ ] **M2.2d2 hpr's flights against the record.** *Done when:* the parent's *done when* is met:
+      each configuration hpr flies is in a report against the record's apogee, largest speed and
+      margin at rod clearance, by those definitions.
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
 
 - [ ] **M1.9 Staging, clusters, airstarts (COTS).**

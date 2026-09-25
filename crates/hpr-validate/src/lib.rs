@@ -39,6 +39,7 @@
 )]
 
 pub mod case;
+pub mod flight_metrics;
 pub mod metrics;
 pub mod report;
 pub mod rocketpy;
