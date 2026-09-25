@@ -644,8 +644,9 @@
     - [x] **M2.2e1 Mass and CG in the flight report.** *Done when:* the report spreads launch
       mass, rod-clearance mass and CG against OR's on every flight not aborted, a test pinning the
       arithmetic. *Result:* met: 21 each; masses within 0.22%, CG within 0.016 cal.
-    - [ ] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
-      configuration OR can into `corpus-out/`; only counts committed.
+    - [x] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
+      configuration OR can into `corpus-out/`; only counts committed. *Result:* met (ADR-071): the
+      27 `.ork` designs' 88 of 89 flown, none aborted; OR loads no motor for the 89th.
     - [ ] **M2.2e3 hpr's flights of the corpus.** *Done when:* anonymised ids beside the public
       report make at least 20 designs with the five spreads.
     - [ ] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
