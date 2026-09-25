@@ -2134,6 +2134,29 @@
   "summary": {
     "apogee_over_5_percent": 5,
     "flown": 21,
+    "mass_and_cg": {
+      "launch_mass_percent": {
+        "count": 21,
+        "max": 0.20858652070791828,
+        "mean_absolute": 0.039222046766897285,
+        "median": 0.015547032795931963,
+        "min": 0.0
+      },
+      "rod_clearance_cg_cal": {
+        "count": 21,
+        "max": 0.015882095871440054,
+        "mean_absolute": 0.004643929432600969,
+        "median": 0.0006757222103437321,
+        "min": -0.0028373891460418466
+      },
+      "rod_clearance_mass_percent": {
+        "count": 21,
+        "max": 0.2135103227770564,
+        "mean_absolute": 0.036634691356462336,
+        "median": 0.014419195763444593,
+        "min": -0.010417464264358838
+      }
+    },
     "metrics": {
       "apogee_m": {
         "definition": {
