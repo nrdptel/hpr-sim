@@ -366,6 +366,28 @@ impl Supply {
         self.refused_digests.insert(digest.to_owned());
     }
 
+    /// The digests the record finds OpenRocket placing in configuration `id` of the design whose
+    /// SHA-256 is `sha`: nothing when OpenRocket has no configuration of that id. A design the
+    /// record does not read back, or that the oracle failed on, is an error: the record is to be
+    /// written again, not the configuration left out.
+    pub(crate) fn placed(&self, sha: &str, id: &str) -> Result<Option<&[String]>, String> {
+        let short = sha.get(..8).unwrap_or(sha);
+        match self.placed.get(sha) {
+            Some(Ok(Some(configurations))) => Ok(configurations
+                .get(&id.to_ascii_lowercase())
+                .map(Vec::as_slice)),
+            Some(Ok(None)) => Err(format!(
+                "OpenRocket did not open design {short} in {RECORD}, though it flew it"
+            )),
+            Some(Err(error)) => Err(format!(
+                "the oracle failed on design {short} in {RECORD}: {error}"
+            )),
+            None => Err(format!(
+                "design {short} is not read back in {RECORD}; run {ORACLE} again, with --jar"
+            )),
+        }
+    }
+
     /// Whether the survey has the record.
     pub(crate) fn is_present(&self) -> bool {
         self.present

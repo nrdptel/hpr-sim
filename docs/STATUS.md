@@ -5,23 +5,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M2.2e3, hpr's flights of the corpus (L19, L82), after M2.2e2 (ADR-070).
-- **Order:** M1.8e16 waits on #108; then M2.2e3, e4, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
-  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to e2; the site is published.
+  follow-on work is M2.2e4, the causes (L19, L82), after M2.2e3 (ADR-072).
+- **Order:** M1.8e16 waits on #108; M2.2e5 on M1.9 (17), then 3 of #173, #174, M1.13, #133; so e4, M1.9.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to e3; site published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2e2 complete, M2.2e3 next.
+- **Last updated:** 2026-09-25; M2.2e3 complete, M2.2e4 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.2e3** on a fresh `m2.2e3-<slug>` branch (ADR-070). e2 flew 88 in 27 private designs
-  into `corpus-out/openrocket-flights.json` (`flights.py … refs --jar`, a minute; `--corpus` counts).
-  e3 reuses `xtask/src/ork_flights.rs` (`fly_all`, `mass_and_cg`) on that record for an
-  anonymised-id report beside the public one, checking each curve's digest is the file's first
-  (the record keeps no loader warnings; a reviewer saw 3 flights on another curve); e4 the causes.
-  Named causes so far: OR's early chute (hpr flies no `.ork` recovery; worth flying first) and
-  #165 (drag override ignored). Run `cargo xtask ork-flights --check` after any physics change:
-  CI can't fly them (needs the jar, `corpus-out/openrocket-motors.json`), only checks the record.
+- **Start M2.2e4** on a fresh `m2.2e4-<slug>` branch: a written hypothesis, sized where possible,
+  for every apogee over 5% (5 public, 0 private). Named so far: OR's early chute (hpr flies no
+  `.ork` recovery; worth flying first) and #165 (drag override ignored). To test: private
+  flights above sea level read low, at sea level high (public, all sea level, low); margin high on
+  `C03`, `C09` (#172). e3's `ork-flights --library` flies `corpus-out/openrocket-flights.json` by `fly_design`,
+  12 private designs (15 of 27 are public copies). After any physics change run `cargo xtask
+  ork-flights --check` and `--library --check`: CI can't fly them (jar, `corpus-out/`).
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -54,17 +53,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-25: M2.2e3 hpr's flights of the corpus (ADR-072, split: bar to e5): 17 flights of 4 of
+  12 private designs by anonymised id; 9 of 20 designs in all; no apogee over 5%.
 - 2026-09-25: M2.2e2 OR's flights of the corpus (ADR-071, `.ork` only, #168): 88 of 89 in 27
-  private designs flown, none aborted; OR loads no motor for the 89th; counts only committed.
+  library designs flown, none aborted; OR loads no motor for the 89th; counts only committed.
 - 2026-09-25: M2.2e1 Mass and CG in the flight report (ADR-070, M2.2e split e1 to e4): launch
   mass within 0.21%, rod-clearance CG within 0.016 cal of OR's on 21; mass explains no miss.
 - 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
   cal; apogee −4.34% to −0.06% with no named cause; 5 over 5%, each an early chute or #165.
 - 2026-09-25: M2.2d1 OR's flights, its words' meanings (ADR-068): 56 calm flights, 1 aborted; 9 of
   10 words defined, `optimumdelay` withheld; a missing event is never scored; L80, L81 live.
-- 2026-09-25: M2.2c2 Curves from OpenRocket's own database (ADR-067): supplied by digest, never by
-  name; 3 embedded and 1,288 database curves bit for bit OR's impulse; of the 162 configurations
-  held back for want of a curve, 66 fly, 72 wait on another reason, 24 are named.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
@@ -78,6 +76,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-072: private flights by id, differences only; public copies out; bar of 20 waits on M1.9.
 - ADR-071: M2.2e's corpus is the library's 27 `.ork` files; its `.CDX1`, `.rkt` wait (#168).
 - ADR-069: hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
 - ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".

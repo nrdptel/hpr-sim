@@ -41,14 +41,17 @@ use hpr_validate::flight_metrics::{
 use serde_json::{Value, json};
 
 pub const USAGE: &str = "\
-  ork-flights [--check | --corpus [RECORD]]
+  ork-flights [--check | --corpus [RECORD] | --library [--check]]
                            Fly hpr on each configuration of OpenRocket's flight record it
                            flies, and write validation/reports/openrocket-flights.{md,json}.
                            Needs the pinned jar and corpus-out/openrocket-motors.json. --check
                            compares with the committed report instead of writing it.
                            --corpus prints only counts of OpenRocket's flights of the
                            private library, from corpus-out/openrocket-flights.json or
-                           another record flights.py wrote.";
+                           another record flights.py wrote. --library flies the
+                           private library's configurations from that record and
+                           writes validation/reports/openrocket-library-flights.{md,json}
+                           under anonymised ids (with --check, compares instead).";
 
 /// OpenRocket's flights (M2.2d1).
 pub(crate) const RECORD: &str = "validation/fixtures/ork/openrocket-flights.json";
@@ -60,7 +63,7 @@ pub(crate) const REPORT_JSON: &str = "validation/reports/openrocket-flights.json
 pub(crate) const REPORT_MD: &str = "validation/reports/openrocket-flights.md";
 
 /// The jar the examples are read from.
-const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
+pub(crate) const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
 
 /// The metrics compared, with their names in the report.
 pub(crate) const METRICS: [(FlightMetric, &str); 3] = [
@@ -77,13 +80,17 @@ pub(crate) const METRICS: [(FlightMetric, &str); 3] = [
 const APOGEE_CAUSE_PERCENT: f64 = 5.0;
 
 /// How far `--check` lets a regenerated number move, relative.
-const CHECK_RELATIVE: f64 = 1e-9;
+pub(crate) const CHECK_RELATIVE: f64 = 1e-9;
 
 pub fn run(args: &[String]) -> Result<(), String> {
     let check = match args {
         [] => false,
         [flag] if flag == "--check" => true,
         [flag] if flag == "--corpus" => return crate::ork_corpus_flights::run(None),
+        [flag] if flag == "--library" => return crate::ork_library_flights::run(false),
+        [flag, check] if flag == "--library" && check == "--check" => {
+            return crate::ork_library_flights::run(true);
+        }
         [flag, record] if flag == "--corpus" => {
             return crate::ork_corpus_flights::run(Some(record));
         }
@@ -120,7 +127,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-fn read_json(path: &Path) -> Result<Value, String> {
+pub(crate) fn read_json(path: &Path) -> Result<Value, String> {
     let text = fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
     serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))
 }
@@ -168,88 +175,12 @@ fn fly_all(root: &Path, record: &Value) -> Result<Value, String> {
                 "{file} is not the file the record flew (SHA-256 differs)"
             ));
         }
-        let read = ork::read(&bytes).map_err(|error| format!("{file}: {error}"))?;
-        let design = ork::design_with(&read.value, supply.curves()).value;
         let name = design_name(file);
-        let overridden = zero_drag_parts(&read.value.document.root)?;
-        let powered: Vec<&Value> = recorded
-            .iter()
-            .filter(|f| f["has_motors"] == true)
-            .collect();
-        for flight in &powered {
-            let id = flight["configuration"]
-                .as_str()
-                .ok_or("a flight without a configuration")?;
-            let motors = flight["name"].as_str().unwrap_or_default();
-            // OpenRocket gives a configuration whose id is not a UUID a new one, so a design's
-            // only configuration is matched to the record's only powered flight.
-            let configurations = &design.motors.configurations;
-            let (matched, renamed) = match configurations
-                .iter()
-                .find(|c| c.id.eq_ignore_ascii_case(id))
-            {
-                Some(configuration) => (Some(configuration), false),
-                None if configurations.len() == 1 && powered.len() == 1 => {
-                    (configurations.first(), true)
-                }
-                None => (None, false),
-            };
-            let flown = matched.and_then(|matched| {
-                design
-                    .rocket
-                    .configurations
-                    .iter()
-                    .find(|c| c.id == matched.id)
-            });
-            if let Some(configuration) = flown {
-                let mut entry = fly(&name, &design.rocket, &configuration.id, motors, flight)?;
-                entry["file"] = json!(file);
-                if !overridden.is_empty() {
-                    // hpr has no drag override yet (#165), so it charges these parts the drag
-                    // OpenRocket is told is zero. The same flight with them removed (their mass
-                    // and lift go too) is a probe of what that costs, not the override itself.
-                    let mut without = design.rocket.clone();
-                    let mut removed = 0;
-                    for stage in &mut without.stages {
-                        removed += remove(&mut stage.components, &overridden);
-                    }
-                    if removed != overridden.len() {
-                        return Err(format!(
-                            "{file}: removed {removed} of the {} parts set to no drag",
-                            overridden.len()
-                        ));
-                    }
-                    let probe = fly(&name, &without, &configuration.id, motors, flight)?;
-                    entry["drag_overrides_not_applied"] =
-                        json!(overridden.iter().map(|(_, name)| name).collect::<Vec<_>>());
-                    entry["without_the_overridden_parts"] = json!({
-                        "apogee_m": probe["metrics"]["apogee_m"],
-                        "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
-                    });
-                }
-                flights.push(entry);
-            } else {
-                let why = matched.and_then(|c| c.left_out.as_ref()).map_or_else(
-                    || "the importer builds no configuration of that id".to_owned(),
-                    |out| {
-                        let prefix = if renamed {
-                            "the design's only configuration, which OpenRocket gave a new id: "
-                        } else {
-                            ""
-                        };
-                        format!("{prefix}{}", crate::ork_motors::not_flown(out.why))
-                    },
-                );
-                not_flown.push(json!({
-                    "file": file,
-                    "design": name,
-                    "configuration": id,
-                    "motors": motors,
-                    "aborted": flight["aborted"],
-                    "why": why,
-                }));
-            }
-        }
+        let label =
+            |_: usize, flight: &Value| flight["name"].as_str().unwrap_or_default().to_owned();
+        let flown = fly_design(file, &name, &bytes, recorded, &supply, label, false)?;
+        flights.extend(flown.flights);
+        not_flown.extend(flown.not_flown);
     }
     let summary = summarise(&flights, &not_flown);
     Ok(json!({
@@ -262,17 +193,344 @@ fn fly_all(root: &Path, record: &Value) -> Result<Value, String> {
     }))
 }
 
+/// What hpr made of one design's recorded flights.
+pub(crate) struct Flown {
+    /// The flights hpr flew, each compared with OpenRocket's.
+    pub flights: Vec<Value>,
+    /// The configurations OpenRocket flew that hpr did not, with why.
+    pub not_flown: Vec<Value>,
+}
+
+/// Flies every powered configuration of `recorded`, OpenRocket's flights of the design `file`
+/// whose bytes are `bytes`, that hpr flies, under the name `name`. `label` names a configuration
+/// in the report from its place among the design's recorded configurations (from 1) and its
+/// record.
+///
+/// A configuration is flown only when OpenRocket is shown to fly the curves hpr is given: each
+/// motor's curve is the design's own embedded one or one supplied for its digest, and the motor
+/// record ([`crate::ork_supply::RECORD`]) finds OpenRocket placing those digests in that
+/// configuration. A curve from hpr's bundled catalog is found by name, which can name another
+/// curve than the digest OpenRocket loads, and OpenRocket's loader takes another curve without
+/// saying so in the flight record when a digest is not in its database.
+///
+/// A record that lacks what a comparison needs is an error. So is a flight hpr fails, unless
+/// `list_failures`, when the configuration is listed as [`FLIGHT_FAILED`] and the detail, which can
+/// name a part, is printed on this machine only.
+pub(crate) fn fly_design(
+    file: &str,
+    name: &str,
+    bytes: &[u8],
+    recorded: &[Value],
+    supply: &crate::ork_supply::Supply,
+    label: impl Fn(usize, &Value) -> String,
+    list_failures: bool,
+) -> Result<Flown, String> {
+    let read = ork::read(bytes).map_err(|error| format!("{name}: {error}"))?;
+    let design = ork::design_with(&read.value, supply.curves()).value;
+    let sha = crate::ork_supply::sha256(bytes);
+    let overrides = drag_overrides(&read.value.document.root);
+    let powered: Vec<(usize, &Value)> = recorded
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| f["has_motors"] == true)
+        .map(|(index, f)| (index + 1, f))
+        .collect();
+    let mut out = Flown {
+        flights: Vec::new(),
+        not_flown: Vec::new(),
+    };
+    for &(place, flight) in &powered {
+        let id = flight["configuration"]
+            .as_str()
+            .ok_or("a flight without a configuration")?;
+        let motors = label(place, flight);
+        let not_flown = |why: &str| {
+            json!({
+                "file": file,
+                "design": name,
+                "configuration": id,
+                "motors": motors,
+                "aborted": flight["aborted"],
+                "why": why,
+            })
+        };
+        if flight["refused"].is_string() {
+            out.not_flown.push(not_flown(REFUSED));
+            continue;
+        }
+        // OpenRocket gives a configuration whose id is not a UUID a new one, so a design's
+        // only configuration is matched to the record's only powered flight.
+        let configurations = &design.motors.configurations;
+        let (matched, renamed) = match configurations
+            .iter()
+            .find(|c| c.id.eq_ignore_ascii_case(id))
+        {
+            Some(configuration) => (Some(configuration), false),
+            None if configurations.len() == 1 && powered.len() == 1 => {
+                (configurations.first(), true)
+            }
+            None => (None, false),
+        };
+        let flown = matched.and_then(|matched| {
+            design
+                .rocket
+                .configurations
+                .iter()
+                .find(|c| c.id == matched.id)
+        });
+        let unconfirmed = match matched.filter(|_| flown.is_some()) {
+            Some(matched) => match unflown_conditions(&flight["conditions"])
+                .map_err(|error| format!("{motors}: {error}"))?
+            {
+                Some(why) => Some(why),
+                None => unconfirmed_curve(
+                    &curve_sources(matched),
+                    supply
+                        .placed(&sha, id)
+                        .map_err(|error| format!("{name}: {error}"))?,
+                ),
+            },
+            None => None,
+        };
+        let Some(configuration) = flown.filter(|_| unconfirmed.is_none()) else {
+            let why = match (flown, unconfirmed) {
+                (Some(_), Some(why)) => why.to_owned(),
+                _ => matched.and_then(|c| c.left_out.as_ref()).map_or_else(
+                    || NO_SUCH_CONFIGURATION.to_owned(),
+                    |out| {
+                        let prefix = if renamed { RENAMED } else { "" };
+                        format!("{prefix}{}", crate::ork_motors::not_flown(out.why))
+                    },
+                ),
+            };
+            out.not_flown.push(not_flown(&why));
+            continue;
+        };
+        recorded_enough(flight).map_err(|error| format!("{motors}: {error}"))?;
+        let flew = |rocket: &hpr_design::Rocket| {
+            fly(name, rocket, &configuration.id, &motors, flight).map_err(|error| {
+                if list_failures {
+                    eprintln!("{motors}: {FLIGHT_FAILED}: {error}");
+                }
+                error
+            })
+        };
+        let mut entry = match flew(&design.rocket) {
+            Ok(entry) => entry,
+            Err(_) if list_failures => {
+                out.not_flown.push(not_flown(FLIGHT_FAILED));
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
+        entry["file"] = json!(file);
+        if !overrides.is_empty() {
+            entry["drag_overrides_not_applied"] =
+                json!(overrides.iter().map(|o| &o.name).collect::<Vec<_>>());
+        }
+        if !overrides.is_empty() && overrides.iter().all(|o| o.zero && o.removable) {
+            // hpr has no drag override yet (#165), so it charges these parts the drag OpenRocket
+            // is told is zero. The same flight with them removed (their mass and lift go too) is
+            // a probe of what that costs, not the override itself. A part stating another value
+            // has no such probe: removing it would not stand in for its override. Nor has the
+            // rocket or a stage stating one.
+            let mut without = design.rocket.clone();
+            let mut removed = 0;
+            for stage in &mut without.stages {
+                removed += remove(&mut stage.components, &overrides);
+            }
+            if removed != overrides.len() {
+                return Err(format!(
+                    "{name}: removed {removed} of the {} parts set to no drag",
+                    overrides.len()
+                ));
+            }
+            let probe = match flew(&without) {
+                Ok(probe) => probe,
+                Err(_) if list_failures => {
+                    out.not_flown.push(not_flown(FLIGHT_FAILED));
+                    continue;
+                }
+                Err(error) => return Err(error),
+            };
+            entry["without_the_overridden_parts"] = json!({
+                "apogee_m": probe["metrics"]["apogee_m"],
+                "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
+            });
+        }
+        out.flights.push(entry);
+    }
+    Ok(out)
+}
+
+/// Checks the record holds everything [`fly`] reads from it, so that an error from [`fly`] is
+/// hpr's, not the record's.
+fn recorded_enough(flight: &Value) -> Result<(), String> {
+    let number = |value: &Value, what: &str| {
+        value
+            .as_f64()
+            .ok_or_else(|| format!("the record has no {what}"))
+    };
+    let conditions = &flight["conditions"];
+    Geodetic::from_degrees(
+        number(&conditions["launch_latitude_deg"], "latitude")?,
+        number(&conditions["launch_longitude_deg"], "longitude")?,
+        number(&conditions["launch_altitude_m"], "launch altitude")?,
+    )
+    .map_err(|error| error.to_string())?;
+    number(&conditions["rod_length_m"], "rod length")?;
+    number(&flight["rod_clearance"]["time_s"], "rod-clearance time")?;
+    number(
+        &flight["rod_clearance"]["mach"],
+        "rod-clearance Mach number",
+    )?;
+    early_chute(flight)?;
+    Ok(())
+}
+
+/// Why a configuration is not flown: OpenRocket refused to fly it.
+pub(crate) const REFUSED: &str = "OpenRocket refused to fly it";
+
+/// Why a configuration is not flown: hpr's flight of it failed.
+pub(crate) const FLIGHT_FAILED: &str = "hpr's flight of it failed";
+
+/// Why a configuration is not flown: the importer builds none of the recorded id.
+pub(crate) const NO_SUCH_CONFIGURATION: &str = "the importer builds no configuration of that id";
+
+/// Put before the importer's reason when OpenRocket gave the design's only configuration a new id.
+pub(crate) const RENAMED: &str =
+    "the design's only configuration, which OpenRocket gave a new id: ";
+
+/// Why a configuration is not flown: a tilted launch rod.
+pub(crate) const ROD_NOT_VERTICAL: &str = "a launch rod not vertical";
+
+/// Why a configuration is not flown: wind.
+pub(crate) const WIND: &str = "wind";
+
+/// Why a configuration is not flown: an atmosphere other than the standard one.
+pub(crate) const NOT_STANDARD_AIR: &str = "an atmosphere other than the standard one";
+
+/// Why a configuration is not flown: a curve from hpr's bundled catalog, found by name.
+pub(crate) const CURVE_BY_NAME: &str = "a curve found by name, which OpenRocket may not fly";
+
+/// Why a configuration is not flown: the motor record does not find OpenRocket placing its curves.
+pub(crate) const NOT_PLACED: &str = "a curve OpenRocket is not shown to place";
+
+/// Why the recorded launch `conditions` are not ones this report flies: it flies a vertical rod
+/// in calm standard air only, as [`fly`] requires. A condition the record does not state is an
+/// error, not a reason.
+pub(crate) fn unflown_conditions(conditions: &Value) -> Result<Option<&'static str>, String> {
+    let number = |key: &str| {
+        conditions[key]
+            .as_f64()
+            .ok_or_else(|| format!("the record states no `{key}`"))
+    };
+    let (rod, wind, turbulence) = (
+        number("rod_angle_rad")?,
+        number("wind_average_m_s")?,
+        number("wind_turbulence")?,
+    );
+    let (model, standard) = (
+        conditions["wind_model"]
+            .as_str()
+            .ok_or("the record states no `wind_model`")?,
+        conditions["isa_atmosphere"]
+            .as_bool()
+            .ok_or("the record states no `isa_atmosphere`")?,
+    );
+    Ok(if rod != 0.0 {
+        Some(ROD_NOT_VERTICAL)
+    } else if wind != 0.0 || turbulence != 0.0 || model != "AVERAGE" {
+        // `flights.py` calms the average wind model only.
+        Some(WIND)
+    } else if !standard {
+        Some(NOT_STANDARD_AIR)
+    } else {
+        None
+    })
+}
+
+/// Where the curve of one motor hpr flies came from, as [`unconfirmed_curve`] needs it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CurveSource<'a> {
+    /// The design's own embedded curve, or one supplied for the motor's digest: the digest.
+    Digest(&'a str),
+    /// hpr's bundled catalog, found by name.
+    Catalog,
+    /// Anything else, such as a curve with no digest.
+    Other,
+}
+
+/// The curve sources of the motors of `configuration`.
+fn curve_sources(configuration: &ork::MotorConfiguration) -> Vec<CurveSource<'_>> {
+    configuration
+        .motors
+        .iter()
+        .map(|motor| match (&motor.curve, &motor.digest) {
+            (ork::Curve::Embedded { .. } | ork::Curve::Supplied { .. }, Some(digest)) => {
+                CurveSource::Digest(digest)
+            }
+            (ork::Curve::Catalog { .. }, _) => CurveSource::Catalog,
+            _ => CurveSource::Other,
+        })
+        .collect()
+}
+
+/// Why OpenRocket is not shown to fly the curves hpr flies, given each motor's [`CurveSource`] and
+/// the digests the motor record finds OpenRocket placing in that configuration (`None` when it
+/// finds no such configuration): nothing when every curve has a digest and OpenRocket places
+/// exactly those digests, as many times each.
+pub(crate) fn unconfirmed_curve(
+    curves: &[CurveSource<'_>],
+    placed: Option<&[String]>,
+) -> Option<&'static str> {
+    if curves.contains(&CurveSource::Catalog) {
+        return Some(CURVE_BY_NAME);
+    }
+    let Some(placed) = placed else {
+        return Some(NOT_PLACED);
+    };
+    let mut left: Vec<&str> = placed.iter().map(String::as_str).collect();
+    for curve in curves {
+        let CurveSource::Digest(digest) = curve else {
+            return Some(NOT_PLACED);
+        };
+        match left.iter().position(|d| d == digest) {
+            Some(at) => {
+                left.swap_remove(at);
+            }
+            None => return Some(NOT_PLACED),
+        }
+    }
+    if left.is_empty() {
+        None
+    } else {
+        Some(NOT_PLACED)
+    }
+}
+
 /// A design's name in the report: an example's file name, or a demo's.
 fn design_name(file: &str) -> String {
     let base = file.rsplit(['/', '!']).next().unwrap_or(file);
     base.strip_suffix(".ork").unwrap_or(base).to_owned()
 }
 
-/// The parts of the design (not its stored simulations) that state a drag coefficient of zero,
-/// by id and name. A part stating another value is refused: removing it would not stand in for
-/// its override.
-fn zero_drag_parts(root: &ork::Element) -> Result<Vec<(String, String)>, String> {
-    fn walk(element: &ork::Element, found: &mut Vec<(String, String)>) -> Result<(), String> {
+/// A part of the design (not of its stored simulations) that states its own drag coefficient.
+pub(crate) struct DragOverride {
+    /// The part's id.
+    pub id: String,
+    /// The part's name.
+    pub name: String,
+    /// Whether the coefficient stated is zero.
+    pub zero: bool,
+    /// Whether it is a part, which can be removed, rather than the rocket or a stage.
+    pub removable: bool,
+}
+
+/// The parts of the design that state a drag coefficient (`<overridecd>`), which hpr reads but
+/// does not apply (#165).
+pub(crate) fn drag_overrides(root: &ork::Element) -> Vec<DragOverride> {
+    fn walk(element: &ork::Element, found: &mut Vec<DragOverride>) {
         let text = |tag: &str| {
             element
                 .child(tag)
@@ -280,28 +538,26 @@ fn zero_drag_parts(root: &ork::Element) -> Result<Vec<(String, String)>, String>
                 .unwrap_or_default()
         };
         if element.child("overridecd").is_some() {
-            if text("overridecd").parse::<f64>() != Ok(0.0) {
-                return Err(format!(
-                    "`{}` states a drag coefficient of {}, which this report has no probe for",
-                    text("name"),
-                    text("overridecd")
-                ));
-            }
-            found.push((text("id"), text("name")));
+            found.push(DragOverride {
+                id: text("id"),
+                name: text("name"),
+                zero: text("overridecd").parse::<f64>() == Ok(0.0),
+                removable: !matches!(element.name.as_str(), "rocket" | "stage"),
+            });
         }
-        element.elements().try_for_each(|child| walk(child, found))
+        element.elements().for_each(|child| walk(child, found));
     }
     let mut found = Vec::new();
     for rocket in root.children_named("rocket") {
-        walk(rocket, &mut found)?;
+        walk(rocket, &mut found);
     }
-    Ok(found)
+    found
 }
 
 /// Removes the components whose ids are in `parts`, wherever they are, and counts them.
-fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[(String, String)]) -> usize {
+fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[DragOverride]) -> usize {
     let before = components.len();
-    components.retain(|component| !parts.iter().any(|(id, _)| *id == component.id));
+    components.retain(|component| !parts.iter().any(|part| part.id == component.id));
     let mut removed = before - components.len();
     for component in components {
         removed += remove(&mut component.children, parts);
@@ -612,28 +868,11 @@ pub(crate) fn summarise(flights: &[Value], not_flown: &[Value]) -> Value {
 /// nose, in OpenRocket's calibres (so it moves the margin by as much, the other way).
 fn mass_and_cg(flights: &[Value]) -> Value {
     let (mut launch, mut clearance, mut cg) = (Vec::new(), Vec::new(), Vec::new());
-    let relative = |hpr: &Value, openrocket: &Value| {
-        hpr.as_f64()
-            .zip(openrocket.as_f64())
-            .map(|(h, o)| 100.0 * (h - o) / o)
-            .filter(|p| p.is_finite())
-    };
     for flight in flights.iter().filter(|f| f["aborted"] != true) {
-        let at = &flight["at_rod_clearance"];
-        let (hpr, openrocket) = (&at["hpr"], &at["openrocket"]);
-        launch.extend(relative(
-            &flight["launch_mass_kg"]["hpr"],
-            &flight["launch_mass_kg"]["openrocket"],
-        ));
-        clearance.extend(relative(&hpr["mass_kg"], &openrocket["mass_kg"]));
-        cg.extend(
-            hpr["cg_from_nose_m"]
-                .as_f64()
-                .zip(openrocket["cg_from_nose_m"].as_f64())
-                .zip(openrocket["reference_length_m"].as_f64())
-                .map(|((h, o), reference)| (h - o) / reference)
-                .filter(|cal| cal.is_finite()),
-        );
+        let [l, c, g] = mass_and_cg_differences(flight);
+        launch.extend(l);
+        clearance.extend(c);
+        cg.extend(g);
     }
     json!({
         "launch_mass_percent": spread(&launch),
@@ -642,19 +881,45 @@ fn mass_and_cg(flights: &[Value]) -> Value {
     })
 }
 
+/// One flight's differences [`mass_and_cg`] spreads: its mass at launch and at the rod-clearance
+/// step in per cent of OpenRocket's, and its centre of mass at that step in OpenRocket's calibres.
+pub(crate) fn mass_and_cg_differences(flight: &Value) -> [Option<f64>; 3] {
+    let relative = |hpr: &Value, openrocket: &Value| {
+        hpr.as_f64()
+            .zip(openrocket.as_f64())
+            .map(|(h, o)| 100.0 * (h - o) / o)
+            .filter(|p| p.is_finite())
+    };
+    let at = &flight["at_rod_clearance"];
+    let (hpr, openrocket) = (&at["hpr"], &at["openrocket"]);
+    [
+        relative(
+            &flight["launch_mass_kg"]["hpr"],
+            &flight["launch_mass_kg"]["openrocket"],
+        ),
+        relative(&hpr["mass_kg"], &openrocket["mass_kg"]),
+        hpr["cg_from_nose_m"]
+            .as_f64()
+            .zip(openrocket["cg_from_nose_m"].as_f64())
+            .zip(openrocket["reference_length_m"].as_f64())
+            .map(|((h, o), reference)| (h - o) / reference)
+            .filter(|cal| cal.is_finite()),
+    ]
+}
+
 /// A drag override hpr does not apply.
-const DRAG_OVERRIDE: &str = "a part's drag override not applied";
+pub(crate) const DRAG_OVERRIDE: &str = "a part's drag override not applied";
 
 /// A reference parachute open before its apogee.
-const EARLY_CHUTE: &str = "reference parachute open before apogee";
+pub(crate) const EARLY_CHUTE: &str = "reference parachute open before apogee";
 
 /// Neither.
-const NO_NAMED_CAUSE: &str = "no named cause";
+pub(crate) const NO_NAMED_CAUSE: &str = "no named cause";
 
 /// The named cause a flight's difference in `metric` is summarised under. A drag override moves
 /// every metric but the margin; an early parachute only the apogee. A flight with both is put
 /// under the drag override.
-fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
+pub(crate) fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
     if metric == FlightMetric::RodClearanceStability {
         NO_NAMED_CAUSE
     } else if !flight["drag_overrides_not_applied"].is_null() {
@@ -667,7 +932,7 @@ fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
 }
 
 /// How many, the median, the mean, and the smallest and largest of `values`.
-fn spread(values: &[f64]) -> Value {
+pub(crate) fn spread(values: &[f64]) -> Value {
     if values.is_empty() {
         return json!({ "count": 0 });
     }
@@ -827,7 +1092,7 @@ pub(crate) fn page(report: &Value) -> String {
 }
 
 /// The summary, as lines for the terminal and the page.
-fn summary_lines(report: &Value) -> String {
+pub(crate) fn summary_lines(report: &Value) -> String {
     let summary = &report["summary"];
     let metrics = &summary["metrics"];
     let line = |label: &str, spread: &Value, unit: &str, digits: usize| {
@@ -912,13 +1177,13 @@ fn summary_lines(report: &Value) -> String {
     out
 }
 
-fn fixed(value: &Value, digits: usize) -> String {
+pub(crate) fn fixed(value: &Value, digits: usize) -> String {
     value
         .as_f64()
         .map_or_else(|| "—".to_owned(), |v| format!("{v:.digits$}"))
 }
 
-fn signed(value: &Value, digits: usize) -> String {
+pub(crate) fn signed(value: &Value, digits: usize) -> String {
     value
         .as_f64()
         .map_or_else(|| "—".to_owned(), |v| format!("{v:+.digits$}"))
@@ -936,7 +1201,7 @@ fn percent(entry: &Value) -> String {
 
 /// Collects where `now` departs from `committed`: numbers beyond [`CHECK_RELATIVE`], anything
 /// else that differs.
-fn same(committed: &Value, now: &Value, at: &str, apart: &mut Vec<String>) {
+pub(crate) fn same(committed: &Value, now: &Value, at: &str, apart: &mut Vec<String>) {
     match (committed, now) {
         (Value::Number(a), Value::Number(b)) => {
             let (a, b) = (
@@ -1194,6 +1459,130 @@ mod tests {
         assert_eq!(
             design_name("validation/fixtures/ork/loft-demo/demo-stable.ork"),
             "demo-stable"
+        );
+    }
+
+    #[test]
+    fn a_curve_is_confirmed_only_when_openrocket_places_exactly_it() {
+        use CurveSource::{Catalog, Digest, Other};
+        let placed = |digests: &[&str]| digests.iter().map(|d| (*d).to_owned()).collect::<Vec<_>>();
+        let two = placed(&["a", "b"]);
+        assert_eq!(
+            unconfirmed_curve(&[Digest("a"), Digest("b")], Some(&two)),
+            None
+        );
+        assert_eq!(
+            unconfirmed_curve(&[Digest("b"), Digest("a")], Some(&two)),
+            None
+        );
+        // One too few, one too many, or one other, either way round.
+        assert_eq!(
+            unconfirmed_curve(&[Digest("a")], Some(&two)),
+            Some(NOT_PLACED)
+        );
+        let repeated = placed(&["a", "a"]);
+        assert_eq!(
+            unconfirmed_curve(&[Digest("a")], Some(&repeated)),
+            Some(NOT_PLACED)
+        );
+        assert_eq!(
+            unconfirmed_curve(&[Digest("a"), Digest("a")], Some(&placed(&["a"]))),
+            Some(NOT_PLACED)
+        );
+        assert_eq!(
+            unconfirmed_curve(&[Digest("a"), Digest("c")], Some(&two)),
+            Some(NOT_PLACED)
+        );
+        // No such configuration in the motor record, or a curve without a digest.
+        assert_eq!(unconfirmed_curve(&[Digest("a")], None), Some(NOT_PLACED));
+        assert_eq!(
+            unconfirmed_curve(&[Other], Some(&placed(&[]))),
+            Some(NOT_PLACED)
+        );
+        // A catalog curve is found by name, whatever OpenRocket places.
+        assert_eq!(
+            unconfirmed_curve(&[Digest("a"), Catalog], Some(&two)),
+            Some(CURVE_BY_NAME)
+        );
+        assert_eq!(unconfirmed_curve(&[Catalog], None), Some(CURVE_BY_NAME));
+    }
+
+    #[test]
+    fn only_a_vertical_rod_in_calm_standard_air_is_flown() {
+        let calm = json!({
+            "rod_angle_rad": 0.0, "wind_average_m_s": 0.0, "wind_turbulence": 0.0,
+            "wind_model": "AVERAGE", "isa_atmosphere": true,
+        });
+        assert_eq!(unflown_conditions(&calm), Ok(None));
+        let with = |key: &str, value: Value| {
+            let mut conditions = calm.clone();
+            conditions[key] = value;
+            unflown_conditions(&conditions)
+        };
+        assert_eq!(
+            with("rod_angle_rad", json!(0.05)),
+            Ok(Some(ROD_NOT_VERTICAL))
+        );
+        assert_eq!(with("wind_average_m_s", json!(2.0)), Ok(Some(WIND)));
+        assert_eq!(with("wind_turbulence", json!(0.1)), Ok(Some(WIND)));
+        assert_eq!(with("wind_model", json!("MULTI_LEVEL")), Ok(Some(WIND)));
+        assert_eq!(
+            with("isa_atmosphere", json!(false)),
+            Ok(Some(NOT_STANDARD_AIR))
+        );
+        // A condition the record does not state is an error, not a reason.
+        assert!(with("rod_angle_rad", Value::Null).is_err());
+        assert!(with("wind_model", Value::Null).is_err());
+        assert!(with("isa_atmosphere", Value::Null).is_err());
+    }
+
+    #[test]
+    fn drag_overrides_are_read_with_their_value_and_place() {
+        let text = |t: &str| json!({"kind": "text", "text": t});
+        let element = |name: &str, children: Vec<Value>| json!({"kind": "element", "name": name, "attributes": [], "children": children});
+        let part = |tag: &str, id: &str, cd: &str| {
+            element(
+                tag,
+                vec![
+                    element("id", vec![text(id)]),
+                    element("name", vec![text(&format!("{tag} {id}"))]),
+                    element("overridecd", vec![text(cd)]),
+                ],
+            )
+        };
+        let mut rocket = element(
+            "rocket",
+            vec![element(
+                "subcomponents",
+                vec![element(
+                    "stage",
+                    vec![
+                        element("overridecd", vec![text("0.0")]),
+                        element(
+                            "subcomponents",
+                            vec![
+                                part("nosecone", "n", "0.0"),
+                                part("transition", "t", "0.35"),
+                            ],
+                        ),
+                    ],
+                )],
+            )],
+        );
+        rocket.as_object_mut().unwrap().remove("kind");
+        let root = json!({"name": "openrocket", "attributes": [], "children": [
+            {"kind": "element", "name": "rocket", "attributes": [],
+             "children": rocket["children"]},
+        ]});
+        let root: ork::Element = serde_json::from_value(root).unwrap();
+        let found = drag_overrides(&root);
+        let summary: Vec<(&str, bool, bool)> = found
+            .iter()
+            .map(|o| (o.id.as_str(), o.zero, o.removable))
+            .collect();
+        assert_eq!(
+            summary,
+            vec![("", true, false), ("n", true, true), ("t", false, true)]
         );
     }
 }

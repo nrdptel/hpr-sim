@@ -246,19 +246,16 @@
       *Result:* met. A declared constant `C_D0` of 0.5; the fixture reproduces byte for byte;
       apogees 779 to 3,623 m AGL, Prometheus to Mach 1.014. The oracle's own step-size cliff
       (thrust(0) = 0, an unbounded step) was fixed by bounding `max_time_step` (issue #33).
-    - [x] **M2.1b2 The whole-flight cases:** a `Flight::WholeFlight` case variant beside
-      `RecoveryDescent`, taking the case's `C_D0(M)` through `Simulation::with_drag_table`, and the
-      five cases in the lock.
+    - [x] **M2.1b2 The whole-flight cases:** a `Flight::WholeFlight` case variant flying the
+      case's `C_D0(M)` (`Simulation::with_drag_table`), and the five cases in the lock.
       - Loft lessons: L75.
       *Done when:* at least 5 whole-flight cases run in the lock and pass their same-drag
       tolerances, with each metric's tolerance argued in the case file;
       `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` exists
       and passes; and `validation/reports/latest.md` carries them under ADR-015's gravity rule (the
       comparison flies the oracle's models where hpr has them).
-      *Result (ADR-021):* met. Six whole-flight cases, fifteen metrics each; five pass every scored
-      metric within 3% (largest +1.783%, Bella Lui's power-on peak). The drifts in wind stayed
-      unscored until issue #50 (M2.1d3); Prometheus was a checked `M ≥ 1` gap until M1.8a. The
-      comparison flies RocketPy's gravity, atmosphere, rail and thrust.
+      *Result (ADR-021):* met. Six cases; five pass every scored metric within 3% (largest +1.783%,
+      Bella Lui); wind drifts unscored until #50 (M2.1d3), Prometheus a checked gap until M1.8a.
   - [x] **M2.1c Predicted mode, CI and regeneration:** the same cases flown with hpr's own aero,
     reported beside the same-drag ones; a CI job that runs `cargo xtask validate` against the
     stored references, and a separate, manually triggered workflow that regenerates them.
@@ -534,15 +531,14 @@
 
   Split into M3.1a to M3.1d (ADR-051): the container and the document first, because everything
   after it walks that tree.
-  - [x] **M3.1a The container and the design document.** Sniff zip, gzip and raw XML by their first
-    bytes; take the design out of the archive and keep every other entry; read the XML into a tree
-    that keeps everything the file said, with its schema version and creator; warn, never crash.
-    Loft lesson L56. *Done when:* every `.ork` in the reference library and in the OpenRocket jar's
-    example set either reads or is shown by a second XML parser not to be well-formed; each one
-    written back out and read again gives the same document; `cargo xtask ork` prints those counts
-    and writes the per-file detail to a gitignored `corpus-out/`; and
-    `hpr_io::ork::tests::malformed_inputs_error_not_panic` is live. *Result:* met (ADR-051): 76 of
-    78 read and round-trip; 2 Loft test fixtures are not well-formed XML, as expat agrees.
+  - [x] **M3.1a The container and the design document.** Sniff zip, gzip and raw XML; keep every
+    archive entry and all the XML said; warn, never crash. Loft lesson L56. *Done when:* every
+    `.ork` in the reference library and in the OpenRocket jar's example set either reads or is
+    shown by a second XML parser not to be well-formed; each one written back out and read again
+    gives the same document; `cargo xtask ork` prints those counts and writes the per-file detail
+    to a gitignored `corpus-out/`; and `hpr_io::ork::tests::malformed_inputs_error_not_panic` is
+    live. *Result:* met (ADR-051): 76 of 78 read and round-trip; 2 Loft fixtures are not
+    well-formed XML, as expat agrees.
   - [x] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
     `hpr-design` types, automatic dimensions resolved (L49, L58 to L63). *Done when:* every design
     in the reference library gives a `hpr_design::Rocket` whose `layout()` succeeds, each of those
@@ -640,16 +636,20 @@
     - [x] **M2.2d2 hpr's flights against the record.** Met (ADR-069), bars kept: 21 flown; margin
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
-    Split into e1 to e4 (ADR-070).
+    Split into e1 to e5 (ADR-070, ADR-072).
     - [x] **M2.2e1 Mass and CG in the flight report.** *Done when:* the report spreads launch
       mass, rod-clearance mass and CG against OR's on every flight not aborted, a test pinning the
       arithmetic. *Result:* met: 21 each; masses within 0.22%, CG within 0.016 cal.
     - [x] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
       configuration OR can into `corpus-out/`; only counts committed. *Result:* met (ADR-071): the
       27 `.ork` designs' 88 of 89 flown, none aborted; OR loads no motor for the 89th.
-    - [ ] **M2.2e3 hpr's flights of the corpus.** *Done when:* anonymised ids beside the public
-      report make at least 20 designs with the five spreads.
+    - [x] **M2.2e3 hpr's flights of the corpus.** Bar moved unchanged to e5 (ADR-072). *Done when:*
+      `ork-flights --library` reports it by anonymised id, differences only, curves checked as OR's,
+      a test holding its words and sums. *Result:* met: 17 flights, 4 of 12 private designs, 9 in all.
     - [ ] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
+    - [ ] [blocked] **M2.2e5 Twenty designs** (on M1.9, #173, #174, M1.13, #133). *Done when:*
+      anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
+      bar on the flights added. M1.9: 17 at most; 3 of #173's 1, #174's 5, 4 public the rest.
 
 - [ ] **M1.9 Staging, clusters, airstarts (COTS).**
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
