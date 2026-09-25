@@ -14,11 +14,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.2e3** on a fresh `m2.2e3-<slug>` branch (ADR-070 split e1 to e4). e2 flew the
-  corpus: `corpus-out/openrocket-flights.json` (rerun: `flights.py corpus-out/openrocket-flights.json
-  refs --jar`, about a minute), 88 flights in 27 private designs; `ork-flights --corpus` counts it.
+- **Start M2.2e3** on a fresh `m2.2e3-<slug>` branch (ADR-070). e2 flew 88 in 27 private designs
+  into `corpus-out/openrocket-flights.json` (`flights.py … refs --jar`, a minute; `--corpus` counts).
   e3 reuses `xtask/src/ork_flights.rs` (`fly_all`, `mass_and_cg`) on that record for an
-  anonymised-id report (ids only, committed), beside the public one; e4 each apogee over 5%.
+  anonymised-id report beside the public one, checking each curve's digest is the file's first
+  (the record keeps no loader warnings; a reviewer saw 3 flights on another curve); e4 the causes.
   Named causes so far: OR's early chute (hpr flies no `.ork` recovery; worth flying first) and
   #165 (drag override ignored). Run `cargo xtask ork-flights --check` after any physics change:
   CI can't fly them (needs the jar, `corpus-out/openrocket-motors.json`), only checks the record.
@@ -54,8 +54,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-25: M2.2e2 OR's flights of the corpus: 88 of 89 configurations in 27 private designs
-  flown to the end, none refused or aborted, the other with no motor; counts only committed.
+- 2026-09-25: M2.2e2 OR's flights of the corpus (ADR-071, `.ork` only, #168): 88 of 89 in 27
+  private designs flown, none aborted; OR loads no motor for the 89th; counts only committed.
 - 2026-09-25: M2.2e1 Mass and CG in the flight report (ADR-070, M2.2e split e1 to e4): launch
   mass within 0.21%, rod-clearance CG within 0.016 cal of OR's on 21; mass explains no miss.
 - 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
@@ -78,7 +78,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- M2.2e2: OR flies all of `refs/` (like `mass.py`), counted by source; no ADR, ADR-070 covers it.
+- ADR-071: M2.2e's corpus is the library's 27 `.ork` files; its `.CDX1`, `.rkt` wait (#168).
 - ADR-069: hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
 - ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".
 - ADR-066: M2.2c split c1, c2; the oracle compares two integrations of one file, the committed
