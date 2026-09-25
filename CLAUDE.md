@@ -86,7 +86,11 @@ At the start of every session, read these in order. They are short on purpose; k
 - **Local gate before every push.** All of these must pass. Run them with `scripts/gate.sh`, in
   the foreground with a Bash timeout of at least 1200000 ms: it runs CI's own commands and prints
   one line per step, plus only the error lines of a failing step (full logs in `target/gate/`).
-  `scripts/gate.sh clippy test` runs a subset while you iterate.
+  Run the whole gate before the first review and before each push. It takes about 3 minutes, and in
+  the run of 2026-09-25 it ran 20 times in 5 cycles, mostly between review rounds. While fixing
+  findings, run only the steps the fix touches: `scripts/gate.sh clippy test` for code, and
+  `scripts/gate.sh docs site` for prose (`docs` is the doc-guard tests in `xtask`). CI runs
+  everything on every push anyway.
 
   ```bash
   cargo fmt --all --check

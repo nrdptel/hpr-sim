@@ -10,6 +10,8 @@
 #   GATE_TAIL=80 scripts/gate.sh    # show more of each failure (default 40 lines)
 #
 # Steps: fmt clippy test doc wasm validate deny site examples
+# Extra step, not in the default set: docs (only xtask's tests, which guard STATUS, ROADMAP, the
+# lessons and the pages; about 40 s against 154 s for all tests), for a change to prose alone.
 # The commands are CI's own (.github/workflows/ci.yml), `--locked` included, so a Cargo.lock that
 # needs updating fails here rather than on every CI job. `validate` is `--check`: every case,
 # compared with the committed report. Regenerating the report is a separate, deliberate step
@@ -39,12 +41,13 @@ cmd_for() {
     deny) echo "cargo deny check" ;;
     site) echo "$XTASK site --locked" ;;
     examples) echo "$XTASK examples --check --locked" ;;
+    docs) echo "cargo test --locked -p xtask" ;;
     *) return 1 ;;
   esac
 }
 
 for step in $STEPS; do
-  cmd_for "$step" >/dev/null || { echo "unknown step: $step (known: $ALL)" >&2; exit 64; }
+  cmd_for "$step" >/dev/null || { echo "unknown step: $step (known: $ALL docs)" >&2; exit 64; }
 done
 mkdir -p "$LOGDIR"
 
