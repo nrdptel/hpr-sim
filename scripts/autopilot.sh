@@ -22,7 +22,9 @@
 #           Ctrl+C                  (immediate: the current cycle is cut off; its commits are kept)
 # Watch:    scripts/autopilot-status.sh   |   tail -f .autopilot/runs.log
 #
-# Environment overrides: HPR_MODEL (default claude-opus-5), HPR_EFFORT (default xhigh),
+# Environment overrides: HPR_MODEL (default claude-opus-5-5), HPR_EFFORT (default high; the reviewer
+#   subagents set their own in .claude/agents/),
+#   HPR_COMPACT_WINDOW (default 400000; the context size at which a session compacts, see below),
 #   HPR_PERMISSION_MODE (default bypassPermissions; set it to auto for the classifier-checked mode),
 #   HPR_CYCLE_MAX_HOURS (default 10), HPR_STALL_MINUTES (default 120), HPR_LIMIT_POLL_MINUTES (default 10),
 #   HPR_KEEP_LOGS (default 20 cycle transcripts kept uncompressed; archives beyond 3x that are
@@ -53,8 +55,12 @@ LOGS="$STATE/logs"
 RUNLOG="$STATE/runs.log"
 mkdir -p "$LOGS"
 
-MODEL="${HPR_MODEL:-claude-opus-5}"
-EFFORT="${HPR_EFFORT:-xhigh}"
+MODEL="${HPR_MODEL:-claude-opus-5-5}"
+# high, not xhigh: on Opus 5.5, Anthropic measured xhigh at about 1.4 points more than high on
+# SWE-bench Pro for 2.5 times the cost, and advises keeping xhigh for work where a gain has been
+# measured. The adversarial reviewers (physics, code, validation) stay at xhigh in their own
+# definitions, so the checking is done at the higher level. docs/AUTOPILOT.md has the sources.
+EFFORT="${HPR_EFFORT:-high}"
 PERM_MODE="${HPR_PERMISSION_MODE:-bypassPermissions}"
 CYCLE_MAX=$(( ${HPR_CYCLE_MAX_HOURS:-10} * 3600 ))
 STALL_MAX=$(( ${HPR_STALL_MINUTES:-120} * 60 ))
@@ -76,6 +82,18 @@ case "$KEEP_LOGS" in ''|*[!0-9]*) KEEP_LOGS=20 ;; esac
 # runners have fewer cores and a fixed six would start more jobs than there are cores.
 export CARGO_BUILD_JOBS="${HPR_CARGO_JOBS:-6}"
 export RUST_TEST_THREADS="${HPR_CARGO_JOBS:-6}"
+# Compact a session's context at 400k tokens rather than near the 1M window. Every API call
+# re-reads the whole context, so its size, not the work, set most of a cycle's cost: over cycles
+# 1 to 77, cache reads were 70% of token spend, and long cycles averaged about 480k tokens of
+# context per call. Replaying those cycles' own per-call context sizes with a 400k ceiling cuts the
+# main session's context re-reads by 47% for about one compaction per long cycle. Claude Code reads
+# CLAUDE_CODE_AUTO_COMPACT_WINDOW (100000 to 1000000 tokens; the autoCompactWindow setting does the
+# same). docs/AUTOPILOT.md has the measurement.
+COMPACT_WINDOW="${HPR_COMPACT_WINDOW:-400000}"
+case "$COMPACT_WINDOW" in ''|*[!0-9]*) COMPACT_WINDOW=400000 ;; esac
+[ "$COMPACT_WINDOW" -lt 100000 ] && COMPACT_WINDOW=100000
+[ "$COMPACT_WINDOW" -gt 1000000 ] && COMPACT_WINDOW=1000000
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$COMPACT_WINDOW"
 SCRIPT_PGID=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
 WRAPUP=2700   # don't start a cycle with less than 45 minutes left (matches CLAUDE.md)
 GOAL_FILE="$ROOT/.claude/autopilot/goal.md"
@@ -371,6 +389,51 @@ print(f"{kind}|{res.get('is_error') if res else '?'}|{res.get('num_turns') if re
 PY
 }
 
+# One line of what a cycle spent, from its stream-json log, so a change to the run's settings can be
+# judged by numbers rather than impressions. The cost is at API list prices, as the log reports it:
+# a Max plan does not bill it, but its limits are drawn down by the same tokens. Cache reads are the
+# context each call re-read; peak context is the main session's largest single request.
+usage_line() {
+  python3 - "$1" <<'PY' 2>/dev/null || echo "usage not readable"
+import json, sys
+res, peak, compacts, seen = None, 0, 0, set()
+with open(sys.argv[1], encoding="utf-8", errors="replace") as fh:
+    for line in fh:
+        if not line.startswith("{"):
+            continue
+        try:
+            ev = json.loads(line)
+        except Exception:
+            continue
+        t = ev.get("type")
+        if t == "result":
+            res = ev
+        elif t == "system" and ev.get("subtype") == "compact_boundary":
+            compacts += 1
+        elif t == "assistant" and ev.get("parent_tool_use_id") is None:
+            msg = ev.get("message") or {}
+            if msg.get("id") in seen:
+                continue
+            seen.add(msg.get("id"))
+            u = msg.get("usage") or {}
+            peak = max(peak, sum(u.get(k) or 0 for k in
+                       ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")))
+if res is None:
+    print("no result event, so no usage totals")
+    sys.exit(0)
+tot = {"in": 0, "cr": 0, "cw": 0, "out": 0}
+for m in (res.get("modelUsage") or {}).values():
+    tot["in"] += m.get("inputTokens") or 0
+    tot["cr"] += m.get("cacheReadInputTokens") or 0
+    tot["cw"] += m.get("cacheCreationInputTokens") or 0
+    tot["out"] += m.get("outputTokens") or 0
+sub = (res.get("subagent_stats") or {}).get("spawned", "?")
+print(f"${res.get('total_cost_usd') or 0:.2f} at list prices; tokens: cache reads {tot['cr']/1e6:.1f}M, "
+      f"cache writes {tot['cw']/1e6:.2f}M, uncached input {tot['in']/1e6:.2f}M, output {tot['out']/1e6:.2f}M; "
+      f"peak context {peak/1e3:.0f}k; {compacts} compaction(s); {sub} subagent(s)")
+PY
+}
+
 # Seconds of silence to tolerate right now: longer while the session is waiting out an API retry.
 stall_allowance() {
   python3 - "$1" "$STALL_MAX" <<'PY' 2>/dev/null || echo "$STALL_MAX"
@@ -473,6 +536,7 @@ while :; do
   rss_note="$(fmt_gb "$peak_rss_kb") GB"; [ "$peak_rss_kb" -eq 0 ] && rss_note="not sampled"
   swap_note="${peak_swap_mb} MB"; [ "$peak_swap_mb" -lt 0 ] && swap_note="not sampled"
   log "Cycle $cycle memory (sampled every 5 s): peak RSS of the session and its commands ${rss_note}, least ${free_note}, worst pressure level ${worst_pressure}, most swap ${swap_note}."
+  log "Cycle $cycle usage: $(usage_line "$out")"
 
   if [ "$pmode" != "?" ] && [ "$pmode" != "$PERM_MODE" ]; then
     log "The session ran in '$pmode' mode instead of $PERM_MODE (mode unavailable or disabled by policy?). Stopping; headless runs can't edit files without it."

@@ -13,4 +13,6 @@ The goal is also MET, as a clean stop, when either:
 
 The goal is IMPOSSIBLE only if the repository or toolchain is broken in a way that needs a human (for example, git or gh auth failure). Record that in STATUS.md if you can.
 
+This session is headless: ending your turn ends the session and kills whatever is still running in the background (a gate, a CI watch, a reviewer), and a scheduled wakeup never fires. So never end a turn to wait. Wait in the foreground instead: run the gate with `scripts/gate.sh`, watch CI with `gh pr checks <n> --watch --interval 30 >/dev/null 2>&1; gh pr checks <n>` (Bash timeout 600000), and launch reviewers together in one message with `run_in_background: false`. Don't poll `ListAgents`, `gh pr checks` or output files, and don't wait with `sleep`, `ScheduleWakeup` or `Monitor`: each poll re-reads the whole context.
+
 Never ask questions: decide, record the decision, and continue. Never weaken tests, tolerances, references or "done when" criteria to satisfy this goal. Never leave AI-attribution text anywhere. Keep going until the goal is met; don't stop to summarize.
