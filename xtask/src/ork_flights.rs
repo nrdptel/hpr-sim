@@ -44,7 +44,9 @@ pub const USAGE: &str = "\
   ork-flights [--check]    Fly hpr on each configuration of OpenRocket's flight record it
                            flies, and write validation/reports/openrocket-flights.{md,json}.
                            Needs the pinned jar and corpus-out/openrocket-motors.json. --check
-                           compares with the committed report instead of writing it.";
+                           compares with the committed report instead of writing it.
+                           --corpus prints only counts of OpenRocket's flights of the
+                           private library, from corpus-out/openrocket-flights.json.";
 
 /// OpenRocket's flights (M2.2d1).
 pub(crate) const RECORD: &str = "validation/fixtures/ork/openrocket-flights.json";
@@ -79,6 +81,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let check = match args {
         [] => false,
         [flag] if flag == "--check" => true,
+        [flag] if flag == "--corpus" => return crate::ork_corpus_flights::run(),
         _ => return Err(format!("usage:\n{USAGE}")),
     };
     let root = crate::ork::root()?;

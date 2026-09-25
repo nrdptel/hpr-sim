@@ -227,7 +227,7 @@ missing or its status disagrees.
 | <a id="m2-2d2"></a>[M2.2d2][phase-1] | hpr flies the configurations of that record it can fly, in a report against OpenRocket's apogee, largest speed and stability margin ([ADR-069][adr-069], [results](format/ork.md#hprs-flights-against-openrockets)) | done |
 | <a id="m2-2e"></a>[M2.2e][phase-1] | The corpus, with a hypothesis for every apogee miss over 5%, split into [M2.2e1](#m2-2e1) to [M2.2e4](#m2-2e4) below by [ADR-070][adr-070] | not yet done |
 | <a id="m2-2e1"></a>[M2.2e1][phase-1] | The flight report adds how far hpr's mass and centre of mass are from OpenRocket's, at launch and as the rocket leaves the rod ([ADR-070][adr-070], [results](format/ork.md#hprs-flights-against-openrockets)) | done |
-| <a id="m2-2e2"></a>[M2.2e2][phase-1] | OpenRocket flies the private designs, kept out of the repository; only counts are published | not yet done |
+| <a id="m2-2e2"></a>[M2.2e2][phase-1] | OpenRocket flies the private designs, kept out of the repository; only counts are published ([results](format/ork.md#openrockets-flights-of-the-private-designs)) | done |
 | <a id="m2-2e3"></a>[M2.2e3][phase-1] | hpr flies them, in a report of anonymised ids that with the public one holds at least 20 designs | not yet done |
 | <a id="m2-2e4"></a>[M2.2e4][phase-1] | A written cause for every apogee more than 5% from OpenRocket's | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |

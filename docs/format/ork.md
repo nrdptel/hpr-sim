@@ -1721,6 +1721,54 @@ model, and the effect of the difference is not measured. The decision is [ADR-06
 
 [adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25
 
+### OpenRocket's flights of the private designs
+
+This section counts OpenRocket 24.12's flights of the private design library, the *corpus*: 27
+`.ork` files by other people, which stay out of this repository
+([M2.2e2](../decisions-and-roadmap.md#m2-2e2), OpenRocket flies the corpus). They are flown the
+same way as the examples above: every motor configuration, in calm air, from the launch conditions
+of the design's first stored simulation. hpr has not flown them yet, so nothing here compares the
+two programs. The counts show what the next comparison will stand on.
+
+The flights are written to the gitignored `corpus-out/`, because a flight's numbers can identify
+someone's design. Only counts are published. `cargo xtask ork-flights --corpus` prints them from that
+record, and never prints a file name.
+
+Counts on 2026-09-25, by where the design was found:
+
+| | the private library | OpenRocket's examples | elsewhere under `refs/` |
+|---|---|---|---|
+| design files | 27, all distinct | 17 | 31, 25 distinct |
+| refused by OpenRocket | 0 | 0 | 4 |
+| configurations declared | 89 | 56 | 24 |
+| with no motor | 1 | 0 | 16 |
+| aborted by OpenRocket | 0 | 1 | 0 |
+| flown to the end | 88, in all 27 designs | 55, in all 17 | 8, in 4 designs |
+| with a margin at rod clearance | 88 | 55 | 8 |
+
+- OpenRocket flew every configuration of the private library that has a motor. None was refused
+  and none aborted.
+- Every private design has a stored simulation, so every flight took its launch conditions from
+  the design's first one. OpenRocket flew 64 of the 88 on a spherical Earth and 24 on a flat one,
+  as those simulations were set.
+- The examples column is the same flight record as
+  [M2.2d1](../decisions-and-roadmap.md#m2-2d1) (OpenRocket's flights of the public designs), run
+  again: 56 configurations, one aborted.
+- *Elsewhere* is mostly the test and demo designs of Loft and Debrief, the two projects hpr took
+  over. OpenRocket refuses four of them: two have malformed XML, one names a configuration that
+  doesn't exist, and one puts a booster set where OpenRocket won't load it. Most of their
+  configurations have no motor.
+
+To repeat it, you need the private library under `refs/`, Java 17 and the OpenRocket jar
+(`cargo xtask refs fetch`), as for the
+[mass comparison](../physics/mass.md#checked-against-openrocket). Then, from the repository root:
+
+```sh
+refs/venv/bin/python validation/oracles/openrocket/flights.py \
+    corpus-out/openrocket-flights.json refs --jar
+cargo xtask ork-flights --corpus
+```
+
 ### Stored simulations in the reference library
 
 `cargo xtask ork`, over the 73 readable files, on 2026-09-25:
