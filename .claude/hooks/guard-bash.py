@@ -276,7 +276,7 @@ def check_pr_merge(args: list[str], cwd: str) -> None:
     except Exception:
         return  # can't verify (gh missing or offline); don't wedge the run
     if "no checks reported" in (out.stderr or "").lower():
-        block("This PR has no CI checks reported yet. Wait for CI (`gh pr checks --watch`) before merging.")
+        block("This PR has no CI checks reported yet. Wait for CI (`scripts/ci-wait.sh <pr>`) before merging.")
     try:
         checks = json.loads(out.stdout) if out.stdout.strip() else None
     except ValueError:
@@ -284,10 +284,10 @@ def check_pr_merge(args: list[str], cwd: str) -> None:
     if checks is None:
         return  # an older gh without --json, or another failure: can't verify, don't wedge the run
     if not checks:
-        block("This PR has no CI checks reported yet. Wait for CI (`gh pr checks --watch`) before merging.")
+        block("This PR has no CI checks reported yet. Wait for CI (`scripts/ci-wait.sh <pr>`) before merging.")
     bad = [c.get("name", "?") for c in checks if c.get("bucket") not in ("pass", "skipping")]
     if bad:
-        block("CI isn't green yet: " + ", ".join(bad[:6]) + ". Wait with `gh pr checks --watch` and fix failures before merging.")
+        block("CI isn't green yet: " + ", ".join(bad[:6]) + ". Wait with `scripts/ci-wait.sh <pr>` and fix failures before merging.")
 
 
 def check_segment(tokens: list[str], cwd: str, raw: str, state: dict) -> None:

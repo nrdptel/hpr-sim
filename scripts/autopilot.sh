@@ -82,11 +82,12 @@ case "$KEEP_LOGS" in ''|*[!0-9]*) KEEP_LOGS=20 ;; esac
 # runners have fewer cores and a fixed six would start more jobs than there are cores.
 export CARGO_BUILD_JOBS="${HPR_CARGO_JOBS:-6}"
 export RUST_TEST_THREADS="${HPR_CARGO_JOBS:-6}"
-# Compact a session's context at 400k tokens rather than near the 1M window. Every API call
-# re-reads the whole context, so its size, not the work, set most of a cycle's cost: over cycles
-# 1 to 77, cache reads were 70% of token spend, and long cycles averaged about 480k tokens of
-# context per call. Replaying those cycles' own per-call context sizes with a 400k ceiling cuts the
-# main session's context re-reads by 47% for about one compaction per long cycle. Claude Code reads
+# Treat the context window as 400k tokens for compaction, rather than the model's 1M. Every API
+# call re-reads the whole context, so its size, not the work, set most of a cycle's cost: over
+# cycles 1 to 77, cache reads were 70% of token spend, and long cycles averaged about 480k tokens
+# of context per call. Compaction triggers at the window less a 33k buffer, so about 367k here
+# against about 967k by default (both read from `/context`). Replaying the logged cycles' own
+# per-call context sizes at 367k cuts the main session's context re-reads by 49%. Claude Code reads
 # CLAUDE_CODE_AUTO_COMPACT_WINDOW (100000 to 1000000 tokens; the autoCompactWindow setting does the
 # same). docs/AUTOPILOT.md has the measurement.
 COMPACT_WINDOW="${HPR_COMPACT_WINDOW:-400000}"
@@ -94,6 +95,11 @@ case "$COMPACT_WINDOW" in ''|*[!0-9]*) COMPACT_WINDOW=400000 ;; esac
 [ "$COMPACT_WINDOW" -lt 100000 ] && COMPACT_WINDOW=100000
 [ "$COMPACT_WINDOW" -gt 1000000 ] && COMPACT_WINDOW=1000000
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$COMPACT_WINDOW"
+# A Bash call with no timeout of its own gets 120 s and is then moved to the background, where it
+# dies with a session that ends its turn. The gate takes about 4 minutes warm and more cold, so
+# give foreground commands 20 minutes by default and allow up to 40.
+export BASH_DEFAULT_TIMEOUT_MS=1200000
+export BASH_MAX_TIMEOUT_MS=2400000
 SCRIPT_PGID=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
 WRAPUP=2700   # don't start a cycle with less than 45 minutes left (matches CLAUDE.md)
 GOAL_FILE="$ROOT/.claude/autopilot/goal.md"
@@ -396,7 +402,7 @@ PY
 usage_line() {
   python3 - "$1" <<'PY' 2>/dev/null || echo "usage not readable"
 import json, sys
-res, peak, compacts, seen = None, 0, 0, set()
+res, peak, compacts, seen, main = None, 0, 0, set(), {"in": 0, "cr": 0, "cw": 0}
 with open(sys.argv[1], encoding="utf-8", errors="replace") as fh:
     for line in fh:
         if not line.startswith("{"):
@@ -410,16 +416,25 @@ with open(sys.argv[1], encoding="utf-8", errors="replace") as fh:
             res = ev
         elif t == "system" and ev.get("subtype") == "compact_boundary":
             compacts += 1
+            peak = max(peak, (ev.get("compact_metadata") or {}).get("pre_tokens") or 0)
         elif t == "assistant" and ev.get("parent_tool_use_id") is None:
             msg = ev.get("message") or {}
-            if msg.get("id") in seen:
-                continue
-            seen.add(msg.get("id"))
+            mid = msg.get("id")
+            if mid is not None:
+                if mid in seen:
+                    continue
+                seen.add(mid)
             u = msg.get("usage") or {}
-            peak = max(peak, sum(u.get(k) or 0 for k in
-                       ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")))
+            ins = [u.get(k) or 0 for k in
+                   ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")]
+            for key, v in zip(("in", "cr", "cw"), ins):
+                main[key] += v
+            peak = max(peak, sum(ins))
+tail = f"peak context {peak/1e3:.0f}k; {compacts} compaction(s)"
 if res is None:
-    print("no result event, so no usage totals")
+    # Cut off by the watchdog, a cap or a crash: only the main session's own calls can be counted.
+    print(f"no result event; main session only: cache reads {main['cr']/1e6:.1f}M, "
+          f"cache writes {main['cw']/1e6:.2f}M, uncached input {main['in']/1e6:.2f}M; {tail}")
     sys.exit(0)
 tot = {"in": 0, "cr": 0, "cw": 0, "out": 0}
 for m in (res.get("modelUsage") or {}).values():
@@ -427,10 +442,12 @@ for m in (res.get("modelUsage") or {}).values():
     tot["cr"] += m.get("cacheReadInputTokens") or 0
     tot["cw"] += m.get("cacheCreationInputTokens") or 0
     tot["out"] += m.get("outputTokens") or 0
+cost = res.get("total_cost_usd")
+cost = f"${cost:.2f}" if isinstance(cost, (int, float)) else "$?"
 sub = (res.get("subagent_stats") or {}).get("spawned", "?")
-print(f"${res.get('total_cost_usd') or 0:.2f} at list prices; tokens: cache reads {tot['cr']/1e6:.1f}M, "
+print(f"{cost} at list prices; tokens: cache reads {tot['cr']/1e6:.1f}M, "
       f"cache writes {tot['cw']/1e6:.2f}M, uncached input {tot['in']/1e6:.2f}M, output {tot['out']/1e6:.2f}M; "
-      f"peak context {peak/1e3:.0f}k; {compacts} compaction(s); {sub} subagent(s)")
+      f"{tail}; {sub} subagent(s)")
 PY
 }
 
@@ -473,7 +490,7 @@ while :; do
   out="$LOGS/cycle-$(printf '%03d' "$cycle")-$stamp.jsonl"
   err="${out%.jsonl}.err"
   left_min=$(( (deadline - now) / 60 ))
-  log "Cycle $cycle starting (${left_min} min left in the window). Log: ${out#"$ROOT"/}"
+  log "Cycle $cycle starting (${left_min} min left in the window; $MODEL, effort $EFFORT, compact window $COMPACT_WINDOW). Log: ${out#"$ROOT"/}"
 
   start=$(date +%s)
   CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 \

@@ -179,8 +179,8 @@ case "$trusted" in
   *)   warn "This folder isn't marked trusted yet. Run 'claude' here once, accept the trust prompt, then type /exit. Without that, headless runs ignore the project's allow rules." ;;
 esac
 
-if have claude && [ "$trusted" = "yes" ] && ask "Run a tiny headless test (one short Opus 5 reply) to confirm sign-in, the model and the permission mode?"; then
-  smoke=$(claude -p "Reply with exactly the word OK and nothing else." --model claude-opus-5 --permission-mode "${HPR_PERMISSION_MODE:-bypassPermissions}" \
+if have claude && [ "$trusted" = "yes" ] && ask "Run a tiny headless test (one short Opus 5.5 reply) to confirm sign-in, the model and the permission mode?"; then
+  smoke=$(claude -p "Reply with exactly the word OK and nothing else." --model "${HPR_MODEL:-claude-opus-5-5}" --permission-mode "${HPR_PERMISSION_MODE:-bypassPermissions}" \
             --output-format stream-json --verbose --max-turns 1 < /dev/null 2>&1 | python3 -c '
 import json, sys
 mode, result, err = "?", "", False

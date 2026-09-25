@@ -84,8 +84,9 @@ At the start of every session, read these in order. They are short on purpose; k
 - **Branch:** `m<id>-<slug>`, for example `m1.6-aero-subsonic`. Keep commits small and meaningful,
   in the imperative mood.
 - **Local gate before every push.** All of these must pass. Run them with `scripts/gate.sh`, in
-  the foreground: it prints one line per step and only the error lines of a failing step (full logs
-  in `target/gate/`). `scripts/gate.sh clippy test` runs a subset while you iterate.
+  the foreground with a Bash timeout of at least 1200000 ms: it runs CI's own commands and prints
+  one line per step, plus only the error lines of a failing step (full logs in `target/gate/`).
+  `scripts/gate.sh clippy test` runs a subset while you iterate.
 
   ```bash
   cargo fmt --all --check
@@ -93,7 +94,7 @@ At the start of every session, read these in order. They are short on purpose; k
   cargo test --workspace --all-features
   cargo doc --workspace --no-deps --all-features # with RUSTDOCFLAGS="-D warnings"
   cargo xtask wasm-check
-  cargo xtask validate --check                    # every case against the committed report, as CI
+  cargo xtask validate --check                    # every case against the committed report
   cargo deny check
   cargo xtask site                                # the docs site; needs mdBook 0.5.4
   cargo xtask examples --check                    # examples print their committed output
@@ -108,7 +109,7 @@ At the start of every session, read these in order. They are short on purpose; k
   fix with a prompt scoped to that fix's diff.
 - **PR, then CI, then merge.** Open the PR with `gh pr create`. The body says what changed, how it
   was verified (with numbers), and what's left. Wait in the foreground with
-  `gh pr checks <n> --watch --interval 30 >/dev/null 2>&1; gh pr checks <n>`. Merge with
+  `scripts/ci-wait.sh <pr>` (timeout 1200000 ms). Merge with
   `gh pr merge --squash --delete-branch` only when every check on macOS, Windows and Linux is
   green. Never push straight to `main`; the guard hook blocks it.
 - **After merge:**
