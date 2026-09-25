@@ -534,9 +534,19 @@ ejection event by itself: the user has to decide.
     curve's. The tails below 5% are the difference, so hpr's average is the higher on every one of
     the 32, by **+0.0107% to +0.3147%** (median +0.0965%) — the test prints all three. Carrying an
     average thrust between the two codes means saying which numerator it used.
-  - The reference library's designs embed curves of their own. Those are other people's data, so
-    they are counted, never published: [M2.2c2](../decisions-and-roadmap.md#m2-2c2) holds them to
-    the same bound and prints the count.
+  - **Curves outside this repository are held to the same bound.** They are not committed, so
+    `cargo xtask ork` checks them on the machine that has them, and fails if one is outside 0.1%
+    ([M2.2c2](../decisions-and-roadmap.md#m2-2c2), [ADR-067][adr-067]):
+    - **The curves the reference library's designs embed**, which are other people's data. hpr
+      parses each file itself, so these are real checks. All 3 agree to the last bit.
+    - **Every solid curve in the motor database OpenRocket 24.12 ships**: 1,288 of its 1,452
+      motors, the rest hybrids. The survey supplies them to designs that name a curve by
+      [digest](../glossary.md#digest) without carrying it. Both codes integrate the samples
+      OpenRocket has already parsed, so agreement to the last bit proves the hand-off, not two
+      independent readings.
+
+    The counts, and what the database motors' masses leave out, are on the
+    [`.ork` format page](../format/ork.md#motors-in-the-reference-library).
 - **RocketPy** (`motor::tests::matches_rocketpy_solid_motor_for_three_bundled_motors`): three
   bundled curves with BATES loads cover grains that burn out radially (the bore reaches the outer
   wall first) and axially (the burning ends meet first), inhibited ends, and both of RocketPy's
@@ -757,6 +767,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 ```
 
 [adr-066]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-066-every-curve-hpr-flies-is-integrated-as-openrocket-integrates-it-2026-09-25
+[adr-067]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-067-curves-come-from-openrockets-own-database-by-digest-each-held-to-its-impulse-2026-09-25
 [levels]: ../accuracy.md#four-kinds-of-evidence
 [sp]: https://ntrs.nasa.gov/api/citations/19720011135/downloads/19720011135.pdf
 [nar]: https://web.archive.org/web/20140205181530/http://www.nar.org/NARmotors.html

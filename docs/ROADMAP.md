@@ -634,19 +634,17 @@
       parts stay in `x-openrocket` and mark designs reduced; the 2026-09-23 scratch-excluding survey
       gives 58/71 mass, 59/71 centre, 50/71 pitch and 56/71 roll within 1%.
     - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain readable, but only current, provenance-bearing, structurally plausible results pass the stored-reference screen; hpr reproduction is a separate screen and both report stable reasons (ADR-065). *Result:* met (ADR-065): 91 of 174 stored runs pass the stored-reference screen; 83 are excluded by stable reason (47 inconsistent, 17 external, 11 outdated, 7 not-simulated, 1 missing simulator). Hpr reproduction is reported separately: 1 of those 91 is reproducible and 90 are not (79 unflyable configurations, 11 reduced designs).
-  - [ ] **M2.2c The motors OpenRocket flies.** *Done when:* every configuration held back only for
-    want of a curve flies or is named with its reason, each curve's impulse within 0.1% of OR's.
-    Split into c1 and c2 (ADR-066).
-    - [x] **M2.2c1 Every curve as OpenRocket integrates it.** *Done when:* an oracle loads each
-      thrust-curve file hpr flies into OpenRocket 24.12 and records its numbers; hpr's total impulse
-      is within 0.1% of OpenRocket's on every bundled curve, in a committed record a test checks;
-      each quantity that differs is a written departure with its size. *Result:* met (ADR-066): all
-      32 agree bit for bit in total impulse, peak thrust, the 5% burn-time window and the curve's
-      duration; hpr's average thrust is +0.0107% to +0.3147% higher (median +0.0965%), its numerator
-      being the whole curve's impulse where OpenRocket's is the window's.
-    - [ ] **M2.2c2 The configurations held back for want of a curve.** *Done when:* the curves the
+  - [x] **M2.2c The motors OpenRocket flies.** Met (ADR-066, ADR-067), its done-when bars kept:
+    every configuration held back only for want of a curve flies or is named with its reason, each
+    curve's impulse within 0.1% of OR's. Split into c1 and c2.
+    - [x] **M2.2c1 Every curve as OpenRocket integrates it.** Met (ADR-066), its done-when bars kept:
+      OR 24.12 loads each bundled file; all 32 are bit for bit its impulse, peak, 5% window and
+      duration, in a record a test checks; average thrust +0.0107% to +0.3147%, a written departure.
+    - [x] **M2.2c2 The configurations held back for want of a curve.** *Done when:* the curves the
       library embeds are held to the same 0.1% and every configuration held back only for want of
-      one flies or is named with its reason, both counted by `cargo xtask ork`.
+      one flies or is named with its reason, both counted by `cargo xtask ork`. *Result:* met
+      (ADR-067): OR's own database supplied by digest; 3 embedded and 1,288 database curves bit for
+      bit OR's impulse; of the 162 held back, 66 fly, 72 wait on another reason, 24 are named.
   - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly
     are in a report against OR (apogee, max velocity, stability margin) and L80, L81 are live.
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.

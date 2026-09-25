@@ -5,27 +5,24 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M2.2c2 after M2.2c1 measured hpr's curve integration against OpenRocket's
-  (ADR-066).
-- **Order:** M1.8e16 waits on #108; then M2.2c2 to e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
-  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b5, M2.2c1; the site is published.
+  follow-on work is M2.2d, now that M2.2c2 supplies the library's curves from OpenRocket's own
+  motor database (ADR-067).
+- **Order:** M1.8e16 waits on #108; then M2.2d, e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
+  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b5, M2.2c; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2c1 complete, M2.2c2 next, entry points rechecked.
+- **Last updated:** 2026-09-25; M2.2c complete, M2.2d next.
 
 ## Handoff (overwrite each session)
 
-- **Resume M2.2c2** on a fresh `m2.2c2-embedded-curves` branch. M2.2c1 is complete (ADR-066):
-  `validation/oracles/openrocket/motors.py` hands any number of curve files (`curve_files()`) to
-  OpenRocket 24.12's own loader; on all 32 bundled curves hpr's impulse, peak thrust, 5% burn-time
-  window and duration are bit for bit OpenRocket's, only average thrust differing (+0.0107% to
-  +0.3147%, hpr's numerator being the whole curve). **c2 is supply, not arithmetic:** 193 of 202
-  motor references resolve to no curve (4 embedded, 2 bundled, 3 hybrids), so 79 configurations are
-  unflyable. Point that oracle at each design's `thrustcurves/<digest>.rse` (private: counts only,
-  never the curves), hold those to 0.1%, and name a stable reason for every configuration that still
-  cannot fly. The tally side exists, rechecked 2026-09-25: `NotFlown::NoCurve` and its five `NoCurve`
-  variants in `crates/hpr-io/src/ork/motors.rs`, their prose in `xtask/src/ork_motors.rs`'s
-  `no_curve()`, and `ork/simulations.rs`'s `StoredReferenceExclusion::UnflyableConfiguration`.
+- **Start M2.2d** on a fresh `m2.2d-<slug>` branch: fly the public designs to apogee against
+  OpenRocket (apogee, max velocity, stability margin) and make L80, L81 live; split it first if it
+  is big. M2.2c2 (ADR-067): `motor_database.py … refs --jar` writes the record (run it before
+  `cargo xtask ork`), and the survey supplies each solid curve by digest through
+  `ork::design_with` and `SuppliedCurves`. 68 of 170 configurations now fly; 40 of the 91 eligible
+  stored runs are reproducible; OR places each supplied curve in all 67 such configurations.
+  **Open for d:** a motor's CG and inertia are hpr's envelope model, not OR's (3 of the 31 flown
+  supplied motors off by up to 5 mm); the 20 no-digest motors stay unflown by design.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -58,6 +55,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-25: M2.2c2 Curves from OpenRocket's own database (ADR-067): supplied by digest, never by
+  name; 3 embedded and 1,288 database curves bit for bit OR's impulse; of the 162 configurations
+  held back for want of a curve, 66 fly, 72 wait on another reason, 24 are named.
 - 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): the oracle hands each bundled
   file to OpenRocket 24.12's own loader; on all 32, impulse, peak thrust, the 5% window and duration
   are bit for bit OpenRocket's, inside M2.2c's 0.1%; only average thrust differs (+0.0107% to +0.3147%).
@@ -133,8 +133,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in
   radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m up at a boattail —
   −8.65% to −11.34% (#87).
-- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but only 2 of 170
-  configurations flies: 197 motors are not in the 32-motor catalog (M5.1), staging waits for M1.9,
+- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 2 of 170
+  configurations (68 with OpenRocket's database supplied, ADR-067), staging waits for M1.9,
   and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and
   motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may be
