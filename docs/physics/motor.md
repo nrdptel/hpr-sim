@@ -15,8 +15,12 @@
   compared. ThrustCurve.org's own statistics code agrees to 1.8e-15, relative, on all 32 bundled
   curves. On three of them, RocketPy's total mass and inertias agree within 7.9e-5 relative. The
   two centres of mass differ by under 5.8e-6 of the motor's length, and the propellant's own mass
-  and inertias agree within 1e-4 of their values at ignition. Not compared with OpenRocket or a real
-  flight.
+  and inertias agree within 1e-4 of their values at ignition. OpenRocket 24.12, handed the same
+  curve files, reads exactly the same total impulse, peak thrust, burn-time window and curve
+  duration on all 32 bundled curves; its average thrust divides by the same window but counts only
+  the impulse inside it, so hpr's is +0.0107% to +0.3147% higher. Nothing else in this model is
+  compared with OpenRocket — not the propellant's burn-back, its mass and inertias, or the delays —
+  and nothing here is compared with a real flight.
 - **What it leaves out:** anything but [commercial off-the-shelf](../glossary.md#cots-motor)
   solids. Only 32 curves are bundled, none in class A. Propellant burns in proportion to the
   impulse delivered, an approximation. With only catalog data, the centre of mass stays at
@@ -510,6 +514,29 @@ ejection event by itself: the user has to decide.
   [`validation/fixtures/motor/thrustcurve-analyze-stats.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/motor/thrustcurve-analyze-stats.json).
   hpr's impulse, burn window, burn time, average and peak thrust agree to 1.8e-15, so the
   definitions, not only the 1% rule, are checked.
+- **OpenRocket** (`catalog::tests::openrocket_s_total_impulse_matches_every_bundled_curve`):
+  [`validation/oracles/openrocket/motors.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motors.py)
+  hands each bundled file to OpenRocket 24.12's own motor loader and records what it makes of it in
+  [`validation/fixtures/motor/openrocket-curve-stats.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/motor/openrocket-curve-stats.json),
+  tied to each file by its SHA-256. The two codes are compared on the **same bytes**, so what is
+  measured is the arithmetic, not two catalogues' data for one motor. Four numbers are **identical**,
+  to the last bit of an `f64`, on all 32 curves: total impulse, peak thrust, the 5%-of-peak burn-time
+  window (OpenRocket's `getBurnTimeEstimate`) and the curve's whole duration (its `getBurnTime`,
+  which is the last listed time rather than a window). The test holds the impulse to the 0.1% that
+  [M2.2c](../decisions-and-roadmap.md#m2-2c) asks for — met with everything to spare — and asserts
+  the bit-for-bit equality besides, so this paragraph cannot go stale while the suite stays green.
+  Both codes integrate the listed points as straight lines, and both prepend `(0, 0)` to a file
+  whose first point is after ignition — 29 of the 32 start between 1 and 40 ms — so the point counts
+  match as well and nothing rounds differently.
+  - **One definition genuinely differs**, and is recorded rather than held
+    ([ADR-066][adr-066]): the **average thrust**. Both codes divide by the same 5% window, but
+    OpenRocket's numerator is the impulse *inside* it while hpr's, following [TC-A], is the whole
+    curve's. The tails below 5% are the difference, so hpr's average is the higher on every one of
+    the 32, by **+0.0107% to +0.3147%** (median +0.0965%) — the test prints all three. Carrying an
+    average thrust between the two codes means saying which numerator it used.
+  - The reference library's designs embed curves of their own. Those are other people's data, so
+    they are counted, never published: [M2.2c2](../decisions-and-roadmap.md#m2-2c2) holds them to
+    the same bound and prints the count.
 - **RocketPy** (`motor::tests::matches_rocketpy_solid_motor_for_three_bundled_motors`): three
   bundled curves with BATES loads cover grains that burn out radially (the bore reaches the outer
   wall first) and axially (the burning ends meet first), inhibited ends, and both of RocketPy's
@@ -729,6 +756,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 ```
 
+[adr-066]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-066-every-curve-hpr-flies-is-integrated-as-openrocket-integrates-it-2026-09-25
 [levels]: ../accuracy.md#four-kinds-of-evidence
 [sp]: https://ntrs.nasa.gov/api/citations/19720011135/downloads/19720011135.pdf
 [nar]: https://web.archive.org/web/20140205181530/http://www.nar.org/NARmotors.html

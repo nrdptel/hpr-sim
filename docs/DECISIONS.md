@@ -71,6 +71,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-063 | Packed parts read and weighed as OpenRocket packs them | accepted |
 | ADR-064 | Clusters, fillets and unread parts remain visible departures | accepted |
 | ADR-065 | Stored results are references only when current and structurally plausible | accepted |
+| ADR-066 | Every curve hpr flies is integrated as OpenRocket integrates it | accepted |
 
 ---
 
@@ -6085,3 +6086,65 @@ warning says so rather than the reading being wrong in silence. Two renames are 
 rather than guessed, which means M3.1b2 cannot place an instanced component until it settles
 them. `Dimension` carries no unit, because the tags it reads are metres, radians and
 plain numbers alike; the component reader names the unit.
+---
+
+## ADR-066: Every curve hpr flies is integrated as OpenRocket integrates it (2026-09-25)
+
+**Context.** [M2.2c][roadmap] asks two things: that every configuration held back only for want of a
+thrust curve flies or is named with its reason, and that each curve's total impulse is within 0.1%
+of OpenRocket's. The two halves need different evidence. The impulse check is a property of a curve
+file, testable in CI on the 32 public-domain ThrustCurve.org curves this repository already carries
+([the motor page](physics/motor.md#the-bundled-motors)). Making the held-back configurations fly
+needs curves this repository does not have and may not redistribute: the reference library's
+designs embed their own, and OpenRocket's bundled set lives in its GPL jar. So M2.2c is split, and
+the measurable half goes first.
+
+**Decision.**
+
+1. **The oracle hands OpenRocket the same bytes hpr reads.**
+   `validation/oracles/openrocket/motors.py` loads each curve file with
+   `MotorLoaderHelper.load(File)` and records what OpenRocket 24.12 makes of it: designation,
+   common name, digest, envelope, masses, standard delays, point count and first and last time,
+   and its own total impulse, average and maximum thrust and burn time. The comparison is therefore
+   of two integrations of **one file**, not of two catalogues' data for one motor, which would
+   measure the catalogues instead of the code. OpenRocket is run, never read.
+2. **The committed record covers the bundled curves only.** They are public-domain files already in
+   the repository, so the record adds no data whose licence is unclear. The curves the reference
+   library embeds are private (rule 4 of `CLAUDE.md`): M2.2c2 counts them and publishes the counts,
+   not the curves.
+3. **What is held, and what is recorded.** A test in `hpr-motor` holds four quantities on all 32
+   curves, tying the record to each file by SHA-256: total impulse to the milestone's 0.1%, and peak
+   thrust, the 5%-of-peak burn-time window (`getBurnTimeEstimate`) and the curve's whole duration
+   (`getBurnTime`, which is the last listed time, not a window) to rounding. Measured: **all four
+   are bit for bit equal** at `f64`, and the test also asserts that equality, so the claim on the
+   guide cannot go stale in silence. Both codes integrate the listed points trapezoidally, in the
+   same order, and both prepend an origin (see point 4), so nothing rounds differently.
+4. **One difference is real and written down rather than held; two apparent ones are not.**
+   - **Average thrust.** OpenRocket divides the impulse **inside** the window by the window; hpr,
+     with ThrustCurve.org's own code, divides the **whole curve's** impulse by the same window
+     ([TC-A]'s line 231, cited on the motor page). The tails below 5% are what differ, so hpr's
+     average is the higher on every one of the 32, by **+0.0107% to +0.3147%**, median
+     **+0.0965%**. The test prints those three and asserts the sign, so the sizes come from the
+     suite and not from this page. hpr keeps the published rule it cites; the burn-time *window*
+     itself needs no departure, being OpenRocket's to the bit.
+   - **Designation spelling.** OpenRocket reads the designation from the file's own header,
+     ThrustCurve.org's catalog from its database: `131-G84-GR-10A` against `131G84-10A`. The test
+     compares the common name and identifies the motor by the file's SHA-256.
+   - **The prepended origin.** hpr adds `(0, 0)` when a file's first point is after ignition, and
+     so does OpenRocket: 29 of the 32 files start between 1 and 40 ms, and OpenRocket reports a
+     first time of zero and one point more than the file lists. That is not a departure but the
+     reason the integrals agree, so the test holds the point counts and both first times equal.
+
+[TC-A]: https://github.com/JohnCoker/thrustcurve3/blob/577afa62302f70c6b2ba04e97a39240638cd704b/simulate/analyze/analyze.js
+
+**Consequences.** The 0.1% half of M2.2c is met, and met with room to spare: hpr's reading and
+integration of a curve file is OpenRocket's, bit for bit, on every curve it can publish, and that
+now covers the burn-time window too. What remains for M2.2c2 is supply, not arithmetic — the 193
+motor references in the reference library that resolve to no curve, and the configurations they hold
+back. This says nothing about the rest of the motor model: how the propellant burns back, what its
+mass and inertias are during the burn, and what a delay does are not compared with OpenRocket here.
+An average thrust is the one number a later milestone must not carry across the two codes without
+naming its numerator; the sizes above are that warning. The record is regenerated by running the script, never edited; it carries the jar's SHA-256,
+the Java and JPype versions and the command, as the other OpenRocket records do.
+
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
