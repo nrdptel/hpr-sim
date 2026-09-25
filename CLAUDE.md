@@ -83,26 +83,33 @@ At the start of every session, read these in order. They are short on purpose; k
   into numbered increments, each with its own *done when*, and ship the first.
 - **Branch:** `m<id>-<slug>`, for example `m1.6-aero-subsonic`. Keep commits small and meaningful,
   in the imperative mood.
-- **Local gate before every push.** All of these must pass. Read the summary lines, not the tail.
+- **Local gate before every push.** All of these must pass. Run them with `scripts/gate.sh`, in
+  the foreground with a Bash timeout of at least 1200000 ms: it runs CI's own commands and prints
+  one line per step, plus only the error lines of a failing step (full logs in `target/gate/`).
+  `scripts/gate.sh clippy test` runs a subset while you iterate.
 
   ```bash
   cargo fmt --all --check
   cargo clippy --workspace --all-targets --all-features -- -D warnings
-  cargo test --workspace --all-features          # or: cargo nextest run --workspace --all-features
+  cargo test --workspace --all-features
   cargo doc --workspace --no-deps --all-features # with RUSTDOCFLAGS="-D warnings"
-  cargo xtask wasm-check                          # once it exists (M0.1)
-  cargo xtask validate --fast                     # once it exists (M2.1)
-  cargo deny check                                # once configured (M0.1)
-  cargo xtask site                                # the docs site; needs mdBook 0.5.4 (M0.4a)
-  cargo xtask examples --check                    # examples print their committed output (M0.4c)
+  cargo xtask wasm-check
+  cargo xtask validate --check                    # every case against the committed report
+  cargo deny check
+  cargo xtask site                                # the docs site; needs mdBook 0.5.4
+  cargo xtask examples --check                    # examples print their committed output
   ```
 
 - **Review before merge.** Before merging anything that touches physics, numerics, or file formats,
   run the `physics-reviewer` and/or `code-reviewer` subagents on the diff. Fix what they find or
   record why not. Validation-report changes also go through `validation-auditor`. Anything that
-  adds or changes user-facing docs goes through `docs-reviewer`, which reads them cold.
+  adds or changes user-facing docs goes through `docs-reviewer`, which reads them cold. Once the
+  gate passes on the finished diff, launch every reviewer it needs in one message with
+  `run_in_background: false`: they run in parallel and the turn waits for them. Re-review a blocking
+  fix with a prompt scoped to that fix's diff.
 - **PR, then CI, then merge.** Open the PR with `gh pr create`. The body says what changed, how it
-  was verified (with numbers), and what's left. Wait with `gh pr checks --watch`. Merge with
+  was verified (with numbers), and what's left. Wait in the foreground with
+  `scripts/ci-wait.sh <pr>` (timeout 1200000 ms). Merge with
   `gh pr merge --squash --delete-branch` only when every check on macOS, Windows and Linux is
   green. Never push straight to `main`; the guard hook blocks it.
 - **After merge:**
@@ -169,8 +176,16 @@ and tested.
 
 ## Working style for long unattended runs
 
-- **Keep the main context lean.** Use subagents (Explore/general-purpose) for broad reading and web
-  research, and have them return conclusions, not dumps.
+- **Keep the main context lean: its size is the cost.** Every call re-reads the whole conversation,
+  and those re-reads were 70% of the tokens of the first 77 autopilot cycles.
+  - Use subagents (Explore/general-purpose) for broad reading and web research, and have them
+    return conclusions, not dumps.
+  - Read line ranges and `grep` before reading whole files; cut long command output with `grep`
+    or `tail` before it reaches you.
+  - Never end a turn to wait. In a headless cycle that ends the session and kills what is running
+    in the background. Wait in the foreground (the gate, CI and reviewers above), and never poll
+    `ListAgents`, `gh pr checks` or output files, or wait with `sleep`, `ScheduleWakeup` or
+    `Monitor`: each poll re-reads everything.
 - **A subagent's finding is a claim** until you reproduce it (run the command, read the cited
   line). Only then act on it or record it as fact.
 - **Defects outside the current milestone** become GitHub issues in this repo, never a markdown

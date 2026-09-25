@@ -5,7 +5,7 @@
 1. Open **Terminal** (not the VS Code chat panel) in this folder:
    `cd ~/Documents/local-projects/hpr-sim`
 2. Run `claude update`, then `claude` once. Accept the "trust this folder" prompt, confirm
-   `/status` shows Opus 5, then type `/exit`.
+   `/status` shows Opus 5.5, then type `/exit`.
 3. Run `bash scripts/preflight.sh`. It:
    - Moves the Claude Code project config from `setup/` into `.claude/` and `.cargo/` (read it
      first if you like; `setup/README.md` lists each file).
@@ -83,7 +83,8 @@ long session with many context compactions, and it doesn't wait out weekly limit
 
 ```bash
 mkdir -p .autopilot && echo $(( $(date +%s) + 48*3600 )) > .autopilot/deadline
-caffeinate -ims claude --model claude-opus-5 --effort xhigh --permission-mode bypassPermissions \
+CLAUDE_CODE_AUTO_COMPACT_WINDOW=400000 BASH_DEFAULT_TIMEOUT_MS=1200000 BASH_MAX_TIMEOUT_MS=2400000 \
+  caffeinate -ims claude --model claude-opus-5-5 --effort high --permission-mode bypassPermissions \
   --remote-control hpr-sim --settings "$(cat .claude/autopilot/settings.json)"
 ```
 
@@ -97,12 +98,60 @@ In `/config`, make sure **Continue automatically at usage limit** is on.
 
 ## Costs and limits
 
-- Everything draws on your Max 20x plan's 5-hour and weekly allowances.
-- Opus 5 at xhigh, with review subagents and occasional workflows, will probably hit the 5-hour
-  limit several times in 48 hours. The script waits those out.
-- A weekly limit pauses the run until it resets, which may be after the window ends.
-- Check with `/usage` in any Claude Code session.
-- To spend less, run with `HPR_EFFORT=high scripts/autopilot.sh 48`.
+- Everything draws on your Max 20x plan's 5-hour and weekly allowances. Check with `/usage` in any
+  Claude Code session.
+- When a cycle stops on a usage limit, the script checks again every 10 minutes until it resets.
+  A weekly limit can outlast the window.
+- Each cycle's start line in `.autopilot/runs.log` names its model, effort and compact window, and
+  each cycle writes a `usage` line when it ends:
+  - its cost at API list prices (a Max plan doesn't bill this, but the same tokens use up its
+    limits);
+  - its cache reads, cache writes and output tokens;
+  - its largest single context, and how many times it compacted.
+
+  Use these lines to judge any change to the settings below.
+
+### Where the tokens went
+
+This was measured over cycles 1 to 77 (2026-09-17 to 2026-09-25). Cycles 65 to 75 are left out
+because their logs report tokens differently.
+
+| Share of list-price cost | What it paid for |
+| --- | --- |
+| 70% | Cache reads: every API call re-reads the whole conversation so far |
+| 16% | Output, thinking included |
+| 13% | Cache writes |
+
+Three things drove it:
+
+- **Context size.** A session compacted only near its 1M-token window, so long cycles averaged
+  about 480k tokens of context on every call. That context was roughly a third tool results, a
+  third tool inputs (edits and patch scripts), and a third the model's own thinking, which stays in
+  context.
+- **Polling.** About 1,600 calls, roughly 8% of the spend, only checked on something: `gh pr checks`,
+  `ListAgents`, output files. Each one re-read the whole context.
+- **Waiting in the background.** About 20 of 70 cycles ended their turn to wait for CI or a
+  background gate. In a headless session that ends the session and kills the work, so the next
+  cycle started over.
+
+### What the run does about it
+
+These settings date from 2026-09-25.
+
+| Setting | Default | Why |
+| --- | --- | --- |
+| `HPR_COMPACT_WINDOW` | `400000` | Treats the window as 400k tokens for compaction. Compaction starts 33k below the window, so at about 367k instead of about 967k (both read from `/context` on Opus 5.5). Replaying the logged cycles' context sizes at 367k cuts the main session's context re-reads by 49%, at the price of 54 compactions across those cycles instead of 4. `1000000` restores the old behavior. |
+| `HPR_EFFORT` | `high` | On Opus 5.5, Anthropic measured `xhigh` at about 1.4 points above `high` on SWE-bench Pro, for 2.5 times the cost. Its advice is to keep `xhigh` for work where you've measured a gain ([effort levels](https://platform.claude.com/docs/en/build-with-claude/effort), [cost and intelligence](https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence), [prompting Opus 5.5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5)). The physics, code and validation reviewers stay at `xhigh` in `.claude/agents/`, so the checking runs at the higher level. `HPR_EFFORT=xhigh` restores the old setting. |
+| `HPR_MODEL` | `claude-opus-5-5` | Until 2026-09-25 the script defaulted to Opus 5. Its `--model` flag overrides `.claude/settings.json`, so cycles ran Opus 5 whatever that file said. Interactive sessions still take their model and `effortLevel` (`xhigh`) from that file. |
+| Waiting | in the foreground | The gate runs with `scripts/gate.sh`, about 4 minutes on this Mac with warm caches. CI is waited on with `scripts/ci-wait.sh`, and reviewers launch with `run_in_background: false`. A Bash call with no timeout of its own is moved to the background after 120 s, so the script raises the default to 20 minutes (`BASH_DEFAULT_TIMEOUT_MS`). No session ends mid-wait, and nothing polls. |
+
+None of this has been through a full window yet, so trust the `usage` lines over this page.
+
+If quality slips, raise `HPR_COMPACT_WINDOW` or `HPR_EFFORT` and say so in `STATUS.md`. Two signs
+to watch for:
+
+- more reviewer findings per milestone;
+- a session that loses track of its work after a compaction.
 
 ## Memory
 
