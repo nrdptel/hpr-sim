@@ -78,6 +78,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-070 | M2.2e split: mass and centre of mass first, then the corpus | accepted |
 | ADR-071 | The corpus OpenRocket flies is its `.ork` files | accepted |
 | ADR-072 | hpr's flights of the private library, under anonymised ids | accepted |
+| ADR-073 | Each named cause sized by OpenRocket's own flight without it | accepted |
 
 ---
 
@@ -6532,3 +6533,52 @@ sea level high, but they are two designs each, and the public report's flights, 
 read low: a pattern for M2.2e4 to test, not yet a lead. With 9 designs of 20 the parent's bar is
 visibly not met, in the report, the guide and `STATUS.md`. `cargo xtask ork-flights --library`
 needs the private library, so CI checks only the committed report's arithmetic and privacy.
+
+## ADR-073: Each named cause sized by OpenRocket's own flight without it (2026-09-25)
+
+**Context.** M2.2e4's bar is a written hypothesis for every apogee more than 5% from
+OpenRocket's. The public report has five; the private report none. ADR-069 named two causes, an
+early parachute (both *C6-3* flights, +12.19% and +13.80%) and a part stated to have no drag that
+hpr does not apply (#165; the three *Base drag hack* flights, −15.47% to −19.13%). Loft excused its
+largest misses with known issues (L82), so a name alone is not a hypothesis. The evidence then was
+indirect: another configuration's flight for the parachute (C6-7), and hpr flown with the part
+removed, which also takes its lift and shape, for the override. On the two flights with both
+causes that probe overshot, and the split was not measured.
+
+**Decision.**
+
+1. **Size a cause by OpenRocket flying without it.** `flights.py` flies every configuration again
+   with nothing deployed (as it did for the optimum delay) and now records that flight's apogee.
+   Where a part states a drag coefficient, it flies a third time with nothing deployed and every
+   stated coefficient cleared, which is OpenRocket flying what hpr reads; and where every such part
+   states zero and is neither the rocket nor a stage, a fourth time with those parts removed, the
+   rocket hpr's removal probe flies. `cargo xtask ork-flights` compares hpr's apogee with each and
+   prints what the causes leave. The record must say it cleared, or removed, as many parts as hpr
+   reads, or the report stops.
+2. **What counts.** A cause's hypothesis is supported when hpr against OpenRocket's flight
+   without it is within the same 5%. That is a code-to-code statement about OpenRocket's flight,
+   not a claim that hpr would match with the cause modelled: hpr still flies no `.ork` parachute
+   and applies no drag override.
+3. **Both ways.** A test holds that over the record's 56 finished flights, the undeployed apogee
+   equals the flown one to the bit on the 41 whose parachute opens at or after apogee and differs
+   on the 15 where it opens before; another recomputes every sized number from the record.
+4. **The library.** Its record is written by the same script, so it was flown again; its
+   rows are unchanged, none of its 17 flights is more than 5% off, and M2.2e5 adds these columns to
+   it when it has one.
+
+**Consequences.**
+
+- All five are supported. With nothing deployed the *C6-3* flights read −0.16% and −1.07%. With
+  nothing deployed and the coefficient cleared the *Base drag hack* flights read +1.34%, +3.51% and
+  +4.79%; holding the parachute alone gives −16.77%, −20.80% and −20.50%.
+- What the causes leave on the *Base drag hack* is not explained, and it has the other sign from
+  the 12 flights with no named cause (−0.06% to −4.34%). With the flared tail cone removed from
+  both programs it is +1.15%, +4.76% and +7.80%, so it is not the cone's own drag. A same-state
+  comparison of the two programs' drag by part, a scratch probe that is not committed, finds the
+  difference in the nose: OpenRocket charges this blunt ellipsoid nose (length 0.58 diameters)
+  subsonic pressure drag, 0.0117 at Mach 0.1 to 0.29 at Mach 0.8, and hpr none below Mach 0.8,
+  because Stoney's 3:1 curve is 0 there and eq. B.9 keeps it 0 at any fineness. Which is right is
+  not measured; #177 holds it, with what fixing it needs.
+- Flying the corpus again moved no row of the private report; OpenRocket's figures for six of its
+  designs moved in the 13th to 16th digit, and one apogee by 5e-7 of itself, from one run to
+  the next of the same jar and Java.

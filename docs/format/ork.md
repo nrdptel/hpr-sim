@@ -1597,8 +1597,10 @@ OpenRocket's on ordinary hobby rockets.
   not traced.
 - The bar, set for the whole corpus ([M2.2](../decisions-and-roadmap.md#m2-2), OpenRocket
   comparisons), is that every apogee more than 5% off has a written cause. Five apogees are
-  more than 5% off, and each has a named cause. For three of them there is evidence of its size.
-  For two, how much each of two causes contributes is not measured.
+  more than 5% off, and each has a named cause, sized
+  ([M2.2e4](../decisions-and-roadmap.md#m2-2e4), the causes). OpenRocket flies each of those
+  flights again with the cause taken out, and against that flight all five of hpr's apogees are
+  within 5%: from −1.07% to +4.79%.
 
 **How they were flown.** `cargo xtask ork-flights` flies every configuration of the record in the
 section above that hpr can fly. It uses the conditions OpenRocket flew: a vertical launch rod of
@@ -1680,26 +1682,58 @@ An early parachute can move only the apogee, which is why more flights count tow
 speed than toward the apogee. The early-parachute group's median means little: on a rocket whose
 parachute opens only a little early, the parachute's cost and hpr's own miss can cancel.
 
-**The two named causes.**
+**The two named causes, and their size.** A named cause is only a guess until it is sized
+([M2.2e4](../decisions-and-roadmap.md#m2-2e4), the causes; decision
+[ADR-073](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-073-each-named-cause-sized-by-openrockets-own-flight-without-it-2026-09-25)).
+So for every flight with a named cause, the oracle flies OpenRocket's same configuration again
+with the cause taken out, and the report compares hpr's apogee with that flight too. Nothing else
+changes between the two OpenRocket flights, so the difference between them is what the cause costs
+in OpenRocket, and what is left against hpr is what the cause does not explain.
 
 - **hpr flies no parachute from a `.ork` yet.** It reads the recovery devices but doesn't deploy
   them. With a short motor delay, OpenRocket's parachute opens while the rocket is still climbing,
   and stops it lower. On the *A simple model rocket* example with a C6-3, the parachute opens
   2.99 s before the apogee the same flight reaches with nothing deployed. OpenRocket's apogee is
-  280.2 m, and hpr's, with no parachute, is 318.9 m: +13.80%. OpenRocket's own C6-7 flight is the
-  same climb with the parachute opening after apogee, and against it hpr reads −1.07%. On the
-  *3D printable nose cone and fins* example the same pair reads +12.19% and −0.16%.
+  280.2 m, and hpr's, with no parachute, is 318.9 m: +13.80%. Flown again with nothing deployed,
+  OpenRocket climbs to 322.4 m, and against that hpr reads −1.07%. On the *3D printable nose cone
+  and fins* example the same pair reads +12.19% and −0.16%.
+- **The check both ways.** Over all 56 flights of OpenRocket's record that finished, the flight
+  with nothing deployed reaches exactly the same apogee, to the last bit, on the 41 whose
+  parachute opens at or after apogee, and a different one on the 15 whose parachute opens before
+  it. So an early parachute is what moves OpenRocket's apogee, and nothing else about deployment
+  does.
 - **hpr ignores a part set to no drag**
   ([#165](https://github.com/nrdptel/hpr-sim/issues/165), the drag override not applied). The
-  *Base drag hack (short-wide)* example ends in a transition that OpenRocket is told has no drag.
-  hpr reads that setting but can't apply it yet, so it charges the transition the drag of its
-  shape. The report flies each of these configurations again with the transition removed. That is
-  a probe, not the override: it also takes away the part's mass, lift and shape. On the C11-5,
-  whose parachute opens after apogee, the apogee moves from −16.77% to −0.29% and the largest speed
-  from −3.69% to +0.04%. On the D12-3 and E12-4 the probe overshoots: their largest speeds, which
-  come before any parachute, read +1.99% and +5.23%. Their parachutes also open early (1.80 s and
-  1.24 s), so for these two flights both causes are named, but how much each contributes is not
-  measured.
+  *Base drag hack (short-wide)* example is a short, wide rocket with no fins. Behind it sits a
+  weightless cone, flaring from a point to the body's full width, that OpenRocket is told has no
+  drag: a modeller's trick to move the centre of pressure aft, since the cone still gives lift.
+  hpr reads the no-drag setting but can't apply it yet, so it charges the cone the drag of its
+  shape. OpenRocket flies these configurations again with nothing deployed and the setting
+  cleared, so the cone has the drag of its shape there too:
+
+  | motor | hpr against OpenRocket's flight | against it with nothing deployed | and with the setting cleared |
+  |---|---:|---:|---:|
+  | C11-5 | −16.77% | −16.77% | +1.34% |
+  | D12-3 | −15.47% | −20.80% | +3.51% |
+  | E12-4 | −19.13% | −20.50% | +4.79% |
+
+  The C11-5's parachute opens after apogee, so holding it changes nothing. On the D12-3 and E12-4
+  it opens early (1.80 s and 1.24 s), and taking both causes out brings each within 5%. The report
+  still also flies hpr with the cone removed, which also takes away its lift and shape: on the
+  C11-5 the apogee then reads −0.29%.
+
+**What the causes leave.** On the two C6-3 flights, what is left is −0.16% and −1.07%, like the
+flights with no named cause. On the *Base drag hack*, though, hpr is +1.34% to +4.79% high. That
+is the other sign from the 12 flights with no named cause, which all read low, and it grows with the
+motor. OpenRocket also flew these configurations with the cone removed, the same rocket as hpr's
+probe, and hpr still reads +1.15%, +4.76% and +7.80% high, so the cone's own drag is not the
+reason. A part-by-part comparison of the two programs' drag at the same speeds points at the
+nose. OpenRocket charges this very blunt, rounded nose, whose length is only 0.58 of its
+diameter, some pressure drag even at low speed: 0.0117 at Mach 0.1, rising to 0.29 at Mach 0.8.
+hpr charges it none below Mach 0.8, because its measured curve for rounded noses starts from zero
+there. That comparison was a one-off check, not part of the report, and nothing here measures
+which program is right. So this remainder is a lead, not an explanation, held in
+[#177](https://github.com/nrdptel/hpr-sim/issues/177) (a very blunt nose's drag below Mach 0.8).
 
 **The margin, part by part.** The report also lists the parts of each margin at rod clearance: the
 mass, the centre of mass, the centre of pressure and the reference diameter. The centre of pressure
