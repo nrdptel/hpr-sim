@@ -12,11 +12,36 @@
 //! `validation/oracles/openrocket/flights.py` flies every configuration of the public designs and
 //! records each summary word beside the quantities of OpenRocket's own time series it could mean.
 //! The record is `validation/fixtures/ork/openrocket-flights.json`, and a test holds each
-//! definition below to it on every flight ([ADR-068][adr-068]).
+//! definition below to it on every complete flight ([ADR-068][adr-068]).
 //!
 //! A metric taken at an event that did not happen, such as the deployment speed of a flight whose
 //! parachute never opened, has no value. OpenRocket writes `NaN` for it. Loft scored it as 0
-//! ([Loft lesson L81][l81]). [`compare`] withholds it instead, with the event named.
+//! ([Loft lesson L81][l81]). [`compare`] withholds it when neither flight had the event, and fails
+//! it when only one did; it is never scored.
+//!
+//! ```
+//! use hpr_validate::flight_metrics::{
+//!     Event, Failure, FlightMetric, MetricOutcome, ReferenceReading, Side, Tool, Withheld, compare,
+//! };
+//!
+//! let openrocket = Tool::OpenRocket { version: "24.12".to_owned() };
+//! // OpenRocket's Chute release example with a G40W-7: its last parachute opens at 14.2306 m/s.
+//! let reading = ReferenceReading::Complete(Some(14.2306));
+//! let outcome = compare(&openrocket, FlightMetric::DeploymentSpeed, reading, Some(14.0));
+//! assert!((outcome.difference().unwrap() + 0.2306).abs() < 1e-9);
+//!
+//! // No parachute opened in OpenRocket's flight (it wrote `NaN`), nor in hpr's: withheld.
+//! let none = ReferenceReading::Complete(Some(f64::NAN));
+//! assert_eq!(
+//!     compare(&openrocket, FlightMetric::DeploymentSpeed, none, None),
+//!     MetricOutcome::Withheld(Withheld::NoEventInEither { event: Event::Deployment })
+//! );
+//! // Only hpr's opened: a disagreement, which fails rather than being scored against 0.
+//! assert_eq!(
+//!     compare(&openrocket, FlightMetric::DeploymentSpeed, none, Some(9.0)),
+//!     MetricOutcome::Failed(Failure::EventOnlyIn { event: Event::Deployment, side: Side::Measured })
+//! );
+//! ```
 //!
 //! [m2-2d1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d1
 //! [l80]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l80
@@ -27,15 +52,17 @@ use serde::{Deserialize, Serialize};
 
 /// A tool that produced a reference flight, with its version as the tool writes it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "tool", rename_all = "snake_case")]
+#[serde(tag = "tool")]
 #[non_exhaustive]
 pub enum Tool {
     /// OpenRocket, for example version `24.12`.
+    #[serde(rename = "openrocket")]
     OpenRocket {
         /// The version, as in the `.ork`'s `creator` attribute after `OpenRocket `.
         version: String,
     },
     /// RocketPy, for example version `1.13.0`.
+    #[serde(rename = "rocketpy")]
     RocketPy {
         /// The version, as `rocketpy.__version__` gives it.
         version: String,
@@ -63,23 +90,37 @@ pub enum FlightMetric {
     Apogee,
     /// The largest speed, m/s.
     MaxSpeed,
-    /// The speed at launch rod (or rail) clearance, m/s.
+    /// The largest acceleration, m/s².
+    MaxAcceleration,
+    /// The largest Mach number.
+    MaxMach,
+    /// The time from launch to apogee, s.
+    TimeToApogee,
+    /// The time from launch to the end of the flight, s.
+    FlightTime,
+    /// The speed as the rocket leaves the launch rod or rail, m/s.
     RodClearanceSpeed,
-    /// The static stability margin at launch rod clearance, calibres.
+    /// The static stability margin as the rocket leaves the launch rod or rail, calibres.
     RodClearanceStability,
     /// The speed at a recovery device's deployment, m/s.
     DeploymentSpeed,
     /// The speed at ground hit, m/s.
     GroundHitSpeed,
-    /// The motor delay that would fire the ejection charge at apogee, s.
+    /// The motor delay that would fire the ejection charge at apogee, s. OpenRocket 24.12's
+    /// `optimumdelay` is neither apogee less burnout nor that with nothing deployed; see
+    /// [`definition`].
     OptimumDelay,
 }
 
 impl FlightMetric {
     /// Every metric, in declaration order.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: &'static [Self] = &[
         Self::Apogee,
         Self::MaxSpeed,
+        Self::MaxAcceleration,
+        Self::MaxMach,
+        Self::TimeToApogee,
+        Self::FlightTime,
         Self::RodClearanceSpeed,
         Self::RodClearanceStability,
         Self::DeploymentSpeed,
@@ -94,6 +135,10 @@ impl FlightMetric {
         match self {
             Self::Apogee => Some("maxaltitude"),
             Self::MaxSpeed => Some("maxvelocity"),
+            Self::MaxAcceleration => Some("maxacceleration"),
+            Self::MaxMach => Some("maxmach"),
+            Self::TimeToApogee => Some("timetoapogee"),
+            Self::FlightTime => Some("flighttime"),
             Self::RodClearanceSpeed => Some("launchrodvelocity"),
             Self::RodClearanceStability => None,
             Self::DeploymentSpeed => Some("deploymentvelocity"),
@@ -113,8 +158,8 @@ pub enum Point {
     /// [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
     CentreOfDryMass,
     /// The point the tool's own state tracks, which its documentation does not name. OpenRocket's
-    /// is described only as "the position and velocity of a rocket", kept in world coordinates (Niskanen 2009,
-    /// §4.2.1, p. 61); no probe here tells it from the centre of mass.
+    /// is described only as "the position and velocity of a rocket", kept in world coordinates
+    /// (Niskanen 2009, §4.2.1, p. 61); no probe here tells it from the centre of mass.
     Unstated,
 }
 
@@ -123,8 +168,16 @@ pub enum Point {
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Event {
-    /// The rocket leaves the launch rod or rail.
+    /// The first integration step at which the rocket has travelled past the launch rod's
+    /// length: OpenRocket 24.12's rod clearance. The rod's end falls between that step and the
+    /// one before, so the speed here is above the speed at the rod's end (by 0.06% to 7.50% on
+    /// the record's flights).
     RodClearance,
+    /// The moment the rocket's travel equals the effective rail length, found between solver
+    /// steps: RocketPy's rail exit ([ADR-021][adr-021]).
+    ///
+    /// [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
+    RailExit,
     /// A recovery device deploys.
     Deployment,
     /// The rocket reaches the ground.
@@ -151,13 +204,27 @@ pub enum Definition {
         /// Whose height.
         point: Point,
     },
+    /// The time of the stored step at which the height of `point` is largest. This is not
+    /// always the apogee event's time: the event can fall between steps.
+    TimeOfPeakHeight {
+        /// Whose height.
+        point: Point,
+    },
     /// The largest speed of `point` over the flight.
     PeakSpeed {
         /// Whose speed.
         point: Point,
     },
+    /// The largest Mach number over the flight.
+    PeakMach,
+    /// The largest total acceleration up to the first occurrence of `event`, or over the whole
+    /// flight if it never happens: nothing after the event counts.
+    PeakAccelerationBefore {
+        /// The event.
+        event: Event,
+    },
     /// The speed of `point` at `which` occurrence of `event`, interpolated linearly in time
-    /// between the two stored rows either side of it.
+    /// between the two stored steps either side of it (exact when the event is on a step).
     SpeedAtEvent {
         /// Whose speed.
         point: Point,
@@ -166,9 +233,15 @@ pub enum Definition {
         /// Which occurrence.
         which: Occurrence,
     },
+    /// The time of the first occurrence of `event`.
+    TimeOfEvent {
+        /// The event.
+        event: Event,
+    },
     /// The static stability margin at the first occurrence of `event`: the distance from the
-    /// centre of mass aft to the centre of pressure, divided by the reference length (the largest
-    /// body diameter), in calibres (Niskanen 2009, p. 12).
+    /// centre of mass aft to the centre of pressure, divided by the tool's reference length, in
+    /// calibres (Niskanen 2009, p. 12). OpenRocket's reference length is by default the largest
+    /// body diameter, and was that on every flight of the record.
     StabilityAtEvent {
         /// The event.
         event: Event,
@@ -180,8 +253,14 @@ impl Definition {
     #[must_use]
     pub const fn event(self) -> Option<Event> {
         match self {
-            Self::PeakHeight { .. } | Self::PeakSpeed { .. } => None,
-            Self::SpeedAtEvent { event, .. } | Self::StabilityAtEvent { event } => Some(event),
+            Self::PeakHeight { .. }
+            | Self::TimeOfPeakHeight { .. }
+            | Self::PeakSpeed { .. }
+            | Self::PeakMach
+            | Self::PeakAccelerationBefore { .. } => None,
+            Self::SpeedAtEvent { event, .. }
+            | Self::TimeOfEvent { event }
+            | Self::StabilityAtEvent { event } => Some(event),
         }
     }
 }
@@ -189,22 +268,31 @@ impl Definition {
 /// The OpenRocket version whose summary words `flights.py` measured.
 pub const OPENROCKET_MEASURED: &str = "24.12";
 
-/// The RocketPy version whose metrics hpr's whole-flight cases compare against.
+/// The RocketPy version whose metrics hpr's whole-flight cases compare against. Its definitions
+/// come from [ADR-021][adr-021], which read what RocketPy computes, not from a probe like
+/// `flights.py`.
+///
+/// [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
 pub const ROCKETPY_MEASURED: &str = "1.13.0";
 
 /// What `metric` measures in a reference from `tool`, or `None` where that has not been measured
 /// for the tool's version.
 ///
-/// - OpenRocket 24.12, measured by `flights.py` on all 57 flights of the public designs: the
-///   apogee and largest speed are the peaks of its altitude and total-velocity columns; the rod
-///   clearance, deployment and ground-hit speeds are its total velocity interpolated at that
-///   event, and at the **last** deployment where there are two (17 flights tell them apart); the
-///   stability margin is its stability column at rod clearance. Its optimum delay is not apogee
-///   less burnout on 16 of the 57 flights, and what it is instead is not measured, so it has no
-///   definition.
-/// - RocketPy 1.13.0: the apogee, largest speed and rail-exit speed of hpr's whole-flight cases,
-///   taken at the centre of dry mass ([ADR-021][adr-021]).
-/// - Any other version: `None`.
+/// OpenRocket 24.12, measured by `flights.py` on the 56 complete flights of the public designs:
+///
+/// | metric | definition |
+/// |---|---|
+/// | apogee, largest speed, largest Mach | the peak of its altitude, total velocity or Mach column |
+/// | largest acceleration | the peak of total acceleration before the first deployment |
+/// | time to apogee | the time of the highest stored step, not the apogee event (13 flights differ) |
+/// | flight time | the time of ground hit, its last step |
+/// | rod clearance, deployment, ground-hit speed | total velocity at the event, interpolated in time |
+/// | deployment speed | at the **last** deployment (no flight has more than two) |
+/// | stability margin | its stability column at rod clearance |
+/// | optimum delay | none: apogee less burnout misses on 15 flights, and the same with nothing deployed on 28 |
+///
+/// RocketPy 1.13.0: the apogee, largest speed and rail-exit speed of hpr's whole-flight cases,
+/// taken at the centre of dry mass ([ADR-021][adr-021]). Any other version: `None`.
 ///
 /// [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
 #[must_use]
@@ -220,12 +308,20 @@ pub fn definition(tool: &Tool, metric: FlightMetric) -> Option<Definition> {
             match metric {
                 FlightMetric::Apogee => Some(Definition::PeakHeight { point }),
                 FlightMetric::MaxSpeed => Some(Definition::PeakSpeed { point }),
+                FlightMetric::MaxMach => Some(Definition::PeakMach),
+                FlightMetric::TimeToApogee => Some(Definition::TimeOfPeakHeight { point }),
+                FlightMetric::FlightTime => Some(Definition::TimeOfEvent {
+                    event: Event::GroundHit,
+                }),
                 FlightMetric::RodClearanceSpeed => Some(at(Event::RodClearance, Occurrence::First)),
                 FlightMetric::RodClearanceStability => Some(Definition::StabilityAtEvent {
                     event: Event::RodClearance,
                 }),
                 FlightMetric::DeploymentSpeed => Some(at(Event::Deployment, Occurrence::Last)),
                 FlightMetric::GroundHitSpeed => Some(at(Event::GroundHit, Occurrence::First)),
+                FlightMetric::MaxAcceleration => Some(Definition::PeakAccelerationBefore {
+                    event: Event::Deployment,
+                }),
                 FlightMetric::OptimumDelay => None,
             }
         }
@@ -236,7 +332,7 @@ pub fn definition(tool: &Tool, metric: FlightMetric) -> Option<Definition> {
                 FlightMetric::MaxSpeed => Some(Definition::PeakSpeed { point }),
                 FlightMetric::RodClearanceSpeed => Some(Definition::SpeedAtEvent {
                     point,
-                    event: Event::RodClearance,
+                    event: Event::RailExit,
                     which: Occurrence::First,
                 }),
                 _ => None,
@@ -246,30 +342,74 @@ pub fn definition(tool: &Tool, metric: FlightMetric) -> Option<Definition> {
     }
 }
 
-/// Why a metric was not scored.
+/// A reference flight's value for one metric.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "flight", content = "value", rename_all = "snake_case")]
+pub enum ReferenceReading {
+    /// The flight ran to its end. `None`, or OpenRocket's `NaN`, means it has no value: for a
+    /// metric taken at an event, that the event never happened, which OpenRocket 24.12 writes as
+    /// `NaN` exactly then.
+    Complete(Option<f64>),
+    /// The tool stopped the flight early (OpenRocket's `SIM_ABORT`), so even its peaks are where
+    /// it stopped, not a flight's.
+    Aborted,
+}
+
+/// One of the two flights compared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Side {
+    /// The reference's flight.
+    Reference,
+    /// hpr's flight.
+    Measured,
+}
+
+/// Why a metric was not compared, when that is no fault of either flight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "reason", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Withheld {
     /// What the metric means in the reference's tool and version has not been measured.
     DefinitionUnmeasured,
-    /// The event the metric is taken at never happened in the reference's flight.
-    NoEventInReference {
+    /// The reference's flight was aborted.
+    ReferenceAborted,
+    /// The event the metric is taken at happened in neither flight.
+    NoEventInEither {
         /// The event.
         event: Event,
     },
-    /// The event never happened in hpr's flight.
-    NoEventInMeasured {
-        /// The event.
-        event: Event,
-    },
-    /// A peak with no value on one side, or a value that is not a finite number.
-    NoValue,
 }
 
-/// A metric compared, or withheld with its reason. Never a zero standing in for a missing value.
+/// Why a metric fails without being scored: the two flights disagree about what happened, or a
+/// value is broken.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "reason", rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Failure {
+    /// The event happened in one flight only.
+    EventOnlyIn {
+        /// The event.
+        event: Event,
+        /// The flight that had it.
+        side: Side,
+    },
+    /// hpr gave a value that is not a finite number.
+    NotANumber {
+        /// Always [`Side::Measured`]: a reference's `NaN` means its event did not happen.
+        side: Side,
+    },
+    /// A metric that every complete flight has, such as the apogee, has no value on one side.
+    NoValue {
+        /// The side without one.
+        side: Side,
+    },
+}
+
+/// A metric compared, withheld, or failed. Never a zero standing in for a missing value.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "outcome", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum MetricOutcome {
     /// Both sides have a value for the same defined quantity.
     Scored {
@@ -282,6 +422,8 @@ pub enum MetricOutcome {
     },
     /// Not compared, and why.
     Withheld(Withheld),
+    /// Not scored, and a failure of the comparison.
+    Failed(Failure),
 }
 
 impl MetricOutcome {
@@ -294,17 +436,23 @@ impl MetricOutcome {
                 measured,
                 ..
             } => Some(measured - reference),
-            Self::Withheld(_) => None,
+            Self::Withheld(_) | Self::Failed(_) => None,
         }
     }
 }
 
-/// Compares hpr's `measured` value of `metric` with a `reference` value from `tool`.
+/// Compares hpr's `measured` value of `metric` with a `reference` reading from `tool`.
 ///
-/// A side's `None` or non-finite value means its flight has no value for the metric: for a metric
-/// taken at an event, that the event never happened ([Loft lesson L81][l81]). Such a metric is
-/// withheld with the event named, never scored against zero. A metric whose meaning in `tool`'s
-/// version has not been measured is withheld too ([Loft lesson L80][l80]).
+/// - A metric whose meaning in `tool`'s version is not measured is withheld ([Loft lesson
+///   L80][l80]), and so is every metric of an aborted reference flight.
+/// - A reference `None` or `NaN` means its flight has no value; hpr's `None` means the same, but
+///   a `NaN` or infinity from hpr is a failure, never a missing event.
+/// - For a metric taken at an event, no value on both sides withholds it; on one side only, it
+///   fails, since the flights disagree about what happened ([Loft lesson L81][l81]: never 0).
+/// - For a metric every complete flight has, such as the apogee, a missing value fails.
+///
+/// `measured` must be taken by the [`Definition`] that [`definition`] gives for `tool`: the last
+/// deployment, say, not the first.
 ///
 /// [l80]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l80
 /// [l81]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l81
@@ -312,23 +460,41 @@ impl MetricOutcome {
 pub fn compare(
     tool: &Tool,
     metric: FlightMetric,
-    reference: Option<f64>,
+    reference: ReferenceReading,
     measured: Option<f64>,
 ) -> MetricOutcome {
     let Some(definition) = definition(tool, metric) else {
         return MetricOutcome::Withheld(Withheld::DefinitionUnmeasured);
     };
-    let present = |value: Option<f64>| value.filter(|v| v.is_finite());
-    match (present(reference), present(measured), definition.event()) {
+    let ReferenceReading::Complete(reference) = reference else {
+        return MetricOutcome::Withheld(Withheld::ReferenceAborted);
+    };
+    if measured.is_some_and(|value| !value.is_finite()) {
+        return MetricOutcome::Failed(Failure::NotANumber {
+            side: Side::Measured,
+        });
+    }
+    let reference = reference.filter(|value| value.is_finite());
+    match (reference, measured, definition.event()) {
         (Some(reference), Some(measured), _) => MetricOutcome::Scored {
             definition,
             reference,
             measured,
         },
-        (None, _, Some(event)) => MetricOutcome::Withheld(Withheld::NoEventInReference { event }),
-        (Some(_), None, Some(event)) => {
-            MetricOutcome::Withheld(Withheld::NoEventInMeasured { event })
-        }
-        (_, _, None) => MetricOutcome::Withheld(Withheld::NoValue),
+        (None, None, Some(event)) => MetricOutcome::Withheld(Withheld::NoEventInEither { event }),
+        (None, Some(_), Some(event)) => MetricOutcome::Failed(Failure::EventOnlyIn {
+            event,
+            side: Side::Measured,
+        }),
+        (Some(_), None, Some(event)) => MetricOutcome::Failed(Failure::EventOnlyIn {
+            event,
+            side: Side::Reference,
+        }),
+        (None, _, None) => MetricOutcome::Failed(Failure::NoValue {
+            side: Side::Reference,
+        }),
+        (Some(_), None, None) => MetricOutcome::Failed(Failure::NoValue {
+            side: Side::Measured,
+        }),
     }
 }

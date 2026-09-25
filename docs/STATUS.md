@@ -17,8 +17,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Start M2.2d2** on a fresh `m2.2d2-<slug>` branch: fly hpr on each configuration of
   `validation/fixtures/ork/openrocket-flights.json` that hpr flies (21, in 5 jar examples), in the
   recorded conditions, and report apogee, largest speed and margin at rod clearance by
-  `hpr_validate::flight_metrics::definition` (withhold via `compare`). hpr has no margin output
-  yet: CP from `hpr_aero` `NormalForce.cp_station_m` at the rod-clearance Mach, CG from the layout.
+  `hpr_validate::flight_metrics::definition` and `compare` (the aborted run is no reference). hpr
+  has no margin output yet: CP from `NormalForce.cp_station_m`, at the recorded step's time, Mach
+  and mass; OR's rod clearance is the step past the rod, not its end.
   **Open:** a motor's CG is hpr's mid-case, not OR's (ADR-067, up to 5 mm); OR's speed point is
   unstated; `flights.py` is run with `validation/fixtures/ork/loft-demo --jar` (ADR-068).
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
@@ -53,9 +54,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-25: M2.2d1 OpenRocket's flights and what its words mean (ADR-068): 57 calm flights of
-  the public designs; each 24.12 summary word held to a definition, the last deployment's speed on
-  17; optimum delay and other versions withheld; L80, L81 live.
+- 2026-09-25: M2.2d1 OpenRocket's flights and what its words mean (ADR-068): 56 calm flights of
+  the public designs (1 aborted run excluded); 9 of OR 24.12's 10 words defined, `optimumdelay`
+  withheld, as are other versions'; a missing event is never scored; L80, L81 live.
 - 2026-09-25: M2.2c2 Curves from OpenRocket's own database (ADR-067): supplied by digest, never by
   name; 3 embedded and 1,288 database curves bit for bit OR's impulse; of the 162 configurations
   held back for want of a curve, 66 fly, 72 wait on another reason, 24 are named.

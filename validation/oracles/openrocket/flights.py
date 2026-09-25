@@ -10,7 +10,15 @@ summary beside the quantities of its own time series that the summary could mean
 - the largest altitude and the largest total and vertical velocity over the first branch;
 - each event's time and the two rows either side of it, with their time and total velocity, so a
   velocity can be taken at the event itself and each recovery device's deployment told apart;
-- the total velocity and time of the last row, and the mass at the first.
+- the total velocity and time of the last row, the mass at the first, and the peaks of the total
+  acceleration and Mach number columns;
+- whether OpenRocket aborted the run (a `SIM_ABORT` event), and why;
+- the peak total acceleration before the first deployment, and the time to apogee of the same
+  configuration flown again with nothing deployed: candidates for `maxacceleration` and
+  `optimumdelay`.
+
+One more flight, `no_deployment`, is the simple example with its parachute set never to open: a
+complete flight whose deployment never happened.
 
 It also records the stability margin at launch rod clearance with the centres of pressure and mass
 and the reference length it is taken from, so hpr's margin can be compared on the same instant.
@@ -62,13 +70,16 @@ def column(branch, kind):
     return [float(x) for x in branch.get(kind)]
 
 
-def row_at(times, time):
-    """The last row at or before `time`: an event between two rows is recorded at the earlier."""
-    index = 0
-    for i, t in enumerate(times):
-        if t <= time + 1e-9:
-            index = i
-    return index
+def peak(values):
+    """The largest finite value, or `None` if there is none."""
+    return max((v for v in values if math.isfinite(v)), default=None)
+
+
+def rows_around(times, time):
+    """The last row strictly before `time` and the first at or after it. An event on a row has
+    that row after it; the first row stands in for a row before the start."""
+    after = next((i for i, t in enumerate(times) if t >= time - 1e-9), len(times) - 1)
+    return max(after - 1, 0), after
 
 
 def conditions(options):
@@ -87,6 +98,7 @@ def conditions(options):
         "wind_average_m_s": float(options.getWindSpeedAverage()),
         "wind_turbulence": float(options.getWindTurbulenceIntensity()),
         "geodetic": str(options.getGeodeticComputation().name()),
+        "wind_model": str(options.getWindModelType().name()),
     }
 
 
@@ -111,6 +123,7 @@ def flight(document, configuration, base):
         record["refused"] = geometry.first_line(error)
         return record
     data = simulation.getSimulatedData()
+    record["reference_type"] = str(document.getRocket().getReferenceType().name())
     record["summary"] = {
         "max_altitude_m": finite(data.getMaxAltitude()),
         "max_velocity_m_s": finite(data.getMaxVelocity()),
@@ -135,37 +148,54 @@ def flight(document, configuration, base):
     reference = column(branch, FlightDataType.TYPE_REFERENCE_LENGTH)
     mach = column(branch, FlightDataType.TYPE_MACH_NUMBER)
     mass = column(branch, FlightDataType.TYPE_MASS)
+    acceleration = column(branch, FlightDataType.TYPE_ACCELERATION_TOTAL)
+    deployments = [
+        float(e.getTime())
+        for e in branch.getEvents()
+        if events.name_of(e.getType()) == "RECOVERY_DEVICE_DEPLOYMENT"
+    ]
+    first_deployment = min(deployments, default=math.inf)
     record["series"] = {
         "rows": len(times),
-        "max_altitude_m": finite(max(altitude)),
-        "max_total_velocity_m_s": finite(max(speed)),
-        "max_vertical_velocity_m_s": finite(max(vertical)),
+        "max_altitude_m": peak(altitude),
+        "max_total_velocity_m_s": peak(speed),
+        "max_vertical_velocity_m_s": peak(vertical),
+        "max_total_acceleration_m_s2": peak(acceleration),
+        "max_total_acceleration_before_deployment_m_s2": peak(
+            a for t, a in zip(times, acceleration) if t <= first_deployment + 1e-9
+        ),
+        "max_mach": peak(mach),
+        "time_of_max_altitude_s": times[altitude.index(peak(altitude))],
         "last_total_velocity_m_s": finite(speed[-1]),
         "last_time_s": finite(times[-1]),
         "launch_mass_kg": finite(mass[0]),
     }
+
     def at(row):
         return {
             "time_s": times[row],
             "total_velocity_m_s": finite(speed[row]),
+            "altitude_m": finite(altitude[row]),
         }
 
     found = []
     for event in branch.getEvents():
         time = float(event.getTime())
-        row = row_at(times, time)
-        found.append(
-            {
-                "type": events.name_of(event.getType()),
-                "time_s": time,
-                "before": at(row),
-                "after": at(min(row + 1, len(times) - 1)),
-            }
-        )
+        before, after = rows_around(times, time)
+        entry = {
+            "type": events.name_of(event.getType()),
+            "time_s": time,
+            "before": at(before),
+            "after": at(after),
+        }
+        if entry["type"] == "SIM_ABORT":
+            entry["cause"] = str(event.getData())
+        found.append(entry)
     record["events"] = found
+    record["aborted"] = any(e["type"] == "SIM_ABORT" for e in found)
     clearance = [e for e in found if e["type"] == "LAUNCHROD"]
     if clearance:
-        row = row_at(times, clearance[0]["time_s"])
+        row = rows_around(times, clearance[0]["time_s"])[1]
         record["rod_clearance"] = {
             "time_s": times[row],
             "stability_cal": finite(stability[row]),
@@ -176,6 +206,30 @@ def flight(document, configuration, base):
             "mass_kg": finite(mass[row]),
         }
     return record
+
+
+def never_deploy(document, configuration):
+    """Sets every recovery device of `document` never to deploy in `configuration`."""
+    from info.openrocket.core.rocketcomponent import DeploymentConfiguration, RecoveryDevice
+
+    for device in events.components(document.getRocket(), RecoveryDevice):
+        held = device.getDeploymentConfigurations().get(configuration)
+        held.setDeployEvent(DeploymentConfiguration.DeployEvent.NEVER)
+
+
+def no_deployment():
+    """The simple example's first configuration with every recovery device set never to deploy:
+    a complete flight with no deployment event, for the missing-event rule (Loft lesson L81)."""
+    document = events.example(events.SINGLE)
+    configuration = document.getRocket().getIds()[0]
+    never_deploy(document, configuration)
+    base = list(document.getSimulations())[0]
+    return {
+        "file": f"{automatic_radius.JAR}!{events.SINGLE}",
+        "configuration": str(configuration.toString()),
+        "change": "every recovery device set to deploy never",
+        **flight(document, configuration, base),
+    }
 
 
 def design(path, scratch):
@@ -202,6 +256,14 @@ def design(path, scratch):
         }
         if held.hasMotors():
             entry.update(flight(document, configuration, base))
+            # The same flight with nothing deployed, for the optimum delay's candidates.
+            undeployed, _ = geometry.opened(text, scratch)
+            never_deploy(undeployed, configuration)
+            stored_ = list(undeployed.getSimulations())
+            again = flight(undeployed, configuration, stored_[0] if stored_ else None)
+            entry["undeployed_time_to_apogee_s"] = (again.get("summary") or {}).get(
+                "time_to_apogee_s"
+            )
         flights.append(entry)
     record["flights"] = flights
     return record
@@ -222,6 +284,7 @@ def main():
     from java.lang import System
 
     runs = []
+    probe = no_deployment()
     with tempfile.TemporaryDirectory() as scratch:
         files = geometry.designs(inputs, root)
         if jar:
@@ -255,6 +318,7 @@ def main():
                 "jpype": jpype.__version__,
                 "seed": SEED,
                 "designs": runs,
+                "no_deployment": probe,
             },
             indent=1,
             sort_keys=True,

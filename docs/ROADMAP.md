@@ -641,9 +641,9 @@
     - [x] **M2.2d1 OpenRocket's flights, and what its words mean** (L80, L81). *Done when:* an
       oracle flies every public configuration OR can in calm air, into a record a test pins; each
       OR 24.12 summary word, and the margin at rod clearance, is held on every flight to a written
-      definition per tool and version, other versions withheld; a metric whose event never happened
-      is withheld. *Result:* met (ADR-068): 57 flights; 17 tell the last deployment from the first;
-      the optimum delay is unmeasured, withheld; 2 metrics withheld for events that never happened.
+      definition per tool and version, or withheld with the flights that rule out its candidates,
+      other versions withheld; a metric whose event never happened is never scored. *Result:* met
+      (ADR-068): 56 complete flights, 1 aborted; 9 of 10 words held, `optimumdelay` withheld.
       - Loft lessons: L80, L81.
     - [ ] **M2.2d2 hpr's flights against the record.** *Done when:* the parent's *done when* is met:
       each configuration hpr flies is in a report against the record's apogee, largest speed and
