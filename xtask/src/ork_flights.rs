@@ -594,6 +594,41 @@ pub(crate) fn summarise(flights: &[Value], not_flown: &[Value]) -> Value {
         "not_flown": not_flown.len(),
         "apogee_over_5_percent": over,
         "metrics": metrics,
+        "mass_and_cg": mass_and_cg(flights),
+    })
+}
+
+/// The spread of hpr's mass and centre of mass against OpenRocket's (M2.2e1), over the flights
+/// that were not aborted: the mass at launch and at the rod-clearance step in per cent of
+/// OpenRocket's, and the centre of mass at that step, hpr's less OpenRocket's distance from the
+/// nose, in OpenRocket's calibres (so it moves the margin by as much, the other way).
+fn mass_and_cg(flights: &[Value]) -> Value {
+    let (mut launch, mut clearance, mut cg) = (Vec::new(), Vec::new(), Vec::new());
+    let percent = |hpr: &Value, openrocket: &Value| {
+        hpr.as_f64()
+            .zip(openrocket.as_f64())
+            .map(|(h, o)| 100.0 * (h - o) / o)
+    };
+    for flight in flights.iter().filter(|f| f["aborted"] != true) {
+        let at = &flight["at_rod_clearance"];
+        let (hpr, openrocket) = (&at["hpr"], &at["openrocket"]);
+        launch.extend(percent(
+            &flight["launch_mass_kg"]["hpr"],
+            &flight["launch_mass_kg"]["openrocket"],
+        ));
+        clearance.extend(percent(&hpr["mass_kg"], &openrocket["mass_kg"]));
+        cg.extend(
+            hpr["cg_from_nose_m"]
+                .as_f64()
+                .zip(openrocket["cg_from_nose_m"].as_f64())
+                .zip(openrocket["reference_length_m"].as_f64())
+                .map(|((h, o), reference)| (h - o) / reference),
+        );
+    }
+    json!({
+        "launch_mass_percent": spread(&launch),
+        "rod_clearance_mass_percent": spread(&clearance),
+        "rod_clearance_cg_cal": spread(&cg),
     })
 }
 
@@ -834,6 +869,24 @@ fn summary_lines(report: &Value) -> String {
             out.push_str(&line(&format!("{label}, {cause}"), spread, unit, digits));
         }
     }
+    let mass_and_cg = &summary["mass_and_cg"];
+    for (key, label, unit, digits) in [
+        ("launch_mass_percent", "mass at launch", "%", 3),
+        (
+            "rod_clearance_mass_percent",
+            "mass at rod clearance",
+            "%",
+            3,
+        ),
+        (
+            "rod_clearance_cg_cal",
+            "centre of mass at rod clearance",
+            " cal",
+            4,
+        ),
+    ] {
+        out.push_str(&line(label, &mass_and_cg[key], unit, digits));
+    }
     out
 }
 
@@ -1054,6 +1107,29 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn mass_and_cg_are_hprs_less_openrockets_and_skip_an_aborted_flight() {
+        let flight = |aborted: bool| {
+            json!({
+                "aborted": aborted,
+                "launch_mass_kg": { "openrocket": 2.0, "hpr": 2.02 },
+                "at_rod_clearance": {
+                    "openrocket": { "mass_kg": 1.6, "cg_from_nose_m": 1.0, "reference_length_m": 0.1 },
+                    "hpr": { "mass_kg": 1.64, "cg_from_nose_m": 1.03, "reference_length_m": 0.1 },
+                },
+            })
+        };
+        let spreads = mass_and_cg(&[flight(false), flight(true)]);
+        let only = |key: &str| {
+            let s = &spreads[key];
+            assert_eq!(s["count"], 1, "{key}");
+            s["median"].as_f64().unwrap()
+        };
+        assert!((only("launch_mass_percent") - 1.0).abs() < 1e-12);
+        assert!((only("rod_clearance_mass_percent") - 2.5).abs() < 1e-12);
+        assert!((only("rod_clearance_cg_cal") - 0.3).abs() < 1e-12);
     }
 
     #[test]

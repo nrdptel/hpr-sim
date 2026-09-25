@@ -15,6 +15,9 @@ Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against Op
 - largest speed, a part's drag override not applied: 3 scored, median -9.55%, mean absolute 8.52%, from -12.33% to -3.69%
 - largest speed, no named cause: 18 scored, median +0.17%, mean absolute 0.39%, from -0.69% to +0.85%
 - margin at rod clearance, no named cause: 21 scored, median -0.0007 cal, mean absolute 0.0045 cal, from -0.0151 cal to +0.0037 cal
+- mass at launch: 21 scored, median +0.016%, mean absolute 0.039%, from +0.000% to +0.209%
+- mass at rod clearance: 21 scored, median +0.014%, mean absolute 0.037%, from -0.010% to +0.214%
+- centre of mass at rod clearance: 21 scored, median +0.0007 cal, mean absolute 0.0046 cal, from -0.0028 cal to +0.0159 cal
 
 | design | motors | apogee OR (m) | hpr (m) | Δ | max speed OR (m/s) | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | Δ (cal) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

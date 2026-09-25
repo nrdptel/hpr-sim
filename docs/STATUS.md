@@ -5,19 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M2.2e, the corpus against OpenRocket (L19, L82), after M2.2d (ADR-069).
-- **Order:** M1.8e16 waits on #108; then M2.2e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
-  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to d; the site is published.
+  follow-on work is M2.2e2, OR's flights of the corpus (L19, L82), after M2.2e1 (ADR-070).
+- **Order:** M1.8e16 waits on #108; then M2.2e2 to e4, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
+  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to e1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2d complete, M2.2e next.
+- **Last updated:** 2026-09-25; M2.2e1 complete, M2.2e2 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.2e** on a fresh `m2.2e-<slug>` branch; split it first (ADR). Bar: ≥20 designs with
-  an error spread (apogee, max speed, margin, mass, CG), a written cause for each apogee over 5%,
-  private designs as anonymised ids. Reuse `xtask/src/ork_flights.rs` (`fly`, `summarise`) on the
-  library, OR's side from `flights.py` run on `refs/loft-fixtures` into `corpus-out/` (private).
+- **Start M2.2e2** on a fresh `m2.2e2-<slug>` branch (ADR-070 split e1 to e4; e1 put mass and CG
+  spreads in the flight report). e2: run `flights.py` on `refs/loft-fixtures` into `corpus-out/`
+  (private), counts only committed; e3 reuses `xtask/src/ork_flights.rs` (`fly`, `summarise`,
+  `mass_and_cg`) for an anonymised-id report; e4 the causes of each apogee over 5%.
   Named causes so far: OR's early chute (hpr flies no `.ork` recovery; worth flying first) and
   #165 (drag override ignored). Run `cargo xtask ork-flights --check` after any physics change:
   CI can't fly them (needs the jar, `corpus-out/openrocket-motors.json`), only checks the record.
@@ -53,6 +53,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-25: M2.2e1 Mass and CG in the flight report (ADR-070, M2.2e split e1 to e4): launch
+  mass within 0.21% and rod-clearance CG within 0.016 cal of OR's on all 21 flights.
 - 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
   cal; apogee −4.34% to −0.06% with no named cause; 5 over 5%, each an early chute or #165.
 - 2026-09-25: M2.2d1 OR's flights, its words' meanings (ADR-068): 56 calm flights, 1 aborted; 9 of
@@ -64,8 +66,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   bit OR's impulse, peak, 5% window and duration; average thrust +0.0107% to +0.3147%.
 - 2026-09-25: M2.2b5 Stored results as found (ADR-065): 91/174 pass the stored-reference screen,
   83 excluded by stable reason; hpr reproduction is a separate screen.
-- 2026-09-23: M2.2b4 corpus rerun excluding generated `refs/scratch/`: 75 files, 73 read, 72 laid
-  out, 71 compared; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1% (OR's fin rule).
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`

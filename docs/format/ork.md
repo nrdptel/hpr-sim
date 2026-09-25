@@ -1587,6 +1587,9 @@ OpenRocket's on ordinary hobby rockets.
 
 - The [stability margin](../glossary.md#stability-margin) as the rocket leaves the rod agrees
   within 0.016 [calibres](../glossary.md#calibre-caliber) on all 21.
+- The mass at launch agrees within 0.21%, and the
+  [centre of mass](../glossary.md#centre-of-gravity-cg) as the rocket leaves the rod within 0.016
+  calibres, on all 21 ([M2.2e1](../decisions-and-roadmap.md#m2-2e1), mass and centre of mass).
 - On the 12 flights with no named cause, hpr's apogee is lower than OpenRocket's on every one, by
   0.06% to 4.34%.
 - On the six *Dual parachute deployment* flights, hpr's apogee is 0.63% to 4.34% low. The cause is
@@ -1647,6 +1650,17 @@ the record's, and that every outcome, summary and table follows from hpr's figur
 | largest speed | none | 18 | +0.17% | −0.69% to +0.85% |
 | largest speed | a part set to no drag, which hpr ignores | 3 | −9.55% | −12.33% to −3.69% |
 | margin at rod clearance | none | 21 | −0.0007 cal | −0.0151 to +0.0037 cal |
+
+The rocket's mass and centre of mass, over the same 21 flights (hpr less OpenRocket):
+
+| quantity | flights | median | range |
+|---|---:|---:|---|
+| mass at launch | 21 | +0.016% | +0.000% to +0.209% |
+| mass as the rocket leaves the rod | 21 | +0.014% | −0.010% to +0.214% |
+| centre of mass as the rocket leaves the rod | 21 | +0.0007 cal | −0.0028 to +0.0159 cal |
+
+A centre of mass further aft, in calibres, shortens the margin by as much. The largest mass
+difference, 0.21%, is about a twentieth of the largest apogee miss with no named cause (4.34%).
 
 An early parachute can move only the apogee, which is why more flights count toward the largest
 speed than toward the apogee. The early-parachute group's median means little: on a rocket whose

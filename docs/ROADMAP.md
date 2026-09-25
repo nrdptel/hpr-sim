@@ -597,13 +597,10 @@
       kept: 17 parts, 87 sections, 1,888 tags and 3,128 attributes round-trip, all 5,120 found again.
   - [x] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met. Split: d1, d2.
-    - [x] **M3.1d1 Snapshots of public designs.** *Done when:* committed `insta` snapshots use only
-      public files (the Loft demo fixtures and synthetic designs), and private-corpus results go to
-      a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's 7 demos and a synthetic one.
-    - [x] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
-      example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
-      geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; the original record had 1,212 numbers over 74
-      designs, none of hpr's is apart from both RocketSerializer and OpenRocket.
+    - [x] **M3.1d1 Snapshots of public designs.** Met, bars kept: `insta` snapshots of public files
+      only (Loft's 7 demos and a synthetic one); private results to `corpus-out/`, as counts.
+    - [x] **M3.1d2 The cross-check.** Met (ADR-059), bars kept: 27 corpus and 17 OR example files
+      import with 0 errors; of 1,212 numbers, none is apart from both RocketSerializer and OR.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
   flies the OR examples and the corpus; the stored results inside the `.ork` files are used as a
@@ -635,21 +632,23 @@
       bundled curves bit for bit OR's impulse, peak, 5% window and duration; average thrust departs.
     - [x] **M2.2c2 The configurations held back for want of a curve.** Met (ADR-067), bars kept: OR's
       database supplied by digest; of the 162 held back, 66 fly, 72 wait on another reason, 24 named.
-  - [x] **M2.2d Flights to apogee on the public designs.** *Done when:* those that fly are in a
-    report against OR (apogee, max velocity, stability margin) and L80, L81 are live. Met (ADR-068,
-    ADR-069); split in two.
-    - [x] **M2.2d1 OpenRocket's flights, and what its words mean** (L80, L81). *Done when:* an
-      oracle flies every public configuration OR can in calm air, into a record a test pins; each
-      OR 24.12 summary word, and the margin at rod clearance, is held on every flight to a written
-      definition per tool and version, or withheld with the flights that rule out its candidates,
-      other versions withheld; a metric whose event never happened is never scored. *Result:* met
-      (ADR-068): 56 complete flights, 1 aborted; 9 of 10 words held, `optimumdelay` withheld.
+  - [x] **M2.2d Flights to apogee on the public designs.** Met (ADR-068, ADR-069), its done-when
+    bars kept: those that fly are in a report against OR, and L80, L81 are live. Split in two.
+    - [x] **M2.2d1 OpenRocket's flights, and what its words mean** (L80, L81). Met (ADR-068), bars
+      kept: 56 calm flights, 1 aborted, in a pinned record; 9 of 10 words held, one withheld.
       - Loft lessons: L80, L81.
-    - [x] **M2.2d2 hpr's flights against the record.** *Done when:* the parent's *done when* is met:
-      each configuration hpr flies is in a report against the record's apogee, largest speed and
-      margin at rod clearance, by those definitions. *Result:* met (ADR-069): 21 flown; margin
+    - [x] **M2.2d2 hpr's flights against the record.** Met (ADR-069), bars kept: 21 flown; margin
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
+    Split into e1 to e4 (ADR-070).
+    - [x] **M2.2e1 Mass and CG in the flight report.** *Done when:* the report spreads launch
+      mass, rod-clearance mass and CG against OR's on every flight not aborted, a test pinning the
+      arithmetic. *Result:* met: 21 each; mass within 0.21%, CG within 0.016 cal.
+    - [ ] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
+      configuration OR can into `corpus-out/`; only counts committed.
+    - [ ] **M2.2e3 hpr's flights of the corpus.** *Done when:* anonymised ids beside the public
+      report make at least 20 designs with the five spreads.
+    - [ ] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
 
 - [ ] **M1.9 Staging, clusters, airstarts (COTS).**
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
