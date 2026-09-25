@@ -1395,11 +1395,11 @@ fn openrocket_flight_record_is_its_script_s_on_the_pinned_jar() {
 /// its [`Definition`] names; the choices that matter are shown to matter; the words with no
 /// definition are shown not to be their obvious candidates; another version has no definition,
 /// and its value is withheld.
-#[test]
 #[allow(
     clippy::too_many_lines,
     reason = "one lesson, its evidence in one place"
 )]
+#[test]
 fn stored_metric_definitions_are_per_tool_and_version() {
     let record = openrocket_flights();
     let flights = complete(&record);
