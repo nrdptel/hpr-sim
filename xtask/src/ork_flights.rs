@@ -799,7 +799,7 @@ fn early_chute(recorded: &Value) -> Result<Option<f64>, String> {
 /// `remaining_percent` is the largest of hpr's differences from them in size, what the named
 /// causes leave, since two differences can cancel in one of them; `within_5_percent` holds when
 /// each of them has a difference and every one is within 5%. The record must name the same parts
-/// hpr reads as the ones OpenRocket cleared or removed (by count where a part has no id), or the
+/// hpr reads as the ones OpenRocket cleared or removed (a part with no id by count only), or the
 /// report stops.
 fn causes_removed(
     recorded: &Value,
@@ -813,9 +813,12 @@ fn causes_removed(
     let Some(hpr) = entry["metrics"]["apogee_m"]["hpr"].as_f64() else {
         return Ok(None);
     };
-    let ids: BTreeSet<String> = overrides.iter().map(|o| o.id.to_lowercase()).collect();
-    // A part with no id in the file gets a new one in OpenRocket, so only the count can match.
-    let by_count = overrides.iter().any(|o| o.id.is_empty());
+    // A part with no id in the file gets a new one in OpenRocket, so it is matched by count only.
+    let ids: BTreeSet<String> = overrides
+        .iter()
+        .filter(|o| !o.id.is_empty())
+        .map(|o| o.id.to_lowercase())
+        .collect();
     let step = |key: &str, parts: Option<&str>, measured: f64| -> Result<Value, String> {
         let held = &recorded[key];
         if held.is_null() {
@@ -832,16 +835,12 @@ fn causes_removed(
                 .filter_map(Value::as_str)
                 .map(str::to_lowercase)
                 .collect();
-            let same = if by_count {
-                changed.len() == overrides.len()
-            } else {
-                changed == ids
-            };
-            if !same {
+            if changed.len() != overrides.len() || !ids.is_subset(&changed) {
                 return Err(format!(
-                    "OpenRocket's {key} flight {verb} {} parts hpr doesn't read and left {} it \
-                     does",
-                    changed.difference(&ids).count(),
+                    "OpenRocket's {key} flight {verb} {} parts, hpr reads {}, and {} of hpr's \
+                     ids are not among them",
+                    changed.len(),
+                    overrides.len(),
                     ids.difference(&changed).count()
                 ));
             }
@@ -1379,8 +1378,8 @@ pub(crate) fn summary_lines(report: &Value) -> String {
     let sized = &summary["apogee_with_the_causes_removed"];
     if sized.is_object() {
         out.push_str(&line(
-            "apogee against OpenRocket's own flight with the named causes removed, over the \
-             flights with a named cause",
+            "apogee against OpenRocket's own flights with the named causes removed, over the \
+             flights with a named cause, each counting its largest difference from them",
             &sized["remaining_percent"],
             "%",
             2,
@@ -1835,9 +1834,11 @@ mod tests {
         close(&sized["remaining_percent"], 5.0);
         assert_eq!(sized["within_5_percent"], false);
         // A part with no id is matched by count, as OpenRocket gives it a new one.
-        let mut unnamed = overrides.clone();
+        let mut unnamed = overrides.to_vec();
         unnamed[0].id = String::new();
         assert!(causes_removed(&recorded, &entry(Value::Null, true, None), &unnamed).is_ok());
+        unnamed.push(unnamed[0].clone());
+        assert!(causes_removed(&recorded, &entry(Value::Null, true, None), &unnamed).is_err());
         let mut upper = overrides.clone();
         upper[0].id = part.to_uppercase();
         assert!(causes_removed(&recorded, &entry(Value::Null, true, None), &upper).is_ok());
