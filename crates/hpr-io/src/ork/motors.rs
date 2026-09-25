@@ -107,10 +107,12 @@ pub enum NoCurve {
 /// characteristics" of the curve ([OpenRocket's GitHub wiki][wiki], file format 1.2), and most
 /// designs do not embed the curve itself: OpenRocket finds it in the motor database its program
 /// ships. hpr's reader does no I/O and bundles only a small catalog, so a caller holding such a
-/// database (`cargo xtask ork` has one from OpenRocket, M2.2c2) hands its curves in here. A curve
-/// is used only for its own digest: never by name, which can match several curves.
+/// database hands its curves in here: `cargo xtask ork` supplies OpenRocket's own, for the
+/// milestone that measured the design library's curves ([M2.2c2][m2-2c2]). A curve is used only
+/// for its own digest: never by name, which can match several curves.
 ///
 /// [wiki]: https://github.com/openrocket/openrocket/wiki/File-format
+/// [m2-2c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2c2
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SuppliedCurves {
     source: String,
