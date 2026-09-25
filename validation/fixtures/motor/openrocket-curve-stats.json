@@ -1,0 +1,961 @@
+{
+ "command": "motors.py validation/fixtures/motor/openrocket-curve-stats.json crates/hpr-motor/data/thrustcurve/curves",
+ "curves": [
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000719.rse",
+   "motors": [
+    {
+     "average_thrust_n": 165.08031407562487,
+     "burn_time_s": 2.138,
+     "burnout_mass_kg": 0.14749999999999994,
+     "common_name": "H170",
+     "delays_s": [
+      2.0,
+      4.0,
+      6.0,
+      8.0,
+      10.0,
+      14.0
+     ],
+     "designation": "H170M",
+     "diameter_m": 0.038,
+     "digest": "4fcdfc112c1d434eea1b75da65741e12",
+     "first_time_s": 0.0,
+     "last_time_s": 2.138,
+     "launch_mass_kg": 0.33,
+     "length_m": 0.191,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 205.821,
+     "motor_type": "Reloadable",
+     "points": 33,
+     "propellant_mass_kg": 0.18250000000000008,
+     "total_impulse_ns": 317.999813
+    }
+   ],
+   "sha256": "2cddd795b5946e23879d1cb016ec69a8cad25263140f05d9acc8b869f3f4faa9"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000724.eng",
+   "motors": [
+    {
+     "average_thrust_n": 84.06339703138869,
+     "burn_time_s": 1.641,
+     "burnout_mass_kg": 0.09470000000000003,
+     "common_name": "G84",
+     "delays_s": [
+      4.0,
+      5.0,
+      7.0,
+      8.0,
+      9.0
+     ],
+     "designation": "131-G84-GR-10A",
+     "diameter_m": 0.024,
+     "digest": "37bfbdfa2a227ae37cc07505b58acc2a",
+     "first_time_s": 0.0,
+     "last_time_s": 1.641,
+     "launch_mass_kg": 0.172,
+     "length_m": 0.228,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 129.828,
+     "motor_type": "Reloadable",
+     "points": 30,
+     "propellant_mass_kg": 0.07729999999999995,
+     "total_impulse_ns": 131.29090599999998
+    }
+   ],
+   "sha256": "0a29afb563c617a9ad1491a150fcbcbe2941ad18c843bbfb465e350ded654054"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000072c.eng",
+   "motors": [
+    {
+     "average_thrust_n": 235.91385362471354,
+     "burn_time_s": 0.328,
+     "burnout_mass_kg": 0.0615,
+     "common_name": "F240",
+     "delays_s": [
+      3.0,
+      5.0,
+      6.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "designation": "68-F240-VM-15A",
+     "diameter_m": 0.024,
+     "digest": "9cfca834483b1fe83a45d1301b00f312",
+     "first_time_s": 0.0,
+     "last_time_s": 0.328,
+     "launch_mass_kg": 0.0918,
+     "length_m": 0.133,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 281.398,
+     "motor_type": "Reloadable",
+     "points": 26,
+     "propellant_mass_kg": 0.030300000000000007,
+     "total_impulse_ns": 68.00857749999999
+    }
+   ],
+   "sha256": "c10a71b1a2009fdb0ac1ca0049a5bebe8a565d531273057c2915a3f90bc6d887"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000735.eng",
+   "motors": [
+    {
+     "average_thrust_n": 53.62095319050884,
+     "burn_time_s": 3.5,
+     "burnout_mass_kg": 0.11239999999999999,
+     "common_name": "H54",
+     "delays_s": [
+      3.0,
+      5.0,
+      7.0,
+      8.0,
+      9.0
+     ],
+     "designation": "168-H54-WH_LB-10A",
+     "diameter_m": 0.029,
+     "digest": "7c8f4dc590f95fd48c0291370b5efc84",
+     "first_time_s": 0.0,
+     "last_time_s": 3.5,
+     "launch_mass_kg": 0.209,
+     "length_m": 0.187,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 103.061,
+     "motor_type": "Reloadable",
+     "points": 21,
+     "propellant_mass_kg": 0.0966,
+     "total_impulse_ns": 168.19682899999998
+    }
+   ],
+   "sha256": "17dbe97dd47dfa763ff675fe64a1b6cd68516d7a7d9d525909de51b6525adb7c"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000073d.eng",
+   "motors": [
+    {
+     "average_thrust_n": 1071.2993395889416,
+     "burn_time_s": 2.198,
+     "burnout_mass_kg": 1.379799999999999,
+     "common_name": "K1075",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "2245-K1075-SK",
+     "diameter_m": 0.054,
+     "digest": "b469a7a0078c932f9b07f11fc9ccd0c8",
+     "first_time_s": 0.0,
+     "last_time_s": 2.198,
+     "launch_mass_kg": 2.6388,
+     "length_m": 0.728,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 1574.366,
+     "motor_type": "Reloadable",
+     "points": 40,
+     "propellant_mass_kg": 1.2590000000000008,
+     "total_impulse_ns": 2255.140217
+    }
+   ],
+   "sha256": "044b641324701b228b60b5f54f42c80fca7ae7568ad1f76a5d4466ca4149f175"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000741.eng",
+   "motors": [
+    {
+     "average_thrust_n": 1546.830153088202,
+     "burn_time_s": 5.396,
+     "burnout_mass_kg": 3.0432999999999986,
+     "common_name": "M1545",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "8187-M1545-GR",
+     "diameter_m": 0.075,
+     "digest": "9666656181087080008c0c27ba54ee6b",
+     "first_time_s": 0.0,
+     "last_time_s": 5.396,
+     "launch_mass_kg": 7.8783,
+     "length_m": 1.025,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 1828.496,
+     "motor_type": "Reloadable",
+     "points": 33,
+     "propellant_mass_kg": 4.835000000000002,
+     "total_impulse_ns": 8181.831123999998
+    }
+   ],
+   "sha256": "e26c4b679382eed11a49ad8d0b239a21dccb61b4cd88124f5128b932b38c8150"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000749.eng",
+   "motors": [
+    {
+     "average_thrust_n": 936.1105605460433,
+     "burn_time_s": 1.797,
+     "burnout_mass_kg": 0.5985000000000003,
+     "common_name": "K940",
+     "delays_s": [
+      8.0,
+      10.0,
+      12.0,
+      14.0,
+      15.0,
+      17.0,
+      18.0
+     ],
+     "designation": "1633-K940-WT-18A",
+     "diameter_m": 0.054,
+     "digest": "82ab8477943d01797b67f444f9894e78",
+     "first_time_s": 0.0,
+     "last_time_s": 1.797,
+     "launch_mass_kg": 1.3665,
+     "length_m": 0.404,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 1115.789,
+     "motor_type": "Reloadable",
+     "points": 32,
+     "propellant_mass_kg": 0.7679999999999998,
+     "total_impulse_ns": 1636.0550375000003
+    }
+   ],
+   "sha256": "73b45f2de5196a16d171e162e8342db831e2cdc1ed24620d5e851cb8f5670dad"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000074a.eng",
+   "motors": [
+    {
+     "average_thrust_n": 757.6486582345627,
+     "burn_time_s": 1.731,
+     "burnout_mass_kg": 0.5007999999999999,
+     "common_name": "J760",
+     "delays_s": [
+      8.0,
+      10.0,
+      12.0,
+      14.0,
+      16.0,
+      18.0,
+      19.0
+     ],
+     "designation": "1266-J760-WT-19A",
+     "diameter_m": 0.054,
+     "digest": "c2faf5d908e5ede30378a9aea669a836",
+     "first_time_s": 0.0,
+     "last_time_s": 1.731,
+     "launch_mass_kg": 1.0768,
+     "length_m": 0.329,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 938.596,
+     "motor_type": "Reloadable",
+     "points": 33,
+     "propellant_mass_kg": 0.5760000000000001,
+     "total_impulse_ns": 1267.2977534999998
+    }
+   ],
+   "sha256": "8ea94436bc5c66177890d3626cd96873681946ea7b0424614e7d739af2ecc4f7"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000075a.eng",
+   "motors": [
+    {
+     "average_thrust_n": 173.90884952698718,
+     "burn_time_s": 2.5,
+     "burnout_mass_kg": 0.20859999999999987,
+     "common_name": "I175",
+     "delays_s": [
+      6.0,
+      8.0,
+      9.0,
+      11.0,
+      12.0,
+      13.0
+     ],
+     "designation": "411-I175-WH-14A",
+     "diameter_m": 0.038,
+     "digest": "e78aab5d54aceef5dceb56db8fd89f49",
+     "first_time_s": 0.0,
+     "last_time_s": 2.5,
+     "launch_mass_kg": 0.4375,
+     "length_m": 0.245,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 195.087,
+     "motor_type": "Reloadable",
+     "points": 30,
+     "propellant_mass_kg": 0.22890000000000013,
+     "total_impulse_ns": 411.41427899999996
+    }
+   ],
+   "sha256": "39a32f496ccb272225d40f2fa9f35158d2779bdc661724c1de8a87500b43c52b"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e900000007c0.eng",
+   "motors": [
+    {
+     "average_thrust_n": 3420.951488064338,
+     "burn_time_s": 6.322,
+     "burnout_mass_kg": 5.569999999999995,
+     "common_name": "O3400",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "21062-O3400-IM",
+     "diameter_m": 0.098,
+     "digest": "c7e812503c8335a9ebf52497986324ae",
+     "first_time_s": 0.0,
+     "last_time_s": 6.322,
+     "launch_mass_kg": 16.842,
+     "length_m": 1.239,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 4698.582,
+     "motor_type": "Reloadable",
+     "points": 16,
+     "propellant_mass_kg": 11.272000000000004,
+     "total_impulse_ns": 21041.010581999995
+    }
+   ],
+   "sha256": "fb1eb43c6b027551ed89bb30c78545cb2e9346c6e54ea65cedb6ae1c510472d3"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e900000007cc.eng",
+   "motors": [
+    {
+     "average_thrust_n": 3205.2488871856226,
+     "burn_time_s": 1.055,
+     "burnout_mass_kg": 1.6052999999999993,
+     "common_name": "L3200",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "3300-L3200-VM",
+     "diameter_m": 0.075,
+     "digest": "a2bbbbb4c5ff75f272716bb49117f749",
+     "first_time_s": 0.0,
+     "last_time_s": 1.055,
+     "launch_mass_kg": 3.2637,
+     "length_m": 0.486,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 3711.924,
+     "motor_type": "Reloadable",
+     "points": 14,
+     "propellant_mass_kg": 1.6584000000000008,
+     "total_impulse_ns": 3299.577200999999
+    }
+   ],
+   "sha256": "0d6b7651a5e9582a0441c513dca1f26ded110e840f80b73f6cf74d150bf0d78a"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e900000007d3.eng",
+   "motors": [
+    {
+     "average_thrust_n": 30.642127899585255,
+     "burn_time_s": 0.87,
+     "burnout_mass_kg": 0.0351,
+     "common_name": "E31",
+     "delays_s": [
+      6.0,
+      8.0,
+      10.0,
+      12.0,
+      15.0
+     ],
+     "designation": "26-E31-WH-15A",
+     "diameter_m": 0.024,
+     "digest": "1a8762756b97c134c2e261985ad2bef7",
+     "first_time_s": 0.0,
+     "last_time_s": 0.87,
+     "launch_mass_kg": 0.052,
+     "length_m": 0.069,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 43.824,
+     "motor_type": "Reloadable",
+     "points": 13,
+     "propellant_mass_kg": 0.0169,
+     "total_impulse_ns": 26.0839825
+    }
+   ],
+   "sha256": "a724ddf12e60a8bf8d2c722b66c1ac35e5d7b826d85e0c21124b2c6c60cae788"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e900000007e0.eng",
+   "motors": [
+    {
+     "average_thrust_n": 5622.269506792768,
+     "burn_time_s": 2.483,
+     "burnout_mass_kg": 4.9170000000000025,
+     "common_name": "N5600",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "N5600WT",
+     "diameter_m": 0.098,
+     "digest": "1ec7e131cf63e027db14ccd64cfbc2a9",
+     "first_time_s": 0.0,
+     "last_time_s": 2.483,
+     "launch_mass_kg": 11.28,
+     "length_m": 1.01,
+     "manufacturer": "Cesaroni Technology",
+     "max_thrust_n": 6750.0,
+     "motor_type": "Reloadable",
+     "points": 23,
+     "propellant_mass_kg": 6.362999999999997,
+     "total_impulse_ns": 13633.4668665
+    }
+   ],
+   "sha256": "1b6ba757ef4c634283c96b9fbeef407b949c7718a216738c94667cbca9ec9a6c"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000823.eng",
+   "motors": [
+    {
+     "average_thrust_n": 296.54914516642583,
+     "burn_time_s": 4.278,
+     "burnout_mass_kg": 0.6950000000000002,
+     "common_name": "J300",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "J300LR",
+     "diameter_m": 0.054,
+     "digest": "1a60527a19aa73fa0367b895d032f1d6",
+     "first_time_s": 0.0,
+     "last_time_s": 4.278,
+     "launch_mass_kg": 1.315,
+     "length_m": 0.327,
+     "manufacturer": "Loki Research",
+     "max_thrust_n": 403.147,
+     "motor_type": "Reloadable",
+     "points": 25,
+     "propellant_mass_kg": 0.6199999999999998,
+     "total_impulse_ns": 1212.8270825000002
+    }
+   ],
+   "sha256": "0e9527e1aab3e7591320e02aaf7f964effd78ba043f62c85b29e8b76c15749d0"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000839.eng",
+   "motors": [
+    {
+     "average_thrust_n": 1036.004417776661,
+     "burn_time_s": 3.7,
+     "burnout_mass_kg": 1.2779999999999996,
+     "common_name": "L1040",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "L1040LR",
+     "diameter_m": 0.054,
+     "digest": "13ae1bd4a977061de7a4d4101ab08a1e",
+     "first_time_s": 0.0,
+     "last_time_s": 3.7,
+     "launch_mass_kg": 2.962,
+     "length_m": 0.736,
+     "manufacturer": "Loki Research",
+     "max_thrust_n": 1394.959,
+     "motor_type": "Reloadable",
+     "points": 30,
+     "propellant_mass_kg": 1.6840000000000006,
+     "total_impulse_ns": 3722.464080999999
+    }
+   ],
+   "sha256": "c17a8d04ed86fc7f765d0ad6feadd82b15799ab5124225777b43adc91ddcef99"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000085f.eng",
+   "motors": [
+    {
+     "average_thrust_n": 2500.309001830417,
+     "burn_time_s": 1.923,
+     "burnout_mass_kg": 2.6761810000000006,
+     "common_name": "L2500",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "L2500ST",
+     "diameter_m": 0.098,
+     "digest": "f96407ebff44471007dcffde3317cf2f",
+     "first_time_s": 0.0,
+     "last_time_s": 1.923,
+     "launch_mass_kg": 4.98949,
+     "length_m": 0.443,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 2822.148,
+     "motor_type": "Unknown",
+     "points": 28,
+     "propellant_mass_kg": 2.3133089999999994,
+     "total_impulse_ns": 4671.947937000001
+    }
+   ],
+   "sha256": "55bf15bdfae33a02fa2f19b7ce19fb61c4031213f6669291bffe3487cdaa9014"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000862.eng",
+   "motors": [
+    {
+     "average_thrust_n": 124.8150558145305,
+     "burn_time_s": 2.001,
+     "burnout_mass_kg": 0.22000000000000014,
+     "common_name": "H125",
+     "delays_s": [
+      8.0,
+      18.0
+     ],
+     "designation": "H125CT",
+     "diameter_m": 0.038,
+     "digest": "3c637a072ddcbeba63208fe6f8a789a1",
+     "first_time_s": 0.0,
+     "last_time_s": 2.001,
+     "launch_mass_kg": 0.342,
+     "length_m": 0.1778,
+     "manufacturer": "Loki Research",
+     "max_thrust_n": 205.936,
+     "motor_type": "Reloadable",
+     "points": 21,
+     "propellant_mass_kg": 0.12199999999999989,
+     "total_impulse_ns": 241.65377400000003
+    }
+   ],
+   "sha256": "51969fa1046e1d73c6c07dfb426872f2b745ceb94b6933e3c42be02168d4739b"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000863.eng",
+   "motors": [
+    {
+     "average_thrust_n": 377.4325792705263,
+     "burn_time_s": 1.43,
+     "burnout_mass_kg": 0.31000000000000005,
+     "common_name": "I377",
+     "delays_s": [
+      8.0,
+      18.0
+     ],
+     "designation": "I377CT",
+     "diameter_m": 0.038,
+     "digest": "9c5bb0f7177c22d88f5e72ea700cff7c",
+     "first_time_s": 0.0,
+     "last_time_s": 1.43,
+     "launch_mass_kg": 0.56,
+     "length_m": 0.292,
+     "manufacturer": "Loki Research",
+     "max_thrust_n": 656.968,
+     "motor_type": "Reloadable",
+     "points": 20,
+     "propellant_mass_kg": 0.25,
+     "total_impulse_ns": 525.7811690000001
+    }
+   ],
+   "sha256": "94a93e05d95e56dfa08cf26b59fe46f1559968bca068dedb35ee3da8c7c6bb28"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000867.eng",
+   "motors": [
+    {
+     "average_thrust_n": 1372.0706950456886,
+     "burn_time_s": 4.079,
+     "burnout_mass_kg": 1.7310000000000003,
+     "common_name": "M1378",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "M1378LR",
+     "diameter_m": 0.054,
+     "digest": "0c80164cf821341d510516f8bc050ea2",
+     "first_time_s": 0.0,
+     "last_time_s": 4.079,
+     "launch_mass_kg": 4.331,
+     "length_m": 1.108,
+     "manufacturer": "Loki Research",
+     "max_thrust_n": 2318.606,
+     "motor_type": "Reloadable",
+     "points": 47,
+     "propellant_mass_kg": 2.6,
+     "total_impulse_ns": 5362.290276000001
+    }
+   ],
+   "sha256": "cbe7c9030d20d878da9b000aa57ee382b708eaa51e16f7a62b5f7a5ec5f158fe"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000086b.eng",
+   "motors": [
+    {
+     "average_thrust_n": 465.3721318579588,
+     "burn_time_s": 2.311,
+     "burnout_mass_kg": 0.7130000000000003,
+     "common_name": "J450",
+     "delays_s": [
+      14.0
+     ],
+     "designation": "J450DM",
+     "diameter_m": 0.054,
+     "digest": "0fee827f8da88f6ccc040b5f652ef9b2",
+     "first_time_s": 0.0,
+     "last_time_s": 2.311,
+     "launch_mass_kg": 1.223,
+     "length_m": 0.359,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 541.417,
+     "motor_type": "Unknown",
+     "points": 37,
+     "propellant_mass_kg": 0.5099999999999998,
+     "total_impulse_ns": 1061.596983
+    }
+   ],
+   "sha256": "a7f2251b4ad49d322713f144437dc3aa8c645832b2ae0ced3c8de35878e2cb45"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000086c.eng",
+   "motors": [
+    {
+     "average_thrust_n": 409.5156516499366,
+     "burn_time_s": 3.259,
+     "burnout_mass_kg": 0.7010000000000004,
+     "common_name": "K400",
+     "delays_s": [
+      14.0
+     ],
+     "designation": "K400C",
+     "diameter_m": 0.054,
+     "digest": "d90c600ca3c0b7febf6749f2f85c232e",
+     "first_time_s": 0.0,
+     "last_time_s": 3.259,
+     "launch_mass_kg": 1.194,
+     "length_m": 0.359,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 548.466,
+     "motor_type": "Unknown",
+     "points": 24,
+     "propellant_mass_kg": 0.49299999999999955,
+     "total_impulse_ns": 1307.2574510000006
+    }
+   ],
+   "sha256": "44c000f296691383b8ec93481311630e0db25937a27c1ad2fd4f09712ed7543d"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000875.eng",
+   "motors": [
+    {
+     "average_thrust_n": 1348.287261587476,
+     "burn_time_s": 3.996,
+     "burnout_mass_kg": 2.118,
+     "common_name": "M1350",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "M1350W",
+     "diameter_m": 0.075,
+     "digest": "383e5d144c6fa8899cbda6f19a749b54",
+     "first_time_s": 0.0,
+     "last_time_s": 3.996,
+     "launch_mass_kg": 4.808,
+     "length_m": 0.622,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 1749.913,
+     "motor_type": "Unknown",
+     "points": 25,
+     "propellant_mass_kg": 2.69,
+     "total_impulse_ns": 5179.474958499998
+    }
+   ],
+   "sha256": "20f2c9066cdb2c00246863f4b27ab9048fbd17fe4092044780f3c0c57cd63c18"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000876.eng",
+   "motors": [
+    {
+     "average_thrust_n": 71.99297262790977,
+     "burn_time_s": 2.0,
+     "burnout_mass_kg": 0.13880000000000003,
+     "common_name": "G69",
+     "delays_s": [],
+     "designation": "G69N",
+     "diameter_m": 0.038,
+     "digest": "6227d5161350e795d275be1b8c2d12bc",
+     "first_time_s": 0.0,
+     "last_time_s": 2.0,
+     "launch_mass_kg": 0.201,
+     "length_m": 0.106,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 86.4412,
+     "motor_type": "Unknown",
+     "points": 29,
+     "propellant_mass_kg": 0.06219999999999998,
+     "total_impulse_ns": 136.30141305549998
+    }
+   ],
+   "sha256": "f541f9f3d9c2d5f569fd241a9abc65c948d5fc387ad87313a4911457c3d1fc9f"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000884.eng",
+   "motors": [
+    {
+     "average_thrust_n": 3188.1003265635286,
+     "burn_time_s": 4.519,
+     "burnout_mass_kg": 4.757000000000002,
+     "common_name": "N3300",
+     "delays_s": [
+      "plugged"
+     ],
+     "designation": "N3300R",
+     "diameter_m": 0.098,
+     "digest": "135291720bee0f2bbd556ea49dd9a2ca",
+     "first_time_s": 0.0,
+     "last_time_s": 4.519,
+     "launch_mass_kg": 12.269,
+     "length_m": 1.06,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 3775.78,
+     "motor_type": "Unknown",
+     "points": 27,
+     "propellant_mass_kg": 7.511999999999998,
+     "total_impulse_ns": 14035.146005000002
+    }
+   ],
+   "sha256": "d69d11f7bafc5590d21b4175909a1806e5b8231a620f7a5be719c72cc436c346"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000088e.eng",
+   "motors": [
+    {
+     "average_thrust_n": 4.391169620113613,
+     "burn_time_s": 1.184,
+     "burnout_mass_kg": 0.016200000000000003,
+     "common_name": "B4",
+     "delays_s": [
+      4.0,
+      6.0
+     ],
+     "designation": "B4",
+     "diameter_m": 0.018,
+     "digest": "247d8f9970952dea2e127d382a2ba147",
+     "first_time_s": 0.0,
+     "last_time_s": 1.184,
+     "launch_mass_kg": 0.0198,
+     "length_m": 0.08,
+     "manufacturer": "Quest",
+     "max_thrust_n": 7.2,
+     "motor_type": "Single-use",
+     "points": 33,
+     "propellant_mass_kg": 0.003599999999999999,
+     "total_impulse_ns": 4.892141999999999
+    }
+   ],
+   "sha256": "caeee825098cf24b7a3d03eae3477908814edf22dac910916a5650511be14308"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e900000008bf.eng",
+   "motors": [
+    {
+     "average_thrust_n": 177.22473636485176,
+     "burn_time_s": 1.97,
+     "burnout_mass_kg": 0.17999999999999994,
+     "common_name": "I175",
+     "delays_s": [
+      5.0,
+      9.0,
+      13.0
+     ],
+     "designation": "I175WS",
+     "diameter_m": 0.038,
+     "digest": "b89989db1f118cb2a47028454c581486",
+     "first_time_s": 0.0,
+     "last_time_s": 1.97,
+     "launch_mass_kg": 0.348,
+     "length_m": 0.214,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 252.63,
+     "motor_type": "Unknown",
+     "points": 15,
+     "propellant_mass_kg": 0.16800000000000004,
+     "total_impulse_ns": 333.19611499999996
+    }
+   ],
+   "sha256": "f08e03c58c98cf5f59116ccd218783fa84ec0d33ba913e1c250f0f0c2ada7445"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e900000008c0.eng",
+   "motors": [
+    {
+     "average_thrust_n": 3.926603691869856,
+     "burn_time_s": 1.992,
+     "burnout_mass_kg": 0.012800000000000002,
+     "common_name": "C5",
+     "delays_s": [
+      3.0
+     ],
+     "designation": "C5",
+     "diameter_m": 0.018,
+     "digest": "73a9ed8bd883e2de7c1684f76fb54ab3",
+     "first_time_s": 0.0,
+     "last_time_s": 1.992,
+     "launch_mass_kg": 0.0238,
+     "length_m": 0.07,
+     "manufacturer": "Estes",
+     "max_thrust_n": 20.401,
+     "motor_type": "Single-use",
+     "points": 32,
+     "propellant_mass_kg": 0.011,
+     "total_impulse_ns": 7.794518500000001
+    }
+   ],
+   "sha256": "5775588b63242e3332f8aa5637b2980f4ded4c5aef6c4a94f77ed4317ec9f58e"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f5e5a6a1e865c0004c95620.eng",
+   "motors": [
+    {
+     "average_thrust_n": 52.79840640436078,
+     "burn_time_s": 1.329,
+     "burnout_mass_kg": 0.0514,
+     "common_name": "F52",
+     "delays_s": [
+      5.0,
+      8.0,
+      12.0
+     ],
+     "designation": "F52C",
+     "diameter_m": 0.029,
+     "digest": "a30f27b7b8960be379427451c0c228d6",
+     "first_time_s": 0.0,
+     "last_time_s": 1.329,
+     "launch_mass_kg": 0.0814,
+     "length_m": 0.111,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 61.323,
+     "motor_type": "Unknown",
+     "points": 15,
+     "propellant_mass_kg": 0.03,
+     "total_impulse_ns": 66.31080799999998
+    }
+   ],
+   "sha256": "1d11186b4f2e3a71e44c283c6cd9811b63a91539e8966da803a0bcc57b34997e"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f923e071bca580004171648.rse",
+   "motors": [
+    {
+     "average_thrust_n": 3.8363189575130168,
+     "burn_time_s": 4.61,
+     "burnout_mass_kg": 0.021099999999999983,
+     "common_name": "D5",
+     "delays_s": [
+      4.0,
+      6.0
+     ],
+     "designation": "D5",
+     "diameter_m": 0.02,
+     "digest": "a898dc1d5fbb478dc7d97528dd577386",
+     "first_time_s": 0.0,
+     "last_time_s": 4.61,
+     "launch_mass_kg": 0.0451,
+     "length_m": 0.096,
+     "manufacturer": "Quest",
+     "max_thrust_n": 16.8,
+     "motor_type": "Single-use",
+     "points": 28,
+     "propellant_mass_kg": 0.024000000000000018,
+     "total_impulse_ns": 17.618888
+    }
+   ],
+   "sha256": "1df621187ef202d1fc597b7258a9f314f35e29a65113bcc9d54baacfa79645d8"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/5f923edb1bca5800041716ab.rse",
+   "motors": [
+    {
+     "average_thrust_n": 14.511013582505225,
+     "burn_time_s": 3.45,
+     "burnout_mass_kg": 0.04300000000000001,
+     "common_name": "F15",
+     "delays_s": [
+      0.0,
+      4.0,
+      6.0,
+      8.0
+     ],
+     "designation": "F15",
+     "diameter_m": 0.029,
+     "digest": "55c27d60b7bf14a8ed14d37dcff42547",
+     "first_time_s": 0.0,
+     "last_time_s": 3.45,
+     "launch_mass_kg": 0.103,
+     "length_m": 0.114,
+     "manufacturer": "Estes Industries, Inc.",
+     "max_thrust_n": 25.26,
+     "motor_type": "Single-use",
+     "points": 27,
+     "propellant_mass_kg": 0.059999999999999984,
+     "total_impulse_ns": 49.60872749999999
+    }
+   ],
+   "sha256": "6d644fb54da938f531927159acf8f55948efcd3b93c8c432905be11cec9e7f09"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/60159eecb94d0e00040a8433.eng",
+   "motors": [
+    {
+     "average_thrust_n": 23.472069301635038,
+     "burn_time_s": 1.223,
+     "burnout_mass_kg": 0.025999999999999992,
+     "common_name": "E26",
+     "delays_s": [
+      4.0,
+      7.0,
+      10.0
+     ],
+     "designation": "E26W",
+     "diameter_m": 0.024,
+     "digest": "e5ce0c8598fb49f23c1219239271ae29",
+     "first_time_s": 0.0,
+     "last_time_s": 1.223,
+     "launch_mass_kg": 0.044,
+     "length_m": 0.088,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 26.9550277597882,
+     "motor_type": "Unknown",
+     "points": 13,
+     "propellant_mass_kg": 0.018000000000000006,
+     "total_impulse_ns": 27.61863903260855
+    }
+   ],
+   "sha256": "b393ead662f2caa5830aa4230bede4d36cf0125015156a07f2f5f9bec23b1445"
+  },
+  {
+   "file": "crates/hpr-motor/data/thrustcurve/curves/656e92ee7f1a4b00027f15ad.eng",
+   "motors": [
+    {
+     "average_thrust_n": 5828.186041430284,
+     "burn_time_s": 6.828,
+     "burnout_mass_kg": 9.5256,
+     "common_name": "O6000",
+     "delays_s": [
+      0.0
+     ],
+     "designation": "O6000W",
+     "diameter_m": 0.152,
+     "digest": "6f9813d2dc051e1b618e4b0cb13cfa84",
+     "first_time_s": 0.0,
+     "last_time_s": 6.828,
+     "launch_mass_kg": 31.5246,
+     "length_m": 1.12,
+     "manufacturer": "AeroTech",
+     "max_thrust_n": 8808.324,
+     "motor_type": "Unknown",
+     "points": 33,
+     "propellant_mass_kg": 21.999,
+     "total_impulse_ns": 39687.214230499994
+    }
+   ],
+   "sha256": "bfbdc6701eebdcdce495b00f942c8895c1a44c87c72b204e491154affcc2cffe"
+  }
+ ],
+ "generated": "2026-09-25",
+ "inputs_sha256": {
+  "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
+  "motors.py": "e73417ac2759ff6871292631b32ef0faa5c4bb288035e4ec7dd05fc8e6987b8f"
+ },
+ "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
+ "openrocket": "24.12",
+ "source": "validation/oracles/openrocket/motors.py"
+}
