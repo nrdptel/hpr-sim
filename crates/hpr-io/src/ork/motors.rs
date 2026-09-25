@@ -35,7 +35,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use hpr_design::{Configuration, MountedMotor, Rocket};
 use hpr_motor::catalog::bundled_curve_text;
-use hpr_motor::{Catalog, Delay, SolidMotor, rse};
+use hpr_motor::{Catalog, Delay, MotorError, SolidMotor, rse};
 use serde::{Deserialize, Serialize};
 
 use super::component::subcomponents;
@@ -103,13 +103,18 @@ pub enum NoCurve {
 
 /// Thrust curves the caller supplies, each for the OpenRocket digest a `<motor>` records.
 ///
-/// A `.ork` motor names its curve by a digest that "uniquely identifies the functional
-/// characteristics" of the curve ([OpenRocket's GitHub wiki][wiki], file format 1.2), and most
-/// designs do not embed the curve itself: OpenRocket finds it in the motor database its program
-/// ships. hpr's reader does no I/O and bundles only a small catalog, so a caller holding such a
-/// database hands its curves in here: `cargo xtask ork` supplies OpenRocket's own, for the
-/// milestone that measured the design library's curves ([M2.2c2][m2-2c2]). A curve is used only
-/// for its own digest: never by name, which can match several curves.
+/// A `.ork` motor records a *digest*: OpenRocket's fingerprint (a hash) of its curve's data, which
+/// "uniquely identifies the functional characteristics" of the curve ([OpenRocket's GitHub
+/// wiki][wiki], file format 1.2). Most designs do not embed the curve itself: OpenRocket finds it
+/// in the motor database its program ships. hpr's reader does no I/O and bundles only a small
+/// catalog, so a caller holding such a database hands its curves in here: `cargo xtask ork`
+/// supplies OpenRocket's own, for the milestone that measured the design library's curves
+/// ([M2.2c2][m2-2c2]).
+///
+/// A curve is used only for its own digest, never by name, which can match several curves. Supply
+/// solid motors only: hpr flies commercial solid motors, and a [`SolidMotor`] carries no motor
+/// type to refuse a hybrid by. A `<motor>` whose own `<type>` says `hybrid` is refused before any
+/// curve is looked up.
 ///
 /// [wiki]: https://github.com/openrocket/openrocket/wiki/File-format
 /// [m2-2c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2c2
@@ -119,11 +124,20 @@ pub struct SuppliedCurves {
     by_digest: BTreeMap<String, SuppliedCurve>,
 }
 
+/// The case a supplied curve describes: where its motor's size comes from, to compare with the
+/// size the design gives the motor.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct CaseSize {
+    /// The case diameter, m.
+    pub diameter_m: f64,
+    /// The case length, m.
+    pub length_m: f64,
+}
+
 /// One supplied curve: the motor built from it and the case it describes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct SuppliedCurve {
-    diameter_m: f64,
-    length_m: f64,
+    case: CaseSize,
     motor: SolidMotor,
 }
 
@@ -137,30 +151,40 @@ impl SuppliedCurves {
         }
     }
 
-    /// Supplies `motor`, whose case is `diameter_m` by `length_m`, for `digest`; returns the motor
-    /// it replaces, if any.
+    /// Supplies `motor`, whose case is `case`, for `digest`; returns the motor it replaces, if any.
+    ///
+    /// # Errors
+    ///
+    /// [`MotorError::Domain`] when the case's diameter or length is not finite and positive; the
+    /// curves are left as they were.
     pub fn insert(
         &mut self,
         digest: impl Into<String>,
-        diameter_m: f64,
-        length_m: f64,
+        case: CaseSize,
         motor: SolidMotor,
-    ) -> Option<SolidMotor> {
-        self.by_digest
-            .insert(
-                digest.into(),
-                SuppliedCurve {
-                    diameter_m,
-                    length_m,
-                    motor,
-                },
-            )
-            .map(|replaced| replaced.motor)
+    ) -> Result<Option<SolidMotor>, MotorError> {
+        for (value, what) in [
+            (case.diameter_m, "supplied case diameter (m)"),
+            (case.length_m, "supplied case length (m)"),
+        ] {
+            if !(value.is_finite() && value > 0.0) {
+                return Err(MotorError::Domain { what, value });
+            }
+        }
+        Ok(self
+            .by_digest
+            .insert(digest.into(), SuppliedCurve { case, motor })
+            .map(|replaced| replaced.motor))
     }
 
-    /// Where the curves came from, as given to [`SuppliedCurves::new`].
+    /// Where the curves came from, as given to [`SuppliedCurves::new`]; `the supplied curves`
+    /// when none was given.
     pub fn source(&self) -> &str {
-        &self.source
+        if self.source.is_empty() {
+            "the supplied curves"
+        } else {
+            &self.source
+        }
     }
 
     /// The motor supplied for `digest`.
@@ -873,8 +897,8 @@ fn curve(
     {
         sizes_agree(
             motor,
-            found.diameter_m * 1e3,
-            found.length_m * 1e3,
+            found.case.diameter_m * 1e3,
+            found.case.length_m * 1e3,
             supplied.source(),
             at,
             warnings,

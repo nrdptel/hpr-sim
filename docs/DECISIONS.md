@@ -6160,51 +6160,77 @@ is named with its reason, both counted by `cargo xtask ork`. The first half is s
 75 files embed 3 distinct `.rse` curves, which 4 motor references use. The second half is supply.
 Of 202 motor references, 196 had no curve: 3 hybrids and 193 neither embedded nor in hpr's
 32-curve bundled catalog. That left 162 of 170 configurations held back for want of a curve, and 2
-flying. A `.ork` names its curve by OpenRocket's digest, which "uniquely identifies the functional
-characteristics" of the curve (OpenRocket's GitHub wiki, file format 1.2), and OpenRocket finds
-most curves in the motor database it ships inside its jar. There were two places to get curves:
-ThrustCurve.org through `hpr-net` ([M5.1][roadmap], not built, and matched by name), or
-OpenRocket's own database, which is where the reference program gets the curve it flies.
+flying. A `.ork` names its curve by OpenRocket's digest, a hash of the curve's data that
+"uniquely identifies the functional characteristics" of the curve (OpenRocket's GitHub wiki, file
+format 1.2), and OpenRocket finds most curves in the motor database it ships inside its jar. There
+were two places to get curves: ThrustCurve.org through `hpr-net` ([M5.1][roadmap], not built, and
+matched by name), or OpenRocket's own database, which is where the reference program gets the
+curve it flies.
 
 **Decision.**
 
-1. **An oracle records OpenRocket's database.** `validation/oracles/openrocket/motor_database.py`
-   loads the database with `MotorDatabaseLoader`, the public class OpenRocket 24.12 loads it with
-   at startup. It stops if OpenRocket's user motor directories hold any file, so the record is the
-   jar's alone. For each of the 1,452 motors it records the digest, the identity, the envelope
-   and masses, the samples, and OpenRocket's total impulse, average and peak thrust and burn
-   times. It also hands every embedded `thrustcurves/*.rse` in the designs given to OpenRocket's
-   loader, keyed by the entry's SHA-256, as `motors.py` does for bundled files. The record goes
-   to the gitignored `corpus-out/openrocket-motors.json` and is never committed. The database
-   comes from ThrustCurve.org through OpenRocket, with unstated terms, and the embedded curves
-   belong to the designs' owners. Only counts are published. OpenRocket is run, never read.
-2. **`hpr-io` takes supplied curves, by digest only.** `SuppliedCurves` maps a digest to a motor
-   and its case. `ork::design_with(file, &supplied)` reads a design in this order: the embedded
-   curve, then a supplied curve for the motor's digest (`Curve::Supplied`), then the bundled
-   catalog. A supplied curve is never matched by name. The digest names one curve exactly. A name
-   can match several: in a probe of OpenRocket's own `findMotors` on the library's 134 motor
-   elements, 8 returned two curves. `findMotors` also filters by type and case, and returned none
-   for 20 elements that record no digest. So a name rule would be hpr's guess, not OpenRocket's.
-   `ork::design` is `design_with` with nothing supplied, word for word, which a test pins. A reason
-   says where hpr looked: that the supplied curves lack the digest, or that no digest is
-   recorded. A supplied case more than a millimetre from the design's is warned about, as a
-   catalog one is.
+1. **An oracle records OpenRocket's database, and what OpenRocket flies.**
+   `validation/oracles/openrocket/motor_database.py` does three things:
+   - It loads the database with `MotorDatabaseLoader`, the public class OpenRocket 24.12 loads it
+     with at startup. It stops if OpenRocket's user motor directories hold any file, so the record
+     is the jar's alone.
+   - For each of the 1,452 motors it records the digest, the identity, the envelope, the masses
+     and the centre of mass. It records the samples, and OpenRocket's total impulse, average and
+     peak thrust and burn times.
+   - It hands every embedded `thrustcurves/*.rse` to OpenRocket's loader, keyed by the entry's
+     SHA-256, as `motors.py` does for bundled files.
+   - It opens every design with the database bound, as the program does, and reads back the
+     digest of each motor OpenRocket places in each configuration.
+
+   It walks the designs `cargo xtask ork` surveys, skipping `refs/scratch/`. The record goes to the
+   gitignored `corpus-out/openrocket-motors.json` and is never committed. The database comes from
+   ThrustCurve.org through OpenRocket, with unstated terms, and the embedded curves belong to the
+   designs' owners. Only counts are published. OpenRocket is run, never read.
+2. **`hpr-io` takes supplied curves, by digest only.**
+   - `SuppliedCurves` maps a digest to a solid motor and its `CaseSize`. It refuses a case that is
+     not finite and positive.
+   - `ork::design_with(file, &supplied)` looks in this order: the embedded curve, then a supplied
+     curve for the motor's digest (`Curve::Supplied`), then the bundled catalog.
+   - A supplied curve is never matched by name: the database holds 286 manufacturer-and-designation
+     pairs under more than one digest.
+   - A `<motor>` typed `hybrid` is refused before any lookup. The caller supplies solid motors
+     only, since a `SolidMotor` carries no type.
+   - `ork::design` passes nothing to `design_with`, so its output and its tests are unchanged.
+   - A reason says where hpr looked: the supplied curves lack the digest, or no digest is recorded.
+   - A supplied case more than a millimetre from the design's is warned about, as a catalog one is.
+   - A supplied curve comes ahead of the bundled catalog. Where both hold a motor, OpenRocket's
+     masses are the ones flown, and they need not match the ThrustCurve.org metadata the catalog
+     carries. One library motor moved from the catalog to the database this way.
+     Matching OpenRocket is the point of the survey.
 3. **The survey screens the database before supplying it.**
-   - Hybrids are never supplied: 164 motors, 161 digests.
-   - One digest (AeroTech G78G/L) is held by two motors with different samples, so it is not
+   - Hybrids are never supplied: 164 motors under 161 digests.
+   - 6 digests are held by two motors that differ in samples, case or masses, so none of them is
      supplied.
-   - One motor does not build (Cesaroni 836J210-16A). Its propellant mass implies an exhaust
-     velocity of 10.1 km/s, outside the 200 to 5,000 m/s that `SolidMotor::from_envelope`
-     accepts, so it is not supplied either.
-   - 59 repeats of a digest with identical samples collapse to one.
-   - That leaves 1,226 digests.
-4. **Every curve is held to OpenRocket's impulse, or the survey fails.** hpr's integration of the
-   samples is compared with OpenRocket's `getTotalImpulseEstimate`. That covers every database
-   curve hpr builds, 1,288, and every distinct embedded curve, 3, compared as hpr parses the
-   entry's bytes. All of them are within 0.1%, and **identical to the last bit**, as the 32
-   bundled ones were. A curve outside 0.1%, an embedded curve missing from the record, or a record
-   written by another version of the oracle fails `cargo xtask ork`.
-5. **Each configuration the bundled catalog left without a curve is followed.** The survey reads
+   - One motor is refused, Cesaroni 836J210-16A. Its propellant mass gives an exhaust velocity of
+     10.1 km/s, outside the 200 to 5,000 m/s that `SolidMotor::from_envelope` accepts.
+   - 54 repeats of a digest with the same samples and envelope (to 1e-9) collapse to one.
+   - That leaves 1,221 digests supplied.
+   - Other masses are taken as OpenRocket holds them, including some that give physically
+     unlikely exhaust velocities. OpenRocket flies the same masses.
+4. **Every curve is held to OpenRocket's impulse, or the survey fails.** hpr's integration is
+   compared with OpenRocket's `getTotalImpulseEstimate`. All are within 0.1%, and **identical to the
+   last bit**. The two sets are different kinds of check:
+   - The 3 distinct embedded curves are real checks, as the 32 bundled ones were. hpr parses the
+     entry's bytes, and OpenRocket parses the same file with its own loader.
+   - The 1,288 solid database curves are checked against the samples OpenRocket has already
+     parsed, so their agreement proves the hand-off, not two readings.
+   - A curve outside 0.1% is not supplied.
+   - The survey fails on any of these:
+     - a curve outside 0.1%;
+     - an embedded curve missing from the record, or one OpenRocket refused;
+     - a record missing a list, or with no solid motor to check;
+     - a record written by another version of any of the three oracle scripts, by another
+       OpenRocket release, or with another jar than the pinned one.
+5. **OpenRocket flies the curve the digest names.** Of the 111 motors that name a digest, in the
+   designs OpenRocket opens, OpenRocket flies the curve with that digest for 105. The other 6 name
+   digests its database lacks. None is missed where the database holds the digest. 7 designs don't
+   open in OpenRocket and are not counted.
+6. **Each configuration the bundled catalog left without a curve is followed.** The survey reads
    every design twice, with and without the supply, and counts what became of the 162:
    - **66 fly.** With the 2 that already did, 68 of 170 configurations fly, in 16 designs, and
      all 68 assemble.
@@ -6225,13 +6251,16 @@ OpenRocket's own database, which is where the reference program gets the curve i
 **Consequences.** M2.2c is met: every configuration held back only for want of a curve flies or is
 named, and every curve hpr flies from the library is within 0.1% of OpenRocket's impulse. Two
 things are left:
-- **Does OpenRocket fly the same curve?** OpenRocket's file-format page says it looks in its
-  database first, and the digest match is exact, so it should. That is not yet confirmed by
-  reading back the motor OpenRocket assigns in each configuration. [M2.2d][roadmap] flies these
-  designs against OpenRocket, where a different curve would show.
+- **Where a motor's weight sits is not OpenRocket's.** hpr builds every motor from its envelope,
+  whether bundled, embedded or supplied: centre of mass at mid-case, the dry case a thin tube.
+  OpenRocket gives each database motor a fixed centre of mass of its own, and treats the motor as
+  a solid cylinder for inertia. For 163 of the 1,221 supplied motors, OpenRocket's centre of mass
+  is more than 1 mm from mid-case. Among the 31 supplied motors the designs fly, 3 are, by up to
+  5.0 mm. The survey prints both counts. [M2.2d][roadmap] flies these designs against OpenRocket
+  and will meet this in the stability margin. It is the milestone to decide whether hpr takes
+  OpenRocket's centre of mass, or records the difference as a departure.
 - **Motors that record no digest** (older files) stay unflown. A name rule could fly them, but it
-  would be hpr's choice among curves, so it waits for a milestone that can check it against the
-  motor OpenRocket picks.
+  would be hpr's choice among curves.
 
 `Curve` is `#[non_exhaustive]`, so the new variant breaks no caller.
 

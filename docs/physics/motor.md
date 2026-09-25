@@ -537,12 +537,15 @@ ejection event by itself: the user has to decide.
   - **Curves outside this repository are held to the same bound.** They are not committed, so
     `cargo xtask ork` checks them on the machine that has them, and fails if one is outside 0.1%
     ([M2.2c2](../decisions-and-roadmap.md#m2-2c2), [ADR-067][adr-067]):
-    - the curves the reference library's designs embed, which are other people's data;
-    - every solid curve in the motor database OpenRocket 24.12 ships, which the survey supplies to
-      designs that name a curve by digest without carrying it.
+    - **The curves the reference library's designs embed**, which are other people's data. hpr
+      parses each file itself, so these are real checks. All 3 agree to the last bit.
+    - **Every solid curve in the motor database OpenRocket 24.12 ships**: 1,288 of its 1,452
+      motors, the rest hybrids. The survey supplies them to designs that name a curve by
+      [digest](../glossary.md#digest) without carrying it. Both codes integrate the samples
+      OpenRocket has already parsed, so agreement to the last bit proves the hand-off, not two
+      independent readings.
 
-    All 3 embedded curves and all 1,288 database curves hpr builds agree with OpenRocket's total
-    impulse to the last bit. The counts are on the
+    The counts, and what the database motors' masses leave out, are on the
     [`.ork` format page](../format/ork.md#motors-in-the-reference-library).
 - **RocketPy** (`motor::tests::matches_rocketpy_solid_motor_for_three_bundled_motors`): three
   bundled curves with BATES loads cover grains that burn out radially (the bore reaches the outer

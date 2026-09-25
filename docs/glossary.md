@@ -275,6 +275,13 @@ air density and `C_D S` the [drag area](#drag-area). A 1.1 kg rocket under a 1 m
 
 A rocket design saved as text, so it can be kept, shared and read back. Today it is the JSON of hpr's `Rocket` type: each key is a Rust field's name, with its unit in the name (`length_m`), and a mounted motor is written out in full, thrust curve included. The format is provisional until the open design format, [M3.3](decisions-and-roadmap.md#m3-3). See [Your own rocket](your-own-rocket.md#as-a-design-file).
 
+## Digest
+
+OpenRocket's fingerprint (a hash) of a motor's thrust-curve data. A `.ork` file records it for each
+motor, and OpenRocket uses it to find that curve in the motor database it ships. hpr uses it to
+find a curve the file embeds, or one a caller supplies. Two different motors can, rarely, share a
+digest. See [the `.ork` format](format/ork.md#motors-in-the-reference-library).
+
 ## Dormand–Prince and RK4
 
 Two ways of stepping the equations of motion through time. Dormand–Prince 5(4), also called

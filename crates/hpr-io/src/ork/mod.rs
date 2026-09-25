@@ -51,8 +51,8 @@ pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVe
 pub use error::OrkError;
 pub use extensions::{Extensions, Kept, KeptAttribute, OpenRocketExtension, element_at};
 pub use motors::{
-    Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve, NotFlown,
-    OrkMotor, SuppliedCurves, UnreadMotor,
+    CaseSize, Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve,
+    NotFlown, OrkMotor, SuppliedCurves, UnreadMotor,
 };
 pub use recovery::{
     DeployEvent, Deployment, DeviceKind, EventSetting, Recovery, RecoveryDevice, Separation,
@@ -223,13 +223,15 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
     design_with(file, &SuppliedCurves::default())
 }
 
-/// Reads the design in `file` as [`design`] does, with `supplied` curves for the motors whose
-/// digest they name and whose archive embeds no usable curve: an embedded curve first, then a
-/// supplied one, then the bundled catalog.
+/// Like [`design`], but a motor can also take its thrust curve from `supplied`.
+///
+/// Each motor looks in three places, in order: a curve embedded in the file, then a supplied
+/// curve for the motor's digest, then the bundled catalog. An embedded curve that does not read
+/// or build is passed over, with a warning, for the next place.
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use hpr_io::ork::{Curve, SuppliedCurves};
+/// use hpr_io::ork::{CaseSize, Curve, SuppliedCurves};
 /// use hpr_motor::{SolidMotor, ThrustCurve};
 ///
 /// let xml = br#"<?xml version='1.0' encoding='utf-8'?>
@@ -247,11 +249,12 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
 /// </openrocket>"#;
 /// let read = hpr_io::ork::read(xml)?;
 ///
-/// // A made-up 20 N·s motor: 10 N for two seconds.
+/// // A made-up 19 N·s motor: 10 N for about two seconds, from 10 g of propellant in a 30 g motor.
 /// let thrust = ThrustCurve::new(vec![0.0, 0.1, 1.9, 2.0], vec![0.0, 10.0, 10.0, 0.0])?;
-/// let motor = SolidMotor::from_envelope(thrust, 0.024, 0.07, 0.01, 0.03)?;
+/// let (diameter_m, length_m, propellant_kg, loaded_kg) = (0.024, 0.07, 0.01, 0.03);
+/// let motor = SolidMotor::from_envelope(thrust, diameter_m, length_m, propellant_kg, loaded_kg)?;
 /// let mut supplied = SuppliedCurves::new("a motor database");
-/// supplied.insert("0123abcd", 0.024, 0.07, motor);
+/// supplied.insert("0123abcd", CaseSize { diameter_m, length_m }, motor)?;
 ///
 /// let design = hpr_io::ork::design_with(&read.value, &supplied).value;
 /// let flown = &design.motors.configurations[0].motors[0];

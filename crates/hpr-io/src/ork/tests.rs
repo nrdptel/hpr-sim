@@ -2068,15 +2068,23 @@ fn synthetic_motor() -> hpr_motor::SolidMotor {
     hpr_motor::SolidMotor::from_envelope(thrust, 0.029, 0.124, 0.06, 0.15).expect("a valid motor")
 }
 
+/// The case of the synthetic G100T.
+const G100T_CASE: CaseSize = CaseSize {
+    diameter_m: 0.029,
+    length_m: 0.124,
+};
+
 /// M2.2c2: a curve supplied for a motor's digest flies it when the archive embeds none, an
-/// embedded curve still comes first, a supplied curve is never matched by name, and a motor the
-/// supplied curves lack says so in its reason.
+/// embedded curve still comes first, a supplied curve comes ahead of the bundled catalog and is
+/// never matched by name, and a motor the supplied curves lack says so in its reason.
 #[test]
 fn supplied_curves_are_used_by_digest_only() {
     let xml = motor_design(
         r#"<motorconfiguration configid="c1" default="true"><name>G100T</name></motorconfiguration>
            <motorconfiguration configid="c2"><name>Other</name></motorconfiguration>
-           <motorconfiguration configid="c3"><name>No digest</name></motorconfiguration>"#,
+           <motorconfiguration configid="c3"><name>No digest</name></motorconfiguration>
+           <motorconfiguration configid="c4"><name>F15</name></motorconfiguration>
+           <motorconfiguration configid="c5"><name>Hybrid</name></motorconfiguration>"#,
         r"<ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
           <overhang>0.01</overhang>
           <motor configid='c1'><type>single</type><manufacturer>Nobody</manufacturer>
@@ -2087,24 +2095,31 @@ fn supplied_curves_are_used_by_digest_only() {
             <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>
           <motor configid='c3'><type>single</type><manufacturer>Nobody</manufacturer>
             <designation>G100T</designation>
+            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>
+          <motor configid='c4'><type>single</type><manufacturer>Estes</manufacturer>
+            <digest>f15f15f15</digest><designation>F15</designation>
+            <diameter>0.029</diameter><length>0.124</length><delay>4.0</delay></motor>
+          <motor configid='c5'><type>hybrid</type><manufacturer>Nobody</manufacturer>
+            <digest>d1935f00</digest><designation>G100T</designation>
             <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>",
         "",
     );
     let mut supplied = SuppliedCurves::new("a test database");
     assert!(supplied.is_empty());
-    assert!(
-        supplied
-            .insert("d1935f00", 0.029, 0.124, synthetic_motor())
-            .is_none()
-    );
-    assert_eq!((supplied.len(), supplied.source()), (1, "a test database"));
+    for digest in ["d1935f00", "f15f15f15"] {
+        let replaced = supplied
+            .insert(digest, G100T_CASE, synthetic_motor())
+            .expect("a valid case");
+        assert!(replaced.is_none());
+    }
+    assert_eq!((supplied.len(), supplied.source()), (2, "a test database"));
     assert!(supplied.get("d1935f00").is_some() && supplied.get("0ther").is_none());
 
     let plain = read(xml.as_bytes()).expect("a readable document");
     let design = design_with(&plain.value, &supplied);
     assert!(design.warnings.is_empty(), "{:?}", design.warnings);
-    let [c1, c2, c3] = design.value.motors.configurations.as_slice() else {
-        panic!("three configurations");
+    let [c1, c2, c3, c4, c5] = design.value.motors.configurations.as_slice() else {
+        panic!("five configurations");
     };
     let Curve::Supplied {
         digest,
@@ -2141,6 +2156,22 @@ fn supplied_curves_are_used_by_digest_only() {
         );
     }
 
+    // The bundled catalog has an Estes F15, and the curve supplied for its digest comes first.
+    assert!(matches!(c4.motors[0].curve, Curve::Supplied { .. }));
+    assert!(matches!(
+        super::design(&plain.value).value.motors.configurations[3].motors[0].curve,
+        Curve::Catalog { .. }
+    ));
+
+    // A motor the design calls a hybrid is refused, whatever is supplied for its digest.
+    assert!(matches!(
+        c5.motors[0].curve,
+        Curve::Unresolved {
+            why: NoCurve::Hybrid,
+            ..
+        }
+    ));
+
     // The archive's own curve still comes first, even with a curve supplied for its digest.
     let archive = zip_of(&[
         ("rocket.ork", xml.as_bytes()),
@@ -2153,9 +2184,34 @@ fn supplied_curves_are_used_by_digest_only() {
         Curve::Embedded { .. }
     ));
 
+    // An embedded curve that does not read is passed over, with a warning, for the supplied one.
+    let broken = zip_of(&[
+        ("rocket.ork", xml.as_bytes()),
+        ("thrustcurves/d1935f00.rse", b"<engine-database>".as_slice()),
+    ]);
+    let broken = read(&broken).expect("a readable archive");
+    let design = design_with(&broken.value, &supplied);
+    assert!(matches!(
+        design.value.motors.configurations[0].motors[0].curve,
+        Curve::Supplied { .. }
+    ));
+    assert!(
+        design.warnings.iter().any(|w| w
+            .message
+            .contains("the embedded curve for G100T was not used")),
+        "{:?}",
+        design.warnings
+    );
+
     // A supplied case that differs from the design's by more than a millimetre is warned about.
     let mut apart = SuppliedCurves::new("a test database");
-    apart.insert("d1935f00", 0.038, 0.124, synthetic_motor());
+    let wide = CaseSize {
+        diameter_m: 0.038,
+        ..G100T_CASE
+    };
+    apart
+        .insert("d1935f00", wide, synthetic_motor())
+        .expect("a valid case");
     let design = design_with(&plain.value, &apart);
     assert!(
         design
@@ -2166,11 +2222,22 @@ fn supplied_curves_are_used_by_digest_only() {
         design.warnings
     );
 
-    // No supplied curves at all is `design`, word for word.
-    assert_eq!(
-        design_with(&plain.value, &SuppliedCurves::default()).value,
-        super::design(&plain.value).value
-    );
+    // A case that is not a size is refused, and nothing is supplied.
+    let mut none = SuppliedCurves::default();
+    for case in [
+        CaseSize {
+            diameter_m: f64::NAN,
+            ..G100T_CASE
+        },
+        CaseSize {
+            length_m: 0.0,
+            ..G100T_CASE
+        },
+    ] {
+        assert!(none.insert("d1935f00", case, synthetic_motor()).is_err());
+    }
+    assert!(none.is_empty());
+    assert_eq!(none.source(), "the supplied curves");
 }
 
 /// Reads a design from raw XML, expecting it to read.

@@ -20,8 +20,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   is big. M2.2c2 (ADR-067): `motor_database.py` writes `corpus-out/openrocket-motors.json` (run it
   before `cargo xtask ork`), and the survey supplies each solid curve by digest through
   `ork::design_with` and `SuppliedCurves`. 68 of 170 configurations now fly; 40 of the 91 eligible
-  stored runs are reproducible. **Open for d:** confirm OR flies the database curve hpr is given
-  (read back each configuration's motor), and the 20 no-digest motors stay unflown by design.
+  stored runs are reproducible; OR flies the digest's curve for every digest its database holds.
+  **Open for d:** a motor's CG and inertia are hpr's envelope model, not OR's (3 of the 31 flown
+  supplied motors off by up to 5 mm); the 20 no-digest motors stay unflown by design.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -132,8 +133,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in
   radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m up at a boattail —
   −8.65% to −11.34% (#87).
-- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but only 2 of 170
-  configurations flies: 197 motors are not in the 32-motor catalog (M5.1), staging waits for M1.9,
+- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 2 of 170
+  configurations (68 with OpenRocket's database supplied, ADR-067), staging waits for M1.9,
   and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and
   motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may be

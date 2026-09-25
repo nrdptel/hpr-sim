@@ -7,7 +7,9 @@ jar. hpr bundles only 32 curves, so without that database most of a design libra
 its sampled curve and its own integrals, so that `cargo xtask ork` can supply the curve a design's
 digest names and hold hpr's integration of each curve to OpenRocket's. It also hands every curve a
 design embeds (`thrustcurves/<digest>.rse`) to OpenRocket's own loader, as `motors.py` does for the
-bundled curves (M2.2c1).
+bundled curves (M2.2c1). Last, it opens every design with that database bound, as the program
+does, and records the digest of the motor OpenRocket puts in each mount of each configuration, so
+that the survey can say whether OpenRocket flies the very curve a design's digest names.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names are the public API `javap` prints for the jar. The database's contents come from
@@ -21,18 +23,23 @@ Run from the repository root with the oracle environment and Java 17 (see `autom
         corpus-out/openrocket-motors.json refs
 
 The record is written to the path given, not to standard output, which OpenRocket logs to. Each
-input after it may be a `.ork` file or a directory, walked in sorted order for `.ork` files. The
-database is the jar's alone: the script stops if OpenRocket's user motor directories hold any file,
+input after it may be a `.ork` file or a directory, walked in sorted order for `.ork` files and
+skipping `refs/scratch/`, as `cargo xtask ork` does. The database is the jar's alone: the script stops if OpenRocket's user motor directories hold any file,
 since OpenRocket would load those too.
 """
 
+import collections
+import gzip
 import hashlib
 import io
 import json
 import sys
 import tempfile
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
+import jpype
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -79,6 +86,10 @@ def described(motor):
         "max_thrust_n": float(motor.getMaxThrustEstimate()),
         "burn_time_s": float(motor.getBurnTime()),
         "burn_time_estimate_s": float(motor.getBurnTimeEstimate()),
+        "launch_cg_x_m": float(motor.getLaunchCGx()),
+        "burnout_cg_x_m": float(motor.getBurnoutCGx()),
+        "unit_longitudinal_inertia_m2": float(motor.getUnitLongitudinalInertia()),
+        "unit_rotational_inertia_m2": float(motor.getUnitRotationalInertia()),
     }
 
 
@@ -88,7 +99,13 @@ def design_files(inputs):
     for raw in inputs:
         path = Path(raw)
         if path.is_dir():
-            found.extend(sorted(p for p in path.rglob("*.ork") if p.is_file()))
+            found.extend(
+                sorted(
+                    p
+                    for p in path.rglob("*.ork")
+                    if p.is_file() and "refs/scratch/" not in p.as_posix()
+                )
+            )
         elif path.suffix.lower() == ".ork":
             found.append(path)
         else:
@@ -122,6 +139,72 @@ def embedded(designs):
     return [{"sha256": sha, **curves[sha]} for sha in sorted(curves)]
 
 
+def bind(held):
+    """Binds `held` as the motor database designs are loaded with, as the program does."""
+    from com.google.inject import Guice
+    from info.openrocket.core.database import ComponentPresetDao, ComponentPresetDatabase
+    from info.openrocket.core.database.motor import MotorDatabase
+    from info.openrocket.core.plugin import PluginModule
+    from info.openrocket.core.startup import Application
+    from info.openrocket.swing.utils import CoreServicesModule
+
+    @jpype.JImplements("com.google.inject.Module")
+    class Loaded:
+        @jpype.JOverride
+        def configure(self, binder):
+            binder.bind(MotorDatabase).toInstance(held)
+            binder.bind(ComponentPresetDao).toInstance(ComponentPresetDatabase())
+
+    Application.setInjector(Guice.createInjector(CoreServicesModule(), PluginModule(), Loaded()))
+
+
+def written_digests(design):
+    """The `<digest>` of every `<motor>` the design document writes, or `None` if it does not parse."""
+    data = design.read_bytes()
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(data))
+        names = [n for n in archive.namelist() if n.lower().endswith(".ork")]
+        data = archive.read(names[0]) if names else b""
+    except zipfile.BadZipFile:
+        if data[:2] == b"\x1f\x8b":
+            data = gzip.decompress(data)
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return None
+    return [
+        (m.findtext("digest") or "").strip()
+        for m in root.iter("motor")
+        if (m.findtext("digest") or "").strip()
+    ]
+
+
+def flown(design):
+    """Per design: how many motors name a digest, and how many OpenRocket flies with that curve."""
+    written = written_digests(design)
+    entry = {"file": design.as_posix(), "sha256": hashlib.sha256(design.read_bytes()).hexdigest()}
+    if written is None:
+        return {**entry, "driver_error": "the design document is not well-formed XML"}
+    try:
+        rocket = automatic_radius.load(design.resolve()).getRocket()
+    except Exception as error:  # noqa: BLE001 - OpenRocket's refusal is the finding
+        first = (str(error).splitlines() or [type(error).__name__])[0]
+        return {**entry, "driver_error": first or type(error).__name__}
+    assigned = collections.Counter()
+    for fcid in rocket.getIds():
+        for placed in rocket.getFlightConfiguration(fcid).getAllMotors():
+            motor = placed.getMotor()
+            if motor is not None:
+                assigned[str(motor.getDigest())] += 1
+    named = collections.Counter(written)
+    return {
+        **entry,
+        "motors_naming_a_digest": sum(named.values()),
+        "flown_with_that_digest": sum((named & assigned).values()),
+        "digests_not_flown": sorted((named - assigned).elements()),
+    }
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit(f"usage: {Path(__file__).name} <output.json> [.ork file or directory]...")
@@ -130,15 +213,18 @@ def main():
     here = Path(__file__).resolve().parent
 
     automatic_radius.start()
-    import jpype
     from java.lang import System
     from info.openrocket.core.util import BuildProperties
 
     held = database()
+    # Sorted on everything, so that two motors alike but for a last bit sort the same every run.
     listed = sorted(
         (described(m) for s in held.getMotorSets() for m in s.getMotors()),
-        key=lambda m: (m["digest"], m["manufacturer"], m["designation"]),
+        key=lambda m: (m["digest"], json.dumps(m, sort_keys=True)),
     )
+    embedded_curves = embedded(designs)
+    bind(held)
+    readback = [flown(design) for design in designs]
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(
@@ -156,7 +242,8 @@ def main():
                 "jpype": jpype.__version__,
                 "designs": len(designs),
                 "database": listed,
-                "embedded": embedded(designs),
+                "embedded": embedded_curves,
+                "flown": readback,
             },
             indent=1,
             sort_keys=True,
