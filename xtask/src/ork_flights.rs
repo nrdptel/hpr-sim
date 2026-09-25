@@ -604,25 +604,27 @@ pub(crate) fn summarise(flights: &[Value], not_flown: &[Value]) -> Value {
 /// nose, in OpenRocket's calibres (so it moves the margin by as much, the other way).
 fn mass_and_cg(flights: &[Value]) -> Value {
     let (mut launch, mut clearance, mut cg) = (Vec::new(), Vec::new(), Vec::new());
-    let percent = |hpr: &Value, openrocket: &Value| {
+    let relative = |hpr: &Value, openrocket: &Value| {
         hpr.as_f64()
             .zip(openrocket.as_f64())
             .map(|(h, o)| 100.0 * (h - o) / o)
+            .filter(|p| p.is_finite())
     };
     for flight in flights.iter().filter(|f| f["aborted"] != true) {
         let at = &flight["at_rod_clearance"];
         let (hpr, openrocket) = (&at["hpr"], &at["openrocket"]);
-        launch.extend(percent(
+        launch.extend(relative(
             &flight["launch_mass_kg"]["hpr"],
             &flight["launch_mass_kg"]["openrocket"],
         ));
-        clearance.extend(percent(&hpr["mass_kg"], &openrocket["mass_kg"]));
+        clearance.extend(relative(&hpr["mass_kg"], &openrocket["mass_kg"]));
         cg.extend(
             hpr["cg_from_nose_m"]
                 .as_f64()
                 .zip(openrocket["cg_from_nose_m"].as_f64())
                 .zip(openrocket["reference_length_m"].as_f64())
-                .map(|((h, o), reference)| (h - o) / reference),
+                .map(|((h, o), reference)| (h - o) / reference)
+                .filter(|cal| cal.is_finite()),
         );
     }
     json!({
@@ -696,7 +698,9 @@ pub(crate) fn page(report: &Value) -> String {
          per stage. The explanation is on the [documentation site][site].\n\n\
          [m2-2d2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d2\n\
          [m2-2d1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d1\n\
+         [m2-2e1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e1\n\
          [adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25\n\
+         [adr-070]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-070-m22e-split-mass-and-centre-of-mass-first-then-the-corpus-2026-09-25\n\
          [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-against-openrockets\n\n",
     );
     out.push_str(&summary_lines(report));
@@ -870,6 +874,12 @@ fn summary_lines(report: &Value) -> String {
         }
     }
     let mass_and_cg = &summary["mass_and_cg"];
+    out.push_str(
+        "\nhpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision \
+         [ADR-070][adr-070]), over the flights not aborted: the masses in per cent of \
+         OpenRocket's, the centre of mass in OpenRocket's calibres, positive when hpr's is further \
+         aft, which shortens the margin by as much.\n\n",
+    );
     for (key, label, unit, digits) in [
         ("launch_mass_percent", "mass at launch", "%", 3),
         (
@@ -885,7 +895,11 @@ fn summary_lines(report: &Value) -> String {
             4,
         ),
     ] {
-        out.push_str(&line(label, &mass_and_cg[key], unit, digits));
+        out.push_str(&line(label, &mass_and_cg[key], unit, digits).replacen(
+            " scored,",
+            " compared,",
+            1,
+        ));
     }
     out
 }
@@ -1117,7 +1131,7 @@ mod tests {
                 "launch_mass_kg": { "openrocket": 2.0, "hpr": 2.02 },
                 "at_rod_clearance": {
                     "openrocket": { "mass_kg": 1.6, "cg_from_nose_m": 1.0, "reference_length_m": 0.1 },
-                    "hpr": { "mass_kg": 1.64, "cg_from_nose_m": 1.03, "reference_length_m": 0.1 },
+                    "hpr": { "mass_kg": 1.64, "cg_from_nose_m": 1.03, "reference_length_m": 0.2 },
                 },
             })
         };

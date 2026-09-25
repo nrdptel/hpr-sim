@@ -599,8 +599,8 @@
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met. Split: d1, d2.
     - [x] **M3.1d1 Snapshots of public designs.** Met, bars kept: `insta` snapshots of public files
       only (Loft's 7 demos and a synthetic one); private results to `corpus-out/`, as counts.
-    - [x] **M3.1d2 The cross-check.** Met (ADR-059), bars kept: 27 corpus and 17 OR example files
-      import with 0 errors; of 1,212 numbers, none is apart from both RocketSerializer and OR.
+    - [x] **M3.1d2 The cross-check.** Met (ADR-059), bars kept: every `.ork` (27, 17 OR examples)
+      imports with 0 errors; of the first record's 1,212 numbers none is apart from both oracles.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
   flies the OR examples and the corpus; the stored results inside the `.ork` files are used as a
@@ -643,7 +643,7 @@
     Split into e1 to e4 (ADR-070).
     - [x] **M2.2e1 Mass and CG in the flight report.** *Done when:* the report spreads launch
       mass, rod-clearance mass and CG against OR's on every flight not aborted, a test pinning the
-      arithmetic. *Result:* met: 21 each; mass within 0.21%, CG within 0.016 cal.
+      arithmetic. *Result:* met: 21 each; masses within 0.22%, CG within 0.016 cal.
     - [ ] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
       configuration OR can into `corpus-out/`; only counts committed.
     - [ ] **M2.2e3 hpr's flights of the corpus.** *Done when:* anonymised ids beside the public

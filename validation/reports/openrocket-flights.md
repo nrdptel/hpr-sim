@@ -4,7 +4,9 @@ Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against Op
 
 [m2-2d2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d2
 [m2-2d1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d1
+[m2-2e1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e1
 [adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25
+[adr-070]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-070-m22e-split-mass-and-centre-of-mass-first-then-the-corpus-2026-09-25
 [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-against-openrockets
 
 - configurations flown: 21 (36 the record holds are not flown by hpr); apogee more than 5% from OpenRocket's: 5
@@ -15,9 +17,12 @@ Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against Op
 - largest speed, a part's drag override not applied: 3 scored, median -9.55%, mean absolute 8.52%, from -12.33% to -3.69%
 - largest speed, no named cause: 18 scored, median +0.17%, mean absolute 0.39%, from -0.69% to +0.85%
 - margin at rod clearance, no named cause: 21 scored, median -0.0007 cal, mean absolute 0.0045 cal, from -0.0151 cal to +0.0037 cal
-- mass at launch: 21 scored, median +0.016%, mean absolute 0.039%, from +0.000% to +0.209%
-- mass at rod clearance: 21 scored, median +0.014%, mean absolute 0.037%, from -0.010% to +0.214%
-- centre of mass at rod clearance: 21 scored, median +0.0007 cal, mean absolute 0.0046 cal, from -0.0028 cal to +0.0159 cal
+
+hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR-070][adr-070]), over the flights not aborted: the masses in per cent of OpenRocket's, the centre of mass in OpenRocket's calibres, positive when hpr's is further aft, which shortens the margin by as much.
+
+- mass at launch: 21 compared, median +0.016%, mean absolute 0.039%, from +0.000% to +0.209%
+- mass at rod clearance: 21 compared, median +0.014%, mean absolute 0.037%, from -0.010% to +0.214%
+- centre of mass at rod clearance: 21 compared, median +0.0007 cal, mean absolute 0.0046 cal, from -0.0028 cal to +0.0159 cal
 
 | design | motors | apogee OR (m) | hpr (m) | Δ | max speed OR (m/s) | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | Δ (cal) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

@@ -54,7 +54,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-25: M2.2e1 Mass and CG in the flight report (ADR-070, M2.2e split e1 to e4): launch
-  mass within 0.21% and rod-clearance CG within 0.016 cal of OR's on all 21 flights.
+  mass within 0.21%, rod-clearance CG within 0.016 cal of OR's on 21; mass explains no miss.
 - 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
   cal; apogee −4.34% to −0.06% with no named cause; 5 over 5%, each an early chute or #165.
 - 2026-09-25: M2.2d1 OR's flights, its words' meanings (ADR-068): 56 calm flights, 1 aborted; 9 of

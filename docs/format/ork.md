@@ -1588,8 +1588,9 @@ OpenRocket's on ordinary hobby rockets.
 - The [stability margin](../glossary.md#stability-margin) as the rocket leaves the rod agrees
   within 0.016 [calibres](../glossary.md#calibre-caliber) on all 21.
 - The mass at launch agrees within 0.21%, and the
-  [centre of mass](../glossary.md#centre-of-gravity-cg) as the rocket leaves the rod within 0.016
-  calibres, on all 21 ([M2.2e1](../decisions-and-roadmap.md#m2-2e1), mass and centre of mass).
+  [centre of mass (CG)](../glossary.md#centre-of-gravity-cg) as the rocket leaves the rod within
+  0.016 calibres, on all 21 ([M2.2e1](../decisions-and-roadmap.md#m2-2e1), mass and centre of
+  mass).
 - On the 12 flights with no named cause, hpr's apogee is lower than OpenRocket's on every one, by
   0.06% to 4.34%.
 - On the six *Dual parachute deployment* flights, hpr's apogee is 0.63% to 4.34% low. The cause is
@@ -1659,8 +1660,21 @@ The rocket's mass and centre of mass, over the same 21 flights (hpr less OpenRoc
 | mass as the rocket leaves the rod | 21 | +0.014% | −0.010% to +0.214% |
 | centre of mass as the rocket leaves the rod | 21 | +0.0007 cal | −0.0028 to +0.0159 cal |
 
-A centre of mass further aft, in calibres, shortens the margin by as much. The largest mass
-difference, 0.21%, is about a twentieth of the largest apogee miss with no named cause (4.34%).
+A positive centre-of-mass difference means hpr's is further aft than OpenRocket's. That shortens
+the margin by the same number of calibres, so the flight at +0.0159 cal is also the one whose
+margin is 0.0151 cal short.
+
+- **Mass doesn't explain the apogee misses with no named cause.** On those 12 flights hpr's mass
+  is within 0.025% of OpenRocket's at launch and within 0.03% at rod clearance. On the largest
+  miss, *Dual parachute deployment* with a J570W (−4.34%), hpr is 0.01% *lighter* as it leaves
+  the rod, which would raise its apogee, not lower it.
+- **The largest mass differences are on the drag-override design.** The three *Base drag hack*
+  flights are 0.18% to 0.21% heavier at launch. Those flights already have a named cause.
+- **The largest centre-of-mass differences are on one design.** The six *Dual parachute
+  deployment* flights are +0.010 to +0.016 cal, and they account for almost all of those flights'
+  margin difference. Every other flight is within 0.003 cal. That design overrides a part's mass,
+  covering everything inside it, which hpr applies as OpenRocket does: so its launch masses match
+  exactly, and the matched mass says nothing about hpr's own mass model there.
 
 An early parachute can move only the apogee, which is why more flights count toward the largest
 speed than toward the apogee. The early-parachute group's median means little: on a rocket whose

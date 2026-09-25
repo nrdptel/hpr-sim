@@ -6432,5 +6432,7 @@ kept unchanged and is met only when the last is.
 
 **Consequences.** M2.2e1 adds no physics: its numbers are ones M2.2d2 already recorded, and a test
 pins the arithmetic. On the 21 public flights, launch mass is within 0.21% of OpenRocket's and the
-CG within 0.016 calibres: the mass difference is about a twentieth of the largest apogee miss
-with no named cause (4.34%).
+CG within 0.016 calibres. On the 12 flights with no named cause, mass is within 0.025% at launch
+and 0.03% at rod clearance, and on the largest miss (−4.34%) hpr is the lighter: mass does not
+explain those misses. The CG gap above 0.003 calibres is all on *Dual parachute deployment*,
+whose launch mass matches by an override covering its parts.
