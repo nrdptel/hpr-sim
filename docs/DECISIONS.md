@@ -74,6 +74,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-066 | Every curve hpr flies is integrated as OpenRocket integrates it | accepted |
 | ADR-067 | Curves come from OpenRocket's own database by digest, each held to its impulse | accepted |
 | ADR-068 | OpenRocket's flights of the public designs, and what its metric words mean | accepted |
+| ADR-069 | hpr's flights of the public designs against OpenRocket's | accepted |
 
 ---
 
@@ -6345,3 +6346,46 @@ time, Mach number and mass), and its speed there at the step past the rod, not a
 The motor's centre of mass (ADR-067) meets the margin there. Stored results in files written by
 other OpenRocket versions stay readable, but their summary words are withheld until another
 version's jar is pinned and measured.
+
+## ADR-069: hpr's flights of the public designs against OpenRocket's (2026-09-25)
+
+**Context.** M2.2d2 carries M2.2d's *done when*: the public designs that fly are in a report
+against OpenRocket (apogee, largest speed, stability margin), by the definitions ADR-068 measured.
+hpr flies 21 of the record's 57 powered configurations, in five of OpenRocket's examples; the
+motors of most come from OpenRocket's own database by digest (ADR-067), which lives under the
+gitignored `corpus-out/`, and the examples from the pinned jar. hpr flies no recovery device read
+from a `.ork` (ADR-057 reads them), and has no margin output (M1.10).
+
+**Decision.**
+
+1. **`cargo xtask ork-flights` flies them and writes the report.** Each configuration flies in its
+   recorded conditions: a vertical rod of the recorded length, the site's latitude, longitude and
+   height, hpr's standard atmosphere and calm air. `validation/reports/openrocket-flights.{md,json}`
+   are committed. `--check` flies them again and compares, where the jar and the database record are fetched; in CI,
+   tests hold every reference value to the record, every outcome to `compare`, the summary and the
+   page to the flights, and every powered configuration of the record to a flight or a named reason.
+2. **Each metric is taken by ADR-068's definition.** Apogee: the largest height of hpr's centre of
+   mass, at its apogee event. Largest speed: the centre of mass's, sampled at each step's end and
+   three points inside it from the dense output. Margin: at the recorded rod-clearance step's time
+   and Mach number, hpr's centre of pressure with the air along the axis, less its centre of mass
+   at that time, over its reference diameter. hpr's mass and centre of mass at that time are its
+   own, reported beside OpenRocket's.
+3. **Design checks are recorded, not enforced.** OpenRocket flies a design whatever hpr's checks
+   find, so hpr flies it too and the report lists the errors its checks found: on two examples, an
+   inner part 0.46 mm wider than the room for it, and a 29 mm motor in a 28.956 mm mount.
+4. **No recovery is flown.** A reference whose parachute opened before its apogee (6 of the 21, plus
+   2 with a drag override) is marked with how long before, and summarised apart. Flying a `.ork`'s
+   recovery is later work.
+5. **A difference is summarised under its named cause, and each apogee off by more than 5% needs
+   one** (M2.2's parent bar, applied here). Two causes are named: a reference parachute open before
+   apogee, which puts OpenRocket's apogee lower; and a part whose drag OpenRocket is told is zero,
+   which hpr reads (L63) but cannot apply (#165). For the second, the report flies the same
+   configuration again with the overridden parts removed, which sizes it.
+
+**Consequences.** Measured on 2026-09-25: the margin at rod clearance is within 0.015 calibres on
+all 21. With no named cause, the apogee is −4.32% to +0.21% (12 flights, median −1.37%) and the
+largest speed −0.69% to +0.85% (18). *Base drag hack (short-wide)*, whose aft transition is set to
+no drag, reads −15.31% to −19.03% in apogee and −3.69% to −12.33% in speed. With the transition
+removed, its C11-5 flight reads −0.20% and +0.04%. Five apogees are more than 5% off, each with a
+named cause: those three, and two flights whose reference parachute opened 0.57 s and 0.58 s
+before apogee (+13.85%, +12.23%). M2.2d is met; M2.2e carries the corpus.

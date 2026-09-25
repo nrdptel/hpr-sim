@@ -1489,11 +1489,8 @@ stored result's provenance or physical correctness.
 
 This section records what OpenRocket 24.12 means by each of the ten summary figures on
 `<flightdata>` (the *summary words*, such as `maxvelocity`), measured on flights OpenRocket ran
-itself. **hpr has not been compared with these flights yet.** That is the next increment,
-[M2.2d2](../decisions-and-roadmap.md#m2-2d2) (hpr's own flights of the same configurations). It
-will cover only the configurations hpr can fly, and hpr does not yet compute a [stability
-margin](../glossary.md#stability-margin) of its own ([M1.10](../decisions-and-roadmap.md#m1-10),
-the flight outputs).
+itself. hpr's own flights of the same configurations are compared with them in the next
+section, [hpr's flights against OpenRocket's](#hprs-flights-against-openrockets).
 
 A word names a quantity, but not how it was taken. `deploymentvelocity` could be the speed at the
 first parachute or at the last. `timetoapogee` could be the apogee event's time or the time of the
@@ -1574,6 +1571,78 @@ the flights disagree about what happened, and the comparison fails. Every figure
 is withheld. The test
 [`metric_for_missing_event_is_withheld_not_scored`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-validate/src/tests.rs)
 checks all three.
+
+### hpr's flights against OpenRocket's
+
+This section compares hpr's flights with OpenRocket 24.12's on the 21 configurations of its
+examples that hpr can fly, in five of the examples. It is for judging how far hpr's whole flight
+agrees with OpenRocket's on ordinary hobby rockets. On the 12 flights without a named cause, the
+apogees are within 4.32%, and all 21 margins are within 0.015 calibres. Two causes are named and
+not yet fixed, and they explain every apogee more than 5% off. The flights are calm and vertical,
+and none goes faster than Mach 1.2.
+
+**How they were flown.** `cargo xtask ork-flights` flies every configuration of the record in the
+section above that hpr can fly, in the conditions OpenRocket flew: a vertical launch rod of the
+recorded length, the recorded site, standard air and no wind. Each figure is taken the way
+OpenRocket takes it, by the definitions above:
+
+- the **apogee** is the highest the rocket gets;
+- the **largest speed** is the highest speed over the flight;
+- the **[stability margin](../glossary.md#stability-margin) at rod clearance** is taken at the step
+  OpenRocket recorded, at its time and Mach number. It is the distance from the centre of mass aft
+  to the [centre of pressure](../glossary.md#centre-of-pressure-cp), in body diameters (calibres).
+
+OpenRocket flies a design even when hpr's design checks object to it, so hpr does too. The report
+lists what the checks found: on two examples, an inner part 0.46 mm wider than the room for it,
+and a 29 mm motor in a 28.956 mm mount.
+
+The other 36 configurations that OpenRocket flew are listed in the report with the reason hpr
+doesn't fly them yet: clustered motors (10), an airframe hpr can't read exactly as written (8),
+more than one stage (6), a motor lit in flight (6), a motor inside a part hpr doesn't read, such as
+a pod (3), and a motor with no thrust curve (3).
+
+**Results** (hpr less OpenRocket; the full table is the committed
+[report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-flights.md)):
+
+| metric | named cause | flights | median | range |
+|---|---|---:|---:|---|
+| apogee | none | 12 | −1.37% | −4.32% to +0.21% |
+| apogee | OpenRocket's parachute opened before apogee | 6 | +0.05% | −0.53% to +13.85% |
+| apogee | a part's drag override hpr ignores | 3 | −16.43% | −19.03% to −15.31% |
+| largest speed | none | 18 | +0.17% | −0.69% to +0.85% |
+| largest speed | a part's drag override hpr ignores | 3 | −9.55% | −12.33% to −3.69% |
+| margin at rod clearance | none | 21 | −0.001 cal | −0.015 to +0.004 cal |
+
+**The two named causes.**
+
+- **hpr flies no parachute from a `.ork` yet.** It reads the recovery devices but doesn't deploy
+  them. When a motor's delay is short, OpenRocket's parachute opens while the rocket is still
+  climbing, and stops it lower. On the *A simple model rocket* example with a C6-3, the parachute
+  opens 0.57 s before apogee. OpenRocket's apogee is 280.2 m and hpr's, with no parachute, is
+  319.0 m: +13.85%. The same rocket on a C6-7, whose parachute opens after apogee, reads −1.03%.
+- **hpr ignores a part's drag override** ([#165](https://github.com/nrdptel/hpr-sim/issues/165)).
+  The *Base drag hack (short-wide)* example ends in a transition that is set to have no drag at
+  all. hpr reads that setting but can't apply it yet, so it charges the transition the drag of its
+  shape. The report flies each of these configurations again with the transition removed. On the
+  C11-5, whose parachute opens after apogee, that moves the apogee from −16.43% to −0.20%, and the
+  largest speed from −3.69% to +0.04%.
+
+**The margin, part by part.** The report also lists the parts of each margin at rod clearance:
+the mass, the centre of mass, the centre of pressure and the reference diameter. The reference
+diameter and the centre of pressure agree to the report's 0.1 mm. hpr's centre of mass is up to
+0.9 mm aft of OpenRocket's on the *Dual parachute deployment* example. That is within the 5 mm by
+which OpenRocket places a database motor's centre of mass away from its case's middle, where hpr
+puts it ([ADR-067][adr-067]).
+
+**What it leaves out.** Every flight is calm and vertical, with no wind and no recovery. The
+fastest reaches Mach 1.14 (the J570W), so nothing here checks hpr faster than sound. The largest
+gap with no named cause is the *Dual parachute deployment* example on a J570W: −4.32% in apogee
+with its largest speed −0.69%. hpr's apogee is lower than OpenRocket's on all six of that
+example's motors, by 0.38% to 4.32%, and the cause is not traced yet. hpr's Earth is the WGS 84
+ellipsoid with its gravity and rotation. OpenRocket's run records a flat Earth. The comparison
+keeps each program's own model. The decision is [ADR-069][adr-069].
+
+[adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25
 
 ### Stored simulations in the reference library
 

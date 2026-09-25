@@ -32,6 +32,7 @@ mod examples;
 mod layering;
 mod ork;
 mod ork_extensions;
+mod ork_flights;
 mod ork_geometry;
 mod ork_mass;
 mod ork_motors;
@@ -60,6 +61,7 @@ Commands:
 {SITE}
 {EXAMPLES}
 {ORK}
+{ORK_FLIGHTS}
   help                     Print this message.";
 
 fn usage() -> String {
@@ -71,6 +73,7 @@ fn usage() -> String {
         .replace("{SITE}", site::USAGE)
         .replace("{EXAMPLES}", examples::USAGE)
         .replace("{ORK}", ork::USAGE)
+        .replace("{ORK_FLIGHTS}", ork_flights::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -84,6 +87,7 @@ fn main() -> ExitCode {
         Some("site") => site::run(&args.collect::<Vec<_>>()),
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
         Some("ork") => ork::run(&args.collect::<Vec<_>>()),
+        Some("ork-flights") => ork_flights::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())

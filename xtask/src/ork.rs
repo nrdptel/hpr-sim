@@ -1151,7 +1151,7 @@ fn collect(dir: &Path, files: &mut Vec<Case>, excluded: Option<&Path>) -> Result
 /// The example designs inside the OpenRocket jar. The jar is a zip, and its
 /// `datafiles/examples/*.ork` entries are designs OpenRocket ships; reading them is not reading
 /// its source (CLAUDE.md rule 3).
-fn examples_in_jar(jar: &Path) -> Result<Vec<Case>, String> {
+pub(crate) fn examples_in_jar(jar: &Path) -> Result<Vec<Case>, String> {
     let bytes = fs::read(jar).map_err(|error| format!("{}: {error}", jar.display()))?;
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))
         .map_err(|error| format!("{}: {error}", jar.display()))?;
@@ -1174,7 +1174,7 @@ fn examples_in_jar(jar: &Path) -> Result<Vec<Case>, String> {
     Ok(examples)
 }
 
-fn root() -> Result<PathBuf, String> {
+pub(crate) fn root() -> Result<PathBuf, String> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     manifest
         .parent()
