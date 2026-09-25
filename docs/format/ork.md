@@ -1600,7 +1600,8 @@ OpenRocket's on ordinary hobby rockets.
   more than 5% off, and each has a named cause, sized
   ([M2.2e4](../decisions-and-roadmap.md#m2-2e4), sizing the causes). OpenRocket flies each of
   those flights again with the causes taken out. Against every such flight, four of the five
-  come within 5%. The fifth, the *Base drag hack* on an E12-4, stays 7.80% high like for like,
+  come within 5%. The fifth, the *Base drag hack* on an E12-4, stays 7.80% high like for like
+  (the part OpenRocket is told has no drag removed from both programs),
   and all three of that design's flights are left reading high, which the causes don't
   explain. There is a lead for that remainder
   ([#177](https://github.com/nrdptel/hpr-sim/issues/177), a very blunt nose's drag), not an
@@ -1708,8 +1709,9 @@ same 5% of hpr's.
   On the 41 whose parachute opens at or after apogee, the flight with nothing deployed reaches
   exactly the same apogee, to the last bit: nothing else differs between the two runs. On 14 of
   the 15 whose parachute opens before apogee, the flight with nothing deployed climbs higher. The
-  15th opens only 0.10 s early, and its two apogees differ by 1 mm, less than the 3 mm the
-  deployment alone can shift the highest of rows 0.05 s apart.
+  15th opens only 0.10 s early, and its two apogees differ by 1 mm. OpenRocket records that
+  flight every 0.05 s near the top, so its highest recorded point can move by up to 3 mm with
+  timing alone, and 1 mm is within that.
 - **hpr ignores a part set to no drag**
   ([#165](https://github.com/nrdptel/hpr-sim/issues/165), the drag override not applied). The
   *Base drag hack (short-wide)* example is a short, wide rocket with four fins. Behind it sits a
@@ -1732,7 +1734,8 @@ same 5% of hpr's.
   ways, so each hid part of the other: holding the parachute alone moves hpr further below. With
   both causes out, the C11-5 and D12-3 are within 5% by both measures. The E12-4 is within 5%
   with the setting cleared only because the cone costs hpr more apogee than it costs OpenRocket:
-  84.0 m against 71.1 m (16.3 m against 16.2 m on the C11-5, 50.0 m against 45.7 m on the D12-3).
+  removing it raises hpr's apogee by 84.0 m, and OpenRocket's (setting cleared) by only 71.1 m
+  (16.3 m against 16.2 m on the C11-5, 50.0 m against 45.7 m on the D12-3).
   With the cone removed from both programs it reads +7.80%, so it stays more than 5% off.
 
 **What the causes leave.** On the two C6-3 flights, what is left is −0.16% and −1.07%, like the
@@ -1753,7 +1756,8 @@ sized in apogee, and nothing here measures which program is right.
   three diameters long read there, and its scaling to a short nose keeps that zero. The aero page
   lists this among the [drag limits](../physics/aero.md#drag-limits) (stubby noses).
 - **The base while the motor burns.** hpr takes the motor's area off the base drag while it
-  burns, and OpenRocket 24.12 doesn't: 0.1100 against 0.1213 at Mach 0.1 on this rocket. That
+  burns, and OpenRocket 24.12 doesn't: at Mach 0.1 on this rocket, hpr's base drag coefficient
+  is 0.1100 and OpenRocket's 0.1213, on the same 48.7 cm². That
   matters more for longer burns.
 
 [#177](https://github.com/nrdptel/hpr-sim/issues/177) (a very blunt nose's drag below Mach 0.8)

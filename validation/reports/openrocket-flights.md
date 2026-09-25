@@ -17,7 +17,7 @@ Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against Op
 - largest speed, a part's drag override not applied: 3 scored, median -9.55%, mean absolute 8.52%, from -12.33% to -3.69%
 - largest speed, no named cause: 18 scored, median +0.17%, mean absolute 0.39%, from -0.69% to +0.85%
 - margin at rod clearance, no named cause: 21 scored, median -0.0007 cal, mean absolute 0.0045 cal, from -0.0151 cal to +0.0037 cal
-- apogee against OpenRocket's own flight with the named causes removed, over the flights with a named cause: 9 scored, median -0.16%, mean absolute 1.47%, from -1.07% to +4.79%
+- apogee against OpenRocket's own flight with the named causes removed, over the flights with a named cause: 9 scored, median -0.16%, mean absolute 1.94%, from -1.07% to +7.80%
 - apogees more than 5% off: 5, 5 with their named causes sized; within 5% of every flight of OpenRocket's without the causes: 4 of 5
 
 hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR-070][adr-070]), over the flights not aborted: the masses in per cent of OpenRocket's, the centre of mass in OpenRocket's calibres, positive when hpr's is further aft, which shortens the margin by as much.

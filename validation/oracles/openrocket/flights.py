@@ -349,6 +349,7 @@ def design(path, scratch):
 
             entry["undeployed"] = {
                 "aborted": again.get("aborted"),
+                "refused": again.get("refused"),
                 "apogee_time_s": next(
                     (e["time_s"] for e in found if e["type"] == "APOGEE"), None
                 ),

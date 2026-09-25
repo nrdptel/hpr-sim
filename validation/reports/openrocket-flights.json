@@ -1025,7 +1025,7 @@
           "openrocket_m": 208.4396177367668,
           "relative_percent": 4.764725772863415
         },
-        "remaining_percent": 3.5063997972582293,
+        "remaining_percent": 4.764725772863415,
         "within_5_percent": true
       },
       "at_rod_clearance": {
@@ -1156,7 +1156,7 @@
           "openrocket_m": 315.25701263830786,
           "relative_percent": 7.80041664097238
         },
-        "remaining_percent": 4.7876798494731085,
+        "remaining_percent": 7.80041664097238,
         "within_5_percent": false
       },
       "at_rod_clearance": {
@@ -2238,8 +2238,8 @@
       "over_5_percent_within_5_percent_after": 4,
       "remaining_percent": {
         "count": 9,
-        "max": 4.7876798494731085,
-        "mean_absolute": 1.468421041852083,
+        "max": 7.80041664097238,
+        "mean_absolute": 1.9429835715303563,
         "median": -0.16258618846285092,
         "min": -1.0747873967996686
       }
