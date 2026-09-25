@@ -6235,8 +6235,9 @@ curve it flies.
    supplied curve, the survey finds the same design (by SHA-256) and configuration id in the
    record, and requires OpenRocket's placed digests to include every supplied one. They do in all
    67 such configurations (67 motors), and OpenRocket opens every design they are in. A mismatch,
-   or a design missing from the record, fails the survey; a configuration in a design OpenRocket
-   does not open is counted apart.
+   a configuration id OpenRocket lacks, a design missing from the record or one the oracle failed
+   on fails the survey; a configuration in a design OpenRocket does not open is counted apart and
+   printed. Configuration ids are compared in lowercase, as OpenRocket keys them.
 6. **Each configuration the bundled catalog left without a curve is followed.** The survey reads
    every design twice, with and without the supply, and counts what became of the 162:
    - **66 fly.** With the 2 that already did, 68 of 170 configurations fly, in 16 designs, and

@@ -102,6 +102,9 @@ impl Held {
     }
 }
 
+/// The digests OpenRocket places in each configuration of a design, by lowercase configuration id.
+type Placed = BTreeMap<String, Vec<String>>;
+
 /// A database motor, built, before it is supplied: its samples and envelope, to compare a repeat
 /// of its digest with, its name, and where OpenRocket puts its centre of mass.
 #[derive(Debug)]
@@ -141,9 +144,10 @@ pub(crate) struct Supply {
     embedded_record: BTreeMap<String, Result<Vec<f64>, String>>,
     embedded_seen: BTreeSet<String>,
     embedded_held: Held,
-    /// What OpenRocket places in each configuration, by the design's SHA-256: `None` for a design
-    /// it does not open.
-    placed: BTreeMap<String, Option<BTreeMap<String, Vec<String>>>>,
+    /// What OpenRocket places in each configuration, by the design's SHA-256 and the lowercase
+    /// configuration id: `Ok(None)` for a design it does not open, `Err` for an entry the oracle
+    /// could not complete.
+    placed: BTreeMap<String, Result<Option<Placed>, String>>,
     /// Configurations flown with a supplied curve: those whose supplied curves OpenRocket places
     /// too, the motors in them, and those in designs OpenRocket does not open.
     confirmed: [usize; 2],
@@ -328,21 +332,31 @@ impl Supply {
         }
         for design in record["flown"].as_array().into_iter().flatten() {
             let sha = design["sha256"].as_str().unwrap_or_default().to_owned();
-            let configurations = design["configurations"].as_object().map(|configurations| {
-                configurations
-                    .iter()
-                    .map(|(id, digests)| {
-                        let digests = digests
-                            .as_array()
-                            .into_iter()
-                            .flatten()
-                            .filter_map(|d| d.as_str().map(str::to_owned))
-                            .collect();
-                        (id.clone(), digests)
-                    })
-                    .collect()
-            });
-            supply.placed.insert(sha, configurations);
+            let entry = match (
+                design["opens"].as_bool(),
+                design["configurations"].as_object(),
+            ) {
+                (Some(false), _) => Ok(None),
+                (Some(true), Some(configurations)) => Ok(Some(
+                    configurations
+                        .iter()
+                        .map(|(id, digests)| {
+                            let digests = digests
+                                .as_array()
+                                .into_iter()
+                                .flatten()
+                                .filter_map(|d| d.as_str().map(str::to_owned))
+                                .collect();
+                            (id.to_ascii_lowercase(), digests)
+                        })
+                        .collect(),
+                )),
+                _ => Err(design["driver_error"]
+                    .as_str()
+                    .unwrap_or("an entry with no configurations")
+                    .to_owned()),
+            };
+            supply.placed.insert(sha, entry);
         }
         supply
     }
@@ -469,13 +483,32 @@ impl Supply {
                     ));
                     continue;
                 }
-                Some(None) => {
+                Some(Err(error)) => {
+                    self.problems.push(format!(
+                        "design {short} flies supplied curves, and the oracle failed on it: {error}"
+                    ));
+                    continue;
+                }
+                Some(Ok(None)) => {
                     self.unopened += 1;
                     continue;
                 }
-                Some(Some(configurations)) => configurations.get(id.as_str()),
+                Some(Ok(Some(configurations))) => {
+                    // OpenRocket keys a configuration by a lowercase UUID, and re-keys an id that
+                    // is not one.
+                    match configurations.get(&id.to_ascii_lowercase()) {
+                        Some(placed) => placed,
+                        None => {
+                            self.problems.push(format!(
+                                "design {short}: OpenRocket has no configuration `{id}`, so its \
+                                 supplied curves cannot be checked"
+                            ));
+                            continue;
+                        }
+                    }
+                }
             };
-            let mut left: Vec<&str> = placed.into_iter().flatten().map(String::as_str).collect();
+            let mut left: Vec<&str> = placed.iter().map(String::as_str).collect();
             let missing = digests
                 .iter()
                 .filter(|digest| match left.iter().position(|d| d == *digest) {
@@ -897,20 +930,32 @@ mod tests {
             supply.follow(xml, &bare, &supplied);
             supply
         };
-        let good = checked(json!({ "sha256": sha, "configurations": { "c1": ["aa"] } }));
+        let opened = |configurations: Value| json!({ "sha256": sha, "opens": true, "configurations": configurations });
+        let good = checked(opened(json!({ "C1": ["aa"] })));
         assert_eq!((good.confirmed, good.unopened), ([1, 1], 0));
         assert_eq!(good.fates.get("flies"), Some(&1));
         assert!(good.failure().is_none(), "{:?}", good.failure());
 
-        let other = checked(json!({ "sha256": sha, "configurations": { "c1": ["bb"] } }));
+        let other = checked(opened(json!({ "c1": ["bb"] })));
         let failure = other.failure().expect("another curve placed");
         assert!(failure.contains("does not place 1 of the 1"), "{failure}");
+
+        let rekeyed = checked(opened(json!({ "c2": ["aa"] })));
+        let failure = rekeyed.failure().expect("no such configuration");
+        assert!(failure.contains("has no configuration `c1`"), "{failure}");
+
+        let crashed = checked(json!({ "sha256": sha, "driver_error": "a crash" }));
+        let failure = crashed.failure().expect("the oracle failed");
+        assert!(
+            failure.contains("the oracle failed on it: a crash"),
+            "{failure}"
+        );
 
         let refused = checked(json!({ "sha256": sha, "opens": false }));
         assert_eq!((refused.confirmed, refused.unopened), ([0, 0], 1));
         assert!(refused.failure().is_none());
 
-        let absent = checked(json!({ "sha256": "elsewhere", "configurations": {} }));
+        let absent = checked(json!({ "sha256": "elsewhere", "opens": true, "configurations": {} }));
         let failure = absent.failure().expect("not read back");
         assert!(failure.contains("is not read back"), "{failure}");
     }

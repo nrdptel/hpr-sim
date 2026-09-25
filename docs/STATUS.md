@@ -20,7 +20,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   is big. M2.2c2 (ADR-067): `motor_database.py … refs --jar` writes the record (run it before
   `cargo xtask ork`), and the survey supplies each solid curve by digest through
   `ork::design_with` and `SuppliedCurves`. 68 of 170 configurations now fly; 40 of the 91 eligible
-  stored runs are reproducible; OR places the same curves in all 67 supplied configurations.
+  stored runs are reproducible; OR places each supplied curve in all 67 such configurations.
   **Open for d:** a motor's CG and inertia are hpr's envelope model, not OR's (3 of the 31 flown
   supplied motors off by up to 5 mm); the 20 no-digest motors stay unflown by design.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest

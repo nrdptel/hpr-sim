@@ -1193,7 +1193,7 @@ curve by its digest, OpenRocket's fingerprint (a hash) of the curve's data, and 
 the curve in the motor database that ships inside its program. The validation survey supplies that
 database to hpr, so 68 of the 170 configurations fly instead of 2. Every curve involved matches
 OpenRocket's total impulse, and in every configuration hpr flies with a supplied curve, OpenRocket
-places that same curve. What still differs is where the motor's weight sits (below).
+places that curve too. What still differs is where the motor's weight sits (below).
 
 How it works:
 
@@ -1264,9 +1264,9 @@ curves can still be held back for another reason, so these counts differ from th
     has already parsed. That check proves the hand-off, not two independent readings.
 - **The curve OpenRocket flies.** The oracle opens each design in OpenRocket with the database
   loaded, and records the digests of the motors it places in each configuration. The survey fails
-  unless, in every configuration hpr flies with a supplied curve, OpenRocket places the same
-  curves. It does in all 67 such configurations (67 motors), and OpenRocket opens every design
-  they are in.
+  unless, in every configuration hpr flies with a supplied curve, OpenRocket places each supplied
+  curve too. It does in all 67 such configurations (67 motors), and OpenRocket opens every design
+  they are in, as the survey prints.
 - **What the survey doesn't supply:**
   - the 164 hybrid motors;
   - 6 digests that are each shared by two motors whose data differ (samples, case or masses), in

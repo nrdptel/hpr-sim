@@ -7,9 +7,10 @@ jar. hpr bundles only 32 curves, so without that database most of a design libra
 its sampled curve and its own integrals, so that `cargo xtask ork` can supply the curve a design's
 digest names and hold hpr's integration of each curve to OpenRocket's. It also hands every curve a
 design embeds (`thrustcurves/<digest>.rse`) to OpenRocket's own loader, as `motors.py` does for the
-bundled curves (M2.2c1). Last, it opens every design with that database bound, as the program
-does, and records the digests of the motors OpenRocket puts in each configuration, so that the
-survey can check that OpenRocket flies the very curves hpr is given for it.
+bundled curves (M2.2c1). Last, it opens every design's document with that database bound, as
+`mass.py` opens it (the XML alone, so not its embedded curves, which do not change a digest), and
+records the digests of the motors OpenRocket puts in each configuration, so that the survey can
+check that OpenRocket flies the very curves hpr is given for it.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names are the public API `javap` prints for the jar. The database's contents come from
