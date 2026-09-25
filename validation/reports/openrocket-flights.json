@@ -89,6 +89,14 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 112.86575760275885,
+          "relative_percent": -0.3233031003009927
+        },
+        "remaining_percent": -0.3233031003009927,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.23397498012974147,
@@ -176,6 +184,14 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 274.69734209204887,
+          "relative_percent": -0.16258617348862328
+        },
+        "remaining_percent": -0.16258617348862328,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.23813962951537834,
@@ -263,6 +279,14 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 274.69734213324966,
+          "relative_percent": -0.16258618846285092
+        },
+        "remaining_percent": -0.16258618846285092,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.23813962951537834,
@@ -516,6 +540,14 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 136.6085662721152,
+          "relative_percent": -0.7828071073969846
+        },
+        "remaining_percent": -0.7828071073969846,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.24941292131272014,
@@ -595,6 +627,14 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 322.35151005304897,
+          "relative_percent": -1.0747873967996686
+        },
+        "remaining_percent": -1.0747873967996686,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.25705586914538825,
@@ -674,6 +714,14 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 322.3515067177913,
+          "relative_percent": -1.074786373255293
+        },
+        "remaining_percent": -1.074786373255293,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.25705586914538825,
@@ -832,6 +880,23 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "drag_overrides_cleared_too": {
+          "openrocket_m": 81.14608706441268,
+          "relative_percent": 1.340853390232998
+        },
+        "parachutes_held": {
+          "openrocket_m": 98.79779534954748,
+          "relative_percent": -16.76521036434855
+        },
+        "parts_removed_from_both": {
+          "hpr_m": 98.50956520545384,
+          "openrocket_m": 97.38834245262626,
+          "relative_percent": 1.1512905185474194
+        },
+        "remaining_percent": 1.340853390232998,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.0838537843762186,
@@ -946,6 +1011,23 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "drag_overrides_cleared_too": {
+          "openrocket_m": 162.69087704766505,
+          "relative_percent": 3.5063997972582293
+        },
+        "parachutes_held": {
+          "openrocket_m": 212.62302412351616,
+          "relative_percent": -20.800924394341056
+        },
+        "parts_removed_from_both": {
+          "hpr_m": 218.3711939239285,
+          "openrocket_m": 208.4396177367668,
+          "relative_percent": 4.764725772863415
+        },
+        "remaining_percent": 4.764725772863415,
+        "within_5_percent": true
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.08637900047504789,
@@ -1060,6 +1142,23 @@
     },
     {
       "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "drag_overrides_cleared_too": {
+          "openrocket_m": 244.12149907498252,
+          "relative_percent": 4.7876798494731085
+        },
+        "parachutes_held": {
+          "openrocket_m": 321.7576167043844,
+          "relative_percent": -20.49628614403478
+        },
+        "parts_removed_from_both": {
+          "hpr_m": 339.8483731139788,
+          "openrocket_m": 315.25701263830786,
+          "relative_percent": 7.80041664097238
+        },
+        "remaining_percent": 7.80041664097238,
+        "within_5_percent": false
+      },
       "at_rod_clearance": {
         "hpr": {
           "cg_from_nose_m": 0.08761559897272121,
@@ -2133,6 +2232,18 @@
   },
   "summary": {
     "apogee_over_5_percent": 5,
+    "apogee_with_the_causes_removed": {
+      "over_5_percent": 5,
+      "over_5_percent_sized": 5,
+      "over_5_percent_within_5_percent_after": 4,
+      "remaining_percent": {
+        "count": 9,
+        "max": 7.80041664097238,
+        "mean_absolute": 1.9429835715303563,
+        "median": -0.16258618846285092,
+        "min": -1.0747873967996686
+      }
+    },
     "flown": 21,
     "mass_and_cg": {
       "launch_mass_percent": {

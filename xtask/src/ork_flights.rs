@@ -25,7 +25,7 @@
 //! only where both are fetched. What they write, [`REPORT_JSON`] and [`REPORT_MD`], is committed,
 //! and a test holds its reference values to the record and its outcomes to [`compare`] in CI.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -358,6 +358,11 @@ pub(crate) fn fly_design(
                 "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
             });
         }
+        if let Some(sized) =
+            causes_removed(flight, &entry, &overrides).map_err(|e| format!("{motors}: {e}"))?
+        {
+            entry["apogee_with_the_causes_removed"] = sized;
+        }
         out.flights.push(entry);
     }
     Ok(out)
@@ -516,6 +521,7 @@ fn design_name(file: &str) -> String {
 }
 
 /// A part of the design (not of its stored simulations) that states its own drag coefficient.
+#[derive(Clone)]
 pub(crate) struct DragOverride {
     /// The part's id.
     pub id: String,
@@ -772,6 +778,117 @@ fn early_chute(recorded: &Value) -> Result<Option<f64>, String> {
     }
 }
 
+/// OpenRocket's apogee with a flight's named causes taken out of its own flight, and hpr's apogee
+/// against it (M2.2e4, decision ADR-073), or `None` for an aborted flight, a flight of hpr's with
+/// no apogee (its outcome is scored already), or one with neither cause. `overrides` are the
+/// parts that state a drag coefficient hpr reads and does not apply.
+///
+/// - `parachutes_held`: the record's `undeployed` flight, the same one with nothing deployed. A
+///   parachute that opens before apogee lowers the apogee, and hpr flies none from a `.ork`.
+/// - `drag_overrides_cleared_too`, where a part states a drag coefficient: its
+///   `undeployed_without_drag_overrides` flight, with nothing deployed and every stated coefficient
+///   cleared, which is OpenRocket flying what hpr flies, since hpr applies none (#165).
+/// - `parts_removed_from_both`, where hpr has flown its probe without the parts set to no drag
+///   (`without_the_overridden_parts`): that probe's apogee against OpenRocket's
+///   `undeployed_without_parts_set_to_no_drag` flight, the same rocket with the same parts gone
+///   and nothing deployed.
+///
+/// Each is OpenRocket's apogee and hpr's difference in per cent of it, or why there is none (the
+/// oracle failed, or OpenRocket refused or aborted the flight). The flights with all the causes
+/// taken out are the second where there is one, else the first, and the third where there is one.
+/// `remaining_percent` is the largest of hpr's differences from them in size, what the named
+/// causes leave, since two differences can cancel in one of them; `within_5_percent` holds when
+/// each of them has a difference and every one is within 5%. The record must name the same parts
+/// hpr reads as the ones OpenRocket cleared or removed (a part with no id by count only), or the
+/// report stops.
+fn causes_removed(
+    recorded: &Value,
+    entry: &Value,
+    overrides: &[DragOverride],
+) -> Result<Option<Value>, String> {
+    let early = !entry["deployed_before_apogee_s"].is_null();
+    if entry["aborted"] == true || (!early && overrides.is_empty()) {
+        return Ok(None);
+    }
+    let Some(hpr) = entry["metrics"]["apogee_m"]["hpr"].as_f64() else {
+        return Ok(None);
+    };
+    // A part with no id in the file gets a new one in OpenRocket, so it is matched by count only.
+    let ids: BTreeSet<String> = overrides
+        .iter()
+        .filter(|o| !o.id.is_empty())
+        .map(|o| o.id.to_lowercase())
+        .collect();
+    let step = |key: &str, parts: Option<&str>, measured: f64| -> Result<Value, String> {
+        let held = &recorded[key];
+        if held.is_null() {
+            return Err(format!("the record has no {key} flight"));
+        }
+        if let Some(error) = held["driver_error"].as_str() {
+            return Ok(json!({ "why": format!("the oracle failed: {error}") }));
+        }
+        if let Some(verb) = parts {
+            let changed: BTreeSet<String> = held[verb]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_lowercase)
+                .collect();
+            if changed.len() != overrides.len() || !ids.is_subset(&changed) {
+                return Err(format!(
+                    "OpenRocket's {key} flight {verb} {} parts, hpr reads {}, and {} of hpr's \
+                     ids are not among them",
+                    changed.len(),
+                    overrides.len(),
+                    ids.difference(&changed).count()
+                ));
+            }
+        }
+        if !held["refused"].is_null() {
+            return Ok(json!({ "why": "OpenRocket refused it" }));
+        }
+        if held["aborted"] != false {
+            return Ok(json!({ "why": "OpenRocket aborted it" }));
+        }
+        let openrocket = held["max_altitude_m"]
+            .as_f64()
+            .filter(|m| m.is_finite() && *m > 0.0)
+            .ok_or_else(|| format!("the record's {key} flight has no apogee"))?;
+        Ok(json!({
+            "openrocket_m": openrocket,
+            "relative_percent": 100.0 * (measured - openrocket) / openrocket,
+        }))
+    };
+    let held = step("undeployed", None, hpr)?;
+    let mut last = held["relative_percent"].as_f64();
+    let mut sized = json!({ "parachutes_held": held });
+    if !overrides.is_empty() {
+        let too = step("undeployed_without_drag_overrides", Some("cleared"), hpr)?;
+        last = too["relative_percent"].as_f64();
+        sized["drag_overrides_cleared_too"] = too;
+    }
+    let mut left = vec![last];
+    if let Some(probe) = entry["without_the_overridden_parts"]["apogee_m"]["hpr"].as_f64() {
+        let key = "undeployed_without_parts_set_to_no_drag";
+        let mut both = step(key, Some("removed"), probe)?;
+        both["hpr_m"] = json!(probe);
+        left.push(both["relative_percent"].as_f64());
+        sized["parts_removed_from_both"] = both;
+    }
+    let remaining = left
+        .iter()
+        .flatten()
+        .copied()
+        .max_by(|a, b| a.abs().total_cmp(&b.abs()));
+    let agrees = left
+        .iter()
+        .all(|p| p.is_some_and(|p| p.abs() <= APOGEE_CAUSE_PERCENT));
+    sized["remaining_percent"] = json!(remaining);
+    sized["within_5_percent"] = json!(agrees);
+    Ok(Some(sized))
+}
+
 /// The reference tool.
 pub(crate) fn openrocket() -> Tool {
     Tool::OpenRocket {
@@ -858,7 +975,34 @@ pub(crate) fn summarise(flights: &[Value], not_flown: &[Value]) -> Value {
         "not_flown": not_flown.len(),
         "apogee_over_5_percent": over,
         "metrics": metrics,
+        "apogee_with_the_causes_removed": with_the_causes_removed(flights),
         "mass_and_cg": mass_and_cg(flights),
+    })
+}
+
+/// The spread of what the named causes leave of hpr's apogee difference, over the flights that
+/// have one (M2.2e4); and, of the flights more than 5% from OpenRocket's, how many have their
+/// causes sized (a difference from a flight without them) and how many come within 5% of every
+/// flight of OpenRocket's without them.
+fn with_the_causes_removed(flights: &[Value]) -> Value {
+    let (mut remaining, mut over, mut sized, mut within) = (Vec::new(), 0, 0, 0);
+    for flight in flights {
+        let removed = &flight["apogee_with_the_causes_removed"];
+        remaining.extend(removed["remaining_percent"].as_f64());
+        if flight["metrics"]["apogee_m"]["relative_percent"]
+            .as_f64()
+            .is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT)
+        {
+            over += 1;
+            sized += usize::from(removed["remaining_percent"].is_f64());
+            within += usize::from(removed["within_5_percent"] == true);
+        }
+    }
+    json!({
+        "remaining_percent": spread(&remaining),
+        "over_5_percent": over,
+        "over_5_percent_sized": sized,
+        "over_5_percent_within_5_percent_after": within,
     })
 }
 
@@ -1026,6 +1170,7 @@ pub(crate) fn page(report: &Value) -> String {
          away too, so it is a probe, not the override ([#165][i165]).\n\n\
          [i165]: https://github.com/nrdptel/hpr-sim/issues/165\n",
     );
+    out.push_str(&causes_table(report));
     out.push_str(
         "\nAt the rod-clearance step, the parts of the margin (m from the nose tip, and kg):\n\n",
     );
@@ -1091,6 +1236,90 @@ pub(crate) fn page(report: &Value) -> String {
     out
 }
 
+/// The table of each named cause's size: every flight with one, and OpenRocket's own flight flown
+/// again without it (M2.2e4, decision ADR-073).
+fn causes_table(report: &Value) -> String {
+    let empty = Vec::new();
+    let sized: Vec<&Value> = report["flights"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|f| f["apogee_with_the_causes_removed"].is_object())
+        .collect();
+    if sized.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from(
+        "\nThe named causes, sized ([M2.2e4][m2-2e4], decision [ADR-073][adr-073]). OpenRocket \
+         flew each flight with a named cause again without it. *Nothing deployed*: the same \
+         flight with no parachute opening. *Drag settings cleared too*: also with every part's \
+         stated drag coefficient cleared, so each part has the drag of its shape, as in hpr, \
+         which reads the setting but can't apply it yet. *The parts removed*: nothing deployed \
+         and the parts set to no drag taken off, in OpenRocket and in hpr alike, which also takes \
+         away their lift. Each Δ is hpr's apogee less that flight's, in per cent of it. *Within \
+         5% after*, for an apogee more than 5% off: whether every one of these flights with all \
+         its causes taken out is within 5% of hpr's.\n\n\
+         | design | motors | Δ apogee | chute early (s) | OR, nothing deployed (m) | Δ \
+         | OR, drag settings cleared too (m) | Δ | OR, the parts removed (m) \
+         | hpr, the parts removed (m) | Δ | within 5% after |\n\
+         |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n",
+    );
+    // A flight OpenRocket could not fly shows why instead of its apogee.
+    let apogee = |step: &Value| {
+        step["why"]
+            .as_str()
+            .map_or_else(|| fixed(&step["openrocket_m"], 1), str::to_owned)
+    };
+    let relative = |step: &Value| {
+        step["relative_percent"]
+            .as_f64()
+            .map_or_else(|| "—".to_owned(), |p| format!("{p:+.2}%"))
+    };
+    for flight in sized {
+        let removed = &flight["apogee_with_the_causes_removed"];
+        let (held, too) = (
+            &removed["parachutes_held"],
+            &removed["drag_overrides_cleared_too"],
+        );
+        let both = &removed["parts_removed_from_both"];
+        let over = flight["metrics"]["apogee_m"]["relative_percent"]
+            .as_f64()
+            .is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT);
+        let within = match (over, removed["within_5_percent"].as_bool()) {
+            (true, Some(true)) => "yes",
+            (true, _) => "no",
+            (false, _) => "—",
+        };
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {within} |\n",
+            flight["design"].as_str().unwrap_or_default(),
+            flight["motors"].as_str().unwrap_or_default(),
+            percent(&flight["metrics"]["apogee_m"]),
+            fixed(&flight["deployed_before_apogee_s"], 2),
+            apogee(held),
+            relative(held),
+            if too.is_null() {
+                "—".to_owned()
+            } else {
+                apogee(too)
+            },
+            relative(too),
+            if both.is_null() {
+                "—".to_owned()
+            } else {
+                apogee(both)
+            },
+            fixed(&both["hpr_m"], 1),
+            relative(both),
+        ));
+    }
+    out.push_str(
+        "\n[m2-2e4]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e4\n\
+         [adr-073]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-073-each-named-cause-sized-by-openrockets-own-flight-without-it-2026-09-25\n",
+    );
+    out
+}
+
 /// The summary, as lines for the terminal and the page.
 pub(crate) fn summary_lines(report: &Value) -> String {
     let summary = &report["summary"];
@@ -1145,6 +1374,24 @@ pub(crate) fn summary_lines(report: &Value) -> String {
         for (cause, spread) in groups {
             out.push_str(&line(&format!("{label}, {cause}"), spread, unit, digits));
         }
+    }
+    let sized = &summary["apogee_with_the_causes_removed"];
+    if sized.is_object() {
+        out.push_str(&line(
+            "apogee against OpenRocket's own flights with the named causes removed, over the \
+             flights with a named cause, each counting its largest difference from them",
+            &sized["remaining_percent"],
+            "%",
+            2,
+        ));
+        out.push_str(&format!(
+            "- apogees more than 5% off: {}, {} with their named causes sized; within 5% of every \
+             flight of OpenRocket's without the causes: {} of {}\n",
+            sized["over_5_percent"],
+            sized["over_5_percent_sized"],
+            sized["over_5_percent_within_5_percent_after"],
+            sized["over_5_percent"],
+        ));
     }
     let mass_and_cg = &summary["mass_and_cg"];
     out.push_str(
@@ -1394,6 +1641,284 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn every_named_cause_is_sized_by_openrockets_own_flight_without_it() {
+        // M2.2e4: each named cause is sized by OpenRocket's flight of the same configuration
+        // without it, which the record holds, and nothing else.
+        let (record, report) = committed();
+        let (mut sized, mut over, mut within) = (0, 0, 0);
+        for flight in report["flights"].as_array().unwrap() {
+            let overridden = !flight["drag_overrides_not_applied"].is_null();
+            let named = !flight["deployed_before_apogee_s"].is_null() || overridden;
+            let removed = &flight["apogee_with_the_causes_removed"];
+            let at = format!("{} {}", flight["design"], flight["motors"]);
+            if !named || flight["aborted"] == true {
+                assert!(removed.is_null(), "{at} is sized with no cause named");
+                continue;
+            }
+            sized += 1;
+            let file = flight["file"].as_str().unwrap();
+            let source = recorded(&record, file, flight["configuration"].as_str().unwrap());
+            let hpr = flight["metrics"]["apogee_m"]["hpr"].as_f64().unwrap();
+            let check = |step: &Value, key: &str, measured: f64| {
+                let openrocket = source[key]["max_altitude_m"].as_f64().unwrap();
+                assert_eq!(
+                    step["openrocket_m"].as_f64(),
+                    Some(openrocket),
+                    "{at} {key}"
+                );
+                let percent = 100.0 * (measured - openrocket) / openrocket;
+                let written = step["relative_percent"].as_f64().unwrap();
+                assert!((written - percent).abs() < 1e-9, "{at} {key}");
+                written
+            };
+            let mut last = check(&removed["parachutes_held"], "undeployed", hpr);
+            let too = &removed["drag_overrides_cleared_too"];
+            if overridden {
+                last = check(too, "undeployed_without_drag_overrides", hpr);
+            } else {
+                assert!(too.is_null(), "{at}");
+            }
+            let mut left = vec![last];
+            let probe = &flight["without_the_overridden_parts"]["apogee_m"]["hpr"];
+            let both = &removed["parts_removed_from_both"];
+            if let Some(probe) = probe.as_f64() {
+                assert_eq!(both["hpr_m"].as_f64(), Some(probe), "{at}");
+                let key = "undeployed_without_parts_set_to_no_drag";
+                left.push(check(both, key, probe));
+            } else {
+                assert!(both.is_null(), "{at}");
+            }
+            let agrees = left.iter().all(|p| p.abs() <= APOGEE_CAUSE_PERCENT);
+            let largest = left
+                .iter()
+                .copied()
+                .max_by(|a, b| a.abs().total_cmp(&b.abs()));
+            assert_eq!(removed["remaining_percent"].as_f64(), largest, "{at}");
+            assert_eq!(removed["within_5_percent"].as_bool(), Some(agrees), "{at}");
+            let percent = flight["metrics"]["apogee_m"]["relative_percent"].as_f64();
+            if percent.is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT) {
+                over += 1;
+                within += usize::from(agrees);
+            }
+        }
+        assert_eq!((sized, over, within), (9, 5, 4));
+        let summary = &report["summary"]["apogee_with_the_causes_removed"];
+        assert_eq!(summary["over_5_percent"], over);
+        assert_eq!(summary["over_5_percent_sized"], over);
+        assert_eq!(summary["over_5_percent_within_5_percent_after"], within);
+    }
+
+    #[test]
+    fn a_parachute_moves_openrockets_apogee_only_when_it_opens_before_it() {
+        // The early-chute cause, both ways, over every flight of the record. Where the first
+        // deployment is not before the apogee event, the flight with nothing deployed has the same
+        // apogee to the bit: nothing else differs between the two runs. Where it is before, the
+        // flight with nothing deployed climbs higher, or is within what the deployment event alone
+        // can move the peak of rows 0.05 s apart (g dt²/8, 3 mm).
+        let (record, _) = committed();
+        let sampling_m = 9.81 * 0.05 * 0.05 / 8.0;
+        let (mut lowered, mut within_sampling, mut late) = (0, 0, 0);
+        for design in record["designs"].as_array().unwrap() {
+            for flight in design["flights"].as_array().into_iter().flatten() {
+                if flight["has_motors"] != true
+                    || flight["aborted"] != false
+                    || flight["undeployed"]["aborted"] != false
+                {
+                    continue;
+                }
+                let at = format!("{} {}", design["file"], flight["name"]);
+                // The flight's apogee is its summary's, which is its altitude column's peak.
+                let deployed = flight["summary"]["max_altitude_m"].as_f64().unwrap();
+                assert_eq!(flight["series"]["max_altitude_m"].as_f64(), Some(deployed));
+                let held = flight["undeployed"]["max_altitude_m"].as_f64().unwrap();
+                if early_chute(flight).unwrap().is_some() {
+                    if held - deployed > sampling_m {
+                        lowered += 1;
+                    } else {
+                        assert!((held - deployed).abs() <= sampling_m, "{at}");
+                        within_sampling += 1;
+                    }
+                } else {
+                    late += 1;
+                    assert_eq!(deployed, held, "{at}: a late parachute moved the apogee");
+                }
+            }
+        }
+        assert_eq!((lowered, within_sampling, late), (14, 1, 41));
+    }
+
+    #[test]
+    fn a_cause_is_sized_against_the_flight_without_it() {
+        let part = "a1b2";
+        let recorded = json!({
+            "undeployed": { "aborted": false, "max_altitude_m": 200.0 },
+            "undeployed_without_drag_overrides": {
+                "aborted": false, "refused": null, "cleared": [part], "max_altitude_m": 160.0,
+            },
+            "undeployed_without_parts_set_to_no_drag": {
+                "aborted": false, "refused": null, "removed": [part], "max_altitude_m": 250.0,
+            },
+        });
+        let overrides = [DragOverride {
+            id: part.to_owned(),
+            name: "a transition".to_owned(),
+            zero: true,
+            removable: true,
+        }];
+        let entry = |early: Value, overridden: bool, probe: Option<f64>| {
+            let mut entry = json!({
+                "aborted": false,
+                "deployed_before_apogee_s": early,
+                "metrics": { "apogee_m": { "hpr": 168.0 } },
+            });
+            if overridden {
+                entry["drag_overrides_not_applied"] = json!(["a transition"]);
+            }
+            if let Some(probe) = probe {
+                entry["without_the_overridden_parts"] = json!({"apogee_m": {"hpr": probe}});
+            }
+            entry
+        };
+        let close = |value: &Value, expected: f64| {
+            assert!(
+                (value.as_f64().unwrap() - expected).abs() < 1e-12,
+                "{value}"
+            );
+        };
+        // An early parachute alone: held, 168 against 200, more than 5% off after.
+        let sized = causes_removed(&recorded, &entry(json!(1.5), false, None), &[])
+            .unwrap()
+            .unwrap();
+        close(&sized["parachutes_held"]["relative_percent"], -16.0);
+        close(&sized["remaining_percent"], -16.0);
+        assert_eq!(sized["within_5_percent"], false);
+        assert!(sized["drag_overrides_cleared_too"].is_null());
+        assert!(sized["parts_removed_from_both"].is_null());
+        // A drag override with no early parachute: 168 against 160, within 5%.
+        let sized = causes_removed(&recorded, &entry(Value::Null, true, None), &overrides)
+            .unwrap()
+            .unwrap();
+        close(
+            &sized["drag_overrides_cleared_too"]["relative_percent"],
+            5.0,
+        );
+        close(&sized["remaining_percent"], 5.0);
+        assert_eq!(sized["within_5_percent"], true);
+        // With the probe, 240 against 250 is within 5% too; 270 against 250 is not.
+        let sized = causes_removed(&recorded, &entry(json!(1.5), true, Some(240.0)), &overrides)
+            .unwrap()
+            .unwrap();
+        close(&sized["parts_removed_from_both"]["relative_percent"], -4.0);
+        close(&sized["remaining_percent"], 5.0);
+        assert_eq!(sized["within_5_percent"], true);
+        let sized = causes_removed(&recorded, &entry(json!(1.5), true, Some(270.0)), &overrides)
+            .unwrap()
+            .unwrap();
+        close(&sized["parts_removed_from_both"]["relative_percent"], 8.0);
+        close(&sized["remaining_percent"], 8.0);
+        assert_eq!(sized["within_5_percent"], false);
+        // A removed-part flight OpenRocket aborted leaves the cleared one, but not within.
+        let mut failed = recorded.clone();
+        failed["undeployed_without_parts_set_to_no_drag"]["aborted"] = json!(true);
+        let probed = entry(json!(1.5), true, Some(240.0));
+        let sized = causes_removed(&failed, &probed, &overrides)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            sized["parts_removed_from_both"]["why"],
+            "OpenRocket aborted it"
+        );
+        close(&sized["remaining_percent"], 5.0);
+        assert_eq!(sized["within_5_percent"], false);
+        // A part with no id is matched by count, as OpenRocket gives it a new one.
+        let mut unnamed = overrides.to_vec();
+        unnamed[0].id = String::new();
+        assert!(causes_removed(&recorded, &entry(Value::Null, true, None), &unnamed).is_ok());
+        unnamed.push(unnamed[0].clone());
+        assert!(causes_removed(&recorded, &entry(Value::Null, true, None), &unnamed).is_err());
+        let mut upper = overrides.clone();
+        upper[0].id = part.to_uppercase();
+        assert!(causes_removed(&recorded, &entry(Value::Null, true, None), &upper).is_ok());
+        // Neither cause, an aborted flight or hpr's flight with no apogee is not sized.
+        let none = |entry: &Value| causes_removed(&recorded, entry, &[]).unwrap().is_none();
+        assert!(none(&entry(Value::Null, false, None)));
+        let mut aborted = entry(json!(1.5), false, None);
+        aborted["aborted"] = json!(true);
+        assert!(none(&aborted));
+        let mut no_apogee = entry(json!(1.5), false, None);
+        no_apogee["metrics"]["apogee_m"]["hpr"] = Value::Null;
+        assert!(none(&no_apogee));
+        // A flight OpenRocket aborted, refused or failed has a reason and no difference.
+        for (key, value, why) in [
+            ("aborted", json!(true), "OpenRocket aborted it"),
+            ("refused", json!("no motor"), "OpenRocket refused it"),
+            ("driver_error", json!("boom"), "the oracle failed: boom"),
+        ] {
+            let mut failed = recorded.clone();
+            failed["undeployed_without_drag_overrides"][key] = value;
+            let sized = causes_removed(&failed, &entry(Value::Null, true, None), &overrides)
+                .unwrap()
+                .unwrap();
+            assert_eq!(sized["drag_overrides_cleared_too"]["why"], why);
+            assert!(sized["remaining_percent"].is_null());
+            assert_eq!(sized["within_5_percent"], false);
+        }
+        // OpenRocket must have changed exactly the parts hpr reads, and a flight must be there.
+        let mut other = recorded.clone();
+        other["undeployed_without_drag_overrides"]["cleared"] = json!(["c3d4"]);
+        assert!(causes_removed(&other, &entry(Value::Null, true, None), &overrides).is_err());
+        let mut other = recorded.clone();
+        other["undeployed_without_parts_set_to_no_drag"]["removed"] = json!([part, "c3d4"]);
+        let probed = entry(Value::Null, true, Some(240.0));
+        assert!(causes_removed(&other, &probed, &overrides).is_err());
+        let mut missing = recorded.clone();
+        missing["undeployed"]["max_altitude_m"] = Value::Null;
+        assert!(causes_removed(&missing, &entry(json!(1.5), false, None), &[]).is_err());
+        let mut missing = recorded.clone();
+        missing["undeployed_without_parts_set_to_no_drag"] = Value::Null;
+        assert!(causes_removed(&missing, &probed, &overrides).is_err());
+    }
+
+    #[test]
+    fn the_causes_summary_counts_only_flights_with_a_difference() {
+        let flight = |percent: f64, removed: Value| {
+            json!({
+                "metrics": { "apogee_m": { "relative_percent": percent } },
+                "apogee_with_the_causes_removed": removed,
+            })
+        };
+        let summary = with_the_causes_removed(&[
+            // Over 5%, sized and brought within.
+            flight(
+                -16.0,
+                json!({"remaining_percent": 1.0, "within_5_percent": true}),
+            ),
+            // Over 5%, sized and not.
+            flight(
+                12.0,
+                json!({"remaining_percent": 7.0, "within_5_percent": false}),
+            ),
+            // Over 5%, but OpenRocket's flights without the cause have only reasons.
+            flight(
+                9.0,
+                json!({"remaining_percent": null, "within_5_percent": false}),
+            ),
+            // Over 5% with no named cause.
+            flight(-6.0, Value::Null),
+            // Within 5%, sized.
+            flight(
+                -1.0,
+                json!({"remaining_percent": -2.0, "within_5_percent": true}),
+            ),
+        ]);
+        assert_eq!(summary["over_5_percent"], 4);
+        assert_eq!(summary["over_5_percent_sized"], 2);
+        assert_eq!(summary["over_5_percent_within_5_percent_after"], 1);
+        assert_eq!(summary["remaining_percent"]["count"], 3);
+        assert_eq!(summary["remaining_percent"]["max"], 7.0);
     }
 
     #[test]

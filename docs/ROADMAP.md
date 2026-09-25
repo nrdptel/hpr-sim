@@ -637,16 +637,16 @@
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
     Split into e1 to e5 (ADR-070, ADR-072).
-    - [x] **M2.2e1 Mass and CG in the flight report.** *Done when:* the report spreads launch
-      mass, rod-clearance mass and CG against OR's on every flight not aborted, a test pinning the
-      arithmetic. *Result:* met: 21 each; masses within 0.22%, CG within 0.016 cal.
+    - [x] **M2.2e1 Mass and CG in the flight report.** Met (ADR-070), bars kept: launch and
+      rod-clearance mass and CG against OR's, tested, on all 21; within 0.22% and 0.016 cal.
     - [x] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
       configuration OR can into `corpus-out/`; only counts committed. *Result:* met (ADR-071): the
       27 `.ork` designs' 88 of 89 flown, none aborted; OR loads no motor for the 89th.
     - [x] **M2.2e3 hpr's flights of the corpus.** Bar moved unchanged to e5 (ADR-072). *Done when:*
       `ork-flights --library` reports it by anonymised id, differences only, curves checked as OR's,
       a test holding its words and sums. *Result:* met: 17 flights, 4 of 12 private designs, 9 in all.
-    - [ ] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
+    - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
+      *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
     - [ ] [blocked] **M2.2e5 Twenty designs** (on M1.9, #173, #174, M1.13, #133). *Done when:*
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
       bar on the flights added. M1.9: 17 at most; 3 of #173's 1, #174's 5, 4 public the rest.
