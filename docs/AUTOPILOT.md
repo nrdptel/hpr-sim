@@ -110,6 +110,18 @@ In `/config`, make sure **Continue automatically at usage limit** is on.
   - its largest single context, and how many times it compacted.
 
   Use these lines to judge any change to the settings below.
+- `scripts/autopilot-usage.py` tracks the whole project over time. It covers every Claude Code
+  session run in this repository, both autopilot cycles and your interactive sessions, subagents
+  included. It reports:
+  - totals and cost per merged PR;
+  - a table by day, one by model, and the recent cycles.
+
+  `--days 7` narrows it, and `--summary` prints the one line that `scripts/autopilot-status.sh`
+  shows. Claude Code deletes its transcripts after 30 days, so each run folds them into
+  `.autopilot/usage-ledger.json`, which keeps the history. The run updates the ledger after every
+  cycle. The ledger stays on this Mac, because `.autopilot/` is gitignored. Checked against Claude
+  Code's own figure for cycle 78, it reads $20.03 against $20.18; the gap is calls that no
+  transcript records.
 
 ### Where the tokens went
 
