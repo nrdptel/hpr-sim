@@ -1673,13 +1673,13 @@ parachute opens only a little early, the parachute's cost and hpr's own miss can
   1.24 s), so for these two flights both causes are named, but how much each contributes is not
   measured.
 
-**The margin, part by part.** The report also lists the parts of each margin at rod clearance:
-the mass, the centre of mass, the centre of pressure and the reference diameter. The centre of
-pressure and the reference diameter agree within 0.1 mm, the report's resolution. The largest
-margin gaps are on the *Dual parachute deployment* example, −0.0097 to −0.0151 calibres: hpr's
-centre of mass is 0.6 to 0.9 mm aft of OpenRocket's there. Mass times that gap, from the report's JSON figures, stays between 1.1
-and 1.35 g·m on all six motors, while the rocket's mass runs from 1.49 to 2.18 kg. So the gap is
-probably in the airframe, not the motors, but it is not traced yet.
+**The margin, part by part.** The report also lists the parts of each margin at rod clearance: the
+mass, the centre of mass, the centre of pressure and the reference diameter. The centre of pressure
+and the reference diameter agree within 0.1 mm, the report's resolution. The largest margin gaps are
+on the *Dual parachute deployment* example, −0.0097 to −0.0151 calibres: hpr's centre of mass is 0.6
+to 0.9 mm aft of OpenRocket's there. Mass times that gap, from the report's JSON figures, stays
+between 1.1 and 1.35 g·m on all six motors, while the rocket's mass runs from 1.49 to 2.18 kg. So
+the gap is probably in the airframe, not the motors, but it is not traced yet.
 
 **What it leaves out.** Every flight is calm and vertical, with no wind and no recovery. One
 flight, the *Dual parachute deployment* example on a J570W, is briefly faster than sound
