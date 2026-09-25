@@ -83,7 +83,7 @@ fn rod_roll_kg_m2(
 #[cfg(test)]
 mod tests {
     use hpr_design::tree::{Layout, Part};
-    use hpr_io::ork;
+    use hpr_io::ork::{self, StoredReferenceExclusion, StoredSimulation};
     use serde_json::Value;
 
     fn record() -> Value {
@@ -135,6 +135,106 @@ mod tests {
 
     fn relative(ours: f64, theirs: f64) -> f64 {
         (ours - theirs) / theirs
+    }
+
+    fn stored(status: &str, results_xml: Option<&str>) -> StoredSimulation {
+        let xml = format!(
+            r#"<openrocket version="1.10"><rocket><name>R</name></rocket><simulations>
+              <simulation status="{status}"><name>stored</name>{results}</simulation>
+            </simulations></openrocket>"#,
+            results = results_xml.unwrap_or_default(),
+        );
+        ork::design(
+            &ork::read(xml.as_bytes())
+                .expect("stored fixture reads")
+                .value,
+        )
+        .value
+        .simulations
+        .into_iter()
+        .next()
+        .expect("stored simulation")
+    }
+
+    fn plausible_results_xml() -> &'static str {
+        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>"#
+    }
+
+    /// Stored results remain readable, but stale, missing and physically contradictory values are
+    /// not allowed to become validation references or inflate a reference census.
+    #[test]
+    fn stale_and_implausible_stored_results_are_excluded_from_gates_and_census() {
+        let cases = [
+            (stored("uptodate", Some(plausible_results_xml())), None),
+            (
+                stored("outdated", Some(plausible_results_xml())),
+                Some(StoredReferenceExclusion::Outdated),
+            ),
+            (
+                stored("notsimulated", Some(plausible_results_xml())),
+                Some(StoredReferenceExclusion::NotSimulated),
+            ),
+            (
+                stored("uptodate", None),
+                Some(StoredReferenceExclusion::MissingResults),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="-1" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::ImpossibleSummary),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="NaN" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"/>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::MissingSummary),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>2,10</datapoint><datapoint>1,20</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::InconsistentResults),
+            ),
+            (
+                stored(
+                    "uptodate",
+                    Some(
+                        r#"<flightdata maxaltitude="100" maxvelocity="80" maxacceleration="120" maxmach="0.23" timetoapogee="5" flighttime="20"><databranch name="Sustainer" types="Time,Altitude"><datapoint>1,-1</datapoint><datapoint>2,20</datapoint></databranch></flightdata>"#,
+                    ),
+                ),
+                Some(StoredReferenceExclusion::ImpossibleSummary),
+            ),
+        ];
+        let classified = cases
+            .iter()
+            .filter(|(simulation, exclusion)| simulation.reference_exclusion() == *exclusion)
+            .count();
+        assert_eq!(classified, cases.len());
+        assert_eq!(
+            cases
+                .iter()
+                .filter(|(_, exclusion)| exclusion.is_none())
+                .count(),
+            1
+        );
+        assert_eq!(
+            StoredReferenceExclusion::Outdated.reason(),
+            "status-outdated"
+        );
+        assert_eq!(
+            StoredReferenceExclusion::MissingResults.reason(),
+            "missing-results"
+        );
     }
 
     /// The override probes, each with how far hpr's centre of mass is from OpenRocket's, in metres

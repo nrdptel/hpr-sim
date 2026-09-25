@@ -641,7 +641,7 @@
       `x-openrocket` and mark designs reduced; the 2026-09-22 as-of rerun gave 61/74 mass,
       62/74 centre, 53/74 pitch and 57/74 roll within 1% (the last with OpenRocket's fin rule).
       The reproducible 2026-09-23 scratch-excluding survey gives 58/71, 59/71, 50/71 and 56/71.
-    - [ ] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live.
+    - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain readable, but stale statuses and structurally implausible results are excluded from reference gates and census denominators with stable reasons (ADR-065). *Result:* met: 137 of 174 stored runs are eligible; 37 are excluded by stable reason (17 external, 11 outdated, 7 not-simulated, 2 internally inconsistent).
   - [ ] **M2.2c The motors OpenRocket flies.** *Done when:* every configuration held back only for
     want of a curve flies or is named with its reason, each curve's impulse within 0.1% of OR's.
   - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly

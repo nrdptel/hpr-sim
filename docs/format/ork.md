@@ -1291,8 +1291,10 @@ How this was decided is in [ADR-056][adr-056].
 
 **In short.** A `.ork` keeps the simulations OpenRocket last ran on the design, and hpr reads them
 back: the launch conditions each was flown in, the ten summary figures, and each stage's time
-series with its events. They are OpenRocket's answers, kept as it wrote them, for comparing against
-later ([M2.2](../decisions-and-roadmap.md#m2-2) uses them as a second reference). The reference
+series with its events. Reading a result is not the same as accepting it as a reference: every
+parseable result stays visible, but only a current, structurally plausible run is eligible for a
+validation gate. Outdated, not-simulated, externally loaded and contradictory runs are retained and
+counted with an exclusion reason, not allowed to change a gate or its denominator. The reference
 library holds 174 of them, and every one is read.
 
 A stored simulation has three parts:
@@ -1351,6 +1353,16 @@ as JSON and read back.
 This is from the test `hpr_io::ork::tests::stored_results_are_read_back`: a stored run reads back
 through `design.simulations`, and a column comes out by its name.
 
+`hpr_io::ork::StoredSimulation::reference_exclusion` then classifies the stored run without
+altering it. An explicitly `uptodate` run must have finite, non-negative values, positive altitude,
+speed and time to apogee, and no contradiction between its summary and time series. A missing
+summary or flightdata, a backwards time series, and a time-series altitude above the stored apogee
+are excluded with stable reasons. The latter comparison allows 0.1% or 1 mm for the rounding used
+when OpenRocket writes its stored values. There is no arbitrary minimum apogee: a small but
+self-consistent flight is not rejected merely for being small. Geometry mismatch cannot be proved
+from a stored result alone, so it belongs to the comparison layer when that layer has an independent
+identity check.
+
 ```rust
 let simulation = &design.value.simulations[0];
 let results = simulation.results.as_ref().expect("results");
@@ -1361,11 +1373,12 @@ assert_eq!(branch.column("Altitude"), Some(vec![Some(0.0), Some(30.25)]));
 
 ### Stored simulations in the reference library
 
-`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-24:
 
 | quantity | count |
 |---|---|
 | stored simulations | 174, in 61 documents: 139 `uptodate`, 17 `external`, 11 `outdated`, 7 `notsimulated` |
+| reference eligibility | 137 eligible, 37 excluded: 17 external, 11 outdated, 7 not-simulated and 2 internally inconsistent; only eligible runs can enter a reference gate or denominator |
 | with launch conditions | 173; 129 state the wind's direction, and 135 launch into the wind |
 | atmosphere | 172 `isa`, 1 not written |
 | with a summary | 162 |

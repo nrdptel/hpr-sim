@@ -12,6 +12,9 @@ pub(crate) struct SimulationTally {
     documents: usize,
     simulations: usize,
     statuses: BTreeMap<String, usize>,
+    eligible: usize,
+    excluded: usize,
+    exclusions: BTreeMap<String, usize>,
     with_conditions: usize,
     wind_from_stated: usize,
     into_wind: usize,
@@ -32,6 +35,8 @@ impl SimulationTally {
             self.documents += 1;
         }
         let mut rows_here = 0usize;
+        let mut eligible_here = 0usize;
+        let mut exclusions_here: BTreeMap<String, usize> = BTreeMap::new();
         for simulation in simulations {
             self.simulations += 1;
             *self
@@ -43,6 +48,15 @@ impl SimulationTally {
                         .unwrap_or_else(|| "not written".to_owned()),
                 )
                 .or_default() += 1;
+            if let Some(exclusion) = design.value.reference_exclusion(simulation) {
+                self.excluded += 1;
+                let reason = exclusion.reason().to_owned();
+                *self.exclusions.entry(reason.clone()).or_default() += 1;
+                *exclusions_here.entry(reason).or_default() += 1;
+            } else {
+                self.eligible += 1;
+                eligible_here += 1;
+            }
             if let Some(conditions) = &simulation.conditions {
                 self.with_conditions += 1;
                 if conditions.wind_from_rad.is_some() {
@@ -84,6 +98,9 @@ impl SimulationTally {
         self.warnings += warnings;
         json!({
             "simulations": simulations.len(),
+            "eligible_references": eligible_here,
+            "excluded_references": simulations.len() - eligible_here,
+            "reference_exclusions": exclusions_here,
             "rows": rows_here,
             "warnings": warnings,
         })
@@ -95,6 +112,9 @@ impl SimulationTally {
             "documents_with_simulations": self.documents,
             "simulations": self.simulations,
             "statuses": self.statuses,
+            "eligible_references": self.eligible,
+            "excluded_references": self.excluded,
+            "reference_exclusions": self.exclusions,
             "with_conditions": self.with_conditions,
             "wind_direction_stated": self.wind_from_stated,
             "launched_into_the_wind": self.into_wind,
@@ -115,6 +135,12 @@ impl SimulationTally {
             self.simulations,
             self.documents,
             listed(&self.statuses, ", by status: ")
+        );
+        println!(
+            "  reference results: {} eligible, {} excluded{}",
+            self.eligible,
+            self.excluded,
+            listed(&self.exclusions, "; reasons: "),
         );
         println!(
             "  their conditions: {} stated, {} with the wind's direction, {} launched into the \

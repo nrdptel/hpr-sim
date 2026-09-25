@@ -59,8 +59,8 @@ pub use recovery::{
     SeparationEvent, StageSeparation, UnreadDevice,
 };
 pub use simulations::{
-    Atmosphere, LaunchConditions, StoredBranch, StoredEvent, StoredResults, StoredSimulation,
-    WindLevel,
+    Atmosphere, LaunchConditions, StoredBranch, StoredEvent, StoredReferenceExclusion,
+    StoredResults, StoredSimulation, WindLevel,
 };
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
@@ -122,6 +122,46 @@ impl Design {
     /// [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
     pub fn is_reduced(&self) -> bool {
         !self.extensions.x_openrocket.parts.is_empty()
+    }
+
+    /// Returns why `simulation` cannot be used as a reference for this design.
+    ///
+    /// In addition to the stored result's own status and numerical checks, this verifies that hpr
+    /// can reproduce the design named by the stored launch conditions. A stored result from a
+    /// reduced design or an unresolved motor configuration remains readable, but is not a
+    /// reference for hpr's simulation.
+    #[must_use]
+    pub fn reference_exclusion(
+        &self,
+        simulation: &StoredSimulation,
+    ) -> Option<StoredReferenceExclusion> {
+        if let Some(exclusion) = simulation.reference_exclusion() {
+            return Some(exclusion);
+        }
+        if self.is_reduced() {
+            return Some(StoredReferenceExclusion::ReducedDesign);
+        }
+        let Some(conditions) = simulation.conditions.as_ref() else {
+            return Some(StoredReferenceExclusion::MissingConfiguration);
+        };
+        let Some(configuration_id) = conditions.configuration.as_deref() else {
+            return Some(StoredReferenceExclusion::MissingConfiguration);
+        };
+        let Some(configuration) = self
+            .motors
+            .configurations
+            .iter()
+            .find(|configuration| configuration.id == configuration_id)
+        else {
+            return Some(StoredReferenceExclusion::UnknownConfiguration);
+        };
+        if configuration.left_out.is_some()
+            || self.rocket.configuration(configuration_id).is_none()
+            || self.rocket.assemble(configuration_id).is_err()
+        {
+            return Some(StoredReferenceExclusion::UnflyableConfiguration);
+        }
+        None
     }
 }
 

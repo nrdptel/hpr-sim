@@ -5,21 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M2.2b5 after M2.2b4 made clusters, fillets and unread parts explicit departures (ADR-064).
+  follow-on work is M2.2c after M2.2b5 made stored-result eligibility explicit (ADR-065).
 - **Order:** M1.8e16 waits on #108; then M2.2b5, c to e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
-  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b4; the site is published.
+  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b5; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-23; M2.2b4 complete, M2.2b5 next.
+- **Last updated:** 2026-09-24; M2.2b5 complete, M2.2c next.
 
 ## Handoff (overwrite each session)
 
-- **Resume M2.2b5** on this branch or a fresh `m2.2b5-stored-results` branch. M2.2b4 is
-  complete in ADR-064: a cluster is read as one tube and pinned, fillet mass is omitted and pinned
-  at 5 and 10 mm, and unread parts remain in `x-openrocket` with the design marked reduced. The
-  2026-09-23 scratch-excluding rerun found 75 files, read 73, laid out 72 and compared 71; mass 58/71,
-  centre 59/71, pitch 50/71 and roll 56/71 within 1% using OpenRocket's fin rule. `cargo xtask ork` and the
-  focused tests pass; next b5, c, d, e.
+- **Resume M2.2c** on this branch or a fresh `m2.2c-motors` branch. M2.2b5 is complete in ADR-065:
+  stored results remain readable, but only current and internally consistent runs are eligible. The
+  2026-09-24 survey found 174 stored runs: 137 eligible and 37 excluded (17 external, 11 outdated,
+  7 not-simulated, 2 internally inconsistent). Focused tests and `cargo xtask ork` pass; next c, d, e.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -53,6 +51,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-24: M2.2b5 Stored results as found (ADR-065): complete, finite and internally consistent
+  `uptodate` runs are eligible; 137 of 174 qualify and 37 are excluded by stable reason. All remain
+  readable; per-file survey detail stays private.
 - 2026-09-23: M2.2b4 corpus rerun after excluding generated `refs/scratch/`: 75 files, 73 read,
   72 laid out and 71 compared; mass 58/71, centre 59/71, pitch 50/71 and roll 56/71 within 1%
   using OpenRocket's fin rule. The 2026-09-22 ADR-064 measurements remain the prior as-of snapshot.
@@ -82,6 +83,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-065: M2.2b5 split; stored results stay readable, while stale statuses and contradictions are excluded from reference use with stable reasons.
 - ADR-063: M2.2b3 split; packed parts read and weighed as OpenRocket packs them, measured on probes.
 - ADR-064: M2.2b4 split; clusters and fillets remain measured departures, and unread parts stay
   visible in `x-openrocket` on reduced designs; full cluster flight behavior remains M1.9.
@@ -143,8 +145,5 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   past Mach 0.3. In wind, a slow rocket's drift rests on body lift: Juno III's apogee drift is 245
   m in hpr, 240 to 194 m over Galejs's `K` 1.0 to 1.5 (oracle corrections, #1196).
 - Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`. Recovery
-  (M1.7a, M1.7b): no canopy overshoot or opening-load factor (1.6 kN where Knacke's infinite-mass
-  `C_x` gives 5.1 kN), no added mass or airframe drag, the attitude freezes at deployment, his
-  filling time is stated only for 150 to 500 ft/s, streamer pleats are not modelled (+58% on
-  Kidwell's) and tumble reads +19%. Results are not bit-identical across the three OSes: the report
-  is pinned to six decimals, or 1e-7 relative for whole flights; no oracle runs in CI.
+  omits canopy overshoot, opening-load factor, added mass and airframe drag; attitude freezes at
+  deployment, streamer pleats are not modelled (+58% on Kidwell's), and tumble reads +19%. Reports are pinned to six decimals or 1e-7 relative; no oracle runs in CI.

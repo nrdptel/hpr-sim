@@ -70,6 +70,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-062 | Fins and rail buttons against OpenRocket; roll inertia explained | accepted |
 | ADR-063 | Packed parts read and weighed as OpenRocket packs them | accepted |
 | ADR-064 | Clusters, fillets and unread parts remain visible departures | accepted |
+| ADR-065 | Stored results are references only when current and structurally plausible | accepted |
 
 ---
 
@@ -5061,6 +5062,47 @@ in the tree, so a document built by hand can contradict itself; the round-trip g
 for documents that came from `parse`. The canonical writer means a `.ork` re-written by hpr will
 not be byte-identical to the one it was read from, which M3.2 will have to live with — matching
 OpenRocket's own layout was never achievable without reading its source.
+
+
+## ADR-065: Stored results are references only when current and structurally plausible (2026-09-24)
+
+**Context.** Loft lesson [L87][l87] says stored results were counted as references merely because a
+`.ork` carried them. That made an outdated or not-simulated run, a missing summary, or an impossible
+flight able to affect a validation gate and its denominator. ADR-057 correctly requires preserving
+the file's stored results, but it did not yet distinguish faithful read-back from reference eligibility.
+A stored result has no geometry fingerprint, so numerical disagreement cannot prove that the design
+changed; the comparison layer must report a geometry mismatch only when it has an independent proof.
+
+**Decision.**
+
+1. **Keep first, classify second.** `StoredSimulation::reference_exclusion` is a pure classifier.
+   It never changes or hides `Design::simulations`. The survey continues to count every stored run,
+   its status, conditions, summary, branches, rows, events and parser warnings.
+2. **Only current OpenRocket runs can be references.** An explicitly `uptodate` run is eligible only
+   when it has finite, non-negative stored values, positive ascent altitude, speed and time-to-apogee,
+   and a flight time no shorter than time to apogee when present. Missing results or any of those
+   required summary values exclude it. `outdated`, `notsimulated`, `external`, `loaded`, `cantrun`,
+   `aborted`, missing-status and unknown statuses each have a stable exclusion reason. An external
+   result remains readable, but is not silently promoted to an OpenRocket reference.
+3. **Reject contradictions that the stored data itself proves.** Time columns may not run backwards,
+   time or altitude may not be negative, and a stored time-series altitude may not exceed the stored
+   apogee beyond 0.1% (or 1 mm for a very small flight), allowing the rounding OpenRocket applies
+   when it writes data. No arbitrary minimum apogee is invented. A time series is optional because
+   OpenRocket can save a summary without one; optional summary fields are checked when present.
+4. **Count the policy separately.** `cargo xtask ork` reports eligible references, excluded references
+   and stable reason counts alongside the unconditional stored-data census. Eligibility is not yet a
+   flight comparison: geometry and configuration identity remain the responsibility of the later
+   comparison layer, which must not infer a mismatch from an error alone.
+
+**Consequences.** L87's stale and structurally impossible values cannot enter gates, distributions or
+eligible-result denominators, while a reader can still inspect and round-trip them. On 2026-09-24,
+the survey found 137 eligible and 37 excluded runs among 174 stored simulations: 17 external, 11
+outdated, 7 not-simulated and 2 internally inconsistent. The per-file detail remains in the private
+survey report; public docs quote only these aggregate counts. A future geometry fingerprint or
+comparison proof can add a new exclusion reason without changing read-back.
+
+[l87]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l87
+
 
 ## ADR-064: Clusters, fillets and unread parts remain visible departures (2026-09-22)
 
