@@ -715,22 +715,16 @@ fn fly(
     let clearance_mach = number(&clearance["mach"], "rod-clearance Mach number")?;
     // Before any separation, so a motor waiting on one counts as unlit.
     let lit = assembly.ignition_times_s(|_| None);
-    // hpr-io leaves a separation at apogee or on the way down to the descent, and flies the
-    // configuration whole (ADR-076 §4). That holds only if every motor is spent by apogee, so
-    // a flight with one still to burn is refused rather than reported.
-    let spent_s = lit
+    let apogee_s = result
+        .event(EventKind::Apogee)
+        .map(|apogee| apogee.sample.time_s)
+        .ok_or_else(|| format!("{at}: hpr's flight has no apogee"))?;
+    let burns: Vec<_> = assembly
+        .motors
         .iter()
-        .zip(&assembly.motors)
-        .filter_map(|(lit_s, motor)| lit_s.map(|t| t + motor.mounted.motor.burnout_time_s()))
-        .fold(0.0, f64::max);
-    if let Some(apogee) = result.event(EventKind::Apogee)
-        && spent_s > apogee.sample.time_s
-    {
-        return Err(format!(
-            "{at}: a motor burns until {spent_s} s, after hpr's apogee at {} s",
-            apogee.sample.time_s
-        ));
-    }
+        .map(|motor| (motor.mounted.motor.burnout_time_s(), motor.fails))
+        .collect();
+    spent_by_apogee(&lit, &burns, apogee_s).map_err(|error| format!("{at}: {error}"))?;
     let mass = assembly.mass_properties_lit(clearance_time_s, &lit);
     let cg_m = -mass.cg_m.z;
     let cp_m = simulation
@@ -1568,8 +1562,58 @@ pub(crate) fn same(committed: &Value, now: &Value, at: &str, apart: &mut Vec<Str
     }
 }
 
+/// Checks that every motor that lights is spent by hpr's apogee at `apogee_s`, from each motor's
+/// ignition time (`lit`) and its burn time and whether it fails (`burns`).
+///
+/// hpr-io leaves a separation at apogee or on the way down to the descent and flies the
+/// configuration whole (ADR-076 §4), which holds only if every motor is spent by then. The check
+/// is made of every flight, staged or not, since a motor still burning at apogee would also make
+/// the compared climb something other than a climb. A motor that lights must have a time: a
+/// `.ork` configuration never lights one at a separation.
+fn spent_by_apogee(
+    lit: &[Option<f64>],
+    burns: &[(f64, bool)],
+    apogee_s: f64,
+) -> Result<(), String> {
+    for (index, (lit_s, (burn_s, fails))) in lit.iter().zip(burns).enumerate() {
+        match lit_s {
+            Some(lit_s) if lit_s + burn_s > apogee_s => {
+                return Err(format!(
+                    "motor {index} burns until {} s, after hpr's apogee at {apogee_s} s",
+                    lit_s + burn_s
+                ));
+            }
+            Some(_) => {}
+            None if *fails => {}
+            None => {
+                return Err(format!(
+                    "motor {index} lights at no time known before the flight"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_flight_is_reported_only_with_every_lit_motor_spent_by_apogee() {
+        let burns = [(3.0, false), (2.0, false), (1.0, true)];
+        // Lit at launch and at 4 s: spent at 3 s and 6 s, before an apogee at 10 s; the failing
+        // tube never lights.
+        assert_eq!(
+            super::spent_by_apogee(&[Some(0.0), Some(4.0), None], &burns, 10.0),
+            Ok(())
+        );
+        // The second lit at 9 s burns to 11 s, past it.
+        let late = super::spent_by_apogee(&[Some(0.0), Some(9.0), None], &burns, 10.0);
+        assert!(late.is_err_and(|e| e.contains("motor 1 burns until 11 s")));
+        // A motor that lights with no known time.
+        let unknown = super::spent_by_apogee(&[Some(0.0), None, None], &burns, 10.0);
+        assert!(unknown.is_err_and(|e| e.contains("motor 1 lights at no time known")));
+    }
+
     use super::*;
 
     fn committed() -> (Value, Value) {

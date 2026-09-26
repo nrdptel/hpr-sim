@@ -6812,7 +6812,7 @@ flight of a `.ork` against OpenRocket's had been written down: ADR-069 holds eac
    are the ignition of the stage's own motor or of the stage above's, plus `d`; `burnout` and
    `ejection` are the stage's own motor's burnout plus `d`, and plus its ejection delay for
    `ejection`. `never` flies the stack whole. A missing delay is 0, as a missing ignition delay is;
-   a negative or non-finite one is refused. The separation is powered when, at that time, a motor
+   a negative or non-finite one on a separation hpr flies is refused. The separation is powered when, at that time, a motor
    ahead of it is still burning or yet to light: the test hpr-sim makes when it fires (ADR-074 §3),
    made here from the times rather than from where the motors sit, so a file whose sustainer has
    already burnt out by the split is not called powered. A motor behind the split still burning
@@ -6868,17 +6868,18 @@ flight of a `.ork` against OpenRocket's had been written down: ADR-069 holds eac
   ahead of it (#184).
 - The private flight newly flown, C08/1 (two stages), reads +0.1108 calibres in margin because its
   centre of mass at rod clearance is 0.1102 calibres forward of OpenRocket's, its mass within
-  0.001%. That predates this record: hpr's structure alone is forward by less than the mass
+  about 0.001%. That predates this record: hpr's structure alone is forward by less than the mass
   survey's 1% of length, and a stage mass override several times its parts' weight magnifies it.
   Two parts differ: an airfoil fin set (ADR-062 §4's kept departure) and packed parachutes
-  whose automatic radius OpenRocket seems to resolve by stretching the packed length (#186).
+  whose automatic radius OpenRocket may resolve by stretching the packed length (#186).
 - The 5% on the largest speed is loose: every flight above is within 0.93% of it, so a speed error
   of several per cent would still pass. It is kept because it was set before measuring (§1); the
   report's numbers are what to read. CI does not fly OpenRocket, so it checks the committed report
   against §1, and `cargo xtask ork-flights --check` re-flies hpr's side on a machine with the jar.
 - At the split, hpr's reference point, the centre of mass, jumps forward from the stack's to the
   sustainer's, which on a vertical flight raises its height by that distance. Whether
-  OpenRocket's branch 0 altitude does the same is not measured. The jump is less than the stack's
-  centre of mass from the nose, 1.320 m at rod clearance on *Two stage high power rocket*: under
-  0.2% of the H148R apogee (666 m) and under 0.1% of the other (1382 m), about the size of that
-  flight's whole gap (−0.13%).
+  OpenRocket's branch 0 altitude does the same is not measured (#187). The jump is less than the
+  stack's centre of mass from the nose at the split, which is forward of where it is at rod
+  clearance, since only the booster burns between: 1.320 m then on *Two stage high power rocket*,
+  under 0.2% of the H148R apogee (666 m) and under 0.1% of the other (1382 m), about the size of
+  that flight's whole gap (−0.13%).

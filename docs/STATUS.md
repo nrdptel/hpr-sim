@@ -61,7 +61,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-25: M2.2e2 OR's flights of the corpus (ADR-071, #168): 88 of 89 flown, none aborted.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **Scrub #186's first revision** (1 minute): it quotes a private design's sizes. On issue #186 click
-  *edited* → the 03:28 UTC revision → *Delete revision from history*. No API can.
+  *edited* → the oldest revision (marked *created*) → *Delete revision from history*. No API can.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).

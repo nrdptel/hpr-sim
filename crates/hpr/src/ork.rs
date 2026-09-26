@@ -33,7 +33,7 @@ pub fn separation(staging: &Staging, assembly: &Assembly) -> Result<Separation, 
                 .iter()
                 .position(|motor| motor.mounted.mount == *mount && !motor.fails)
                 .ok_or(SimError::Domain {
-                    what: "count of motors in the mount a separation is timed from",
+                    what: "count of lit motors in the mount a separation is timed from",
                     value: 0.0,
                 })?,
             delay_s: *delay_s,
@@ -142,7 +142,17 @@ mod tests {
             }
         );
 
-        // Another configuration's assembly, with no motor in that mount, is refused.
+        // A mount whose every tube fails, or another configuration's assembly with no motor in
+        // that mount, is refused.
+        let mut dead = assembly.clone();
+        dead.motors[booster].fails = true;
+        assert!(matches!(
+            separation(&staging, &dead),
+            Err(SimError::Domain {
+                what: "count of lit motors in the mount a separation is timed from",
+                ..
+            })
+        ));
         let mut other = assembly;
         other.motors.retain(|motor| motor.mount != "booster");
         let error = separation(&staging, &other).expect_err("no booster motor");
@@ -150,7 +160,7 @@ mod tests {
             matches!(
                 error,
                 SimError::Domain {
-                    what: "count of motors in the mount a separation is timed from",
+                    what: "count of lit motors in the mount a separation is timed from",
                     ..
                 }
             ),

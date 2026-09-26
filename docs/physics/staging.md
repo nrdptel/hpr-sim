@@ -257,7 +257,7 @@ written is left out with its reason, never flown some other way:
   stack's, as in OpenRocket;
 - a separation while a motor behind it is still burning or yet to light;
 - a separation at a height on the way up (`altitudeascending`), which hpr has no trigger for;
-- a negative delay;
+- a negative delay on a separation hpr would fly;
 - a motor set never to light, or lit by the charge of a plugged motor, which never fires.
 
 A cluster flies with a motor in every tube ([Clusters](design.md#clusters)).
@@ -299,6 +299,10 @@ The test `a_two_stage_and_a_cluster_design_are_within_5_percent_of_openrocket` i
   H148R motors lost propellant from launch. On the second, with two different motors, the masses
   agree to about 1 part in a million. What that does to the apogee has not been sized
   ([#185](https://github.com/nrdptel/hpr-sim/issues/185)).
+- hpr's apogee is its centre of mass's, which jumps forward at the split from the whole stack's to
+  the sustainer's. Whether OpenRocket's altitude jumps the same way is not measured
+  ([#187](https://github.com/nrdptel/hpr-sim/issues/187)). The jump is under 1.32 m on these
+  flights, less than 0.2% of either apogee.
 - hpr's descent of a separated part needs a recovery device on each part. So the comparison
   tumbles the booster from the split and the sustainer from its apogee. Neither acts on the climb
   that is compared, and hpr's flights of a `.ork` fly no parachutes yet.

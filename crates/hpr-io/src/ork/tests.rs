@@ -3604,6 +3604,13 @@ fn ignitions_and_one_powered_separation_are_read_as_hpr_flies_them() {
             Some(("ignition", "5.0")),
         ),
         case("apo", Some("6.0"), None, "0.0", Some(("apogee", "0.0"))),
+        case(
+            "desc",
+            Some("6.0"),
+            None,
+            "0.0",
+            Some(("altitudedescending", "0.0")),
+        ),
         case("never", Some("6.0"), None, "2.0", Some(("never", "0.0"))),
         case("payapo", None, None, "3.0", Some(("apogee", "1.0"))),
         // Left out.
@@ -3863,8 +3870,10 @@ fn ignitions_and_one_powered_separation_are_read_as_hpr_flies_them() {
         &[at(6.0), launch.clone()],
         staged(StagingTrigger::Time { time_s: 5.0 }, 5.0),
     );
-    // At apogee, or never: the climb is the whole stack's, the sustainer lit on it.
+    // At apogee, at a height on the way down, or never: the climb is the whole stack's, the
+    // sustainer lit on it.
     flies("apo", &[after_booster(0.0), launch.clone()], None);
+    flies("desc", &[after_booster(0.0), launch.clone()], None);
     flies("never", &[after_booster(2.0), launch.clone()], None);
     // A payload with no motor: at apogee plus a delay, after the climb, so the climb flies whole.
     flies("payapo", std::slice::from_ref(&launch), None);

@@ -2088,11 +2088,11 @@ and part on the coast, where drag matters most.
   [#172](https://github.com/nrdptel/hpr-sim/issues/172). A third design, `C08`, a two-stage rocket
   flown since the [M1.9c milestone](../decisions-and-roadmap.md#m1-9c), reads +0.1108 calibres
   because hpr puts its CG 0.1102 calibres forward of OpenRocket's at rod clearance, with the mass
-  there within 0.001%. That gap is older than the staging: hpr's structure alone puts the CG
+  there within about 0.001%. That gap is older than the staging: hpr's structure alone puts the CG
   forward by less than the mass survey's 1% of length. A stage whose mass is set at several times
   its parts' own weight magnifies where those parts sit, and two of them differ: an
   airfoil fin set, a departure hpr keeps on purpose ([ADR-062][adr-062]), and packed parachutes
-  whose automatic radius OpenRocket seems to meet by stretching the packed length
+  whose automatic radius OpenRocket may meet by stretching the packed length
   ([#186](https://github.com/nrdptel/hpr-sim/issues/186)).
 - hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 8
   of the flights, all of `C03`'s among them. That puts mass in a slightly different place, not
