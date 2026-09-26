@@ -1,0 +1,756 @@
+{
+ "source": "RocketPy 1.13.0 Environment(type='Reanalysis', dictionary='ECMWF') on the full files, which read the same on the extracts (validation/oracles/netcdf/era5.py)",
+ "cases": [
+  {
+   "id": "bella-lui",
+   "source": "refs/rocketpy/data/weather/bella_lui_weather_data_ERA5.nc",
+   "source_format": "netCDF classic",
+   "extract": "validation/fixtures/weather/era5/bella-lui.nc",
+   "latitude_deg": 47.213476,
+   "longitude_deg": 9.003336,
+   "readings": [
+    {
+     "time": [
+      2020,
+      2,
+      22,
+      13
+     ],
+     "unix_s": 1582376400.0,
+     "rocketpy": {
+      "earth_radius_m": 6366663.970540974,
+      "levels": [
+       {
+        "pressure_pa": 100000.0,
+        "height_m": 240.5069632035041,
+        "temperature_k": 287.7477390092833,
+        "wind_east_m_s": 0.6877848371532072,
+        "wind_north_m_s": 1.0912212454219676
+       },
+       {
+        "pressure_pa": 97500.0,
+        "height_m": 453.22835873355973,
+        "temperature_k": 286.31735256615457,
+        "wind_east_m_s": 0.6910533030207024,
+        "wind_north_m_s": 1.044756884446655
+       },
+       {
+        "pressure_pa": 95000.0,
+        "height_m": 670.4592006148353,
+        "temperature_k": 285.2554734457793,
+        "wind_east_m_s": 0.6015479407640268,
+        "wind_north_m_s": 0.9421265463367783
+       },
+       {
+        "pressure_pa": 92500.0,
+        "height_m": 892.5726572284982,
+        "temperature_k": 283.43954194344457,
+        "wind_east_m_s": 0.778655149239018,
+        "wind_north_m_s": 1.5240254009609835
+       },
+       {
+        "pressure_pa": 90000.0,
+        "height_m": 1119.3313018750791,
+        "temperature_k": 281.6635346127365,
+        "wind_east_m_s": 1.8973377945295937,
+        "wind_north_m_s": 2.563500234530585
+       },
+       {
+        "pressure_pa": 87500.0,
+        "height_m": 1351.6269853316464,
+        "temperature_k": 280.7885854967745,
+        "wind_east_m_s": 4.466722728641588,
+        "wind_north_m_s": 3.44081687872735
+       },
+       {
+        "pressure_pa": 85000.0,
+        "height_m": 1589.7712235175902,
+        "temperature_k": 279.75180938610475,
+        "wind_east_m_s": 6.442743462728695,
+        "wind_north_m_s": 3.220427531645099
+       },
+       {
+        "pressure_pa": 82500.0,
+        "height_m": 1834.4536481072578,
+        "temperature_k": 279.16270374742425,
+        "wind_east_m_s": 8.290999780287134,
+        "wind_north_m_s": 2.5994128678086788
+       },
+       {
+        "pressure_pa": 80000.0,
+        "height_m": 2085.743269146926,
+        "temperature_k": 277.9317160220442,
+        "wind_east_m_s": 9.84024792017177,
+        "wind_north_m_s": 2.0588502021491255
+       },
+       {
+        "pressure_pa": 77500.0,
+        "height_m": 2343.8866774607113,
+        "temperature_k": 276.68972704803923,
+        "wind_east_m_s": 10.546527049957591,
+        "wind_north_m_s": 1.6680982419001367
+       },
+       {
+        "pressure_pa": 75000.0,
+        "height_m": 2609.2769548515034,
+        "temperature_k": 275.3668798251534,
+        "wind_east_m_s": 10.435462307732344,
+        "wind_north_m_s": 1.2443475129535506
+       },
+       {
+        "pressure_pa": 70000.0,
+        "height_m": 3163.5002202278542,
+        "temperature_k": 272.4647728563299,
+        "wind_east_m_s": 9.18876378962844,
+        "wind_north_m_s": 0.10296620006346165
+       },
+       {
+        "pressure_pa": 65000.0,
+        "height_m": 3751.7692287912537,
+        "temperature_k": 268.8416467452732,
+        "wind_east_m_s": 10.28164929231521,
+        "wind_north_m_s": -2.954226569220026
+       },
+       {
+        "pressure_pa": 60000.0,
+        "height_m": 4378.244907638131,
+        "temperature_k": 264.9496330832462,
+        "wind_east_m_s": 13.103657310984296,
+        "wind_north_m_s": -6.335566365201248
+       }
+      ]
+     }
+    },
+    {
+     "time": [
+      2020,
+      2,
+      22,
+      12
+     ],
+     "unix_s": 1582372800.0,
+     "rocketpy": {
+      "earth_radius_m": 6366663.970540974,
+      "levels": [
+       {
+        "pressure_pa": 100000.0,
+        "height_m": 252.2983581081979,
+        "temperature_k": 286.43829614235113,
+        "wind_east_m_s": 0.9826354788920912,
+        "wind_north_m_s": 0.33925129292543693
+       },
+       {
+        "pressure_pa": 97500.0,
+        "height_m": 464.05885617947797,
+        "temperature_k": 285.0138970961457,
+        "wind_east_m_s": 0.9814358622308373,
+        "wind_north_m_s": 0.3157460410471368
+       },
+       {
+        "pressure_pa": 95000.0,
+        "height_m": 680.3279618569438,
+        "temperature_k": 283.9419603355568,
+        "wind_east_m_s": 0.9431844294976633,
+        "wind_north_m_s": 0.31623434449717264
+       },
+       {
+        "pressure_pa": 92500.0,
+        "height_m": 901.3732636490801,
+        "temperature_k": 282.0155080364515,
+        "wind_east_m_s": 1.049879037092098,
+        "wind_north_m_s": 0.6767105583893819
+       },
+       {
+        "pressure_pa": 90000.0,
+        "height_m": 1127.1692001597787,
+        "temperature_k": 280.5041131630958,
+        "wind_east_m_s": 2.5079056707945506,
+        "wind_north_m_s": 1.2566297341291401
+       },
+       {
+        "pressure_pa": 87500.0,
+        "height_m": 1358.6113897289813,
+        "temperature_k": 279.68825354891345,
+        "wind_east_m_s": 4.711996924751533,
+        "wind_north_m_s": 1.3121291053017083
+       },
+       {
+        "pressure_pa": 85000.0,
+        "height_m": 1595.8398668449133,
+        "temperature_k": 278.7694718168784,
+        "wind_east_m_s": 6.549065690073469,
+        "wind_north_m_s": 1.175214504493955
+       },
+       {
+        "pressure_pa": 82500.0,
+        "height_m": 1839.7345937634993,
+        "temperature_k": 278.35544379664145,
+        "wind_east_m_s": 8.090796103442567,
+        "wind_north_m_s": 1.0523411843087038
+       },
+       {
+        "pressure_pa": 80000.0,
+        "height_m": 2090.471671016792,
+        "temperature_k": 277.368076171572,
+        "wind_east_m_s": 9.701297218842615,
+        "wind_north_m_s": 0.8044423467347465
+       },
+       {
+        "pressure_pa": 77500.0,
+        "height_m": 2348.109778380306,
+        "temperature_k": 276.2328441823836,
+        "wind_east_m_s": 10.685114582280681,
+        "wind_north_m_s": 0.6906486080297123
+       },
+       {
+        "pressure_pa": 75000.0,
+        "height_m": 2612.992983397674,
+        "temperature_k": 274.7892128124813,
+        "wind_east_m_s": 10.652105748962532,
+        "wind_north_m_s": 0.5141499905922454
+       },
+       {
+        "pressure_pa": 70000.0,
+        "height_m": 3165.949630191162,
+        "temperature_k": 271.7708679898673,
+        "wind_east_m_s": 9.030378281322745,
+        "wind_north_m_s": -1.0102139726214192
+       },
+       {
+        "pressure_pa": 65000.0,
+        "height_m": 3752.6061888584404,
+        "temperature_k": 268.10491505075294,
+        "wind_east_m_s": 8.105243000718389,
+        "wind_north_m_s": -3.1727745928554927
+       },
+       {
+        "pressure_pa": 60000.0,
+        "height_m": 4377.4102341713,
+        "temperature_k": 264.1663169868223,
+        "wind_east_m_s": 10.724688849019794,
+        "wind_north_m_s": -5.497889348215489
+       }
+      ]
+     }
+    },
+    {
+     "time": [
+      2020,
+      2,
+      22,
+      18
+     ],
+     "unix_s": 1582394400.0,
+     "rocketpy": {
+      "earth_radius_m": 6366663.970540974,
+      "levels": [
+       {
+        "pressure_pa": 100000.0,
+        "height_m": 241.2383457786179,
+        "temperature_k": 288.4208451580943,
+        "wind_east_m_s": 0.4836373656269168,
+        "wind_north_m_s": 1.2429657918063328
+       },
+       {
+        "pressure_pa": 97500.0,
+        "height_m": 454.49486117936056,
+        "temperature_k": 287.23787922514634,
+        "wind_east_m_s": 0.39827693021179206,
+        "wind_north_m_s": 1.306853901852143
+       },
+       {
+        "pressure_pa": 95000.0,
+        "height_m": 672.1730585812925,
+        "temperature_k": 284.7015868866283,
+        "wind_east_m_s": 0.04661109668511397,
+        "wind_north_m_s": 1.1406054464343571
+       },
+       {
+        "pressure_pa": 92500.0,
+        "height_m": 894.5152885956006,
+        "temperature_k": 283.9505897873644,
+        "wind_east_m_s": 1.8922640807301647,
+        "wind_north_m_s": 1.400228216627174
+       },
+       {
+        "pressure_pa": 90000.0,
+        "height_m": 1122.108166746757,
+        "temperature_k": 282.8162675733921,
+        "wind_east_m_s": 4.119854347079496,
+        "wind_north_m_s": 1.9617129353623604
+       },
+       {
+        "pressure_pa": 87500.0,
+        "height_m": 1354.9595629555333,
+        "temperature_k": 281.5379449305664,
+        "wind_east_m_s": 7.024784528479932,
+        "wind_north_m_s": 1.3036175911069385
+       },
+       {
+        "pressure_pa": 85000.0,
+        "height_m": 1594.004392140914,
+        "temperature_k": 280.7989950197458,
+        "wind_east_m_s": 9.135805890206118,
+        "wind_north_m_s": 1.0601338250659618
+       },
+       {
+        "pressure_pa": 82500.0,
+        "height_m": 1839.2356032189102,
+        "temperature_k": 279.6283677689067,
+        "wind_east_m_s": 11.249465368505305,
+        "wind_north_m_s": 1.1283006793835608
+       },
+       {
+        "pressure_pa": 80000.0,
+        "height_m": 2090.84608383463,
+        "temperature_k": 278.0906780236634,
+        "wind_east_m_s": 13.02698045633406,
+        "wind_north_m_s": 1.24397095403831
+       },
+       {
+        "pressure_pa": 77500.0,
+        "height_m": 2348.9567098387556,
+        "temperature_k": 276.5019227534131,
+        "wind_east_m_s": 14.645403114456988,
+        "wind_north_m_s": 1.1850356272335614
+       },
+       {
+        "pressure_pa": 75000.0,
+        "height_m": 2613.9515350591982,
+        "temperature_k": 274.7640875788707,
+        "wind_east_m_s": 15.702469434216578,
+        "wind_north_m_s": 0.5534802749861197
+       },
+       {
+        "pressure_pa": 70000.0,
+        "height_m": 3166.594392752108,
+        "temperature_k": 271.36465369954175,
+        "wind_east_m_s": 17.237838751831262,
+        "wind_north_m_s": -1.9018717198695534
+       },
+       {
+        "pressure_pa": 65000.0,
+        "height_m": 3752.509429003717,
+        "temperature_k": 267.6268817390582,
+        "wind_east_m_s": 18.299105960189348,
+        "wind_north_m_s": -3.8578587891663174
+       },
+       {
+        "pressure_pa": 60000.0,
+        "height_m": 4376.789697656795,
+        "temperature_k": 264.20901785475775,
+        "wind_east_m_s": 18.571532443873497,
+        "wind_north_m_s": -5.7040655181625475
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ndrt-2020",
+   "source": "refs/rocketpy/data/weather/ndrt_2020_weather_data_ERA5.nc",
+   "source_format": "netCDF classic",
+   "extract": "validation/fixtures/weather/era5/ndrt-2020.nc",
+   "latitude_deg": 41.775447,
+   "longitude_deg": -86.572467,
+   "readings": [
+    {
+     "time": [
+      2020,
+      2,
+      23,
+      16
+     ],
+     "unix_s": 1582473600.0,
+     "rocketpy": {
+      "earth_radius_m": 6368689.92634084,
+      "levels": [
+       {
+        "pressure_pa": 100000.0,
+        "height_m": 132.51094843396876,
+        "temperature_k": 278.49010955202544,
+        "wind_east_m_s": 1.9759872077189096,
+        "wind_north_m_s": 4.000021208221865
+       },
+       {
+        "pressure_pa": 97500.0,
+        "height_m": 338.7950773516386,
+        "temperature_k": 277.19367401457885,
+        "wind_east_m_s": 3.897179265257726,
+        "wind_north_m_s": 6.795654530664653
+       },
+       {
+        "pressure_pa": 95000.0,
+        "height_m": 549.3086342447488,
+        "temperature_k": 275.9544544636028,
+        "wind_east_m_s": 8.03043327811378,
+        "wind_north_m_s": 7.914757491048151
+       },
+       {
+        "pressure_pa": 92500.0,
+        "height_m": 765.7468180821656,
+        "temperature_k": 277.59900702652783,
+        "wind_east_m_s": 11.327883926183338,
+        "wind_north_m_s": 4.961269681218426
+       },
+       {
+        "pressure_pa": 90000.0,
+        "height_m": 989.3257747188195,
+        "temperature_k": 277.90611431186767,
+        "wind_east_m_s": 11.034620638849347,
+        "wind_north_m_s": 5.484940418493549
+       },
+       {
+        "pressure_pa": 87500.0,
+        "height_m": 1218.5694658616062,
+        "temperature_k": 276.5549527374445,
+        "wind_east_m_s": 12.508807151466154,
+        "wind_north_m_s": 6.849433203997513
+       },
+       {
+        "pressure_pa": 85000.0,
+        "height_m": 1453.204092459055,
+        "temperature_k": 275.05130976805634,
+        "wind_east_m_s": 14.60879476367893,
+        "wind_north_m_s": 6.666737263818867
+       },
+       {
+        "pressure_pa": 82500.0,
+        "height_m": 1693.6802969778541,
+        "temperature_k": 273.97302014140166,
+        "wind_east_m_s": 16.19777499511143,
+        "wind_north_m_s": 4.315386616972152
+       },
+       {
+        "pressure_pa": 80000.0,
+        "height_m": 1940.7450514435757,
+        "temperature_k": 273.4946598626999,
+        "wind_east_m_s": 16.19781394600788,
+        "wind_north_m_s": 0.8472471477531082
+       },
+       {
+        "pressure_pa": 77500.0,
+        "height_m": 2195.0558562197457,
+        "temperature_k": 273.03542831354315,
+        "wind_east_m_s": 15.24200312548911,
+        "wind_north_m_s": -1.654151078312173
+       },
+       {
+        "pressure_pa": 75000.0,
+        "height_m": 2457.152110547329,
+        "temperature_k": 272.4007105577959,
+        "wind_east_m_s": 15.038285774623677,
+        "wind_north_m_s": -2.16822087650421
+       },
+       {
+        "pressure_pa": 70000.0,
+        "height_m": 3005.715977600375,
+        "temperature_k": 269.8056095958153,
+        "wind_east_m_s": 15.309218764716856,
+        "wind_north_m_s": -1.0418040966307753
+       },
+       {
+        "pressure_pa": 65000.0,
+        "height_m": 3587.358044442303,
+        "temperature_k": 265.56914992942046,
+        "wind_east_m_s": 15.829670327246896,
+        "wind_north_m_s": 0.3642335505065048
+       },
+       {
+        "pressure_pa": 60000.0,
+        "height_m": 4205.218491660514,
+        "temperature_k": 260.8559253762952,
+        "wind_east_m_s": 17.52358961318105,
+        "wind_north_m_s": -0.5196412493864275
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ndrt-2020-cds",
+   "source": "refs/rocketpy/data/weather/ndrt_2020_weather_data_ERA5_new.nc",
+   "source_format": "netCDF-4 (HDF5)",
+   "extract": "validation/fixtures/weather/era5/ndrt-2020-cds.nc",
+   "latitude_deg": 41.775447,
+   "longitude_deg": -86.572467,
+   "readings": [
+    {
+     "time": [
+      2020,
+      2,
+      23,
+      16
+     ],
+     "unix_s": 1582473600.0,
+     "rocketpy": {
+      "earth_radius_m": 6368689.92634084,
+      "levels": [
+       {
+        "pressure_pa": 100000.0,
+        "height_m": 132.53108605167483,
+        "temperature_k": 278.49007599902734,
+        "wind_east_m_s": 1.9760406924207516,
+        "wind_north_m_s": 3.999906965961101
+       },
+       {
+        "pressure_pa": 97500.0,
+        "height_m": 338.80171151740996,
+        "temperature_k": 277.19370239622884,
+        "wind_east_m_s": 3.897277834750789,
+        "wind_north_m_s": 6.795683538638853
+       },
+       {
+        "pressure_pa": 95000.0,
+        "height_m": 549.3100707751341,
+        "temperature_k": 275.95441029414746,
+        "wind_east_m_s": 8.030428746170015,
+        "wind_north_m_s": 7.9147360474435295
+       },
+       {
+        "pressure_pa": 92500.0,
+        "height_m": 765.7599094905341,
+        "temperature_k": 277.5990489245453,
+        "wind_east_m_s": 11.327939778587375,
+        "wind_north_m_s": 4.961265631141682
+       },
+       {
+        "pressure_pa": 90000.0,
+        "height_m": 989.3226906355799,
+        "temperature_k": 277.9059365314598,
+        "wind_east_m_s": 11.034678571289064,
+        "wind_north_m_s": 5.484932492282905
+       },
+       {
+        "pressure_pa": 87500.0,
+        "height_m": 1218.5818688622867,
+        "temperature_k": 276.5546023621483,
+        "wind_east_m_s": 12.508786829757689,
+        "wind_north_m_s": 6.84939914277656
+       },
+       {
+        "pressure_pa": 85000.0,
+        "height_m": 1453.2277773210317,
+        "temperature_k": 275.0509576782265,
+        "wind_east_m_s": 14.608719397853907,
+        "wind_north_m_s": 6.666836446971961
+       },
+       {
+        "pressure_pa": 82500.0,
+        "height_m": 1693.677815192321,
+        "temperature_k": 273.9728634420319,
+        "wind_east_m_s": 16.19779463736353,
+        "wind_north_m_s": 4.315361203407299
+       },
+       {
+        "pressure_pa": 80000.0,
+        "height_m": 1940.7244990640595,
+        "temperature_k": 273.49451084061815,
+        "wind_east_m_s": 16.19781296784596,
+        "wind_north_m_s": 0.8471388525771747
+       },
+       {
+        "pressure_pa": 77500.0,
+        "height_m": 2195.055719467471,
+        "temperature_k": 273.0352424656792,
+        "wind_east_m_s": 15.242020831027897,
+        "wind_north_m_s": -1.6541556544075404
+       },
+       {
+        "pressure_pa": 75000.0,
+        "height_m": 2457.1725140733597,
+        "temperature_k": 272.40054259440615,
+        "wind_east_m_s": 15.038349404769807,
+        "wind_north_m_s": -2.1681367966499754
+       },
+       {
+        "pressure_pa": 70000.0,
+        "height_m": 3005.732007823377,
+        "temperature_k": 269.80568695503234,
+        "wind_east_m_s": 15.309194113311747,
+        "wind_north_m_s": -1.041892982204477
+       },
+       {
+        "pressure_pa": 65000.0,
+        "height_m": 3587.374118499983,
+        "temperature_k": 265.56903575741006,
+        "wind_east_m_s": 15.829609533546437,
+        "wind_north_m_s": 0.3641717423439051
+       },
+       {
+        "pressure_pa": 60000.0,
+        "height_m": 4205.2136958082065,
+        "temperature_k": 260.8560832921791,
+        "wind_east_m_s": 17.52365095164872,
+        "wind_north_m_s": -0.5196685252418423
+       },
+       {
+        "pressure_pa": 55000.0,
+        "height_m": 4864.664983363349,
+        "temperature_k": 256.33149361660577,
+        "wind_east_m_s": 20.13542135301591,
+        "wind_north_m_s": -1.7334337116546252
+       },
+       {
+        "pressure_pa": 50000.0,
+        "height_m": 5575.1318653490935,
+        "temperature_k": 251.99082051170348,
+        "wind_east_m_s": 22.234664419742597,
+        "wind_north_m_s": -4.177554160789505
+       },
+       {
+        "pressure_pa": 45000.0,
+        "height_m": 6346.967678901093,
+        "temperature_k": 247.47798802206614,
+        "wind_east_m_s": 30.844862333827976,
+        "wind_north_m_s": -8.66313515789403
+       },
+       {
+        "pressure_pa": 40000.0,
+        "height_m": 7192.146617840287,
+        "temperature_k": 241.47906743615147,
+        "wind_east_m_s": 38.691373059345096,
+        "wind_north_m_s": -8.2771706258659
+       },
+       {
+        "pressure_pa": 35000.0,
+        "height_m": 8123.642022605052,
+        "temperature_k": 233.67182698567962,
+        "wind_east_m_s": 40.49596667374034,
+        "wind_north_m_s": -8.951269569843276
+       },
+       {
+        "pressure_pa": 30000.0,
+        "height_m": 9162.715185498042,
+        "temperature_k": 226.8385591216374,
+        "wind_east_m_s": 44.675915289554595,
+        "wind_north_m_s": -9.822688291992185
+       },
+       {
+        "pressure_pa": 25000.0,
+        "height_m": 10366.65185387338,
+        "temperature_k": 222.88814791365243,
+        "wind_east_m_s": 50.8159857465057,
+        "wind_north_m_s": -14.032726182342497
+       },
+       {
+        "pressure_pa": 22500.0,
+        "height_m": 11055.447614061615,
+        "temperature_k": 222.91761087166026,
+        "wind_east_m_s": 45.63478258465576,
+        "wind_north_m_s": -14.805361296577436
+       },
+       {
+        "pressure_pa": 20000.0,
+        "height_m": 11828.845088265547,
+        "temperature_k": 223.72104424593738,
+        "wind_east_m_s": 41.07838210873413,
+        "wind_north_m_s": -12.775393845703121
+       },
+       {
+        "pressure_pa": 17500.0,
+        "height_m": 12703.948997214742,
+        "temperature_k": 221.87717667766,
+        "wind_east_m_s": 35.4669966367035,
+        "wind_north_m_s": -9.497956222263277
+       },
+       {
+        "pressure_pa": 15000.0,
+        "height_m": 13701.6734964312,
+        "temperature_k": 218.7204245621719,
+        "wind_east_m_s": 29.97849914711,
+        "wind_north_m_s": -7.2310966523742515
+       },
+       {
+        "pressure_pa": 12500.0,
+        "height_m": 14868.690582865782,
+        "temperature_k": 216.82579433080102,
+        "wind_east_m_s": 28.453756003391277,
+        "wind_north_m_s": -6.231543533405279
+       },
+       {
+        "pressure_pa": 10000.0,
+        "height_m": 16284.769145292661,
+        "temperature_k": 215.2866797588787,
+        "wind_east_m_s": 21.118835126686065,
+        "wind_north_m_s": -6.421290977336906
+       },
+       {
+        "pressure_pa": 7000.0,
+        "height_m": 18539.375779456095,
+        "temperature_k": 213.51677269596098,
+        "wind_east_m_s": 12.428675023609154,
+        "wind_north_m_s": 0.9619959528274334
+       },
+       {
+        "pressure_pa": 5000.0,
+        "height_m": 20656.18832772275,
+        "temperature_k": 213.9214148033161,
+        "wind_east_m_s": 10.133629718906409,
+        "wind_north_m_s": -4.184852477016468
+       },
+       {
+        "pressure_pa": 3000.0,
+        "height_m": 23860.289546768447,
+        "temperature_k": 215.29385403793717,
+        "wind_east_m_s": 5.780928853351599,
+        "wind_north_m_s": -3.984887550334903
+       },
+       {
+        "pressure_pa": 2000.0,
+        "height_m": 26425.29698143394,
+        "temperature_k": 215.00547121257017,
+        "wind_east_m_s": -0.5825693549614095,
+        "wind_north_m_s": 3.965702789993312
+       },
+       {
+        "pressure_pa": 1000.0,
+        "height_m": 30936.016486128054,
+        "temperature_k": 221.6502531152649,
+        "wind_east_m_s": 9.105600626289373,
+        "wind_north_m_s": 0.10728091403962803
+       },
+       {
+        "pressure_pa": 700.0,
+        "height_m": 33294.809655235695,
+        "temperature_k": 227.0752158180676,
+        "wind_east_m_s": 16.361082942367563,
+        "wind_north_m_s": 0.13431403160856006
+       },
+       {
+        "pressure_pa": 500.0,
+        "height_m": 35580.75446395214,
+        "temperature_k": 232.08432283236692,
+        "wind_east_m_s": 22.92739458728025,
+        "wind_north_m_s": -0.41936188420099896
+       },
+       {
+        "pressure_pa": 300.0,
+        "height_m": 39143.737697024524,
+        "temperature_k": 238.79348683489417,
+        "wind_east_m_s": 34.36949488508606,
+        "wind_north_m_s": -1.045909057594311
+       },
+       {
+        "pressure_pa": 200.0,
+        "height_m": 42037.14873429424,
+        "temperature_k": 242.26028785970306,
+        "wind_east_m_s": 51.233236888633755,
+        "wind_north_m_s": 2.8208855475311228
+       },
+       {
+        "pressure_pa": 100.0,
+        "height_m": 47088.516446427486,
+        "temperature_k": 246.77376019335938,
+        "wind_east_m_s": 68.93793132032775,
+        "wind_north_m_s": 8.752799341289528
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -225,30 +225,13 @@
     NDRT's northward drift, +2.86%); the command refuses every malformed case the done-when names
     and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
     RocketPy's: hpr's gravity had a horizontal part RocketPy's lacks (issue #27).
-  - [x] **M2.1b Whole flights against RocketPy, same-drag:** a
-    `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight` case
-    variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
+  - [x] **M2.1b Whole flights against RocketPy, same-drag.** Met in two parts.
     - Loft lessons: L75.
-    *Done when:* split below into M2.1b1 and M2.1b2; M2.1b2 carries M2.1b's three bullets.
-    - [x] **M2.1b1 The whole-flight oracle.** *Done when:* `refs/venv/bin/python
-      validation/oracles/rocketpy/flight.py` writes a fixture of all five cases, each with the
-      metrics M2.1 names, a time series, a loose-solver run and a source for every value, and
-      re-running it reproduces the committed fixture byte for byte; no RocketPy data file is
-      committed, and `git status` shows nothing from `refs/`; and every case's declared drag table
-      is argued in the generator, with its source.
-      *Result:* met. A declared constant `C_D0` of 0.5; the fixture reproduces byte for byte;
-      apogees 779 to 3,623 m AGL, Prometheus to Mach 1.014. The oracle's own step-size cliff
-      (thrust(0) = 0, an unbounded step) was fixed by bounding `max_time_step` (issue #33).
-    - [x] **M2.1b2 The whole-flight cases:** a `Flight::WholeFlight` case variant flying the
-      case's `C_D0(M)` (`Simulation::with_drag_table`), and the five cases in the lock.
+    - [x] **M2.1b1 The whole-flight oracle.** Met: `validation/oracles/rocketpy/flight.py` writes
+      all five cases byte for byte, no RocketPy data committed; declared `C_D0` 0.5; #33 fixed.
+    - [x] **M2.1b2 The whole-flight cases.** Met (ADR-021): six cases, five pass every scored
+      metric within 3% (largest +1.783%, Bella Lui); drifts unscored until M2.1d3.
       - Loft lessons: L75.
-      *Done when:* at least 5 whole-flight cases run in the lock and pass their same-drag
-      tolerances, with each metric's tolerance argued in the case file;
-      `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` exists
-      and passes; and `validation/reports/latest.md` carries them under ADR-015's gravity rule (the
-      comparison flies the oracle's models where hpr has them).
-      *Result (ADR-021):* met. Six cases; five pass every scored metric within 3% (largest +1.783%,
-      Bella Lui); wind drifts unscored until #50 (M2.1d3), Prometheus a checked gap until M1.8a.
   - [x] **M2.1c Predicted mode, CI and regeneration:** the same cases flown with hpr's own aero,
     reported beside the same-drag ones; a CI job that runs `cargo xtask validate` against the
     stored references, and a separate, manually triggered workflow that regenerates them.
@@ -266,24 +249,13 @@
       as gaps until M1.8. *Result (ADR-023):* met. `flight.py --own-drag` (hashes, never values).
       Six `predicted-*` cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee;
       misses pinned.
-  - [x] **M2.1d The time-series RMS and the path in wind:** the two items of M2.1's list that
-    M2.1a to M2.1c leave open — the time-series RMS after alignment (each whole-flight fixture
-    already carries its series), and the landing offset, reported but not scored until issue #50
-    finds why hpr turns into the wind less than RocketPy. *Done when:* split below into M2.1d1 to
-    M2.1d3, which carry these two bullets between them.
-    - [x] **M2.1d1 The time-series RMS.** *Done when:* every whole-flight case reports its
-      time-series RMS after alignment against the reference's series, gated with its tolerance
-      argued in the case file. *Result (ADR-024):* met for every case hpr flies: RMS at RocketPy's
-      120 series times, held to 3% of apogee and max speed; same-drag 1.4–39.2 m and 0.13–2.06 m/s,
-      all pass; predicted, three outside (the drag), pinned.
-    - [x] **M2.1d2 The calm-air cases (issue #50).** *Done when:* the three calm-air cases are in
-      the suite, their apogee and landing drifts scored at 3%, and each passes or is a gap its case
-      file explains. *Result (ADR-025):* met: Calisto and Bella Lui pass; Juno III's drifts miss
-      (−3.7%), reported not scored, 1.6 points being the rail release (`rail_release.py`).
-    - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* #50's cause is found and the drifts
-      scored within tolerance, or an ADR records the measured cause and why not, the gap in the report.
-      *Result (ADR-026):* met: mostly RocketPy's mirrored moment point (#1186, PR #1196) and nozzle
-      tensor (PR #1188), corrected; RocketPy then within 1.4% in wind; six drifts gated, five not.
+  - [x] **M2.1d The time-series RMS and the path in wind.** Met in three parts.
+    - [x] **M2.1d1 The time-series RMS.** Met (ADR-024): RMS at RocketPy's 120 series times, held
+      to 3% of apogee and max speed; same-drag all pass; predicted, three outside (the drag).
+    - [x] **M2.1d2 The calm-air cases (issue #50).** Met (ADR-025): Calisto and Bella Lui pass;
+      Juno III's drifts miss (−3.7%), reported not scored, 1.6 points being the rail release.
+    - [x] **M2.1d3 The path in wind (issue #50).** Met (ADR-026): RocketPy's moment point and
+      nozzle tensor corrected, then within 1.4% in wind; six drifts gated, five not.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
@@ -669,7 +641,7 @@
     - [x] **M1.10c2 Parquet.** Met (ADR-080): written in-house behind the `parquet` feature;
       Apache's `parquet` crate reads every value back bit for bit, over several pages.
 
-- [ ] **M2.3 Real flights.**
+- [ ] **M2.3 Real flights.** Split a to c (ADR-081).
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
@@ -678,6 +650,21 @@
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
   - Mean absolute apogee error is reported against the 5% target.
   - Each outlier has an explanation.
+  - [ ] **M2.3a ERA5 weather.** netCDF classic read from the specification; ERA5 levels at a site.
+    *Done when:*
+    - Classic and 64-bit offset files read value for value as the Unidata library reads them
+      (every type, records, the lone-record padding, packing), the Users Guide's departures from
+      netCDF4-python pinned; netCDF-4 and CDF-5 refused with the conversion.
+    - ERA5 levels at Bella Lui's and NDRT 2020's sites on the hour match RocketPy 1.13's reading
+      (temperature, wind, geopotential height) to 1e-12; between hours, weighted in time; the
+      height conversion's difference is published with numbers.
+    - The Data Store's netCDF-4 file for NDRT 2020, converted as the guide says, reads like the
+      older file of the same analysis.
+    - A guide page explains getting, converting and reading an ERA5 file, with an example CI runs.
+  - [ ] **M2.3b RocketPy's logged flights.** Bella Lui, NDRT 2020, Prometheus, Juno III, Cavour
+    and more in their ERA5 weather; *done when* the parent's three bullets are met.
+  - [ ] **M2.3c Corpus flights with logs.** The private designs that have a flight log, in their
+    day's weather; *done when* each is in a report as anonymised statistics beside M2.3b's.
 
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.

@@ -1,0 +1,1957 @@
+{
+ "source": "written and read back by the Unidata netCDF C library 4.9.3 through netCDF4-python 1.7.4 (validation/oracles/netcdf/write_cases.py)",
+ "files": [
+  {
+   "file": "types-classic.nc",
+   "format": "NETCDF3_CLASSIC",
+   "dimensions": [
+    {
+     "name": "x",
+     "length": 3,
+     "is_record": false
+    },
+    {
+     "name": "y",
+     "length": 2,
+     "is_record": false
+    },
+    {
+     "name": "strlen",
+     "length": 5,
+     "is_record": false
+    }
+   ],
+   "attributes": {
+    "title": {
+     "type": "char",
+     "text": "every type"
+    },
+    "a_byte": {
+     "type": "byte",
+     "values": [
+      -128,
+      0,
+      127
+     ]
+    },
+    "a_short": {
+     "type": "short",
+     "values": [
+      -32768,
+      32767
+     ]
+    },
+    "an_int": {
+     "type": "int",
+     "values": [
+      -2147483648
+     ]
+    },
+    "a_float": {
+     "type": "float",
+     "values": [
+      0.10000000149011612,
+      -3.0000000054977558e+38
+     ]
+    },
+    "a_double": {
+     "type": "double",
+     "values": [
+      0.3333333333333333
+     ]
+    }
+   },
+   "variables": [
+    {
+     "name": "s",
+     "type": "double",
+     "dimensions": [],
+     "shape": [],
+     "attributes": {},
+     "raw": [
+      3.141592653589793
+     ],
+     "unpacked": [
+      3.141592653589793
+     ]
+    },
+    {
+     "name": "b",
+     "type": "byte",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {
+      "note": {
+       "type": "char",
+       "text": "odd bytes pad"
+      }
+     },
+     "raw": [
+      -128,
+      -1,
+      127
+     ],
+     "unpacked": [
+      -128.0,
+      -1.0,
+      127.0
+     ]
+    },
+    {
+     "name": "c",
+     "type": "char",
+     "dimensions": [
+      "y",
+      "strlen"
+     ],
+     "shape": [
+      2,
+      5
+     ],
+     "attributes": {},
+     "raw": [
+      97,
+      98,
+      99,
+      100,
+      101,
+      120,
+      121,
+      122,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "h",
+     "type": "short",
+     "dimensions": [
+      "y",
+      "x"
+     ],
+     "shape": [
+      2,
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      -32768,
+      0,
+      32767,
+      1,
+      -2,
+      3
+     ],
+     "unpacked": [
+      -32768.0,
+      0.0,
+      32767.0,
+      1.0,
+      -2.0,
+      3.0
+     ]
+    },
+    {
+     "name": "i",
+     "type": "int",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      -2147483648,
+      7,
+      2147483647
+     ],
+     "unpacked": [
+      -2147483648.0,
+      7.0,
+      2147483647.0
+     ]
+    },
+    {
+     "name": "f",
+     "type": "float",
+     "dimensions": [
+      "y",
+      "x"
+     ],
+     "shape": [
+      2,
+      3
+     ],
+     "attributes": {
+      "scale_hint": {
+       "type": "float",
+       "values": [
+        0.25
+       ]
+      }
+     },
+     "raw": [
+      0.10000000149011612,
+      -1.5,
+      3.3999999521443642e+38,
+      9.99994610111476e-41,
+      2.0,
+      -0.0
+     ],
+     "unpacked": [
+      0.10000000149011612,
+      -1.5,
+      3.3999999521443642e+38,
+      9.99994610111476e-41,
+      2.0,
+      -0.0
+     ]
+    },
+    {
+     "name": "d",
+     "type": "double",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {
+      "units": {
+       "type": "char",
+       "text": "m"
+      }
+     },
+     "raw": [
+      0.1,
+      -2.5e+300,
+      5e-324
+     ],
+     "unpacked": [
+      0.1,
+      -2.5e+300,
+      5e-324
+     ]
+    }
+   ]
+  },
+  {
+   "file": "types-offset64.nc",
+   "format": "NETCDF3_64BIT_OFFSET",
+   "dimensions": [
+    {
+     "name": "x",
+     "length": 3,
+     "is_record": false
+    },
+    {
+     "name": "y",
+     "length": 2,
+     "is_record": false
+    },
+    {
+     "name": "strlen",
+     "length": 5,
+     "is_record": false
+    }
+   ],
+   "attributes": {
+    "title": {
+     "type": "char",
+     "text": "every type"
+    },
+    "a_byte": {
+     "type": "byte",
+     "values": [
+      -128,
+      0,
+      127
+     ]
+    },
+    "a_short": {
+     "type": "short",
+     "values": [
+      -32768,
+      32767
+     ]
+    },
+    "an_int": {
+     "type": "int",
+     "values": [
+      -2147483648
+     ]
+    },
+    "a_float": {
+     "type": "float",
+     "values": [
+      0.10000000149011612,
+      -3.0000000054977558e+38
+     ]
+    },
+    "a_double": {
+     "type": "double",
+     "values": [
+      0.3333333333333333
+     ]
+    }
+   },
+   "variables": [
+    {
+     "name": "s",
+     "type": "double",
+     "dimensions": [],
+     "shape": [],
+     "attributes": {},
+     "raw": [
+      3.141592653589793
+     ],
+     "unpacked": [
+      3.141592653589793
+     ]
+    },
+    {
+     "name": "b",
+     "type": "byte",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {
+      "note": {
+       "type": "char",
+       "text": "odd bytes pad"
+      }
+     },
+     "raw": [
+      -128,
+      -1,
+      127
+     ],
+     "unpacked": [
+      -128.0,
+      -1.0,
+      127.0
+     ]
+    },
+    {
+     "name": "c",
+     "type": "char",
+     "dimensions": [
+      "y",
+      "strlen"
+     ],
+     "shape": [
+      2,
+      5
+     ],
+     "attributes": {},
+     "raw": [
+      97,
+      98,
+      99,
+      100,
+      101,
+      120,
+      121,
+      122,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "h",
+     "type": "short",
+     "dimensions": [
+      "y",
+      "x"
+     ],
+     "shape": [
+      2,
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      -32768,
+      0,
+      32767,
+      1,
+      -2,
+      3
+     ],
+     "unpacked": [
+      -32768.0,
+      0.0,
+      32767.0,
+      1.0,
+      -2.0,
+      3.0
+     ]
+    },
+    {
+     "name": "i",
+     "type": "int",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      -2147483648,
+      7,
+      2147483647
+     ],
+     "unpacked": [
+      -2147483648.0,
+      7.0,
+      2147483647.0
+     ]
+    },
+    {
+     "name": "f",
+     "type": "float",
+     "dimensions": [
+      "y",
+      "x"
+     ],
+     "shape": [
+      2,
+      3
+     ],
+     "attributes": {
+      "scale_hint": {
+       "type": "float",
+       "values": [
+        0.25
+       ]
+      }
+     },
+     "raw": [
+      0.10000000149011612,
+      -1.5,
+      3.3999999521443642e+38,
+      9.99994610111476e-41,
+      2.0,
+      -0.0
+     ],
+     "unpacked": [
+      0.10000000149011612,
+      -1.5,
+      3.3999999521443642e+38,
+      9.99994610111476e-41,
+      2.0,
+      -0.0
+     ]
+    },
+    {
+     "name": "d",
+     "type": "double",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {
+      "units": {
+       "type": "char",
+       "text": "m"
+      }
+     },
+     "raw": [
+      0.1,
+      -2.5e+300,
+      5e-324
+     ],
+     "unpacked": [
+      0.1,
+      -2.5e+300,
+      5e-324
+     ]
+    }
+   ]
+  },
+  {
+   "file": "records-classic.nc",
+   "format": "NETCDF3_CLASSIC",
+   "dimensions": [
+    {
+     "name": "time",
+     "length": 4,
+     "is_record": true
+    },
+    {
+     "name": "x",
+     "length": 3,
+     "is_record": false
+    },
+    {
+     "name": "strlen",
+     "length": 2,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "lon",
+     "type": "float",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      8.0,
+      8.25,
+      8.5
+     ],
+     "unpacked": [
+      8.0,
+      8.25,
+      8.5
+     ]
+    },
+    {
+     "name": "rb",
+     "type": "byte",
+     "dimensions": [
+      "time"
+     ],
+     "shape": [
+      4
+     ],
+     "attributes": {},
+     "raw": [
+      -2,
+      -1,
+      0,
+      1
+     ],
+     "unpacked": [
+      -2.0,
+      -1.0,
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "name": "rh",
+     "type": "short",
+     "dimensions": [
+      "time",
+      "x"
+     ],
+     "shape": [
+      4,
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      0,
+      1,
+      2,
+      100,
+      101,
+      102,
+      200,
+      201,
+      202,
+      300,
+      301,
+      302
+     ],
+     "unpacked": [
+      0.0,
+      1.0,
+      2.0,
+      100.0,
+      101.0,
+      102.0,
+      200.0,
+      201.0,
+      202.0,
+      300.0,
+      301.0,
+      302.0
+     ]
+    },
+    {
+     "name": "rd",
+     "type": "double",
+     "dimensions": [
+      "time"
+     ],
+     "shape": [
+      4
+     ],
+     "attributes": {},
+     "raw": [
+      0.1,
+      0.6,
+      1.1,
+      1.6
+     ],
+     "unpacked": [
+      0.1,
+      0.6,
+      1.1,
+      1.6
+     ]
+    },
+    {
+     "name": "rc",
+     "type": "char",
+     "dimensions": [
+      "time",
+      "strlen"
+     ],
+     "shape": [
+      4,
+      2
+     ],
+     "attributes": {},
+     "raw": [
+      114,
+      48,
+      114,
+      49,
+      114,
+      50,
+      114,
+      51
+     ]
+    }
+   ]
+  },
+  {
+   "file": "records-offset64.nc",
+   "format": "NETCDF3_64BIT_OFFSET",
+   "dimensions": [
+    {
+     "name": "time",
+     "length": 4,
+     "is_record": true
+    },
+    {
+     "name": "x",
+     "length": 3,
+     "is_record": false
+    },
+    {
+     "name": "strlen",
+     "length": 2,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "lon",
+     "type": "float",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      8.0,
+      8.25,
+      8.5
+     ],
+     "unpacked": [
+      8.0,
+      8.25,
+      8.5
+     ]
+    },
+    {
+     "name": "rb",
+     "type": "byte",
+     "dimensions": [
+      "time"
+     ],
+     "shape": [
+      4
+     ],
+     "attributes": {},
+     "raw": [
+      -2,
+      -1,
+      0,
+      1
+     ],
+     "unpacked": [
+      -2.0,
+      -1.0,
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "name": "rh",
+     "type": "short",
+     "dimensions": [
+      "time",
+      "x"
+     ],
+     "shape": [
+      4,
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      0,
+      1,
+      2,
+      100,
+      101,
+      102,
+      200,
+      201,
+      202,
+      300,
+      301,
+      302
+     ],
+     "unpacked": [
+      0.0,
+      1.0,
+      2.0,
+      100.0,
+      101.0,
+      102.0,
+      200.0,
+      201.0,
+      202.0,
+      300.0,
+      301.0,
+      302.0
+     ]
+    },
+    {
+     "name": "rd",
+     "type": "double",
+     "dimensions": [
+      "time"
+     ],
+     "shape": [
+      4
+     ],
+     "attributes": {},
+     "raw": [
+      0.1,
+      0.6,
+      1.1,
+      1.6
+     ],
+     "unpacked": [
+      0.1,
+      0.6,
+      1.1,
+      1.6
+     ]
+    },
+    {
+     "name": "rc",
+     "type": "char",
+     "dimensions": [
+      "time",
+      "strlen"
+     ],
+     "shape": [
+      4,
+      2
+     ],
+     "attributes": {},
+     "raw": [
+      114,
+      48,
+      114,
+      49,
+      114,
+      50,
+      114,
+      51
+     ]
+    }
+   ]
+  },
+  {
+   "file": "one-record-short-classic.nc",
+   "format": "NETCDF3_CLASSIC",
+   "dimensions": [
+    {
+     "name": "t",
+     "length": 5,
+     "is_record": true
+    },
+    {
+     "name": "x",
+     "length": 3,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "level",
+     "type": "int",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      1000,
+      975,
+      950
+     ],
+     "unpacked": [
+      1000.0,
+      975.0,
+      950.0
+     ]
+    },
+    {
+     "name": "h",
+     "type": "short",
+     "dimensions": [
+      "t",
+      "x"
+     ],
+     "shape": [
+      5,
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      0,
+      0,
+      0,
+      10,
+      -10,
+      1,
+      20,
+      -20,
+      2,
+      30,
+      -30,
+      3,
+      40,
+      -40,
+      4
+     ],
+     "unpacked": [
+      0.0,
+      0.0,
+      0.0,
+      10.0,
+      -10.0,
+      1.0,
+      20.0,
+      -20.0,
+      2.0,
+      30.0,
+      -30.0,
+      3.0,
+      40.0,
+      -40.0,
+      4.0
+     ]
+    }
+   ]
+  },
+  {
+   "file": "one-record-short-offset64.nc",
+   "format": "NETCDF3_64BIT_OFFSET",
+   "dimensions": [
+    {
+     "name": "t",
+     "length": 5,
+     "is_record": true
+    },
+    {
+     "name": "x",
+     "length": 3,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "level",
+     "type": "int",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      1000,
+      975,
+      950
+     ],
+     "unpacked": [
+      1000.0,
+      975.0,
+      950.0
+     ]
+    },
+    {
+     "name": "h",
+     "type": "short",
+     "dimensions": [
+      "t",
+      "x"
+     ],
+     "shape": [
+      5,
+      3
+     ],
+     "attributes": {},
+     "raw": [
+      0,
+      0,
+      0,
+      10,
+      -10,
+      1,
+      20,
+      -20,
+      2,
+      30,
+      -30,
+      3,
+      40,
+      -40,
+      4
+     ],
+     "unpacked": [
+      0.0,
+      0.0,
+      0.0,
+      10.0,
+      -10.0,
+      1.0,
+      20.0,
+      -20.0,
+      2.0,
+      30.0,
+      -30.0,
+      3.0,
+      40.0,
+      -40.0,
+      4.0
+     ]
+    }
+   ]
+  },
+  {
+   "file": "one-record-byte-classic.nc",
+   "format": "NETCDF3_CLASSIC",
+   "dimensions": [
+    {
+     "name": "t",
+     "length": 7,
+     "is_record": true
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "b",
+     "type": "byte",
+     "dimensions": [
+      "t"
+     ],
+     "shape": [
+      7
+     ],
+     "attributes": {},
+     "raw": [
+      1,
+      -2,
+      3,
+      -4,
+      5,
+      -6,
+      7
+     ],
+     "unpacked": [
+      1.0,
+      -2.0,
+      3.0,
+      -4.0,
+      5.0,
+      -6.0,
+      7.0
+     ]
+    }
+   ]
+  },
+  {
+   "file": "one-record-byte-offset64.nc",
+   "format": "NETCDF3_64BIT_OFFSET",
+   "dimensions": [
+    {
+     "name": "t",
+     "length": 7,
+     "is_record": true
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "b",
+     "type": "byte",
+     "dimensions": [
+      "t"
+     ],
+     "shape": [
+      7
+     ],
+     "attributes": {},
+     "raw": [
+      1,
+      -2,
+      3,
+      -4,
+      5,
+      -6,
+      7
+     ],
+     "unpacked": [
+      1.0,
+      -2.0,
+      3.0,
+      -4.0,
+      5.0,
+      -6.0,
+      7.0
+     ]
+    }
+   ]
+  },
+  {
+   "file": "no-records-classic.nc",
+   "format": "NETCDF3_CLASSIC",
+   "dimensions": [
+    {
+     "name": "t",
+     "length": 0,
+     "is_record": true
+    },
+    {
+     "name": "x",
+     "length": 2,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "fixed",
+     "type": "double",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      2
+     ],
+     "attributes": {},
+     "raw": [
+      1.5,
+      2.5
+     ],
+     "unpacked": [
+      1.5,
+      2.5
+     ]
+    },
+    {
+     "name": "empty",
+     "type": "float",
+     "dimensions": [
+      "t",
+      "x"
+     ],
+     "shape": [
+      0,
+      2
+     ],
+     "attributes": {},
+     "raw": [],
+     "unpacked": []
+    }
+   ]
+  },
+  {
+   "file": "no-records-offset64.nc",
+   "format": "NETCDF3_64BIT_OFFSET",
+   "dimensions": [
+    {
+     "name": "t",
+     "length": 0,
+     "is_record": true
+    },
+    {
+     "name": "x",
+     "length": 2,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "fixed",
+     "type": "double",
+     "dimensions": [
+      "x"
+     ],
+     "shape": [
+      2
+     ],
+     "attributes": {},
+     "raw": [
+      1.5,
+      2.5
+     ],
+     "unpacked": [
+      1.5,
+      2.5
+     ]
+    },
+    {
+     "name": "empty",
+     "type": "float",
+     "dimensions": [
+      "t",
+      "x"
+     ],
+     "shape": [
+      0,
+      2
+     ],
+     "attributes": {},
+     "raw": [],
+     "unpacked": []
+    }
+   ]
+  },
+  {
+   "file": "packing-classic.nc",
+   "format": "NETCDF3_CLASSIC",
+   "dimensions": [
+    {
+     "name": "n",
+     "length": 6,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "era5_like",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "_FillValue": {
+       "type": "short",
+       "values": [
+        -32767
+       ]
+      },
+      "scale_factor": {
+       "type": "double",
+       "values": [
+        0.623424994373064
+       ]
+      },
+      "add_offset": {
+       "type": "double",
+       "values": [
+        22680.694146877813
+       ]
+      },
+      "missing_value": {
+       "type": "short",
+       "values": [
+        -32767
+       ]
+      }
+     },
+     "raw": [
+      -32768,
+      -32767,
+      -32766,
+      0,
+      32767,
+      -1
+     ],
+     "unpacked": [
+      2252.3039312612527,
+      null,
+      2253.55078125,
+      22680.694146877813,
+      43108.4609375,
+      22680.07072188344
+     ]
+    },
+    {
+     "name": "missing_vector",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "missing_value": {
+       "type": "short",
+       "values": [
+        2,
+        5
+       ]
+      }
+     },
+     "raw": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "unpacked": [
+      1.0,
+      null,
+      3.0,
+      4.0,
+      null,
+      6.0
+     ]
+    },
+    {
+     "name": "default_fill",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {},
+     "raw": [
+      -32768,
+      -32767,
+      -32766,
+      0,
+      1,
+      2
+     ],
+     "unpacked": [
+      -32768.0,
+      null,
+      -32766.0,
+      0.0,
+      1.0,
+      2.0
+     ]
+    },
+    {
+     "name": "valid_range",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "valid_range": {
+       "type": "short",
+       "values": [
+        -100,
+        100
+       ]
+      },
+      "scale_factor": {
+       "type": "double",
+       "values": [
+        0.5
+       ]
+      }
+     },
+     "raw": [
+      -101,
+      -100,
+      0,
+      100,
+      101,
+      7
+     ],
+     "unpacked": [
+      null,
+      -50.0,
+      0.0,
+      50.0,
+      null,
+      3.5
+     ]
+    },
+    {
+     "name": "valid_min",
+     "type": "float",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "valid_min": {
+       "type": "float",
+       "values": [
+        -1.0
+       ]
+      }
+     },
+     "raw": [
+      -2.0,
+      -1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0000000150474662e+30
+     ],
+     "unpacked": [
+      null,
+      -1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0000000150474662e+30
+     ]
+    },
+    {
+     "name": "valid_max",
+     "type": "int",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "valid_max": {
+       "type": "int",
+       "values": [
+        8
+       ]
+      }
+     },
+     "raw": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "unpacked": [
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      null,
+      null
+     ]
+    },
+    {
+     "name": "byte_no_fill",
+     "type": "byte",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {},
+     "raw": [
+      -128,
+      -127,
+      -1,
+      0,
+      1,
+      127
+     ],
+     "unpacked": [
+      -128.0,
+      null,
+      -1.0,
+      0.0,
+      1.0,
+      127.0
+     ]
+    },
+    {
+     "name": "byte_fill",
+     "type": "byte",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "_FillValue": {
+       "type": "byte",
+       "values": [
+        -1
+       ]
+      }
+     },
+     "raw": [
+      -128,
+      -127,
+      -1,
+      0,
+      1,
+      127
+     ],
+     "unpacked": [
+      -128.0,
+      -127.0,
+      null,
+      0.0,
+      1.0,
+      127.0
+     ]
+    },
+    {
+     "name": "positive_fill",
+     "type": "int",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "_FillValue": {
+       "type": "int",
+       "values": [
+        99
+       ]
+      }
+     },
+     "raw": [
+      97,
+      98,
+      99,
+      100,
+      -5,
+      0
+     ],
+     "unpacked": [
+      97.0,
+      98.0,
+      null,
+      100.0,
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "name": "double_default",
+     "type": "double",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {},
+     "raw": [
+      1.0,
+      9.969209968386869e+36,
+      1e+37,
+      -1e+37,
+      0.0,
+      2.0
+     ],
+     "unpacked": [
+      1.0,
+      null,
+      1e+37,
+      -1e+37,
+      0.0,
+      2.0
+     ]
+    },
+    {
+     "name": "float_packed",
+     "type": "byte",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "scale_factor": {
+       "type": "float",
+       "values": [
+        0.10000000149011612
+       ]
+      },
+      "add_offset": {
+       "type": "float",
+       "values": [
+        5.0
+       ]
+      }
+     },
+     "raw": [
+      -128,
+      0,
+      127,
+      10,
+      20,
+      30
+     ],
+     "unpacked": [
+      -7.800000190734863,
+      5.0,
+      17.700000762939453,
+      6.0,
+      7.0,
+      8.0
+     ]
+    }
+   ]
+  },
+  {
+   "file": "packing-offset64.nc",
+   "format": "NETCDF3_64BIT_OFFSET",
+   "dimensions": [
+    {
+     "name": "n",
+     "length": 6,
+     "is_record": false
+    }
+   ],
+   "attributes": {},
+   "variables": [
+    {
+     "name": "era5_like",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "_FillValue": {
+       "type": "short",
+       "values": [
+        -32767
+       ]
+      },
+      "scale_factor": {
+       "type": "double",
+       "values": [
+        0.623424994373064
+       ]
+      },
+      "add_offset": {
+       "type": "double",
+       "values": [
+        22680.694146877813
+       ]
+      },
+      "missing_value": {
+       "type": "short",
+       "values": [
+        -32767
+       ]
+      }
+     },
+     "raw": [
+      -32768,
+      -32767,
+      -32766,
+      0,
+      32767,
+      -1
+     ],
+     "unpacked": [
+      2252.3039312612527,
+      null,
+      2253.55078125,
+      22680.694146877813,
+      43108.4609375,
+      22680.07072188344
+     ]
+    },
+    {
+     "name": "missing_vector",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "missing_value": {
+       "type": "short",
+       "values": [
+        2,
+        5
+       ]
+      }
+     },
+     "raw": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "unpacked": [
+      1.0,
+      null,
+      3.0,
+      4.0,
+      null,
+      6.0
+     ]
+    },
+    {
+     "name": "default_fill",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {},
+     "raw": [
+      -32768,
+      -32767,
+      -32766,
+      0,
+      1,
+      2
+     ],
+     "unpacked": [
+      -32768.0,
+      null,
+      -32766.0,
+      0.0,
+      1.0,
+      2.0
+     ]
+    },
+    {
+     "name": "valid_range",
+     "type": "short",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "valid_range": {
+       "type": "short",
+       "values": [
+        -100,
+        100
+       ]
+      },
+      "scale_factor": {
+       "type": "double",
+       "values": [
+        0.5
+       ]
+      }
+     },
+     "raw": [
+      -101,
+      -100,
+      0,
+      100,
+      101,
+      7
+     ],
+     "unpacked": [
+      null,
+      -50.0,
+      0.0,
+      50.0,
+      null,
+      3.5
+     ]
+    },
+    {
+     "name": "valid_min",
+     "type": "float",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "valid_min": {
+       "type": "float",
+       "values": [
+        -1.0
+       ]
+      }
+     },
+     "raw": [
+      -2.0,
+      -1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0000000150474662e+30
+     ],
+     "unpacked": [
+      null,
+      -1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0000000150474662e+30
+     ]
+    },
+    {
+     "name": "valid_max",
+     "type": "int",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "valid_max": {
+       "type": "int",
+       "values": [
+        8
+       ]
+      }
+     },
+     "raw": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "unpacked": [
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      null,
+      null
+     ]
+    },
+    {
+     "name": "byte_no_fill",
+     "type": "byte",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {},
+     "raw": [
+      -128,
+      -127,
+      -1,
+      0,
+      1,
+      127
+     ],
+     "unpacked": [
+      -128.0,
+      null,
+      -1.0,
+      0.0,
+      1.0,
+      127.0
+     ]
+    },
+    {
+     "name": "byte_fill",
+     "type": "byte",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "_FillValue": {
+       "type": "byte",
+       "values": [
+        -1
+       ]
+      }
+     },
+     "raw": [
+      -128,
+      -127,
+      -1,
+      0,
+      1,
+      127
+     ],
+     "unpacked": [
+      -128.0,
+      -127.0,
+      null,
+      0.0,
+      1.0,
+      127.0
+     ]
+    },
+    {
+     "name": "positive_fill",
+     "type": "int",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "_FillValue": {
+       "type": "int",
+       "values": [
+        99
+       ]
+      }
+     },
+     "raw": [
+      97,
+      98,
+      99,
+      100,
+      -5,
+      0
+     ],
+     "unpacked": [
+      97.0,
+      98.0,
+      null,
+      100.0,
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "name": "double_default",
+     "type": "double",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {},
+     "raw": [
+      1.0,
+      9.969209968386869e+36,
+      1e+37,
+      -1e+37,
+      0.0,
+      2.0
+     ],
+     "unpacked": [
+      1.0,
+      null,
+      1e+37,
+      -1e+37,
+      0.0,
+      2.0
+     ]
+    },
+    {
+     "name": "float_packed",
+     "type": "byte",
+     "dimensions": [
+      "n"
+     ],
+     "shape": [
+      6
+     ],
+     "attributes": {
+      "scale_factor": {
+       "type": "float",
+       "values": [
+        0.10000000149011612
+       ]
+      },
+      "add_offset": {
+       "type": "float",
+       "values": [
+        5.0
+       ]
+      }
+     },
+     "raw": [
+      -128,
+      0,
+      127,
+      10,
+      20,
+      30
+     ],
+     "unpacked": [
+      -7.800000190734863,
+      5.0,
+      17.700000762939453,
+      6.0,
+      7.0,
+      8.0
+     ]
+    }
+   ]
+  }
+ ]
+}

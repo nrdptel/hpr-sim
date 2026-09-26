@@ -166,6 +166,8 @@ catches hPa entered as Pa.
   `geometric_from_wmo_geopotential_m`. At 30 km that is 29.7785 km of geopotential at the
   equator and 29.932 km at 80° N. The standard's latitude-free `r₀` formula is only for the
   standard itself.
+- **From an ERA5 file:** `hpr_io::era5` builds this profile over a launch site at launch time
+  from the day's reanalysis; see [ERA5 weather files](../format/era5.md).
 - **[Loft lesson L5](../decisions-and-roadmap.md#l5):** "today's conditions" kept the standard lapse from the field up,
   ignored humidity and never used sounding temperatures.
 

@@ -646,6 +646,7 @@ name = "hpr-io"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "hpr-atmos",
  "hpr-design",
  "hpr-format",
  "hpr-motor",

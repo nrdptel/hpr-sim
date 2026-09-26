@@ -50,6 +50,7 @@
 - [OpenRocket `.ork` design files](format/ork.md)
 - [RASP `.eng` motor files](format/eng.md)
 - [RockSim `.rse` motor files](format/rse.md)
+- [ERA5 weather files](format/era5.md)
 
 # Reference
 

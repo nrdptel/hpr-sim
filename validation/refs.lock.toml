@@ -686,6 +686,24 @@ dest = "refs/snapshots/motor-finder/vendors.json"
 license = "free to use, attribution appreciated"
 mode = "fetched"
 
+[[snapshot]]
+name = "unidata-netcdf-file-format"
+url = "https://docs.unidata.ucar.edu/netcdf-c/current/file_format_specifications.html"
+sha256 = "68f499b812774590eefc7c88fcce28fad103749bd21e0efff39b5277c2e289fc"
+captured = "2026-09-26"
+dest = "refs/snapshots/unidata/file_format_specifications.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "unidata-netcdf-attribute-conventions"
+url = "https://docs.unidata.ucar.edu/netcdf-c/current/attribute_conventions.html"
+sha256 = "1b8af2d85f542654435007e117b069dd8914dd33bc5f7fd09b38257c77d55bd5"
+captured = "2026-09-26"
+dest = "refs/snapshots/unidata/attribute_conventions.html"
+license = "unstated terms"
+mode = "fetched"
+
 # The oracle Python environment: `uv sync --frozen` from validation/oracles/uv.lock, which pins
 # every package by hash. Selected on the command line as `python`.
 [python]
@@ -696,6 +714,8 @@ checks = [
     { module = "jpype" },
     { module = "mpmath", version = "1.3.0" },
     { module = "ambiance", version = "1.3.1" },
+    { module = "netCDF4", version = "1.7.4" },
+    { module = "xarray", version = "2026.7.0" },
 ]
 
 # The OpenRocket oracle's runtime. `doctor` looks in JAVA_HOME, /usr/libexec/java_home (macOS),
