@@ -27,6 +27,43 @@
 
 ## Start
 
+### The easy way: ask a Claude Code session
+
+```bash
+cd ~/Documents/local-projects/hpr-sim && claude
+```
+
+Then type what you want in plain words:
+
+| You type | What happens |
+| --- | --- |
+| `start autopilot for 8 hours` | Runs `scripts/autopilot-start.sh 8h` and confirms the window |
+| `how's the autopilot doing?` | Runs `scripts/autopilot-status.sh` and summarises it: time left, the current milestone and what the cycle is doing, what shipped, anything that needs you, anything wrong |
+| `stop the autopilot` | Graceful stop: the current milestone finishes first |
+| `stop the autopilot now` | Immediate stop |
+
+`/autopilot start 8h`, `/autopilot status` and `/autopilot stop` do the same. The session loads
+the `autopilot` skill in `.claude/skills/autopilot/`.
+
+The run is **detached**. You can close that session, or the whole Terminal window, and the run
+carries on. Open a new session any time and ask for its status. Don't use that session for other
+work in this folder while a run is going: the run is switching branches and committing in it. The
+session is told this when it starts.
+
+`scripts/autopilot-start.sh` checks some things before it starts:
+
+- It refuses to start a second run.
+- It refuses if the working tree has uncommitted changes, because the first cycle switches branches
+  over them. Commit or stash them, or add `--force`.
+- It warns if the Mac is on battery, if memory is short, or if the checkout isn't on `main`.
+- It waits for the first cycle to begin, and shows the error if the run fails to start.
+
+Durations can be `8`, `8h`, `90m` or `2h30m`, with at least 1h, since no cycle starts with under 45
+minutes left. A duration always starts a new window. `--resume` continues the unexpired window in
+`.autopilot/deadline` instead. The same three scripts work typed straight into Terminal.
+
+### In a Terminal window you keep open
+
 ```bash
 scripts/autopilot.sh 48
 ```
@@ -42,14 +79,8 @@ Leave that Terminal window open; closing it stops the run. The script:
 If it stops for any reason, running it again resumes the same window. Add `--fresh` to start a
 new one.
 
-If you might close the window by accident, run it in the background instead:
-
-```bash
-nohup scripts/autopilot.sh 48 > .autopilot/console.log 2>&1 &
-```
-
-To stop a background run, `touch .autopilot/STOP` (graceful) or `pkill -f scripts/autopilot.sh`
-(immediate).
+If you might close the window by accident, use `scripts/autopilot-start.sh 48h` instead, which
+runs the same loop detached.
 
 ## Check in (optional)
 
@@ -62,8 +93,10 @@ To stop a background run, `touch .autopilot/STOP` (graceful) or `pkill -f script
 
 ## Stop
 
-- **Graceful** (the current milestone finishes first): `touch .autopilot/STOP`
-- **Immediate:** Ctrl+C in the autopilot window. Work already committed and pushed is kept.
+- **Graceful** (the current milestone finishes first): `scripts/autopilot-stop.sh`, or
+  `touch .autopilot/STOP`.
+- **Immediate:** `scripts/autopilot-stop.sh --now`, or Ctrl+C in the autopilot window. Work
+  already committed and pushed is kept.
 
 ## Steer it without stopping
 
@@ -83,7 +116,7 @@ long session with many context compactions, and it doesn't wait out weekly limit
 
 ```bash
 mkdir -p .autopilot && echo $(( $(date +%s) + 48*3600 )) > .autopilot/deadline
-CLAUDE_CODE_AUTO_COMPACT_WINDOW=400000 BASH_DEFAULT_TIMEOUT_MS=1200000 BASH_MAX_TIMEOUT_MS=2400000 \
+HPR_AUTOPILOT=1 CLAUDE_CODE_AUTO_COMPACT_WINDOW=400000 BASH_DEFAULT_TIMEOUT_MS=1200000 BASH_MAX_TIMEOUT_MS=2400000 \
   caffeinate -ims claude --model claude-opus-5-5 --effort high --permission-mode bypassPermissions \
   --remote-control hpr-sim --settings "$(cat .claude/autopilot/settings.json)"
 ```
@@ -94,7 +127,9 @@ Then paste:
 /goal Work through docs/ROADMAP.md one milestone at a time, exactly as CLAUDE.md and .claude/autopilot/goal.md describe for a single milestone (read both first). After each milestone is merged, re-read docs/STATUS.md and start the next one. The goal is met only when fewer than 45 minutes remain before the time in .autopilot/deadline and the final handoff is pushed as described in goal.md, or when every remaining milestone is blocked on Neer. Never ask questions.
 ```
 
-In `/config`, make sure **Continue automatically at usage limit** is on.
+In `/config`, make sure **Continue automatically at usage limit** is on. `HPR_AUTOPILOT=1` marks
+the session as the run, so the startup hook gives it the deadline instructions; without it, the
+hook treats a session as interactive and leaves the deadline out.
 
 ## Costs and limits
 

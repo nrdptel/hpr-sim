@@ -211,6 +211,10 @@ and tested.
 - **Watch the clock.** `.autopilot/deadline` holds the run's end time as a Unix timestamp; `date +%s`
   gives now. With under 45 minutes left, don't start new work: commit what's in progress on a
   branch, push it, open a draft PR, and make sure `STATUS.md` says exactly where to resume.
+  This binds the run's own cycles (`HPR_AUTOPILOT=1`), not an interactive session.
+- **Interactive sessions control the run.** When Neer asks a session to start, check on or stop an
+  autopilot run, use the `autopilot` skill. While a run is going, that session stays out of the
+  checkout: no edits, branch switches or commits.
 - **Neer may steer between cycles** by pushing edits to `ROADMAP.md`, `STATUS.md` or this file on
   `main`. Always start from a freshly pulled `main`.
 - **When a tool or classifier blocks an action,** don't fight it. Pick a safe alternative, or record

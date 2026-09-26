@@ -16,10 +16,14 @@
 # Usage:
 #   scripts/autopilot.sh            # 48-hour run (reuses an unexpired deadline if one exists)
 #   scripts/autopilot.sh 24         # 24-hour run
+#   scripts/autopilot.sh 2h30m      # durations may also be written 8h, 90m or 2h30m
 #   scripts/autopilot.sh 48 --fresh # ignore any existing deadline and start a new 48-hour window
+#   scripts/autopilot-start.sh 8h   # the same, detached from the terminal (what the autopilot
+#                                   # skill runs when asked from a Claude Code session)
 #
 # Stop:     touch .autopilot/STOP   (graceful: the current cycle finishes first)
 #           Ctrl+C                  (immediate: the current cycle is cut off; its commits are kept)
+#           scripts/autopilot-stop.sh [--now]   (either, for a detached run)
 # Watch:    scripts/autopilot-status.sh   |   tail -f .autopilot/runs.log
 #
 # Environment overrides: HPR_MODEL (default claude-opus-5-5), HPR_EFFORT (default high; the reviewer
@@ -38,15 +42,24 @@ set -uo pipefail
 # is inherited by every descendant and survives reparenting to launchd.
 set -m
 
-HOURS="48"
+# The window: a bare number is hours; 8h, 90m and 2h30m are accepted too. 10# keeps a leading
+# zero from being read as octal.
+DURATION=$(( 48 * 3600 ))
 FRESH=0
 for arg in "$@"; do
-  case "$arg" in
-    --fresh) FRESH=1 ;;
-    ''|*[!0-9]*) echo "usage: $0 [hours] [--fresh]" >&2; exit 64 ;;
-    *) HOURS="$arg" ;;
-  esac
+  if [ "$arg" = "--fresh" ]; then
+    FRESH=1
+  elif [[ "$arg" =~ ^[0-9]+$ ]]; then
+    DURATION=$(( 10#$arg * 3600 ))
+  elif [[ "$arg" =~ ^(([0-9]+)h)?(([0-9]+)m)?$ ]] && [ -n "$arg" ]; then
+    DURATION=$(( 10#${BASH_REMATCH[2]:-0} * 3600 + 10#${BASH_REMATCH[4]:-0} * 60 ))
+  else
+    echo "usage: $0 [hours | 8h | 90m | 2h30m] [--fresh]" >&2; exit 64
+  fi
 done
+[ "$DURATION" -gt 0 ] || { echo "the window must be longer than zero" >&2; exit 64; }
+DURATION_LABEL="$(( DURATION / 3600 ))h"
+[ $(( DURATION % 3600 )) -ne 0 ] && DURATION_LABEL="${DURATION_LABEL}$(( DURATION % 3600 / 60 ))m"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
@@ -55,6 +68,22 @@ STATE="$ROOT/.autopilot"
 LOGS="$STATE/logs"
 RUNLOG="$STATE/runs.log"
 mkdir -p "$LOGS"
+
+# One run at a time. Two loops in one checkout would switch branches under each other. The pid
+# file is written by the run itself, so it names this script and not a wrapper; a stale file left
+# by a crash is ignored because its pid is dead or is no longer this script.
+PIDFILE="$STATE/pid"
+running_pid() {
+  local p
+  p=$(tr -dc '0-9' 2>/dev/null < "$PIDFILE")
+  [ -n "$p" ] && [ "$p" != "$$" ] && kill -0 "$p" 2>/dev/null \
+    && ps -o command= -p "$p" 2>/dev/null | grep -q 'autopilot\.sh' && echo "$p"
+}
+if other=$(running_pid); then
+  echo "An autopilot run is already going (pid $other). Stop it first: scripts/autopilot-stop.sh" >&2
+  exit 1
+fi
+echo $$ > "$PIDFILE"
 
 MODEL="${HPR_MODEL:-claude-opus-5-5}"
 # high, not xhigh: on Opus 5.5, Anthropic measured xhigh at about 1.4 points more than high on
@@ -337,9 +366,9 @@ if [ "$FRESH" -eq 0 ] && [ -f "$STATE/deadline" ]; then
   fi
 fi
 if [ -z "$deadline" ]; then
-  deadline=$(( now + HOURS * 3600 ))
+  deadline=$(( now + DURATION ))
   echo "$deadline" > "$STATE/deadline"
-  log "New ${HOURS}h run window. Deadline: $(fmt_time "$deadline")"
+  log "New ${DURATION_LABEL} run window. Deadline: $(fmt_time "$deadline")"
 fi
 rm -f "$STATE/STOP"
 
@@ -357,7 +386,7 @@ cycle_groups=""
 cycle_start=0
 NOT_SAMPLED=101   # a free-percentage sentinel: no real sample can exceed 100
 on_signal() {
-  log "Interrupted: stopping now. Work is saved in git; rerun scripts/autopilot.sh to resume the same window."
+  log "Interrupted: stopping now. Work is saved in git; scripts/autopilot-start.sh --resume carries on the same window."
   reap "$child" "$child_pgid" 5
   # Clear it so the EXIT trap does not signal the same group again: by then the pid has been
   # released and could in principle belong to something else.
@@ -365,7 +394,7 @@ on_signal() {
   exit 130
 }
 trap on_signal INT TERM HUP
-trap 'reap "$child" "$child_pgid" 2' EXIT
+trap 'reap "$child" "$child_pgid" 2; [ "$(tr -dc 0-9 2>/dev/null < "$PIDFILE")" = "$$" ] && rm -f "$PIDFILE"' EXIT
 
 GOAL_TEXT="$(cat "$GOAL_FILE")"
 SETTINGS_JSON="$(cat "$SETTINGS_FILE")"
@@ -513,6 +542,9 @@ while :; do
   log "Cycle $cycle starting (${left_min} min left in the window; $MODEL, effort $EFFORT, compact window $COMPACT_WINDOW). Log: ${out#"$ROOT"/}"
 
   start=$(date +%s)
+  # HPR_AUTOPILOT tells .claude/hooks/session-context.sh that this session is a cycle, so it
+  # gets the deadline instructions; an interactive session gets a hands-off notice instead.
+  HPR_AUTOPILOT=1 \
   CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 \
   CLAUDE_CODE_RETRY_WATCHDOG=1 \
     "$CLAUDE_BIN" -p "/goal $GOAL_TEXT" \

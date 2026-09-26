@@ -10,7 +10,20 @@ now=$(date +%s)
 echo "## hpr-sim session context (injected by .claude/hooks/session-context.sh)"
 echo "- Local time: $(date '+%Y-%m-%d %H:%M %Z')"
 
-if [ -f .autopilot/deadline ]; then
+# Only an autopilot cycle (scripts/autopilot.sh sets HPR_AUTOPILOT=1) is bound by the deadline.
+# An interactive session is Neer's: it hears whether a run is going, and to keep out of its way.
+run_pid=$(tr -dc '0-9' 2>/dev/null < .autopilot/pid)
+if [ -n "$run_pid" ] && kill -0 "$run_pid" 2>/dev/null \
+  && ps -o command= -p "$run_pid" 2>/dev/null | grep -q 'autopilot\.sh'; then :; else run_pid=""; fi
+if [ "${HPR_AUTOPILOT:-}" != "1" ]; then
+  if [ -n "$run_pid" ]; then
+    deadline=$(tr -dc '0-9' 2>/dev/null < .autopilot/deadline)
+    left=$(( (${deadline:-$now} - now) / 60 ))
+    echo "- Interactive session. An autopilot run is going in the background (pid $run_pid, $(( left / 60 ))h $(( left % 60 ))m left). This session is not part of it: don't edit files, switch branches or commit in this checkout while it runs. To check on it or stop it, use the autopilot skill."
+  else
+    echo "- Interactive session; no autopilot run is going. The autopilot skill starts one (\"start autopilot for 8 hours\")."
+  fi
+elif [ -f .autopilot/deadline ]; then
   deadline=$(tr -dc '0-9' < .autopilot/deadline)
   if [ -n "$deadline" ]; then
     left=$(( (deadline - now) / 60 ))
