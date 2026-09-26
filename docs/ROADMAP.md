@@ -171,19 +171,15 @@
 
   - [x] **M1.6a Integrator and events:** adaptive Dormand–Prince 5(4) with dense output, event
     root-finding and stop times that put discontinuities on step boundaries; the fixed-step RK4
-    option; `docs/physics/integration.md`.
+    option; `docs/physics/integration.md`. *Done when:* step-halving convergence shows the
+    expected order, and events are located to ≤1e-6 s.
     - Loft lessons: L21, L22, L23.
-
-    *Done when:* step-halving convergence shows the expected order, and events are located to
-    ≤1e-6 s.
-
   - [x] **M1.6b Rigid-body flight:** the state, the rail phase, powered and coast phases with jet
-    damping, the flight events, the recorder and observer, and the `criterion` benchmark.
+    damping, the flight events, the recorder and observer, and the `criterion` benchmark. *Done
+    when:* analytic tests pass (vacuum ballistic, terminal velocity, torque-free precession, and
+    pitch oscillation frequency vs linear theory), and a single typical L2 flight simulates in
+    ≤5 ms release-mode (number recorded in `docs/perf.md`).
     - Loft lessons: L20, L24, L25, L26.
-
-    *Done when:* analytic tests pass (vacuum ballistic, terminal
-    velocity, torque-free precession, and pitch oscillation frequency vs linear theory), and a
-    single typical L2 flight simulates in ≤5 ms release-mode (number recorded in `docs/perf.md`).
 
 - [x] **M1.7 Recovery.** Parachutes (Cd·S, inflation time or area growth), streamers and tumble;
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
@@ -196,7 +192,6 @@
     drogue and main with deployment triggers (apogee, altitude, timer, motor delay), drogue
     release, descent with wind drift and landing detection.
     - Loft lessons: L27, L28, L29, L92.
-
     *Done when:* analytic tests for terminal velocity, descent time and drift pass, and descent
     rate and drift match RocketPy's for 3 example rockets within 3%. *Result (ADR-012):* met.
     Analytic descents to 2.1e-8; five RocketPy examples within 0.71% (time), 0.03% (rate), 0.27%
@@ -636,29 +631,20 @@
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
       bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the four above.
 
-- [x] **M1.9 Staging, clusters, airstarts (COTS).**
-  - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
-  - Booster tracked through recovery.
-  - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
+- [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
+  altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts
+  with mass and thrust summed and the thrust offset handled. *Done when:* a two-stage design and a
+  cluster design each match OpenRocket within the per-case tolerance; event ordering tests pass.
+  Met in a to c (ADR-074 to ADR-076).
   - Loft lessons: L30, L31, L93.
-  *Done when:* a two-stage design and a cluster design each match OpenRocket within the per-case
-  tolerance; event ordering tests pass.
-
-  Split into a to c (ADR-074).
-  - [x] **M1.9a Ignition times and powered staging.** *Done when:* a motor lights at launch, at a
-    time, at another's burnout plus a delay, or at its stage's separation plus a delay; a separation
-    before the last burnout lets the sustainer fly on as a rigid body on its own stages' aerodynamics
-    while the booster flies to its landing; tests pin the sustainer's ignition, the mass step and
-    linear momentum at the split, the event order, and an unreachable trigger that never lights.
+  - [x] **M1.9a Ignition times and powered staging.** Met (ADR-074), bars kept: motors lit at
+    launch, a time, a burnout or a separation plus a delay; the sustainer flies on, the booster lands.
     - Loft lessons: L30, L93.
-  - [x] **M1.9b Clusters.** *Done when:* several motors in one mount sum their thrust and mass, a
-    motor out gives the pitch moment the hand calculation predicts, and `.ork` clusters are read.
-    *Result:* met (ADR-075): a motor out's turn is the hand calculation's to 3.7e-7; every tube of
-    25 OpenRocket probes within 1e-15 m; `.ork` cluster flights wait for M1.9c.
+  - [x] **M1.9b Clusters.** Met (ADR-075), bars kept: a motor out's turn is the hand calculation's
+    to 3.7e-7; every tube of 25 OpenRocket probes within 1e-15 m; `.ork` clusters read.
     - Loft lessons: L31.
-  - [x] **M1.9c Against OpenRocket.** *Done when:* the parent's first bullet is met: a `.ork`
-    two-stage design and a cluster design each within the per-case tolerance of OpenRocket's flight.
-    *Result:* met (ADR-076): all within 5% in apogee (3 vs OR without its early chute) and largest speed.
+  - [x] **M1.9c Against OpenRocket.** Met (ADR-076), bars kept: a `.ork` two-stage and a cluster
+    design within 5% of OpenRocket in apogee (3 vs OR without its early chute) and largest speed.
 
 - [ ] **M1.10 Outputs and derived metrics.**
   - Static and dynamic stability margin over the flight.
@@ -670,6 +656,20 @@
   - Metrics are unit-tested.
   - Exported files are validated (GeoJSON by schema, KML by parsing).
   - Flutter matches the worked example in the cited source.
+
+  Split into a to c (ADR-077).
+  - [x] **M1.10a Flight metrics.** *Done when:* a watcher reports the peaks (speed, Mach, max q,
+    the boost's acceleration apart from the opening shock), the apogee with its datum, the static
+    and flight margins from rail exit to apogee (none where the slopes cancel), each motor's optimum
+    delay and each landing's latitude and longitude, `None` for what didn't happen; each is
+    unit-tested against a hand value; L33, L34, L35, L94 live. *Result:* met (ADR-077): peak within
+    1e-6 of hand (100 Hz differencing 1.3% low); margins to Barrowman's 1e-9; delay 1 s = 20 s.
+    - Loft lessons: L33, L34, L35, L94.
+  - [ ] **M1.10b Fin flutter.** *Done when:* the parent's third bullet is met: flutter speed and
+    margin from the cited source match its worked example, each shear modulus cited; L32 live.
+    - Loft lessons: L32.
+  - [ ] **M1.10c Exports.** *Done when:* the parent's second bullet is met: CSV, JSON, KML and
+    GeoJSON (Parquet behind a feature) are written, GeoJSON checked by schema and KML by parsing.
 
 - [ ] **M2.3 Real flights.**
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file

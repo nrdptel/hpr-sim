@@ -97,6 +97,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
 | [Staging](physics/staging.md) | ✓ ignition times, the mass step and momentum, against hand sums | — | ✓ OpenRocket: its two-stage, cluster and air-start examples, every flight within 5% (three cluster apogees against OpenRocket's flight with no parachute, because its parachute opened before apogee) ([results](format/ork.md#staged-clustered-and-air-start-flights)) | — |
+| [Flight metrics](physics/metrics.md) | ✓ the boost's peak, the margins of the page's finless rocket with a boattail (including where a margin is withheld) and the landing placement against hand calculations; max q and top Mach against a 1 ms record; the least margins against 1 ms steps and a scan of every step; the flight margin and the optimum delay against hpr's own models and a flight with no recovery | — | — | — |
 | [Interpolation](physics/interpolation.md) | ✓ | — | — | — |
 | [Quadrature](physics/quadrature.md) | ✓ | — | — | — |
 

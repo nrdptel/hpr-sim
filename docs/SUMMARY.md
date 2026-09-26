@@ -35,6 +35,7 @@
 - [Time integration and events](physics/integration.md)
 - [Recovery](physics/recovery.md)
 - [Staging](physics/staging.md)
+- [Flight metrics](physics/metrics.md)
 
 # Numerical tools
 

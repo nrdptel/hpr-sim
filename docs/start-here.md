@@ -120,9 +120,10 @@ out.
 
 ### Outputs and ways to use it
 
-- **No stability margin output yet.** You can compute the centre of pressure and the centre of
-  gravity, and [Your own rocket](your-own-rocket.md) shows how to get the margin from them. A
-  margin tracked through the flight comes with [M1.10](decisions-and-roadmap.md#m1-10), the outputs milestone.
+- **No fin flutter and no output files yet.** A flight's peaks, its stability margin from the rail
+  exit to apogee, the optimum ejection delay and its landing's latitude and longitude are in
+  [Flight metrics](physics/metrics.md). Fin flutter ([M1.10b](decisions-and-roadmap.md#m1-10b))
+  and CSV, JSON, KML and GeoJSON files ([M1.10c](decisions-and-roadmap.md#m1-10c)) come next.
 - **No way to use it without writing Rust.** A simpler library interface ([M4.1](decisions-and-roadmap.md#m4-1)), a
   command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are
   planned. Until then, [Getting started](getting-started.md) flies a first

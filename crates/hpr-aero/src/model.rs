@@ -705,6 +705,10 @@ pub struct NormalForce {
     /// `Σ C_N,i X_i`, m: the normal force's moment about the nose tip per unit dynamic pressure and
     /// reference area, defined even when the net force is zero.
     pub moment_m: f64,
+    /// `Σ (C_N,i/α) X_i`, m per radian: [`Self::moment_m`] per radian of angle of attack, and at
+    /// `α = 0` its slope `Σ C_Nα,i X_i`. It is defined when the slopes cancel, where the centre of
+    /// pressure is not: the loads are then a pure couple.
+    pub moment_slope_m: f64,
     /// Centre of pressure, m aft of the nose tip; `None` when the slope is zero, or so small
     /// against its terms (below 1e-12 of `Σ |C_Nα,i|`) that the ratio would be noise.
     pub cp_station_m: Option<f64>,
@@ -751,6 +755,7 @@ impl NormalForce {
             coefficient: term.slope * alpha_rad,
             slope_per_rad: term.slope,
             moment_m: term.moment * alpha_rad,
+            moment_slope_m: term.moment,
             cp_station_m: (term.slope != 0.0 && !cancelled).then(|| term.moment / term.slope),
             side_coefficient: term.side * alpha_rad,
             side_moment_m: term.side_moment * alpha_rad,
@@ -1735,6 +1740,7 @@ impl AeroModel {
                 coefficient,
                 slope_per_rad: slope,
                 moment_m: coefficient * lookup.cp_station_m,
+                moment_slope_m: slope * lookup.cp_station_m,
                 cp_station_m: (slope != 0.0).then_some(lookup.cp_station_m),
                 side_coefficient: 0.0,
                 side_moment_m: 0.0,

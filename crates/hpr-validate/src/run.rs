@@ -1636,6 +1636,13 @@ mod peak_tests {
                 recovery_drag_area_m2: 0.0,
             })
         }
+        fn stability(&self, t_s: f64) -> Result<hpr_sim::metrics::Stability, SimError> {
+            // A made-up climb has no airframe to be stable.
+            Err(SimError::Domain {
+                what: "stability of a test step with no aerodynamic model",
+                value: t_s,
+            })
+        }
     }
 
     #[test]

@@ -277,7 +277,9 @@ To get it in code:
 
 What changes it:
 
-- **Speed.** Only the fins' terms change with Mach number; the bodies' don't. Up to Mach 0.8 the
+- **Speed.** Below Mach 1.2 only the fins' terms change with Mach number; past it the bodies' can
+  too ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). Up to
+  Mach 0.8 the
   fins' slope grows through the Prandtl–Glauert factor, the classic correction for the air's
   compressibility, whose effect grows as the speed nears that of sound (*Prandtl–Glauert*, under
   Fins). How much a fin set gains depends on its span, area and sweep. So as the rocket speeds
@@ -287,8 +289,9 @@ What changes it:
     either way, depending on each set's shape and place.
   - Up to Mach 0.8 hpr keeps each fin set's own CP a quarter of the way along its
     [mean aerodynamic chord](#fins) (MAC, a weighted average of its chords). From there it moves
-    aft, and past Mach 1 the fins' slope falls again
-    ([Fins through Mach 1](#fins-through-mach-1)), so a fast rocket's CP moves forward.
+    aft. The fins' slope grows up to where supersonic theory starts, Mach 1.2 or later, and falls
+    past it ([Fins through Mach 1](#fins-through-mach-1)), so a fast rocket's CP moves forward
+    again.
 
   `Flow::axial(0.0)` gives the low-speed CP that Barrowman's method gives by hand.
 - **Angle.** `Flow::axial` gives the small-angle CP. At an angle of attack, body lift adds a force
@@ -303,8 +306,10 @@ What changes it:
     body axes, so the CG's station is `−cg_m.z`.
   - The CP's station less the CG's, divided by `d_ref`, is the
     [stability margin](../glossary.md#stability-margin) in [calibres](../glossary.md#calibre-caliber).
-  - hpr doesn't report the margin yet: a margin over the flight comes with [M1.10](../decisions-and-roadmap.md#m1-10), the
-    outputs milestone.
+  - [Flight metrics](metrics.md) gives the margin from the rail exit to apogee or the first
+    [deployment](../glossary.md#deployment), with the air along the axis, at Mach 0 (the static
+    margin) and at the flight's Mach number (the flight margin), and gives none where the slopes
+    all but cancel.
 
 ## Bodies of revolution
 

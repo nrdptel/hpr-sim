@@ -68,6 +68,10 @@ Rail exit:  16.2 m/s
 Landing:    90.2 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 58.93 s
 ```
 
+The heights are the centre of gravity's, above the launch site. For the peaks, the stability margin
+through the climb, the best ejection delay and the landing's latitude and longitude, see
+[Flight metrics](physics/metrics.md); its example flies this rocket with one parachute.
+
 You should see exactly these numbers. The project's automated checks (CI, for continuous
 integration) run the program on macOS, Windows and Linux on every change, and fail if it prints
 anything but what is committed in

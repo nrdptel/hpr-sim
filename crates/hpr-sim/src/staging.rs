@@ -968,4 +968,141 @@ mod tests {
         let (full, _) = at_rest(&cluster_of_three(Vec::new()), t);
         assert!(full.length() < omega_dot.length() / 40.0, "{full:?}");
     }
+
+    /// A flight-metrics watcher that also reads both margins at 201 points across each step it
+    /// keeps stability for.
+    struct Scanned {
+        metrics: crate::metrics::FlightMetrics,
+        least_static: f64,
+        least_flight: f64,
+    }
+
+    impl Observer for Scanned {
+        fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
+            let kept = self.metrics.stability().len();
+            self.metrics.step(step)?;
+            if self.metrics.stability().len() > kept {
+                let (a, b) = (step.start_s(), step.end_s());
+                for i in 0..=200 {
+                    let s = step.stability(a + (b - a) * f64::from(i) / 200.0)?;
+                    let least = |m: Option<f64>, least: f64| m.map_or(least, |m| m.min(least));
+                    self.least_static = least(s.static_margin.margin_cal, self.least_static);
+                    self.least_flight = least(s.flight_margin.margin_cal, self.least_flight);
+                }
+            }
+            Ok(())
+        }
+
+        fn event(&mut self, event: &crate::flight::FlightEvent) {
+            self.metrics.event(event);
+        }
+    }
+
+    #[test]
+    fn metrics_follow_a_powered_separation() {
+        // The serial plan: the booster drops under power and lands on its own. The summary gives
+        // the sustainer's landing and the booster's, and the margins switch to the sustainer's
+        // diameter at the split. Only the sustainer's motor has an optimum delay: the booster's
+        // charge would fire in the booster, which never reaches the sustainer's apogee.
+        let sim = serial_plan();
+        let mut metrics = crate::metrics::FlightMetrics::new();
+        let result = sim.run(&mut metrics).unwrap();
+        let summary = metrics.summary(&result, sim.environment()).unwrap();
+        assert!(summary.landing.is_some());
+        assert_eq!(summary.body_landings.len(), 1);
+        assert_eq!(summary.body_landings[0].body, Some(1));
+        let split_s = time_of(&result, EventKind::Separation);
+        let series = metrics.stability();
+        let before = series.iter().find(|s| s.time_s < split_s).unwrap();
+        let after = series.iter().rev().find(|s| s.time_s > split_s).unwrap();
+        assert!(after.reference_diameter_m < before.reference_diameter_m);
+        // The split has two entries, the stack's and then the sustainer's own.
+        let at_split: Vec<_> = series.iter().filter(|s| s.time_s == split_s).collect();
+        assert_eq!(at_split.len(), 2);
+        assert_eq!(at_split[1].reference_diameter_m, after.reference_diameter_m);
+
+        // The least margins, against a scan of every step at 201 points: at or below the scan,
+        // and above it by less than the scan's own spacing can hide. The sustainer's static
+        // margin holds from the split until it lights, and is least at the split; its flight
+        // margin is least inside a step, between two entries.
+        let mut scanned = Scanned {
+            metrics: crate::metrics::FlightMetrics::new(),
+            least_static: f64::INFINITY,
+            least_flight: f64::INFINITY,
+        };
+        let result = sim.run(&mut scanned).unwrap();
+        let summary = scanned.metrics.summary(&result, sim.environment()).unwrap();
+        let (least_static, least_flight) = (
+            summary.min_static_margin_cal.unwrap(),
+            summary.min_flight_margin_cal.unwrap(),
+        );
+        for (least, scan) in [
+            (least_static.value, scanned.least_static),
+            (least_flight.value, scanned.least_flight),
+        ] {
+            // A least only gives way to one lower by more than rounding (1e-12).
+            assert!(
+                least <= scan + 1e-12 && scan - least < 1e-7,
+                "{least} against {scan}"
+            );
+        }
+        assert_eq!(least_static.time_s, split_s);
+        assert_eq!(
+            at_split[1].static_margin.margin_cal,
+            Some(least_static.value)
+        );
+        let series = scanned.metrics.stability();
+        assert!(series.iter().all(|s| s.time_s != least_flight.time_s));
+
+        let best = crate::metrics::optimum_delays(&sim).unwrap().unwrap();
+        let sustainer = motor_index(&sim, SUSTAINER_MOUNT);
+        assert_eq!(best.len(), 1);
+        assert_eq!(best[0].motor, sustainer);
+        let lit_s = booster_burnout_s(&sim) + 1.0;
+        let burnout_s = lit_s
+            + sim.assembly().motors[sustainer]
+                .mounted
+                .motor
+                .burnout_time_s();
+        assert!((best[0].burnout_s - burnout_s).abs() < 1e-9);
+        assert!((best[0].delay_s - (best[0].apogee_s - burnout_s)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_held_flight_holds_a_separation_after_the_last_burnout() {
+        // The sustainer lights 1 s after the booster burns out, still attached, and the stack
+        // separates a delay after the sustainer burns out: part of the recovery. However long
+        // the delay, the held flight coasts through to the same apogee.
+        let rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        let with_delay = |delay_s: f64| {
+            staged(&rocket, |sim| {
+                Separation::new(
+                    Trigger::Burnout {
+                        motor: motor_index(sim, SUSTAINER_MOUNT),
+                        delay_s,
+                    },
+                    0,
+                )
+            })
+        };
+        let (short, long) = (with_delay(3.0), with_delay(30.0));
+        let flown = short.run(&mut ()).unwrap();
+        assert_eq!(flown.termination, Termination::Separated);
+        let a = crate::metrics::optimum_delays(&short).unwrap().unwrap();
+        let b = crate::metrics::optimum_delays(&long).unwrap().unwrap();
+        assert_eq!(a.len(), 2);
+        assert_eq!(b.len(), 2);
+        // Each flight still stops its steps at its own separation time, so the two agree to the
+        // integration's tolerance rather than bit for bit: the apogee is where the vertical speed
+        // crosses zero at g, so 3e-5 m/s of it is 3e-6 s.
+        for (a, b) in a.iter().zip(&b) {
+            assert_eq!((a.motor, a.burnout_s), (b.motor, b.burnout_s));
+            assert!((a.delay_s - b.delay_s).abs() < 1e-5, "{a:?} vs {b:?}");
+        }
+        // The short delay's separation came before that apogee.
+        assert!(time_of(&flown, EventKind::Separation) < a[0].apogee_s);
+    }
 }
