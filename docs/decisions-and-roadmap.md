@@ -259,7 +259,7 @@ missing or its status disagrees.
 | <a id="m2-3a"></a>[M2.3a][phase-1] | The weather over a launch site read from an ERA5 file, as RocketPy reads it ([ADR-081][adr-081], [ERA5 weather files](format/era5.md)) | done |
 | <a id="m2-3b"></a>[M2.3b][phase-1] | RocketPy's logged flights flown in their ERA5 weather and compared with the logs ([ADR-082][adr-082], [Accuracy: real flights](accuracy.md#real-flights)) | done |
 | <a id="m2-3c"></a>[M2.3c][phase-1] | The private designs that have a flight log, flown in their day's weather, published as statistics. Blocked: none of the private designs is the rocket of any logged flight, so it waits for a design and its log to be added to the private data, as [ADR-083][adr-083] records | blocked |
-| <a id="m2-4"></a>[M2.4][phase-1] | A summary of accuracy for the README, and CI that fails on any regression ([ADR-084][adr-084], [Accuracy: the census](accuracy.md#the-census)) | not yet done |
+| <a id="m2-4"></a>[M2.4][phase-1] | A summary of accuracy for the README, and CI that fails on any regression ([ADR-084][adr-084], [Accuracy: the census](accuracy.md#the-census)) | done |
 | <a id="m1-11"></a>[M1.11][phase-1] | Ejected nose cones, body sections and payloads, each flown to its own landing | not yet done |
 | <a id="m1-12"></a>[M1.12][phase-1] | Payload mass that moves, or is released, during the flight | not yet done |
 | <a id="m1-13"></a>[M1.13][phase-1] | Pods: bodies mounted beside the airframe, with or without motors | not yet done |

@@ -1477,7 +1477,8 @@ fn percent_follows(accepted: &Row, now: &Row) -> bool {
             (is - expected).abs()
                 <= accepted.slack * per_unit.abs() + 1e-9 * is.abs().max(expected.abs())
         }
-        _ => false,
+        // A difference withheld, or no longer withheld, is a change of standing, not of definition.
+        _ => accepted.standing == Standing::Withheld || now.standing == Standing::Withheld,
     }
 }
 

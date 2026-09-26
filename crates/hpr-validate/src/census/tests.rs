@@ -456,6 +456,50 @@ fn the_badge_counts_the_gated_rows_and_turns_red_on_a_failure() {
     let badge = badges(&census.summaries())[0].1.clone();
     assert!(badge.contains("3 of 3 gated metrics pass"), "{badge}");
     assert!(badge.contains("#2e7d32"), "{badge}");
+    // The real flights' badge says whether the target is met in words, not by colour alone.
+    let mut summaries = census.summaries();
+    let (name, missed) = badges(&summaries)[1].clone();
+    assert_eq!(name, "real-flights-badge.svg");
+    assert!(
+        missed.contains("(target 5%, missed)") && missed.contains("#b35c00"),
+        "{missed}"
+    );
+    let flights = summaries
+        .iter_mut()
+        .find(|summary| summary.group == Group::FlightLogs)
+        .unwrap();
+    if let Some(apogee) = flights.apogee_percent.as_mut() {
+        apogee.mean_absolute = 4.0;
+    }
+    let met = badges(&summaries)[1].1.clone();
+    assert!(
+        met.contains("4.00% (target 5%, met)") && met.contains("#2e7d32"),
+        "{met}"
+    );
+    summaries.retain(|summary| summary.group != Group::FlightLogs);
+    let none = badges(&summaries)[1].1.clone();
+    assert!(none.contains("none compared"), "{none}");
+    // A difference no longer withheld is a change of standing only, not a redefinition.
+    let withheld = barred(
+        Group::OpenRocketLibrary,
+        "c",
+        "apogee",
+        None,
+        APOGEE_BAR,
+        Regime::Subsonic,
+    );
+    let scored = barred(
+        Group::OpenRocketLibrary,
+        "c",
+        "apogee",
+        Some(1.0),
+        APOGEE_BAR,
+        Regime::Subsonic,
+    );
+    assert!(matches!(
+        &compare(&single(withheld), &single(scored))[..],
+        [Change::Standing { .. }]
+    ));
     let failing = take(&harness(
         vec![Comparison::new(
             "flight-a",

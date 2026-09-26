@@ -671,12 +671,14 @@
     in their day's weather; *done when* each is in a report as anonymised statistics beside
     M2.3b's. Blocked (ADR-083): no private design is the rocket of a logged flight; needs a pair.
 
-- [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
+- [x] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
   - Loft lessons: L84, L85, L86, L88.
   *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
   `gh pr close --delete-branch`.
+  *Result (ADR-084):* 648 rows; 2% more skin friction on #199 failed validate on all three OSes
+  (74 rows, 17 worse; run 36267483063); #199 closed. Linux's reproduction miss there is #200.
 
 - [ ] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17).
   - A separation at any joint, not only a stage boundary (ADR-014): an ejected nose cone, a body
