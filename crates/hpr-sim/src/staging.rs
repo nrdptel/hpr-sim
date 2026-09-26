@@ -969,6 +969,35 @@ mod tests {
         assert!(full.length() < omega_dot.length() / 40.0, "{full:?}");
     }
 
+    /// A flight-metrics watcher that also reads both margins at 201 points across each step it
+    /// keeps stability for.
+    struct Scanned {
+        metrics: crate::metrics::FlightMetrics,
+        least_static: f64,
+        least_flight: f64,
+    }
+
+    impl Observer for Scanned {
+        fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
+            let kept = self.metrics.stability().len();
+            self.metrics.step(step)?;
+            if self.metrics.stability().len() > kept {
+                let (a, b) = (step.start_s(), step.end_s());
+                for i in 0..=200 {
+                    let s = step.stability(a + (b - a) * f64::from(i) / 200.0)?;
+                    let least = |m: Option<f64>, least: f64| m.map_or(least, |m| m.min(least));
+                    self.least_static = least(s.static_margin.margin_cal, self.least_static);
+                    self.least_flight = least(s.flight_margin.margin_cal, self.least_flight);
+                }
+            }
+            Ok(())
+        }
+
+        fn event(&mut self, event: &crate::flight::FlightEvent) {
+            self.metrics.event(event);
+        }
+    }
+
     #[test]
     fn metrics_follow_a_powered_separation() {
         // The serial plan: the booster drops under power and lands on its own. The summary gives
@@ -987,6 +1016,42 @@ mod tests {
         let before = series.iter().find(|s| s.time_s < split_s).unwrap();
         let after = series.iter().rev().find(|s| s.time_s > split_s).unwrap();
         assert!(after.reference_diameter_m < before.reference_diameter_m);
+        // The split has two entries, the stack's and then the sustainer's own.
+        let at_split: Vec<_> = series.iter().filter(|s| s.time_s == split_s).collect();
+        assert_eq!(at_split.len(), 2);
+        assert_eq!(at_split[1].reference_diameter_m, after.reference_diameter_m);
+
+        // The least margins, against a scan of every step at 201 points: at or below the scan,
+        // and above it by less than the scan's own spacing can hide. The sustainer's static
+        // margin holds from the split until it lights, and is least at the split; its flight
+        // margin is least inside a step, between two entries.
+        let mut scanned = Scanned {
+            metrics: crate::metrics::FlightMetrics::new(),
+            least_static: f64::INFINITY,
+            least_flight: f64::INFINITY,
+        };
+        let result = sim.run(&mut scanned).unwrap();
+        let summary = scanned.metrics.summary(&result, sim.environment()).unwrap();
+        let (least_static, least_flight) = (
+            summary.min_static_margin_cal.unwrap(),
+            summary.min_flight_margin_cal.unwrap(),
+        );
+        for (least, scan) in [
+            (least_static.value, scanned.least_static),
+            (least_flight.value, scanned.least_flight),
+        ] {
+            assert!(
+                least <= scan && scan - least < 1e-7,
+                "{least} against {scan}"
+            );
+        }
+        assert_eq!(least_static.time_s, split_s);
+        assert_eq!(
+            at_split[1].static_margin.margin_cal,
+            Some(least_static.value)
+        );
+        let series = scanned.metrics.stability();
+        assert!(series.iter().all(|s| s.time_s != least_flight.time_s));
 
         let best = crate::metrics::optimum_delays(&sim).unwrap().unwrap();
         let sustainer = motor_index(&sim, SUSTAINER_MOUNT);

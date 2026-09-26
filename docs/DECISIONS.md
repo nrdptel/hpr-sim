@@ -6919,12 +6919,13 @@ compute but not write files.
 4. **Two margins.** The static margin is the centre of pressure at Mach 0 with the air along the
    axis, against the centre of mass of the instant: RocketPy's `static_margin`. The roadmap's
    "dynamic" margin is read as the flight margin: the margin at the flight's own Mach number with
-   the air along the axis, RocketPy's `stability_margin`, whose least is its
-   `min_stability_margin`. A pitch damping ratio, the other reading, is not built here. Both
-   margins are kept at each step's end from the rail exit to apogee or the first deployment: on the
-   rail the rail holds the rocket, and a slow climb through the wind gives angles near 90°. The
-   least of each is searched for inside steps, as a peak is, so it doesn't depend on where steps
-   end. The angle of attack is left out, after three versions that followed it failed review: its
+   the air along the axis, defined as RocketPy's `stability_margin` is (RocketPy's
+   `min_stability_margin` takes its least over the whole flight, rail and descent included, so it
+   can differ). A pitch damping ratio, the other reading, is not built here. Both margins are kept
+   at each step's end from the rail exit to apogee or the first deployment, since on the rail the
+   rail holds the rocket; a powered separation adds the sustainer's own entry at the split. The
+   least of each is searched for inside steps, as a peak is, and a later least replaces an earlier
+   one only when lower by more than 1e-12 relative, so a flat least keeps its first time. The angle of attack is left out, after three versions that followed it failed review: its
    least came at the apogee in calm air (1.28 calibres on Valetudo); a floor on the dynamic
    pressure at the rail exit's let the apogee through off a tilted rail, which still crosses the
    air there as fast as it left the rail; and a 15° cap on the angle (the limit on a fin's cant)
@@ -6958,8 +6959,8 @@ compute but not write files.
    east and north metres and the ground-hit speed.
 9. **`FlightStep::stability`.** Each step gives the margins at a time from the model flying (the
    sustainer's after a powered split), so a new required trait method; hpr-validate's test stub
-   refuses it. `Evaluation` carries the crossing air's roll angle for it. A watcher keeps one
-   flight, and `summary` refuses a flight it didn't see end.
+   refuses it. A watcher keeps one flight, and `summary` refuses a flight unless it saw each of
+   its accepted steps once.
 
 **Consequences.** The site gains *Flight metrics*, with an example whose output CI checks. The
 margin limit of √10 is a choice that a later model of component uncertainties could replace with a

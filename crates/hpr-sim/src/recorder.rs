@@ -191,8 +191,8 @@ pub trait FlightStep {
     /// Whatever the evaluation returns (it succeeded at the step's own stages).
     fn sample(&self, t_s: f64) -> Result<Sample, SimError>;
 
-    /// The rocket's stability at `t` in `[start_s, end_s]`: its static margin and its margin in
-    /// the flight's air there, from the aerodynamic model flying (the sustainer's after a powered
+    /// The rocket's stability at `t` in `[start_s, end_s]`: its static margin and its margin at
+    /// the flight's Mach number there, both with the air along the axis, from the aerodynamic model flying (the sustainer's after a powered
     /// separation) and the centre of mass at `t` ([`crate::metrics::stability`]).
     ///
     /// # Errors

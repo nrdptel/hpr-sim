@@ -274,8 +274,8 @@ pub struct FlightSummary {
     /// calibres, where it is defined, found inside steps as a peak is. After a powered separation
     /// the sustainer's margins count its own diameter.
     pub min_static_margin_cal: Option<Peak>,
-    /// The smallest flight margin over the same span, calibres, found the same way: RocketPy's
-    /// `min_stability_margin`.
+    /// The smallest flight margin over the same span, calibres, found the same way. RocketPy's
+    /// `min_stability_margin` takes its least over the whole flight, so it can differ.
     pub min_flight_margin_cal: Option<Peak>,
     /// The stability as the last rail guide left the rail.
     pub rail_exit_stability: Option<Stability>,
@@ -320,6 +320,8 @@ pub struct FlightMetrics {
     steps: u64,
     on_rail: bool,
     past_apogee: bool,
+    /// Whether a separation came since the last step: the next starts on another rocket.
+    separated: bool,
     rail_exit: Option<Stability>,
     stability: Vec<Stability>,
     min_static_margin: Option<Peak>,
@@ -496,14 +498,15 @@ impl Observer for FlightMetrics {
         if phase == Phase::Rail {
             self.on_rail = true;
         }
-        // On the rail the rail holds the rocket, and its slow climb through the wind makes angles
-        // of attack near 90°, so stability starts at the rail exit.
+        // On the rail the rail holds the rocket, so stability starts at the rail exit.
         if !self.past_apogee && phase == Phase::Free {
+            // A step starts where the last ended, on the same rocket, unless a separation came
+            // between: then the sustainer's own margins at the split start the step.
             let first = match self.stability.last() {
-                Some(last) => *last,
-                None => {
+                Some(last) if !self.separated => *last,
+                _ => {
                     let first = step.stability(a)?;
-                    if self.on_rail {
+                    if self.stability.is_empty() && self.on_rail {
                         self.rail_exit = Some(first);
                     }
                     self.stability.push(first);
@@ -520,19 +523,22 @@ impl Observer for FlightMetrics {
                 (flight_of, &mut self.min_flight_margin),
             ] {
                 if let Some(least) = least_margin(step, a, b, &entries, pick)?
-                    && slot.is_none_or(|peak| least.value < peak.value)
+                    && slot.is_none_or(|peak| clearly_below(least.value, peak.value))
                 {
                     *slot = Some(least);
                 }
             }
             self.stability.push(end);
         }
+        self.separated = false;
         Ok(())
     }
 
     fn event(&mut self, event: &FlightEvent) {
-        if event.kind == EventKind::Apogee {
-            self.past_apogee = true;
+        match event.kind {
+            EventKind::Apogee => self.past_apogee = true,
+            EventKind::Separation => self.separated = true,
+            _ => {}
         }
     }
 }
@@ -613,6 +619,15 @@ fn flight_of(s: &Stability) -> &Margin {
     &s.flight_margin
 }
 
+/// How far below a least margin another must be to replace it, relative: a flat margin, which
+/// rounding can nudge by an ulp, keeps its first time.
+const MARGIN_TIE: f64 = 1e-12;
+
+/// Whether margin `a` is below `b` by more than [`MARGIN_TIE`].
+fn clearly_below(a: f64, b: f64) -> bool {
+    b - a > MARGIN_TIE * b.abs().max(1.0)
+}
+
 /// The least of one margin on the step `[a, b]`, from its `entries` at the start, middle and end
 /// and, when all three are defined and the parabola through them has its bottom inside, a search
 /// between; `None` if it is nowhere defined among them.
@@ -623,28 +638,43 @@ fn least_margin(
     entries: &[Stability; 3],
     pick: fn(&Stability) -> &Margin,
 ) -> Result<Option<Peak>, SimError> {
-    // Searched as the largest of its negative; an undefined margin is never the least.
-    let negated = |s: &Stability| Peak {
-        value: pick(s).margin_cal.map_or(f64::NEG_INFINITY, |m| -m),
-        time_s: s.time_s,
-        height_above_ground_m: s.height_above_ground_m,
+    let at = |s: &Stability| {
+        pick(s).margin_cal.map(|value| Peak {
+            value,
+            time_s: s.time_s,
+            height_above_ground_m: s.height_above_ground_m,
+        })
     };
-    let [start, middle, end] = entries.each_ref().map(negated);
-    let mut best = [middle, end]
-        .into_iter()
-        .fold(start, |x, y| if y.value > x.value { y } else { x });
-    if [start, middle, end].iter().all(|p| p.value.is_finite())
-        && top_inside(start.value, middle.value, end.value)
+    let mut best: Option<Peak> = None;
+    let mut keep = |candidate: Peak| {
+        if best.is_none_or(|peak| clearly_below(candidate.value, peak.value)) {
+            best = Some(candidate);
+        }
+    };
+    let points = entries.each_ref().map(at);
+    points.into_iter().flatten().for_each(&mut keep);
+    if let [Some(start), Some(middle), Some(end)] = points
+        && top_inside(-start.value, -middle.value, -end.value)
     {
-        let found = golden_max(a, b, |t| step.stability(t).map(|s| negated(&s)))?;
-        if found.value > best.value {
-            best = found;
+        // Searched as the largest of its negative; an undefined margin is never the least.
+        let found = golden_max(a, b, |t| {
+            step.stability(t).map(|s| {
+                let peak = at(&s);
+                Peak {
+                    value: peak.map_or(f64::NEG_INFINITY, |p| -p.value),
+                    time_s: s.time_s,
+                    height_above_ground_m: s.height_above_ground_m,
+                }
+            })
+        })?;
+        if found.value.is_finite() {
+            keep(Peak {
+                value: -found.value,
+                ..found
+            });
         }
     }
-    Ok(best.value.is_finite().then_some(Peak {
-        value: -best.value,
-        ..best
-    }))
+    Ok(best)
 }
 
 /// The ejection delay that would fire a motor's charge at apogee.
@@ -1386,8 +1416,9 @@ mod tests {
     fn least_margins_do_not_depend_on_where_steps_end() {
         // The same flight flown in steps of at most 1 ms gives the same least margins, to a
         // millionth of a calibre: Valetudo in calm air off a vertical and an 84° rail and in a
-        // crosswind, and Prometheus past Mach 2. On all four the least is at the rail exit, where
-        // the rocket is heaviest and its centre of mass furthest aft.
+        // crosswind, and Prometheus. On all four both leasts are at the rail exit, where the rocket
+        // is heaviest and its centre of mass furthest aft: the search inside steps is checked on a
+        // two-stage flight (`staging::tests::metrics_follow_a_powered_separation`) instead.
         let fine = |settings: FlightSettings| FlightSettings {
             method: Method::DormandPrince54(Adaptive {
                 max_step_s: Some(1e-3),
@@ -1434,6 +1465,7 @@ mod tests {
             };
             let (coarse_static, coarse_flight, series) = least(capped(max_time_s));
             assert_eq!(coarse_flight.time_s, series[0].time_s, "{name}");
+            assert_eq!(coarse_static.time_s, series[0].time_s, "{name}");
             let (fine_static, fine_flight, _) = least(fine(capped(max_time_s)));
             for (coarse, fine, what) in [
                 (coarse_static, fine_static, "static"),
