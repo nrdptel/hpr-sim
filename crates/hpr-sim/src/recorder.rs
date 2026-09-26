@@ -12,7 +12,7 @@ use crate::state::State;
 /// The flight's state and the quantities derived from it at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Sample {
-    /// Time since ignition, s.
+    /// Time since launch, s: the flight's clock, from which each motor's ignition is counted.
     pub time_s: f64,
     /// The phase the flight was in.
     pub phase: Phase,
@@ -51,7 +51,7 @@ pub struct Sample {
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Channel {
-    /// Time since ignition, s.
+    /// Time since launch, s.
     Time,
     /// The nose tip's position in the launch frame, m.
     Position,
@@ -213,7 +213,7 @@ impl Observer for () {}
 
 /// Records chosen channels, one row per sample.
 ///
-/// - With an interval, a row at every multiple of `interval_s` after ignition that falls within the
+/// - With an interval, a row at every multiple of `interval_s` after launch that falls within the
 ///   flight, and a row at every event (unless the last row already has that time).
 /// - Without one, a row at the flight's first step's start and at every step's end; events end
 ///   steps, so they are among the rows.
@@ -297,7 +297,7 @@ impl Observer for Recorder {
                 self.record(&step.sample(step.end_s())?);
             }
             Some(dt) => {
-                // A flight that starts after ignition samples from its start.
+                // A flight that starts after launch samples from its start.
                 let first = (step.start_s() / dt).ceil();
                 if (self.next_index as f64) < first {
                     self.next_index = first as u64;

@@ -287,11 +287,10 @@
       the suite, their apogee and landing drifts scored at 3%, and each passes or is a gap its case
       file explains. *Result (ADR-025):* met: Calisto and Bella Lui pass; Juno III's drifts miss
       (−3.7%), reported not scored, 1.6 points being the rail release (`rail_release.py`).
-    - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* issue #50's cause is found and the
-      drifts are scored within their tolerances, or an ADR records the measured cause and why they
-      cannot be, with the gap left visible in the report. *Result (ADR-026):* met: mostly RocketPy's
-      mirrored moment point (#1186, PR #1196) and nozzle tensor (PR #1188), both corrected; RocketPy
-      then within 1.4% of hpr in wind (`wind_response.py`). Six drifts gated; five not.
+    - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* #50's cause is found and the drifts
+      scored within tolerance, or an ADR records the measured cause and why not, the gap in the report.
+      *Result (ADR-026):* met: mostly RocketPy's mirrored moment point (#1186, PR #1196) and nozzle
+      tensor (PR #1188), corrected; RocketPy then within 1.4% in wind; six drifts gated, five not.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
@@ -376,24 +375,15 @@
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
     why not with the gap in the report. Split below into M1.8e1 to e12; e9 judged this bullet.
 
-    - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a pointed
-      body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its Fig. 2's
-      tangent-cone slopes read by hand. *Done when* (targets set before measuring): a committed
-      fixture, pinned by a test, holds hpr's values against every row of TN 3527's Tables I and II
-      (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10 calibers, Mach 3 to
-      6.28) within 0.05 per radian and 0.1 calibers of its second-order values and within its stated
-      ±0.2 of its measurements, every miss explained; and the Arcas Robin's nose and cylinder, with
-      and without its boattail (footnote 8), at each Mach number of TN D-4014, beside the measured
-      body alone. *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within
-      its values (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to
-      +16.4%.
-    - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
-      M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
-      theory below it. *Done when* (targets set before measuring): a flight takes the body's `C_Nα`
-      and CP at its Mach number, and a test probes the join at ±1e-9 in Mach and finds no jump; and
-      the Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number from
-      1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows in the
-      PR.
+    - [x] **M1.8e1 The second-order shock-expansion method** (NACA TN 3527, a pointed body at
+      `α → 0`). *Done when* (targets set before): a pinned fixture holds every row of its Tables I
+      and II within 0.05/rad and 0.1 cal of its values and ±0.2 of its measurements, misses
+      explained, and the Arcas Robin beside TN D-4014. *Result (ADR-033):* not met, recorded: 102
+      and 125 of 144 within its values (#81 at its limit), 117 and 109 of 120 of its measurements;
+      Arcas Robin −18.7% to +16.4%.
+    - [x] **M1.8e2 The body's supersonic normal force in flight** (M1.8e1 joined to slender-body
+      theory). *Done when:* a flight takes the body's `C_Nα` and CP at its Mach, no jump at ±1e-9
+      in Mach at the join, and the Arcas Robin's body alone from Mach 1.5 is in the report.
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
       (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
       by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
@@ -555,13 +545,10 @@
       `layout()` to resolve rather than filled in, across a stage boundary too (L59). *Done when:*
       L59's named test is live and `cargo xtask ork` says how many spines lay out and what was left
       off them. *Result:* met: 73 of 76 spines lay out; a wall-less shoulder reads solid, for M2.2.
-    - [x] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
-      their parents, and a sourced finish (L49, L60, L61). It split M3.1b's bullets rather than
-      rewriting them; M3.1b4 carried the rest unchanged. *Done when:*
-      every part OpenRocket writes on or inside a body component is read into an `hpr_design` part
-      or left out with its reason; those lessons' tests are live; and `cargo xtask ork` says how
-      many parts were read and how many left out. *Result:* met (ADR-053): 765 parts, 5 left out
-      with a reason; angles are degrees, their sense unsettled; 67 of 71 cached answers match.
+    - [x] **M3.1b3 The parts on and inside the body** (L49, L60, L61; M3.1b4 carried the rest).
+      *Done when:* every part on or in a body is read or left out with its reason, the lessons'
+      tests live, and `cargo xtask ork` counts both. *Result:* met (ADR-053): 765 parts, 5 left
+      out with a reason; angles are degrees, their sense unsettled; 67 of 71 cached answers match.
     - [x] **M3.1b4 The designs that still do not lay out**, carrying M3.1b's bullet. Three of the
       76: one holds no `<rocket>` with components in it at all, and two have a chain of automatic
       radii with no fixed radius anywhere to resolve against, one caching a number and one not.
@@ -659,6 +646,19 @@
   *Done when:*
   - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
   - Event ordering tests pass.
+
+  Split into a to c (ADR-074).
+  - [x] **M1.9a Ignition times and powered staging.** *Done when:* a motor lights at launch, at a
+    time, at another's burnout plus a delay, or at its stage's separation plus a delay; a separation
+    before the last burnout lets the sustainer fly on as a rigid body on its own stages' aerodynamics
+    while the booster flies to its landing; tests pin the sustainer's ignition, the mass step and
+    linear momentum at the split, the event order, and an unreachable trigger that never lights.
+    - Loft lessons: L30, L93.
+  - [ ] **M1.9b Clusters.** *Done when:* several motors in one mount sum their thrust and mass, a
+    motor out gives the pitch moment the hand calculation predicts, and `.ork` clusters are read.
+    - Loft lessons: L31.
+  - [ ] **M1.9c Against OpenRocket.** *Done when:* the parent's first bullet is met: a `.ork`
+    two-stage design and a cluster design each within the per-case tolerance of OpenRocket's flight.
 
 - [ ] **M1.10 Outputs and derived metrics.**
   - Static and dynamic stability margin over the flight.

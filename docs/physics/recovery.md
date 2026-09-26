@@ -259,10 +259,14 @@ A device's charge fires at its `Trigger`:
   apogee is already below the setting fires at apogee, because no crossing follows. That is
   RocketPy's numeric trigger: vertical velocity negative and height below the setting
   (`parachute.py:354-364`).
-- `Time { time_s }`: a time after the first ignition.
+- `Time { time_s }`: a time after launch.
 - `MotorDelay { motor }`: that motor's [ejection delay](../glossary.md#ejection-delay) after its
   own burnout. The motor must have a delay in seconds; a plugged motor or one with no delay set is
   refused.
+- `Burnout { motor, delay_s }`: a given delay after that motor's burnout, whatever its ejection
+  delay; a stage separation timed from the booster's burnout, say
+  ([Staging](staging.md#powered-separation)). A motor that never lights fires neither this nor
+  `MotorDelay`.
 
 Charges are only checked in free flight and during the descent, so a `Time` or `MotorDelay`
 trigger whose time passes while the rocket is still on the pad or the rail fires at
@@ -434,7 +438,11 @@ bodies:
 
 Each body flies on as a point mass under the devices that name it (`Device::on_body`). The ascent
 ends there: its `FlightResult` has `Termination::Separated`, a `Separation` event, and one
-`BodyFlight` per body in `bodies`.
+`BodyFlight` per body in `bodies`. The exception is a powered separation, where body 0 still has a
+motor to burn: it flies on as a sustainer, and only body 1 descends here
+([Staging](staging.md#powered-separation)).
+
+This section describes the unpowered case, and the booster's descent after a powered one.
 
 **What happens at a separation:**
 
@@ -470,21 +478,22 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 - **Every body must carry a device, and it must open.** The descent has no airframe drag (the
   descent-phase decision, [ADR-012][adr-012]), so a body with nothing open would fall as if in a
   vacuum. A flight whose bodies are not all covered is refused when it is set up, and a body that
-  reaches the ground without a single deployment — an altimeter set above that body's own apogee,
-  say — is a flight-time error rather than a landing at 170 m/s (both found in review).
+  reaches the ground without a single deployment — a timer set after that body lands, say — is a
+  flight-time error rather than a landing at the speed of a fall with no drag (both found in
+  review). A device that opened on the stack before the separation counts as open.
 - **A body coasts with no drag at all until its first device opens**, which is the same omission
-  as the descent phase's and hurts more here: a 0.55 kg sustainer that separates at 2 km and waits
+  as the descent phase's and hurts more here: a 0.55 kg forward body that separates at 2 km and waits
   for a 300 m main arrives at **168 m/s** where an airframe would have held it near 60 to 70, so
   its deployment speed, and any opening load taken from it, read high. Give a body a device that
   opens at once (`DeviceDrag::tumbling_stages` over its own stages is the cited way) if the coast
-  matters.
+  matters; after a powered separation hpr requires it ([Staging](staging.md#powered-separation)).
   A spent booster's device is usually `DeviceDrag::tumbling_stages(&assembly, its stages)`, which
   is §3.5's model over that body's own components rather than the whole stack's.
-- **A separation must follow the last burnout**, because a body's mass is held constant through its
-  descent. A trigger that fires earlier is a flight-time error, not a silent approximation, since
-  whether it does depends on the flight. A release across the separation is refused too: a line
-  cuts a device on its own body. Powered staging, where a sustainer lights and keeps flying, is
-  planned for the staging milestone ([M1.9](../decisions-and-roadmap.md#m1-9)).
+- **The aft body's motors must have burned out**, because a body's mass is held constant through
+  its descent. A trigger that fires while one burns is an error, before the flight when its time is
+  known and in flight otherwise, not a silent approximation. A release across the separation is
+  refused too: a line cuts a device on its own body. A forward body with a motor still to burn
+  flies on as a sustainer ([Staging](staging.md)).
 
 ## Verification
 
@@ -510,12 +519,13 @@ name the [oracle](../glossary.md#oracle):
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts ([Loft lesson L24](../decisions-and-roadmap.md#l24): a run does not mutate the simulation) |
 | A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
 | The linear momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and each body starts at its own centre of mass to 1e-12 (0.817 m apart on this design) |
-| A separation before the last burnout | refused in flight, with the burnout time in the error |
+| A separation while the booster's motor burns | refused in flight, with the booster's burnout time in the error |
 | A separation while still climbing at 100 m/s | both bodies find their own apogee above 1,400 m, fire there, and land within 1% of their own `v_e` |
 | A timed separation, and a height separation | fire at their own time to 1e-9 s and at their own height to 1e-6 m, rather than at the next boundary that happens to exist (found in review: one fired 186 s late, another never) |
 | A body that runs out of time | says `TimeCap` in its own `BodyFlight`; `FlightResult::bodies_landed` is false and `landings()` is short |
-| A body whose device never fires (an altimeter above its apogee) | refused in flight, naming the body, rather than landed at 170 m/s |
-| A timed separation known to precede the burnout | refused when the separation is given; a height one that a climbing rocket passes early is refused in flight |
+| A body whose device never fires (a timer set after it lands) | refused in flight, naming the body, rather than landed at the speed of a fall with no drag |
+| A body whose canopy opened on the stack just before the separation (an apogee separation with an apogee parachute) | lands: the open canopy counts, though its deployment is in the flight's events, not the body's (found with [M1.9a](../decisions-and-roadmap.md#m1-9a)) |
+| A timed separation known to precede the booster's burnout | refused when the separation is given; a height one that a climbing rocket passes early is refused in flight |
 
 ### Against RocketPy
 

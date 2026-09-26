@@ -77,17 +77,19 @@ out.
 
 ### Staging, two-stage rockets, clusters and air starts
 
-- **No staging, so no true two-stage flight, and no delayed ignition or air starts**
-  ([M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone). Every motor in a
-  design ignites at the start of the flight, time zero.
-  - A [cluster](glossary.md#cluster), several motors burning side by side, flies that way: hpr adds
-    up their thrust, and a motor off the rocket's centre line adds a turning moment. No test or
-    comparison has checked a cluster flight yet.
-  - A two-stage design also flies with every motor lit at time zero. That is not a staged flight,
-    and hpr doesn't warn about it.
-  - An [air start](glossary.md#air-start), a motor lit after liftoff, isn't possible yet.
-  - A rocket can [separate](glossary.md#separation) into parts for recovery, but only after the
-    last motor has burnt out.
+- **Staging is new and not yet compared with another simulator.** Each motor lights at its own
+  time, an [air start](glossary.md#air-start) included, and a [sustainer](glossary.md#sustainer)
+  flies on after dropping its [booster](glossary.md#booster), which lands on its own
+  ([Staging](physics/staging.md)). Tests check the bookkeeping; the comparison with OpenRocket
+  comes with [M1.9c](decisions-and-roadmap.md#m1-9c).
+  - A `.ork` file's staging and ignition settings aren't read into a flight yet (also [M1.9c](decisions-and-roadmap.md#m1-9c)), so a
+    staged `.ork` design isn't flown.
+  - A [cluster](glossary.md#cluster), several motors burning side by side in their own mounts,
+    flies: hpr adds up their thrust, and a motor off the rocket's centre line adds a turning
+    moment. No test or comparison has checked a cluster flight yet, and several motors in one
+    mount come with [M1.9b](decisions-and-roadmap.md#m1-9b).
+  - A rocket can [separate](glossary.md#separation) into parts for recovery once the aft part's
+    motors have burnt out.
 
 ### Effects left out
 

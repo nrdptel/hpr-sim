@@ -5,18 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M1.9, staging, clusters and air starts (L30, L31, L93), after M2.2e4 (ADR-073).
+  follow-on work is M1.9b, clusters (L31), after M1.9a's staging (ADR-074); then M1.9c.
 - **Order:** M1.8e16 waits on #108; M2.2e5 on M1.9 (17), then 3 of #173, #174, M1.13, #133; so M1.9.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to e4; site published.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M1.9a; site published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2e4 complete, M1.9 next.
+- **Last updated:** 2026-09-25; M1.9a complete, M1.9b next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.9** on a fresh `m1.9-<slug>` branch; split it first (ADR). OR's public record holds
-  4 staged and 2 cluster designs hpr doesn't fly yet; M2.2e5's bar needs their flights, and each new
-  apogee over 5% needs a cause sized as ADR-073 does: `flights.py` flies OR again without it
+- **Start M1.9b** on a fresh `m1.9b-<slug>` branch: several motors in one mount (hpr-io reads
+  `clusterconfiguration`), L31's test in `hpr_sim::staging::tests`. M1.9c maps the `.ork` ignition
+  and separation hpr-io reads onto ADR-074's and flies OR's 4 staged, 2 cluster public designs;
+  M2.2e5 needs them, each apogee over 5% a cause sized as ADR-073: `flights.py` flies OR without it
   (`undeployed`, `undeployed_without_drag_overrides`, `..._parts_set_to_no_drag`). Leads, not
   causes: #177 (a blunt nose's drag below Mach 0.8), private flights above sea level reading low,
   `C03`, `C09` margins (#172). After any physics change run `cargo xtask ork-flights --check` and
@@ -53,16 +54,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-25: M2.2e4 The causes (ADR-073): all 5 apogees over 5% sized by OR flying without the
-  cause; 4 within 5% after, E12-4 +7.80% like for like; the remainder's leads are in #177.
-- 2026-09-25: M2.2e3 hpr's flights of the corpus (ADR-072, split: bar to e5): 17 flights of 4 of
-  12 private designs by anonymised id; 9 of 20 designs in all; no apogee over 5%.
-- 2026-09-25: M2.2e2 OR's flights of the corpus (ADR-071, `.ork` only, #168): 88 of 89 in 27
-  library designs flown, none aborted; OR loads no motor for the 89th; counts only committed.
+- 2026-09-25: M1.9a Staging (ADR-074; M1.9 split a to c): motors lit at their own times; a sustainer
+  flies on, the booster lands; L30, L93 live; a canopy opened before a split now counts.
+- 2026-09-25: M2.2e4 The causes (ADR-073): all 5 sized by OR without them; 4 within 5%, #177 left.
+- 2026-09-25: M2.2e3 hpr's flights of the corpus (ADR-072): 17 flights, 4 private designs; 9 of 20.
+- 2026-09-25: M2.2e2 OR's flights of the corpus (ADR-071, #168): 88 of 89 flown, none aborted.
 - 2026-09-25: M2.2e1 Mass and CG in the report (ADR-070): within 0.22% and 0.016 cal on 21.
-- 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
-  cal; apogee −4.34% to −0.06% with no named cause; 5 over 5%, each an early chute or #165.
-- 2026-09-25: M2.2d1 OR's flights, its words (ADR-068): 56 calm, 1 aborted; 9 of 10 words defined.
+- 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21; 5 apogees over 5%, each with a cause.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
@@ -76,6 +74,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-074: M1.9 split a to c; a separation with body 0 still to burn flies it on, the booster descends.
 - ADR-073: a cause is sized by OR flying without it; within the bar if every such flight is within 5%.
 - ADR-072: private flights by id, differences only; public copies out; bar of 20 waits on M1.9.
 - ADR-071: M2.2e's corpus is the library's 27 `.ork` files; its `.CDX1`, `.rkt` wait (#168).
@@ -134,7 +133,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m up at a boattail —
   −8.65% to −11.34% (#87).
 - `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 2 of 170
-  configurations (68 with OpenRocket's database supplied, ADR-067), staging waits for M1.9,
+  configurations (68 with OpenRocket's database supplied, ADR-067), staging waits for M1.9c,
   and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and
   motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may be

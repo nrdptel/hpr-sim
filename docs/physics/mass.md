@@ -536,7 +536,7 @@ script writes these, and `cargo test -p hpr-validate openrocket` checks them.
 A cluster is a motor mount with more than one motor tube. OpenRocket expands a `3-ring`
 configuration into three tubes; hpr currently reads the mount as the one `InnerTube` written in the
 file. It warns instead of presenting that one tube as equivalent to the cluster. The full collection
-of tubes, motor thrust summation and motor-out moments belong to [M1.9](../decisions-and-roadmap.md#m1-9).
+of tubes, motor thrust summation and motor-out moments belong to [M1.9b](../decisions-and-roadmap.md#m1-9b).
 
 The fixed 3-ring probe is a tube and a 200 mm inner tube with a 20 mm outer radius and 1 mm wall.
 OpenRocket's saved structure is 0.3813893481458014 kg, with centre 0.24036243822075784 m, roll

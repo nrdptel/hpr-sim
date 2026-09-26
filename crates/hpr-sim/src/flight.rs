@@ -10,8 +10,15 @@
 //! - **Descent:** once a recovery device deploys, a point mass under the open devices' drag area
 //!   (`crate::recovery`), with the attitude frozen where it deployed.
 //!
-//! Every thrust-curve knot and every burnout is a stop time, so no step straddles a change in the
-//! thrust's slope or the end of a burn, and each interval knows which motors burn. Liftoff, rail
+//! Every ignition, thrust-curve knot and burnout is a stop time, so no step straddles a change in
+//! the thrust's slope or the start or end of a burn, and each interval knows which motors burn.
+//! Each motor burns on its own clock from its ignition ([`hpr_design::Ignition`]).
+//!
+//! **Staging.** A [`Separation`] whose nose body still has a motor to burn is powered: that body,
+//! the sustainer, flies on in six degrees of freedom on its own stages' aerodynamics and mass, and
+//! the aft body, the booster, descends to its landing as a point mass ([`FlightResult::bodies`]).
+//! The state is the nose tip's, which the sustainer keeps, so it carries straight across the split
+//! (the decision record on staging, [ADR-074][adr-074]). Liftoff, rail
 //! exit, apogee (the centre of mass's height rate crossing zero), ground contact (its ellipsoidal
 //! height reaching the site's) and user events are located by the integrator's event finder.
 //!
@@ -22,6 +29,8 @@
 //! the ground.
 //!
 //! Method: `docs/physics/flight.md` and `docs/physics/recovery.md`.
+//!
+//! [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
 
 use std::fmt;
 use std::ops::ControlFlow;
@@ -42,6 +51,7 @@ use crate::integrator::{
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
 use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Separation, Trigger};
+use crate::staging::Sustainer;
 use crate::state::{STATE_LEN, State};
 
 /// How a flight is integrated and when it gives up.
@@ -50,7 +60,7 @@ use crate::state::{STATE_LEN, State};
 pub struct FlightSettings {
     /// The integration method and tolerances.
     pub method: Method,
-    /// The flight stops with [`Termination::TimeCap`] at this time after ignition, s.
+    /// The flight stops with [`Termination::TimeCap`] at this time after launch, s.
     pub max_time_s: f64,
     /// The flight stops with [`Termination::StepLimit`] after this many attempted steps.
     pub step_limit: u64,
@@ -81,7 +91,9 @@ pub enum EventKind {
     Liftoff,
     /// The last rail guide left the top of the rail.
     RailExit,
-    /// The last motor's thrust curve ended.
+    /// Every motor lit, or due to light at a known time, has burned out: the last motor's thrust
+    /// curve ended. It is recorded again if a motor lights afterwards, as a sustainer lit by its
+    /// separation does.
     Burnout,
     /// The centre of mass's height rate crossed zero from above.
     Apogee,
@@ -96,11 +108,13 @@ pub enum EventKind {
     /// A recovery device was released, by its index: the device that releases it is fully open
     /// from this instant, so the drag area never dips between them.
     Release(usize),
-    /// The stack came apart at its separation's stage boundary; each body's descent is in
-    /// [`FlightResult::bodies`].
+    /// The stack came apart at its separation's stage boundary; the descents of the bodies that
+    /// don't fly on are in [`FlightResult::bodies`].
     Separation,
     /// A user event, by its index in the order added.
     User(usize),
+    /// A motor lit after launch, by its index in [`hpr_design::Assembly::motors`].
+    Ignition(usize),
 }
 
 /// An event and the flight's sample at it.
@@ -142,21 +156,24 @@ pub struct FlightResult {
     /// Its events, in order.
     pub events: Vec<FlightEvent>,
     /// The flight where it ended. After a [`Termination::Separated`] this is the **stack** at the
-    /// separation, not a landing: the landings are in `bodies` (see [`Self::landings`]).
+    /// separation, not a landing: the landings are in `bodies` (see [`Self::landings`]). After a
+    /// powered separation it is the sustainer's.
     pub final_sample: Sample,
     /// The integrator's work.
     pub stats: Stats,
-    /// The descents of the separated bodies, in body order, when the flight ended with
-    /// [`Termination::Separated`]. Empty otherwise.
+    /// The descents of the separated bodies, in body order: every body when the flight ended with
+    /// [`Termination::Separated`], the booster alone after a powered separation (the sustainer's
+    /// flight is the rest of this result), and none otherwise.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bodies: Vec<BodyFlight>,
 }
 
 impl FlightResult {
-    /// Whether every separated body landed. A flight that ends with
+    /// Whether every separated body in [`Self::bodies`] landed. A flight that ends with
     /// [`Termination::Separated`] says only that the stack came apart: each body's own
     /// [`BodyFlight::termination`] says whether it reached the ground, and a body can run out of
-    /// time or steps on its own.
+    /// time or steps on its own. After a powered separation the sustainer's own landing is
+    /// [`Self::termination`].
     #[must_use]
     pub fn bodies_landed(&self) -> bool {
         !self.bodies.is_empty()
@@ -166,18 +183,17 @@ impl FlightResult {
                 .all(|body| body.termination == Termination::GroundHit)
     }
 
-    /// Where the flight put things on the ground: the final sample's position when it landed
-    /// intact, or each separated body's landing.
+    /// Where the flight put things on the ground: the final sample's position when it (or after a
+    /// powered separation, the sustainer) landed, then each separated body's landing.
     #[must_use]
     pub fn landings(&self) -> Vec<BodySample> {
-        if self.termination == Termination::Separated {
-            self.bodies
-                .iter()
-                .filter(|body| body.termination == Termination::GroundHit)
-                .map(|body| body.final_sample)
-                .collect()
-        } else if self.termination == Termination::GroundHit {
-            vec![BodySample {
+        let bodies = self
+            .bodies
+            .iter()
+            .filter(|body| body.termination == Termination::GroundHit)
+            .map(|body| body.final_sample);
+        if self.termination == Termination::GroundHit {
+            std::iter::once(BodySample {
                 time_s: self.final_sample.time_s,
                 cg_enu_m: self.final_sample.cg_enu_m,
                 cg_velocity_enu_m_s: self.final_sample.cg_velocity_enu_m_s,
@@ -186,9 +202,11 @@ impl FlightResult {
                 airspeed_m_s: self.final_sample.airspeed_m_s,
                 recovery_drag_area_m2: self.final_sample.recovery_drag_area_m2,
                 mass_kg: self.final_sample.mass_kg,
-            }]
+            })
+            .chain(bodies)
+            .collect()
         } else {
-            Vec::new()
+            bodies.collect()
         }
     }
 
@@ -229,12 +247,18 @@ pub struct Simulation {
     settings: FlightSettings,
     user_events: Vec<UserEvent>,
     devices: Vec<Device>,
-    /// The trigger times known before the flight, one per device: a time after ignition or a
+    /// The trigger times known before the flight, one per device: a time after launch or a
     /// motor's delay after its burnout, and `None` for the triggers the flight watches for.
     trigger_times_s: Vec<Option<f64>>,
     separation: Option<Separation>,
     /// The separation's trigger time, when it is one that is known before the flight.
     separation_time_s: Option<f64>,
+    /// The design, kept to build a sustainer's models from at a powered separation.
+    rocket: Rocket,
+    /// The configuration flown.
+    configuration_id: String,
+    /// Whether the aerodynamics were replaced by a table, which is the whole stack's only.
+    aero_overridden: bool,
 }
 
 impl Simulation {
@@ -267,6 +291,8 @@ impl Simulation {
         rail.validate()?;
         let assembly = rocket.assemble(configuration_id)?;
         let aero = AeroModel::new(&assembly.layout)?;
+        // No separation yet, so a motor lit by one has no time.
+        let ignition_s = assembly.ignition_times_s(|_| None);
         let guides = Guides::of(&assembly);
         let travel = guides.exit_travel_m(rail.length_m);
         if travel <= 0.0 {
@@ -276,7 +302,7 @@ impl Simulation {
             });
         }
         Ok(Self {
-            vehicle: Vehicle::new(assembly, aero)?,
+            vehicle: Vehicle::lit(assembly, aero, ignition_s)?,
             environment,
             rail,
             guides,
@@ -286,6 +312,9 @@ impl Simulation {
             trigger_times_s: Vec::new(),
             separation: None,
             separation_time_s: None,
+            rocket: rocket.clone(),
+            configuration_id: configuration_id.to_owned(),
+            aero_overridden: false,
         })
     }
 
@@ -293,6 +322,7 @@ impl Simulation {
     #[must_use]
     pub fn with_drag_table(mut self, table: DragTable) -> Self {
         self.vehicle.aero = self.vehicle.aero.clone().with_drag_table(table);
+        self.aero_overridden = true;
         self
     }
 
@@ -349,6 +379,7 @@ impl Simulation {
     /// ```
     pub fn with_normal_force_table(mut self, table: NormalForceTable) -> Result<Self, SimError> {
         self.vehicle.aero = self.vehicle.aero.clone().with_normal_force_table(table)?;
+        self.aero_overridden = true;
         Ok(self)
     }
 
@@ -368,7 +399,11 @@ impl Simulation {
     /// is outside its domain, or whose trigger names a motor that isn't there or has no ejection
     /// delay in seconds.
     pub fn with_recovery(mut self, devices: Vec<Device>) -> Result<Self, SimError> {
-        self.trigger_times_s = recovery::plan(&devices, &self.vehicle.assembly.motors)?;
+        self.trigger_times_s = recovery::plan(
+            &devices,
+            &self.vehicle.assembly.motors,
+            self.vehicle.ignition_s(),
+        )?;
         if self.separation.is_some() {
             // Already given a separation, so the bodies are known; otherwise the check waits for
             // one, and for the flight, so that the two builders work in either order.
@@ -385,7 +420,9 @@ impl Simulation {
     }
 
     /// Flies with a separation: at its trigger the stack comes apart at the stage boundary, and
-    /// each body descends under its own devices ([`crate::recovery::Separation`]).
+    /// each body descends under its own devices ([`crate::recovery::Separation`]); or, when the
+    /// nose's body still has a motor to burn, it flies on as a sustainer and the aft body
+    /// descends.
     ///
     /// Call this after [`Self::with_recovery`]: it checks the devices against the bodies.
     ///
@@ -393,9 +430,10 @@ impl Simulation {
     ///
     /// [`SimError::Domain`] if the design has no stage aft of the split, if a device names a body
     /// that the separation doesn't make, if a body carries no device (the descent has no airframe
-    /// drag, so it would fall as if in a vacuum), or if the trigger is out of its domain. The same
-    /// checks run again if [`Self::with_recovery`] is called afterwards, so the builders can be
-    /// given in either order.
+    /// drag, so it would fall as if in a vacuum), if the trigger is out of its domain, or if its
+    /// time is known and an aft body's motor burns past it, or if it is timed from a motor with no
+    /// ignition known before the flight, so that it could never fire. The same checks run again if
+    /// [`Self::with_recovery`] is called afterwards, so the builders can be given in either order.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
@@ -419,21 +457,57 @@ impl Simulation {
                 value: height_above_ground_m,
             });
         }
-        let time_s = recovery::trigger_time_s(separation.trigger, &self.vehicle.assembly.motors)?;
-        if let Some(time_s) = time_s
-            && time_s < self.vehicle.burnout_s()
-        {
+        let time_s = recovery::trigger_time_s(
+            separation.trigger,
+            &self.vehicle.assembly.motors,
+            self.vehicle.ignition_s(),
+        )?;
+        if let Some(time_s) = time_s {
             // A body's mass is held constant through its descent. For a trigger whose time is
             // known now, say so now rather than in the middle of a flight.
+            self.check_aft_body_spent(separation, self.vehicle.ignition_s(), time_s)?;
+        }
+        if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
+            (time_s, separation.trigger)
+        {
+            // Timed from a motor with no ignition known before the flight: one lit by this very
+            // separation, or one that never lights. It would never fire, and the stack would
+            // land whole. (A `Time` always has its time.)
             return Err(SimError::Domain {
-                what: "time of a separation (it must follow the last burnout, at which this \
-                       rocket's is)",
-                value: self.vehicle.burnout_s(),
+                what: "index of the motor a separation is timed from (it has no ignition time \
+                       before the separation, so the separation could never fire)",
+                value: motor as f64,
             });
         }
         self.separation_time_s = time_s;
         self.separation = Some(separation);
         Ok(self)
+    }
+
+    /// Refuses a separation at `t_s` while a motor of its aft body, lit at `ignition_s`, burns or
+    /// is still to light: that body descends as a point mass of constant mass.
+    fn check_aft_body_spent(
+        &self,
+        separation: Separation,
+        ignition_s: &[Option<f64>],
+        t_s: f64,
+    ) -> Result<(), SimError> {
+        for (placed, ignition) in self.vehicle.assembly.motors.iter().zip(ignition_s) {
+            if placed.stage <= separation.after_stage {
+                continue;
+            }
+            if let Some(ignition_s) = ignition {
+                let burnout_s = ignition_s + placed.mounted.motor.burnout_time_s();
+                if burnout_s > t_s {
+                    return Err(SimError::Domain {
+                        what: "time of a separation (the aft body's motors must have burned out \
+                               by then; this is when one of them does)",
+                        value: burnout_s,
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 
     /// The separation, if the flight has one.
@@ -500,7 +574,7 @@ impl Simulation {
         self.fly(0.0, self.initial_state(), Phase::Pad, observer)
     }
 
-    /// Flies freely from `state` at `t0_s` seconds after ignition, as after a rail exit or from a
+    /// Flies freely from `state` at `t0_s` seconds after launch, as after a rail exit or from a
     /// restart: the motors burn as their curves say at that time.
     ///
     /// # Errors
@@ -519,25 +593,27 @@ impl Simulation {
     /// recovery devices open.
     fn sample(
         &self,
+        vehicle: &Vehicle,
         phase: Phase,
         window: (f64, f64),
         t: f64,
         y: &[f64; STATE_LEN],
         drag_area_m2: f64,
     ) -> Result<Sample, SimError> {
-        let evaluation = self.evaluate(phase, window, t, y, drag_area_m2)?;
+        let evaluation = self.evaluate(vehicle, phase, window, t, y, drag_area_m2)?;
         Ok(sample_of(phase, t, y, &evaluation))
     }
 
     fn evaluate(
         &self,
+        vehicle: &Vehicle,
         phase: Phase,
         window: (f64, f64),
         t: f64,
         y: &[f64; STATE_LEN],
         drag_area_m2: f64,
     ) -> Result<Evaluation, SimError> {
-        self.vehicle.evaluate(
+        vehicle.evaluate(
             &self.environment,
             self.rail.friction_coefficient,
             Conditions {
@@ -568,7 +644,14 @@ impl Simulation {
         check_bodies(&self.devices, self.separation)?;
         if start_phase == Phase::Free {
             let height = self
-                .evaluate(Phase::Free, (t0, t0), t0, &state.to_array(), 0.0)?
+                .evaluate(
+                    &self.vehicle,
+                    Phase::Free,
+                    (t0, t0),
+                    t0,
+                    &state.to_array(),
+                    0.0,
+                )?
                 .height_above_ground_m;
             if height <= 0.0 {
                 return Err(SimError::Domain {
@@ -580,14 +663,25 @@ impl Simulation {
         let mut integrator = Integrator::new(self.settings.method, t0, state.to_array())?
             .with_step_limit(self.settings.step_limit);
         let cap = self.settings.max_time_s;
+        // What a powered separation changes: the trigger and ignition times that count from it,
+        // the vehicle flying, and the booster's descent.
+        let mut trigger_times_s = self.trigger_times_s.clone();
+        let mut ignition_s = self.vehicle.ignition_s().to_vec();
+        let mut ignited: Vec<bool> = ignition_s
+            .iter()
+            .map(|ignition| ignition.is_some_and(|time| time <= t0))
+            .collect();
+        let mut sustainer: Option<Vehicle> = None;
+        let mut staged = false;
+        let mut booster: Vec<BodyFlight> = Vec::new();
         let mut stops = self.vehicle.thrust_knots_s();
         stops.push(cap);
-        stops.extend(self.trigger_times_s.iter().flatten().copied());
+        stops.extend(trigger_times_s.iter().flatten().copied());
         stops.extend(self.separation_time_s);
         stops.retain(|t| *t <= cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
-        let burnout_s = self.vehicle.burnout_s();
+        let mut burnout_s = self.vehicle.burnout_s();
         let rail_origin = state.position_enu_m;
         let exit_travel_m = self.guides.exit_travel_m(self.rail.length_m);
 
@@ -608,6 +702,19 @@ impl Simulation {
             let mut y = *integrator.state();
             if t >= cap {
                 break Termination::TimeCap;
+            }
+            let vehicle = sustainer.as_ref().unwrap_or(&self.vehicle);
+
+            // Motors lit after launch: their ignitions are stop times, so each is found here at
+            // its own time.
+            for index in 0..ignition_s.len() {
+                if !ignited[index] && ignition_s[index].is_some_and(|time| t >= time) {
+                    ignited[index] = true;
+                    let window = (t, next_stop(&stops, t, cap));
+                    let area = self.ascent_drag_area_m2(&run, t);
+                    let sample = self.sample(vehicle, phase, window, t, &y, area)?;
+                    record(&mut events, observer, EventKind::Ignition(index), sample);
+                }
             }
 
             // Recovery: fire the charges whose time or height has come, then deploy the devices
@@ -630,16 +737,22 @@ impl Simulation {
                     }
                     // `plan` gives `trigger_times_s` one entry per device, in order.
                     let fires = match self.devices[index].trigger {
-                        Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
-                            self.trigger_times_s[index].is_some_and(|time| t >= time)
-                        }
+                        Trigger::Time { .. }
+                        | Trigger::MotorDelay { .. }
+                        | Trigger::Burnout { .. } => trigger_times_s
+                            .get(index)
+                            .copied()
+                            .flatten()
+                            .is_some_and(|time| t >= time),
                         // At or past the apogee, which is RocketPy's own trigger (`y[5] < 0`)
                         // widened to include a flight that starts exactly at its apogee: with
                         // `< 0` such a flight has no crossing for the apogee event to find
                         // either, and would wait for the next interval. The apogee event fires
                         // this too, and whichever comes first wins.
                         Trigger::Apogee => {
-                            let e = self.evaluation(&mut here, phase, window, t, &y, area)?;
+                            let e = cached(&mut here, || {
+                                self.evaluate(vehicle, phase, window, t, &y, area)
+                            })?;
                             e.vertical_speed_m_s <= 0.0
                         }
                         Trigger::Altitude {
@@ -648,7 +761,9 @@ impl Simulation {
                             // An altimeter's main setting: descending, at or below the height.
                             // A rocket already below it at apogee fires there, as the event on
                             // the height never crosses it (RocketPy's numeric trigger).
-                            let e = self.evaluation(&mut here, phase, window, t, &y, area)?;
+                            let e = cached(&mut here, || {
+                                self.evaluate(vehicle, phase, window, t, &y, area)
+                            })?;
                             e.vertical_speed_m_s < 0.0
                                 && e.height_above_ground_m <= height_above_ground_m
                         }
@@ -656,7 +771,7 @@ impl Simulation {
                     if fires {
                         let deploy_s = run.trigger(&self.devices, index, t);
                         insert_stop(&mut stops, deploy_s, cap);
-                        let sample = self.sample(phase, window, t, &y, area)?;
+                        let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                         record(&mut events, observer, EventKind::Trigger(index), sample);
                         again = true;
                     }
@@ -674,7 +789,9 @@ impl Simulation {
                         again = true;
                         continue;
                     }
-                    let evaluation = self.evaluation(&mut here, phase, window, t, &y, area)?;
+                    let evaluation = cached(&mut here, || {
+                        self.evaluate(vehicle, phase, window, t, &y, area)
+                    })?;
                     let full_s = run.deploy(&self.devices, index, t, evaluation.airspeed_m_s);
                     insert_stop(&mut stops, full_s, cap);
                     if phase != Phase::Descent {
@@ -695,7 +812,7 @@ impl Simulation {
                         here = None;
                     }
                     let area = self.ascent_drag_area_m2(&run, t);
-                    let sample = self.sample(phase, window, t, &y, area)?;
+                    let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                     record(&mut events, observer, EventKind::Deployment(index), sample);
                     again = true;
                 }
@@ -705,7 +822,7 @@ impl Simulation {
                     if run.release_due(index, t) && self.acts_before_separation(index) {
                         run.release(index);
                         let area = self.ascent_drag_area_m2(&run, t);
-                        let sample = self.sample(phase, window, t, &y, area)?;
+                        let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                         record(&mut events, observer, EventKind::Release(index), sample);
                         again = true;
                     }
@@ -715,55 +832,142 @@ impl Simulation {
                 }
             }
 
-            // The separation: the same triggers as a device's, and when it fires the ascent ends
-            // and every body descends on its own.
+            // The separation: the same triggers as a device's. When it fires with the nose's body
+            // still to burn, that body flies on as the sustainer and the booster descends;
+            // otherwise the ascent ends and every body descends on its own.
             if let Some(separation) = self.separation
+                && !staged
                 && matches!(phase, Phase::Free | Phase::Descent)
             {
                 let window = (t, next_stop(&stops, t, cap));
                 let area = self.ascent_drag_area_m2(&run, t);
                 let fires = match separation.trigger {
-                    Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
+                    Trigger::Time { .. } | Trigger::MotorDelay { .. } | Trigger::Burnout { .. } => {
                         self.separation_time_s.is_some_and(|time| t >= time)
                     }
                     // At or past the apogee, as a device's apogee trigger is.
                     Trigger::Apogee => {
-                        self.evaluate(phase, window, t, &y, area)?
+                        self.evaluate(vehicle, phase, window, t, &y, area)?
                             .vertical_speed_m_s
                             <= 0.0
                     }
                     Trigger::Altitude {
                         height_above_ground_m,
                     } => {
-                        let e = self.evaluate(phase, window, t, &y, area)?;
+                        let e = self.evaluate(vehicle, phase, window, t, &y, area)?;
                         e.vertical_speed_m_s < 0.0
                             && e.height_above_ground_m <= height_above_ground_m
                     }
                 };
                 if fires {
-                    if t < burnout_s {
-                        // A body's mass is held constant through its descent, so a separation
-                        // under thrust would fly the wrong mass. Powered staging is M1.9.
+                    // The stack's motors as the separation lights them: one lit by it counts from
+                    // now. A body's mass is held constant through its descent, so the booster's
+                    // motors must be spent.
+                    let lit = self
+                        .vehicle
+                        .assembly
+                        .ignition_times_s(|stage| (stage == separation.after_stage).then_some(t));
+                    self.check_aft_body_spent(separation, &lit, t)?;
+                    let sample = self.sample(vehicle, phase, window, t, &y, area)?;
+                    record(&mut events, observer, EventKind::Separation, sample);
+                    let powered =
+                        self.vehicle
+                            .assembly
+                            .motors
+                            .iter()
+                            .zip(&lit)
+                            .any(|(placed, ignition)| {
+                                placed.stage <= separation.after_stage
+                                    && ignition.is_some_and(|ignition| {
+                                        ignition + placed.mounted.motor.burnout_time_s() > t
+                                    })
+                            });
+                    if !powered {
+                        ignition_s = lit;
+                        separated = true;
+                        break Termination::Separated;
+                    }
+                    if phase == Phase::Descent {
+                        // The descent is a point mass under canopies; a sustainer under thrust
+                        // is not something it can fly.
                         return Err(SimError::Domain {
-                            what: "time of a separation (it must follow the last burnout, at \
-                                   which this rocket's is)",
-                            value: burnout_s,
+                            what: "time of a separation whose nose body still has a motor to \
+                                   burn (it comes after a recovery device opened on that body)",
+                            value: t,
                         });
                     }
-                    let sample = self.sample(phase, window, t, &y, area)?;
-                    record(&mut events, observer, EventKind::Separation, sample);
-                    separated = true;
-                    break Termination::Separated;
+                    if self.aero_overridden {
+                        return Err(SimError::Domain {
+                            what: "time of a powered separation (a drag or normal-force table \
+                                   is the whole stack's, and the sustainer has none)",
+                            value: t,
+                        });
+                    }
+                    // Built only now, so an unpowered separation never needs the cut design.
+                    let model = Sustainer::of(
+                        &self.rocket,
+                        &self.configuration_id,
+                        &self.vehicle.assembly,
+                        separation,
+                    )?;
+                    let lit_here = model.motors.iter().map(|&index| lit[index]).collect();
+                    let flown = Vehicle::lit(model.assembly, model.aero, lit_here)?;
+                    booster = self.fly_bodies(t, &State::from_array(&y), &mut run, &lit, 1)?;
+                    // The booster's descent has no airframe drag, and a powered separation comes
+                    // near the top speed, so a coast to its device would climb as if in a vacuum
+                    // (twice the sustainer's apogee in review). Its device must open at once.
+                    let open_at_split = self.devices.iter().enumerate().any(|(index, device)| {
+                        device.body == 1
+                            && run.devices[index]
+                                .deployed_s
+                                .is_some_and(|deployed_s| deployed_s <= t)
+                    });
+                    if !open_at_split {
+                        return Err(SimError::Domain {
+                            what: "time of a powered separation (the booster falls with no \
+                                   airframe drag, so a device on it must open at the separation: \
+                                   one triggered at `Time { time_s: 0.0 }` with no lag does, as \
+                                   a booster's devices act only once it flies)",
+                            value: t,
+                        });
+                    }
+                    trigger_times_s =
+                        recovery::plan(&self.devices, &self.vehicle.assembly.motors, &lit)?;
+                    for time in trigger_times_s
+                        .iter()
+                        .flatten()
+                        .copied()
+                        .chain(flown.thrust_knots_s())
+                    {
+                        if time > t {
+                            insert_stop(&mut stops, time, cap);
+                        }
+                    }
+                    if flown.burnout_s() > t {
+                        burnout_recorded = false;
+                    }
+                    burnout_s = flown.burnout_s();
+                    ignition_s = lit;
+                    staged = true;
+                    sustainer = Some(flown);
+                    // The mass steps here, so the integrator starts afresh from the same state:
+                    // the nose tip's, which the sustainer keeps.
+                    integrator.reset(t, y)?;
+                    continue;
                 }
             }
 
             let next = next_stop(&stops, t, cap);
             let window = (t, next);
             if phase == Phase::Pad {
-                if self.evaluate(Phase::Pad, window, t, &y, 0.0)?.rail_force_n > 0.0 {
+                if self
+                    .evaluate(vehicle, Phase::Pad, window, t, &y, 0.0)?
+                    .rail_force_n
+                    > 0.0
+                {
                     phase = Phase::Rail;
                     lifted = true;
-                    let sample = self.sample(phase, window, t, &y, 0.0)?;
+                    let sample = self.sample(vehicle, phase, window, t, &y, 0.0)?;
                     record(&mut events, observer, EventKind::Liftoff, sample);
                 } else if t >= burnout_s {
                     break if lifted {
@@ -773,9 +977,10 @@ impl Simulation {
                     };
                 }
             }
-            let watches = self.watches(phase, &run);
+            let watches = self.watches(phase, &run, !staged);
             let mut system = PhaseSystem {
                 simulation: self,
+                vehicle,
                 phase,
                 window,
                 rail_origin,
@@ -806,7 +1011,7 @@ impl Simulation {
             // Burnout is a stop time, but an event can end the step on it first.
             if !burnout_recorded && t >= burnout_s {
                 burnout_recorded = true;
-                let sample = self.sample(phase, window, t, &y, area)?;
+                let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                 record(&mut events, observer, EventKind::Burnout, sample);
             }
             match outcome {
@@ -821,22 +1026,27 @@ impl Simulation {
                         match watches[index] {
                             Watch::RailExit => {
                                 next_phase = Phase::Free;
-                                let sample = self.sample(Phase::Free, window, t, &y, area)?;
+                                let sample =
+                                    self.sample(vehicle, Phase::Free, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::RailExit, sample);
                             }
                             Watch::RailStall => next_phase = Phase::Pad,
                             Watch::RailForce => {
                                 next_phase = Phase::Rail;
                                 lifted = true;
-                                let sample = self.sample(Phase::Rail, window, t, &y, area)?;
+                                let sample =
+                                    self.sample(vehicle, Phase::Rail, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::Liftoff, sample);
                             }
                             Watch::Apogee => {
-                                let sample = self.sample(phase, window, t, &y, area)?;
+                                let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::Apogee, sample);
                                 for device in 0..self.devices.len() {
+                                    // Only the stack's own: a body's device waits for its body,
+                                    // which finds its own apogee.
                                     if self.devices[device].trigger == Trigger::Apogee
                                         && run.pending(device)
+                                        && self.acts_before_separation(device)
                                     {
                                         let deploy_s = run.trigger(&self.devices, device, t);
                                         insert_stop(&mut stops, deploy_s, cap);
@@ -850,7 +1060,7 @@ impl Simulation {
                                 }
                             }
                             Watch::Ground => {
-                                let sample = self.sample(phase, window, t, &y, area)?;
+                                let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::GroundHit, sample);
                                 ground = true;
                             }
@@ -858,7 +1068,8 @@ impl Simulation {
                                 if run.pending(device) {
                                     let deploy_s = run.trigger(&self.devices, device, t);
                                     insert_stop(&mut stops, deploy_s, cap);
-                                    let sample = self.sample(phase, window, t, &y, area)?;
+                                    let sample =
+                                        self.sample(vehicle, phase, window, t, &y, area)?;
                                     record(
                                         &mut events,
                                         observer,
@@ -872,7 +1083,7 @@ impl Simulation {
                                 // is where its burnout check and its bodies live.
                             }
                             Watch::User(user) => {
-                                let sample = self.sample(phase, window, t, &y, area)?;
+                                let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::User(user), sample);
                             }
                         }
@@ -894,13 +1105,14 @@ impl Simulation {
 
         let t = integrator.time_s();
         let y = *integrator.state();
+        let vehicle = sustainer.as_ref().unwrap_or(&self.vehicle);
         let next = next_stop(&stops, t, f64::INFINITY);
         let area = self.ascent_drag_area_m2(&run, t);
-        let final_sample = self.sample(phase, (t, next.max(t)), t, &y, area)?;
+        let final_sample = self.sample(vehicle, phase, (t, next.max(t)), t, &y, area)?;
         let bodies = if separated {
-            self.fly_bodies(t, &State::from_array(&y), &mut run)?
+            self.fly_bodies(t, &State::from_array(&y), &mut run, &ignition_s, 0)?
         } else {
-            Vec::new()
+            booster
         };
         Ok(FlightResult {
             termination,
@@ -911,7 +1123,9 @@ impl Simulation {
         })
     }
 
-    /// Flies every separated body from the separation at `t` to its landing.
+    /// Flies the separated bodies from `first` on, from the separation at `t` to their landings,
+    /// with the stack's motors lit at `ignition_s`: every body, or the booster alone when the
+    /// sustainer flies on.
     ///
     /// Each body is a point mass with its own stages' and motors' mass, starting where its own
     /// centre of mass was and with the velocity that point already had, so the separation adds no
@@ -922,18 +1136,24 @@ impl Simulation {
         t: f64,
         state: &State,
         run: &mut Run,
+        ignition_s: &[Option<f64>],
+        first: usize,
     ) -> Result<Vec<BodyFlight>, SimError> {
         let Some(separation) = self.separation else {
             return Ok(Vec::new());
         };
         let stage_count = self.vehicle.assembly.layout.stages.len();
         let attitude = state.unit_attitude();
+        // A trigger on a motor the separation lit has its time only now.
+        let trigger_times_s =
+            recovery::plan(&self.devices, &self.vehicle.assembly.motors, ignition_s)?;
         let mut bodies = Vec::new();
-        for body in 0..recovery::Separation::BODIES {
+        for body in first..recovery::Separation::BODIES {
             let Some(stages) = separation.stages_of(body, stage_count) else {
                 continue;
             };
-            let mass = recovery::body_mass_properties(&self.vehicle.assembly, stages, t);
+            let mass =
+                recovery::body_mass_properties(&self.vehicle.assembly, stages, t, ignition_s);
             if !(mass.mass_kg.is_finite() && mass.mass_kg > 0.0) {
                 return Err(SimError::Domain {
                     what: "mass of a separated body, kg",
@@ -953,6 +1173,7 @@ impl Simulation {
                 t,
                 (cg_enu_m, velocity_enu_m_s),
                 run,
+                &trigger_times_s,
             )?);
         }
         Ok(bodies)
@@ -965,6 +1186,7 @@ impl Simulation {
         t0: f64,
         (cg_enu_m, velocity_enu_m_s): (DVec3, DVec3),
         run: &mut Run,
+        trigger_times_s: &[Option<f64>],
     ) -> Result<BodyFlight, SimError> {
         let Body {
             index: body,
@@ -991,7 +1213,7 @@ impl Simulation {
             if self.devices[index].body != body {
                 continue;
             }
-            stops.extend(self.trigger_times_s[index]);
+            stops.extend(trigger_times_s.get(index).copied().flatten());
             stops.extend(run.times_of(index));
         }
         stops.retain(|time| *time > t0 && *time <= cap);
@@ -1027,9 +1249,13 @@ impl Simulation {
                         continue;
                     }
                     let fires = match self.devices[index].trigger {
-                        Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
-                            self.trigger_times_s[index].is_some_and(|time| t >= time)
-                        }
+                        Trigger::Time { .. }
+                        | Trigger::MotorDelay { .. }
+                        | Trigger::Burnout { .. } => trigger_times_s
+                            .get(index)
+                            .copied()
+                            .flatten()
+                            .is_some_and(|time| t >= time),
                         Trigger::Apogee => sample.vertical_speed_m_s <= 0.0,
                         Trigger::Altitude {
                             height_above_ground_m,
@@ -1138,14 +1364,15 @@ impl Simulation {
         let y = *integrator.state();
         let final_sample = self.body_sample(body, mass_kg, t, &y, run)?;
         if termination == Termination::GroundHit
-            && !events
+            && !mine
                 .iter()
-                .any(|event| matches!(event.kind, EventKind::Deployment(_)))
+                .any(|&index| run.devices[index].deployed_s.is_some())
         {
             // Every body must carry a device, and its device must actually open: a trigger that
-            // never becomes true (an altimeter set above the body's own apogee, say) would
+            // never becomes true (a timer set after the body lands, say) would
             // otherwise drop the body with no drag at all, which is a wrong number rather than a
-            // missing feature (found in review).
+            // missing feature (found in review). A device that opened on the stack before the
+            // separation counts: its deployment is in the flight's events, not the body's.
             return Err(SimError::Domain {
                 what: "a separated body reached the ground with no device open (its triggers \
                        never fired); the body",
@@ -1198,24 +1425,6 @@ impl Simulation {
         })
     }
 
-    /// The evaluation at `(t, y)` for the recovery scan, made once per pass and reused.
-    fn evaluation(
-        &self,
-        cache: &mut Option<Evaluation>,
-        phase: Phase,
-        window: (f64, f64),
-        t: f64,
-        y: &[f64; STATE_LEN],
-        drag_area_m2: f64,
-    ) -> Result<Evaluation, SimError> {
-        if let Some(evaluation) = cache {
-            return Ok(*evaluation);
-        }
-        let evaluation = self.evaluate(phase, window, t, y, drag_area_m2)?;
-        *cache = Some(evaluation);
-        Ok(evaluation)
-    }
-
     /// The drag area acting on the stack before a separation, m²: body 0's devices, which with
     /// no separation is all of them.
     fn ascent_drag_area_m2(&self, run: &Run, t: f64) -> f64 {
@@ -1232,7 +1441,7 @@ impl Simulation {
     }
 
     /// What the integrator watches for in `phase`, in event order.
-    fn watches(&self, phase: Phase, run: &Run) -> Vec<Watch> {
+    fn watches(&self, phase: Phase, run: &Run, separation_pending: bool) -> Vec<Watch> {
         match phase {
             Phase::Pad => vec![Watch::RailForce],
             Phase::Rail => vec![Watch::RailExit, Watch::RailStall],
@@ -1248,8 +1457,10 @@ impl Simulation {
                 }
                 // The separation's own height, so it is located rather than polled at the next
                 // boundary that happens to exist.
-                if let Some(Trigger::Altitude { .. }) =
-                    self.separation.map(|separation| separation.trigger)
+                if let Some(Trigger::Altitude { .. }) = self
+                    .separation
+                    .filter(|_| separation_pending)
+                    .map(|separation| separation.trigger)
                 {
                     watches.push(Watch::SeparationHeight);
                 }
@@ -1298,6 +1509,19 @@ fn check_bodies(devices: &[Device], separation: Option<Separation>) -> Result<()
 /// The first stop after `t`, or `cap`.
 fn next_stop(stops: &[f64], t: f64, cap: f64) -> f64 {
     stops.iter().copied().find(|stop| *stop > t).unwrap_or(cap)
+}
+
+/// The evaluation for the recovery scan, made once per pass and reused.
+fn cached(
+    cache: &mut Option<Evaluation>,
+    evaluate: impl FnOnce() -> Result<Evaluation, SimError>,
+) -> Result<Evaluation, SimError> {
+    if let Some(evaluation) = cache {
+        return Ok(*evaluation);
+    }
+    let evaluation = evaluate()?;
+    *cache = Some(evaluation);
+    Ok(evaluation)
 }
 
 /// Adds `t` to the sorted stop times, unless it is past `cap` or already there.
@@ -1488,6 +1712,7 @@ fn sample_of(phase: Phase, t: f64, y: &[f64; STATE_LEN], e: &Evaluation) -> Samp
 /// One phase over one interval, as the integrator sees it.
 struct PhaseSystem<'a> {
     simulation: &'a Simulation,
+    vehicle: &'a Vehicle,
     phase: Phase,
     window: (f64, f64),
     rail_origin: DVec3,
@@ -1511,6 +1736,7 @@ impl PhaseSystem<'_> {
             return Ok(*evaluation);
         }
         let evaluation = self.simulation.evaluate(
+            self.vehicle,
             self.phase,
             self.window,
             t,
@@ -1631,6 +1857,7 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
     fn accept_step(&mut self, step: &Step<STATE_LEN>) -> ControlFlow<()> {
         let view = StepView {
             simulation: self.simulation,
+            vehicle: self.vehicle,
             phase: self.phase,
             window: self.window,
             canopies: self.canopies,
@@ -1649,6 +1876,7 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
 /// An accepted step as the observer sees it.
 struct StepView<'a> {
     simulation: &'a Simulation,
+    vehicle: &'a Vehicle,
     phase: Phase,
     window: (f64, f64),
     canopies: Canopies<'a>,
@@ -1674,6 +1902,7 @@ impl FlightStep for StepView<'_> {
 
     fn sample(&self, t_s: f64) -> Result<Sample, SimError> {
         self.simulation.sample(
+            self.vehicle,
             self.phase,
             self.window,
             t_s,

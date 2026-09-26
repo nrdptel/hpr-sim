@@ -806,7 +806,7 @@ Four more things are read as the simpler part hpr models, each with a warning so
 missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw head** (2), a
 **cluster** of motor tubes read as the one tube it is written as (4), and a **row** of more than one
 ring read as one. These are measured departures, not silent compatibility claims
-([ADR-064][adr-064]); full cluster flight behavior is [M1.9](../decisions-and-roadmap.md#m1-9).
+([ADR-064][adr-064]); full cluster flight behavior is [M1.9b](../decisions-and-roadmap.md#m1-9b).
 
 **A tube of no wall thickness carries no mass** — among them couplers in two of OpenRocket's own
 example designs. Reading those as solid would invent the mass — a solid coupler filling a 50 mm
@@ -1139,8 +1139,10 @@ whichever it leaves out, the mount's own value stands.
 
 ### Which configurations the rocket flies
 
-hpr lights every motor in a configuration at launch, until staging and air starts arrive with
-[M1.9](../decisions-and-roadmap.md#m1-9). So a configuration becomes one of the rocket's only when
+hpr reads no `.ork` ignition or separation setting into a flight yet: that comes with
+[M1.9c](../decisions-and-roadmap.md#m1-9c), though hpr itself can now fly them
+([Staging](../physics/staging.md)). So every motor it reads lights at launch, and a configuration
+becomes one of the rocket's only when
 all of these hold. Otherwise flying it would be wrong, for example lighting a sustainer on the pad.
 
 - Every motor has a thrust curve, and a case diameter and length.
@@ -1162,8 +1164,8 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
 - No mount holds two motors for the configuration. Which one OpenRocket would fly is not known, so
   neither flies.
 - The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
-  ground, until separation is read ([M3.1c2](../decisions-and-roadmap.md#m3-1c2)) and flown
-  ([M1.9](../decisions-and-roadmap.md#m1-9)).
+  ground, until its separation, read since [M3.1c2](../decisions-and-roadmap.md#m3-1c2), is
+  flown ([M1.9c](../decisions-and-roadmap.md#m1-9c)).
 
 Every other configuration is still read, whole, with the first reason it can't be flown. The
 motors' reasons are checked first, each across every motor, and the two about the whole rocket

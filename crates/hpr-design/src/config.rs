@@ -7,15 +7,15 @@
 //! axis). A motor element at `z_m` along the motor axis is then at body
 //! `(x_mount, y_mount, −(s_aft + overhang) + z_m)` ([`MassProperties::from_motor_element`]).
 //!
-//! **Composition.** The rocket at time `t` after ignition is the structure ([`Layout::structure`])
-//! combined with each motor's loaded, burning or spent mass properties ([`SolidMotor::state`]).
-//! Every motor in a configuration ignites at `t = 0`; staging and air starts come with
-//! [M1.9][m1-9]. This is RocketPy's composition (`Rocket.total_mass`, `center_of_mass`, and the
-//! inertias of `rocketpy/rocket/rocket.py`), checked against RocketPy 1.13.0 in the tests.
+//! **Composition.** The rocket at time `t` is the structure ([`Layout::structure`]) combined with
+//! each motor's loaded, burning or spent mass properties ([`SolidMotor::state`]) at its own time
+//! since ignition. [`Assembly::mass_properties`] lights every motor at `t = 0`;
+//! [`Assembly::mass_properties_lit`] takes each motor's ignition time ([`Ignition`], resolved by
+//! [`Assembly::ignition_times_s`]), and a motor not yet lit is loaded. This is RocketPy's
+//! composition (`Rocket.total_mass`, `center_of_mass`, and the inertias of
+//! `rocketpy/rocket/rocket.py`), checked against RocketPy 1.13.0 in the tests.
 //!
 //! See `docs/physics/design.md`.
-//!
-//! [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
 
 use std::collections::BTreeSet;
 
@@ -50,6 +50,48 @@ pub struct Configuration {
     pub motors: Vec<MountedMotor>,
 }
 
+/// When a motor lights, on the flight's clock: `t = 0` is launch, when the motors that light at
+/// launch ignite. A delay is counted from its event (the decision record on staging,
+/// [ADR-074][adr-074]).
+///
+/// [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+#[non_exhaustive]
+pub enum Ignition {
+    /// At launch, `t = 0`.
+    #[default]
+    Launch,
+    /// At a time after launch: an air start on a timer.
+    Time {
+        /// The time after launch, s.
+        time_s: f64,
+    },
+    /// A delay after another mount's motor burns out: a sustainer lit by the booster's burnout,
+    /// or by its ejection charge with the charge's delay.
+    Burnout {
+        /// The id of the mount whose motor's burnout lights this one.
+        mount: String,
+        /// The delay after that burnout, s.
+        delay_s: f64,
+    },
+    /// A delay after the stage aft of this motor's stage separates from it (the flight gives the
+    /// separation). A motor whose stage is never freed never lights; one in the last stage, with
+    /// nothing aft of it to separate, is refused.
+    Separation {
+        /// The delay after the separation, s.
+        delay_s: f64,
+    },
+}
+
+impl Ignition {
+    /// Whether this is [`Ignition::Launch`].
+    #[must_use]
+    pub fn is_launch(&self) -> bool {
+        *self == Self::Launch
+    }
+}
+
 /// A motor in a mount.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -68,6 +110,9 @@ pub struct MountedMotor {
     /// The ejection delay chosen, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub delay: Option<Delay>,
+    /// When it lights.
+    #[serde(default, skip_serializing_if = "Ignition::is_launch")]
+    pub ignition: Ignition,
 }
 
 /// A motor placed in the rocket.
@@ -108,6 +153,13 @@ impl PlacedMotor {
         self.place(&self.mounted.motor.state(t_s).total)
     }
 
+    /// The whole motor at flight time `t_s` when it lit at `ignition_s` (`None`: it never lights),
+    /// in body axes: loaded before it lights.
+    pub fn mass_properties_lit(&self, t_s: f64, ignition_s: Option<f64>) -> MassProperties {
+        let since_s = ignition_s.map_or(0.0, |ignition_s| (t_s - ignition_s).max(0.0));
+        self.mass_properties(since_s)
+    }
+
     /// The motor's dry mass (case, closures, nozzle) in body axes.
     pub fn dry_mass_properties(&self) -> MassProperties {
         self.place(&self.mounted.motor.dry())
@@ -135,6 +187,32 @@ impl Assembly {
             })
     }
 
+    /// The rocket at flight time `t_s`, each motor lit at its `ignition_s`, one per motor in
+    /// order ([`Self::ignition_times_s`]): `None` for one that never lights, which stays loaded.
+    /// A motor past the end of `ignition_s` is taken as lit at launch, as
+    /// [`Self::mass_properties`] lights them all.
+    pub fn mass_properties_lit(&self, t_s: f64, ignition_s: &[Option<f64>]) -> MassProperties {
+        self.motors
+            .iter()
+            .enumerate()
+            .fold(self.layout.structure, |sum, (index, motor)| {
+                let ignition = ignition_s.get(index).copied().unwrap_or(Some(0.0));
+                MassProperties::combine([&sum, &motor.mass_properties_lit(t_s, ignition)])
+            })
+    }
+
+    /// Each motor's ignition time on the flight's clock, in order: `None` for one that never
+    /// lights. `separated_s(stage)` gives the time at which the stage aft of `stage` came away, if
+    /// it has; [`Ignition::Separation`] counts from it.
+    ///
+    /// A motor lit by another's burnout lights when that one's ignition is known; a chain that
+    /// never reaches a known time (a cycle is refused by [`Layout::place_motors`], so only a
+    /// separation that never comes) leaves it unlit.
+    #[must_use]
+    pub fn ignition_times_s(&self, separated_s: impl Fn(usize) -> Option<f64>) -> Vec<Option<f64>> {
+        ignition_times_s(&self.motors, separated_s)
+    }
+
     /// The rocket with every motor spent: the structure and the motors' dry masses.
     pub fn dry_mass_properties(&self) -> MassProperties {
         self.motors
@@ -145,6 +223,49 @@ impl Assembly {
     }
 }
 
+/// As [`Assembly::ignition_times_s`], over `motors`.
+fn ignition_times_s(
+    motors: &[PlacedMotor],
+    separated_s: impl Fn(usize) -> Option<f64>,
+) -> Vec<Option<f64>> {
+    let mut times: Vec<Option<f64>> = motors
+        .iter()
+        .map(|motor| match &motor.mounted.ignition {
+            Ignition::Launch => Some(0.0),
+            Ignition::Time { time_s } => Some(*time_s),
+            Ignition::Separation { delay_s } => separated_s(motor.stage).map(|t| t + delay_s),
+            Ignition::Burnout { .. } => None,
+        })
+        .collect();
+    // Each pass resolves at least one more link of every chain that can resolve, so as many
+    // passes as there are motors settle them all.
+    for _ in 0..motors.len() {
+        let mut changed = false;
+        for (index, motor) in motors.iter().enumerate() {
+            let Ignition::Burnout { mount, delay_s } = &motor.mounted.ignition else {
+                continue;
+            };
+            if times[index].is_some() {
+                continue;
+            }
+            let lit = motors
+                .iter()
+                .position(|other| other.mount == *mount)
+                .and_then(|other| {
+                    times[other].map(|t| t + motors[other].mounted.motor.burnout_time_s())
+                });
+            if let Some(burnout_s) = lit {
+                times[index] = Some(burnout_s + delay_s);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    times
+}
+
 impl Layout {
     /// Places `configuration`'s motors in their mounts in this layout.
     ///
@@ -153,7 +274,10 @@ impl Layout {
     /// - [`DesignError::UnknownId`] for a mount that doesn't exist.
     /// - [`DesignError::Tree`] for a mount that isn't a motor mount, or two motors in one mount.
     /// - [`DesignError::InComponent`] (with the mount's id) wrapping [`DesignError::Domain`] for a
-    ///   non-positive or non-finite motor diameter or length, or a non-finite overhang.
+    ///   non-positive or non-finite motor diameter or length, or a non-finite overhang, or an
+    ///   ignition time or delay that is negative or not finite.
+    /// - [`DesignError::Tree`] for an ignition by the burnout of a mount with no motor in this
+    ///   configuration, or by a chain of burnouts that comes back to the motor itself.
     pub fn place_motors(
         &self,
         configuration: &Configuration,
@@ -197,6 +321,28 @@ impl Layout {
                     value: spec.overhang_m,
                 }));
             }
+            match &mounted.ignition {
+                Ignition::Launch => {}
+                Ignition::Time { time_s: value } => {
+                    check_ignition("ignition time after launch (s)", *value).map_err(in_mount)?;
+                }
+                Ignition::Burnout { delay_s: value, .. } => {
+                    check_ignition("ignition delay (s)", *value).map_err(in_mount)?;
+                }
+                Ignition::Separation { delay_s: value } => {
+                    check_ignition("ignition delay (s)", *value).map_err(in_mount)?;
+                    if mount.stage + 1 >= self.stages.len() {
+                        return Err(DesignError::Tree {
+                            id: mount.id.clone(),
+                            message: format!(
+                                "configuration {} lights this motor at its stage's separation, \
+                                 but no stage is aft of it to separate",
+                                configuration.id
+                            ),
+                        });
+                    }
+                }
+            }
             let [x, y] = mount.part.axis_offset_m();
             motors.push(PlacedMotor {
                 mount: mount.id.clone(),
@@ -205,7 +351,42 @@ impl Layout {
                 mounted: mounted.clone(),
             });
         }
+        for motor in &motors {
+            if let Ignition::Burnout { mount, .. } = &motor.mounted.ignition
+                && !motors.iter().any(|other| other.mount == *mount)
+            {
+                return Err(DesignError::Tree {
+                    id: motor.mount.clone(),
+                    message: format!(
+                        "configuration {} lights this motor at the burnout of mount {mount}, \
+                         which holds no motor in it",
+                        configuration.id
+                    ),
+                });
+            }
+        }
+        // With every separation at once, only a cycle of burnouts is left unlit.
+        let lit = ignition_times_s(&motors, |_| Some(0.0));
+        if let Some(index) = lit.iter().position(Option::is_none) {
+            return Err(DesignError::Tree {
+                id: motors[index].mount.clone(),
+                message: format!(
+                    "configuration {} lights this motor by a chain of burnouts that comes back \
+                     to it",
+                    configuration.id
+                ),
+            });
+        }
         Ok(motors)
+    }
+}
+
+/// An ignition time or delay: finite and not negative.
+fn check_ignition(what: &'static str, value: f64) -> Result<(), DesignError> {
+    if value.is_finite() && value >= 0.0 {
+        Ok(())
+    } else {
+        Err(DesignError::Domain { what, value })
     }
 }
 
@@ -851,5 +1032,113 @@ mod tests {
         for (what, error, at) in &worst.0 {
             assert!(*error <= tolerance(what), "{what}: {error:e} at {at}");
         }
+    }
+
+    /// The synthetic two-stage design with its sustainer lit by `ignition`: a J760 in the
+    /// booster (motor 0), an I175 in the sustainer (motor 1).
+    fn two_stage(ignition: Ignition) -> Rocket {
+        let mut rocket: Rocket = serde_json::from_str(include_str!(
+            "../../../validation/designs/synthetic-two-stage-75mm-54mm.json"
+        ))
+        .unwrap();
+        rocket.configurations[0].motors[1].ignition = ignition;
+        rocket
+    }
+
+    #[test]
+    fn ignition_times_follow_their_events() {
+        let j760 = |assembly: &Assembly| assembly.motors[0].mounted.motor.burnout_time_s();
+        // At launch, and at a time.
+        let assembly = two_stage(Ignition::Launch).assemble("j760-i175").unwrap();
+        assert_eq!(assembly.ignition_times_s(|_| None), [Some(0.0), Some(0.0)]);
+        let assembly = two_stage(Ignition::Time { time_s: 3.5 })
+            .assemble("j760-i175")
+            .unwrap();
+        assert_eq!(assembly.ignition_times_s(|_| None), [Some(0.0), Some(3.5)]);
+        // At the booster's burnout plus a delay.
+        let assembly = two_stage(Ignition::Burnout {
+            mount: "booster-motor-mount".to_owned(),
+            delay_s: 1.25,
+        })
+        .assemble("j760-i175")
+        .unwrap();
+        let burnout_s = j760(&assembly);
+        assert!(burnout_s > 1.0, "{burnout_s}");
+        assert_eq!(
+            assembly.ignition_times_s(|_| None),
+            [Some(0.0), Some(burnout_s + 1.25)]
+        );
+        // At the separation of the stage aft of the sustainer's (stage 0), and never without it.
+        let assembly = two_stage(Ignition::Separation { delay_s: 0.5 })
+            .assemble("j760-i175")
+            .unwrap();
+        assert_eq!(assembly.ignition_times_s(|_| None), [Some(0.0), None]);
+        assert_eq!(
+            assembly.ignition_times_s(|stage| (stage == 0).then_some(4.0)),
+            [Some(0.0), Some(4.5)]
+        );
+        assert_eq!(
+            assembly.ignition_times_s(|stage| (stage == 1).then_some(4.0)),
+            [Some(0.0), None]
+        );
+        // A motor not yet lit is loaded; lit, it burns on its own clock.
+        let lit = [Some(0.0), Some(4.5)];
+        let loaded = assembly.motors[1].mass_properties(0.0).mass_kg;
+        let spent = assembly.motors[1].dry_mass_properties().mass_kg;
+        let at = |t: f64| assembly.mass_properties_lit(t, &lit).mass_kg;
+        let structure = assembly.layout.structure.mass_kg;
+        let booster = |t: f64| assembly.motors[0].mass_properties(t).mass_kg;
+        assert_eq!(at(4.0), structure + booster(4.0) + loaded);
+        let sustainer = assembly.motors[1].mass_properties(1.0).mass_kg;
+        assert!(sustainer < loaded && sustainer > spent);
+        assert!((at(5.5) - (structure + booster(5.5) + sustainer)).abs() < 1e-12);
+        assert!((at(100.0) - assembly.dry_mass_properties().mass_kg).abs() < 1e-12);
+    }
+
+    #[test]
+    fn bad_ignitions_are_refused() {
+        let refused = |ignition: Ignition| two_stage(ignition).assemble("j760-i175").is_err();
+        assert!(refused(Ignition::Time { time_s: -1.0 }));
+        assert!(refused(Ignition::Time { time_s: f64::NAN }));
+        assert!(refused(Ignition::Separation {
+            delay_s: f64::INFINITY
+        }));
+        // The booster is the last stage: nothing is aft of it to separate.
+        let mut rocket = two_stage(Ignition::Launch);
+        rocket.configurations[0].motors[0].ignition = Ignition::Separation { delay_s: 0.0 };
+        let error = rocket.assemble("j760-i175").unwrap_err();
+        assert!(matches!(error, DesignError::Tree { .. }), "{error:?}");
+        assert!(refused(Ignition::Burnout {
+            mount: "booster-motor-mount".to_owned(),
+            delay_s: -0.1,
+        }));
+        // A mount with no motor, or no such mount.
+        assert!(refused(Ignition::Burnout {
+            mount: "nose".to_owned(),
+            delay_s: 0.0,
+        }));
+        // Its own burnout, and a cycle through the other motor.
+        assert!(refused(Ignition::Burnout {
+            mount: "sustainer-motor-mount".to_owned(),
+            delay_s: 0.0,
+        }));
+        let mut rocket = two_stage(Ignition::Burnout {
+            mount: "booster-motor-mount".to_owned(),
+            delay_s: 0.0,
+        });
+        rocket.configurations[0].motors[0].ignition = Ignition::Burnout {
+            mount: "sustainer-motor-mount".to_owned(),
+            delay_s: 0.0,
+        };
+        let error = rocket.assemble("j760-i175").unwrap_err();
+        assert!(matches!(error, DesignError::Tree { .. }), "{error:?}");
+        // A launch is written as nothing at all, so older designs read the same.
+        let json = serde_json::to_string(&two_stage(Ignition::Launch)).unwrap();
+        assert!(!json.contains("ignition"));
+        let timed = serde_json::to_string(&two_stage(Ignition::Time { time_s: 2.0 })).unwrap();
+        assert!(
+            timed.contains(r#""ignition":{"time":{"time_s":2.0}}"#),
+            "{timed}"
+        );
     }
 }

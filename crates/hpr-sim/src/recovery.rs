@@ -516,18 +516,29 @@ pub enum Trigger {
         /// The height above the launch site, m.
         height_above_ground_m: f64,
     },
-    /// At a time after the first ignition, s. Charges are checked in free flight and during the
-    /// descent, so a time that passes on the pad or the rail fires at rail exit.
+    /// At a time after launch, s. Charges are checked in free flight and during the descent, so a
+    /// time that passes on the pad or the rail fires at rail exit.
     Time {
-        /// The time after ignition, s.
+        /// The time after launch, s.
         time_s: f64,
     },
     /// A motor's ejection delay after that motor's burnout. The motor is its index in
     /// [`hpr_design::Assembly::motors`], and it must have a [`hpr_motor::Delay::Seconds`] delay.
-    /// As [`Self::Time`], a delay that expires before the rail exit fires there.
+    /// As [`Self::Time`], a delay that expires before the rail exit fires there. A motor that
+    /// never lights never fires it.
     MotorDelay {
         /// The motor's index.
         motor: usize,
+    },
+    /// A delay after a motor's burnout, whatever its ejection delay: a stage separation timed
+    /// from the booster's burnout. The motor is its index in [`hpr_design::Assembly::motors`].
+    /// As [`Self::MotorDelay`], it fires no earlier than the rail exit, and never if the motor
+    /// never lights.
+    Burnout {
+        /// The motor's index.
+        motor: usize,
+        /// The delay after its burnout, s.
+        delay_s: f64,
     },
 }
 
@@ -812,7 +823,7 @@ impl Device {
             }
         }
         match self.trigger {
-            Trigger::Apogee | Trigger::MotorDelay { .. } => {}
+            Trigger::Apogee | Trigger::MotorDelay { .. } | Trigger::Burnout { .. } => {}
             Trigger::Altitude {
                 height_above_ground_m,
             } => {
@@ -826,7 +837,7 @@ impl Device {
             Trigger::Time { time_s } => {
                 if !(time_s.is_finite() && time_s >= 0.0) {
                     return Err(SimError::Domain {
-                        what: "deployment time after ignition, s",
+                        what: "deployment time after launch, s",
                         value: time_s,
                     });
                 }
@@ -865,12 +876,14 @@ fn check_exponent(exponent: f64) -> Result<(), SimError> {
 /// [ADR-012][adr-012]), and a body with nothing open would fall as if in a vacuum.
 ///
 /// A separation is an ideal one: no impulse, so each body leaves with the velocity its own centre
-/// of mass already had. It must come after the last burnout, because a body's mass is taken as
-/// constant through its descent; powered staging is [M1.9][m1-9].
+/// of mass already had. The aft body's motors must have burned out by then, because a body's
+/// mass is taken as constant through its descent. When the nose's body still has a motor to burn,
+/// it is a sustainer: it flies on as a rigid body on its own stages' aerodynamics, and only the aft
+/// body descends as a point mass (the decision record on staging, [ADR-074][adr-074]).
 ///
 /// [adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
 /// [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
-/// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
+/// [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Separation {
@@ -911,12 +924,14 @@ impl Separation {
     pub const BODIES: usize = 2;
 }
 
-/// The mass properties of the stages `first..=last` of `assembly`, with their motors, `t_s`
-/// seconds after ignition. Summing over every stage gives [`hpr_design::Assembly::mass_properties`].
+/// The mass properties of the stages `first..=last` of `assembly`, with their motors, at flight
+/// time `t_s`, each motor lit at its `ignition_s`. Summing over every stage gives
+/// [`hpr_design::Assembly::mass_properties_lit`].
 pub(crate) fn body_mass_properties(
     assembly: &hpr_design::Assembly,
     (first, last): (usize, usize),
     t_s: f64,
+    ignition_s: &[Option<f64>],
 ) -> hpr_design::MassProperties {
     let mut parts = vec![];
     for (index, stage) in assembly.layout.stages.iter().enumerate() {
@@ -927,29 +942,40 @@ pub(crate) fn body_mass_properties(
     let motors: Vec<_> = assembly
         .motors
         .iter()
-        .filter(|motor| (first..=last).contains(&motor.stage))
-        .map(|motor| motor.mass_properties(t_s))
+        .zip(ignition_s)
+        .filter(|(motor, _)| (first..=last).contains(&motor.stage))
+        .map(|(motor, ignition)| motor.mass_properties_lit(t_s, *ignition))
         .collect();
     parts.extend(motors);
     hpr_design::MassProperties::combine(parts.iter())
 }
 
 /// The time a trigger fires, when it is one that is known before the flight: a time after
-/// ignition, or a motor's ejection delay after its burnout.
+/// launch, or a delay after a motor's burnout, with the motors lit at `ignition_s`. A trigger on
+/// a motor with no known ignition time has none either, and doesn't fire.
 ///
 /// # Errors
 ///
-/// [`SimError::Domain`] for a time before ignition, a motor that isn't there, or a motor with no
-/// ejection delay in seconds.
+/// [`SimError::Domain`] for a time before launch, a motor that isn't there, a motor with no
+/// ejection delay in seconds, or a delay that is negative or not finite.
 pub(crate) fn trigger_time_s(
     trigger: Trigger,
     motors: &[hpr_design::PlacedMotor],
+    ignition_s: &[Option<f64>],
 ) -> Result<Option<f64>, SimError> {
+    let burnout_s = |motor: usize| {
+        ignition_s
+            .get(motor)
+            .copied()
+            .flatten()
+            .zip(motors.get(motor))
+            .map(|(ignition_s, placed)| ignition_s + placed.mounted.motor.burnout_time_s())
+    };
     match trigger {
         Trigger::Time { time_s } => {
             if !(time_s.is_finite() && time_s >= 0.0) {
                 return Err(SimError::Domain {
-                    what: "deployment time after ignition, s",
+                    what: "deployment time after launch, s",
                     value: time_s,
                 });
             }
@@ -976,7 +1002,22 @@ pub(crate) fn trigger_time_s(
                     value: delay_s,
                 });
             }
-            Ok(Some(placed.mounted.motor.burnout_time_s() + delay_s))
+            Ok(burnout_s(motor).map(|t| t + delay_s))
+        }
+        Trigger::Burnout { motor, delay_s } => {
+            if motor >= motors.len() {
+                return Err(SimError::Domain {
+                    what: "index of the motor whose burnout a trigger counts from",
+                    value: motor as f64,
+                });
+            }
+            if !(delay_s.is_finite() && delay_s >= 0.0) {
+                return Err(SimError::Domain {
+                    what: "delay after a motor's burnout, s",
+                    value: delay_s,
+                });
+            }
+            Ok(burnout_s(motor).map(|t| t + delay_s))
         }
         Trigger::Apogee | Trigger::Altitude { .. } => Ok(None),
     }
@@ -984,11 +1025,14 @@ pub(crate) fn trigger_time_s(
 
 /// Checks a flight's devices, and finds the trigger times that are known before it flies.
 ///
-/// The result has one entry per device: `Some(t)` for a [`Trigger::Time`] or a
-/// [`Trigger::MotorDelay`], `None` for the triggers the flight has to watch for.
+/// The result has one entry per device: `Some(t)` for a [`Trigger::Time`], and for a
+/// [`Trigger::MotorDelay`] or [`Trigger::Burnout`] on a motor lit at a known time (of
+/// `ignition_s`); `None` for the triggers the flight has to watch for, and for one on a motor that
+/// hasn't a known ignition.
 pub(crate) fn plan(
     devices: &[Device],
     motors: &[hpr_design::PlacedMotor],
+    ignition_s: &[Option<f64>],
 ) -> Result<Vec<Option<f64>>, SimError> {
     // A device is cut away by a line on its own body; a release across a separation has nothing
     // to act through.
@@ -1025,7 +1069,7 @@ pub(crate) fn plan(
     let mut times = Vec::with_capacity(devices.len());
     for (index, device) in devices.iter().enumerate() {
         device.validate(devices.len(), index)?;
-        let time = trigger_time_s(device.trigger, motors)?;
+        let time = trigger_time_s(device.trigger, motors, ignition_s)?;
         times.push(time);
     }
     Ok(times)
@@ -1034,7 +1078,7 @@ pub(crate) fn plan(
 /// One device's progress through a flight.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct DeviceRun {
-    /// When its charge fired, s after ignition.
+    /// When its charge fired, s after launch.
     pub(crate) triggered_s: Option<f64>,
     /// When it will deploy (line stretch), s: the trigger plus the lag.
     pub(crate) deploy_s: Option<f64>,
@@ -1205,7 +1249,7 @@ impl Run {
 /// One separated body at an instant of its descent.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct BodySample {
-    /// Time since the first ignition, s.
+    /// Time since launch, s.
     pub time_s: f64,
     /// Its centre of mass in the launch frame, m.
     pub cg_enu_m: DVec3,
@@ -3376,7 +3420,9 @@ mod tests {
         // are 0.817 m apart on this design.
         let state = result.final_sample.state;
         for body in &result.bodies {
-            let cg_m = body_mass_properties(sim.assembly(), body.stages, separation.time_s).cg_m;
+            let lit = vec![Some(0.0); sim.assembly().motors.len()];
+            let cg_m =
+                body_mass_properties(sim.assembly(), body.stages, separation.time_s, &lit).cg_m;
             let expected = state.point_enu_m(cg_m);
             assert!(
                 (body.start_sample.cg_enu_m - expected).length() < 1e-12,
@@ -3561,10 +3607,12 @@ mod tests {
                 Device::new(
                     "booster",
                     DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
-                    // Above the height this body ever reaches, so it never fires.
-                    Trigger::Altitude {
-                        height_above_ground_m: 5_000.0,
-                    },
+                    // Long after the body lands, so it never fires. (A height above the body
+                    // fires at once on a body already descending below it, which is the
+                    // altimeter's rule; this test once used one and passed only because the
+                    // sustainer's canopy, opened on the stack at the separation, was not
+                    // counted as open — ADR-074.)
+                    Trigger::Time { time_s: 100_000.0 },
                 )
                 .on_body(1),
             ],
@@ -3577,7 +3625,11 @@ mod tests {
                 &mut (),
             )
             .expect_err("a body with nothing open");
-        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // The booster, body 1, is the one refused.
+        assert!(
+            matches!(error, SimError::Domain { value, .. } if value == 1.0),
+            "{error:?}"
+        );
     }
 
     #[test]

@@ -23,8 +23,9 @@ use hpr_aero::{AeroModel, Flow};
 use hpr_core::geodesy::Geodetic;
 use hpr_design::{
     AutoDimension, BodyTube, Component, Configuration, FinCrossSection, FinPlanform, FinSet,
-    InnerTube, MassComponent, Material, MotorMount, MountedMotor, NoseCone, NoseShape, Overrides,
-    Packing, Part, Position, ReferenceDiameter, Rocket, Shoulder, Stage, Wall, materials,
+    Ignition, InnerTube, MassComponent, Material, MotorMount, MountedMotor, NoseCone, NoseShape,
+    Overrides, Packing, Part, Position, ReferenceDiameter, Rocket, Shoulder, Stage, Wall,
+    materials,
 };
 use hpr_motor::{Catalog, Delay};
 use hpr_sim::{
@@ -137,6 +138,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         length_m: entry.length_mm / 1000.0,
         motor: entry.bundled_motor()?,
         delay: Some(Delay::Seconds(10.0)),
+        ignition: Ignition::Launch,
     };
 
     // The rocket: one stage, and one configuration, "h54", with that motor in the mount.

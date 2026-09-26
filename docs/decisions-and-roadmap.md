@@ -90,6 +90,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-071: The corpus OpenRocket flies is its `.ork` files][adr-071] | [M2.2e2](#m2-2e2) flies the private library's 27 `.ork` files: 88 of 89 configurations to the end. Its 4 RASAero and 4 RockSim files wait until hpr reads those formats. | [`.ork`: OpenRocket's flights of the private designs](format/ork.md#openrockets-flights-of-the-private-designs) |
 | [ADR-072: hpr's flights of the private library, under anonymised ids][adr-072] | [M2.2e3](#m2-2e3) tries the 12 private designs that are not copies of public ones and publishes only differences, under ids like `C09/2`. hpr flies 17 configurations of 4 of them, so the two reports hold 9 designs, not the 20 that [M2.2](#m2-2) (the OpenRocket comparison) asks for. That bar moves unchanged to [M2.2e5](#m2-2e5). Staging and clusters ([M1.9](#m1-9)) bring it to 17 at most. The last three can come from a tilted launch rod ([#173](https://github.com/nrdptel/hpr-sim/issues/173), one design), the airframe readings ([#174](https://github.com/nrdptel/hpr-sim/issues/174), five), or the four public designs held by pods and parallel stages ([M1.13](#m1-13)) or tube fins ([#133](https://github.com/nrdptel/hpr-sim/issues/133)). | [`.ork`: hpr's flights of the private designs](format/ork.md#hprs-flights-of-the-private-designs) |
 | [ADR-073: Each named cause sized by OpenRocket's own flight without it][adr-073] | [M2.2e4](#m2-2e4) sizes the two causes named for the five apogees more than 5% from OpenRocket's: OpenRocket flies each flight again with nothing deployed and, where a part is told it has no drag, with that setting cleared (matching what hpr flies, since hpr reads the setting but can't apply it yet) or the part removed. Four of the five come within 5% of every such flight. The fifth stays 7.80% high like for like (the no-drag part removed from both programs), and what is left on its design has a lead, not an explanation ([#177](https://github.com/nrdptel/hpr-sim/issues/177), a very blunt nose's drag). | [`.ork`: the two named causes, and their size](format/ork.md#hprs-flights-against-openrockets) |
+| [ADR-074: Ignition times and powered staging: the sustainer flies on as a rigid body][adr-074] | [M1.9a](#m1-9a) lets each motor light at its own time (at launch, at a time, after another motor's burnout, or after its stage's separation). A separation with the forward part still to burn is powered: that part, the sustainer, flies on with its own shape and mass while the booster falls to its own landing. The sustainer keeps the nose, so its aerodynamics are an ordinary rocket's; nothing needs a model of a rocket without a nose. Checked by tests, not yet against another simulator. | [Staging](physics/staging.md) |
 
 ## The roadmap
 
@@ -235,6 +236,9 @@ missing or its status disagrees.
 | <a id="m2-2e4"></a>[M2.2e4][phase-1] | A written cause for every apogee more than 5% from OpenRocket's, sized by OpenRocket's own flight without it: four of the five within 5% after, the fifth +7.80% with the no-drag part removed from both programs ([ADR-073][adr-073], [results](format/ork.md#hprs-flights-against-openrockets)) | done |
 | <a id="m2-2e5"></a>[M2.2e5][phase-1] | At least 20 designs across the two reports with all five spreads (apogee, largest speed, margin, mass and centre of mass), the bar [M2.2e3](#m2-2e3) had, unchanged. Blocked: staging and clusters ([M1.9](#m1-9)) bring it to 17 at most, and the last three can come from a tilted launch rod ([#173](https://github.com/nrdptel/hpr-sim/issues/173), one design), the airframe readings ([#174](https://github.com/nrdptel/hpr-sim/issues/174), five designs) or the four public designs held by pods and parallel stages ([M1.13](#m1-13)) or tube fins ([#133](https://github.com/nrdptel/hpr-sim/issues/133)), as [ADR-072][adr-072] records | blocked |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
+| <a id="m1-9a"></a>[M1.9a][phase-1] | Motors lit at their own times, and a sustainer that flies on after a powered separation while the booster lands on its own, with tests for the ignition times, the mass step, the order of events and a trigger that never fires ([ADR-074][adr-074], [Staging](physics/staging.md)) | done |
+| <a id="m1-9b"></a>[M1.9b][phase-1] | Several motors in one mount, their thrusts and masses summed, and a motor out turning the rocket as a hand calculation predicts | not yet done |
+| <a id="m1-9c"></a>[M1.9c][phase-1] | A two-stage and a cluster design from `.ork` files, each within the per-case tolerance of OpenRocket's flight | not yet done |
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
 | <a id="m2-3"></a>[M2.3][phase-1] | Comparisons with real flights | not yet done |
 | <a id="m2-4"></a>[M2.4][phase-1] | A summary of accuracy for the README, and CI that fails on any regression | not yet done |
@@ -313,6 +317,7 @@ is the milestone that added or will add that test.
 | <a id="l24"></a>[L24][lessons-physics] | Loft's `simulate()` changed its inputs, so a second run of the same flight differed from the first | [M1.6b](#m1-6b) |
 | <a id="l25"></a>[L25][lessons-physics] | Loft labelled any early stop "step budget", even a rocket that never lifted off | [M1.6b](#m1-6b) |
 | <a id="l26"></a>[L26][lessons-physics] | Loft's launch rail had no friction and no button geometry | [M1.6b](#m1-6b) |
+| <a id="l30"></a>[L30][lessons-physics] | Loft fixed the staging before the flight, so an apogee or height separation fell back to the burnout, and it never flew the booster | [M1.9a](#m1-9a) |
 | <a id="l35"></a>[L35][lessons-physics] | Loft used zeros for "never happened", and never said which height apogee was measured from | [M1.10](#m1-10) |
 | <a id="l36"></a>[L36][lessons-motors] | Loft's `.eng` reader read only the first header, and appended a second motor's points to the first curve | [M1.3](#m1-3) |
 | <a id="l37"></a>[L37][lessons-motors] | Loft's delay parsing lost `P` (plugged) and lists of delays, and read marker values as seconds | [M1.3](#m1-3) |
@@ -353,6 +358,7 @@ is the milestone that added or will add that test.
 | <a id="l89"></a>[L89][lessons-tests] | Barrowman's hand-worked values for a cone, a conical transition and an elliptical fin, which hpr's tests check | [M1.5a](#m1-5a) |
 | <a id="l90"></a>[L90][lessons-tests] | Properties any drag model must keep, such as split fin sets dragging like one set, which hpr's tests check | [M1.5b](#m1-5b) |
 | <a id="l91"></a>[L91][lessons-tests] | Exact volumes of nose cones (cone, tangent ogive, Haack), which hpr's tests check | [M1.4a](#m1-4a) |
+| <a id="l93"></a>[L93][lessons-tests] | Staging: the sustainer lights at the booster's burnout plus its delay, the mass steps at the separation, and a trigger never reached lights nothing | [M1.9a](#m1-9a) |
 
 [adr-000]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-000-kickoff-decisions-2026-09-16
 [adr-001]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-001-license-and-workspace-layout-2026-09-17
@@ -426,6 +432,7 @@ is the milestone that added or will add that test.
 [adr-071]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-071-the-corpus-openrocket-flies-is-its-ork-files-2026-09-25
 [adr-072]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-072-hprs-flights-of-the-private-library-under-anonymised-ids-2026-09-25
 [adr-073]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-073-each-named-cause-sized-by-openrockets-own-flight-without-it-2026-09-25
+[adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

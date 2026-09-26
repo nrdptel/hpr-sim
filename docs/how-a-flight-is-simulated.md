@@ -32,10 +32,10 @@ during the flight.
 
 The numbers match the drawing.
 
-1. **Ignition and liftoff.** Every motor ignites at time zero. There is no staging, delayed
-   ignition or [air start](glossary.md#air-start) yet, so a two-stage design flies with all its
-   motors lit at once, which is not a staged flight
-   ([Start here](start-here.md#what-doesnt-work-yet)). The rocket stands on the rail, its aft end
+1. **Ignition and liftoff.** Every motor lights at time zero unless its design gives it a later
+   ignition: an [air start](glossary.md#air-start), or a sustainer lit after its booster
+   ([Staging](physics/staging.md)). A two-stage design that says nothing lights both stages on the
+   pad. The rocket stands on the rail, its aft end
    at the rail's foot, and holds still until the push up the rail, mostly the thrust, beats the
    weight's pull down it and the rail's friction. That instant is [liftoff](glossary.md#liftoff).
    If the motors burn out first, the flight ends on the pad.
@@ -151,10 +151,11 @@ flight:
 - **Large angles of attack.** The aerodynamics are for small angles, with no
   [stall](glossary.md#stall), but a flight uses them at every angle: just off the rail in a strong
   crosswind, and near apogee.
-- **Staging, delayed ignition and air starts**, planned for [M1.9](decisions-and-roadmap.md#m1-9), the staging and
-  clusters milestone. Every motor ignites at time zero, so a two-stage design flies with all its
-  motors lit at once. A cluster whose motors all light then is flown, but no test or comparison
-  has checked one yet.
+- **Staging and air starts are checked only by tests.** Each motor lights at its own time, and a
+  sustainer flies on after a powered separation ([Staging](physics/staging.md)), but no staged
+  flight has been compared with another simulator yet ([M1.9c](decisions-and-roadmap.md#m1-9c)).
+  A cluster whose motors sit in their own mounts is flown, but no test or comparison has checked
+  one yet ([M1.9b](decisions-and-roadmap.md#m1-9b)).
 - [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
   axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
   modelled, and checked against measurements only from Mach 1.5 up

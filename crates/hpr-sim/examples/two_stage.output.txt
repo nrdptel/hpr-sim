@@ -1,0 +1,15 @@
+A 54 mm sustainer on a 75 mm booster, J760 then I175, calm air
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+event                   time (s)   CG height (m)   speed (m/s)   mass (kg)
+liftoff                     0.00             0.5           0.0       2.480
+rail exit                   0.20             6.3          61.0       2.410
+separation                  2.23           643.0         341.2       1.904
+sustainer lights            2.73           797.4         280.7       0.779
+sustainer burnout           5.23          1798.9         403.2       0.550
+apogee                     18.42          3103.2           0.1       0.550
+parachute charge           18.42          3103.2           0.1       0.550
+parachute opens            18.42          3103.2           0.1       0.550
+sustainer lands           865.34             0.0           3.4       0.550
+
+The booster (1.125 kg) leaves at 2.23 s and 642.7 m, tumbling. It peaks at 745.0 m at 5.11 s and lands at 47.21 s at 17.9 m/s.

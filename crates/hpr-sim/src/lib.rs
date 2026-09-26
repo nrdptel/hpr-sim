@@ -22,9 +22,11 @@
 //!   to stop times and events.
 //! - [`events`]: event directions and Brent's root finder.
 //!
-//! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, and a
-//! separation whose bodies each land. Staging is not here yet (milestone [M1.9][roadmap] of the
-//! roadmap): every motor ignites at `t = 0`, and a separation must follow the last burnout.
+//! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, a
+//! separation whose bodies each land, and staging: each motor lights at its own time, and a
+//! separation with the nose's body still to burn lets that body fly on as a sustainer while the
+//! booster descends ([`flight`]). Motor clusters and the `.ork` staging settings are not flown yet
+//! (milestone [M1.9][roadmap] of the roadmap).
 
 pub mod dynamics;
 pub mod environment;
@@ -35,6 +37,7 @@ pub mod integrator;
 pub mod rail;
 pub mod recorder;
 pub mod recovery;
+mod staging;
 pub mod state;
 
 pub use dynamics::Phase;

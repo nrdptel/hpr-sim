@@ -1207,6 +1207,7 @@ fn flown(configuration: &MotorConfiguration) -> Configuration {
                     length_m: motor.length_m?,
                     motor: motor.curve.motor()?.clone(),
                     delay: motor.delay,
+                    ignition: hpr_design::Ignition::Launch,
                 })
             })
             .collect(),
