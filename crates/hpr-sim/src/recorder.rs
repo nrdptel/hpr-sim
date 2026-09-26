@@ -222,6 +222,19 @@ pub trait Observer {
 
 impl Observer for () {}
 
+/// Two observers watch one flight: each sees every step and event, the first before the second.
+impl<A: Observer, B: Observer> Observer for (A, B) {
+    fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
+        self.0.step(step)?;
+        self.1.step(step)
+    }
+
+    fn event(&mut self, event: &FlightEvent) {
+        self.0.event(event);
+        self.1.event(event);
+    }
+}
+
 /// Records chosen channels, one row per sample.
 ///
 /// - With an interval, a row at every multiple of `interval_s` after launch that falls within the

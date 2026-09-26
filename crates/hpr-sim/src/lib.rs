@@ -24,6 +24,7 @@
 //! - [`metrics`]: what a flight comes to: its peaks, apogee, stability margins, optimum ejection
 //!   delays and landings.
 //! - [`flutter`]: a fin's flutter speed and margin by NACA TN 4197's criterion.
+//! - [`export`]: a recording as CSV or JSON, and the flight path and landings as GeoJSON or KML.
 //!
 //! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, a
 //! separation whose bodies each land, and staging: each motor lights at its own time, and a
@@ -36,6 +37,7 @@ pub mod dynamics;
 pub mod environment;
 pub mod error;
 pub mod events;
+pub mod export;
 pub mod flight;
 pub mod flutter;
 pub mod integrator;
@@ -50,6 +52,7 @@ pub use dynamics::Phase;
 pub use environment::Environment;
 pub use error::SimError;
 pub use events::{Direction, EVENT_TIME_RESOLUTION_S, RootError, find_root};
+pub use export::TrackPoint;
 pub use flight::{
     EventKind, FlightEvent, FlightResult, FlightSettings, Simulation, Termination, UserEvent,
 };

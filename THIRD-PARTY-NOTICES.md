@@ -50,6 +50,23 @@ adds a source.
   export cites it for the export's units and datum (pp. 13, 72, 76, 114); Projeto Jupiter's
   rocket page (projetojupiter.com/foguetes) gives Juno III's fin profile. Neither is
   redistributed.
+- **GeoJSON schema** (MIT, `geojson/schema` at commit 268ba0af, Copyright (c) 2018 Tim Schaub):
+  `FeatureCollection.json` as published at https://geojson.org/schema/FeatureCollection.json,
+  unchanged, in `crates/hpr-sim/tests/data/geojson-feature-collection.schema.json`. Tests only:
+  exported GeoJSON is checked against it (ADR-079). Its license:
+
+  > MIT License. Copyright (c) 2018 Tim Schaub. Permission is hereby granted, free of charge, to
+  > any person obtaining a copy of this software and associated documentation files (the
+  > "Software"), to deal in the Software without restriction, including without limitation the
+  > rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+  > Software, and to permit persons to whom the Software is furnished to do so, subject to the
+  > following conditions: The above copyright notice and this permission notice shall be included
+  > in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS",
+  > WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  > MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+  > ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  > OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Ported
 
@@ -114,13 +131,14 @@ adds a source.
 |---|---|---|---|
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `flate2` | MIT OR Apache-2.0 | `hpr-io` | gzip and deflate, with the pure-Rust `miniz_oxide` backend so that `hpr-io` still builds for wasm32 and links no C: one of the three containers a `.ork` design arrives in, and the compression inside the other |
+| `jsonschema` | MIT | `hpr-sim` (tests only) | checks exported GeoJSON against the published GeoJSON schema; no default features, so it fetches and reads nothing (ADR-079) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
 | `pulldown-cmark` | MIT | `xtask` | reads the documentation site's Markdown, with the parser mdBook itself uses, to check its links and labels (ADR-016) |
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |
 | `rand_xoshiro` | MIT OR Apache-2.0 | `hpr-core` (tests only) | an independent xoshiro256++ and SplitMix64 that `hpr_core::random` is checked against, bit for bit |
-| `roxmltree` | MIT OR Apache-2.0 | `hpr-motor`, `hpr-io` | a strict, read-only XML 1.0 parser for `.rse` motor files and `.ork` designs |
-| `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-motor`; `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
+| `roxmltree` | MIT OR Apache-2.0 | `hpr-motor`, `hpr-io`; `hpr-sim` (tests only) | a strict, read-only XML 1.0 parser for `.rse` motor files and `.ork` designs |
+| `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-motor`, `hpr-sim` (JSON and GeoJSON exports); `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
 | `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-core`, `hpr-atmos`, `hpr-motor` | derives the `validation/refs.lock.toml` types and the public data types |
 | `thiserror` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` | library error types |
 | `sha2` | MIT OR Apache-2.0 | `xtask`; `hpr-motor` (tests only) | SHA-256 of fetched references and of the bundled motor curves |

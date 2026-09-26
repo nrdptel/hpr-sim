@@ -22,11 +22,13 @@ hpr-motor.workspace = true
 hpr-design.workspace = true
 hpr-aero.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
-serde_json.workspace = true
+jsonschema.workspace = true
+roxmltree.workspace = true
 
 [[bench]]
 name = "flight"

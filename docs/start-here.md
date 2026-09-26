@@ -120,11 +120,12 @@ out.
 
 ### Outputs and ways to use it
 
-- **No output files yet.** A flight's peaks, its stability margin from the rail exit to apogee,
-  the optimum ejection delay and its landing's latitude and longitude are in
-  [Flight metrics](physics/metrics.md), and its fins' flutter speed and margin in
-  [Fin flutter](physics/flutter.md). CSV, JSON, KML and GeoJSON files
-  ([M1.10c](decisions-and-roadmap.md#m1-10c)) come next.
+- **Output files are text only.** [Exporting a flight](exporting-a-flight.md) writes a recording
+  as CSV or JSON, and the flight path with its landings as GeoJSON or KML for a map. Parquet
+  ([M1.10c2](decisions-and-roadmap.md#m1-10c2)) comes next. A flight's peaks, its stability
+  margin from the rail exit to apogee, the optimum ejection delay and its landing's latitude and
+  longitude are in [Flight metrics](physics/metrics.md), and its fins' flutter speed and margin in
+  [Fin flutter](physics/flutter.md).
 - **No way to use it without writing Rust.** A simpler library interface ([M4.1](decisions-and-roadmap.md#m4-1)), a
   command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are
   planned. Until then, [Getting started](getting-started.md) flies a first
