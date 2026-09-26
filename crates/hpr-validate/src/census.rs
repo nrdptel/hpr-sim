@@ -1,25 +1,33 @@
-//! The accuracy census: every number the committed reports compare, counted once, classed by what
-//! it was compared with and how fast the flight went, and held to the census last accepted.
+//! The accuracy census: the numbers the committed reports hold hpr to, counted once, classed by
+//! what they were compared with and how fast the flight went, and held to the census last
+//! accepted.
 //!
 //! The reports say how each case came out. The census says what they add up to, and it is the
 //! gate against a regression that a regenerated report would otherwise carry in unnoticed. Four
-//! reports feed it: the harness's (`validation/reports/latest.json`), the real flights'
-//! (`real-flights.json`), and OpenRocket's flights of its examples and of the private designs
-//! (`openrocket-flights.json`, `openrocket-library-flights.json`). Each compared number becomes a
-//! [`Row`], keyed by its report's [`Group`], its case and its metric, and a key seen twice is
-//! refused, so a case counts once ([Loft lesson L84][l84]).
+//! reports feed it:
+//!
+//! - the harness's (`validation/reports/latest.json`): every metric of every case, and each known
+//!   gap;
+//! - the real flights' (`real-flights.json`): each flight's apogee and the RMS of its climb;
+//! - OpenRocket's flights of its examples and of the private designs (`openrocket-flights.json`,
+//!   `openrocket-library-flights.json`): apogee, largest speed, stability margin, mass at launch
+//!   and at rod clearance, and centre of mass there, and each configuration hpr doesn't fly.
+//!
+//! Each becomes a [`Row`], keyed by its report's [`Group`], its case and its metric, and a key seen
+//! twice is refused, so a case counts once ([Loft lesson L84][l84]).
 //!
 //! The census accepted last is committed (`validation/reports/census.json`). A run is held to it
-//! row by row ([`compare`]): a row that moves by more than its slack in either direction, that
-//! changes its standing (a miss that starts passing too, [L85][l85]), or that comes or goes, is a
-//! [`Change`], and any change fails the check until the census is accepted again with a written
-//! reason. A predicted-mode row, whose 3% is only a target ([ADR-023][adr-023], predicted mode), is held the same way, so hpr's
-//! own aerodynamics can't drift unnoticed inside its target ([L88][l88]). Each group's headline
-//! names what it was compared with, how many flights, and their speeds ([L86][l86]).
+//! ([`compare`]): a row that moves by more than its slack in either direction, that changes its
+//! standing (a miss that starts passing too, [L85][l85]), or that comes or goes, a group whose
+//! reference changes, or a changed slack, is a [`Change`], and any change fails the check until the
+//! census is accepted again with a written reason. A predicted-mode row, whose 3% is only a target
+//! ([ADR-023][adr-023], predicted mode), is held the same way, so hpr's own aerodynamics can't
+//! drift unnoticed inside its target ([L88][l88]). Each group's headline names what it was
+//! compared with, the kind of comparison, how many flights and their speeds ([L86][l86]).
 //!
-//! The slack is [`SLACK_SHARE`] of the row's scale: the tolerance it is held to, or for a row held
-//! to none, the bar its kind is judged by ([`Group::bar`]). It is far above the reports' own
-//! reproduction noise and far below any change worth knowing about.
+//! A row's slack is [`SLACK_SHARE`] of its scale: the tolerance it is held to, or for a row held
+//! to none, the bar its kind is judged by. It is never less than the harness's own reproduction
+//! bound, [`reproduction_bound`].
 //!
 //! [l84]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l84
 //! [l85]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l85
@@ -38,44 +46,56 @@ use crate::report::{Report, Verdict};
 
 /// The share of a row's scale it may move by before the census calls it a change: 0.1%.
 ///
-/// On a 3% tolerance that is 0.003 percentage points. The harness's report reproduces to
-/// `max(2e-6, 1e-7 |x|)` across platforms and a corpus rerun moves by at most 5e-7 per cent, so the
-/// slack is at least 60 times the noise, and it is floored at the harness's reproduction bound.
+/// On a 3% tolerance that is 3e-5 of the reference. The committed reports are regenerated on one
+/// machine and compared as files, so the noise that matters is a regeneration's: within
+/// [`reproduction_bound`] for the harness, and at most 5e-7 per cent on an OpenRocket corpus rerun.
 pub const SLACK_SHARE: f64 = 1e-3;
 
-/// The scale of a harness row that is held to no tolerance: 3% of its reference, the bound every
-/// harness gate and target is capped at ([ADR-024][adr-024], the whole flight's bounds).
+/// How far a harness value may move between runs and platforms and still reproduce: `2e-6` or
+/// `1e-7` of the value, whichever is larger (`Report::reproduces`). A harness row's slack is never
+/// less than this.
+#[must_use]
+pub fn reproduction_bound(value: f64) -> f64 {
+    2e-6_f64.max(1e-7 * value.abs())
+}
+
+/// The scale of a harness row held to no tolerance: 3% of its reference, the bound
+/// [M2.1][m2-1] set on each metric and that no committed gate or target exceeds
+/// (`tests::no_committed_gate_is_looser_than_the_milestone_says`).
 ///
-/// [adr-024]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-024-the-time-series-rms-aligned-at-ignition-held-to-3-of-its-traces-scale-2026-09-18
+/// [m2-1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1
 pub const NOT_SCORED_SCALE: f64 = 0.03;
 
-/// The bar an OpenRocket apogee or largest speed is judged by, per cent: the OpenRocket
-/// comparison's threshold for a difference that needs a written cause ([M2.2][m2-2],
-/// [ADR-070][adr-070]), and the one the staging milestone set for its flights ([M1.9c][m1-9c]).
+/// The bar an OpenRocket apogee or largest speed is judged by, per cent: the apogee difference
+/// that needs a written cause ([ADR-070][adr-070], the corpus's rules), and the bar the staging
+/// milestone set on both ([M1.9c][m1-9c]).
 ///
-/// [m2-2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2
 /// [m1-9c]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9c
 /// [adr-070]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-070-m22e-split-mass-and-centre-of-mass-first-then-the-corpus-2026-09-25
 pub const OPENROCKET_BAR_PERCENT: f64 = 5.0;
 
-/// The bar a stability margin is judged by, calibres: the centre-of-pressure target set before
-/// the first aerodynamics milestone measured anything ([M1.5][m1-5]). A margin's difference is its
-/// centre of pressure's.
+/// The bar an OpenRocket mass difference is judged by, per cent: the 1% the mass comparison was
+/// measured against when it began ([M2.2a][m2-2a]).
 ///
-/// [m1-5]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-5
+/// [m2-2a]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2a
+pub const MASS_BAR_PERCENT: f64 = 1.0;
+
+/// The bar a stability margin or a centre of mass is judged by, calibres: the centre-of-pressure
+/// target set before the transonic normal force was measured ([M1.8a][m1-8a]). A difference in
+/// either moves the margin by as many calibres.
+///
+/// [m1-8a]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8a
 pub const MARGIN_BAR_CAL: f64 = 0.5;
 
-/// The bar a real flight's altitude trace is judged by, per cent of its apogee: the bound the
-/// harness holds a whole flight's height series to ([ADR-024][adr-024], the whole flight's
-/// bounds).
+/// The bar a real flight's climb is judged by, per cent of its apogee: the bound the harness holds
+/// a whole flight's height series to ([ADR-024][adr-024], the series RMS).
 ///
 /// [adr-024]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-024-the-time-series-rms-aligned-at-ignition-held-to-3-of-its-traces-scale-2026-09-18
 pub const TRACE_BAR_PERCENT: f64 = 3.0;
 
-/// The largest Mach number of a subsonic flight, and of a transonic one, as the OpenRocket
-/// library report classes them.
+/// The largest Mach number of a subsonic flight, as the OpenRocket library report classes them.
 pub const SUBSONIC_BELOW: f64 = 0.8;
-/// See [`SUBSONIC_BELOW`].
+/// The largest Mach number of a transonic flight; past it a flight is supersonic.
 pub const SUPERSONIC_ABOVE: f64 = 1.2;
 
 /// Which report a row comes from, and so what it was compared with.
@@ -130,31 +150,41 @@ impl Group {
             Self::OpenRocketExamples | Self::OpenRocketLibrary => {
                 "code-to-code, each code's own model"
             }
-            Self::FlightLogs => "measured: the teams' altimeter logs",
+            Self::FlightLogs => "measured",
         }
     }
 
-    /// What a row is held to: a gate fails the harness, a target is reported, and a bar only
-    /// scales the census's slack and marks what needs a written cause.
+    /// What its numbers are held to in their own report. A gate fails the run, a target is
+    /// reported and not enforced, and where there is neither, a bar marks a difference that needs
+    /// a written cause. The census holds every number to where it was, whatever this says.
     #[must_use]
     pub const fn bar(self) -> &'static str {
         match self {
             Self::Descent | Self::SameDrag => "gate: each metric's tolerance, at most 3%",
-            Self::Predicted => "target: 3% on each metric",
+            Self::Predicted => "target: 3% on each metric, reported, not enforced",
             Self::OpenRocketExamples | Self::OpenRocketLibrary => {
-                "no target; over 5% needs a written cause"
+                "no target; an apogee more than 5% off needs a written cause"
             }
             Self::FlightLogs => "target: mean absolute apogee error 5%",
         }
     }
 
-    /// The noun for one of its cases.
+    /// The noun for its cases.
     const fn noun(self, count: usize) -> &'static str {
         match (self, count) {
             (Self::Descent, 1) => "descent",
             (Self::Descent, _) => "descents",
             (_, 1) => "flight",
             _ => "flights",
+        }
+    }
+
+    const fn report(self) -> &'static str {
+        match self {
+            Self::Descent | Self::SameDrag | Self::Predicted => HARNESS,
+            Self::FlightLogs => REAL,
+            Self::OpenRocketExamples => EXAMPLES,
+            Self::OpenRocketLibrary => LIBRARY,
         }
     }
 }
@@ -172,13 +202,18 @@ pub enum Regime {
     Transonic,
     /// Above Mach [`SUPERSONIC_ABOVE`].
     Supersonic,
+    /// Not known: a flight hpr doesn't fly, or one its report gives no Mach number for.
+    Unknown,
 }
 
 impl Regime {
-    /// The class of a flight whose largest Mach number is `mach`.
+    /// The class of a flight whose largest Mach number is `mach`; [`Regime::Unknown`] for a
+    /// number that isn't finite.
     #[must_use]
     pub fn of_mach(mach: f64) -> Self {
-        if mach < SUBSONIC_BELOW {
+        if !mach.is_finite() {
+            Self::Unknown
+        } else if mach < SUBSONIC_BELOW {
             Self::Subsonic
         } else if mach <= SUPERSONIC_ABOVE {
             Self::Transonic
@@ -187,7 +222,7 @@ impl Regime {
         }
     }
 
-    /// Its name, as the reports write it.
+    /// Its name, as the census writes it.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -195,6 +230,7 @@ impl Regime {
             Self::Subsonic => "subsonic",
             Self::Transonic => "transonic",
             Self::Supersonic => "supersonic",
+            Self::Unknown => "of unknown speed",
         }
     }
 }
@@ -214,14 +250,16 @@ pub enum Standing {
     OutsideTarget,
     /// Measured and held to nothing, for a written reason.
     NotScored,
-    /// Inside the bar its kind is judged by, where there is no target.
+    /// Inside the bar its kind is judged by, where there is no gate or target.
     WithinBar,
     /// Over that bar.
     OverBar,
     /// Not compared: the report withholds it, and says why.
     Withheld,
-    /// A known gap: a flight hpr refuses, compared with nothing.
+    /// A known gap: a harness flight hpr refuses, compared with nothing.
     Gap,
+    /// A configuration an OpenRocket report lists and hpr doesn't fly, with the report's reason.
+    NotFlown,
 }
 
 impl Standing {
@@ -238,6 +276,24 @@ impl Standing {
             Self::OverBar => "over the bar",
             Self::Withheld => "withheld",
             Self::Gap => "known gap",
+            Self::NotFlown => "not flown",
+        }
+    }
+
+    /// Whether it stands for a case hpr doesn't fly, rather than a compared number.
+    const fn unflown(self) -> bool {
+        matches!(self, Self::Gap | Self::NotFlown)
+    }
+
+    /// How good it is, higher better, for telling a fall from a rise.
+    const fn rank(self) -> u8 {
+        match self {
+            Self::Fail => 0,
+            Self::Gap | Self::NotFlown => 1,
+            Self::Withheld | Self::NotScored => 2,
+            Self::OutsideTarget | Self::OverBar => 3,
+            Self::WithinTarget | Self::WithinBar => 4,
+            Self::Pass => 5,
         }
     }
 }
@@ -265,7 +321,7 @@ impl Unit {
     }
 }
 
-/// One compared number.
+/// One compared number, or one case that isn't flown.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Row {
     /// The report it comes from.
@@ -273,9 +329,9 @@ pub struct Row {
     /// The case: a harness case id, an OpenRocket design and configuration, an anonymised id, or
     /// a real flight's id.
     pub case: String,
-    /// The metric.
+    /// The metric; empty for a case that isn't flown.
     pub metric: String,
-    /// hpr less the reference, in [`Row::unit`]; for a trace, the RMS itself.
+    /// hpr less the reference, in [`Row::unit`]; for a climb, the RMS itself.
     pub difference: f64,
     /// The difference as a percentage of the reference, where it is one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -297,7 +353,7 @@ impl Row {
         (self.group, &self.case, &self.metric)
     }
 
-    /// Its difference as a share of its scale.
+    /// Its difference as a share of its scale; not a number for a row with no scale.
     #[must_use]
     pub fn share(&self) -> f64 {
         if self.scale > 0.0 {
@@ -318,6 +374,22 @@ impl Row {
                 &self.metric
             }
         )
+    }
+
+    /// A row that isn't a compared number: a case that isn't flown.
+    fn unflown(group: Group, case: String, standing: Standing, regime: Regime) -> Self {
+        Self {
+            group,
+            case,
+            metric: String::new(),
+            difference: 0.0,
+            percent: None,
+            unit: Unit::Metric,
+            scale: 0.0,
+            slack: 0.0,
+            standing,
+            regime,
+        }
     }
 }
 
@@ -392,12 +464,7 @@ impl Census {
         for row in &rows {
             if !seen.insert(row.key()) {
                 return Err(CensusError::Duplicate {
-                    report: match row.group {
-                        Group::Descent | Group::SameDrag | Group::Predicted => HARNESS,
-                        Group::FlightLogs => REAL,
-                        Group::OpenRocketExamples => EXAMPLES,
-                        Group::OpenRocketLibrary => LIBRARY,
-                    },
+                    report: row.group.report(),
                     case: row.case.clone(),
                     metric: row.metric.clone(),
                 });
@@ -482,8 +549,6 @@ fn harness_rows(
         } else {
             NOT_SCORED_SCALE * comparison.reference.abs()
         };
-        // The harness's own reproduction bound on a measured value (`Report::reproduces`).
-        let noise = 2e-6_f64.max(1e-7 * comparison.reference.abs());
         rows.push(Row {
             group: harness_group(&comparison.case)?,
             case: comparison.case.clone(),
@@ -492,7 +557,7 @@ fn harness_rows(
             percent: comparison.relative.map(|relative| 100.0 * relative),
             unit: Unit::Metric,
             scale,
-            slack: (SLACK_SHARE * scale).max(noise),
+            slack: (SLACK_SHARE * scale).max(reproduction_bound(comparison.reference)),
             standing: match comparison.verdict {
                 Verdict::Pass => Standing::Pass,
                 Verdict::Fail => Standing::Fail,
@@ -504,20 +569,43 @@ fn harness_rows(
         });
     }
     for gap in &report.gaps {
-        rows.push(Row {
-            group: harness_group(&gap.case)?,
-            case: gap.case.clone(),
-            metric: String::new(),
-            difference: 0.0,
-            percent: None,
-            unit: Unit::Metric,
-            scale: 0.0,
-            slack: 0.0,
-            standing: Standing::Gap,
-            regime: Regime::of_mach(gap.mach),
-        });
+        rows.push(Row::unflown(
+            harness_group(&gap.case)?,
+            gap.case.clone(),
+            Standing::Gap,
+            Regime::of_mach(gap.mach),
+        ));
     }
     Ok(())
+}
+
+/// A row judged by a bar: within it or over it, by the difference's magnitude; withheld where the
+/// report gives no difference.
+fn barred(
+    group: Group,
+    case: &str,
+    metric: &str,
+    difference: Option<f64>,
+    (unit, scale): (Unit, f64),
+    regime: Regime,
+) -> Row {
+    let (difference, standing) = match difference.filter(|value| value.is_finite()) {
+        Some(value) if value.abs() <= scale => (value, Standing::WithinBar),
+        Some(value) => (value, Standing::OverBar),
+        None => (0.0, Standing::Withheld),
+    };
+    Row {
+        group,
+        case: case.to_owned(),
+        metric: metric.to_owned(),
+        difference,
+        percent: (unit == Unit::Percent && standing != Standing::Withheld).then_some(difference),
+        unit,
+        scale,
+        slack: SLACK_SHARE * scale,
+        standing,
+        regime,
+    }
 }
 
 fn real_flight_rows(
@@ -525,46 +613,26 @@ fn real_flight_rows(
     rows: &mut Vec<Row>,
     references: &mut BTreeMap<Group, String>,
 ) {
-    references.insert(
-        Group::FlightLogs,
-        "the teams' altimeter logs, from RocketPy 1.13.0's examples".to_owned(),
-    );
+    references.insert(Group::FlightLogs, "the teams' altimeter logs".to_owned());
     for flight in &report.flights {
         let regime = Regime::of_mach(flight.hpr_max_mach);
-        let bar = |difference: f64, scale: f64, within: Standing, over: Standing| Row {
-            group: Group::FlightLogs,
-            case: flight.id.clone(),
-            metric: String::new(),
-            difference,
-            percent: Some(difference),
-            unit: Unit::Percent,
-            scale,
-            slack: SLACK_SHARE * scale,
-            standing: if difference.abs() <= scale {
-                within
-            } else {
-                over
-            },
+        // The 5% target is on the mean; one flight's apogee is judged by it as a bar.
+        rows.push(barred(
+            Group::FlightLogs,
+            &flight.id,
+            "apogee",
+            Some(flight.apogee_error_percent),
+            (Unit::Percent, APOGEE_TARGET_PERCENT),
             regime,
-        };
-        rows.push(Row {
-            metric: "apogee".to_owned(),
-            ..bar(
-                flight.apogee_error_percent,
-                APOGEE_TARGET_PERCENT,
-                Standing::WithinTarget,
-                Standing::OutsideTarget,
-            )
-        });
-        rows.push(Row {
-            metric: "ascent trace RMS".to_owned(),
-            ..bar(
-                flight.trace_rms_percent,
-                TRACE_BAR_PERCENT,
-                Standing::WithinBar,
-                Standing::OverBar,
-            )
-        });
+        ));
+        rows.push(barred(
+            Group::FlightLogs,
+            &flight.id,
+            "climb",
+            Some(flight.trace_rms_percent),
+            (Unit::Percent, TRACE_BAR_PERCENT),
+            regime,
+        ));
     }
 }
 
@@ -581,121 +649,134 @@ fn openrocket_reference(report: &Value, name: &'static str) -> Result<String, Ce
     }
 }
 
-/// A row of an OpenRocket report: `value` when the report scored it, withheld otherwise.
-#[allow(
-    clippy::too_many_arguments,
-    reason = "one row's fields, named at each call"
-)]
-fn openrocket_row(
-    group: Group,
-    case: &str,
-    metric: &str,
-    scored: bool,
-    value: Option<f64>,
-    unit: Unit,
-    scale: f64,
-    regime: Regime,
-) -> Result<Row, CensusError> {
-    let (difference, standing) = match (scored, value) {
-        (true, Some(value)) if value.is_finite() => (
-            value,
-            if value.abs() <= scale {
-                Standing::WithinBar
-            } else {
-                Standing::OverBar
-            },
-        ),
-        (false, _) => (0.0, Standing::Withheld),
-        (true, _) => {
-            return Err(CensusError::Report {
-                report: if group == Group::OpenRocketLibrary {
-                    LIBRARY
-                } else {
-                    EXAMPLES
-                },
-                what: format!("{case} {metric} is scored with no finite difference"),
-            });
-        }
-    };
-    Ok(Row {
-        group,
-        case: case.to_owned(),
-        metric: metric.to_owned(),
-        difference,
-        percent: (unit == Unit::Percent && standing != Standing::Withheld).then_some(difference),
-        unit,
-        scale,
-        slack: SLACK_SHARE * scale,
-        standing,
-        regime,
+fn array<'a>(
+    report: &'a Value,
+    key: &str,
+    name: &'static str,
+) -> Result<&'a Vec<Value>, CensusError> {
+    report[key].as_array().ok_or_else(|| CensusError::Report {
+        report: name,
+        what: format!("no `{key}` list"),
     })
 }
 
-fn flights<'a>(report: &'a Value, name: &'static str) -> Result<&'a Vec<Value>, CensusError> {
-    report["flights"]
-        .as_array()
-        .ok_or_else(|| CensusError::Report {
+/// A difference an OpenRocket report scored, or `None` where it withheld it.
+fn scored(
+    outcome: Option<&str>,
+    value: Option<f64>,
+    case: &str,
+    metric: &str,
+    name: &'static str,
+) -> Result<Option<f64>, CensusError> {
+    match (outcome, value) {
+        (Some("scored"), Some(value)) if value.is_finite() => Ok(Some(value)),
+        (Some("scored"), _) => Err(CensusError::Report {
             report: name,
-            what: "no flights".to_owned(),
-        })
+            what: format!("{case} {metric} is scored with no finite difference"),
+        }),
+        (Some(_), _) => Ok(None),
+        (None, _) => Err(CensusError::Report {
+            report: name,
+            what: format!("{case} {metric} has no outcome"),
+        }),
+    }
 }
+
+/// Per cent of `openrocket`'s by which `hpr` differs, as `cargo xtask ork-flights` computes it.
+fn percent_of(hpr: &Value, openrocket: &Value) -> Option<f64> {
+    hpr.as_f64()
+        .zip(openrocket.as_f64())
+        .map(|(h, o)| 100.0 * (h - o) / o)
+        .filter(|p| p.is_finite())
+}
+
+const APOGEE_BAR: (Unit, f64) = (Unit::Percent, OPENROCKET_BAR_PERCENT);
+const MASS_BAR: (Unit, f64) = (Unit::Percent, MASS_BAR_PERCENT);
+const CALIBRE_BAR: (Unit, f64) = (Unit::Calibre, MARGIN_BAR_CAL);
 
 fn openrocket_example_rows(
     report: &Value,
     rows: &mut Vec<Row>,
     references: &mut BTreeMap<Group, String>,
 ) -> Result<(), CensusError> {
-    references.insert(
-        Group::OpenRocketExamples,
-        openrocket_reference(report, EXAMPLES)?,
-    );
-    for flight in flights(report, EXAMPLES)? {
-        let missing = |what: &str| CensusError::Report {
-            report: EXAMPLES,
-            what: format!("a flight has no {what}"),
-        };
-        let design = flight["design"].as_str().ok_or_else(|| missing("design"))?;
-        let configuration = flight["configuration"]
-            .as_str()
-            .ok_or_else(|| missing("configuration"))?;
-        let case = format!("{design} / {configuration}");
-        let regime = Regime::of_mach(
-            flight["max_mach_openrocket"]
-                .as_f64()
-                .ok_or_else(|| missing("largest Mach number"))?,
-        );
-        let metrics = flight["metrics"]
-            .as_object()
-            .ok_or_else(|| missing("metrics"))?;
-        for (metric, entry) in metrics {
-            let scored = entry["outcome"]["outcome"].as_str() == Some("scored");
-            let (value, unit, scale) = match metric.as_str() {
-                "apogee_m" | "max_speed_m_s" => (
-                    entry["relative_percent"].as_f64(),
-                    Unit::Percent,
-                    OPENROCKET_BAR_PERCENT,
-                ),
-                "rod_clearance_margin_cal" => {
-                    (entry["difference"].as_f64(), Unit::Calibre, MARGIN_BAR_CAL)
-                }
-                other => {
-                    return Err(CensusError::Report {
-                        report: EXAMPLES,
-                        what: format!("{case}: the census has no bar for the metric {other}"),
-                    });
-                }
-            };
-            rows.push(openrocket_row(
-                Group::OpenRocketExamples,
+    let group = Group::OpenRocketExamples;
+    references.insert(group, openrocket_reference(report, EXAMPLES)?);
+    let case_of = |flight: &Value| -> Result<String, CensusError> {
+        match (flight["design"].as_str(), flight["configuration"].as_str()) {
+            (Some(design), Some(configuration)) => Ok(format!("{design} / {configuration}")),
+            _ => Err(CensusError::Report {
+                report: EXAMPLES,
+                what: "a flight has no design or configuration".to_owned(),
+            }),
+        }
+    };
+    for flight in array(report, "flights", EXAMPLES)? {
+        let case = case_of(flight)?;
+        let regime = Regime::of_mach(flight["max_mach_openrocket"].as_f64().unwrap_or(f64::NAN));
+        let metrics = &flight["metrics"];
+        for key in metrics.as_object().into_iter().flat_map(|map| map.keys()) {
+            if !matches!(
+                key.as_str(),
+                "apogee_m" | "max_speed_m_s" | "rod_clearance_margin_cal"
+            ) {
+                return Err(CensusError::Report {
+                    report: EXAMPLES,
+                    what: format!("{case}: the census has no bar for the metric {key}"),
+                });
+            }
+        }
+        for (key, metric, field, bar) in [
+            ("apogee_m", "apogee", "relative_percent", APOGEE_BAR),
+            ("max_speed_m_s", "max_speed", "relative_percent", APOGEE_BAR),
+            (
+                "rod_clearance_margin_cal",
+                "margin",
+                "difference",
+                CALIBRE_BAR,
+            ),
+        ] {
+            let entry = &metrics[key];
+            let value = scored(
+                entry["outcome"]["outcome"].as_str(),
+                entry[field].as_f64(),
                 &case,
                 metric,
-                scored,
-                value,
-                unit,
-                scale,
-                regime,
-            )?);
+                EXAMPLES,
+            )?;
+            rows.push(barred(group, &case, metric, value, bar, regime));
         }
+        let at = &flight["at_rod_clearance"];
+        let (hpr, openrocket) = (&at["hpr"], &at["openrocket"]);
+        let cg = hpr["cg_from_nose_m"]
+            .as_f64()
+            .zip(openrocket["cg_from_nose_m"].as_f64())
+            .zip(openrocket["reference_length_m"].as_f64())
+            .map(|((h, o), reference)| (h - o) / reference)
+            .filter(|cal| cal.is_finite());
+        let launch = &flight["launch_mass_kg"];
+        for (metric, value, bar) in [
+            (
+                "launch_mass",
+                percent_of(&launch["hpr"], &launch["openrocket"]),
+                MASS_BAR,
+            ),
+            (
+                "rod_clearance_mass",
+                percent_of(&hpr["mass_kg"], &openrocket["mass_kg"]),
+                MASS_BAR,
+            ),
+            ("rod_clearance_cg", cg, CALIBRE_BAR),
+        ] {
+            rows.push(barred(group, &case, metric, value, bar, regime));
+        }
+    }
+    for flight in array(report, "not_flown", EXAMPLES)? {
+        rows.push(Row::unflown(
+            group,
+            case_of(flight)?,
+            Standing::NotFlown,
+            Regime::Unknown,
+        ));
     }
     Ok(())
 }
@@ -705,65 +786,72 @@ fn openrocket_library_rows(
     rows: &mut Vec<Row>,
     references: &mut BTreeMap<Group, String>,
 ) -> Result<(), CensusError> {
-    references.insert(
-        Group::OpenRocketLibrary,
-        openrocket_reference(report, LIBRARY)?,
-    );
-    for flight in flights(report, LIBRARY)? {
-        let missing = |what: &str| CensusError::Report {
-            report: LIBRARY,
-            what: format!("a flight has no {what}"),
-        };
-        let case = flight["flight"].as_str().ok_or_else(|| missing("id"))?;
+    let group = Group::OpenRocketLibrary;
+    references.insert(group, openrocket_reference(report, LIBRARY)?);
+    let case_of = |flight: &Value| -> Result<String, CensusError> {
+        flight["flight"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| CensusError::Report {
+                report: LIBRARY,
+                what: "a flight has no id".to_owned(),
+            })
+    };
+    for flight in array(report, "flights", LIBRARY)? {
+        let case = case_of(flight)?;
         let regime = match flight["mach"].as_str() {
             Some("subsonic") => Regime::Subsonic,
             Some("transonic") => Regime::Transonic,
             Some("supersonic") => Regime::Supersonic,
-            _ => return Err(missing("Mach class")),
+            Some("unknown") => Regime::Unknown,
+            other => {
+                return Err(CensusError::Report {
+                    report: LIBRARY,
+                    what: format!("{case}: no Mach class the census knows ({other:?})"),
+                });
+            }
         };
-        for (metric, value, outcome, unit, scale) in [
-            (
-                "apogee",
-                "apogee_percent",
-                "apogee_outcome",
-                Unit::Percent,
-                OPENROCKET_BAR_PERCENT,
-            ),
+        for (metric, field, outcome, bar) in [
+            ("apogee", "apogee_percent", "apogee_outcome", APOGEE_BAR),
             (
                 "max_speed",
                 "max_speed_percent",
                 "max_speed_outcome",
-                Unit::Percent,
-                OPENROCKET_BAR_PERCENT,
+                APOGEE_BAR,
             ),
-            (
-                "margin",
-                "margin_cal",
-                "margin_outcome",
-                Unit::Calibre,
-                MARGIN_BAR_CAL,
-            ),
+            ("margin", "margin_cal", "margin_outcome", CALIBRE_BAR),
         ] {
-            let scored = match flight[outcome].as_str() {
-                Some(outcome) => outcome == "scored",
-                None => return Err(missing(outcome)),
-            };
-            rows.push(openrocket_row(
-                Group::OpenRocketLibrary,
-                case,
+            let value = scored(
+                flight[outcome].as_str(),
+                flight[field].as_f64(),
+                &case,
                 metric,
-                scored,
-                flight[value].as_f64(),
-                unit,
-                scale,
-                regime,
-            )?);
+                LIBRARY,
+            )?;
+            rows.push(barred(group, &case, metric, value, bar, regime));
         }
+        // The report withholds these, as null, for an aborted flight.
+        for (metric, field, bar) in [
+            ("launch_mass", "launch_mass_percent", MASS_BAR),
+            ("rod_clearance_mass", "rod_clearance_mass_percent", MASS_BAR),
+            ("rod_clearance_cg", "rod_clearance_cg_cal", CALIBRE_BAR),
+        ] {
+            let value = flight[field].as_f64();
+            rows.push(barred(group, &case, metric, value, bar, regime));
+        }
+    }
+    for flight in array(report, "not_flown", LIBRARY)? {
+        rows.push(Row::unflown(
+            group,
+            case_of(flight)?,
+            Standing::NotFlown,
+            Regime::Unknown,
+        ));
     }
     Ok(())
 }
 
-/// A spread of differences: the least, the largest and the mean magnitude.
+/// A spread of per-cent differences: the least, the largest and the mean magnitude.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Spread {
     /// How many.
@@ -774,13 +862,19 @@ pub struct Spread {
     pub max: f64,
     /// The mean of their magnitudes.
     pub mean_absolute: f64,
-    /// How many are within the bar they are judged by.
+    /// How many are within the scale they are judged by.
     pub within: usize,
 }
 
 impl Spread {
     fn of(rows: &[&Row]) -> Option<Self> {
-        let values: Vec<f64> = rows.iter().filter_map(|row| row.percent).collect();
+        let values: Vec<(f64, bool)> = rows
+            .iter()
+            .filter_map(|row| {
+                row.percent
+                    .map(|percent| (percent, row.difference.abs() <= row.scale))
+            })
+            .collect();
         if values.is_empty() {
             return None;
         }
@@ -791,16 +885,39 @@ impl Spread {
         let count = values.len() as f64;
         Some(Self {
             count: values.len(),
-            min: values.iter().copied().fold(f64::INFINITY, f64::min),
-            max: values.iter().copied().fold(f64::NEG_INFINITY, f64::max),
-            mean_absolute: values.iter().map(|value| value.abs()).sum::<f64>() / count,
-            within: rows
-                .iter()
-                .filter(|row| row.percent.is_some() && row.difference.abs() <= row.scale)
-                .count(),
+            min: values.iter().map(|v| v.0).fold(f64::INFINITY, f64::min),
+            max: values.iter().map(|v| v.0).fold(f64::NEG_INFINITY, f64::max),
+            mean_absolute: values.iter().map(|v| v.0.abs()).sum::<f64>() / count,
+            within: values.iter().filter(|v| v.1).count(),
         })
     }
 }
+
+/// How many of one metric's numbers are within the bar they are judged by.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BarCount {
+    /// The metric.
+    pub metric: String,
+    /// Its bar.
+    pub scale: f64,
+    /// The bar's unit.
+    pub unit: Unit,
+    /// How many are within it.
+    pub within: usize,
+    /// How many were compared.
+    pub compared: usize,
+}
+
+/// The metrics judged by a bar, in the order the census reads them out, with their names.
+const BARRED: [(&str, &str); 7] = [
+    ("apogee", "apogee"),
+    ("max_speed", "largest speed"),
+    ("margin", "margin"),
+    ("launch_mass", "launch mass"),
+    ("rod_clearance_mass", "mass at rod clearance"),
+    ("rod_clearance_cg", "centre of mass at rod clearance"),
+    ("climb", "climb"),
+];
 
 /// What one group adds up to.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -809,16 +926,20 @@ pub struct Summary {
     pub group: Group,
     /// What it was compared with.
     pub reference: String,
-    /// Its cases: flights, or descents.
+    /// Its cases compared, or refused as known gaps: flights, or descents.
     pub cases: usize,
-    /// Its cases by speed.
+    /// Its cases the report lists as not flown.
+    pub not_flown: usize,
+    /// Its cases by speed, not-flown ones left out.
     pub regimes: BTreeMap<Regime, usize>,
     /// Its rows.
     pub rows: usize,
     /// Its rows by standing.
     pub standings: BTreeMap<Standing, usize>,
-    /// The apogee differences, per cent: the harness's relative to RocketPy's, OpenRocket's
-    /// and the logs' as their reports give them. `None` for descents.
+    /// Each metric judged by a bar, in the census's order.
+    pub bars: Vec<BarCount>,
+    /// The apogee differences, per cent: the harness's relative to RocketPy's, OpenRocket's and the
+    /// logs' as their reports give them. `None` for descents.
     pub apogee_percent: Option<Spread>,
 }
 
@@ -833,28 +954,58 @@ impl Summary {
             return None;
         }
         let mut cases: BTreeMap<&str, Regime> = BTreeMap::new();
+        let mut not_flown = BTreeSet::new();
         let mut standings = BTreeMap::new();
         for row in &rows {
-            cases.insert(&row.case, row.regime);
+            if row.standing == Standing::NotFlown {
+                not_flown.insert(row.case.as_str());
+            } else {
+                cases.insert(&row.case, row.regime);
+            }
             *standings.entry(row.standing).or_insert(0) += 1;
         }
         let mut regimes = BTreeMap::new();
         for regime in cases.values() {
             *regimes.entry(*regime).or_insert(0) += 1;
         }
+        let bars = BARRED
+            .iter()
+            .filter_map(|(metric, _)| {
+                let judged: Vec<&Row> = rows
+                    .iter()
+                    .copied()
+                    .filter(|row| {
+                        row.metric == *metric
+                            && matches!(row.standing, Standing::WithinBar | Standing::OverBar)
+                    })
+                    .collect();
+                let first = judged.first()?;
+                Some(BarCount {
+                    metric: (*metric).to_owned(),
+                    scale: first.scale,
+                    unit: first.unit,
+                    within: judged
+                        .iter()
+                        .filter(|row| row.standing == Standing::WithinBar)
+                        .count(),
+                    compared: judged.len(),
+                })
+            })
+            .collect();
         let apogees: Vec<&Row> = rows
             .iter()
             .copied()
-            .filter(|row| matches!(row.metric.as_str(), "apogee" | "apogee_m" | "apogee_agl_m"))
-            .filter(|row| row.percent.is_some())
+            .filter(|row| matches!(row.metric.as_str(), "apogee" | "apogee_agl_m"))
             .collect();
         Some(Self {
             group,
             reference: census.references.get(&group).cloned().unwrap_or_default(),
             cases: cases.len(),
+            not_flown: not_flown.len(),
             regimes,
             rows: rows.len(),
             standings,
+            bars,
             apogee_percent: Spread::of(&apogees),
         })
     }
@@ -863,40 +1014,89 @@ impl Summary {
         self.standings.get(&standing).copied().unwrap_or(0)
     }
 
-    /// Its cases by speed, in words: "7 subsonic, 1 transonic".
+    /// Its cases by speed, in words: "7 subsonic, 1 transonic". Descents are left out: their noun
+    /// already says it.
     #[must_use]
     pub fn regimes_in_words(&self) -> String {
         self.regimes
             .iter()
+            .filter(|(regime, _)| **regime != Regime::Descent)
             .map(|(regime, count)| format!("{count} {}", regime.name()))
             .collect::<Vec<_>>()
             .join(", ")
     }
 
-    /// Its result in words: the counts against its gate, target or bar, and its apogees.
+    /// Its population in words: "33 flights (32 subsonic, 1 transonic); 24 more not flown".
+    #[must_use]
+    pub fn population(&self) -> String {
+        let mut out = format!("{} {}", self.cases, self.group.noun(self.cases));
+        let regimes = self.regimes_in_words();
+        if !regimes.is_empty() {
+            let _ = write!(out, " ({regimes})");
+        }
+        if self.not_flown > 0 {
+            let _ = write!(out, "; {} more not flown", self.not_flown);
+        }
+        out
+    }
+
+    /// Its result in words: the counts against its gate, target or bars, and its apogees.
     #[must_use]
     pub fn result(&self) -> String {
         let mut parts = Vec::new();
         let gated = self.count(Standing::Pass) + self.count(Standing::Fail);
         let targeted = self.count(Standing::WithinTarget) + self.count(Standing::OutsideTarget);
-        let barred = self.count(Standing::WithinBar) + self.count(Standing::OverBar);
         if gated > 0 {
             parts.push(format!(
                 "{} of {gated} gated metrics pass",
                 self.count(Standing::Pass)
             ));
         }
-        if targeted > 0 && self.group != Group::FlightLogs {
+        if targeted > 0 {
             parts.push(format!(
                 "{} of {targeted} metrics within target",
                 self.count(Standing::WithinTarget)
             ));
         }
-        if barred > 0 && self.group != Group::FlightLogs {
+        if let (Group::FlightLogs, Some(apogee)) = (self.group, self.apogee_percent) {
             parts.push(format!(
-                "{} of {barred} differences within the bar",
-                self.count(Standing::WithinBar)
+                "mean absolute apogee error {:.2}% (target {APOGEE_TARGET_PERCENT}%, {}); apogee \
+                 {:+.2}% to {:+.2}%",
+                apogee.mean_absolute,
+                if apogee.mean_absolute <= APOGEE_TARGET_PERCENT {
+                    "met"
+                } else {
+                    "missed"
+                },
+                apogee.min,
+                apogee.max,
             ));
+        } else if let Some(apogee) = self.apogee_percent {
+            parts.push(format!("apogee {:+.2}% to {:+.2}%", apogee.min, apogee.max));
+        }
+        let bars: Vec<String> = self
+            .bars
+            .iter()
+            .map(|bar| {
+                let name = BARRED
+                    .iter()
+                    .find(|(metric, _)| *metric == bar.metric)
+                    .map_or(bar.metric.as_str(), |(_, name)| name);
+                format!(
+                    "{name} within {}{} on {} of {}",
+                    bar.scale,
+                    match bar.unit {
+                        Unit::Calibre => " calibres",
+                        Unit::Percent => "%",
+                        Unit::Metric => "",
+                    },
+                    bar.within,
+                    bar.compared
+                )
+            })
+            .collect();
+        if !bars.is_empty() {
+            parts.push(bars.join(", "));
         }
         for (standing, words) in [
             (Standing::NotScored, "not scored, each for a written reason"),
@@ -905,26 +1105,6 @@ impl Summary {
         ] {
             if self.count(standing) > 0 {
                 parts.push(format!("{} {words}", self.count(standing)));
-            }
-        }
-        if let Some(apogee) = self.apogee_percent {
-            if self.group == Group::FlightLogs {
-                parts.push(format!(
-                    "mean absolute apogee error {:.2}% against the 5% target, {}; apogee {:+.2}% \
-                     to {:+.2}%, {} of {} within 5%",
-                    apogee.mean_absolute,
-                    if apogee.mean_absolute <= APOGEE_TARGET_PERCENT {
-                        "within it"
-                    } else {
-                        "outside it"
-                    },
-                    apogee.min,
-                    apogee.max,
-                    apogee.within,
-                    apogee.count
-                ));
-            } else {
-                parts.push(format!("apogee {:+.2}% to {:+.2}%", apogee.min, apogee.max));
             }
         }
         parts.join("; ")
@@ -937,14 +1117,12 @@ impl Summary {
     #[must_use]
     pub fn headline(&self) -> String {
         format!(
-            "{} against {} ({}; {}): {} {} ({}); {}.",
+            "{} against {} ({}; {}): {}; {}.",
             capitalised(self.group.what()),
             self.reference,
             self.group.kind(),
             self.group.bar(),
-            self.cases,
-            self.group.noun(self.cases),
-            self.regimes_in_words(),
+            self.population(),
             self.result()
         )
     }
@@ -957,7 +1135,28 @@ fn capitalised(text: &str) -> String {
     })
 }
 
-/// How a row differs from the census accepted last.
+/// A reference as the table shows it: RocketPy's name and version, marked when patched, and
+/// every other reference as its report names it. The census page gives each in full.
+#[must_use]
+pub fn short_reference(reference: &str) -> String {
+    reference
+        .split("; ")
+        .map(|one| match one.strip_prefix("rocketpy ") {
+            Some(rest) => {
+                let (version, more) = rest.split_once(' ').unwrap_or((rest, ""));
+                if more.is_empty() {
+                    format!("RocketPy {version}")
+                } else {
+                    format!("RocketPy {version}, patched")
+                }
+            }
+            None => one.to_owned(),
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+/// How the committed reports differ from the census accepted last.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Change {
@@ -965,6 +1164,8 @@ pub enum Change {
     Added(Row),
     /// A row the accepted census has and this one doesn't.
     Removed(Row),
+    /// A known gap, or a configuration not flown, that hpr flies now.
+    Flown(Row),
     /// A row whose standing changed, better or worse.
     Standing {
         /// As accepted.
@@ -986,12 +1187,28 @@ pub enum Change {
         /// Now.
         now: Row,
     },
-    /// A row whose unit, scale or speed class changed: it is not the same comparison.
+    /// A row whose unit, scale, slack or speed class changed: it is not the same comparison.
     Redefined {
         /// As accepted.
         accepted: Row,
         /// Now.
         now: Row,
+    },
+    /// A group compared with another reference, or another version of it.
+    Reference {
+        /// The group.
+        group: Group,
+        /// As accepted; empty if it had none.
+        accepted: String,
+        /// Now; empty if it has none.
+        now: String,
+    },
+    /// The census's slack rule changed.
+    Rule {
+        /// [`Census::slack_share`] as accepted.
+        accepted: f64,
+        /// Now.
+        now: f64,
     },
 }
 
@@ -1006,24 +1223,20 @@ impl Change {
                 100.0 * accepted.share(),
                 now.difference,
                 100.0 * now.share(),
-                now.slack,
+                accepted.slack,
                 unit = now.unit.suffix()
             )
         };
         match self {
             Self::Added(row) => format!("added: {} ({})", row.describe(), row.standing.name()),
-            Self::Removed(row) => {
-                if row.standing == Standing::Gap {
-                    format!(
-                        "removed: {}, a known gap: hpr flies it now (L85)",
-                        row.describe()
-                    )
-                } else {
-                    format!("removed: {} ({})", row.describe(), row.standing.name())
-                }
-            }
+            Self::Removed(row) => format!("removed: {} ({})", row.describe(), row.standing.name()),
+            Self::Flown(row) => format!(
+                "flown: {}, {} before: hpr flies it now (L85)",
+                row.describe(),
+                row.standing.name()
+            ),
             Self::Standing { accepted, now } => format!(
-                "{}: {} to {} (L85 when it starts passing); {}",
+                "{}: {} to {}; {}",
                 now.describe(),
                 accepted.standing.name(),
                 now.standing.name(),
@@ -1036,59 +1249,111 @@ impl Change {
                 format!("improved: {}: {}", now.describe(), moved(accepted, now))
             }
             Self::Redefined { accepted, now } => format!(
-                "redefined: {}: unit, scale or speed class changed ({:?} {} {} to {:?} {} {})",
+                "redefined: {}: unit, scale, slack or speed class changed ({:?}, {}, {:.2e}, {} \
+                 to {:?}, {}, {:.2e}, {})",
                 now.describe(),
                 accepted.unit,
                 accepted.scale,
+                accepted.slack,
                 accepted.regime.name(),
                 now.unit,
                 now.scale,
+                now.slack,
                 now.regime.name()
             ),
+            Self::Reference {
+                group,
+                accepted,
+                now,
+            } => format!(
+                "reference: {} compared with `{accepted}` before and `{now}` now",
+                group.what()
+            ),
+            Self::Rule { accepted, now } => {
+                format!("rule: the slack's share of a row's scale was {accepted} and is {now}")
+            }
         }
     }
 
-    /// Whether it makes a result worse: a regression, a row lost, or a standing that fell.
+    /// Whether it makes the record worse: a regression, a row lost, a standing that fell, or a
+    /// wider slack.
     #[must_use]
     pub fn is_worse(&self) -> bool {
         match self {
             Self::Regressed { .. } | Self::Removed(_) => true,
-            Self::Standing { accepted, now } => rank(now.standing) < rank(accepted.standing),
-            Self::Added(_) | Self::Improved { .. } | Self::Redefined { .. } => false,
+            Self::Standing { accepted, now } => now.standing.rank() < accepted.standing.rank(),
+            Self::Rule { accepted, now } => now > accepted,
+            Self::Added(_)
+            | Self::Flown(_)
+            | Self::Improved { .. }
+            | Self::Redefined { .. }
+            | Self::Reference { .. } => false,
         }
     }
 }
 
-/// How good a standing is, higher better, for telling a fall from a rise.
-const fn rank(standing: Standing) -> u8 {
-    match standing {
-        Standing::Fail => 0,
-        Standing::Gap => 1,
-        Standing::Withheld | Standing::NotScored => 2,
-        Standing::OutsideTarget | Standing::OverBar => 3,
-        Standing::WithinTarget | Standing::WithinBar => 4,
-        Standing::Pass => 5,
-    }
-}
-
-/// Every way `now` differs from `accepted`, in row order. Empty when the census holds.
+/// Every way `now` differs from `accepted`. Empty when the census holds.
 ///
-/// A row is a change when its standing differs, when its unit, scale or speed class differs, or
-/// when its difference moved by more than its slack (the larger of the two rows' slacks) either
-/// way: a ratchet that only watched for regressions would let an improvement slip back unseen.
+/// A row is a change when its standing differs, when its unit, scale, slack or speed class
+/// differs, or when its difference moved by more than the accepted slack either way: a ratchet
+/// that only watched for regressions would let an improvement slip back unseen. A case that was
+/// a known gap or not flown, and is compared now, is [`Change::Flown`]; its new rows are not
+/// listed again.
 #[must_use]
 pub fn compare(accepted: &Census, now: &Census) -> Vec<Change> {
+    let mut changes = Vec::new();
+    if accepted.slack_share.to_bits() != now.slack_share.to_bits() {
+        changes.push(Change::Rule {
+            accepted: accepted.slack_share,
+            now: now.slack_share,
+        });
+    }
+    let groups: BTreeSet<&Group> = accepted
+        .references
+        .keys()
+        .chain(now.references.keys())
+        .collect();
+    for group in groups {
+        let (was, is) = (
+            accepted.references.get(group).cloned().unwrap_or_default(),
+            now.references.get(group).cloned().unwrap_or_default(),
+        );
+        if was != is {
+            changes.push(Change::Reference {
+                group: *group,
+                accepted: was,
+                now: is,
+            });
+        }
+    }
     let before: BTreeMap<_, &Row> = accepted.rows.iter().map(|row| (row.key(), row)).collect();
     let after: BTreeMap<_, &Row> = now.rows.iter().map(|row| (row.key(), row)).collect();
+    // The cases compared now, and those among them that were known gaps or not flown before:
+    // their new rows come with them.
+    let compared_now: BTreeSet<(Group, &str)> = now
+        .rows
+        .iter()
+        .filter(|row| !row.standing.unflown())
+        .map(|row| (row.group, row.case.as_str()))
+        .collect();
+    let newly_flown: BTreeSet<(Group, &str)> = accepted
+        .rows
+        .iter()
+        .filter(|row| row.standing.unflown() && !after.contains_key(&row.key()))
+        .map(|row| (row.group, row.case.as_str()))
+        .filter(|case| compared_now.contains(case))
+        .collect();
     let keys: BTreeSet<_> = before.keys().chain(after.keys()).copied().collect();
-    let mut changes = Vec::new();
+    let differs = |a: f64, b: f64| (a - b).abs() > 1e-9 * a.abs().max(b.abs());
     for key in keys {
+        let flown = newly_flown.contains(&(key.0, key.1));
         match (before.get(&key), after.get(&key)) {
+            (Some(was), None) if flown => changes.push(Change::Flown((*was).clone())),
             (Some(was), None) => changes.push(Change::Removed((*was).clone())),
+            (None, Some(_)) if flown => {}
             (None, Some(is)) => changes.push(Change::Added((*is).clone())),
             (Some(was), Some(is)) => {
                 let (was, is) = ((*was).clone(), (*is).clone());
-                let moved = (is.difference - was.difference).abs() > was.slack.max(is.slack);
                 if was.standing != is.standing {
                     changes.push(Change::Standing {
                         accepted: was,
@@ -1096,13 +1361,14 @@ pub fn compare(accepted: &Census, now: &Census) -> Vec<Change> {
                     });
                 } else if was.unit != is.unit
                     || was.regime != is.regime
-                    || (was.scale - is.scale).abs() > 1e-9 * was.scale.abs().max(is.scale.abs())
+                    || differs(was.scale, is.scale)
+                    || differs(was.slack, is.slack)
                 {
                     changes.push(Change::Redefined {
                         accepted: was,
                         now: is,
                     });
-                } else if moved {
+                } else if (is.difference - was.difference).abs() > was.slack {
                     if is.difference.abs() > was.difference.abs() {
                         changes.push(Change::Regressed {
                             accepted: was,
@@ -1131,7 +1397,8 @@ pub struct Accepted {
     pub reason: String,
     /// What changed then, one line each.
     pub changes: Vec<String>,
-    /// What each group added up to.
+    /// What each group added up to: [`Census::summaries`], written out for a reader, and
+    /// recomputed, never trusted, when the census is read back ([`Accepted::refreshed`]).
     pub summaries: Vec<Summary>,
     /// The census.
     pub census: Census,
@@ -1159,40 +1426,57 @@ impl Accepted {
         }
     }
 
+    /// The same, with its summaries computed again from its rows.
+    #[must_use]
+    pub fn refreshed(&self) -> Self {
+        Self {
+            summaries: self.census.summaries(),
+            ..self.clone()
+        }
+    }
+
     /// The census page, `validation/reports/census.md`.
     #[must_use]
     pub fn to_markdown(&self) -> String {
+        let summaries = self.census.summaries();
         let mut out = String::new();
         let _ = writeln!(out, "# Accuracy census\n");
         let _ = writeln!(
             out,
             "Generated by `{}` from the committed reports; do not edit. `cargo xtask validate \
-             --check` holds every row of those reports to this census: a row that moves by more \
-             than {}% of its scale, changes its standing, or comes or goes fails it until the \
-             census is accepted again with a reason.\n",
+             --check` holds those reports to this census, row by row: a row that moves by more \
+             than its slack, changes its standing, or comes or goes, a reference that changes, or \
+             a changed slack rule fails it until the census is accepted again with a reason. It \
+             holds {} rows.\n",
             self.generated_by,
-            100.0 * self.census.slack_share
+            self.census.rows.len()
         );
         let _ = writeln!(out, "## Headlines\n");
-        for summary in &self.summaries {
+        for summary in &summaries {
             let _ = writeln!(out, "- {}", summary.headline());
         }
         let _ = writeln!(out);
-        let _ = writeln!(out, "{}", table(&self.summaries, None));
-        let _ = writeln!(out, "{}", reading());
+        let _ = writeln!(out, "{}", table(&summaries, None));
+        let _ = writeln!(out, "{}", reading(self.census.slack_share));
         let _ = writeln!(out, "## Rows by standing\n");
-        let _ = writeln!(out, "| group | rows | standing | count |");
-        let _ = writeln!(out, "|---|---:|---|---:|");
-        for summary in &self.summaries {
-            for (standing, count) in &summary.standings {
-                let _ = writeln!(
-                    out,
-                    "| {} | {} | {} | {count} |",
-                    summary.group.what(),
-                    summary.rows,
-                    standing.name()
-                );
-            }
+        let _ = writeln!(out, "| group | metric | standing | rows |");
+        let _ = writeln!(out, "|---|---|---|---:|");
+        let mut counts: BTreeMap<(Group, &str, Standing), usize> = BTreeMap::new();
+        for row in &self.census.rows {
+            let metric = if row.metric.is_empty() {
+                "(the case)"
+            } else {
+                row.metric.as_str()
+            };
+            *counts.entry((row.group, metric, row.standing)).or_insert(0) += 1;
+        }
+        for ((group, metric, standing), count) in counts {
+            let _ = writeln!(
+                out,
+                "| {} | {metric} | {} | {count} |",
+                group.what(),
+                standing.name()
+            );
         }
         let _ = writeln!(out);
         let _ = writeln!(out, "## Last accepted\n");
@@ -1214,7 +1498,7 @@ impl Accepted {
 
 /// How to read the census: its speed classes, its slack and each kind of row's scale, from the
 /// constants that set them.
-fn reading() -> String {
+fn reading(slack_share: f64) -> String {
     // A worked example: a relative tolerance on a round apogee.
     let (tolerance, apogee_m) = (NOT_SCORED_SCALE, 1000.0);
     let allowed_m = tolerance * apogee_m;
@@ -1230,9 +1514,10 @@ fn reading() -> String {
     );
     let _ = writeln!(
         out,
-        "A row's slack is {}% of its scale. The scale is the row's own tolerance where it has \
-         one, and otherwise the bar of its kind:\n",
-        100.0 * SLACK_SHARE
+        "A row's slack is {}% of its scale, and for a harness row never less than the harness's \
+         reproduction bound, 2e-6 or 1e-7 of the value, whichever is larger. The scale is the \
+         row's own tolerance where it has one, and otherwise the bar of its kind:\n",
+        100.0 * slack_share
     );
     let _ = writeln!(out, "| row | scale |");
     let _ = writeln!(out, "|---|---|");
@@ -1250,12 +1535,16 @@ fn reading() -> String {
             format!("{OPENROCKET_BAR_PERCENT}%"),
         ),
         (
-            "OpenRocket stability margin",
+            "OpenRocket mass, at launch or at rod clearance",
+            format!("{MASS_BAR_PERCENT}%"),
+        ),
+        (
+            "OpenRocket stability margin, or centre of mass",
             format!("{MARGIN_BAR_CAL} calibres"),
         ),
         ("logged apogee", format!("{APOGEE_TARGET_PERCENT}%")),
         (
-            "logged climb (the trace's RMS, as a share of the apogee)",
+            "logged climb (the RMS of the climb's heights, as a share of the apogee)",
             format!("{TRACE_BAR_PERCENT}%"),
         ),
     ] {
@@ -1266,7 +1555,7 @@ fn reading() -> String {
         "\nFor example, a {}% tolerance on a {apogee_m} m apogee allows {allowed_m} m, and the \
          census lets the difference move by {} m before it fails.",
         100.0 * tolerance,
-        SLACK_SHARE * allowed_m
+        slack_share * allowed_m
     );
     out
 }
@@ -1282,51 +1571,31 @@ pub fn table(summaries: &[Summary], link: Option<&str>) -> String {
     );
     let _ = writeln!(out, "|---|---|---|---|---|");
     for summary in summaries {
+        let reference = short_reference(&summary.reference);
         let _ = writeln!(
             out,
-            "| {}: {} | {} | {} | {} {} ({}) | {} |",
+            "| {}: {} | {} | {} | {} | {} |",
             link.map_or_else(
-                || summary.reference.clone(),
-                |link| format!("[{}]({link})", summary.reference)
+                || reference.clone(),
+                |link| format!("[{reference}]({link})")
             ),
             summary.group.what(),
             summary.group.kind(),
             summary.group.bar(),
-            summary.cases,
-            summary.group.noun(summary.cases),
-            summary.regimes_in_words(),
+            summary.population(),
             summary.result()
         );
     }
     out
 }
 
-/// The badge: the gated code-to-code metrics that pass, of all of them.
-#[must_use]
-pub fn badge_svg(summaries: &[Summary]) -> String {
-    let (pass, gated) = summaries
-        .iter()
-        .filter(|summary| matches!(summary.group, Group::Descent | Group::SameDrag))
-        .fold((0, 0), |(pass, gated), summary| {
-            (
-                pass + summary.count(Standing::Pass),
-                gated + summary.count(Standing::Pass) + summary.count(Standing::Fail),
-            )
-        });
-    let label = "vs RocketPy, same inputs";
-    let message = format!("{pass} of {gated} gated metrics pass");
-    let colour = if pass == gated && gated > 0 {
-        "#2e7d32"
-    } else {
-        "#c62828"
-    };
+/// One badge: a flat SVG, grey label on the left, coloured message on the right.
+fn badge(label: &str, message: &str, colour: &str) -> String {
     // Verdana at 11 px averages about 6.5 px a character; 10 px of padding each side.
     let width = |text: &str| 20 + (13 * text.chars().count()).div_ceil(2);
-    let (left, right) = (width(label), width(&message));
+    let (left, right) = (width(label), width(message));
     let total = left + right;
-    let mut out = String::new();
-    let _ = write!(
-        out,
+    format!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{total}\" height=\"20\" role=\"img\" \
          aria-label=\"{label}: {message}\">\n\
          <title>{label}: {message}</title>\n\
@@ -1340,7 +1609,56 @@ pub fn badge_svg(summaries: &[Summary]) -> String {
          </svg>\n",
         left / 2,
         left + right / 2
-    );
+    )
+}
+
+/// The badges, by file name: the gated code-to-code metrics that pass, of all of them, and the
+/// real flights' mean apogee error against its target. Two, so the one measurement stands beside
+/// the agreement with another program.
+#[must_use]
+pub fn badges(summaries: &[Summary]) -> Vec<(&'static str, String)> {
+    let (pass, gated) = summaries
+        .iter()
+        .filter(|summary| matches!(summary.group, Group::Descent | Group::SameDrag))
+        .fold((0, 0), |(pass, gated), summary| {
+            (
+                pass + summary.count(Standing::Pass),
+                gated + summary.count(Standing::Pass) + summary.count(Standing::Fail),
+            )
+        });
+    let mut out = vec![(
+        "census-badge.svg",
+        badge(
+            "vs RocketPy, same inputs",
+            &format!("{pass} of {gated} gated metrics pass"),
+            if pass == gated && gated > 0 {
+                "#2e7d32"
+            } else {
+                "#c62828"
+            },
+        ),
+    )];
+    if let Some(apogee) = summaries
+        .iter()
+        .find(|summary| summary.group == Group::FlightLogs)
+        .and_then(|summary| summary.apogee_percent)
+    {
+        out.push((
+            "real-flights-badge.svg",
+            badge(
+                &format!("{} real flights", apogee.count),
+                &format!(
+                    "mean apogee error {:.2}% (target {APOGEE_TARGET_PERCENT}%)",
+                    apogee.mean_absolute
+                ),
+                if apogee.mean_absolute <= APOGEE_TARGET_PERCENT {
+                    "#2e7d32"
+                } else {
+                    "#b35c00"
+                },
+            ),
+        ));
+    }
     out
 }
 

@@ -102,12 +102,16 @@ shows it.
 Then it holds the committed reports to the accuracy census accepted last
 ([M2.4 milestone](decisions-and-roadmap.md#m2-4),
 [ADR-084 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-084-the-accuracy-census-every-compared-number-held-to-the-one-accepted-2026-09-26)).
-Every compared number of the harness's report, the real flights' and both OpenRocket reports is a
-row, and a row that moves by more than 0.1% of its scale, in either direction, changes its standing,
-or comes or goes fails the check ([the census](accuracy.md#the-census)). Regenerating the report is
-not enough to carry such a change in: it takes `cargo xtask census --accept --reason "<why>"`, and
-the reason is committed with it. This is what holds a predicted-mode number, whose 3% is only a
-target, to where it was.
+Each number the harness's report, the real flights' and both OpenRocket reports hold hpr to is a
+row ([the census](accuracy.md#the-census)). The check fails when:
+
+- a row moves by more than its slack, 0.1% of its scale, in either direction;
+- a row changes its standing, or comes or goes;
+- a group's reference changes.
+
+Regenerating the report is not enough to carry such a change in: it takes
+`cargo xtask census --accept --reason "<why>"`, and the reason is committed with it. This is what
+holds a predicted-mode number, whose 3% is only a target, to where it was.
 
 CI never runs RocketPy. So it shows that hpr still reproduces the committed report, not that the
 stored references are still what RocketPy produces: a change in RocketPy or in a generator shows up

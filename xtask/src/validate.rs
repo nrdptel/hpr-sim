@@ -57,14 +57,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
     if !report.fast {
         // Not a failure here: the report is new, and the census says what it changed. `--check`
         // fails until the change is accepted.
-        let changes = crate::census::changes(&root)?;
-        if !changes.is_empty() {
-            println!(
+        // A census that can't be taken is printed, not returned, so the suite's own result stands.
+        match crate::census::changes(&root) {
+            Ok(changes) if !changes.is_empty() => println!(
                 "validate: {} census row(s) differ from the accepted census, {} for the worse; \
                  `cargo xtask census` lists them, and `--check` fails until they are accepted",
                 changes.len(),
                 changes.iter().filter(|change| change.is_worse()).count()
-            );
+            ),
+            Ok(_) => {}
+            Err(error) => println!("validate: the census can't be taken: {error}"),
         }
     }
     if report.passed() {
@@ -85,13 +87,19 @@ fn check_committed(root: &Path, report: &Report) -> Result<(), String> {
             .map_err(|error| format!("reading {}: {error}", path.display()))
     };
     let reproduced = report.reproduces(&read("latest.md")?, &read("latest.json")?);
+    // The census compares committed files, so it is checked whether or not this run reproduces
+    // them: a report that fails both says so on every platform.
+    let census = crate::census::check(root);
     match (report.passed(), reproduced) {
         (true, Ok(())) => {
             println!("validate: the committed report reproduces");
-            crate::census::check(root)
+            census
         }
         (passed, reproduced) => {
             let mut problems = Vec::new();
+            if let Err(what) = census {
+                problems.push(what);
+            }
             if !passed {
                 problems.push(format!(
                     "{} metric(s) outside tolerance",
