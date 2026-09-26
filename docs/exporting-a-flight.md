@@ -1,9 +1,9 @@
 # Exporting a flight
 
 This page shows how to save a flight as files other programs read: a table of numbers over time
-for a spreadsheet or a plotting tool (CSV or JSON), and a map of the flight path and the landing
-(GeoJSON or KML, which Google Earth, QGIS and most web maps open). It flies the rocket of
-[Getting started](getting-started.md) again and writes all four files. It needs the first page's
+for a spreadsheet or a plotting tool (CSV, JSON or Parquet), and a map of the flight path and the
+landing (GeoJSON or KML, which Google Earth, QGIS and most web maps open). It flies the rocket of
+[Getting started](getting-started.md) again and writes all five files. It needs the first page's
 setup, and a little Rust.
 
 > **The files are exact, the flight is not validated.** Every number in a file reads back to
@@ -14,19 +14,24 @@ setup, and a little Rust.
 ## Run it
 
 ```bash
-cargo run --example export_flight -p hpr-sim -- my-flight
+cargo run --example export_flight -p hpr-sim --features parquet -- my-flight
 ```
 
 This runs
 [`crates/hpr-sim/examples/export_flight.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/export_flight.rs),
-which writes four files into the folder `my-flight` (without a folder, into `hpr-sim-export` in
-the system's temporary folder) and prints what it wrote:
+which writes five files into the folder `my-flight` (without a folder, into `hpr-sim-export` in
+the system's temporary folder) and prints what it wrote. Parquet is an optional
+[feature](https://doc.rust-lang.org/cargo/reference/features.html) of `hpr-sim`, named `parquet`,
+so the command turns it on; without it, cargo says the example needs it. The feature adds no other
+library; it is optional so that a program with no use for a binary file format leaves it out. In
+your own program, turn it on in `Cargo.toml` with `hpr-sim = { ..., features = ["parquet"] }`.
 
 <!-- quote: crates/hpr-sim/examples/export_flight.output.txt -->
 ```text
 wrote 67 rows of 5 columns, a path of 67 points
   flight.csv
   flight.json
+  flight.parquet, 3127 bytes
   flight.geojson
   flight.kml
 landed at 32.99000° N, 106.96904° W, 90 m from the pad, at 58.9 s
@@ -36,14 +41,24 @@ CI runs it on macOS, Windows and Linux and fails if it prints anything else. The
 number to its last digit, which may differ in the last place between operating systems, so the
 program prints a rounded summary instead of the files.
 
-## The four files
+## The five files
 
 | file | what it holds | opens in |
 |---|---|---|
 | `flight.csv` | a header naming each column with its unit (`time_s`, `cg_east_m`, ...), then one line per recorded moment, lines ending in CRLF as RFC 4180 says | a spreadsheet, pandas, any plotting tool |
 | `flight.json` | the same table as `{"columns": [...], "rows": [[...], ...]}` | any programming language |
+| `flight.parquet` | the same table in [Apache Parquet](https://parquet.apache.org/), a binary format that stores it column by column: one column of 64-bit numbers per recorded column, with the CSV header's names | [pandas](https://pandas.pydata.org/) with [pyarrow](https://arrow.apache.org/docs/python/) (Apache Arrow's Python library), [DuckDB](https://duckdb.org/) |
 | `flight.geojson` | the flight path as a line, and a point for each landing: the rocket's and any separated body's | QGIS, geojson.io, web maps |
 | `flight.kml` | the same path and landing | Google Earth |
+
+To look at the Parquet file from Python, install pandas and pyarrow (`pip install pandas pyarrow`;
+pandas can't read Parquet on its own), then:
+
+```bash
+python -c "import pandas; print(pandas.read_parquet('my-flight/flight.parquet'))"
+```
+
+or, with DuckDB's command-line program, `duckdb -c "SELECT * FROM 'my-flight/flight.parquet'"`.
 
 The tables hold whatever [channels](recording-a-trajectory.md#record-something-else) the
 recorder kept, one row per recorded moment. The maps need the recorder to keep the time and the
@@ -96,14 +111,27 @@ trust.
   before latitude as the standard requires. A test also shows the check rejects a broken file.
 - **KML:** parsed by a strict XML parser, and checked for the KML 2.2 namespace, the height mode
   and every coordinate.
+- **Parquet:** hpr-sim writes the file itself, from the format's specification. The tests read it
+  back with an independent reader, Apache's own Parquet library for Rust, and compare every number
+  bit for bit. One test uses a recording of every channel (30 columns today) long enough to fill at
+  least three [data pages](glossary.md#parquet-data-page) per column, and another compares a small
+  file with bytes worked out by hand from the specification. Once, by hand, when this was written,
+  pyarrow 25.0.1 and DuckDB 1.5.5 each read the example's file and a 30-column, 3005-row file and
+  got the same numbers as the matching CSV. CI does not repeat that check.
 
 The tests are in
-[`crates/hpr-sim/src/export.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/src/export.rs).
+[`crates/hpr-sim/src/export.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/src/export.rs)
+and
+[`crates/hpr-sim/src/export/parquet.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/src/export/parquet.rs).
 
 ## What it leaves out
 
-- **Parquet**, a compact table format for large runs such as the planned Monte Carlo, comes in
-  [M1.10c2](decisions-and-roadmap.md#m1-10c2).
+- **Parquet compression and statistics:** the Parquet file is not compressed and carries no
+  per-page minimum and maximum. It takes 8 bytes per number, plus a header of about 20 bytes per
+  page of up to 1024 numbers and a short index of the columns at the end of the file: the
+  example's is 3127 bytes, and its CSV about 5.5 kB. Without the minimums and maximums, a tool
+  such as DuckDB can't skip parts of the file when filtering (say `WHERE time_s > 10`) and reads
+  it all, which for one flight takes no noticeable time.
 - **A path over the antimeridian** (±180° longitude) is not cut in two as RFC 7946 asks, so a map
   would draw it the long way round the globe.
 - **Landing heights:** a landing is a point on the ground, without a height.
@@ -112,7 +140,9 @@ The tests are in
   but that path writes a value that isn't finite as `null` rather than refusing it.
 
 The choices are recorded in
-[ADR-079: exports as text built in the core](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-079-exports-as-text-built-in-the-core-heights-on-each-formats-own-datum-2026-09-26).
+[ADR-079: exports as text built in the core](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-079-exports-as-text-built-in-the-core-heights-on-each-formats-own-datum-2026-09-26)
+and
+[ADR-080: Parquet written in-house, read back by Apache's library](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-080-parquet-written-in-house-read-back-by-apaches-library-2026-09-26).
 
 ## The program
 
@@ -123,13 +153,14 @@ explains step by step.
 <!-- quote: crates/hpr-sim/examples/export_flight.rs -->
 ```rust
 //! A flight written out for other programs: the flight of `first_flight.rs`, recorded every 1 s
-//! and at every event, saved as CSV and JSON tables and as a GeoJSON and a KML map of its path and
-//! landing.
+//! and at every event, saved as CSV, JSON and Parquet tables and as a GeoJSON and a KML map of its
+//! path and landing.
 //!
-//! Run it from anywhere in the repository, naming the folder to write the four files to:
+//! Run it from anywhere in the repository, naming the folder to write the five files to. Parquet
+//! is an optional feature of the library, so the command turns it on:
 //!
 //! ```text
-//! cargo run --example export_flight -p hpr-sim -- my-flight
+//! cargo run --example export_flight -p hpr-sim --features parquet -- my-flight
 //! ```
 //!
 //! Without a folder it writes them to `hpr-sim-export` in the system's temporary folder. The
@@ -208,15 +239,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (metrics, recorder) = watchers;
     let summary = metrics.summary(&flight, simulation.environment())?;
 
-    // The path on the Earth, then the four files. Each function returns the file's text.
+    // The path on the Earth, then the five files. Each function returns the file's contents:
+    // text, or bytes for Parquet, which is a binary format.
     let track = export::track(&recorder, simulation.environment())?;
     let files = [
-        ("flight.csv", export::csv(&recorder)?),
-        ("flight.json", export::json(&recorder)?),
-        ("flight.geojson", export::geojson(&track, &summary)?),
+        ("flight.csv", export::csv(&recorder)?.into_bytes()),
+        ("flight.json", export::json(&recorder)?.into_bytes()),
+        ("flight.parquet", export::parquet(&recorder)?),
+        (
+            "flight.geojson",
+            export::geojson(&track, &summary)?.into_bytes(),
+        ),
         (
             "flight.kml",
-            export::kml(&track, &summary, "Valetudo, K400C")?,
+            export::kml(&track, &summary, "Valetudo, K400C")?.into_bytes(),
         ),
     ];
     let folder = match std::env::args_os().nth(1) {
@@ -224,8 +260,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         None => std::env::temp_dir().join("hpr-sim-export"),
     };
     std::fs::create_dir_all(&folder)?;
-    for (name, text) in &files {
-        std::fs::write(folder.join(name), text)?;
+    for (name, contents) in &files {
+        std::fs::write(folder.join(name), contents)?;
     }
 
     // What was written, and where it landed, to five decimal places of a degree (about a metre).
@@ -236,8 +272,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         recorder.columns().len(),
         track.len()
     );
-    for (name, _) in &files {
-        println!("  {name}");
+    for (name, contents) in &files {
+        // The Parquet file's size is the same on every system: its numbers take 8 bytes each,
+        // however many digits they have.
+        if name.ends_with(".parquet") {
+            println!("  {name}, {} bytes", contents.len());
+        } else {
+            println!("  {name}");
+        }
     }
     if let Some(landing) = summary.landing {
         println!(

@@ -271,7 +271,8 @@ impl Recorder {
     ///
     /// # Errors
     ///
-    /// [`SimError::Domain`] for an interval that isn't finite and positive.
+    /// [`SimError::Domain`] for an interval that isn't finite and positive;
+    /// [`SimError::Unsupported`] for a channel listed twice, which would give two columns one name.
     pub fn new(channels: Vec<Channel>, interval_s: Option<f64>) -> Result<Self, SimError> {
         if let Some(dt) = interval_s
             && !(dt.is_finite() && dt > 0.0)
@@ -279,6 +280,15 @@ impl Recorder {
             return Err(SimError::Domain {
                 what: "recorder interval",
                 value: dt,
+            });
+        }
+        if channels
+            .iter()
+            .enumerate()
+            .any(|(i, channel)| channels[..i].contains(channel))
+        {
+            return Err(SimError::Unsupported {
+                what: "a recorder channel listed twice",
             });
         }
         Ok(Self {
@@ -289,6 +299,19 @@ impl Recorder {
             samples: 0,
             last_time_s: None,
         })
+    }
+
+    /// A recorder holding `rows` as if it had recorded them, for tests of what reads its rows.
+    #[cfg(test)]
+    pub(crate) fn with_rows(channels: Vec<Channel>, rows: Vec<Vec<f64>>) -> Self {
+        Self {
+            channels,
+            interval_s: None,
+            next_index: 0,
+            samples: rows.len(),
+            last_time_s: None,
+            rows,
+        }
     }
 
     /// Forgets the recorded rows, ready for another flight.

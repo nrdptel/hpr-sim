@@ -16,8 +16,9 @@
 //!    the features cargo actually resolves, including features one pure crate turns on in
 //!    another.
 //! 3. `cargo clippy --target wasm32-unknown-unknown -- -D warnings` on the pure core, with
-//!    default features. This compiles the core for the target and fails on any warning,
-//!    including warnings that only appear under `cfg(target_arch = "wasm32")`.
+//!    default features and the pure crates' own optional features ([`PURE_FEATURES`]). This
+//!    compiles the core for the target and fails on any warning, including warnings that only
+//!    appear under `cfg(target_arch = "wasm32")`.
 //!
 //! Compiling for wasm32 does not prove the absence of I/O: `std::fs` and `std::time::Instant`
 //! compile there and fail at run time. The `disallowed-methods` and `disallowed-types` lists in
@@ -31,6 +32,10 @@ use crate::workspace::{self, Package, Workspace};
 
 /// The WebAssembly target the pure core must build for.
 pub const TARGET: &str = "wasm32-unknown-unknown";
+
+/// Optional features of pure-core crates that must build for wasm32 too. Not `--all-features`:
+/// that would turn on the facade's `net`, which does I/O.
+pub const PURE_FEATURES: &[&str] = &["hpr-sim/parquet"];
 
 /// Runs the check. `cargo_args` (for example `--locked`) are passed to every cargo command.
 pub fn run(cargo_args: &[String]) -> Result<(), String> {
@@ -72,6 +77,7 @@ pub fn run(cargo_args: &[String]) -> Result<(), String> {
     for name in &pure {
         command.args(["--package", name]);
     }
+    command.args(["--features", &PURE_FEATURES.join(",")]);
     command.args(cargo_args).args(["--", "-D", "warnings"]);
     let status = command
         .status()
@@ -120,7 +126,8 @@ pub fn check_layering(
     Err(message)
 }
 
-/// Runs `cargo tree` over the normal dependencies of `packages` for all targets.
+/// Runs `cargo tree` over the normal dependencies of `packages` for all targets, with the pure
+/// crates' own features ([`PURE_FEATURES`]) of those packages on, as the wasm32 build has them.
 fn cargo_tree(
     root: &Path,
     packages: &[String],
@@ -133,6 +140,17 @@ fn cargo_tree(
     ]);
     for name in packages {
         command.args(["--package", name]);
+    }
+    let features: Vec<&str> = PURE_FEATURES
+        .iter()
+        .copied()
+        .filter(|feature| {
+            let package = feature.split('/').next().unwrap_or_default();
+            packages.iter().any(|name| name == package)
+        })
+        .collect();
+    if !features.is_empty() {
+        command.args(["--features", &features.join(",")]);
     }
     command.args(extra).args(cargo_args);
     let output = command

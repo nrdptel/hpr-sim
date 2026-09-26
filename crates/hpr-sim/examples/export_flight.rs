@@ -1,11 +1,12 @@
 //! A flight written out for other programs: the flight of `first_flight.rs`, recorded every 1 s
-//! and at every event, saved as CSV and JSON tables and as a GeoJSON and a KML map of its path and
-//! landing.
+//! and at every event, saved as CSV, JSON and Parquet tables and as a GeoJSON and a KML map of its
+//! path and landing.
 //!
-//! Run it from anywhere in the repository, naming the folder to write the four files to:
+//! Run it from anywhere in the repository, naming the folder to write the five files to. Parquet
+//! is an optional feature of the library, so the command turns it on:
 //!
 //! ```text
-//! cargo run --example export_flight -p hpr-sim -- my-flight
+//! cargo run --example export_flight -p hpr-sim --features parquet -- my-flight
 //! ```
 //!
 //! Without a folder it writes them to `hpr-sim-export` in the system's temporary folder. The
@@ -84,15 +85,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (metrics, recorder) = watchers;
     let summary = metrics.summary(&flight, simulation.environment())?;
 
-    // The path on the Earth, then the four files. Each function returns the file's text.
+    // The path on the Earth, then the five files. Each function returns the file's contents:
+    // text, or bytes for Parquet, which is a binary format.
     let track = export::track(&recorder, simulation.environment())?;
     let files = [
-        ("flight.csv", export::csv(&recorder)?),
-        ("flight.json", export::json(&recorder)?),
-        ("flight.geojson", export::geojson(&track, &summary)?),
+        ("flight.csv", export::csv(&recorder)?.into_bytes()),
+        ("flight.json", export::json(&recorder)?.into_bytes()),
+        ("flight.parquet", export::parquet(&recorder)?),
+        (
+            "flight.geojson",
+            export::geojson(&track, &summary)?.into_bytes(),
+        ),
         (
             "flight.kml",
-            export::kml(&track, &summary, "Valetudo, K400C")?,
+            export::kml(&track, &summary, "Valetudo, K400C")?.into_bytes(),
         ),
     ];
     let folder = match std::env::args_os().nth(1) {
@@ -100,8 +106,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         None => std::env::temp_dir().join("hpr-sim-export"),
     };
     std::fs::create_dir_all(&folder)?;
-    for (name, text) in &files {
-        std::fs::write(folder.join(name), text)?;
+    for (name, contents) in &files {
+        std::fs::write(folder.join(name), contents)?;
     }
 
     // What was written, and where it landed, to five decimal places of a degree (about a metre).
@@ -112,8 +118,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         recorder.columns().len(),
         track.len()
     );
-    for (name, _) in &files {
-        println!("  {name}");
+    for (name, contents) in &files {
+        // The Parquet file's size is the same on every system: its numbers take 8 bytes each,
+        // however many digits they have.
+        if name.ends_with(".parquet") {
+            println!("  {name}, {} bytes", contents.len());
+        } else {
+            println!("  {name}");
+        }
     }
     if let Some(landing) = summary.landing {
         println!(

@@ -646,16 +646,12 @@
   - [x] **M1.9c Against OpenRocket.** Met (ADR-076), bars kept: a `.ork` two-stage and a cluster
     design within 5% of OpenRocket in apogee (3 vs OR without its early chute) and largest speed.
 
-- [ ] **M1.10 Outputs and derived metrics.**
-  - Static and dynamic stability margin over the flight.
-  - Optimum ejection delay; max q; flutter velocity and margin (primary source cited).
-  - Landing point in lat/lon.
-  - Exports: CSV, JSON, Parquet (feature), KML and GeoJSON.
+- [x] **M1.10 Outputs and derived metrics.** Met (ADR-077 to ADR-080). Scope: static and dynamic
+  stability margin over the flight; optimum ejection delay; max q; flutter velocity and margin
+  (primary source cited); landing point in lat/lon; exports: CSV, JSON, Parquet (feature), KML and
+  GeoJSON. *Done when* (met): metrics are unit-tested; exported files are validated (GeoJSON by
+  schema, KML by parsing); flutter matches the worked example in the cited source.
   - Loft lessons: L32, L33, L34, L35, L94.
-  *Done when:*
-  - Metrics are unit-tested.
-  - Exported files are validated (GeoJSON by schema, KML by parsing).
-  - Flutter matches the worked example in the cited source.
 
   Split into a to c (ADR-077).
   - [x] **M1.10a Flight metrics.** Met (ADR-077), bars kept: peaks (boost apart from the opening
@@ -665,11 +661,13 @@
   - [x] **M1.10b Fin flutter.** Met (ADR-078), bars kept: TN 4197 eq. 18 matches Martin's worked
     examples at his printed resolution; 14 shear moduli, each cited; L32 live.
     - Loft lessons: L32.
-  - [ ] **M1.10c Exports.** *Done when:* the parent's second bullet is met: CSV, JSON, KML and
-    GeoJSON (Parquet behind a feature) are written, GeoJSON checked by schema and KML by parsing.
+  - [x] **M1.10c Exports.** Met (ADR-079, ADR-080): the parent's second bullet is met: CSV, JSON,
+    KML and GeoJSON (Parquet behind a feature) are written, GeoJSON checked by schema and KML by
+    parsing.
     - [x] **M1.10c1 Text exports.** Met (ADR-079, split c1, c2): CSV, JSON, GeoJSON, KML from a
       recording and summary; GeoJSON by the published schema, KML parsed; numbers read back equal.
-    - [ ] **M1.10c2 Parquet.** *Done when:* written behind a feature, an independent reader agrees.
+    - [x] **M1.10c2 Parquet.** Met (ADR-080): written in-house behind the `parquet` feature;
+      Apache's `parquet` crate reads every value back bit for bit, over several pages.
 
 - [ ] **M2.3 Real flights.**
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file

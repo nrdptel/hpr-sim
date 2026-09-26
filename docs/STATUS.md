@@ -5,20 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
-  #173, #174, M1.13, #133 (13 of 20 designs); active work is M1.10c2, Parquet.
-- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; so M1.10 (a to c, ADR-077), now c2.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10a-c1, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
+  #173, #174, M1.13, #133 (13 of 20 designs); active work is M2.3, real flights.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; M1.10 is done, so M2.3 next.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M1.10c1 text exports (ADR-079) done, M1.10c2 Parquet next.
+- **Last updated:** 2026-09-26; M1.10c2 Parquet (ADR-080) done, so M1.10; M2.3 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.10c2** (Parquet) on `m1.10c2-<slug>`: a cargo feature, bytes built without I/O,
-  read back by an independent reader; pick the crate by maturity and wasm32 fit. Text exports
-  (ADR-079): `hpr_sim::export`, exact round-trip numbers, GeoJSON on the ellipsoid, KML on MSL;
-  `(A, B)` is an `Observer`. Flutter (ADR-078): `hpr_sim::flutter`, margin at max q; moduli in
-  `materials::SHEAR_MODULI`, sources cached in `refs/sources/shear-moduli/`; G10/FR-4 has none.
+- **Start M2.3** (real flights) on `m2.3-<slug>`: RocketPy's flight data with ERA5 weather needs
+  a netCDF reader or a documented conversion; likely split it (the reader, then the cases). Exports
+  (ADR-079, ADR-080): exact numbers; Parquet by hand behind `parquet`, read by `parquet-reader`.
+  Flutter (ADR-078): margin at max q; moduli cited in `materials::SHEAR_MODULI`; G10/FR-4 has none.
   Metrics (ADR-077): `FlightStep::stability`, margin `None` past `κ = √10`, least refined in steps.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
   Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
@@ -56,12 +55,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-26: M1.10c2 Parquet (ADR-080): in-house writer; Apache's reader agrees bit for bit; M1.10 done.
 - 2026-09-26: M1.10c1 Text exports (ADR-079): CSV, JSON, GeoJSON by the published schema, KML by parsing; exact.
 - 2026-09-26: M1.10b Fin flutter (ADR-078): TN 4197 eq. 18; Martin's examples at his resolution; 14 moduli; L32.
 - 2026-09-26: M1.10a Flight metrics (ADR-077; M1.10 split a to c): peaks on the dense output, margins, delay, landings; L33-35, L94.
 - 2026-09-25: M1.9c `.ork` staging and clusters (ADR-076): all within 5% of OR (3 vs no chute); M1.9 done; 13 of 20.
-- 2026-09-25: M1.9b Clusters (ADR-075): a motor out within 3.7e-7 of hand; OR's tubes to 1e-15 m.
-- 2026-09-25: M1.9a Staging (ADR-074): motors lit at their own times; a sustainer flies on; L30, L93.
+- 2026-09-25: M1.9a, b Staging, clusters (ADR-074, 075): own ignition times; a motor out to 3.7e-7.
 - 2026-09-25: M2.2e4 The causes (ADR-073): all 5 sized by OR without them; 4 within 5%, #177 left.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **Scrub #186's first revision** (1 minute): it quotes a private design's sizes. On issue #186 click
@@ -78,6 +77,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-080: Parquet written by hand from the spec (no runtime dependency); Apache's crate reads it in tests.
 - ADR-079: M1.10c split c1, c2; exports as text in the core; GeoJSON on the ellipsoid, KML on MSL.
 - ADR-078: flutter by TN 4197 eq. 18; its figure 3 band measured (0.25-0.31); lower reading if two.
 - ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = √10; held recovery.
