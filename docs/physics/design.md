@@ -24,8 +24,8 @@
   the `.ork` import ([`.ork` design files](../format/ork.md)). Not compared with a real flight.
 - **What it leaves out:** several motors in one mount ([M1.9b](../decisions-and-roadmap.md#m1-9b)).
   Each motor lights at its own `ignition`, at launch unless told otherwise, so a two-stage design
-  whose file says nothing flies with every motor lit at once; a staged flight gives the sustainer
-  its ignition ([Staging](staging.md)). A [cluster](../glossary.md#cluster) with a mount per motor
+  whose file says nothing flies with every motor lit at once, and nothing warns; a staged flight
+  gives the sustainer its ignition ([Staging](staging.md)). A [cluster](../glossary.md#cluster) with a mount per motor
   is flown, but no test or comparison checks one yet. Fins on a nose cone or transition are
   refused.
   [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and

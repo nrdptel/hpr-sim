@@ -32,10 +32,10 @@ during the flight.
 
 The numbers match the drawing.
 
-1. **Ignition and liftoff.** Every motor ignites at time zero. There is no staging, delayed
-   ignition or [air start](glossary.md#air-start) yet, so a two-stage design flies with all its
-   motors lit at once, which is not a staged flight
-   ([Start here](start-here.md#what-doesnt-work-yet)). The rocket stands on the rail, its aft end
+1. **Ignition and liftoff.** Every motor lights at time zero unless its design gives it a later
+   ignition: an [air start](glossary.md#air-start), or a sustainer lit after its booster
+   ([Staging](physics/staging.md)). A two-stage design that says nothing lights both stages on the
+   pad. The rocket stands on the rail, its aft end
    at the rail's foot, and holds still until the push up the rail, mostly the thrust, beats the
    weight's pull down it and the rail's friction. That instant is [liftoff](glossary.md#liftoff).
    If the motors burn out first, the flight ends on the pad.

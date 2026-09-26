@@ -12,4 +12,4 @@ parachute charge           18.42          3103.2           0.1       0.550
 parachute opens            18.42          3103.2           0.1       0.550
 sustainer lands           865.34             0.0           3.4       0.550
 
-The booster (1.125 kg) leaves at 2.23 s and 642.7 m, and lands at 350.18 s at 17.9 m/s.
+The booster (1.125 kg) leaves at 2.23 s and 642.7 m, tumbling. It peaks at 745.0 m at 5.11 s and lands at 47.21 s at 17.9 m/s.

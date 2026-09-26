@@ -57,6 +57,7 @@ pub struct Configuration {
 /// [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
+#[non_exhaustive]
 pub enum Ignition {
     /// At launch, `t = 0`.
     #[default]
@@ -75,7 +76,8 @@ pub enum Ignition {
         delay_s: f64,
     },
     /// A delay after the stage aft of this motor's stage separates from it (the flight gives the
-    /// separation). A motor whose stage is never freed never lights.
+    /// separation). A motor whose stage is never freed never lights; one in the last stage, with
+    /// nothing aft of it to separate, is refused.
     Separation {
         /// The delay after the separation, s.
         delay_s: f64,
@@ -185,23 +187,17 @@ impl Assembly {
             })
     }
 
-    /// The rocket at flight time `t_s`, each motor lit at its `ignition_s` (one per motor, in
-    /// order; `None` for one that never lights, which stays loaded).
-    ///
-    /// # Panics
-    ///
-    /// If `ignition_s` doesn't have one entry per motor: a caller's bug, not a design's.
+    /// The rocket at flight time `t_s`, each motor lit at its `ignition_s`, one per motor in
+    /// order ([`Self::ignition_times_s`]): `None` for one that never lights, which stays loaded.
+    /// A motor past the end of `ignition_s` is taken as lit at launch, as
+    /// [`Self::mass_properties`] lights them all.
     pub fn mass_properties_lit(&self, t_s: f64, ignition_s: &[Option<f64>]) -> MassProperties {
-        assert_eq!(
-            ignition_s.len(),
-            self.motors.len(),
-            "one ignition time per motor"
-        );
         self.motors
             .iter()
-            .zip(ignition_s)
-            .fold(self.layout.structure, |sum, (motor, ignition)| {
-                MassProperties::combine([&sum, &motor.mass_properties_lit(t_s, *ignition)])
+            .enumerate()
+            .fold(self.layout.structure, |sum, (index, motor)| {
+                let ignition = ignition_s.get(index).copied().unwrap_or(Some(0.0));
+                MassProperties::combine([&sum, &motor.mass_properties_lit(t_s, ignition)])
             })
     }
 
@@ -330,9 +326,21 @@ impl Layout {
                 Ignition::Time { time_s: value } => {
                     check_ignition("ignition time after launch (s)", *value).map_err(in_mount)?;
                 }
-                Ignition::Burnout { delay_s: value, .. }
-                | Ignition::Separation { delay_s: value } => {
+                Ignition::Burnout { delay_s: value, .. } => {
                     check_ignition("ignition delay (s)", *value).map_err(in_mount)?;
+                }
+                Ignition::Separation { delay_s: value } => {
+                    check_ignition("ignition delay (s)", *value).map_err(in_mount)?;
+                    if mount.stage + 1 >= self.stages.len() {
+                        return Err(DesignError::Tree {
+                            id: mount.id.clone(),
+                            message: format!(
+                                "configuration {} lights this motor at its stage's separation, \
+                                 but no stage is aft of it to separate",
+                                configuration.id
+                            ),
+                        });
+                    }
                 }
             }
             let [x, y] = mount.part.axis_offset_m();
@@ -1095,6 +1103,11 @@ mod tests {
         assert!(refused(Ignition::Separation {
             delay_s: f64::INFINITY
         }));
+        // The booster is the last stage: nothing is aft of it to separate.
+        let mut rocket = two_stage(Ignition::Launch);
+        rocket.configurations[0].motors[0].ignition = Ignition::Separation { delay_s: 0.0 };
+        let error = rocket.assemble("j760-i175").unwrap_err();
+        assert!(matches!(error, DesignError::Tree { .. }), "{error:?}");
         assert!(refused(Ignition::Burnout {
             mount: "booster-motor-mount".to_owned(),
             delay_s: -0.1,

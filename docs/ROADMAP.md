@@ -287,11 +287,10 @@
       the suite, their apogee and landing drifts scored at 3%, and each passes or is a gap its case
       file explains. *Result (ADR-025):* met: Calisto and Bella Lui pass; Juno III's drifts miss
       (−3.7%), reported not scored, 1.6 points being the rail release (`rail_release.py`).
-    - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* issue #50's cause is found and the
-      drifts are scored within their tolerances, or an ADR records the measured cause and why they
-      cannot be, with the gap left visible in the report. *Result (ADR-026):* met: mostly RocketPy's
-      mirrored moment point (#1186, PR #1196) and nozzle tensor (PR #1188), both corrected; RocketPy
-      then within 1.4% of hpr in wind (`wind_response.py`). Six drifts gated; five not.
+    - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* #50's cause is found and the drifts
+      scored within tolerance, or an ADR records the measured cause and why not, the gap in the report.
+      *Result (ADR-026):* met: mostly RocketPy's mirrored moment point (#1186, PR #1196) and nozzle
+      tensor (PR #1188), corrected; RocketPy then within 1.4% in wind; six drifts gated, five not.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
@@ -380,7 +379,8 @@
       `α → 0`). *Done when* (targets set before): a pinned fixture holds every row of its Tables I
       and II within 0.05/rad and 0.1 cal of its values and ±0.2 of its measurements, misses
       explained, and the Arcas Robin beside TN D-4014. *Result (ADR-033):* not met, recorded: 102
-      and 125 of 144 within its values (#81), 117 and 109 of 120; Arcas Robin −18.7% to +16.4%.
+      and 125 of 144 within its values (#81 at its limit), 117 and 109 of 120 of its measurements;
+      Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight** (M1.8e1 joined to slender-body
       theory). *Done when:* a flight takes the body's `C_Nα` and CP at its Mach, no jump at ±1e-9
       in Mach at the join, and the Arcas Robin's body alone from Mach 1.5 is in the report.

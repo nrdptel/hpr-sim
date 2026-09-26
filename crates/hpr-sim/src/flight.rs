@@ -253,12 +253,10 @@ pub struct Simulation {
     separation: Option<Separation>,
     /// The separation's trigger time, when it is one that is known before the flight.
     separation_time_s: Option<f64>,
-    /// The design, kept to build a sustainer's models from.
+    /// The design, kept to build a sustainer's models from at a powered separation.
     rocket: Rocket,
     /// The configuration flown.
     configuration_id: String,
-    /// The sustainer's models, when the separation's nose body carries a motor.
-    sustainer: Option<Sustainer>,
     /// Whether the aerodynamics were replaced by a table, which is the whole stack's only.
     aero_overridden: bool,
 }
@@ -316,7 +314,6 @@ impl Simulation {
             separation_time_s: None,
             rocket: rocket.clone(),
             configuration_id: configuration_id.to_owned(),
-            sustainer: None,
             aero_overridden: false,
         })
     }
@@ -436,7 +433,8 @@ impl Simulation {
     /// drag, so it would fall as if in a vacuum), if the trigger is out of its domain, or if its
     /// time is known and an aft body's motor burns past it. The same checks run again if
     /// [`Self::with_recovery`] is called afterwards, so the builders can be given in either order.
-    /// Errors building the sustainer's aerodynamics, when the nose's body carries a motor.
+    /// A trigger timed from a motor with no ignition known before the flight, which could never
+    /// fire.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
@@ -470,12 +468,24 @@ impl Simulation {
             // known now, say so now rather than in the middle of a flight.
             self.check_aft_body_spent(separation, self.vehicle.ignition_s(), time_s)?;
         }
-        self.sustainer = Sustainer::of(
-            &self.rocket,
-            &self.configuration_id,
-            &self.vehicle.assembly,
-            separation,
-        )?;
+        if time_s.is_none()
+            && matches!(
+                separation.trigger,
+                Trigger::Time { .. } | Trigger::MotorDelay { .. } | Trigger::Burnout { .. }
+            )
+        {
+            // Timed from a motor with no ignition known before the flight: one lit by this very
+            // separation, or one that never lights. It would never fire, and the stack would
+            // land whole.
+            return Err(SimError::Domain {
+                what: "index of the motor a separation is timed from (it has no ignition time \
+                       before the separation, so the separation could never fire)",
+                value: match separation.trigger {
+                    Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. } => motor as f64,
+                    _ => f64::NAN,
+                },
+            });
+        }
         self.separation_time_s = time_s;
         self.separation = Some(separation);
         Ok(self)
@@ -867,19 +877,23 @@ impl Simulation {
                     self.check_aft_body_spent(separation, &lit, t)?;
                     let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                     record(&mut events, observer, EventKind::Separation, sample);
-                    let powered = self.sustainer.as_ref().filter(|model| {
-                        model.motors.iter().any(|&index| {
-                            lit[index].is_some_and(|ignition| {
-                                let motor = &self.vehicle.assembly.motors[index].mounted.motor;
-                                ignition + motor.burnout_time_s() > t
-                            })
-                        })
-                    });
-                    let Some(model) = powered else {
+                    let powered =
+                        self.vehicle
+                            .assembly
+                            .motors
+                            .iter()
+                            .zip(&lit)
+                            .any(|(placed, ignition)| {
+                                placed.stage <= separation.after_stage
+                                    && ignition.is_some_and(|ignition| {
+                                        ignition + placed.mounted.motor.burnout_time_s() > t
+                                    })
+                            });
+                    if !powered {
                         ignition_s = lit;
                         separated = true;
                         break Termination::Separated;
-                    };
+                    }
                     if phase == Phase::Descent {
                         // The descent is a point mass under canopies; a sustainer under thrust
                         // is not something it can fly.
@@ -896,12 +910,34 @@ impl Simulation {
                             value: t,
                         });
                     }
-                    let flown = Vehicle::lit(
-                        model.assembly.clone(),
-                        model.aero.clone(),
-                        model.motors.iter().map(|&index| lit[index]).collect(),
+                    // Built only now, so an unpowered separation never needs the cut design.
+                    let model = Sustainer::of(
+                        &self.rocket,
+                        &self.configuration_id,
+                        &self.vehicle.assembly,
+                        separation,
                     )?;
+                    let lit_here = model.motors.iter().map(|&index| lit[index]).collect();
+                    let flown = Vehicle::lit(model.assembly, model.aero, lit_here)?;
                     booster = self.fly_bodies(t, &State::from_array(&y), &mut run, &lit, 1)?;
+                    // The booster's descent has no airframe drag, and a powered separation comes
+                    // near the top speed, so a coast to its device would climb as if in a vacuum
+                    // (twice the sustainer's apogee in review). Its device must open at once.
+                    let open_at_split = self.devices.iter().enumerate().any(|(index, device)| {
+                        device.body == 1
+                            && run.devices[index]
+                                .deployed_s
+                                .is_some_and(|deployed_s| deployed_s <= t)
+                    });
+                    if !open_at_split {
+                        return Err(SimError::Domain {
+                            what: "time of a powered separation (the booster falls with no \
+                                   airframe drag, so a device on it must open at the separation: \
+                                   one triggered at `Time { time_s: 0.0 }` with no lag does, as \
+                                   a booster's devices act only once it flies)",
+                            value: t,
+                        });
+                    }
                     trigger_times_s =
                         recovery::plan(&self.devices, &self.vehicle.assembly.motors, &lit)?;
                     for time in trigger_times_s
@@ -1013,8 +1049,11 @@ impl Simulation {
                                 let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::Apogee, sample);
                                 for device in 0..self.devices.len() {
+                                    // Only the stack's own: a body's device waits for its body,
+                                    // which finds its own apogee.
                                     if self.devices[device].trigger == Trigger::Apogee
                                         && run.pending(device)
+                                        && self.acts_before_separation(device)
                                     {
                                         let deploy_s = run.trigger(&self.devices, device, t);
                                         insert_stop(&mut stops, deploy_s, cap);
@@ -1337,7 +1376,7 @@ impl Simulation {
                 .any(|&index| run.devices[index].deployed_s.is_some())
         {
             // Every body must carry a device, and its device must actually open: a trigger that
-            // never becomes true (an altimeter set above the body's own apogee, say) would
+            // never becomes true (a timer set after the body lands, say) would
             // otherwise drop the body with no drag at all, which is a wrong number rather than a
             // missing feature (found in review). A device that opened on the stack before the
             // separation counts: its deployment is in the flight's events, not the body's.

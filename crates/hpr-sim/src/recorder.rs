@@ -12,7 +12,7 @@ use crate::state::State;
 /// The flight's state and the quantities derived from it at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Sample {
-    /// Time since ignition, s.
+    /// Time since launch, s: the flight's clock, from which each motor's ignition is counted.
     pub time_s: f64,
     /// The phase the flight was in.
     pub phase: Phase,

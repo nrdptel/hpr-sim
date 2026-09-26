@@ -66,9 +66,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         .position(|motor| motor.mount == "booster-motor-mount")
         .ok_or("no booster motor")?;
 
-    // Recovery: a 1.2 m parachute on the sustainer at its apogee, and the booster tumbling from
-    // its own apogee on its own stage's geometry. The stages come apart 0.5 s after the booster
-    // burns out, at the boundary after stage 0.
+    // Recovery: a 1.2 m parachute on the sustainer at its apogee, and the booster tumbling on
+    // its own stage's geometry from the moment it separates. A booster's devices act only once it
+    // flies, so a time of zero opens it there. It has no airframe drag of its own, so it must
+    // have something open: hpr refuses a powered separation whose booster doesn't. The stages
+    // come apart 0.5 s after the booster burns out, at the boundary after stage 0.
     let tumble = DeviceDrag::tumbling_stages(simulation.assembly(), (1, 1))?;
     let simulation = simulation
         .with_recovery(vec![
@@ -77,7 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
                 Trigger::Apogee,
             ),
-            Device::new("booster tumble", tumble, Trigger::Apogee).on_body(1),
+            Device::new("booster tumble", tumble, Trigger::Time { time_s: 0.0 }).on_body(1),
         ])?
         .with_separation(Separation::new(
             Trigger::Burnout {
@@ -120,12 +122,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!();
     for body in &flight.bodies {
+        let top = body
+            .event(EventKind::Apogee)
+            .ok_or("the booster has no apogee")?
+            .sample;
         println!(
-            "The booster ({:.3} kg) leaves at {:.2} s and {:.1} m, and lands at {:.2} s at \
-             {:.1} m/s.",
+            "The booster ({:.3} kg) leaves at {:.2} s and {:.1} m, tumbling. It peaks at {:.1} m at \
+             {:.2} s and lands at {:.2} s at {:.1} m/s.",
             body.mass_kg,
             body.start_sample.time_s,
             body.start_sample.height_above_ground_m,
+            top.height_above_ground_m,
+            top.time_s,
             body.final_sample.time_s,
             body.final_sample.cg_velocity_enu_m_s.length(),
         );

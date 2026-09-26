@@ -34,13 +34,18 @@ pub(crate) struct Sustainer {
 
 impl Sustainer {
     /// The models of `rocket`'s stages `0..=separation.after_stage` with the motors `stack` puts
-    /// in them, or `None` when those stages carry no motor, so no separation of them is powered.
+    /// in them.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Domain`] if those stages carry no motor (a separation of them isn't powered),
+    /// and errors assembling the cut design or building its aerodynamics.
     pub(crate) fn of(
         rocket: &Rocket,
         configuration_id: &str,
         stack: &Assembly,
         separation: Separation,
-    ) -> Result<Option<Self>, SimError> {
+    ) -> Result<Self, SimError> {
         let motors: Vec<usize> = stack
             .motors
             .iter()
@@ -49,7 +54,10 @@ impl Sustainer {
             .map(|(index, _)| index)
             .collect();
         if motors.is_empty() {
-            return Ok(None);
+            return Err(SimError::Domain {
+                what: "count of motors in a sustainer (a powered separation's nose body has none)",
+                value: 0.0,
+            });
         }
         let mut cut = rocket.clone();
         cut.stages.truncate(separation.after_stage + 1);
@@ -70,11 +78,11 @@ impl Sustainer {
         }];
         let assembly = cut.assemble(configuration_id)?;
         let aero = AeroModel::new(&assembly.layout)?;
-        Ok(Some(Self {
+        Ok(Self {
             assembly,
             aero,
             motors,
-        }))
+        })
     }
 }
 
@@ -123,13 +131,32 @@ mod tests {
     }
 
     /// The design flown from a 6 m vertical rail in the standard atmosphere: a canopy on the
-    /// sustainer at apogee, and the booster tumbling from its own apogee.
+    /// sustainer at apogee, and the booster tumbling from the separation.
     fn staged(rocket: &Rocket, separation: impl Fn(&Simulation) -> Separation) -> Simulation {
+        staged_with(
+            rocket,
+            Rail::vertical(6.0),
+            BOOSTER_AT_SEPARATION,
+            separation,
+        )
+        .unwrap()
+    }
+
+    /// A booster's devices act only once it flies, so a time of zero opens it at the separation.
+    const BOOSTER_AT_SEPARATION: Trigger = Trigger::Time { time_s: 0.0 };
+
+    /// As [`staged`], from `rail`, with the booster's tumble fired by `booster`.
+    fn staged_with(
+        rocket: &Rocket,
+        rail: Rail,
+        booster: Trigger,
+        separation: impl Fn(&Simulation) -> Separation,
+    ) -> Result<Simulation, SimError> {
         let sim = Simulation::new(
             rocket,
             CONFIGURATION,
             Environment::standard(site()).unwrap(),
-            Rail::vertical(6.0),
+            rail,
             FlightSettings::default(),
         )
         .unwrap();
@@ -141,11 +168,10 @@ mod tests {
                 DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
                 Trigger::Apogee,
             ),
-            Device::new("booster tumble", tumble, Trigger::Apogee).on_body(1),
+            Device::new("booster tumble", tumble, booster).on_body(1),
         ])
         .unwrap()
         .with_separation(separation)
-        .unwrap()
     }
 
     /// The booster's burnout in the flight's time: it lights at launch.
@@ -409,8 +435,26 @@ mod tests {
         // The separation adds no impulse (the decision record on separation, ADR-014): the
         // sustainer keeps the nose tip's motion and the booster leaves with its own centre of
         // mass's velocity, so their momenta add to the stack's. The sustainer is unlit and the
-        // booster spent, so no centre of mass moves inside its body.
-        let sim = serial_plan();
+        // booster spent, so no centre of mass moves inside its body. A rail 10° off vertical
+        // makes the rocket turn, so the rotation's share, `ω × r`, is not zero.
+        let rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        let rail = Rail {
+            elevation_rad: 80.0_f64.to_radians(),
+            ..Rail::vertical(6.0)
+        };
+        let sim = staged_with(&rocket, rail, BOOSTER_AT_SEPARATION, |sim| {
+            Separation::new(
+                Trigger::Burnout {
+                    motor: motor_index(sim, BOOSTER_MOUNT),
+                    delay_s: 0.5,
+                },
+                0,
+            )
+        })
+        .unwrap();
         let mut starts = StepStarts::default();
         let result = sim.run(&mut starts).unwrap();
         let stack = result.event(EventKind::Separation).unwrap().sample;
@@ -420,6 +464,16 @@ mod tests {
             .iter()
             .find(|s| s.time_s == stack.time_s && s.mass_kg < stack.mass_kg)
             .expect("the sustainer's first step");
+        let rate = sim
+            .run(&mut ())
+            .unwrap()
+            .event(EventKind::Separation)
+            .unwrap()
+            .sample
+            .state
+            .body_rate_rad_s
+            .length();
+        assert!(rate > 1e-3, "{rate}");
         let before = stack.cg_velocity_enu_m_s * stack.mass_kg;
         let after = sustainer.cg_velocity_enu_m_s * sustainer.mass_kg
             + booster.start_sample.cg_velocity_enu_m_s * booster.mass_kg;
@@ -507,6 +561,131 @@ mod tests {
         .unwrap()
         .with_separation(Separation::new(Trigger::Time { time_s: 0.5 }, 0))
         .expect_err("the booster still burning");
+        let burnout_s = rocket.assemble(CONFIGURATION).unwrap().motors[booster]
+            .mounted
+            .motor
+            .burnout_time_s();
+        assert!(
+            matches!(error, SimError::Domain { value, .. } if value == burnout_s),
+            "{error:?}"
+        );
+
+        // A booster whose device waits for its own apogee would coast there with no drag.
+        let sim = staged_with(&rocket, Rail::vertical(6.0), Trigger::Apogee, |_| {
+            Separation::new(
+                Trigger::Burnout {
+                    motor: booster,
+                    delay_s: 0.5,
+                },
+                0,
+            )
+        })
+        .unwrap();
+        let error = sim.run(&mut ()).expect_err("a booster with nothing open");
+        assert!(
+            matches!(error, SimError::Domain { value, .. } if (value - (burnout_s + 0.5)).abs() < 1e-12),
+            "{error:?}"
+        );
+
+        // A separation timed from the sustainer it lights could never fire.
+        let lit_by_it = two_stage(Ignition::Separation { delay_s: 0.0 });
+        let error = staged_with(
+            &lit_by_it,
+            Rail::vertical(6.0),
+            BOOSTER_AT_SEPARATION,
+            |sim| {
+                Separation::new(
+                    Trigger::Burnout {
+                        motor: motor_index(sim, SUSTAINER_MOUNT),
+                        delay_s: 0.5,
+                    },
+                    0,
+                )
+            },
+        )
+        .expect_err("a separation that could never fire");
         assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+
+        // A sustainer with a canopy already open is in the point-mass descent, which can't fly
+        // it under thrust.
+        let sim = Simulation::new(
+            &rocket,
+            CONFIGURATION,
+            Environment::standard(site()).unwrap(),
+            Rail::vertical(6.0),
+            FlightSettings::default(),
+        )
+        .unwrap();
+        let tumble = DeviceDrag::tumbling_stages(sim.assembly(), (1, 1)).unwrap();
+        let error = sim
+            .with_recovery(vec![
+                Device::new(
+                    "sustainer main",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
+                    Trigger::Time { time_s: 1.0 },
+                ),
+                Device::new("booster tumble", tumble, BOOSTER_AT_SEPARATION).on_body(1),
+            ])
+            .unwrap()
+            .with_separation(Separation::new(
+                Trigger::Burnout {
+                    motor: booster,
+                    delay_s: 0.5,
+                },
+                0,
+            ))
+            .unwrap()
+            .run(&mut ())
+            .expect_err("a powered separation in the descent");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+    }
+
+    #[test]
+    fn an_air_start_lights_at_its_time_and_burns_on_its_own_clock() {
+        // No separation: the sustainer lights 3 s after launch with the spent booster still on.
+        let rocket = two_stage(Ignition::Time { time_s: 3.0 });
+        let sim = Simulation::new(
+            &rocket,
+            CONFIGURATION,
+            Environment::standard(site()).unwrap(),
+            Rail::vertical(6.0),
+            FlightSettings::default(),
+        )
+        .unwrap()
+        .with_recovery(vec![Device::new(
+            "main",
+            DeviceDrag::canopy(CanopyType::FlatCircular, 1.5),
+            Trigger::Apogee,
+        )])
+        .unwrap();
+        let sustainer = motor_index(&sim, SUSTAINER_MOUNT);
+        let result = sim.run(&mut ()).unwrap();
+        let lit = result.event(EventKind::Ignition(sustainer)).unwrap().sample;
+        assert_eq!(lit.time_s, 3.0);
+        // Lit, it is still loaded: the booster spent, the sustainer full.
+        let expected = sim
+            .assembly()
+            .mass_properties_lit(3.0, &[Some(0.0), Some(3.0)]);
+        assert!((lit.mass_kg - expected.mass_kg).abs() < 1e-12 * expected.mass_kg);
+        let full = sim.assembly().motors[sustainer]
+            .mass_properties(0.0)
+            .mass_kg;
+        let dry = sim.assembly().motors[sustainer]
+            .dry_mass_properties()
+            .mass_kg;
+        let booster_dry = sim.assembly().dry_mass_properties().mass_kg - dry;
+        assert!(
+            (lit.mass_kg - (booster_dry + full)).abs() < 1e-9,
+            "{}",
+            lit.mass_kg
+        );
+        // It burns out on its own clock, and the rocket lands with both motors spent.
+        let i175 = &sim.assembly().motors[sustainer].mounted.motor;
+        assert!(
+            (time_of(&result, EventKind::Burnout) - (3.0 + i175.burnout_time_s())).abs() < 1e-12
+        );
+        let spent = sim.assembly().dry_mass_properties().mass_kg;
+        assert!((result.final_sample.mass_kg - spent).abs() < 1e-12 * spent);
+        assert_eq!(result.termination, Termination::GroundHit);
     }
 }
