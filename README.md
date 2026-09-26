@@ -1,5 +1,7 @@
 # hpr-sim
 
+[![vs RocketPy, same inputs: the gated metrics that pass](docs/images/census-badge.svg)](docs/accuracy.md#the-census)
+
 **Pre-alpha, under active construction.** Nothing here is ready to rely on yet.
 
 **Documentation: <https://nrdptel.github.io/hpr-sim/>**, a searchable guide with the API
@@ -30,6 +32,26 @@ Scope for now: commercial off-the-shelf solid rocket motors.
 
 **Every figure this tool produces is an estimate from a model, not a measurement, and never a
 go/no-go verdict.** The motor's printed data and your RSO are authoritative.
+
+## Accuracy at a glance
+
+Every number the validation reports compare, counted once. "Code-to-code" rows say how closely hpr
+agrees with another simulator, not which of the two is right; only the real flights are
+measurements. CI fails when any row moves by more than 0.1% of its bar, better or worse, until the
+change is accepted with a written reason ([the census](docs/accuracy.md#the-census)).
+
+<!-- census: written by `cargo xtask census --accept` from validation/reports/census.json; do not edit -->
+
+| compared with | kind | held to | flights (speed) | result |
+|---|---|---|---|---|
+| [rocketpy 1.13.0](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): descents under a parachute | code-to-code, same inputs | gate: each metric's tolerance, at most 3% | 5 descents (5 under a parachute) | 30 of 30 gated metrics pass |
+| [rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py)](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights on the same drag | code-to-code, same inputs | gate: each metric's tolerance, at most 3% | 9 flights (8 subsonic, 1 transonic) | 142 of 142 gated metrics pass; 11 not scored, each for a written reason; apogee +0.04% to +1.21% |
+| [rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py)](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights, each code on its own drag | code-to-code, each code's own drag | target: 3% on each metric | 6 flights (5 subsonic, 1 transonic) | 75 of 102 metrics within target; apogee -7.28% to +10.30% |
+| [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of OpenRocket's examples | code-to-code, each code's own model | no target; over 5% needs a written cause | 33 flights (32 subsonic, 1 transonic) | 91 of 99 differences within the bar; apogee -19.13% to +13.80% |
+| [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of the private designs | code-to-code, each code's own model | no target; over 5% needs a written cause | 18 flights (13 subsonic, 5 transonic) | 54 of 54 differences within the bar; apogee -4.84% to +1.17% |
+| [the teams' altimeter logs, from RocketPy 1.13.0's examples](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): real flights | measured: the teams' altimeter logs | target: mean absolute apogee error 5% | 7 flights (3 subsonic, 4 transonic) | mean absolute apogee error 6.04% against the 5% target, outside it; apogee -8.90% to +10.40%, 2 of 7 within 5% |
+
+<!-- census: end -->
 
 ## Building
 

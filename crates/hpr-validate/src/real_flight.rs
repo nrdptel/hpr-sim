@@ -57,7 +57,8 @@ use hpr_design::Rocket;
 use hpr_io::era5::{Era5Profile, Era5Request, UtcTime};
 use hpr_io::netcdf::NetCdf;
 use hpr_sim::{
-    Environment, EventKind, FlightSettings, FlightStep, Observer, Rail, SimError, Simulation,
+    Environment, EventKind, FlightMetrics, FlightSettings, FlightStep, Observer, Rail, SimError,
+    Simulation,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -648,6 +649,9 @@ pub struct FlightRow {
     pub trace_rms_m: f64,
     /// That RMS as a percentage of the log's apogee.
     pub trace_rms_percent: f64,
+    /// hpr's largest Mach number over the flight compared, in the ERA5 air: what the accuracy
+    /// census classes the flight's speed by (subsonic below 0.8, supersonic above 1.2).
+    pub hpr_max_mach: f64,
     /// The log rows the RMS is over.
     pub trace_rows: usize,
     /// The thrust hpr flew, as a total impulse, N s.
@@ -1256,6 +1260,7 @@ fn pressure_reading_gap_m(
 struct Flown {
     apogee_m: f64,
     height_apogee_m: f64,
+    max_mach: f64,
     trace: TraceComparison,
     total_impulse_ns: f64,
 }
@@ -1437,7 +1442,16 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
             next: 0,
             rows: Vec::new(),
         };
-        let result = simulation.run(&mut heights).map_err(sim)?;
+        let mut metrics = FlightMetrics::new();
+        let result = simulation
+            .run(&mut (&mut heights, &mut metrics))
+            .map_err(sim)?;
+        let max_mach = metrics
+            .summary(&result, &environment)
+            .map_err(sim)?
+            .max_mach
+            .ok_or_else(|| input("hpr's flight has no Mach number".to_owned()))?
+            .value;
         let apogee = result
             .event(EventKind::Apogee)
             .ok_or_else(|| input("hpr's flight has no apogee".to_owned()))?
@@ -1467,6 +1481,7 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
         Ok(Flown {
             apogee_m: reading(apogee.height_above_ground_m)?,
             height_apogee_m: apogee.height_above_ground_m - start_m,
+            max_mach,
             trace,
             total_impulse_ns,
         })
@@ -1500,6 +1515,7 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
         hpr_time_to_apogee_s: trace.hpr_time_to_apogee_s,
         trace_rms_m: trace.rms_m,
         trace_rms_percent: 100.0 * trace.rms_m / log_apogee_m,
+        hpr_max_mach: own.max_mach,
         trace_rows: trace.rows,
         total_impulse_ns,
         negative_thrust_zeroed_ns: zeroed_ns,
@@ -1881,6 +1897,7 @@ impl RealFlightReport {
                 ),
                 ("trace RMS", a.trace_rms_m, b.trace_rms_m),
                 ("trace RMS share", a.trace_rms_percent, b.trace_rms_percent),
+                ("hpr's largest Mach number", a.hpr_max_mach, b.hpr_max_mach),
                 ("total impulse", a.total_impulse_ns, b.total_impulse_ns),
                 (
                     "negative thrust zeroed",
@@ -2006,16 +2023,16 @@ impl RealFlightReport {
             out,
             "| flight | altimeter | log apogee (m) | hpr apogee (m) | apogee error | hpr apogee \
              as a height (m) | log time to apogee (s) | hpr time to apogee (s) | trace RMS (m) | \
-             trace RMS (% of apogee) | rows |"
+             trace RMS (% of apogee) | rows | hpr's largest Mach |"
         );
         let _ = writeln!(
             out,
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
         );
         for row in &self.flights {
             let _ = writeln!(
                 out,
-                "| {} | {} | {} | {} | {}% | {} | {} | {} | {} | {}% | {} |",
+                "| {} | {} | {} | {} | {}% | {} | {} | {} | {} | {}% | {} | {} |",
                 row.title,
                 row.altimeter,
                 fmt_number(row.log_apogee_m, 1),
@@ -2026,7 +2043,8 @@ impl RealFlightReport {
                 fmt_number(row.hpr_time_to_apogee_s, 2),
                 fmt_number(row.trace_rms_m, 1),
                 fmt_number(row.trace_rms_percent, 2),
-                row.trace_rows
+                row.trace_rows,
+                fmt_number(row.hpr_max_mach, 3)
             );
         }
         let _ = writeln!(out);
