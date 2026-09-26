@@ -6923,17 +6923,25 @@ compute but not write files.
    RocketPy's `stability_margin` at zero angle. A pitch damping ratio, the other reading, is not
    built here. Both margins are kept at each step's end from the rail exit to apogee or the first
    deployment: on the rail the rail holds the rocket, and a slow climb through the wind gives
-   angles near 90°. For the same reason the least flight margin counts only entries where the
-   dynamic pressure is at least the rail exit's: near apogee the angle swings toward 90° again
-   (a first version reported a calm Valetudo's apogee, 1.28 calibres, as its least).
+   angles near 90°. For the same reason the least flight margin counts only entries at angles of
+   attack up to 15°, where a fin stalls and the linear fin model means nothing (the limit on a
+   fin's cant, `MAX_CANT_RAD`): near apogee the angle swings toward 90° again (a first version
+   reported a calm Valetudo's apogee, 1.28 calibres, as its least). A second version counted
+   entries whose dynamic pressure was at least the rail exit's; review showed that off a tilted
+   rail the rocket still crosses the air at apogee as fast as it left the rail, so the apogee
+   passed. Off a tilted rail the least now often comes late in the arc, below 15°, where body lift
+   draws the centre of pressure forward: that is the model's answer at an angle it covers.
 5. **No margin where it would be noise (L33).** With `κ = Σ |C_Nα,i| / Σ C_Nα,i` over the
-   components (the table's own slope with a normal-force table), the centre of pressure lies within
-   `κ L` of every station, so an error `ε` in one slope moves it by up to `ε κ² L`. The margin and
+   components (the table's own slope with a normal-force table), each acting at a station on the
+   rocket, the centre of pressure lies within `κ L` of every station, so a fractional error `ε` in
+   one slope moves it by up to about `ε κ² L` (to first order). A component that is a pure couple
+   on its own has no station, and `κ` doesn't count it. The margin and
    the centre of pressure are `None` when the net slope is not positive or `κ > √10`, where a 1%
    error can move the centre of pressure a tenth of the rocket. (A first draft took the bound as
    `ε κ L` and the limit as 10; review showed the bound fails when the centre of pressure lies off
    the rocket, which is when `κ` is large.) The limit is a chosen bound on that sensitivity, not a
-   measurement. Every bundled design stays below `κ = 1.35` from Mach 0 to 2 and to 20°, so it
+   measurement. All 13 designs in `validation/designs/` stay below `κ = 1.35` from Mach 0 to 2
+   and to 20°, so it
    leaves ordinary designs their margin. The pitch-moment slope about the centre of mass,
    `C_mα = −(Σ C_Nα,i x_i − x_cg Σ C_Nα,i)/d`, is always given, from a new
    `NormalForce::moment_slope_m` that keeps a component's pure couple.

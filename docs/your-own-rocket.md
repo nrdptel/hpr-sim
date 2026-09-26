@@ -131,7 +131,7 @@ propellant is gone.
   [calibres](glossary.md#calibre-caliber), that is, in body diameters. At liftoff it is
   (0.779 − 0.671) m ÷ 0.0563 m ≈ 1.9; the program works from the unrounded values and prints 1.92.
   At burnout the CG has moved forward, so the margin has grown to 2.99. This program works the
-  margin out by hand; hpr also gives it from the rail exit to apogee, with an optimum ejection
+  margin out by hand; hpr also gives it from the rail exit to apogee or the first deployment, with an optimum ejection
   delay, as [Flight metrics](physics/metrics.md) shows.
 
 A positive margin means that when something tips the rocket, the air turns its nose back into the

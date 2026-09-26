@@ -303,9 +303,9 @@ What changes it:
     body axes, so the CG's station is `−cg_m.z`.
   - The CP's station less the CG's, divided by `d_ref`, is the
     [stability margin](../glossary.md#stability-margin) in [calibres](../glossary.md#calibre-caliber).
-  - [Flight metrics](metrics.md) gives the margin from the rail exit to apogee, both at zero angle
-    of attack and Mach 0 and in the flight's own air, and gives none where the slopes all but
-    cancel.
+  - [Flight metrics](metrics.md) gives the margin from the rail exit to apogee or the first
+    deployment, both at zero angle of attack and Mach 0 and in the flight's own air, and gives
+    none where the slopes all but cancel.
 
 ## Bodies of revolution
 

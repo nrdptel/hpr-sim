@@ -12,7 +12,7 @@ Opening shock:         153.4 m/s² at 9.76 s, 698 m up
 Rail exit:            16.2 m/s at 0.37 s, 17.2° off the oncoming air
 At rail exit (0.37 s): static margin 3.09 cal, flight margin 0.69 cal at Mach 0.051
 Least static margin:    3.09 cal at 0.37 s, 4 m up
-Least flight margin:    0.69 cal at 0.37 s, 4 m up
+Least flight margin:    0.95 cal at 0.46 s, 6 m up
 
 Optimum delay:        10.6 s after burnout at 3.26 s (flown: 6.0 s), for an apogee of 778.7 m at 13.83 s
 Landing:              32.990000° N, 106.967084° W: 272.6 m east and 0.0 m north of the site, at 11.6 m/s, at 78.67 s

@@ -708,7 +708,6 @@ pub struct NormalForce {
     /// `Σ (C_N,i/α) X_i`, m per radian: [`Self::moment_m`] per radian of angle of attack, and at
     /// `α = 0` its slope `Σ C_Nα,i X_i`. It is defined when the slopes cancel, where the centre of
     /// pressure is not: the loads are then a pure couple.
-    #[serde(default)]
     pub moment_slope_m: f64,
     /// Centre of pressure, m aft of the nose tip; `None` when the slope is zero, or so small
     /// against its terms (below 1e-12 of `Σ |C_Nα,i|`) that the ratio would be noise.

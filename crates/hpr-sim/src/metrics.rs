@@ -38,8 +38,8 @@ use crate::recovery::BodySample;
 
 /// The largest ratio `κ = Σ |C_Nα,i| / C_Nα` at which a margin is given: `√10`.
 ///
-/// The centre of pressure is `x_cp = Σ C_Nα,i x_i / C_Nα`, with each station `x_i` on the rocket,
-/// in `[0, L]`. Since `x_cp − x_j = Σ C_Nα,i (x_i − x_j) / C_Nα`, it lies within `κ L` of every
+/// The centre of pressure is `x_cp = Σ C_Nα,i x_i / C_Nα`, over the parts the model adds up, with
+/// each part's station `x_i` on the rocket, in `[0, L]`. Since `x_cp − x_j = Σ C_Nα,i (x_i − x_j) / C_Nα`, it lies within `κ L` of every
 /// station. An error `ε C_Nα,j` in one component's slope moves it by
 /// `ε C_Nα,j (x_j − x_cp) / C_Nα`, so by at most `ε κ² L`. A rocket whose slopes all push the same
 /// way has `κ = 1`, and a 1% error in one slope moves its centre of pressure by at most 1% of its
@@ -47,10 +47,18 @@ use crate::recovery::BodySample;
 /// line of action, and the quotient is noise (Loft published ±12 to 15 calibres so,
 /// [lesson L33][l33]). At `κ = √10` a 1% error in one slope can move the centre of pressure by a
 /// tenth of the rocket's length; past it hpr gives no margin, only the pitch-moment slope, which
-/// stays finite. The limit is a chosen bound on that sensitivity, not a measurement.
+/// stays finite. The limit is a chosen bound on that sensitivity, not a measurement. The bound
+/// holds for parts that each carry a force at a station: a part that is a pure couple (a step and
+/// a flare of equal slopes) has none, and `κ` doesn't count it.
 ///
 /// [l33]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l33
 pub const MARGIN_CONDITION_LIMIT: f64 = 3.162_277_660_168_379_5;
+
+/// The largest angle of attack at which a flight margin counts toward
+/// [`FlightSummary::min_flight_margin_cal`]: 15°, where a fin stalls and the linear model means
+/// nothing (the same limit as a fin's cant, [`hpr_aero::MAX_CANT_RAD`]). Past it, near apogee on
+/// a tilted rail or at a slow rail exit in wind, the margin is kept in the series but not counted.
+pub const FLIGHT_MARGIN_MAX_ANGLE_RAD: f64 = hpr_aero::MAX_CANT_RAD;
 
 /// The Mach number of the static margin: the air at rest, as RocketPy's `static_margin` takes it.
 pub const STATIC_MARGIN_MACH: f64 = 0.0;
@@ -270,10 +278,10 @@ pub struct FlightSummary {
     /// The smallest static margin over [`FlightMetrics::stability`], calibres, where it is
     /// defined. After a powered separation the sustainer's margins count its own diameter.
     pub min_static_margin_cal: Option<Peak>,
-    /// The smallest flight margin over [`FlightMetrics::stability`] while the dynamic pressure is
-    /// at least the first entry's (the rail exit's), calibres, where it is defined. Near apogee the
-    /// air barely presses and the angle of attack swings toward 90°, where a margin says nothing
-    /// about stability; the entries are all kept in the series.
+    /// The smallest flight margin over [`FlightMetrics::stability`] at angles of attack up to
+    /// [`FLIGHT_MARGIN_MAX_ANGLE_RAD`], calibres, where it is defined. Near apogee the angle of
+    /// attack swings toward 90°, where a fin has stalled and a margin says nothing about
+    /// stability; the entries are all kept in the series.
     pub min_flight_margin_cal: Option<Peak>,
     /// The stability as the last rail guide left the rail.
     pub rail_exit_stability: Option<Stability>,
@@ -312,6 +320,8 @@ pub struct FlightMetrics {
     max_descent_acceleration: Option<Peak>,
     /// Whether any step was seen, and the last one's end.
     last_end_s: Option<f64>,
+    /// How many steps it saw: a flight's accepted steps, one each.
+    steps: u64,
     /// Whether a step started before the one ahead of it ended: a second flight, not cleared.
     rewound: bool,
     on_rail: bool,
@@ -371,20 +381,26 @@ impl FlightMetrics {
     ///
     /// # Errors
     ///
-    /// [`SimError::Domain`] if this watcher saw no flight, or its last step didn't end where
-    /// `result` did (it watched another flight, or wasn't cleared between two);
+    /// [`SimError::Domain`] if it didn't see each of `result`'s accepted steps once, or its last
+    /// step ended after `result` did (it watched another flight, or wasn't cleared between two);
     /// [`SimError::Core`] if a landing has no geodetic coordinates.
     pub fn summary(
         &self,
         result: &FlightResult,
         environment: &Environment,
     ) -> Result<FlightSummary, SimError> {
-        let end_s = result.final_sample.time_s;
-        if self.rewound || self.last_end_s != Some(end_s) {
+        // A flight can end without a step (before its first, or on a stop a few ulps ahead that
+        // the clock just moves to), so the steps are counted rather than its end matched.
+        if self.rewound
+            || self.steps != result.stats.accepted_steps
+            || self
+                .last_end_s
+                .is_some_and(|end| end > result.final_sample.time_s)
+        {
             return Err(SimError::Domain {
-                what: "end of the flight this watcher saw, s (it must watch the flight it sums up, \
+                what: "steps this watcher saw (it must watch each step of the flight it sums up, \
                        and be cleared before another)",
-                value: self.last_end_s.unwrap_or(f64::NAN),
+                value: self.steps as f64,
             });
         }
         let apogee = result.event(EventKind::Apogee).map(|event| {
@@ -396,14 +412,10 @@ impl FlightMetrics {
             }
         });
         let rail_exit = result.event(EventKind::RailExit).map(|event| event.sample);
-        let floor_pa = self
-            .stability
-            .first()
-            .map_or(0.0, |s| s.dynamic_pressure_pa);
-        let minimum = |pick: fn(&Stability) -> &Margin, floor_pa: f64| {
+        let minimum = |pick: fn(&Stability) -> &Margin, max_angle_rad: f64| {
             self.stability
                 .iter()
-                .filter(|s| s.dynamic_pressure_pa >= floor_pa)
+                .filter(|s| pick(s).angle_of_attack_rad <= max_angle_rad)
                 .filter_map(|s| {
                     pick(s).margin_cal.map(|value| Peak {
                         value,
@@ -452,8 +464,8 @@ impl FlightMetrics {
             max_dynamic_pressure_pa: self.max_q,
             max_acceleration_m_s2: self.max_acceleration,
             max_descent_acceleration_m_s2: self.max_descent_acceleration,
-            min_static_margin_cal: minimum(|s| &s.static_margin, 0.0),
-            min_flight_margin_cal: minimum(|s| &s.flight_margin, floor_pa),
+            min_static_margin_cal: minimum(|s| &s.static_margin, f64::INFINITY),
+            min_flight_margin_cal: minimum(|s| &s.flight_margin, FLIGHT_MARGIN_MAX_ANGLE_RAD),
             rail_exit_stability: self.rail_exit,
             landing,
             body_landings,
@@ -476,9 +488,17 @@ impl Observer for FlightMetrics {
         let phase = step.phase();
         let (a, b) = (step.start_s(), step.end_s());
         let start = step.sample(a)?;
-        if self.last_end_s.is_none() && matches!(phase, Phase::Pad | Phase::Rail) {
-            self.launch_height_m = Some(start.height_above_ground_m);
+        if self.last_end_s.is_none() {
+            match phase {
+                Phase::Pad | Phase::Rail => {
+                    self.launch_height_m = Some(start.height_above_ground_m)
+                }
+                // A flight begun in the air on its way down has no apogee to come.
+                _ if start.vertical_speed_m_s <= 0.0 => self.past_apogee = true,
+                _ => {}
+            }
         }
+        self.steps += 1;
         if self.last_end_s.is_some_and(|end| a < end) {
             self.rewound = true;
         }
@@ -810,8 +830,8 @@ mod tests {
 
     #[test]
     fn ordinary_rockets_keep_their_margin() {
-        // The other side of the limit: every bundled design, from Mach 0 to 2 and at angles of
-        // attack to 20°, is far from it. Its slopes nearly all push one way.
+        // The other side of the limit: every design in `validation/designs/`, from Mach 0 to 2 and
+        // at angles of attack to 20°, is far from it. Its slopes nearly all push one way.
         let mut worst: f64 = 0.0;
         for name in [
             "synthetic-54mm-three-fin",
@@ -821,6 +841,12 @@ mod tests {
             "rocketpy-prometheus-2022-generic-motor",
             "rocketpy-juno-iii",
             "synthetic-two-stage-75mm-54mm",
+            "mil-hdbk-762-sample-rocket",
+            "rocketpy-bella-lui",
+            "rocketpy-calisto-getting-started-motor-at-minus-1.255",
+            "rocketpy-cavour",
+            "wind-tunnel-arcas-robin-long",
+            "wind-tunnel-arcas-robin-short",
         ] {
             let aero = AeroModel::new(&design(name).layout().unwrap()).unwrap();
             for mach in [0.0, 0.3, 0.8, 1.2, 2.0] {
@@ -1268,10 +1294,13 @@ mod tests {
                 .all(|s| s.static_margin.margin_cal.unwrap() >= min.value)
         );
         // In calm air the apogee's angle of attack swings toward 90° as the air stops pressing,
-        // and its flight margin with it; the least flight margin is taken while the air presses at
-        // least as hard as at the rail exit, so it is the climb's.
+        // and its flight margin with it; the least flight margin counts angles up to the fins'
+        // stall, so it is the climb's.
         let at_apogee = series.last().unwrap();
-        assert!(at_apogee.dynamic_pressure_pa < first.dynamic_pressure_pa);
+        assert!(
+            at_apogee.flight_margin.angle_of_attack_rad > FLIGHT_MARGIN_MAX_ANGLE_RAD,
+            "{at_apogee:?}"
+        );
         let least = summary.min_flight_margin_cal.unwrap();
         assert!(least.time_s < apogee_s - 1.0, "{least:?}");
         assert!(least.value > 3.0, "{least:?}");
@@ -1317,6 +1346,65 @@ mod tests {
     }
 
     #[test]
+    fn the_least_flight_margin_skips_stalled_fins() {
+        // On an 84° rail the air presses harder at apogee than at the rail exit, since the rocket
+        // still flies across it, but at an angle of attack past the fins' stall. The least flight margin is
+        // the least of the entries at angles up to the stall, and those past it aren't counted.
+        let sim = Simulation::new(
+            &design("rocketpy-valetudo"),
+            "example",
+            Environment::standard(site()).unwrap(),
+            Rail {
+                elevation_rad: 84.0_f64.to_radians(),
+                ..Rail::vertical(2.0)
+            },
+            capped(600.0),
+        )
+        .unwrap();
+        let (result, metrics) = fly(&sim);
+        let summary = metrics.summary(&result, sim.environment()).unwrap();
+        let series = metrics.stability();
+        let at_apogee = series.last().unwrap();
+        assert_eq!(at_apogee.time_s, summary.apogee.unwrap().time_s);
+        assert!(
+            at_apogee.flight_margin.angle_of_attack_rad > FLIGHT_MARGIN_MAX_ANGLE_RAD,
+            "{at_apogee:?}"
+        );
+        assert!(at_apogee.dynamic_pressure_pa > series[0].dynamic_pressure_pa);
+        let least = summary.min_flight_margin_cal.unwrap();
+        // As the rocket turns over late in the arc its angle of attack grows toward the stall,
+        // and body lift draws the centre of pressure forward: the least comes there, in the last
+        // 1.5 s before apogee and more than a calibre below the least static margin.
+        let apogee_s = summary.apogee.unwrap().time_s;
+        assert!(
+            least.time_s < apogee_s && apogee_s - least.time_s < 1.5,
+            "{least:?}"
+        );
+        let least_static = summary.min_static_margin_cal.unwrap().value;
+        assert!(least.value < least_static - 1.0, "{least:?} {least_static}");
+        let counted: Vec<&Stability> = series
+            .iter()
+            .filter(|s| s.flight_margin.angle_of_attack_rad <= FLIGHT_MARGIN_MAX_ANGLE_RAD)
+            .collect();
+        assert!(counted.len() < series.len());
+        let entry = counted
+            .iter()
+            .find(|s| s.time_s == least.time_s)
+            .expect("the least is a counted entry");
+        assert_eq!(entry.flight_margin.margin_cal, Some(least.value));
+        assert!(
+            counted
+                .iter()
+                .all(|s| s.flight_margin.margin_cal.is_none_or(|m| m >= least.value))
+        );
+        // One not counted is below it: the cap is what keeps it out.
+        assert!(series.iter().any(|s| {
+            s.flight_margin.angle_of_attack_rad > FLIGHT_MARGIN_MAX_ANGLE_RAD
+                && s.flight_margin.margin_cal.is_some_and(|m| m < least.value)
+        }));
+    }
+
+    #[test]
     fn a_summary_needs_the_flight_it_watched() {
         // A watcher that saw nothing, or saw another flight, refuses to sum one up; cleared, it
         // sums up the next. A flight started in the air has no launch height, and no climb.
@@ -1344,5 +1432,49 @@ mod tests {
         assert_eq!(summary.launch_height_m, None);
         assert_eq!(summary.apogee.unwrap().gain_m, None);
         assert_eq!(summary.rail_exit_stability, None);
+
+        // Reused forward in time, not cleared: the first flight's steps are still counted.
+        let short = valetudo(Environment::standard(site()).unwrap(), capped(5.0));
+        let (_, mut reused) = fly(&short);
+        let apogee = result.event(EventKind::Apogee).unwrap().sample;
+        let free = sim
+            .run_free(apogee.time_s, apogee.state, &mut reused)
+            .unwrap();
+        assert!(reused.summary(&free, sim.environment()).is_err());
+
+        // Begun in the air on its way down, it keeps no stability: its apogee is behind it.
+        let mut falling = FlightMetrics::new();
+        let mut state = apogee.state;
+        state.velocity_enu_m_s.z = -1.0;
+        let free = sim.run_free(apogee.time_s, state, &mut falling).unwrap();
+        falling.summary(&free, sim.environment()).unwrap();
+        assert!(falling.stability().is_empty());
+
+        // A flight can end without a step, or on a stop so close ahead that the clock just moves
+        // there; it is still summed up.
+        let stepless = valetudo(
+            Environment::standard(site()).unwrap(),
+            FlightSettings {
+                step_limit: 0,
+                ..capped(20.0)
+            },
+        );
+        let (result, metrics) = fly(&stepless);
+        assert_eq!(result.stats.accepted_steps, 0);
+        let summary = metrics.summary(&result, stepless.environment()).unwrap();
+        assert_eq!(summary.termination, Termination::StepLimit);
+        assert_eq!(summary.max_speed_m_s, None);
+        let cap_s = f64::from_bits(5.0_f64.to_bits() + 3);
+        let at_cap = valetudo(Environment::standard(site()).unwrap(), capped(cap_s))
+            .with_recovery(vec![Device::new(
+                "main",
+                DeviceDrag::canopy(crate::recovery::CanopyType::FlatCircular, 1.0),
+                Trigger::Time { time_s: 5.0 },
+            )])
+            .unwrap();
+        let (result, metrics) = fly(&at_cap);
+        assert_eq!(result.termination, Termination::TimeCap);
+        assert_eq!(result.final_sample.time_s, cap_s);
+        metrics.summary(&result, at_cap.environment()).unwrap();
     }
 }

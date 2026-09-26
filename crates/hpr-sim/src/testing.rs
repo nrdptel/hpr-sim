@@ -259,6 +259,20 @@ pub(crate) fn design(name: &str) -> Rocket {
         "synthetic-two-stage-75mm-54mm" => {
             include_str!("../../../validation/designs/synthetic-two-stage-75mm-54mm.json")
         }
+        "mil-hdbk-762-sample-rocket" => {
+            include_str!("../../../validation/designs/mil-hdbk-762-sample-rocket.json")
+        }
+        "rocketpy-bella-lui" => include_str!("../../../validation/designs/rocketpy-bella-lui.json"),
+        "rocketpy-calisto-getting-started-motor-at-minus-1.255" => include_str!(
+            "../../../validation/designs/rocketpy-calisto-getting-started-motor-at-minus-1.255.json"
+        ),
+        "rocketpy-cavour" => include_str!("../../../validation/designs/rocketpy-cavour.json"),
+        "wind-tunnel-arcas-robin-long" => {
+            include_str!("../../../validation/designs/wind-tunnel-arcas-robin-long.json")
+        }
+        "wind-tunnel-arcas-robin-short" => {
+            include_str!("../../../validation/designs/wind-tunnel-arcas-robin-short.json")
+        }
         _ => panic!("no design {name}"),
     };
     serde_json::from_str(text).unwrap()

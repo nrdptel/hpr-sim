@@ -5,11 +5,12 @@
 - **What it models:** the numbers a flight is judged by. These are the apogee, the top speed and
   Mach number, the peak [dynamic pressure](../glossary.md#dynamic-pressure) ("max q"), the boost's
   peak acceleration and, kept apart, the opening shock. It also gives the
-  [stability margin](../glossary.md#stability-margin) from the rail exit to apogee, the
+  [stability margin](../glossary.md#stability-margin) from the rail exit to apogee or the first
+  deployment, the
   [ejection delay](../glossary.md#ejection-delay) that would fire the charge at apogee, and each
   landing's latitude and longitude. Anything that didn't happen is `None`, never a zero.
 - **Sources:** the margin is [Barrowman's](../glossary.md#barrowmans-method) centre of pressure
-  against the centre of mass, defined as [RocketPy](../glossary.md#rocketpy) defines its static
+  against the [centre of mass](../glossary.md#centre-of-gravity-cg) (the CG), defined as [RocketPy](../glossary.md#rocketpy) defines its static
   margin and stability margin. The peak search is Kiefer's golden-section search
   ([References](#references)). Latitude and longitude come from hpr's WGS 84 conversions
   ([Geodesy](geodesy.md)).
@@ -31,15 +32,15 @@
 
 Loft, this project's predecessor, got four things wrong that these metrics are built to avoid:
 
-- It read peaks off a table of recorded rows, and missed them.
-- It counted the opening shock as the boost's peak acceleration.
+- It read peaks off a table of recorded rows and missed them, and it counted the opening shock as
+  the boost's peak acceleration ([L34](../decisions-and-roadmap.md#l34)).
 - It printed zeros for things that never happened, and never said which height an apogee was
-  counted from.
-- It published margins of ±12 to 15 calibres for rockets where a margin has no meaning.
+  counted from ([L35](../decisions-and-roadmap.md#l35)).
+- It published margins of ±12 to 15 calibres for rockets where a margin has no meaning
+  ([L33](../decisions-and-roadmap.md#l33)).
+- Its optimum ejection delay depended on the delay flown ([L94](../decisions-and-roadmap.md#l94)).
 
-Each is a numbered lesson with a test: [L33](../decisions-and-roadmap.md#l33),
-[L34](../decisions-and-roadmap.md#l34), [L35](../decisions-and-roadmap.md#l35) and
-[L94](../decisions-and-roadmap.md#l94).
+Each is a numbered lesson with a test ([Tests](#tests)).
 
 ## Getting the numbers
 
@@ -79,7 +80,7 @@ Opening shock:         153.4 m/s² at 9.76 s, 698 m up
 Rail exit:            16.2 m/s at 0.37 s, 17.2° off the oncoming air
 At rail exit (0.37 s): static margin 3.09 cal, flight margin 0.69 cal at Mach 0.051
 Least static margin:    3.09 cal at 0.37 s, 4 m up
-Least flight margin:    0.69 cal at 0.37 s, 4 m up
+Least flight margin:    0.95 cal at 0.46 s, 6 m up
 
 Optimum delay:        10.6 s after burnout at 3.26 s (flown: 6.0 s), for an apogee of 778.7 m at 13.83 s
 Landing:              32.990000° N, 106.967084° W: 272.6 m east and 0.0 m north of the site, at 11.6 m/s, at 78.67 s
@@ -87,19 +88,23 @@ Landing:              32.990000° N, 106.967084° W: 272.6 m east and 0.0 m nort
 
 The 6 s delay is too short:
 
-- The charge fires at 9.26 s, and the canopy opens at 9.76 s while the rocket still climbs fast.
+- The charge fires at 9.26 s, and the canopy opens at 9.76 s: about 4 s (13.83 − 9.76) before
+  the apogee it would have reached.
 - The rocket still rises 1.4 s more, to an apogee of 714.0 m.
 - With the charge held, it would have coasted to 778.7 m at 13.83 s: the apogee of the
   [Getting started](../getting-started.md) flight, whose drogue fires at apogee.
 - So the optimum delay is 10.6 s. The opening shock, 153.4 m/s², is three times the boost's
-  47.2 m/s², and it is not counted as the boost's peak.
+  47.2 m/s², and it is not counted as the boost's peak. Don't size a shock cord from it: this
+  canopy opens at once (hpr's default), and hpr leaves out a canopy's overshoot
+  ([The opening load](recovery.md#the-opening-load)).
 
 Top speed comes at 3.00 s, before the 3.26 s burnout, because in the thrust curve's last moments
 the motor pushes less than drag and gravity pull back.
 
 ## Heights
 
-Every height is of the centre of mass: its ellipsoidal height above the launch site's, the same as
+Every height is of the centre of mass: its
+[ellipsoidal height](../glossary.md#ellipsoidal-height) above the launch site's, the same as
 a flight's `height_above_ground_m`. The centre of mass starts above the site, because the rocket
 stands on the rail: 0.94 m for Valetudo. So the summary gives both:
 
@@ -119,16 +124,15 @@ Each peak comes with its time and its height. The watcher looks at every step th
 1. It evaluates the equations of motion at each step's start, middle and end.
 2. It fits a parabola through the three values. When the parabola bends down with its top inside
    the step, the peak may lie inside. A golden-section search then looks for it on the step's
-   dense output, the integrator's smooth curve through the step, down to 1e-9 of the flight's
-   clock (at least 1 s).
+   dense output, the integrator's smooth curve through the step, to a billionth of the time
+   since launch (or of 1 s early in the flight).
 3. It keeps the largest of what the search finds and the three samples.
 
 Thrust-curve knots, the times where a motor's tabulated thrust changes slope, end steps. So a spike
 in the thrust curve is a step's end, and is never averaged away. Loft took its peak acceleration
 from a finite difference of the recorded speed, and read it low. Valetudo in a vacuum shows how
 much: the watcher's peak matches the hand value from the motor and the masses within the test's
-1e-6, and a finite difference of the speed recorded at 100 Hz reads it more than 1% low (1.3% on
-this motor).
+1e-6, and a finite difference of the speed recorded at 100 Hz reads it more than 1% low.
 
 | Peak | What it is |
 |---|---|
@@ -136,11 +140,11 @@ this motor).
 | Top Mach number | The airspeed over the local speed of sound |
 | Max q | The largest dynamic pressure, ½ρv² on the airspeed |
 | Boost acceleration | The largest acceleration of the nose tip, from liftoff until a recovery device opens |
-| Opening shock | The largest acceleration while a device is open. It follows hpr's inflation model ([Recovery](recovery.md)) |
+| Opening shock | The largest acceleration while a device is open, the [opening load](../glossary.md#opening-load) over the mass. It follows hpr's inflation model ([Recovery](recovery.md)) |
 
 The accelerations are of the nose tip, which is the body's origin in hpr's
 [frames](frames.md). It differs from the centre of mass's only by the rocket's turning, which is
-small in a straight boost. The accelerations are relative to the
+small in a straight boost, and by the centre of mass's slow drift forward as propellant burns. The accelerations are relative to the
 [launch frame](../glossary.md#launch-frame-enu) and straight from the equations of motion, so they
 include gravity's pull, as a trajectory's acceleration does. An accelerometer reads something
 else: it does not feel gravity.
@@ -175,10 +179,19 @@ rail holds the rocket, and its slow climb through the wind gives angles of attac
 margin means nothing about stability.
 
 The summary's least static margin is the smallest in the series. Its least flight margin counts
-only the entries where the air presses at least as hard as at the rail exit. Near apogee the air
-barely presses and the angle of attack swings toward 90° again, and the flight margin with it. A
-test checks that in calm air Valetudo's least flight margin comes from the climb, above 3
-calibres, and not from the apogee.
+only the entries at angles of attack up to 15°, where a fin stalls and hpr's linear fin model means
+nothing (the same limit hpr puts on a fin's [cant](../glossary.md#cant)). The entries past it stay
+in the series.
+
+- Near apogee the angle of attack swings toward 90°, and the flight margin with it. A test checks
+  that in calm air, off a vertical rail, Valetudo's least flight margin comes from the climb, above
+  3 calibres, and not from the apogee.
+- A slow rail exit in wind can be past the stall too. The example's rail exit, at 17.2°, is not
+  counted; its least, 0.95 calibres, comes 0.09 s later, once the rocket has turned into the wind.
+- Off a tilted rail, the rocket turns over late in the arc and its angle of attack grows toward
+  15°. Body lift then draws the centre of pressure forward, so the least flight margin often
+  comes there. A test flies Valetudo off an 84° rail in calm air: its least comes in the last
+  1.5 s before apogee, more than a calibre below its least static margin.
 
 After a powered separation the margins are the sustainer's, in its own diameter.
 
@@ -194,13 +207,15 @@ hpr judges the net slope against the sum of its terms' sizes:
 κ = Σ |C_Nα,i| / Σ C_Nα,i
 ```
 
-Every station `x_i` lies on the rocket, within its length `L`. The centre of pressure then lies
-within `κ L` of every station. So an error `ε` in one component's slope moves the centre of
-pressure by at most `ε κ² L`.
+Each part the model adds up acts at a station `x_i` on the rocket, within its length `L`. The
+centre of pressure then lies within `κ L` of every station. So a fractional error `ε` in one
+part's slope moves the centre of pressure by at most about `ε κ² L` (to first order). A part that
+is a pure couple on its own (below) has no station, and `κ` doesn't count it.
 
 - A rocket whose parts all push the same way has `κ = 1`, and a 1% error moves its centre of
-  pressure by at most 1% of its length. Every bundled design stays below 1.5, from Mach 0 to 2 and
-  at angles of attack to 20°.
+  pressure by at most 1% of its length. All 13 designs in
+  [`validation/designs/`](https://github.com/nrdptel/hpr-sim/tree/main/validation/designs) stay
+  below 1.5, from Mach 0 to 2 and at angles of attack to 20°.
 - At `κ = √10 = 3.16`, a 1% error in one slope can move the centre of pressure by a tenth of the
   rocket. Past that, or when the net slope is not positive, hpr gives no margin and no centre of
   pressure: `None`. The limit is a chosen bound on that sensitivity, not a measurement.
@@ -219,8 +234,8 @@ A worked case, with no fins, pinned by a test:
   boattail 0.4 m long, narrowing to a radius `r`. So `d` = 0.1 m.
 - Barrowman gives the nose a slope of 2 at 0.2 m. The boattail gets `2((r/R)² − 1)`, at
   `0.8 + (0.4/3)(1 + 1/(1 + R/r))` m.
-- So `κ = 2/ρ² − 1`, with `ρ = r/R`. The margin is given for `ρ ≥ 0.693`, an aft radius of
-  34.7 mm or more.
+- So `κ = 2/ρ² − 1`, with `ρ = r/R`. The margin is given for `ρ ≥ 0.6932`, an aft radius of
+  34.66 mm or more.
 - The centre of mass is at 0.5 m.
 
 | Boattail's aft radius | Net slope | κ | Margin | `C_mα` |
@@ -249,7 +264,7 @@ too early cuts the coast short. Loft's optimum then came out too short as well, 
 even shorter delay. hpr gives the same optimum for delays of 1 s and 20 s.
 
 - A [separation](../glossary.md#separation) with nothing ahead of it left to burn is part of the
-  recovery, so it is held too. A two-stage rocket that splits a delay after its last burnout gets
+  recovery, so it is held too. A two-stage rocket that separates some seconds after its last burnout gets
   the same optimum for a 3 s delay as for a 30 s one.
 - A powered separation still happens. The motors in the booster it drops have no optimum: their
   charges fire in the booster, which never reaches the [sustainer's](../glossary.md#sustainer)
@@ -263,7 +278,7 @@ A landing is where the centre of mass came back down to the site's height. It is
 latitude and longitude, as east and north metres from the site in its local frame, and as the speed
 at the ground hit. The flight's own landing is the stack's (the whole rocket before any
 separation), or after a powered separation the sustainer's. Each separated body that lands has its
-own landing, with its body number.
+own landing, with its body number: 0 keeps the nose, and 1 is the stages aft of the split.
 
 A flight that did not land has no landing and no ground-hit speed: `None`. A test checks this for a
 flight stopped by its time cap, and the JSON it writes, where the missing values are `null`.
@@ -275,16 +290,17 @@ In `crates/hpr-sim/src/metrics.rs`, unless named otherwise:
 | Test | What it pins |
 |---|---|
 | `static_margin_undefined_when_cn_alpha_near_zero` | The boattail table above, against Barrowman by hand, to 1e-9 relative, on both sides of the limit ([L33](../decisions-and-roadmap.md#l33)) |
-| `ordinary_rockets_keep_their_margin` | Every bundled design keeps its margin from Mach 0 to 2 and to 20°, with `κ` below 1.5 |
+| `ordinary_rockets_keep_their_margin` | All 13 validation designs keep their margin from Mach 0 to 2 and to 20°, with `κ` below 1.5 |
 | `a_pure_couple_keeps_its_moment` | The step and flare above: `C_mα` against the hand value, to 1e-9 |
 | `a_normal_force_table_gives_its_own_margin` | A table's margin and `C_mα` against its own numbers |
 | `peak_acceleration_is_analytic_and_excludes_opening_shock` | The boost's peak in a vacuum against the hand value, to 1e-6; a 100 Hz finite difference reads it more than 1% low; an opening shock over three times the boost's is kept apart ([L34](../decisions-and-roadmap.md#l34)) |
 | `unlanded_flight_has_no_ground_hit_speed_and_outputs_name_datum` | `None` and `null` for an unlanded flight; the launch height against the rail's geometry, to 1e-9 relative ([L35](../decisions-and-roadmap.md#l35)) |
 | `optimum_delay_independent_of_flown_delay` | Delays of 1 s and 20 s give the same optimum, equal to a flight with no recovery ([L94](../decisions-and-roadmap.md#l94)) |
-| `peaks_are_refined_inside_steps` | On three rockets, max q and top Mach are above every row of a 1 ms record and within 1e-4 of the best; on Valetudo max q comes before top speed, and top speed before top Mach |
+| `peaks_are_refined_inside_steps` | On three rockets, max q and top Mach are above every row of a 1 ms record, and the record's best row is within 0.01% of them; on Valetudo max q comes before top speed, and top speed before top Mach |
 | `landings_are_placed_on_the_ellipsoid` | A landing more than 100 m downwind, against the radii of curvature at the site, to second order |
 | `stability_is_kept_from_rail_exit_to_apogee` | The series' ends; the static margin at the rail exit and, in a crosswind, the flight margin against the model and the masses directly; the least flight margin in calm air is the climb's |
-| `a_summary_needs_the_flight_it_watched` | A watcher refuses a flight it didn't see end, and a flight started in the air has no launch height |
+| `the_least_flight_margin_skips_stalled_fins` | Off an 84° rail, the entries past 15° are left out of the least flight margin, one of them below it; the least comes in the last 1.5 s before apogee |
+| `a_summary_needs_the_flight_it_watched` | A watcher refuses a flight whose steps it didn't all see, or saw with another's, and sums up one that ended without a step; a flight started in the air has no launch height, and one started on its way down keeps no stability |
 | `staging::tests::metrics_follow_a_powered_separation` | Both landings, the sustainer's diameter after the split, and no optimum for the booster's motor |
 | `staging::tests::a_held_flight_holds_a_separation_after_the_last_burnout` | A split after the last burnout is held: the same optimum for delays of 3 s and 30 s |
 

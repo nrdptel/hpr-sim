@@ -570,8 +570,9 @@ impl Simulation {
     }
 
     /// This simulation with its recovery charges held: the stack's devices never fire, so it
-    /// coasts through its apogee as if every delay were long. A separation still happens, and a
-    /// separated body's devices act as they would. User events, which can't be copied, are left
+    /// coasts through its apogee as if every delay were long. A separation that lights a motor
+    /// ahead of it still happens, and a separated body's devices act as they would; one that
+    /// doesn't is held with the charges. User events, which can't be copied, are left
     /// out.
     pub(crate) fn with_recovery_held(&self) -> Self {
         Self {
@@ -914,13 +915,15 @@ impl Simulation {
                                         ignition + placed.mounted.motor.burnout_time_s() > t
                                     })
                             });
+                    // Checked before a held flight holds it, so that the delay's flight refuses
+                    // what the flown one would.
+                    self.check_aft_body_spent(separation, &lit, t)?;
                     if self.recovery_held && !powered {
                         // With nothing ahead of it left to burn it is part of the recovery, so it
                         // is held with the charges.
                         separation_held = true;
                         continue;
                     }
-                    self.check_aft_body_spent(separation, &lit, t)?;
                     let sample = self.sample(vehicle, phase, window, t, &y, area)?;
                     record(&mut events, observer, EventKind::Separation, sample);
                     if !powered {
@@ -1018,7 +1021,7 @@ impl Simulation {
                     };
                 }
             }
-            let watches = self.watches(phase, &run, !staged);
+            let watches = self.watches(phase, &run, !staged && !separation_held);
             let mut system = PhaseSystem {
                 simulation: self,
                 vehicle,
