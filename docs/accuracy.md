@@ -91,7 +91,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Frames](physics/frames.md) | ✓ | — | ✓ RocketPy | — |
 | [Geodesy](physics/geodesy.md) | ✓ | ✓ | — | — |
 | [Gravity](physics/gravity.md) | ✓ | ✓ | ✓ RocketPy | — |
-| [Atmosphere](physics/atmosphere.md) | ✓ | ✓ | ✓ RocketPy, in the descents only | partial: its pressure altitude against two altimeters' readings of their own pressure, to 0.01 m and 1.4 m ([ADR-082][adr-082]) |
+| [Atmosphere](physics/atmosphere.md) | ✓ | ✓ | ✓ RocketPy, in the descents only | partial: its pressure altitude against two altimeters' readings of their own pressure, to 0.195 m and 1.321 m ([report][real-report]) |
 | [Wind](physics/wind.md) | ✓ | — | ✓ RocketPy, in the descents only | — |
 | [Turbulence](physics/turbulence.md) | ✓ | — | — | — |
 | [Design tree](physics/design.md) | ✓ | — | ✓ RocketPy, mass properties only | — |
@@ -600,10 +600,10 @@ thrust file as it would any other: nothing of the motor is modelled ([ADR-082][a
 **Reading the logs.** Every log here comes from a
 [barometric altimeter](glossary.md#barometric-altimeter), or is assumed to. Such an altimeter
 turns pressure into the [standard atmosphere](glossary.md#standard-atmosphere)'s altitude. On a
-day warmer than the standard it reads less than the height climbed, 6.9% less on a day 20 K
+day warmer than the standard it reads less than the height climbed, 6.5% less on a day 20 K
 warmer ([worked example](physics/atmosphere.md#pressure-altitude-what-a-barometric-altimeter-reads)),
-and more on a cold one. Two logs record their pressure, and their heights are exactly that
-reading. So hpr's height is read the same way, from the ERA5 pressure at its centre of mass. The
+and more on a cold one. Two logs record their pressure, and their heights are that reading, to
+0.195 m and 1.321 m ([report][real-report]). So hpr's height is read the same way, from the ERA5 pressure at its centre of mass. The
 table gives hpr's apogee both ways. The reading moves it from −7.9% (Juno III, in June at
 Spaceport America) to +1.7% (NDRT 2020, in February) ([report][real-report],
 [ADR-082][adr-082]).
@@ -611,13 +611,19 @@ Spaceport America) to +1.7% (NDRT 2020, in February) ([report][real-report],
 The kind of four altimeters is assumed rather than known; each row of the
 [report][real-report] gives its evidence. Reading all seven as heights would give a mean of
 4.47%, but three logs are known to be barometric. Reading only the four assumed ones as heights
-gives 6.63%, so the target is missed either way ([report][real-report]). Two logs also carry
-satellite heights, and those agree with the barometric reading to about 1.5% of the apogee
-([ADR-082][adr-082]).
+gives 6.63%, so the target is missed either way. Read that way, Lince (+7.99%) would miss by more
+than 5% with no checked explanation, and Genesis would not ([report][real-report],
+[ADR-082][adr-082]).
 
-Three logs are read only up to their apogee: there, as a parachute charge fires, the reading
+Two logs also carry satellite (GNSS) heights, a geometric reference. Their barometric apogees are
+0.943 and 0.935 of the satellite ones, and hpr's conversion makes its own apogee 0.932 and 0.921 of
+its height: the same direction and nearly the same size, about a point lower on both, on the side
+of both flights' misses ([report][real-report]).
+
+Three logs are cut by hand just before a pressure transient at their apogee, where the reading
 jumps. Juno III's rises 62 m in 0.3 s as it levels off, and the team's reported apogee is that
-spike ([report][real-report]).
+spike. At the cut its own velocity column still reads 17.5 m/s up, so its apogee may be 10 m to
+20 m low ([report][real-report]).
 
 **What is compared.**
 
@@ -667,11 +673,12 @@ only where the pinned RocketPy copy is. CI checks each claim against the committ
   0.44, the apogee is +0.17% ([report][real-report]). hpr's own drag is lower, as it was against
   RocketPy flying the same constant.
 - **Prometheus, −8.90%: consistent with hpr's drag.** On the team's drag table the apogee is
-  +0.45%. Most of the miss comes from the barometric reading, which here uses the temperatures of
-  24 June 2023, a year after the flight: as a height it misses by less ([report][real-report]).
+  +0.45%. The barometric reading uses the temperatures of 24 June 2023, a year after the flight.
+  By the flight's own satellite height the day's air read 0.943 of the height where hpr's reads
+  0.932, so the wrong day is about a point of the miss ([report][real-report]).
 - **Juno III, −7.24%: consistent with the motor's impulse.** The notebook reshapes the team's
-  own motor curve to 8800 N s, 4.9% less than the 9251.7 N s the file records. On the file as
-  recorded the apogee is +1.13%, while on the team's drag the miss grows to −9.05%
+  own motor curve to 8800 N s, 4.9% less than the file. On the file as recorded (9251.7 N s, its
+  negative end read as zero) the apogee is +1.13%, while on the team's drag it is −9.05%
   ([report][real-report]).
 - **Cavour, +5.63%: consistent with hpr's drag.** On the curves the team labels RASAero II the
   apogee is −2.29% ([report][real-report]). hpr's drag is below those curves, 8.3% at Mach 0.3
@@ -680,7 +687,8 @@ only where the pinned RocketPy copy is. CI checks each claim against the committ
   ([report][real-report]).
 
 These are consistent explanations, not proofs: the teams' drags, and the impulse a notebook sets,
-are estimates too.
+are estimates too. Lince, inside the target on hpr's drag, is −12.20% on its team's; that is not
+investigated ([report][real-report]).
 
 **How far to trust it.** The altimeters are not calibrated here: a barometer's error, the filter
 of the four that are filtered, and the assumed kind of four of them all sit in the reference.

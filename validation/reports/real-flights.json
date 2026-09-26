@@ -50,10 +50,10 @@
       "example_drag_apogee_m": 460.0552869021684,
       "example_drag_apogee_error_percent": 0.23624300928999892,
       "example_drag_trace_rms_m": 2.0448170876797316,
-      "recorded_thrust_impulse_ns": null,
-      "recorded_thrust_apogee_m": null,
-      "recorded_thrust_apogee_error_percent": null,
-      "inputs_sha256": "fb6bcdf79d35a1115541a30af6b55d2e428aac4d0bfcbf77ddc52d00e2dcb6b7",
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "800cca188e84e89cb301eaaae1dea1d06156bb1144fbcd2e79878d5df26699a1",
       "note": "",
       "explanation_kind": "",
       "explanation": ""
@@ -105,10 +105,10 @@
       "example_drag_apogee_m": 1322.6368449369077,
       "example_drag_apogee_error_percent": 0.1726670056255577,
       "example_drag_trace_rms_m": 31.695720105854306,
-      "recorded_thrust_impulse_ns": null,
-      "recorded_thrust_apogee_m": null,
-      "recorded_thrust_apogee_error_percent": null,
-      "inputs_sha256": "b29c07805e971219a3e9991027a055cf14fc9a8c27a27cd303bf61861cce9b0a",
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "d82d593eaa4e2eb96aae63b09ad453acd60a45b12d9e23f31221c973086cbe47",
       "note": "",
       "explanation_kind": "drag",
       "explanation": "consistent with hpr's drag. On the example's own drag, a constant 0.44 the notebook gives no source for, the apogee is within the target. hpr's own drag is lower, as the predicted-mode comparison with RocketPy flying the same constant found (+10.3% in apogee), and the design's fin edges and finish are placeholders, since the example records none."
@@ -144,7 +144,7 @@
       "log_rows": 3271,
       "log_until_s": 29.58,
       "altimeter": "barometric",
-      "altimeter_evidence": "an Altus Metrum TeleMetrum: to the ascent's apogee its height column is the standard atmosphere's altitude of its pressure column less the pad's, to 0.01 m",
+      "altimeter_evidence": "an Altus Metrum TeleMetrum: its height column is the standard atmosphere's altitude of its pressure column less the first row's (the gap is below)",
       "log_apogee_m": 3895.83,
       "hpr_apogee_m": 3549.2858769673912,
       "hpr_height_apogee_m": 3809.871692558215,
@@ -160,13 +160,13 @@
       "example_drag_apogee_m": 3913.5365576020777,
       "example_drag_apogee_error_percent": 0.45450026315516173,
       "example_drag_trace_rms_m": 98.3642239796445,
-      "recorded_thrust_impulse_ns": null,
-      "recorded_thrust_apogee_m": null,
-      "recorded_thrust_apogee_error_percent": null,
-      "inputs_sha256": "33f3bc42bc544853bf92fd011a5b351be639fd0ce6be6d333f1a5b13442ddb23",
+      "recorded_thrust": null,
+      "pressure_reading_max_m": 0.19515728329315607,
+      "gnss_apogee_m": 4133.0,
+      "inputs_sha256": "19c2f27073d002718a87028988b3bccad15b4c24c530826a8d17852ce6ff1169",
       "note": "flown in the weather of 24 June 2023, a year after the flight, as RocketPy's example flies it: RocketPy has no ERA5 file of the day. The log is read to 29.58 s: a pressure transient then drops the reading 600 m and returns it 8 m above the highest reading before",
       "explanation_kind": "drag",
-      "explanation": "consistent with hpr's drag. On the example's own drag, the team's table from Mach 0.15, the apogee is within the target. The barometric reading is built on the temperatures of a day a year after the flight (the note); read as a height, the apogee misses by less."
+      "explanation": "consistent with hpr's drag. On the example's own drag, the team's table from Mach 0.15, the apogee is within the target. The reading is built on weather a year off the flight's day (the note); by the flight's satellite height, that is about a point of the miss."
     },
     {
       "id": "juno-iii",
@@ -177,6 +177,10 @@
         {
           "path": "refs/rocketpy/data/rockets/juno3/cots_altimeter.csv",
           "sha256": "eef81b3bcc4c285667727c1e2c9ca502a67cb374f5e31bc4f87ed76b8a04c1ee"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/juno3/cots_GNSS.csv",
+          "sha256": "557c80be4c0d9a5e6a5493177a9adfaa3b02c11b8ff814ed238b53540ac9f062"
         },
         {
           "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
@@ -203,7 +207,7 @@
       "log_rows": 493,
       "log_until_s": 24.6,
       "altimeter": "barometric",
-      "altimeter_evidence": "a Missile Works RRC3 (juno3/README.txt:21): to the ascent's apogee its height column is the standard atmosphere's altitude of its pressure column less the first row's, to 1.4 m",
+      "altimeter_evidence": "a Missile Works RRC3 (juno3/README.txt:21): its height column is the standard atmosphere's altitude of its pressure column less the first row's (the gap is below)",
       "log_apogee_m": 3151.507,
       "hpr_apogee_m": 2923.3555415408528,
       "hpr_height_apogee_m": 3174.474784176552,
@@ -219,13 +223,17 @@
       "example_drag_apogee_m": 2866.141348773376,
       "example_drag_apogee_error_percent": -9.054895046294483,
       "example_drag_trace_rms_m": 255.26149005263582,
-      "recorded_thrust_impulse_ns": 9251.717584802198,
-      "recorded_thrust_apogee_m": 3187.22107146692,
-      "recorded_thrust_apogee_error_percent": 1.133237891171427,
-      "inputs_sha256": "cf086d6d7205ecc843fa67300d2f2d3dec4c0abac649e07f4d194dc0beb201ef",
-      "note": "the log is read to 24.60 s, as it levels off: a pressure transient there dips the reading by 94 m, then lifts it 62 m above the level within 0.3 s, to the 3213.4 m the flight card gives, and the record's last two rows are corrupt. The thrust file's last five points are negative (-6.8 to -47.3 N); hpr, which refuses a negative thrust, reads them as zero, and RocketPy's flight holds its thrust at zero too",
+      "recorded_thrust": {
+        "impulse_ns": 9251.717584802198,
+        "apogee_m": 3187.22107146692,
+        "apogee_error_percent": 1.133237891171427
+      },
+      "pressure_reading_max_m": 1.3212411887507187,
+      "gnss_apogee_m": 3369.2592,
+      "inputs_sha256": "e14ebf0fde011b89f4d984e6475a0d652a7f7f25f7eb67c7cefbb81d7bd4ce2b",
+      "note": "the log is read to 24.60 s, as it levels off: a pressure transient there dips the reading by 94 m, then lifts it 62 m above the level within 0.3 s, to the 3213.4 m the team reports as its apogee, and the record's last two rows are corrupt. At the cut the log's own velocity column still reads 17.5 m/s up, so its apogee may be 10 m to 20 m low. The thrust file's last five points are negative (-6.8 to -47.3 N); hpr, which refuses a negative thrust, reads them as zero, and RocketPy's flight holds its thrust at zero too",
       "explanation_kind": "thrust",
-      "explanation": "consistent with the motor's impulse. The notebook reshapes the team's own motor curve (`mandioca_thrust_curve.csv`) to 5.8 s and 8800 N s, 4.9% less than the file records; on the file as recorded the apogee is within the target, and on the team's drag the miss grows."
+      "explanation": "consistent with the motor's impulse. The notebook reshapes the team's own motor curve (`mandioca_thrust_curve.csv`) to 5.8 s and 8800 N s, 4.9% less than the file; on the file as recorded the apogee is within the target, and on the team's drag it is not."
     },
     {
       "id": "cavour",
@@ -282,10 +290,10 @@
       "example_drag_apogee_m": 2725.023297959112,
       "example_drag_apogee_error_percent": -2.293893941946507,
       "example_drag_trace_rms_m": 26.933048367466732,
-      "recorded_thrust_impulse_ns": null,
-      "recorded_thrust_apogee_m": null,
-      "recorded_thrust_apogee_error_percent": null,
-      "inputs_sha256": "15f2d415b63e730b5e4f9df056f979b85693199ae3d3c504ab63bfc6e66062d0",
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "a182a025cf57845c26c2c261dcda7818cf754332e0e945c51d8ff96706f4b289",
       "note": "",
       "explanation_kind": "drag",
       "explanation": "consistent with hpr's drag. On the example's own curves, labelled RASAero II, the apogee is within the target. hpr's drag is below them: at Mach 0.3, 8.3% below power off and 18.3% below power on (the aerodynamics page's comparison; the power-on gap's cause is open), and the design's fin edges are placeholders, since the example records none."
@@ -345,10 +353,10 @@
       "example_drag_apogee_m": 2914.4761491347876,
       "example_drag_apogee_error_percent": -0.07595939240065491,
       "example_drag_trace_rms_m": 32.68171640908355,
-      "recorded_thrust_impulse_ns": null,
-      "recorded_thrust_apogee_m": null,
-      "recorded_thrust_apogee_error_percent": null,
-      "inputs_sha256": "2dec1ade1aa7f376570ad648e783a272fa7ecbda6728020661f00feca81cfab4",
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "bddb3d88ed423e01e63c8afcbd69736029740d4027a71d51f2863150f9776473",
       "note": "",
       "explanation_kind": "drag",
       "explanation": "consistent with hpr's drag. On the example's own curves the apogee is within the target; the design's fin edges and finish are placeholders, since the example records none."
@@ -408,11 +416,11 @@
       "example_drag_apogee_m": 3149.904053174589,
       "example_drag_apogee_error_percent": -12.20326938322989,
       "example_drag_trace_rms_m": 279.92823891511676,
-      "recorded_thrust_impulse_ns": null,
-      "recorded_thrust_apogee_m": null,
-      "recorded_thrust_apogee_error_percent": null,
-      "inputs_sha256": "c597d31cdea6dcb878e1422ccff1e7fd02dffa8176034f89a354d72d198759c3",
-      "note": "the log is read to 26.80 s: past it, as the recovery fires, the filtered height swings by hundreds of metres, up to 3668.5 m; its highest reading before is the flight card's 3587 m",
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "6718d2cbbe9130e461efdde195feb4a2e1953d3f3747c0436ae8f634f4b4aad1",
+      "note": "the log is read to 26.80 s: past it, as the recovery fires, the filtered height swings by hundreds of metres, up to 3668.5 m; its highest reading before is the 3587 m the team reports as its apogee",
       "explanation_kind": "",
       "explanation": ""
     }

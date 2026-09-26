@@ -42,9 +42,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
             row.trace_rms_percent,
             100.0 * (row.hpr_height_apogee_m - row.log_apogee_m) / row.log_apogee_m,
             row.example_drag_apogee_error_percent,
-            row.recorded_thrust_apogee_error_percent
-                .map_or(String::new(), |error| format!(
-                    "  on the recorded thrust {error:+.2}%"
+            row.recorded_thrust
+                .as_ref()
+                .map_or(String::new(), |flown| format!(
+                    "  on the recorded thrust {:+.2}%",
+                    flown.apogee_error_percent
                 ))
         );
     }

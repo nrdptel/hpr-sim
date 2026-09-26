@@ -31,6 +31,12 @@
 //!   [`GRID_S`] grid of its dense output. The descent is not compared: its events (which parachute
 //!   opened, when) are the team's, and one of these flights lost its main.
 //!
+//! Two diagnostic flights, not predictions, say where a miss may come from: the same flight on the
+//! example's own drag, and where the example reshapes its thrust file, on the file as recorded.
+//! Where a log keeps its pressure or the flight a satellite altitude, the report holds the
+//! barometric reading against them. Each row carries the SHA-256 of its flight's entry in
+//! [`FLIGHTS`], so CI sees an input change the report hasn't caught up with.
+//!
 //! The mean absolute apogee error is reported against the [`APOGEE_TARGET_PERCENT`] target of
 //! `docs/VALIDATION.md`; it is a target, not a gate. A flight outside it is an outlier, and each
 //! outlier carries its explanation in [`RealFlight::explanation`].
@@ -103,6 +109,28 @@ pub struct Log {
     pub until_s: Option<f64>,
     /// What measured the height, and so what of hpr's flight it is compared with.
     pub altimeter: Altimeter,
+    /// The column of the pressure the height was read from, and pascals per unit, where the log
+    /// keeps it: the report gives how far the height column is from the standard atmosphere's
+    /// reading of it.
+    pub pressure: Option<(usize, f64)>,
+    /// The flight's satellite (GNSS) altitude, where it logged one: a geometric height to hold the
+    /// barometric reading against.
+    pub gnss: Option<Gnss>,
+}
+
+/// Where a flight's satellite altitude is and how to read it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gnss {
+    /// The CSV file, under `refs/rocketpy/data/rockets/`.
+    pub file: &'static str,
+    /// Header lines before the first row.
+    pub header_lines: usize,
+    /// The column of time, s (zero-based).
+    pub time_column: usize,
+    /// The column of altitude (zero-based); its first row is the pad's.
+    pub altitude_column: usize,
+    /// Metres per unit of the altitude column.
+    pub metres_per_unit: f64,
 }
 
 /// What a log's height is.
@@ -175,7 +203,8 @@ pub enum Explanation {
     /// Consistent with hpr's drag: on the example's own drag the apogee is within the target.
     Drag(&'static str),
     /// Consistent with the motor's impulse: on the thrust file as recorded, without the reshape
-    /// the example applies, the apogee is within the target.
+    /// the example applies, the apogee is within the target, and on the example's own drag it is
+    /// not.
     Thrust(&'static str),
 }
 
@@ -260,6 +289,8 @@ pub const FLIGHTS: [RealFlight; 7] = [
                 "the team's own avionics, filtered by a method the example doesn't record: \
                  barometric assumed, as hobby altimeters are",
             ),
+            pressure: None,
+            gnss: None,
         },
         example_drag: ExampleDrag::Knots {
             points: &[
@@ -297,6 +328,8 @@ pub const FLIGHTS: [RealFlight; 7] = [
                 "a Featherweight Raven (RocketPy's tests/acceptance/test_ndrt_2020_rocket.py:190), \
                  a barometric altimeter, in feet above the pad",
             ),
+            pressure: None,
+            gnss: None,
         },
         example_drag: ExampleDrag::Constant(0.44),
         example_drag_source: "ndrt_2020_flight_sim.ipynb:91 and :316-317 (the drag coefficient, power off and on)",
@@ -327,9 +360,17 @@ pub const FLIGHTS: [RealFlight; 7] = [
             metres_per_unit: 1.0,
             until_s: Some(29.58),
             altimeter: Altimeter::Barometric(
-                "an Altus Metrum TeleMetrum: to the ascent's apogee its height column is the \
-                 standard atmosphere's altitude of its pressure column less the pad's, to 0.01 m",
+                "an Altus Metrum TeleMetrum: its height column is the standard atmosphere's \
+                 altitude of its pressure column less the first row's (the gap is below)",
             ),
+            pressure: Some((8, 1.0)),
+            gnss: Some(Gnss {
+                file: "prometheus/2022-06-24-serial-5115-flight-0001-TeleMetrum.csv",
+                header_lines: 1,
+                time_column: 4,
+                altitude_column: 21,
+                metres_per_unit: 1.0,
+            }),
         },
         example_drag: ExampleDrag::Knots {
             points: &[
@@ -355,9 +396,9 @@ pub const FLIGHTS: [RealFlight; 7] = [
                highest reading before",
         explanation: Explanation::Drag(
             "consistent with hpr's drag. On the example's own drag, the team's table from Mach \
-             0.15, the apogee is within the target. The barometric reading is built on the \
-             temperatures of a day a year after the flight (the note); read as a height, the \
-             apogee misses by less.",
+             0.15, the apogee is within the target. The reading is built on weather a year off \
+             the flight's day (the note); by the flight's satellite height, that is about a point \
+             of the miss.",
         ),
     },
     RealFlight {
@@ -377,10 +418,18 @@ pub const FLIGHTS: [RealFlight; 7] = [
             metres_per_unit: 1.0,
             until_s: Some(24.60),
             altimeter: Altimeter::Barometric(
-                "a Missile Works RRC3 (juno3/README.txt:21): to the ascent's apogee its height \
-                 column is the standard atmosphere's altitude of its pressure column less the \
-                 first row's, to 1.4 m",
+                "a Missile Works RRC3 (juno3/README.txt:21): its height column is the standard \
+                 atmosphere's altitude of its pressure column less the first row's (the gap is \
+                 below)",
             ),
+            pressure: Some((2, 100.0)),
+            gnss: Some(Gnss {
+                file: "juno3/cots_GNSS.csv",
+                header_lines: 1,
+                time_column: 0,
+                altitude_column: 1,
+                metres_per_unit: 0.3048,
+            }),
         },
         example_drag: ExampleDrag::Files {
             power_off: "juno3/drag_curve.csv",
@@ -391,15 +440,16 @@ pub const FLIGHTS: [RealFlight; 7] = [
                               \"from CFD analysis\")",
         note: "the log is read to 24.60 s, as it levels off: a pressure transient there dips the \
                reading by 94 m, then lifts it 62 m above the level within 0.3 s, to the 3213.4 m \
-               the flight card gives, and the record's last two rows are corrupt. The thrust \
-               file's last five points are negative (-6.8 to -47.3 N); hpr, which refuses a \
-               negative thrust, reads them as zero, and RocketPy's flight holds its thrust at \
-               zero too",
+               the team reports as its apogee, and the record's last two rows are corrupt. At the cut the \
+               log's own velocity column still reads 17.5 m/s up, so its apogee may be 10 m to \
+               20 m low. The thrust file's last five points are negative (-6.8 to -47.3 N); hpr, \
+               which refuses a negative thrust, reads them as zero, and RocketPy's flight holds \
+               its thrust at zero too",
         explanation: Explanation::Thrust(
             "consistent with the motor's impulse. The notebook reshapes the team's own motor \
-             curve (`mandioca_thrust_curve.csv`) to 5.8 s and 8800 N s, 4.9% less than the file \
-             records; on the file as recorded the apogee is within the target, and on the team's \
-             drag the miss grows.",
+             curve (`mandioca_thrust_curve.csv`) to 5.8 s and 8800 N s, 4.9% less than the file; \
+             on the file as recorded the apogee is within the target, and on the team's drag it \
+             is not.",
         ),
     },
     RealFlight {
@@ -422,6 +472,8 @@ pub const FLIGHTS: [RealFlight; 7] = [
                 "the CATS Vega EuRoC 2023 required, sent by radio in whole metres: a Kalman \
                  filter's estimate from a barometer and an accelerometer, barometric assumed",
             ),
+            pressure: None,
+            gnss: None,
         },
         example_drag: ExampleDrag::Files {
             power_off: "polito/drag_coefficient_power_off.csv",
@@ -458,6 +510,8 @@ pub const FLIGHTS: [RealFlight; 7] = [
                 "a filtered estimate (`filtered_altitude_AGL`), probably the CATS Vega's \
                  barometer and accelerometer Kalman filter: barometric assumed",
             ),
+            pressure: None,
+            gnss: None,
         },
         example_drag: ExampleDrag::Files {
             power_off: "genesis/drag_coefficient_power_off.csv",
@@ -492,6 +546,8 @@ pub const FLIGHTS: [RealFlight; 7] = [
                 "a filtered estimate (`filtered_altitude_AGL`, as Genesis's) from a computer \
                  the example doesn't name: barometric assumed",
             ),
+            pressure: None,
+            gnss: None,
         },
         example_drag: ExampleDrag::Files {
             power_off: "lince/drag_coefficient_power_off.csv",
@@ -500,8 +556,8 @@ pub const FLIGHTS: [RealFlight; 7] = [
         },
         example_drag_source: "lince_flight_sim.ipynb:240-241",
         note: "the log is read to 26.80 s: past it, as the recovery fires, the filtered height swings \
-               by hundreds of metres, up to 3668.5 m; its highest reading before is the flight \
-               card's 3587 m",
+               by hundreds of metres, up to 3668.5 m; its highest reading before is the 3587 m \
+               the team reports as its apogee",
         explanation: Explanation::None,
     },
 ];
@@ -604,15 +660,17 @@ pub struct FlightRow {
     pub example_drag_apogee_error_percent: f64,
     /// Its trace RMS against the log's, m.
     pub example_drag_trace_rms_m: f64,
-    /// For an example that reshapes its thrust file: the file's own total impulse, N s, flown as
-    /// recorded as a second diagnostic.
-    pub recorded_thrust_impulse_ns: Option<f64>,
-    /// hpr's apogee on it, read as the log's altimeter reads, m.
-    pub recorded_thrust_apogee_m: Option<f64>,
-    /// Its error against the log's, per cent.
-    pub recorded_thrust_apogee_error_percent: Option<f64>,
+    /// For an example that reshapes its thrust file, the second diagnostic: the file flown as
+    /// recorded.
+    pub recorded_thrust: Option<RecordedThrust>,
+    /// For a log that keeps its pressure: the largest gap between its height column and the
+    /// standard atmosphere's reading of that pressure less the first row's, over the rows read, m.
+    pub pressure_reading_max_m: Option<f64>,
+    /// For a flight that logged a satellite altitude: its highest above its first row, m.
+    pub gnss_apogee_m: Option<f64>,
     /// The SHA-256 of the flight's entry in [`FLIGHTS`] as Rust's `Debug` prints it: every input
-    /// the code gives it, so CI sees a changed one.
+    /// the code gives it, so CI sees a changed one. `Debug` output may change with a Rust
+    /// release; CI then flags every row, and `cargo xtask real-flights` rewrites them.
     pub inputs_sha256: String,
     /// What departs from the day, in words.
     pub note: String,
@@ -620,6 +678,18 @@ pub struct FlightRow {
     pub explanation_kind: String,
     /// Why the apogee misses by more than the target, when it does.
     pub explanation: String,
+}
+
+/// The flight on the thrust file as recorded, without the example's reshape.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RecordedThrust {
+    /// The total impulse flown, N s: the file's, negative points read as zero, clipped at the
+    /// example's burn time where it gives one.
+    pub impulse_ns: f64,
+    /// hpr's apogee, read as the log's altimeter reads, m.
+    pub apogee_m: f64,
+    /// Its error against the log's, per cent.
+    pub apogee_error_percent: f64,
 }
 
 /// What the report sums up.
@@ -683,6 +753,26 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
         })
 }
 
+/// Each row's `columns`, in file order: a row is split at commas and each column trimmed and
+/// parsed, and a row where one doesn't parse as a finite number is skipped.
+fn read_rows(text: &str, header_lines: usize, columns: &[usize]) -> Vec<Vec<f64>> {
+    text.lines()
+        .skip(header_lines)
+        .filter_map(|line| {
+            let fields: Vec<&str> = line.split(',').map(str::trim).collect();
+            columns
+                .iter()
+                .map(|&column| {
+                    fields
+                        .get(column)
+                        .and_then(|field| field.parse::<f64>().ok())
+                        .filter(|value| value.is_finite())
+                })
+                .collect::<Option<Vec<f64>>>()
+        })
+        .collect()
+}
+
 /// A log's rows as (time, height in metres), in file order.
 ///
 /// Each row is split at commas and the two columns trimmed and parsed; a row where either doesn't
@@ -693,24 +783,15 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
 ///
 /// [`RealFlightError::Input`] if fewer than two rows are read, or times decrease.
 pub fn parse_log(id: &str, log: &Log, text: &str) -> Result<Vec<(f64, f64)>, RealFlightError> {
-    let mut rows = Vec::new();
-    for line in text.lines().skip(log.header_lines) {
-        let fields: Vec<&str> = line.split(',').map(str::trim).collect();
-        let (Some(t), Some(h)) = (fields.get(log.time_column), fields.get(log.height_column))
-        else {
-            continue;
-        };
-        let (Ok(t), Ok(h)) = (t.parse::<f64>(), h.parse::<f64>()) else {
-            continue;
-        };
-        if !(t.is_finite() && h.is_finite()) {
-            continue;
-        }
-        if log.until_s.is_some_and(|until| t > until) {
-            break;
-        }
-        rows.push((t, h * log.metres_per_unit));
-    }
+    let rows: Vec<(f64, f64)> = read_rows(
+        text,
+        log.header_lines,
+        &[log.time_column, log.height_column],
+    )
+    .into_iter()
+    .take_while(|row| log.until_s.is_none_or(|until| row[0] <= until))
+    .map(|row| (row[0], row[1] * log.metres_per_unit))
+    .collect();
     let input = |what: String| RealFlightError::Input {
         flight: id.to_owned(),
         what,
@@ -1099,6 +1180,37 @@ fn example_thrust(root: &Path, flight: &RealFlight) -> Result<ExampleThrust, Rea
     }
 }
 
+/// The largest gap between a log's height column and the standard atmosphere's reading of its
+/// pressure column less the first row's, over the rows [`parse_log`] reads, m.
+fn pressure_reading_gap_m(
+    log: &Log,
+    column: usize,
+    pascals_per_unit: f64,
+    text: &str,
+) -> Result<f64, String> {
+    let standard = Ussa76::standard();
+    let rows: Vec<Vec<f64>> = read_rows(
+        text,
+        log.header_lines,
+        &[log.time_column, log.height_column, column],
+    )
+    .into_iter()
+    .take_while(|row| log.until_s.is_none_or(|until| row[0] <= until))
+    .collect();
+    let altitude = |row: &[f64]| {
+        standard
+            .pressure_altitude_m(row[2] * pascals_per_unit)
+            .map_err(|error| format!("{}: {error}", log.file))
+    };
+    let pad = altitude(
+        rows.first()
+            .ok_or_else(|| format!("{} has no pressure", log.file))?,
+    )?;
+    rows.iter().try_fold(0.0_f64, |gap, row| {
+        Ok(gap.max((row[1] * log.metres_per_unit - (altitude(row)? - pad)).abs()))
+    })
+}
+
 /// One flight of hpr, as the log's altimeter would read it.
 struct Flown {
     apogee_m: f64,
@@ -1137,6 +1249,38 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
     let log_text = String::from_utf8_lossy(&log_bytes);
     let log = parse_log(flight.id, &flight.log, &log_text)?;
     let (log_apogee_s, log_apogee_m) = highest(&log);
+    let pressure_reading_max_m = match flight.log.pressure {
+        Some((column, pascals_per_unit)) => Some(
+            pressure_reading_gap_m(&flight.log, column, pascals_per_unit, &log_text)
+                .map_err(input)?,
+        ),
+        None => None,
+    };
+    let gnss_apogee_m = match flight.log.gnss {
+        Some(gnss) => {
+            let path = format!("{ROCKETPY}/data/rockets/{}", gnss.file);
+            let bytes = if gnss.file == flight.log.file {
+                log_bytes.clone()
+            } else {
+                read(path, "reading a satellite log")?
+            };
+            let rows = read_rows(
+                &String::from_utf8_lossy(&bytes),
+                gnss.header_lines,
+                &[gnss.time_column, gnss.altitude_column],
+            );
+            let pad = rows
+                .first()
+                .map(|row| row[1])
+                .ok_or_else(|| input(format!("{} has no altitude", gnss.file)))?;
+            Some(
+                rows.iter()
+                    .map(|row| (row[1] - pad) * gnss.metres_per_unit)
+                    .fold(f64::NEG_INFINITY, f64::max),
+            )
+        }
+        None => None,
+    };
 
     // The design, with the example's own thrust, burn options and radius from the fixture.
     read(MASS_FIXTURE.to_owned(), "reading the design fixture")?;
@@ -1176,7 +1320,7 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
                 serde_json::json!({ "times_s": times, "thrusts_n": thrusts }),
             );
         serde_json::from_value(design)
-            .map_err(|error| input(format!("{design_path} with the example's thrust: {error}")))
+            .map_err(|error| input(format!("{design_path} with a thrust file's curve: {error}")))
     };
     let rocket = with_thrust(&curve)?;
     // Where the example reshapes its thrust file, the file as recorded, for the diagnostic.
@@ -1334,13 +1478,13 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
         example_drag_apogee_m: drag_apogee_m,
         example_drag_apogee_error_percent: error(drag_apogee_m),
         example_drag_trace_rms_m: drag_trace.rms_m,
-        recorded_thrust_impulse_ns: on_recorded_thrust
-            .as_ref()
-            .map(|flown| flown.total_impulse_ns),
-        recorded_thrust_apogee_m: on_recorded_thrust.as_ref().map(|flown| flown.apogee_m),
-        recorded_thrust_apogee_error_percent: on_recorded_thrust
-            .as_ref()
-            .map(|flown| error(flown.apogee_m)),
+        recorded_thrust: on_recorded_thrust.map(|flown| RecordedThrust {
+            impulse_ns: flown.total_impulse_ns,
+            apogee_m: flown.apogee_m,
+            apogee_error_percent: error(flown.apogee_m),
+        }),
+        pressure_reading_max_m,
+        gnss_apogee_m,
         inputs_sha256: sha256_hex(format!("{flight:?}").as_bytes()),
         note: flight.note.to_owned(),
         explanation_kind: flight.explanation.kind().to_owned(),
@@ -1561,9 +1705,12 @@ impl RealFlightReport {
                 ),
                 (
                     "apogee error on the recorded thrust",
-                    row.recorded_thrust_apogee_error_percent.unwrap_or(0.0),
-                    row.recorded_thrust_apogee_m
-                        .map_or(0.0, |apogee_m| percent_of(apogee_m, row.log_apogee_m)),
+                    row.recorded_thrust
+                        .as_ref()
+                        .map_or(0.0, |flown| flown.apogee_error_percent),
+                    row.recorded_thrust
+                        .as_ref()
+                        .map_or(0.0, |flown| percent_of(flown.apogee_m, row.log_apogee_m)),
                 ),
             ] {
                 if !same(kept, derived) {
@@ -1589,11 +1736,17 @@ impl RealFlightReport {
                 row.apogee_error_percent,
                 row.example_drag_apogee_error_percent,
             );
-            let recorded = row.recorded_thrust_apogee_error_percent;
+            let recorded = row
+                .recorded_thrust
+                .as_ref()
+                .map(|flown| flown.apogee_error_percent);
             let holds = match row.explanation_kind.as_str() {
                 "" => !outside,
                 "drag" => example.abs() <= APOGEE_TARGET_PERCENT,
-                "thrust" => recorded.is_some_and(|error| error.abs() <= APOGEE_TARGET_PERCENT),
+                "thrust" => {
+                    recorded.is_some_and(|error| error.abs() <= APOGEE_TARGET_PERCENT)
+                        && example.abs() > APOGEE_TARGET_PERCENT
+                }
                 kind => return Err(format!("{}: no explanation is called {kind:?}", row.id)),
             };
             if !holds {
@@ -1618,6 +1771,9 @@ impl RealFlightReport {
     /// The first difference, in words.
     pub fn reproduces(&self, other: &RealFlightReport) -> Result<(), String> {
         let same = crate::report::same_but_for_platform_rounding;
+        let recorded = |row: &FlightRow, value: fn(&RecordedThrust) -> f64| {
+            row.recorded_thrust.as_ref().map_or(0.0, value)
+        };
         if self.flights.len() != other.flights.len() {
             return Err(format!(
                 "{} flights committed, {} flown",
@@ -1654,7 +1810,15 @@ impl RealFlightReport {
                 ("inputs", a.inputs_sha256 != b.inputs_sha256),
                 (
                     "recorded-thrust flight",
-                    a.recorded_thrust_apogee_m.is_some() != b.recorded_thrust_apogee_m.is_some(),
+                    a.recorded_thrust.is_some() != b.recorded_thrust.is_some(),
+                ),
+                (
+                    "pressure column",
+                    a.pressure_reading_max_m.is_some() != b.pressure_reading_max_m.is_some(),
+                ),
+                (
+                    "satellite log",
+                    a.gnss_apogee_m.is_some() != b.gnss_apogee_m.is_some(),
                 ),
             ];
             if let Some((what, _)) = differs.iter().find(|(_, differ)| *differ) {
@@ -1708,18 +1872,28 @@ impl RealFlightReport {
                 ),
                 (
                     "recorded thrust's impulse",
-                    a.recorded_thrust_impulse_ns.unwrap_or(0.0),
-                    b.recorded_thrust_impulse_ns.unwrap_or(0.0),
+                    recorded(a, |flown| flown.impulse_ns),
+                    recorded(b, |flown| flown.impulse_ns),
                 ),
                 (
                     "apogee on the recorded thrust",
-                    a.recorded_thrust_apogee_m.unwrap_or(0.0),
-                    b.recorded_thrust_apogee_m.unwrap_or(0.0),
+                    recorded(a, |flown| flown.apogee_m),
+                    recorded(b, |flown| flown.apogee_m),
                 ),
                 (
                     "error on the recorded thrust",
-                    a.recorded_thrust_apogee_error_percent.unwrap_or(0.0),
-                    b.recorded_thrust_apogee_error_percent.unwrap_or(0.0),
+                    recorded(a, |flown| flown.apogee_error_percent),
+                    recorded(b, |flown| flown.apogee_error_percent),
+                ),
+                (
+                    "height column's gap from its pressure",
+                    a.pressure_reading_max_m.unwrap_or(0.0),
+                    b.pressure_reading_max_m.unwrap_or(0.0),
+                ),
+                (
+                    "satellite apogee",
+                    a.gnss_apogee_m.unwrap_or(0.0),
+                    b.gnss_apogee_m.unwrap_or(0.0),
                 ),
             ] {
                 if !same(x, y) {
@@ -1771,11 +1945,11 @@ impl RealFlightReport {
         let _ = writeln!(
             out,
             "- Flights: {}.\n- Mean absolute apogee error: {}% against a target of {}%: {}.\n\
-             - Mean apogee error with its sign: {}%.\n- Were every log a height, not a \
-             barometric reading: mean absolute apogee error {}%.\n- With only the logs known to \
-             be barometric read so, the assumed ones as heights: {}%.\n- Largest trace RMS: {}% \
-             of its log's apogee.\n- Outside the target: {}.\n- On each example's own drag, \
-             the diagnostic flight: mean absolute apogee error {}%.\n",
+             - Mean apogee error with its sign: {}%.\n- Mean absolute apogee error were every \
+             log a height, not a barometric reading: {}%.\n- Mean absolute apogee error with \
+             only the logs known to be barometric read so, the assumed ones as heights: {}%.\n\
+             - Largest trace RMS: {}% of its log's apogee.\n- Outside the target: {}.\n- On \
+             each example's own drag, the diagnostic flight: mean absolute apogee error {}%.\n",
             s.flights,
             fmt_number(s.mean_absolute_apogee_error_percent, 2),
             fmt_number(s.target_percent, 0),
@@ -1851,36 +2025,82 @@ impl RealFlightReport {
             );
         }
         let _ = writeln!(out);
-        let _ = writeln!(out, "## On the thrust file as recorded\n");
-        let _ = writeln!(
-            out,
-            "A second diagnostic, where an example reshapes its thrust file to a burn time and a \
-             total impulse: the same flight on the file as recorded, on hpr's own drag. Where the \
-             error falls within the target, the miss is consistent with the motor's impulse.\n"
-        );
-        let _ = writeln!(
-            out,
-            "| flight | recorded impulse (N s) | impulse flown (N s) | apogee (m) | apogee error |"
-        );
-        let _ = writeln!(out, "|---|---:|---:|---:|---:|");
-        for row in &self.flights {
-            if let (Some(impulse_ns), Some(apogee_m), Some(error)) = (
-                row.recorded_thrust_impulse_ns,
-                row.recorded_thrust_apogee_m,
-                row.recorded_thrust_apogee_error_percent,
-            ) {
+        if self.flights.iter().any(|row| row.recorded_thrust.is_some()) {
+            let _ = writeln!(out, "## On the thrust file as recorded\n");
+            let _ = writeln!(
+                out,
+                "A second diagnostic, where an example reshapes its thrust file to a burn time and \
+                 a total impulse: the same flight on the file as recorded (negative points read as \
+                 zero), on hpr's own drag. Where the error falls within the target and the \
+                 example's drag doesn't bring it there, the miss is consistent with the impulse \
+                 the example sets.\n"
+            );
+            let _ = writeln!(
+                out,
+                "| flight | impulse as recorded (N s) | impulse reshaped (N s) | apogee (m) | apogee \
+                 error |"
+            );
+            let _ = writeln!(out, "|---|---:|---:|---:|---:|");
+            for row in &self.flights {
+                if let Some(flown) = &row.recorded_thrust {
+                    let _ = writeln!(
+                        out,
+                        "| {} | {} | {} | {} | {}% |",
+                        row.title,
+                        fmt_number(flown.impulse_ns, 1),
+                        fmt_number(row.total_impulse_ns, 1),
+                        fmt_number(flown.apogee_m, 1),
+                        fmt_signed(flown.apogee_error_percent, 2)
+                    );
+                }
+            }
+            let _ = writeln!(out);
+        }
+        if self
+            .flights
+            .iter()
+            .any(|row| row.pressure_reading_max_m.is_some() || row.gnss_apogee_m.is_some())
+        {
+            let _ = writeln!(
+                out,
+                "## Against the logs' own pressure and satellite heights\n"
+            );
+            let _ = writeln!(
+                out,
+                "Where a log keeps the pressure its height was read from, the height column's \
+                 largest gap from the standard atmosphere's reading of that pressure shows how the \
+                 altimeter reads. Where the flight logged a satellite (GNSS) altitude, its apogee \
+                 above the pad is a geometric height: the log's barometric apogee over it is what \
+                 the day's air did to the reading, beside what hpr's conversion does to its own \
+                 apogee.\n"
+            );
+            let _ = writeln!(
+                out,
+                "| flight | height against its pressure (largest gap, m) | satellite apogee (m) | \
+                 log apogee over it | hpr's reading over its height |"
+            );
+            let _ = writeln!(out, "|---|---:|---:|---:|---:|");
+            let or_dash = |value: Option<String>| value.unwrap_or_else(|| "—".to_owned());
+            for row in self
+                .flights
+                .iter()
+                .filter(|row| row.pressure_reading_max_m.is_some() || row.gnss_apogee_m.is_some())
+            {
                 let _ = writeln!(
                     out,
-                    "| {} | {} | {} | {} | {}% |",
+                    "| {} | {} | {} | {} | {} |",
                     row.title,
-                    fmt_number(impulse_ns, 1),
-                    fmt_number(row.total_impulse_ns, 1),
-                    fmt_number(apogee_m, 1),
-                    fmt_signed(error, 2)
+                    or_dash(row.pressure_reading_max_m.map(|gap| fmt_number(gap, 3))),
+                    or_dash(row.gnss_apogee_m.map(|apogee| fmt_number(apogee, 1))),
+                    or_dash(
+                        row.gnss_apogee_m
+                            .map(|apogee| fmt_number(row.log_apogee_m / apogee, 3))
+                    ),
+                    fmt_number(row.hpr_apogee_m / row.hpr_height_apogee_m, 3)
                 );
             }
+            let _ = writeln!(out);
         }
-        let _ = writeln!(out);
         let _ = writeln!(out, "## Each flight's inputs\n");
         for row in &self.flights {
             let _ = writeln!(
@@ -2006,6 +2226,8 @@ mod tests {
             metres_per_unit: 0.3048,
             until_s: Some(2.0),
             altimeter: Altimeter::Barometric(""),
+            pressure: None,
+            gnss: None,
         };
         let text = "t,h\n0,0\n1, 100\n1.5,\n2,200\n3,9999\n";
         let rows = parse_log("t", &log, text).unwrap();

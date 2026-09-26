@@ -1837,6 +1837,30 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
         );
     }
     assert_eq!(report.summary.target_percent, APOGEE_TARGET_PERCENT);
+    // The mean with the assumed altimeters read as heights, worked here from the rows.
+    let assumed = |row: &&crate::real_flight::FlightRow| row.altimeter.ends_with("assumed");
+    assert_eq!(report.flights.iter().filter(assumed).count(), 4);
+    let known_barometric = report
+        .flights
+        .iter()
+        .map(|row| {
+            let apogee_m = if assumed(&row) {
+                row.hpr_height_apogee_m
+            } else {
+                row.hpr_apogee_m
+            };
+            (100.0 * (apogee_m - row.log_apogee_m) / row.log_apogee_m).abs()
+        })
+        .sum::<f64>()
+        / report.flights.len() as f64;
+    assert!(
+        (known_barometric
+            - report
+                .summary
+                .mean_absolute_known_barometric_apogee_error_percent)
+            .abs()
+            < 1e-9
+    );
     assert!(page.contains("Mean absolute apogee error"));
 }
 
@@ -1868,23 +1892,28 @@ fn a_real_flight_explanation_that_stops_holding_fails() {
         },
         "doesn't hold",
     );
-    // "thrust" says the flight on the thrust file as recorded is within the target.
+    // "thrust" says the flight on the thrust file as recorded is within the target, and the one on
+    // the example's drag is not.
     fails_with(
         "thrust",
         &|row| {
-            let apogee_m = 1.07 * row.log_apogee_m;
-            row.recorded_thrust_apogee_m = Some(apogee_m);
-            row.recorded_thrust_apogee_error_percent =
-                Some(100.0 * (apogee_m - row.log_apogee_m) / row.log_apogee_m);
+            let flown = row
+                .recorded_thrust
+                .as_mut()
+                .expect("a recorded-thrust flight");
+            flown.apogee_m = 1.07 * row.log_apogee_m;
+            flown.apogee_error_percent =
+                100.0 * (flown.apogee_m - row.log_apogee_m) / row.log_apogee_m;
         },
         "doesn't hold",
     );
-    // And fails with no such flight.
+    fails_with("thrust", &|row| row.recorded_thrust = None, "doesn't hold");
+    // Drag would explain it as well, so it names no single candidate.
     fails_with(
         "thrust",
         &|row| {
-            row.recorded_thrust_apogee_m = None;
-            row.recorded_thrust_apogee_error_percent = None;
+            row.example_drag_apogee_m = row.log_apogee_m;
+            row.example_drag_apogee_error_percent = 0.0;
         },
         "doesn't hold",
     );

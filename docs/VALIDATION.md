@@ -218,7 +218,8 @@ Each flight is flown again on its example's own drag as a diagnostic.
 The mean absolute apogee error is reported against the 5% target of the principles above, not
 gated. A flight outside 5% must carry an explanation that is a checked claim (`drag`: the flight
 on the example's drag is within the target; `thrust`: where the example reshapes its thrust file,
-the flight on the file as recorded is within it), and one inside must not. CI has no
+the flight on the file as recorded is within it and the one on the example's drag is not), and
+one inside must not. CI has no
 `refs/`, so it holds the committed report to itself
 (`hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms`): the summary to the rows,
 each percentage to its metres, the words and each flight's inputs to the code's, the committed

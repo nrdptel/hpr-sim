@@ -13,8 +13,8 @@
   −2 to 86 km; humid density within 0.047% of CIPM-2007 over 15–27 °C. Against RocketPy, its
   density agrees within 3.7e-4 over the 23 heights its parachute descents sample
   ([Recovery](recovery.md#against-rocketpy)). Its pressure altitude matches two flight logs'
-  own altimeter readings of their pressure, to 0.01 m and 1.4 m
-  ([ADR-082][adr-082]); the air itself has no real-flight check.
+  own altimeter readings of their pressure, to 0.195 m and 1.321 m
+  ([report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)); the air itself has no real-flight check.
 - **What it leaves out:** a real day's changes aloft. A field-condition offset holds all the way
   up (+20 K at a 1400 m field puts density +30% off the standard's at 30 km), so higher flights
   need a sounding. Viscosity ignores humidity, which lowers it 2.1% at 30 °C and saturation.
@@ -124,15 +124,15 @@ In the standard's troposphere this is the altimeter formula
 **A worked example.** An altimeter on a pad at 86000 Pa reads 1361.8 m′ there. At 58000 Pa it
 reads 4464.4 m′, so it logs a climb of 3102.6 m′. On a day 20 K warmer than the standard all the
 way up, with the same sea-level pressure, the same two pressures lie 3318.0 m′ apart: the rocket
-climbed 6.9% more than its altimeter says. Warm air is less dense, so pressure falls more slowly
+climbed 6.9% more than its altimeter says, and the altimeter reads 6.5% less than the climb. Warm air is less dense, so pressure falls more slowly
 with height. In the troposphere, with the sea-level pressure unchanged, the ratio is exactly
 `(T₀ + ΔT) / T₀` = 308.15 / 288.15.
 
 **Where it is used.** hpr's flights don't use it: they fly in the air of the day. The real-flight
 comparison reads hpr's height through it, from the ERA5 pressure at the centre of mass, when the
 log is barometric (`hpr_validate::real_flight::Barometer`). Two logs that record their
-pressure, Prometheus's and Juno III's, are this reading less the pad's, to 0.01 m and 1.4 m over
-the ascent ([ADR-082][adr-082]).
+pressure, Prometheus's and Juno III's, are this reading less the first row's, to 0.195 m and
+1.321 m over the rows compared ([report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
 
 ## Moist air
 
@@ -268,4 +268,3 @@ milestone ([M2.1](../decisions-and-roadmap.md#m2-1)), not yet pinned by fixtures
   - Errors (including rising pressures) and serde.
 
 [adr-004]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-004-atmosphere-wind-turbulence-and-the-seeded-generator-2026-09-17
-[adr-082]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-082-real-flights-read-from-refs-compared-over-the-ascent-with-checked-explanations-2026-09-26
