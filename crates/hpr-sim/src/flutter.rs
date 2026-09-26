@@ -2,12 +2,11 @@
 //! Martin's criterion ([the fin-flutter milestone][m1-10b]; the guide's [Fin flutter][page] page).
 //!
 //! **Source.** D. J. Martin, *Summary of Flutter Experiences as a Guide to the Preliminary Design
-//! of Lifting Surfaces on Missiles*, NACA TN 4197, 1958, appendix, eqs. 16 to 19, pp. 14–15. The
-//! criterion is empirical: Martin reduces Theodorsen and Garrick's flutter speed for a
-//! bending-torsion wing (eq. 1) to a few planform numbers and sets its constant from missile and
-//! wind-tunnel flights (his figure 3). With `G_E` the fin's effective shear modulus, `A` the panel
-//! aspect ratio (span over mid-span chord), `λ` the taper ratio (tip over root chord), `t/c` the
-//! thickness ratio, `p` the static pressure and `a` the speed of sound, eq. 16 with his
+//! of Lifting Surfaces on Missiles*, NACA TN 4197, 1958, appendix, eqs. 16 to 19, pp. 14–15, and
+//! figure 3, p. 19. Martin reduces Theodorsen and Garrick's flutter speed for a bending-torsion
+//! wing (eq. 1) to a few planform numbers. With `G_E` the fin's effective shear modulus, `A` the
+//! panel aspect ratio (span over mid-span chord), `λ` the taper ratio (tip over root chord), `t/c`
+//! the thickness ratio, `p` the static pressure and `a` the speed of sound, eq. 16 with his
 //! `1/(f₁² f₂²) ≈ (λ + 1)/2` reads
 //!
 //! ```text
@@ -21,6 +20,14 @@
 //! (V_f / a)² = G_E / (39.3 A³ / ((t/c)³ (A + 2)) · (λ + 1)/2 · p/p₀)
 //! ```
 //!
+//! The constant is derived, not fitted. What is empirical is the aspect-ratio correction
+//! `A/(A + 2)`, the best of those Martin tried, and where the line falls between wings that fluttered
+//! and wings that didn't: his figure 3 plots `D` against `G_E` for missiles and wind-tunnel models,
+//! and a band separates them at `D/G_E` from 0.25 to 0.31 ([`FIGURE_3_BAND`]), a flutter speed
+//! of 1.8 to 2.0 times the speed of sound. His open points are wings that flew to at least Mach 1.3
+//! without failing. So eq. 18's `V_f` is a parameter his data calibrates, not a speed at which a
+//! fin is known to flutter.
+//!
 //! Loft wrote the constant as `1.337 · (λ + 1)/2` psi, half of `39.3/14.696 = 2.674`, so its
 //! flutter speed was `√2` too high, on the unsafe side ([Loft lesson L32][l32]).
 //!
@@ -28,10 +35,10 @@
 //! pressure at flutter, whatever the height:
 //!
 //! ```text
-//! q_f = ½ ρ V_f² = π G_E / (24 ε X (λ + 1)),   X = A³ / ((t/c)³ (A + 2))
+//! q_f = ½ ρ V_f² = π G_E / (24 ε K (λ + 1)),   K = A³ / ((t/c)³ (A + 2))
 //! ```
 //!
-//! and a fin flying at dynamic pressure `q` is below its flutter speed by the ratio
+//! and a fin flying at dynamic pressure `q` is below eq. 18's flutter speed by the ratio
 //! `V_f / V = √(q_f / q)`. The least ratio of a flight is therefore at its peak dynamic pressure,
 //! which [`crate::metrics::FlightMetrics`] finds on the dense output.
 //!
@@ -41,12 +48,13 @@
 //! smallest, so the flutter speed the least. `G_E` is Martin's effective shear modulus: for a
 //! solid wing he takes the material's own (his p. 6), which this module does. His definition,
 //! `G_E = 6 J G / (c t³)` (eq. 12), would give a flat plate, whose torsion constant is
-//! `J = c t³/3`, about twice that, and a flutter speed `√2` higher; the lower reading is kept.
+//! `J = c t³/3`, about twice that, and a flutter speed `√2` higher; the lower reading is kept. For
+//! a NACA four-digit section it gives `0.946 G`, so an airfoiled fin's `V_f` here is up to 2.7%
+//! high.
 //!
 //! **Left out.** Sweep, the fin's mounting and the body's own modes (Martin's figure 8), stall
-//! flutter at high angles of attack, and every other flutter type Martin lists. The criterion
-//! separates his figure 3's safe and failed wings with a band of scatter, not a sharp line; it is a
-//! screening number, not a flutter analysis.
+//! flutter at high angles of attack, Mach number effects such as a transonic dip, and every other
+//! flutter type Martin lists. It is a screening number, not a flutter analysis.
 //!
 //! [l32]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l32
 //! [m1-10b]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-10b
@@ -60,17 +68,27 @@ use serde::{Deserialize, Serialize};
 use crate::error::SimError;
 use crate::metrics::FlightSummary;
 
-/// Martin's `ε`, the section's centre of mass behind its quarter chord as a fraction of the chord,
-/// assumed 0.25 (NACA TN 4197, p. 14).
-pub const EPSILON: f64 = 0.25;
+/// Martin's `ε`: how far the section's centre of mass sits behind its quarter chord, as a fraction
+/// of the chord, assumed 0.25, which puts it at mid-chord (NACA TN 4197, p. 14).
+pub const CG_AFT_OF_QUARTER_CHORD: f64 = 0.25;
 
 /// Martin's ratio of specific heats for air, 1.4 (NACA TN 4197, eq. 17, p. 14).
 pub const HEAT_CAPACITY_RATIO: f64 = 1.4;
 
+/// Where Martin's figure 3 separates wings that fluttered from wings that didn't, as `D/G_E`,
+/// that is `(a/V_f)²`: its shaded band runs from 0.25 to 0.31.
+///
+/// Measured on the scan of NACA TN 4197's figure 3 (p. 19) rendered at 250 dpi: both log axes
+/// calibrated on their tick marks (222.5 and 224.8 pixels a decade), the band's edges traced in
+/// 69 columns from `G_E` = 0.03 to 10 × 10⁶ psi. Its middle stays at `D/G_E` = 0.28 to 0.29
+/// along the whole axis, and it is about 0.08 of a decade wide. Above it, Martin's wings fluttered
+/// or failed; below it, they flew to at least Mach 1.3 without known failure.
+pub const FIGURE_3_BAND: [f64; 2] = [0.25, 0.31];
+
 /// The planform numbers Martin's criterion takes from one fin.
 ///
 /// A birch-plywood fin with a 200 mm root, a 100 mm tip, a 120 mm span and 4 mm thick has
-/// `A = 0.8`, `λ = 0.5` and `t/c = 0.02`, so `X = 0.8³ / (0.02³ · 2.8) = 22 857`. With plywood's
+/// `A = 0.8`, `λ = 0.5` and `t/c = 0.02`, so `K = 0.8³ / (0.02³ · 2.8) = 22 857`. With plywood's
 /// 750 MPa it flutters at `q_f = π · 750 MPa / (6 · 22 857 · 1.5) = 11.45 kPa`: 137 m/s in
 /// sea-level air.
 ///
@@ -88,19 +106,39 @@ pub const HEAT_CAPACITY_RATIO: f64 = 1.4;
 /// assert!(((2.0 * q_f / 1.225).sqrt() - v_f).abs() < 0.01);
 /// # Ok::<(), hpr_sim::SimError>(())
 /// ```
+///
+/// Its numbers are checked when it is made, by [`FlutterPanel::new`], and when it is read from
+/// JSON.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(try_from = "PanelNumbers", deny_unknown_fields)]
 pub struct FlutterPanel {
-    /// The panel aspect ratio `A`: the span over the chord at mid-span.
-    pub aspect_ratio: f64,
-    /// The taper ratio `λ`: the tip chord over the root chord, from 0 (pointed) to 1.
-    pub taper_ratio: f64,
-    /// The thickness ratio `t/c`: the thickness over the root chord.
-    pub thickness_ratio: f64,
+    aspect_ratio: f64,
+    taper_ratio: f64,
+    thickness_ratio: f64,
+}
+
+/// A panel's numbers as JSON holds them, before they are checked.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PanelNumbers {
+    aspect_ratio: f64,
+    taper_ratio: f64,
+    thickness_ratio: f64,
+}
+
+impl TryFrom<PanelNumbers> for FlutterPanel {
+    type Error = SimError;
+
+    fn try_from(n: PanelNumbers) -> Result<Self, SimError> {
+        Self::new(n.aspect_ratio, n.taper_ratio, n.thickness_ratio)
+    }
 }
 
 impl FlutterPanel {
     /// A panel of aspect ratio `A`, taper ratio `λ` and thickness ratio `t/c`.
+    ///
+    /// Martin's figure 4 covers `A` from 0.5 to 3 and `t/c` from 1% to 10%; outside those the
+    /// numbers are an extrapolation, which isn't refused.
     ///
     /// # Errors
     ///
@@ -130,9 +168,9 @@ impl FlutterPanel {
     ///
     /// # Errors
     ///
-    /// [`SimError::Unsupported`] for an elliptical or freeform planform, whose taper Martin's
-    /// factors don't define; [`SimError::Domain`] for a root chord that isn't positive, or the
-    /// trapezoid's numbers out of range, as [`FlutterPanel::new`].
+    /// [`SimError::Unsupported`] for an elliptical or freeform planform, or a tip chord longer
+    /// than the root, which Martin's taper factors don't cover; [`SimError::Domain`] for a root
+    /// chord that isn't positive, or the panel's numbers out of range, as [`FlutterPanel::new`].
     pub fn of_fins(fins: &FinSet) -> Result<Self, SimError> {
         match fins.planform {
             FinPlanform::Trapezoidal {
@@ -142,6 +180,11 @@ impl FlutterPanel {
                 ..
             } => {
                 positive("fin root chord", root_chord_m)?;
+                if tip_chord_m > root_chord_m {
+                    return Err(SimError::Unsupported {
+                        what: "a flutter panel of a fin whose tip chord is longer than its root",
+                    });
+                }
                 Self::new(
                     2.0 * span_m / (root_chord_m + tip_chord_m),
                     tip_chord_m / root_chord_m,
@@ -154,7 +197,25 @@ impl FlutterPanel {
         }
     }
 
-    /// Martin's `X` without its constant, `A³ / ((t/c)³ (A + 2))` (NACA TN 4197, eq. 19).
+    /// The panel aspect ratio `A`: the span over the chord at mid-span.
+    #[must_use]
+    pub fn aspect_ratio(&self) -> f64 {
+        self.aspect_ratio
+    }
+
+    /// The taper ratio `λ`: the tip chord over the root chord, from 0 (pointed) to 1.
+    #[must_use]
+    pub fn taper_ratio(&self) -> f64 {
+        self.taper_ratio
+    }
+
+    /// The thickness ratio `t/c`: the thickness over the root chord.
+    #[must_use]
+    pub fn thickness_ratio(&self) -> f64 {
+        self.thickness_ratio
+    }
+
+    /// `K = A³ / ((t/c)³ (A + 2))`: Martin's `X` (eq. 19) without its constant.
     #[must_use]
     pub fn shape_factor(&self) -> f64 {
         let a = self.aspect_ratio;
@@ -162,18 +223,34 @@ impl FlutterPanel {
     }
 
     /// The denominator of eq. 18 at static pressure `p`, Pa:
-    /// `D = (24 ε γ / π) p · A³ / ((t/c)³ (A + 2)) · (λ + 1)/2`.
-    #[must_use]
-    pub fn denominator_pa(&self, pressure_pa: f64) -> f64 {
-        24.0 * EPSILON * HEAT_CAPACITY_RATIO / PI
+    /// `D = (24 ε γ / π) p · K · (λ + 1)/2`, the ordinate of Martin's figure 3.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Domain`] if `p` isn't positive and finite.
+    pub fn denominator_pa(&self, pressure_pa: f64) -> Result<f64, SimError> {
+        positive("static pressure", pressure_pa)?;
+        Ok(24.0 * CG_AFT_OF_QUARTER_CHORD * HEAT_CAPACITY_RATIO / PI
             * pressure_pa
             * self.shape_factor()
             * (self.taper_ratio + 1.0)
-            / 2.0
+            / 2.0)
     }
 
-    /// The dynamic pressure at which a fin of effective shear modulus `G_E` flutters, Pa:
-    /// `q_f = π G_E / (24 ε X (λ + 1))`, the same at every height.
+    /// Martin's figure 3 reading, `D/G_E = (a/V_f)²`, at static pressure `p`: above
+    /// [`FIGURE_3_BAND`] his wings fluttered, below it they didn't. Martin takes `p` where the
+    /// wing flies; at the launch site's, the highest a flight sees, it is the largest.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Domain`] if `G_E` or `p` isn't positive and finite.
+    pub fn figure_3_ratio(&self, shear_modulus_pa: f64, pressure_pa: f64) -> Result<f64, SimError> {
+        positive("effective shear modulus", shear_modulus_pa)?;
+        Ok(self.denominator_pa(pressure_pa)? / shear_modulus_pa)
+    }
+
+    /// The dynamic pressure at which a fin of effective shear modulus `G_E` reaches eq. 18's
+    /// flutter speed, Pa: `q_f = π G_E / (24 ε K (λ + 1))`, the same at every height.
     ///
     /// # Errors
     ///
@@ -181,11 +258,11 @@ impl FlutterPanel {
     pub fn flutter_dynamic_pressure_pa(&self, shear_modulus_pa: f64) -> Result<f64, SimError> {
         positive("effective shear modulus", shear_modulus_pa)?;
         Ok(PI * shear_modulus_pa
-            / (24.0 * EPSILON * self.shape_factor() * (self.taper_ratio + 1.0)))
+            / (24.0 * CG_AFT_OF_QUARTER_CHORD * self.shape_factor() * (self.taper_ratio + 1.0)))
     }
 
-    /// The flutter speed in air of static pressure `p` and speed of sound `a`, m/s:
-    /// `V_f = a √(G_E / D)` (eq. 18).
+    /// Eq. 18's flutter speed in air of static pressure `p` and speed of sound `a`, m/s:
+    /// `V_f = a √(G_E / D)`.
     ///
     /// # Errors
     ///
@@ -196,42 +273,48 @@ impl FlutterPanel {
         pressure_pa: f64,
         sound_speed_m_s: f64,
     ) -> Result<f64, SimError> {
-        positive("effective shear modulus", shear_modulus_pa)?;
-        positive("static pressure", pressure_pa)?;
         positive("speed of sound", sound_speed_m_s)?;
-        Ok(sound_speed_m_s * (shear_modulus_pa / self.denominator_pa(pressure_pa)).sqrt())
+        Ok(sound_speed_m_s / self.figure_3_ratio(shear_modulus_pa, pressure_pa)?.sqrt())
     }
 
-    /// The fin's least flutter margin over the flight `summary` describes, at its peak dynamic
-    /// pressure; `None` if the rocket never flew.
+    /// The fin's least ratio of eq. 18's flutter speed to its airspeed over the flight `summary`
+    /// describes, at its peak dynamic pressure; `None` if the rocket never flew.
     ///
-    /// The whole flight's peak is used for every fin set on it: for a booster's fins, which leave
-    /// at the separation, it can be later and higher than any they saw, so their margin is at most
-    /// the one given.
+    /// The whole flight's peak is used for every fin set on it. A booster's fins leave at the
+    /// separation, so the peak can come after they have gone; their true ratio is then at least
+    /// the one given, as long as the booster's own dynamic pressure after the separation stays
+    /// below the flight's peak, which hpr doesn't check.
     ///
     /// # Errors
     ///
-    /// As [`FlutterPanel::flutter_dynamic_pressure_pa`].
+    /// As [`FlutterPanel::flutter_dynamic_pressure_pa`]; [`SimError::Domain`] if the peak
+    /// dynamic pressure isn't finite.
     pub fn margin(
         &self,
         shear_modulus_pa: f64,
         summary: &FlightSummary,
     ) -> Result<Option<FlutterMargin>, SimError> {
         let flutter_dynamic_pressure_pa = self.flutter_dynamic_pressure_pa(shear_modulus_pa)?;
-        Ok(summary
-            .max_dynamic_pressure_pa
-            .filter(|peak| peak.value > 0.0)
-            .map(|peak| FlutterMargin {
-                time_s: peak.time_s,
-                height_above_ground_m: peak.height_above_ground_m,
-                dynamic_pressure_pa: peak.value,
-                flutter_dynamic_pressure_pa,
-                speed_ratio: (flutter_dynamic_pressure_pa / peak.value).sqrt(),
-            }))
+        let Some(peak) = summary.max_dynamic_pressure_pa else {
+            return Ok(None);
+        };
+        if !peak.value.is_finite() {
+            return Err(SimError::Domain {
+                what: "peak dynamic pressure",
+                value: peak.value,
+            });
+        }
+        Ok((peak.value > 0.0).then(|| FlutterMargin {
+            time_s: peak.time_s,
+            height_above_ground_m: peak.height_above_ground_m,
+            dynamic_pressure_pa: peak.value,
+            flutter_dynamic_pressure_pa,
+            speed_ratio: (flutter_dynamic_pressure_pa / peak.value).sqrt(),
+        }))
     }
 }
 
-/// How far below its flutter speed a fin flew, at the flight's peak dynamic pressure.
+/// How far below eq. 18's flutter speed a fin flew, at the flight's peak dynamic pressure.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlutterMargin {
@@ -241,10 +324,12 @@ pub struct FlutterMargin {
     pub height_above_ground_m: f64,
     /// The flight's peak dynamic pressure, Pa.
     pub dynamic_pressure_pa: f64,
-    /// The dynamic pressure at which the fin flutters, Pa.
+    /// The dynamic pressure at eq. 18's flutter speed, Pa.
     pub flutter_dynamic_pressure_pa: f64,
-    /// The flutter speed over the airspeed there, `V_f / V = √(q_f / q)`: above 1 the fin is below
-    /// its flutter speed, and the flight's least ratio is this one.
+    /// Eq. 18's flutter speed over the airspeed there, `V_f / V = √(q_f / q)`, the flight's least.
+    /// Below 1 the fin flies faster than eq. 18's flutter speed. Martin's data doesn't make 1 a
+    /// safe line: his band puts `V_f` at 1.8 to 2.0 times the speed of sound, and his surviving
+    /// wings flew to at least Mach 1.3, so wings on the band had ratios of up to about 1.5.
     pub speed_ratio: f64,
 }
 
@@ -258,10 +343,12 @@ fn positive(what: &'static str, value: f64) -> Result<(), SimError> {
 
 #[cfg(test)]
 mod tests {
+    use hpr_design::{Component, Part};
+
     use super::*;
     use crate::environment::Environment;
     use crate::flight::{FlightSettings, Simulation};
-    use crate::metrics::FlightMetrics;
+    use crate::metrics::{FlightMetrics, Peak};
     use crate::rail::Rail;
     use crate::recorder::{Channel, Recorder};
     use crate::testing::{design, site};
@@ -277,21 +364,26 @@ mod tests {
         FlutterPanel::new(aspect_ratio, taper_ratio, thickness_ratio).unwrap()
     }
 
+    /// Martin's `X` (eq. 19) times `(λ + 1)/2 · p/p₀`: the ordinate of his figure 3, in psi.
+    fn ordinate_psi(p: &FlutterPanel, pressure_pa: f64) -> f64 {
+        p.denominator_pa(pressure_pa).unwrap() / PSI
+    }
+
     /// Eq. 18's constant is eq. 16's `24 ε γ p₀ / π` to the three figures Martin prints, and
     /// twice Loft's `1.337` (L32).
     #[test]
     fn flutter_denominator_matches_tn_4197_eq_18() {
-        let constant_psi = 24.0 * EPSILON * HEAT_CAPACITY_RATIO / PI * P0 / PSI;
+        let constant_psi = 24.0 * CG_AFT_OF_QUARTER_CHORD * HEAT_CAPACITY_RATIO / PI * P0 / PSI;
         assert!((constant_psi - 39.3).abs() < 0.05, "{constant_psi}");
         for (a, lambda, tc) in [(2.0, 1.0, 0.04), (1.3, 0.4, 0.025), (3.1, 0.0, 0.07)] {
             let p = panel(a, lambda, tc);
             for pressure in [P0, 0.4 * P0] {
                 let eq_18_psi = 39.3 * a.powi(3) / (tc.powi(3) * (a + 2.0)) * (lambda + 1.0) / 2.0
                     * (pressure / P0);
-                let ours_psi = p.denominator_pa(pressure) / PSI;
                 // Only Martin's rounding of 39.29 to 39.3 apart.
+                let ours = ordinate_psi(&p, pressure);
                 assert!(
-                    (ours_psi / eq_18_psi - 1.0).abs() < 0.05 / 39.3,
+                    (ours / eq_18_psi - 1.0).abs() < 0.05 / 39.3,
                     "{a} {lambda} {tc}"
                 );
             }
@@ -324,6 +416,8 @@ mod tests {
             let v = base.flutter_speed_m_s(g, p, a).unwrap();
             let q = 0.5 * HEAT_CAPACITY_RATIO * p / (a * a) * v * v;
             assert!((q / q_f - 1.0).abs() < 1e-12, "{q} {q_f}");
+            let ratio = base.figure_3_ratio(g, p).unwrap();
+            assert!((ratio - (a / v).powi(2)).abs() < 1e-12 * ratio);
         }
     }
 
@@ -332,9 +426,16 @@ mod tests {
     /// 1.25 to the nearest 0.05 × 10⁶), and a titanium wing held to an ordinate of 0.8 × 10⁶ psi
     /// needs 2.5, 4.5 and "about 6.5" percent at `A = 1`, 2 and 3 (eq. 19 gives 2.54, 4.61 and
     /// 6.43, each those to the nearest half percent).
+    ///
+    /// His verdicts on the first are the margin half: in solid magnesium the wing "would plot in
+    /// the flutter region", in aluminium it "would be marginal", in steel "probably safe". With
+    /// the moduli he marks on figure 3's axis, each a small box measured on the 250 dpi scan
+    /// (× 10⁶ psi: magnesium 2.40 to 2.63, aluminium 3.82 to 4.28, titanium 5.98 to 6.55, steel
+    /// 8.94 to 11.6), and his band, magnesium's ratio lies wholly above the band, aluminium's
+    /// overlaps it, and steel's lies wholly below; titanium held to 0.8 × 10⁶ psi lies below it.
     #[test]
     fn martins_worked_examples() {
-        let x_psi = |a: f64, tc: f64| panel(a, 1.0, tc).denominator_pa(P0) / PSI;
+        let x_psi = |a: f64, tc: f64| ordinate_psi(&panel(a, 1.0, tc), P0);
         let x = x_psi(2.0, 0.04);
         assert!((x / 1e6 - 1.227_9).abs() < 1e-4, "{x}");
         assert_eq!((x / 0.05e6).round() * 0.05, 1.25);
@@ -343,12 +444,25 @@ mod tests {
             let tc = 0.01 * (x_psi(a, 0.01) / 0.8e6).cbrt();
             assert_eq!((200.0 * tc).round() / 2.0, printed_percent, "{a}: {tc}");
         }
+        let [low, high] = FIGURE_3_BAND;
+        // The ratio `D/G_E` over a material's box: the stiffest end gives the least.
+        let ratios = |ordinate: f64, box_msi: [f64; 2]| {
+            [ordinate / (box_msi[1] * 1e6), ordinate / (box_msi[0] * 1e6)]
+        };
+        let magnesium = ratios(x, [2.40, 2.63]);
+        let aluminium = ratios(x, [3.82, 4.28]);
+        let steel = ratios(x, [8.94, 11.6]);
+        let titanium = ratios(0.8e6, [5.98, 6.55]);
+        assert!(magnesium[0] > high, "{magnesium:?}");
+        assert!(aluminium[0] < high && aluminium[1] > low, "{aluminium:?}");
+        assert!(steel[1] < low, "{steel:?}");
+        assert!(titanium[1] < low, "{titanium:?}");
     }
 
     /// Martin replaces `1/(f₁² f₂²)`, with `f₁ = 1 + 1.87 (1 − λ)^1.6` (eq. 8) and
     /// `f₂ = (1 + 3λ)/(2(1 + λ))` (eq. 14), by `(λ + 1)/2`: equal at `λ = 1`, 3% apart at `λ = 0`,
     /// and up to 47% larger between (at `λ ≈ 0.31`), which lowers the flutter speed there by up to
-    /// 17%. The model keeps his form, since his figure 3 was drawn with it.
+    /// 17.5%. The model keeps his form, since his figure 3 was drawn with it.
     #[test]
     fn taper_factor_against_the_frequency_factors() {
         let exact = |lambda: f64| {
@@ -370,27 +484,27 @@ mod tests {
     }
 
     /// On a real flight the margin is at the peak dynamic pressure and is the least of every
-    /// millisecond, and eq. 18 at each instant's own pressure and speed of sound gives the same
-    /// ratio: `p = 2q/(γM²)` and `a = V/M` in the simulator's air, whose `γ` is Martin's 1.4.
+    /// millisecond. At each row, eq. 18 at the pressure and speed of sound its `q` and Mach number
+    /// imply (`p = 2q/(γM²)`, `a = V/M`) agrees with `√(q_f/q)`: the two methods are consistent.
     #[test]
     fn the_margin_is_the_flights_least_at_its_peak_dynamic_pressure() {
-        fn find_fins(value: &serde_json::Value) -> Option<&serde_json::Value> {
-            match value {
-                serde_json::Value::Object(map) => map
-                    .get("fin_set")
-                    .or_else(|| map.values().find_map(find_fins)),
-                serde_json::Value::Array(items) => items.iter().find_map(find_fins),
-                _ => None,
-            }
+        fn find_fins(components: &[Component]) -> Option<&FinSet> {
+            components.iter().find_map(|c| match &c.part {
+                Part::FinSet(set) => Some(set),
+                _ => find_fins(&c.children),
+            })
         }
-        let text = include_str!("../../../validation/designs/rocketpy-valetudo.json");
-        let value: serde_json::Value = serde_json::from_str(text).unwrap();
-        let fins: FinSet = serde_json::from_value(find_fins(&value).unwrap().clone()).unwrap();
-        let panel = FlutterPanel::of_fins(&fins).unwrap();
+        let rocket = design("rocketpy-valetudo");
+        let fins = rocket
+            .stages
+            .iter()
+            .find_map(|stage| find_fins(&stage.components))
+            .unwrap();
+        let panel = FlutterPanel::of_fins(fins).unwrap();
         // An arbitrary shear modulus: the checks hold for any.
         let g = 3e9;
         let sim = Simulation::new(
-            &design("rocketpy-valetudo"),
+            &rocket,
             "example",
             Environment::standard(site()).unwrap(),
             Rail::vertical(5.0),
@@ -436,6 +550,21 @@ mod tests {
             checked += 1;
         }
         assert!(checked > 1000, "{checked}");
+        // A flight with no peak has no margin; a peak that isn't finite is refused.
+        let mut never = summary.clone();
+        never.max_dynamic_pressure_pa = None;
+        assert_eq!(panel.margin(g, &never).unwrap(), None);
+        never.max_dynamic_pressure_pa = Some(Peak {
+            value: f64::NAN,
+            ..peak
+        });
+        assert!(matches!(
+            panel.margin(g, &never),
+            Err(SimError::Domain {
+                what: "peak dynamic pressure",
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -449,20 +578,54 @@ mod tests {
         }))
         .unwrap();
         let p = FlutterPanel::of_fins(&fins).unwrap();
-        assert!((p.aspect_ratio - 0.8).abs() < 1e-15);
-        assert!((p.taper_ratio - 0.5).abs() < 1e-15);
-        assert!((p.thickness_ratio - 0.02).abs() < 1e-15);
-        let elliptical = FinSet {
-            planform: FinPlanform::Elliptical {
-                root_chord_m: 0.2,
-                span_m: 0.1,
-            },
-            ..fins
+        assert!((p.aspect_ratio() - 0.8).abs() < 1e-15);
+        assert!((p.taper_ratio() - 0.5).abs() < 1e-15);
+        assert!((p.thickness_ratio() - 0.02).abs() < 1e-15);
+        let with = |planform: FinPlanform, thickness_m: f64| FinSet {
+            planform,
+            thickness_m,
+            ..fins.clone()
         };
-        assert!(matches!(
-            FlutterPanel::of_fins(&elliptical),
-            Err(SimError::Unsupported { what }) if what.contains("trapezoid")
-        ));
+        let trapezoid =
+            |root_chord_m: f64, tip_chord_m: f64, span_m: f64| FinPlanform::Trapezoidal {
+                root_chord_m,
+                tip_chord_m,
+                span_m,
+                sweep_m: 0.0,
+            };
+        let unsupported = |r: Result<FlutterPanel, SimError>, expected: &str| {
+            assert!(
+                matches!(r, Err(SimError::Unsupported { what }) if what.contains(expected)),
+                "{expected}"
+            );
+        };
+        let elliptical = FinPlanform::Elliptical {
+            root_chord_m: 0.2,
+            span_m: 0.1,
+        };
+        unsupported(FlutterPanel::of_fins(&with(elliptical, 0.004)), "trapezoid");
+        unsupported(
+            FlutterPanel::of_fins(&with(trapezoid(0.1, 0.2, 0.1), 0.004)),
+            "tip chord is longer",
+        );
+        let domain = |r: Result<FlutterPanel, SimError>, expected: &str| {
+            assert!(
+                matches!(r, Err(SimError::Domain { what, .. }) if what == expected),
+                "{expected}"
+            );
+        };
+        domain(
+            FlutterPanel::of_fins(&with(trapezoid(0.0, 0.0, 0.1), 0.004)),
+            "fin root chord",
+        );
+        domain(
+            FlutterPanel::of_fins(&with(trapezoid(0.2, 0.1, -0.1), 0.004)),
+            "flutter panel aspect ratio",
+        );
+        domain(
+            FlutterPanel::of_fins(&with(trapezoid(0.2, 0.1, 0.1), 0.0)),
+            "flutter panel thickness ratio",
+        );
     }
 
     #[test]
@@ -497,11 +660,24 @@ mod tests {
             ),
             (p.flutter_speed_m_s(1e9, -1.0, 340.0), "static pressure"),
             (p.flutter_speed_m_s(1e9, P0, 0.0), "speed of sound"),
+            (p.figure_3_ratio(1e9, f64::INFINITY), "static pressure"),
+            (
+                p.flutter_dynamic_pressure_pa(f64::NAN),
+                "effective shear modulus",
+            ),
         ] {
             assert!(
                 matches!(r, Err(SimError::Domain { what, .. }) if what == expected),
                 "{expected}"
             );
         }
+        // JSON goes through the same checks, and round-trips.
+        let json = serde_json::to_value(p).unwrap();
+        let back: FlutterPanel = serde_json::from_value(json).unwrap();
+        assert_eq!(back, p);
+        let bad = serde_json::json!({"aspect_ratio": 1.0, "taper_ratio": -1.5,
+                                     "thickness_ratio": 0.02});
+        let err = serde_json::from_value::<FlutterPanel>(bad).unwrap_err();
+        assert!(err.to_string().contains("taper ratio"), "{err}");
     }
 }

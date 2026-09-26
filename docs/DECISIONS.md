@@ -6993,12 +6993,26 @@ Theodorsen and Garrick's flutter speed; his worked examples (pp. 6–7) read his
    readings: `X` "about 1.25 × 10⁶" psi (eq. 19: 1.228, which rounds to 1.25 at his 0.05 steps),
    and titanium thicknesses 2.5, 4.5 and "about 6.5" percent (eq. 19: 2.54, 4.61, 6.43, each
    those at his half-percent steps). The test asserts that rounding, not a percentage tolerance.
-4. **The lower flutter speed wherever the source leaves room.** The thickness ratio is taken at
+   His verdicts on the first wing (magnesium in the flutter region, aluminium marginal, steel
+   probably safe) and titanium's margin are the example's margin half: with the moduli he marks
+   on figure 3's axis, each box measured on the scan, magnesium's figure 3 ratio lies wholly above
+   his band, aluminium's overlaps it, steel's and titanium's lie below.
+4. **Martin's line is a measured band, and `V_f/V = 1` is not it.** Figure 3's shaded band,
+   measured on a 250 dpi scan (both log axes calibrated on their ticks, 69 columns traced), runs
+   at `D/G_E` = 0.25 to 0.31 along the whole axis: `V_f` of 1.8 to 2.0 times the speed of sound,
+   for wings that flew to at least Mach 1.3. `FIGURE_3_BAND` holds it and
+   `FlutterPanel::figure_3_ratio` gives `D/G_E`. The hobby convention of `V_f/V = 1` as the limit
+   isn't calibrated by the source; a wing on the band flown to Mach 1.3 has a ratio of about 1.5,
+   so the docs say a ratio below about 1.5 is not shown to be safe. (A first draft treated 1 as
+   the line; review caught it.)
+5. **The lower flutter speed wherever the source leaves room.** The thickness ratio is taken at
    the root, the smallest on a constant-thickness fin. A solid fin's `G_E` is its material's `G`,
    as Martin's text says (p. 6), though his eq. 12 with a flat plate's `J = ct³/3` would give
    twice that (a `√2` higher speed). His `(λ + 1)/2` replaces `1/(f₁² f₂²)`, which it exceeds by
-   up to 47% at `λ = 0.31` (17% lower speed); it is kept, since his figure 3 was drawn with it.
-5. **Shear moduli with their own sources, beside the densities.** `Material` is unchanged (a
+   up to 47% at `λ = 0.31` (17.5% lower speed); it is kept, since his figure 3 was drawn with it.
+   One reading goes the other way and is stated: an airfoiled fin's `G_E` by eq. 12 is `0.946 G`,
+   so its `V_f` is up to 2.7% high.
+6. **Shear moduli with their own sources, beside the densities.** `Material` is unchanged (a
    design stores a density only); `hpr_design::materials::SHEAR_MODULI` gives 14 built-in
    materials an in-plane shear modulus with source, page, URL and basis: metals from MIL-HDBK-5J,
    carbon from NCAMP's AS4/8552 `G₁₂`, plywood from Riga Wood's panel shear, woods from the Wood
@@ -7006,12 +7020,13 @@ Theodorsen and Garrick's flutter speed; his worked examples (pp. 6–7) read his
    `E/(2(1 + ν))` from their data sheets. Where a source gives a range, the lower is kept. No
    source found gives G10/FR-4's, or PLA's, ABS's, PETG's, polycarbonate's or acrylic's; they have
    none, and the caller passes one.
-6. **Refused, not guessed.** Elliptical and freeform fins return `SimError::Unsupported` (a new
-   variant): Martin's taper factors are for trapezoids.
+7. **Refused, not guessed.** Elliptical, freeform and reverse-tapered fins return
+   `SimError::Unsupported` (a new variant): Martin's taper factors are for trapezoids tapering
+   outward. A panel's numbers are checked when it is made and when it is read from JSON.
 
-**Consequences.** hpr's flutter speeds are conservative by construction and are a screening
-number: Martin's figure 3 separates flutter from none with a band of scatter, and the criterion
-is not checked against any hobby rocket. On the synthetic 54 mm rocket on an I175, 3.2 mm birch
-plywood fins reach 1.75 times their flutter speed at max q (a ratio `V_f/V` of 0.57), and
-aluminium fins fly at under a third of theirs (3.40). A later milestone could add a plate-theory or measured-stiffness
+**Consequences.** hpr's flutter numbers are a screening check, not a flutter analysis, and are
+not shown to be conservative as a whole: the fin's mounting, sweep and Mach effects are left out,
+and nothing is checked against a hobby rocket. On the synthetic 54 mm rocket on an I175, 3.2 mm
+birch plywood fins reach 1.75 times `V_f` at max q; carbon fibre has `V_f/V` of 1.46 but a
+figure 3 ratio of 0.45, above the band; aluminium passes both (3.40 and 0.083). A later milestone could add a plate-theory or measured-stiffness
 option; this one doesn't.

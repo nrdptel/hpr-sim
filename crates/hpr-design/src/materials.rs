@@ -20,7 +20,8 @@
 //!
 //! **Shear moduli.** [`SHEAR_MODULI`] gives some of these materials the in-plane shear modulus a
 //! fin's flutter speed needs (NACA TN 4197's `G_E`), each with its own source; the others have
-//! none, since no source found states one (G10/FR-4, PLA, ABS, PETG, polycarbonate, acrylic).
+//! none. Among fin materials, no source found states one for G10/FR-4, eastern white pine, PLA,
+//! ABS, PETG, polycarbonate or acrylic.
 //! Where a source gives a range, the lower value is kept: a lower modulus gives a lower flutter
 //! speed.
 //!
@@ -679,6 +680,13 @@ pub fn shear_modulus(id: &str) -> Option<&'static BuiltinShearModulus> {
     SHEAR_MODULI.iter().find(|m| m.id == id)
 }
 
+/// The built-in shear modulus of `material`, found by its name, as a design stores a built-in
+/// material; `None` for a material that isn't built in or has no modulus.
+pub fn shear_modulus_of(material: &Material) -> Option<&'static BuiltinShearModulus> {
+    let builtin = BUILTIN.iter().find(|m| m.name == material.name)?;
+    shear_modulus(builtin.id)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -748,6 +756,11 @@ mod tests {
         for none in ["fiberglass_g10", "pine", "polycarbonate"] {
             assert!(shear_modulus(none).is_none(), "{none}");
         }
+        // A design's copy of a built-in material finds its modulus by name.
+        let plywood = find("birch_plywood").unwrap().material();
+        assert_eq!(shear_modulus_of(&plywood).unwrap().id, "birch_plywood");
+        assert!(shear_modulus_of(&Material::bulk("Birch plywood (mine)", 680.0)).is_none());
+        assert!(shear_modulus_of(&find("fiberglass_g10").unwrap().material()).is_none());
     }
 
     #[test]

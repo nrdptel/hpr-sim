@@ -75,7 +75,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-078: flutter by TN 4197 eq. 18, the lower reading where it allows two; solid fin G_E = G.
+- ADR-078: flutter by TN 4197 eq. 18; its figure 3 band measured (0.25-0.31); lower reading if two.
 - ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = √10; held recovery.
 - ADR-076: a `.ork` flies its ignitions and one powered split; tolerance 5% in apogee and speed.
 - ADR-074, ADR-075: M1.9 split a to c; a powered split flies body 0 on; a cluster, a motor per tube.

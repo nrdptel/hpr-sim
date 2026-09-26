@@ -1,9 +1,11 @@
 Panel: aspect ratio 0.667, taper ratio 0.400, thickness ratio 0.0212
 Max q: 72455 Pa at 2.09 s, 432 m above the pad
+Top speed: 355 m/s at 2.10 s; top Mach number: 1.05 at 2.10 s
+Martin's band (figure 3): D/G_E from 0.25 to 0.31
 
-material            G (GPa)   q_f (kPa)   V_f 0 m (m/s)   V_f 3 km (m/s)   V_f/V at max q
-aluminum_6061        26.200       836.3            1169             1356             3.40
-carbon_fiber          4.826       154.1             502              582             1.46
-birch_plywood         0.750        23.9             198              229             0.57
-basswood              0.511        16.3             163              189             0.47
-balsa                 0.138         4.4              85               99             0.25
+material            G (GPa)   q_f (kPa)   V_f 0 m (m/s)   V_f 3 km (m/s)   V_f/V at max q   D/G_E
+aluminum_6061        26.200       836.3            1169             1356             3.40   0.083
+carbon_fiber          4.826       154.1             502              582             1.46   0.450
+birch_plywood         0.750        23.9             198              229             0.57   2.893
+basswood              0.511        16.3             163              189             0.47   4.246
+balsa                 0.138         4.4              85               99             0.25  15.680
