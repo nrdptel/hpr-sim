@@ -889,6 +889,12 @@ fn a_recorder_is_cleared_between_flights_and_simulations_are_shareable() {
         Recorder::new(twice.collect(), None),
         Err(SimError::Unsupported { what }) if what.contains("listed twice")
     ));
+    // Nor may two different channels share a column name.
+    let columns = Recorder::new(Channel::ALL.to_vec(), None)
+        .unwrap()
+        .columns();
+    let unique: std::collections::BTreeSet<_> = columns.iter().collect();
+    assert_eq!(unique.len(), columns.len());
     let sim = valetudo(Environment::standard(site()).unwrap(), capped(8.0));
     let mut recorder = Recorder::new(vec![Channel::Time], Some(0.1)).unwrap();
     sim.run(&mut recorder).unwrap();

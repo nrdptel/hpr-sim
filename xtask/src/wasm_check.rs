@@ -126,7 +126,8 @@ pub fn check_layering(
     Err(message)
 }
 
-/// Runs `cargo tree` over the normal dependencies of `packages` for all targets.
+/// Runs `cargo tree` over the normal dependencies of `packages` for all targets, with the pure
+/// crates' own features ([`PURE_FEATURES`]) of those packages on, as the wasm32 build has them.
 fn cargo_tree(
     root: &Path,
     packages: &[String],
@@ -139,6 +140,17 @@ fn cargo_tree(
     ]);
     for name in packages {
         command.args(["--package", name]);
+    }
+    let features: Vec<&str> = PURE_FEATURES
+        .iter()
+        .copied()
+        .filter(|feature| {
+            let package = feature.split('/').next().unwrap_or_default();
+            packages.iter().any(|name| name == package)
+        })
+        .collect();
+    if !features.is_empty() {
+        command.args(["--features", &features.join(",")]);
     }
     command.args(extra).args(cargo_args);
     let output = command
