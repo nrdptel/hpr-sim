@@ -237,6 +237,127 @@ def private_fixture_hashes(cwd: str) -> set[str]:
     return hashes
 
 
+# Screening of text that becomes public: PR and issue bodies, comments, reviews, API writes, and
+# commit messages (public once pushed). CLAUDE.md rule 4 allows counts, error statistics and
+# anonymised case ids from the private corpus. It does not allow a private design's name, its
+# sizes or masses, or a ratio or percentage that back-computes one. A hook can't tell those numbers
+# from allowed statistics. So it stops the post in two cases, until the command says the text was
+# re-read (a trailing `# private-data-checked` comment):
+#   - the text names a design in the private corpus;
+#   - it talks about a private design and carries measured values.
+# Why: the first revision of issue #186 quoted one private design's sizes, and GitHub keeps every
+# revision of an issue or PR body until the owner deletes it by hand.
+PRIVATE_DIRS = ("loft-fixtures", "debrief-fixtures")
+GENERIC_NAMES = {"rocket", "untitled", "my rocket", "new rocket", "sustainer", "booster", "rocket design"}
+PRIVATE_CONTEXT = re.compile(
+    r"(?i)\bprivate\s+(?:design|flight|file|corpus|case|fixture|log|rocket|data|example)s?\b"
+    r"|loft-fixtures|debrief-fixtures|\b[A-Z]\d{2}/\d+\b"
+)
+MEASURED = re.compile(
+    r"(?<![\w.])[-−+]?\d+(?:[.,]\d+)?\s?(?:mm|cm|m|km|in|ft|g|kg|lb|oz|N|Ns|s|%|calibres?|calibers?|times)(?![A-Za-z])"
+)
+PRIVATE_ACK = re.compile(r"#\s*private-data-checked\b")
+
+
+def private_names(cwd: str) -> set[str]:
+    """The design names in the private corpus: each .ork file's rocket name, and long file stems.
+
+    A name that already appears in the repository's tracked files is public and left out. The
+    corpus holds copies of OpenRocket's bundled examples, whose names the public fixtures and
+    reports quote; checking the past 112 PR bodies turned up only such names.
+    """
+    import gzip
+    import zipfile
+
+    names: set[str] = set()
+    base = os.path.join(os.environ.get("CLAUDE_PROJECT_DIR") or cwd, "refs")
+    for sub in PRIVATE_DIRS:
+        for dirpath, dirnames, filenames in os.walk(os.path.join(base, sub)):
+            dirnames[:] = [d for d in dirnames if d != ".git"]
+            for fname in filenames:
+                stem, ext = os.path.splitext(fname)
+                if len(stem) >= 12 and not stem.startswith("."):
+                    names.add(stem)
+                if ext.lower() != ".ork":
+                    continue
+                path = os.path.join(dirpath, fname)
+                data = b""
+                try:
+                    with zipfile.ZipFile(path) as z:
+                        inner = [n for n in z.namelist() if n.endswith((".ork", ".xml"))]
+                        data = z.read(inner[0]) if inner else b""
+                except Exception:
+                    try:
+                        with gzip.open(path) as fh:
+                            data = fh.read()
+                    except Exception:
+                        try:
+                            with open(path, "rb") as fh:
+                                data = fh.read()
+                        except OSError:
+                            data = b""
+                m = re.search(r"<rocket>\s*<name>([^<]{1,120})</name>", data.decode("utf-8", "replace"))
+                if m:
+                    names.add(m.group(1).strip())
+    names = {n for n in names if len(n) >= 5 and n.lower() not in GENERIC_NAMES}
+    if names:
+        root = os.environ.get("CLAUDE_PROJECT_DIR") or cwd
+        pattern_args: list[str] = []
+        for n in sorted(names):
+            pattern_args += ["-e", n]
+        try:
+            found = subprocess.run(
+                ["git", "grep", "-h", "-o", "-i", "-F", "-I", *pattern_args],
+                cwd=root, capture_output=True, text=True, timeout=20,
+            ).stdout
+            public = {line.strip().lower() for line in found.splitlines()}
+            names = {n for n in names if n.lower() not in public}
+        except Exception:
+            pass
+    return names
+
+
+def screen_private(text: str, raw: str, cwd: str, what: str) -> None:
+    if not text.strip() or PRIVATE_ACK.search(raw):
+        return
+    lowered = text.lower()
+    named = [n for n in private_names(cwd)
+             if n.lower() in lowered and re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", text, re.IGNORECASE)]
+    if named:
+        block(f"{what} names {len(named)} design(s) from the private corpus (for example '{named[0]}'). "
+              "CLAUDE.md rule 4: refer to a private design only by its anonymised case id. Rewrite it; if the name is "
+              "really a public one, re-run the same command with a trailing `# private-data-checked` comment.")
+    if PRIVATE_CONTEXT.search(text):
+        values = [m.group(0).strip() for m in MEASURED.finditer(text)][:4]
+        if values:
+            block(f"{what} talks about a private design and carries measured values ({', '.join(values)}). "
+                  "CLAUDE.md rule 4 allows counts, error statistics and anonymised case ids, never a private design's "
+                  "sizes, masses or positions, nor a ratio or percentage that back-computes one. Re-read the text for "
+                  "exactly that and fix it, then re-run the same command with a trailing `# private-data-checked` "
+                  "comment. Posted text can't be taken back: GitHub keeps every revision of a body.")
+
+
+def files_named(tokens: list[str], cwd: str) -> str:
+    """Contents of files a command reads its payload from: `@path` values and `--input path`."""
+    parts: list[str] = []
+    for i, t in enumerate(tokens):
+        path = None
+        if "=@" in t:
+            path = t.split("=@", 1)[1]
+        elif t.startswith("@"):
+            path = t[1:]
+        elif t == "--input" and i + 1 < len(tokens):
+            path = tokens[i + 1]
+        if path and path != "-":
+            full = path if os.path.isabs(path) else os.path.join(cwd, path)
+            try:
+                with open(full, encoding="utf-8", errors="replace") as fh:
+                    parts.append(fh.read())
+            except OSError:
+                pass
+    return "\n".join(parts)
+
+
 def staged_private_files(cwd: str, include_tracked_changes: bool) -> list[str]:
     private = private_fixture_hashes(cwd)
     if not private:
@@ -320,6 +441,7 @@ def check_segment(tokens: list[str], cwd: str, raw: str, state: dict) -> None:
             block(f"Commit message contains an AI-attribution trace (matched /{pat}/). Rewrite it without any reference to the tool that wrote it.")
         if any(a == "--author" or a.startswith("--author=") for a in args):
             block("Don't override the commit author; the repo identity is set by scripts/preflight.sh.")
+        screen_private(msg, raw, cwd, "The commit message (public once pushed)")
         include_tracked = any(a in ("-a", "--all") or re.fullmatch(r"-[a-zA-Z]*a[a-zA-Z]*", a) for a in args)
         hits = staged_private_files(cwd, include_tracked)
         if hits:
@@ -339,11 +461,23 @@ def check_segment(tokens: list[str], cwd: str, raw: str, state: dict) -> None:
 
     if tokens and os.path.basename(tokens[0]) == "gh" and len(tokens) >= 3 and tokens[1] == "pr" and tokens[2] == "merge":
         check_pr_merge(tokens[3:], cwd)
-    if tokens and os.path.basename(tokens[0]) == "gh" and len(tokens) >= 3 and tokens[1] in ("pr", "issue") and tokens[2] in ("create", "edit", "comment"):
+    is_gh = bool(tokens) and os.path.basename(tokens[0]) == "gh"
+    if is_gh and len(tokens) >= 3 and tokens[1] in ("pr", "issue") and tokens[2] in ("create", "edit", "comment", "review"):
         body = message_from_args(tokens[3:], cwd, ("-b", "--body", "-t", "--title"), ("-F", "--body-file"))
         pat = has_trace(body)
         if pat:
             block(f"PR/issue text contains an AI-attribution trace (matched /{pat}/). Remove it; after posting, read the body back with `gh pr view`.")
+        # A body written by a heredoc in this same command isn't on disk yet, so screen the command too.
+        text = body + ("\n" + raw if "<<" in raw or not body.strip() else "")
+        screen_private(text, raw, cwd, "This PR/issue text")
+    if is_gh and len(tokens) >= 2 and tokens[1] == "api":
+        method = next((tokens[i + 1] for i, t in enumerate(tokens[:-1]) if t in ("-X", "--method")), "")
+        writes = method.upper() in ("POST", "PATCH", "PUT") or any(
+            t in ("-f", "-F", "--field", "--raw-field", "--input") for t in tokens)
+        if "graphql" in tokens[2:3]:
+            writes = "mutation" in raw
+        if writes and method.upper() != "GET":
+            screen_private(raw + "\n" + files_named(tokens, cwd), raw, cwd, "This GitHub API write")
 
 
 def main() -> None:
