@@ -187,9 +187,13 @@ fn every_file_reads_as_the_unidata_library_reads_it() {
                 match (ours_value, library.as_f64()) {
                     (None, None) => {}
                     (Some(a), Some(b)) => {
-                        // The library returns some unpacked values in single precision.
+                        // The library unpacks in the type of the scale and offset: single
+                        // precision for `float_packed`, whose attributes are floats, and double
+                        // (so exactly as hpr does) everywhere else.
+                        let single = ours.name == "float_packed";
+                        let tolerance = if single { 1e-7 * b.abs() } else { 0.0 };
                         assert!(
-                            (a - b).abs() <= 1e-6 * b.abs().max(1.0),
+                            (a - b).abs() <= tolerance,
                             "{what}[{index}]: {a} against {b}"
                         );
                         assert_eq!(
@@ -377,6 +381,159 @@ fn a_float_fill_bounds_the_range_two_units_in_the_last_place_away() {
             None
         ]
     );
+}
+
+/// A classic file built by hand: `dims` as (name, length; 0 for the record dimension), then
+/// variables as (name, dimension ids, type tag, begin), no attributes, and `data` after the
+/// header.
+fn forged(
+    numrecs: u32,
+    dims: &[(&str, u32)],
+    vars: &[(&str, &[u32], u32, u32)],
+    data: &[u8],
+) -> Vec<u8> {
+    fn name(out: &mut Vec<u8>, name: &str) {
+        out.extend((name.len() as u32).to_be_bytes());
+        out.extend(name.as_bytes());
+        out.resize(out.len().div_ceil(4) * 4, 0);
+    }
+    let mut out = b"CDF\x01".to_vec();
+    out.extend(numrecs.to_be_bytes());
+    out.extend(0x0Au32.to_be_bytes());
+    out.extend((dims.len() as u32).to_be_bytes());
+    for (n, length) in dims {
+        name(&mut out, n);
+        out.extend(length.to_be_bytes());
+    }
+    out.extend([0; 8]); // no global attributes
+    if vars.is_empty() {
+        out.extend([0; 8]);
+    } else {
+        out.extend(0x0Bu32.to_be_bytes());
+        out.extend((vars.len() as u32).to_be_bytes());
+    }
+    for (n, ids, kind, begin) in vars {
+        name(&mut out, n);
+        out.extend((ids.len() as u32).to_be_bytes());
+        for id in *ids {
+            out.extend(id.to_be_bytes());
+        }
+        out.extend([0; 8]); // no attributes
+        out.extend(kind.to_be_bytes());
+        out.extend(4u32.to_be_bytes()); // vsize, which the reader ignores
+        out.extend(begin.to_be_bytes());
+    }
+    out.extend(data);
+    out
+}
+
+fn malformed_reason(bytes: &[u8]) -> String {
+    match NetCdf::parse(bytes) {
+        Err(NetCdfError::Malformed { reason }) => reason,
+        other => panic!("expected a malformed header, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_hand_built_file_reads() {
+    // One int variable of two values at byte 80, just past the 80-byte header.
+    let bytes = forged(
+        0,
+        &[("x", 2)],
+        &[("v", &[0], 4, 80)],
+        &[0, 0, 0, 7, 255, 255, 255, 254],
+    );
+    let file = NetCdf::parse(&bytes).unwrap();
+    assert_eq!(file.variable("v").unwrap().values, Values::Int(vec![7, -2]));
+}
+
+#[test]
+fn each_break_of_the_grammar_is_refused_for_its_reason() {
+    let data = [0u8; 16];
+    let cases: Vec<(Vec<u8>, &str)> = vec![
+        (
+            forged(1, &[("a", 0), ("b", 0)], &[], &data),
+            "more than one record dimension",
+        ),
+        (
+            forged(1, &[("x", 2), ("t", 0)], &[("v", &[0, 1], 4, 80)], &data),
+            "record dimension other than first",
+        ),
+        (
+            forged(0, &[("x", 2)], &[("v", &[0], 9, 72)], &data),
+            "unknown type tag 9",
+        ),
+        (
+            forged(0, &[("x", 2)], &[("v", &[3], 4, 72)], &data),
+            "names dimension 3",
+        ),
+        (
+            forged(0, &[("x", 2), ("x", 3)], &[], &data),
+            "two dimensions are called `x`",
+        ),
+        (
+            forged(
+                0,
+                &[("x", 1)],
+                &[("v", &[0], 4, 72), ("v", &[0], 4, 76)],
+                &data,
+            ),
+            "two variables are called `v`",
+        ),
+    ];
+    for (bytes, expected) in cases {
+        let reason = malformed_reason(&bytes);
+        assert!(reason.contains(expected), "{reason} (expected {expected})");
+    }
+
+    // The dimension list's tag replaced by the variable list's.
+    let mut bytes = forged(0, &[("x", 2)], &[], &data);
+    bytes[8..12].copy_from_slice(&0x0Bu32.to_be_bytes());
+    assert!(malformed_reason(&bytes).contains("dimension list has tag 0xb"));
+    // A dimension length with the sign bit set.
+    let mut bytes = forged(0, &[("x", 2)], &[], &data);
+    bytes[24..28].copy_from_slice(&0x8000_0000u32.to_be_bytes());
+    assert!(malformed_reason(&bytes).contains("a dimension length is negative"));
+    // A name that is not UTF-8.
+    let mut bytes = forged(0, &[("x", 2)], &[], &data);
+    bytes[20] = 0xFF;
+    assert!(malformed_reason(&bytes).contains("not UTF-8"));
+}
+
+#[test]
+fn variables_that_share_their_bytes_are_refused() {
+    // Twenty variables of 200 bytes each, all at the same offset: 4000 bytes claimed from a file
+    // of about a thousand.
+    let names: Vec<String> = (0..20).map(|i| format!("v{i}")).collect();
+    let vars: Vec<(&str, &[u32], u32, u32)> = names
+        .iter()
+        .map(|n| (n.as_str(), [0u32].as_slice(), 1, 600))
+        .collect();
+    let bytes = forged(0, &[("x", 200)], &vars, &[0; 200]);
+    assert!(bytes.len() < 2000);
+    assert!(malformed_reason(&bytes).contains("more than the file's"));
+}
+
+#[test]
+fn a_fill_at_the_largest_finite_value_leaves_the_rest_valid() {
+    for fill in [f32::MAX, f32::MIN] {
+        let v = variable(
+            Values::Float(vec![1.0, fill]),
+            vec![("_FillValue", Values::Float(vec![fill]))],
+        );
+        let packing = v.packing().unwrap();
+        assert_eq!(packing.unpack(1.0), Some(1.0), "fill {fill}");
+        assert_eq!(packing.unpack(f64::from(fill)), None, "fill {fill}");
+    }
+    for fill in [f64::MAX, f64::MIN] {
+        let v = variable(
+            Values::Double(vec![1.0, fill]),
+            vec![("_FillValue", Values::Double(vec![fill]))],
+        );
+        let packing = v.packing().unwrap();
+        assert_eq!(packing.unpack(1.0), Some(1.0), "fill {fill}");
+        assert_eq!(packing.unpack(fill), None, "fill {fill}");
+    }
 }
 
 proptest! {

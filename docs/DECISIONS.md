@@ -7132,31 +7132,44 @@ the flights, then the corpus flights with logs.
    netCDF-4 and CDF-5 are refused with a conversion: xarray's `to_netcdf(...,
    format="NETCDF3_64BIT")` after dropping `number` and `expver`, the Data Store's 64-bit integer
    and string variables that the classic formats can't hold (`nccopy` can't drop them for you).
-   Reading HDF5 would mean a large format or a C library, for files a one-line conversion turns
-   into ones this reader reads.
+   Reading HDF5 would mean a large format or a C library, for files a three-line conversion turns
+   into ones this reader reads. A header whose variables claim more bytes than the file holds is
+   refused before anything is allocated, and so are variables that share bytes, so a hostile
+   file costs no more memory than its own size (fuzzed by proptest).
 3. **The Users Guide's conventions over netCDF4-python's.** With no valid bounds, the fill value
-   bounds the valid range on its own side, and a byte with no explicit fill has every value valid
-   (netCDF Users Guide, "Attribute Conventions"). netCDF4-python 1.7.4 masks only values equal to
-   a fill, the byte default included. The tests compare against that library everywhere else and
-   pin each cell where the two differ.
+   bounds the valid range on its own side (one step away for integers, two units in the last
+   place for floats), and a byte with no explicit fill has every value valid (netCDF Users Guide,
+   "Attribute Conventions"). netCDF4-python 1.7.4 masks only values equal to a fill, the byte
+   default included. The tests compare against that library everywhere else and pin each cell
+   where the two differ, in both classic formats. It matters: RocketPy's EuroC and Spaceport
+   America ERA5 files hold −32768 under a −32767 fill (102 and 298 geopotentials, 4 and 2
+   temperatures), which hpr reads as missing and netCDF4-python as, for example, 198.66 K.
 4. **ERA5 in `hpr_io::era5`, as a `SoundingProfile`.** `hpr-io` gains `hpr-atmos` (both pure).
    Values are bilinear in latitude and longitude, as RocketPy 1.13 takes them (its MIT
    `bilinear_interpolation`), and linear in time between the two hours around the launch, where
-   RocketPy takes the nearest hour. Geopotential height `z/g₀` becomes geometric height by
+   RocketPy takes the nearest hour. Geopotential height `Z = z/g₀` becomes geometric height by
    WMO-No. 8 at the site's latitude, the relation `SoundingProfile` inverts, so each level's
-   geopotential round-trips. RocketPy divides by `g₀` at every latitude, so the heights differ by
-   `g₀/γ_s(φ) − 1`: −0.0158% at 47.2° N and +0.0343% at 41.8° N. Humidity is not read yet (dry
+   geopotential round-trips. ECMWF's Knowledge Base suggests `R·Z/(R − Z)` instead, "neglecting
+   horizontal variations" of gravity, and RocketPy does that. Both are approximations: ERA5's
+   model fixes the surface geopotential at `g₀ h_s`, so WMO's reading is off by a constant
+   `h_s(g₀/γ_s − 1)` and ECMWF's by `−(h − h_s)(g₀/γ_s − 1)`, growing with height above the model's
+   ground. For a pad near that ground the constant is the smaller over a flight (1.6 m against
+   3.4 m at 3 km, for a pad 1400 m up at 33° N), and WMO's is the rule hpr already uses for every
+   sounding. The readings differ by `g₀/γ_s(φ) − 1` of the height: −0.0158% at 47.2° N and
+   +0.0343% at 41.8° N, pinned by a test. Humidity is not read yet (dry
    air). Beyond the levels the profile is `SoundingProfile`'s: hydrostatic between levels and the
    offset standard atmosphere above them, where RocketPy holds the end level's values.
 5. **Fixtures.** `validation/oracles/netcdf/write_cases.py` writes the reader's test files with
    the Unidata C library (through netCDF4-python) and records its reading. `era5.py` cuts small
    extracts of RocketPy's Bella Lui and NDRT 2020 files (the second one from the current Data
    Store, converted by the guide's recipe) and records RocketPy's reading of the full files. The
-   extracts are committed with Copernicus's attribution. netCDF4 and xarray join the oracle
-   environment.
+   extracts are committed under ERA5's CC BY 4.0 licence with Copernicus's attribution and
+   disclaimer (`THIRD-PARTY-NOTICES.md`), and every fixture records its generator, tool versions,
+   date, command and input hashes. netCDF4 and xarray join the oracle environment.
 
 **Consequences.** `Era5Profile::read` agrees with RocketPy's levels to 1e-12 on the hour at both
-sites, and two downloads of the same analysis four years apart agree to within their packing
-(`hpr_io::era5` tests). A user with a current Data Store file runs one Python line first; a native
+sites, and two downloads of the same analysis four years apart agree to 0.23 m²/s², 0.35 mK and
+0.11 mm/s, consistent with each file's rounding (`hpr_io::era5` tests). A user with a current
+Data Store file runs three lines of Python first; a native
 netCDF-4 reader stays open for later. Humidity and single-level (surface) files are not read yet.
 

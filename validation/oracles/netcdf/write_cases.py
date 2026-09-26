@@ -7,7 +7,8 @@ classic format (`CDF\\x01`) and the 64-bit offset format (`CDF\\x02`). The cases
 type as a variable and as an attribute, scalars and several dimensions, record variables
 interleaved with padding, the specification's two "Note on padding" cases (a lone record variable
 of shorts or bytes, stored unpadded), an empty record dimension, and the attribute conventions for
-packed and missing data. The values are invented for the tests.
+packed and missing data. The values are invented for the tests, except that one packed variable
+borrows the scale and offset of Bella Lui's ERA5 geopotential.
 
 Run from the repository root:
 
@@ -15,6 +16,7 @@ Run from the repository root:
         > validation/fixtures/weather/netcdf-reads.json
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -23,6 +25,12 @@ import netCDF4
 import numpy as np
 
 OUT = "validation/fixtures/weather/netcdf"
+# The date of the committed run: change it when the fixtures are regenerated.
+GENERATED = "2026-09-26"
+COMMAND = (
+    "refs/venv/bin/python validation/oracles/netcdf/write_cases.py "
+    "> validation/fixtures/weather/netcdf-reads.json"
+)
 FORMATS = {"classic": "NETCDF3_CLASSIC", "offset64": "NETCDF3_64BIT_OFFSET"}
 TYPES = {"i1": "byte", "S1": "char", "i2": "short", "i4": "int", "f4": "float", "f8": "double"}
 
@@ -217,11 +225,18 @@ def main():
             build(d)
             d.close()
             files.append(dump(path))
+    with open(__file__, "rb") as f:
+        script = hashlib.sha256(f.read()).hexdigest()
     json.dump(
         {
             "source": "written and read back by the Unidata netCDF C library "
             f"{netCDF4.__netcdf4libversion__} through netCDF4-python {netCDF4.__version__} "
             "(validation/oracles/netcdf/write_cases.py)",
+            "generator": "validation/oracles/netcdf/write_cases.py",
+            "tool": f"netCDF4-python {netCDF4.__version__}, netCDF-C {netCDF4.__netcdf4libversion__}",
+            "generated": GENERATED,
+            "command": COMMAND,
+            "inputs_sha256": {"script": script},
             "files": files,
         },
         sys.stdout,

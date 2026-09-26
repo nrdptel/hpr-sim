@@ -392,9 +392,10 @@ This section covers the [M1.7b streamer-and-tumble milestone](decisions-and-road
   - diffsol 0.16 and ode_solvers 0.6: cross-checks only.
   - argmin 0.11 and egobox 0.37.
   - `cmaes` 0.2.2 has low activity.
-- **Weather files:** `grib` 0.18 (GRIB2, pure Rust); `netcdf3` (pure Rust, classic format only).
-  ERA5 `.nc` files may be netCDF4/HDF5, so check the RocketPy files' actual format before choosing
-  a reader.
+- **Weather files:** `grib` 0.18 (GRIB2, pure Rust) is still a candidate. netCDF classic is read
+  by hpr's own reader from Unidata's spec
+  ([ADR-081 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-081-era5-weather-read-from-netcdf-classic-in-hpr-io-m23-split-a-to-c-2026-09-26));
+  netCDF-4 (HDF5) is converted, not read.
 - **Avoid:** serde_yaml (deprecated), serde_yml (unmaintained), hdf5 (abandoned; use hdf5-metno if
   needed), nav-types (stale), slint (GPL/commercial).
 - **Gaps:** no Rust crate exists for OpenRocket, ThrustCurve or model-rocket simulation, and ISA

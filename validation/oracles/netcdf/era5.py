@@ -1,4 +1,4 @@
-"""ERA5 extracts around three launch sites, and RocketPy's reading of the full files at each.
+"""ERA5 extracts around two launch sites, and RocketPy's reading of the full files at each.
 
 `hpr_io::era5` is checked against these. For each case this script:
 
@@ -10,8 +10,10 @@
    the conversion the guide gives, `xarray.open_dataset(...).drop_vars(["number", "expver"],
    errors="ignore").to_netcdf(..., format="NETCDF3_64BIT")`, after selecting the same window;
 2. reads the full source file with RocketPy 1.13.0's `Environment` (`type="Reanalysis"`,
-   `dictionary="ECMWF"`), as its example or acceptance test for that flight does, and records the
-   levels RocketPy builds: pressure, geometric height, temperature and the wind's components;
+   `dictionary="ECMWF"`) at the site, elevation and time of that flight's acceptance test, and
+   records the levels RocketPy builds: pressure, geometric height, temperature and the wind's
+   components. (The tests also pass `gravity=9.81`, left out here: the reanalysis reading divides
+   by RocketPy's fixed standard gravity whatever the environment's gravity is.);
 3. reads the extract the same way and checks it gives the same levels bit for bit, so the extract
    holds everything the reading uses.
 
@@ -26,6 +28,7 @@ Run from the repository root with the oracle environment:
 
 import bisect
 import datetime
+import hashlib
 import json
 import os
 import sys
@@ -37,6 +40,17 @@ import xarray
 from rocketpy import Environment
 
 WEATHER = "refs/rocketpy/data/weather"
+# The date of the committed run: change it when the fixtures are regenerated.
+GENERATED = "2026-09-26"
+COMMAND = (
+    "refs/venv/bin/python validation/oracles/netcdf/era5.py "
+    "> validation/fixtures/weather/era5-rocketpy.json"
+)
+
+
+def sha256(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 OUT = "validation/fixtures/weather/era5"
 ATTRIBUTION = (
     "Contains modified Copernicus Climate Change Service information 2020 (ERA5 hourly data on "
@@ -188,10 +202,19 @@ def main():
                 "readings": readings,
             }
         )
+    inputs = {"script": sha256(__file__)}
+    for case in CASES:
+        inputs[case["source"]] = sha256(os.path.join(WEATHER, case["source"]))
     json.dump(
         {
             "source": "RocketPy 1.13.0 Environment(type='Reanalysis', dictionary='ECMWF') on the "
             "full files, which read the same on the extracts (validation/oracles/netcdf/era5.py)",
+            "generator": "validation/oracles/netcdf/era5.py",
+            "tool": f"RocketPy 1.13.0, netCDF4-python {netCDF4.__version__}, "
+            f"xarray {xarray.__version__}",
+            "generated": GENERATED,
+            "command": COMMAND,
+            "inputs_sha256": inputs,
             "cases": out,
         },
         sys.stdout,

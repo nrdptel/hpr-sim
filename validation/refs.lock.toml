@@ -704,6 +704,24 @@ dest = "refs/snapshots/unidata/attribute_conventions.html"
 license = "unstated terms"
 mode = "fetched"
 
+[[snapshot]]
+name = "copernicus-era5-pressure-levels"
+url = "https://cds.climate.copernicus.eu/api/catalogue/v1/collections/reanalysis-era5-pressure-levels"
+sha256 = "64daf6afa2eda0dabe7a63d2928382ddd5cdea07a46c535f726abcdd78c701db"
+captured = "2026-09-26"
+dest = "refs/snapshots/copernicus/reanalysis-era5-pressure-levels.json"
+license = "CC-BY-4.0"
+mode = "fetched"
+
+[[snapshot]]
+name = "ecmwf-era5-geometric-height"
+url = "https://confluence.ecmwf.int/display/CKB/ERA5%3A+compute+pressure+and+geopotential+on+model+levels%2C+geopotential+height+and+geometric+height"
+sha256 = "bac7d364d23572567761ed631354c745a2167c6b68e2785214571d0f1dce12dc"
+captured = "2026-09-26"
+dest = "refs/snapshots/ecmwf/era5-geometric-height.html"
+license = "unstated terms"
+mode = "fetched"
+
 # The oracle Python environment: `uv sync --frozen` from validation/oracles/uv.lock, which pins
 # every package by hash. Selected on the command line as `python`.
 [python]

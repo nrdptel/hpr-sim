@@ -12,13 +12,18 @@
 //! Guide and CF Conventions 1.11 §8.1 ("Packed Data") and §2.5.1 ("Missing data, valid and actual
 //! range of data"): a stored value `p` means `p · scale_factor + add_offset`, and is missing if it
 //! equals `_FillValue` or `missing_value` or lies outside `valid_min`, `valid_max` or
-//! `valid_range`.
+//! `valid_range`. With no valid bound given, the fill bounds the valid range on its own side, as
+//! the Users Guide says: the valid range ends one step (integers) or two units in the last place
+//! (floats) short of the fill, toward zero, so with a fill of −32767 a stored −32768 is missing
+//! too. A byte variable with no `_FillValue` has no fill. netCDF4-python 1.7.4 masks only values equal to the
+//! fill, and masks the byte default; the tests pin each value where the two differ.
 //!
 //! **Not read.** netCDF-4 files are HDF5 underneath (they begin `\x89HDF`) and the CDF-5 format
 //! (`CDF\x05`) is not in the cited specification; both are refused with the conversion that makes
 //! them readable ([`CONVERSION`]). A file whose record count was never written (`numrecs` "streaming") is
 //! refused, as the specification leaves it unimplemented.
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Header tag of a dimension list.
@@ -95,7 +100,8 @@ fn malformed(reason: impl Into<String>) -> NetCdfError {
 }
 
 /// Which of the two classic formats a file is written in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Format {
     /// `CDF\x01`: offsets are 32 bits.
     Classic,
@@ -104,7 +110,8 @@ pub enum Format {
 }
 
 /// A netCDF external type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Type {
     /// `NC_BYTE`: 8-bit signed integers.
     Byte,
@@ -145,7 +152,8 @@ impl Type {
 }
 
 /// A block of values of one type, in row-major order.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Values {
     /// `NC_BYTE`, read as signed (the specification's default).
     Byte(Vec<i8>),
@@ -257,7 +265,7 @@ impl Values {
 }
 
 /// A dimension.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Dimension {
     /// Its name.
     pub name: String,
@@ -268,7 +276,7 @@ pub struct Dimension {
 }
 
 /// A named attribute of the file or of a variable.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Attribute {
     /// Its name.
     pub name: String,
@@ -277,7 +285,7 @@ pub struct Attribute {
 }
 
 /// A variable, with all its values read.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variable {
     /// Its name.
     pub name: String,
@@ -390,15 +398,42 @@ impl Variable {
             && let Some(fill) = fill.filter(|f| !f.is_nan())
             && (own != Type::Byte || explicit_fill.is_some())
         {
-            let step = match own {
-                Type::Float => 2.0 * f64::from(ulp_f32(fill as f32)),
-                Type::Double => 2.0 * ulp_f64(fill),
-                _ => 1.0,
+            // Stepped in the variable's own type, so a fill at the largest finite value still
+            // has a finite neighbour.
+            let toward_zero = |x: f64| match own {
+                Type::Float => {
+                    let x = x as f32;
+                    let step = |y: f32| {
+                        if fill > 0.0 {
+                            y.next_down()
+                        } else {
+                            y.next_up()
+                        }
+                    };
+                    f64::from(step(step(x)))
+                }
+                Type::Double => {
+                    let step = |y: f64| {
+                        if fill > 0.0 {
+                            y.next_down()
+                        } else {
+                            y.next_up()
+                        }
+                    };
+                    step(step(x))
+                }
+                _ => {
+                    if fill > 0.0 {
+                        x - 1.0
+                    } else {
+                        x + 1.0
+                    }
+                }
             };
             if fill > 0.0 {
-                valid_max = Some(fill - step);
+                valid_max = Some(toward_zero(fill));
             } else {
-                valid_min = Some(fill + step);
+                valid_min = Some(toward_zero(fill));
             }
         }
         Ok(Packing {
@@ -425,21 +460,9 @@ impl Variable {
     }
 }
 
-/// The spacing of `f32` values at `x`, as the difference to the next one away from zero.
-fn ulp_f32(x: f32) -> f32 {
-    let bits = x.abs().to_bits();
-    f32::from_bits(bits + 1) - f32::from_bits(bits)
-}
-
-/// The spacing of `f64` values at `x`, as the difference to the next one away from zero.
-fn ulp_f64(x: f64) -> f64 {
-    let bits = x.abs().to_bits();
-    f64::from_bits(bits + 1) - f64::from_bits(bits)
-}
-
 /// How a variable's stored values map to physical ones: [`Variable::packing`]. Every bound is in
 /// the stored (packed) values' domain, as the netCDF Users Guide's attribute conventions ask.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Packing {
     /// `scale_factor`, 1 if absent.
     pub scale_factor: f64,
@@ -472,7 +495,7 @@ impl Packing {
 }
 
 /// A netCDF classic or 64-bit offset file, read whole.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NetCdf {
     /// Which of the two formats it is.
     pub format: Format,
@@ -512,7 +535,10 @@ impl NetCdf {
         let mut dimensions = Vec::new();
         for _ in 0..header.list(NC_DIMENSION, "dimension")? {
             let name = header.name()?;
-            let length = u64::from(header.u32("a dimension length")?);
+            if dimensions.iter().any(|d: &Dimension| d.name == name) {
+                return Err(malformed(format!("two dimensions are called `{name}`")));
+            }
+            let length = header.count("a dimension length")?;
             let is_record = length == 0;
             if is_record && dimensions.iter().any(|d: &Dimension| d.is_record) {
                 return Err(malformed("more than one record dimension"));
@@ -528,10 +554,13 @@ impl NetCdf {
         let mut layouts = Vec::new();
         for _ in 0..header.list(NC_VARIABLE, "variable")? {
             let name = header.name()?;
-            let rank = header.u32("a variable's rank")?;
+            if layouts.iter().any(|l: &Layout| l.name == name) {
+                return Err(malformed(format!("two variables are called `{name}`")));
+            }
+            let rank = header.count("a variable's rank")?;
             let mut dims = Vec::new();
             for axis in 0..rank {
-                let id = usize::try_from(header.u32("a dimension id")?)
+                let id = usize::try_from(header.count("a dimension id")?)
                     .map_err(|_| malformed("dimension id out of range"))?;
                 let Some(dimension) = dimensions.get(id) else {
                     return Err(malformed(format!("variable `{name}` names dimension {id}")));
@@ -588,13 +617,32 @@ impl NetCdf {
                 .ok_or_else(|| malformed("the record size is too large"))?;
         }
 
+        // In a well-formed file no two variables share a byte, so together they hold no more than
+        // the file does. A header whose variables overlap could otherwise make a small file decode
+        // into far more memory than it takes.
+        let mut claimed: u64 = 0;
+        for layout in &layouts {
+            let bytes_held = if layout.is_record {
+                layout.slab.checked_mul(numrecs)
+            } else {
+                Some(layout.slab)
+            };
+            claimed = bytes_held
+                .and_then(|b| claimed.checked_add(b))
+                .ok_or_else(|| malformed("the variables' sizes overflow"))?;
+        }
+        if claimed > bytes.len() as u64 {
+            return Err(malformed(format!(
+                "the variables hold {claimed} bytes, more than the file's {}",
+                bytes.len()
+            )));
+        }
+
         let mut variables = Vec::with_capacity(layouts.len());
         for layout in layouts {
             let values = if layout.is_record {
                 let mut data = Vec::new();
-                // An empty slab reads nothing, however many records the header claims.
-                let records = if layout.slab == 0 { 0 } else { numrecs };
-                for record in 0..records {
+                for record in 0..numrecs {
                     let start = record
                         .checked_mul(record_size)
                         .and_then(|offset| offset.checked_add(layout.begin))
@@ -746,6 +794,9 @@ impl Reader<'_> {
         let mut attributes = Vec::new();
         for _ in 0..self.list(NC_ATTRIBUTE, "attribute")? {
             let name = self.name()?;
+            if attributes.iter().any(|a: &Attribute| a.name == name) {
+                return Err(malformed(format!("two attributes are called `{name}`")));
+            }
             let kind = Type::from_tag(self.u32("an attribute's type")?)?;
             let n = self.count("an attribute's length")?;
             let size = n

@@ -1,5 +1,12 @@
 {
  "source": "written and read back by the Unidata netCDF C library 4.9.3 through netCDF4-python 1.7.4 (validation/oracles/netcdf/write_cases.py)",
+ "generator": "validation/oracles/netcdf/write_cases.py",
+ "tool": "netCDF4-python 1.7.4, netCDF-C 4.9.3",
+ "generated": "2026-09-26",
+ "command": "refs/venv/bin/python validation/oracles/netcdf/write_cases.py > validation/fixtures/weather/netcdf-reads.json",
+ "inputs_sha256": {
+  "script": "c8c5d56d1e1207587a208abab03c3ecd49e31db8582f4a96768efb3a85725945"
+ },
  "files": [
   {
    "file": "types-classic.nc",

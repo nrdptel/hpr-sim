@@ -8,9 +8,10 @@ a real day: the temperature, pressure and wind over the launch site, from the gr
 kilometres or more.
 
 **How far to trust it.** hpr reads these files the way RocketPy does, to 12 digits, on two real
-launch days (below). What it does with the numbers differs from RocketPy in three places, each
-measured here: heights, times between the hours, and the air above the file's top level. No
-flight in ERA5 weather has been compared with a real flight yet; that is milestone
+launch days (below). What it does with the numbers differs from RocketPy in four places. Two are
+measured here: the heights of the levels, and a launch between two of the file's hours. Two are
+not measured yet: the pressure between levels, and the air above the file's top level. No flight
+in ERA5 weather has been compared with a real flight yet; that is milestone
 [M2.3b](../decisions-and-roadmap.md#m2-3b), RocketPy's logged flights. Humidity is not read yet,
 so the air is taken as dry.
 
@@ -21,26 +22,34 @@ Code: `hpr_io::era5` and `hpr_io::netcdf`
 
 ## Getting a file
 
-ERA5 comes from the Copernicus Climate Data Store. An account is free, and the licence lets you
-use and share the data if you credit it ("Contains modified Copernicus Climate Change Service
-information").
+ERA5 comes from the Copernicus Climate Data Store. An account is free. The data's licence is
+CC BY 4.0: you may use and share it if you credit it ("Contains modified Copernicus Climate Change
+Service information"), and you accept it once on the dataset's page before the first download.
 
-1. Open the dataset *ERA5 hourly data on pressure levels from 1940 to present*.
+1. Open the dataset
+   [*ERA5 hourly data on pressure levels from 1940 to present*](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-pressure-levels)
+   and its *Download* tab. For the product type choose **Reanalysis**.
 2. Choose these variables: **Geopotential**, **Temperature**, **U-component of wind** and
    **V-component of wind**.
 3. Choose the pressure levels that cover the flight. Air pressure halves about every 5.5 km, so
    1000 hPa down to 500 hPa covers the lowest 5.5 km. Include a level below the pad too (ERA5
    continues its levels beneath high ground), so the pad lies between two levels. Below the
    lowest level hpr continues the standard atmosphere and marks the air as extrapolated.
-4. Choose the day and the hours on each side of the launch, in UTC.
+4. Choose the day and every hour around the launch, in UTC. hpr weighs the two file times on
+   either side of the launch, however far apart they are, so a file with gaps between its hours
+   blends weather six hours apart.
 5. Choose a small area around the site, at least a quarter of a degree beyond it on each side.
    ERA5's grid points are a quarter of a degree apart, and hpr needs the four around the site.
-6. Choose the NetCDF format, then convert the file as below. hpr does not read GRIB.
+   hpr doesn't join a whole-Earth grid's last longitude to its first, so a site between them is
+   refused: on a grid from 0° to 359.75° east, the last quarter degree west of 0°.
+6. Choose the NetCDF format, then convert the file as below. hpr does not read GRIB, the other
+   format offered (the weather services' own binary format).
 
 ## Converting a current file
 
-Files from today's Data Store are netCDF-4, which is HDF5 inside, and hpr doesn't read HDF5. One
-line of Python, with the xarray package, rewrites a file in the older netCDF classic format:
+Files from today's Data Store are netCDF-4. Inside, that is HDF5, a general container format
+that hpr doesn't read. Three lines of Python, with the xarray and netCDF4 packages
+(`pip install xarray netCDF4`), rewrite a file in the older netCDF classic format:
 
 ```python
 import xarray
@@ -50,20 +59,26 @@ xarray.open_dataset("era5.nc").drop_vars(["number", "expver"], errors="ignore").
 
 The two dropped variables are labels the classic format can't hold: a 64-bit whole number and a
 text value. Older files, like most of the ones RocketPy ships, are classic already. If hpr can't
-read a file, its error says which kind the file is and gives this line.
+read a file, its error says which kind the file is and gives this conversion.
 
 This conversion is checked. The test takes NDRT 2020's launch day, downloaded from the Data Store
-in 2021 as a classic file and in 2024 as netCDF-4 and converted with the line above. The two agree
-at every level to 0.35 thousandths of a kelvin and 0.11 mm/s of wind. Each file rounds its values
-a little differently, and these gaps are that rounding.
+in 2021 as a classic file and in 2024 as netCDF-4 and converted as above. NDRT 2020 is the
+University of Notre Dame's rocket for NASA's 2020 Student Launch. The two files agree at every
+level to 0.23 m²/s² of geopotential (about 2 cm of height), 0.35 thousandths of a kelvin and
+0.11 mm/s of wind. The older file stores its values as 16-bit whole numbers and the newer one
+carries the rounding of ECMWF's own archive, so the gaps are consistent with each file's
+rounding. The test pins these largest gaps.
 
 ## Reading it
 
-The example program `era5_weather` (in `crates/hpr/examples/`) reads a small cut of the file
-RocketPy ships for Bella Lui's flight. The Swiss student team EPFL Rocket Team flew Bella Lui at
-Kaltbrunn on 22 February 2020, and the file covers the pad at 13:00 UTC. The program prints the
-levels, then the air at the pad and 500 m above it next to the standard atmosphere. Last, it flies
-the rocket in both, without its parachute:
+The example program
+[`era5_weather`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/era5_weather.rs)
+reads a small cut of the file RocketPy ships for Bella Lui's flight. The Swiss student team EPFL
+Rocket Team flew Bella Lui at Kaltbrunn on 22 February 2020, from a pad 407 m above sea level,
+and the file covers the pad at 13:00 UTC. The program prints the levels, then the air at the pad
+and 500 m above it next to the standard atmosphere. Last, it flies the rocket in both, without its
+parachute. Run it from a copy of the repository with `cargo run --example era5_weather -p hpr`.
+It prints:
 
 <!-- quote: crates/hpr/examples/era5_weather.output.txt -->
 ```text
@@ -94,10 +109,17 @@ standard, calm                            555.2                   0.4
 Not yet validated against the real flight: that is milestone M2.3b.
 ```
 
-That day was warm for February, and the pressure was high: the air at the pad was 1.2% denser
-than the standard's. The wind was light at the pad and grew to 10 m/s by 2 km. A program reads a
-file of its own with `NetCdf::parse` on the file's bytes, then `Era5Profile::read` with the site
-and time, and flies with `Era5Profile::sounding` as its atmosphere and wind.
+The 1000 hPa level lies at 240 m, below the pad: ERA5 continues its levels beneath the ground,
+so the pad sits between two of them. That day was warm for February, and the pressure was high:
+the air at the pad was 1.2% denser than the standard's. The wind was light at the pad and grew to
+10 m/s by 2 km.
+
+**Reading your own file.** hpr reads ERA5 from Rust only for now; there is no command-line tool
+yet. Copy the example and change three things: read your file from disk
+(`std::fs::read("my-file.nc")`) instead of the bundled one, and give your site's latitude,
+longitude and height and your launch time in UTC. The steps are the example's own:
+`NetCdf::parse` on the file's bytes, `Era5Profile::read` with the site and time, then
+`Era5Profile::sounding` gives the atmosphere and the wind for the flight's `Environment`.
 
 ## How hpr reads it
 
@@ -112,9 +134,11 @@ temperature and the wind's east and north parts (`u` and `v`) at every grid poin
 - **Heights.** Geopotential divided by `g₀ = 9.80665 m/s²` is geopotential height. hpr turns
   that into height above sea level with the World Meteorological Organization's formula for the
   site's latitude, as for any [sounding](../physics/atmosphere.md#sounding-and-forecast-profiles).
+  ERA5 itself stores no height in metres; the next section compares the two ways to get one.
 - **Between and above the levels,** the atmosphere is the
   [sounding profile](../physics/atmosphere.md#sounding-and-forecast-profiles):
-  - Pressure falls with height as the weight of the air above requires.
+  - Pressure falls with height as the weight of the air above requires ("hydrostatic").
+    RocketPy draws a straight line in height between the levels' pressures instead.
   - Above the top level, the 1976 standard atmosphere continues from that level.
   - The wind's east and north parts are interpolated in height, as RocketPy does. With
     `WindInterpolation::SpeedDirection` hpr interpolates speed and direction instead.
@@ -127,18 +151,30 @@ NDRT's day from today's Data Store. RocketPy 1.13 reads the same files.
 | | hpr | RocketPy 1.13 | measured difference |
 |---|---|---|---|
 | Temperature, wind and geopotential at each level, on the hour | bilinear | bilinear | the same to 12 digits (5 readings, 14 or 37 levels each) |
-| Height of a level | the site's own gravity, from its latitude | `g₀` at every latitude | −0.0158% at 47.2° N (−0.69 m at 4.4 km); +0.0343% at 41.8° N (+1.45 m at 4.2 km) |
+| Height of a level | WMO's formula, with gravity at the site's latitude | ECMWF's formula, with `g₀` at every latitude | −0.0158% at 47.2° N (−0.69 m at 4.4 km); +0.0343% at 41.8° N (+1.45 m at 4.2 km) |
 | Launch between two of the file's hours | both hours, weighted by time | the nearer hour | hpr's value is the weighted mean of RocketPy's two readings, to 12 digits |
 | Pressure between levels | hydrostatic | straight line in height | not measured yet |
-| Above the top level | the standard atmosphere, continued | the top level's values, held | Bella Lui's file stops at 4.4 km |
+| Above the top level | the standard atmosphere, continued | the top level's values, held | not measured yet; Bella Lui's file stops at 4.4 km |
 
-The height difference is a gravity difference. Gravity at sea level is 9.780 m/s² at the equator
-and 9.832 m/s² at the poles. hpr uses the value at the site, and RocketPy always uses 9.80665 m/s².
+Both height readings are approximations, and neither is exact. Geopotential measures the work of
+lifting air against gravity, so turning it into metres needs gravity on the way up. ECMWF's
+knowledge base gives `h = R·Z/(R − Z)`, with `R` the Earth's radius and `Z` the geopotential
+height, and says it neglects gravity's change across the Earth. RocketPy uses it. hpr uses the
+World Meteorological Organization's formula, which takes gravity at the site's latitude: at sea
+level it is 9.780 m/s² at the equator and 9.832 m/s² at the poles.
+
+ERA5's model measures geopotential from its own ground, and at that ground it uses `g₀`. So hpr's
+reading is off by a fixed amount at every height, set by the ground's height: 0.06 m at Bella
+Lui's pad. ECMWF's is off by an amount that grows with height above the ground: at a pad 1400 m up
+at 33° N, hpr's is off by 1.6 m and ECMWF's by 3.4 m at 3 km above the pad. The derivation is in
+the `hpr_io::era5` module's documentation
+([API reference](../api/hpr_io/era5/index.html)).
 
 ## The netCDF reader
 
 netCDF is a file format for gridded data, widely used for weather and climate. hpr reads the two
-classic kinds, `CDF\x01` and `CDF\x02`, from Unidata's published specification.
+classic kinds from Unidata's published specification: the original format and the 64-bit offset
+format, whose files begin with the bytes `CDF` and then 1 or 2.
 
 - **Numbers.** It reads every value exactly as stored, all six types, and the tests check each
   one against Unidata's own library on files that library wrote.
@@ -153,8 +189,14 @@ classic kinds, `CDF\x01` and `CDF\x02`, from Unidata's published specification.
 | beyond the fill value, on the side away from zero (for example −32768 when the fill is −32767) | missing | a value |
 | −127 in bytes with no fill value given | a value | missing |
 
-ERA5's files don't store such values. netCDF-4 files, and the rarer 64-bit data format (`CDF\x05`),
-are refused with the conversion above.
+The first row matters for ERA5. Many ERA5 files store each value as a 16-bit whole number with a
+fill of −32767, and a few values sit at −32768. Two of RocketPy's other ERA5 files (both
+netCDF-4) have them: 102 of 5,241,600 geopotential values and 4 temperatures in one, 298 of
+5,184,000 geopotential values and 2 temperatures in the other. hpr reads those as missing, where netCDF4-python returns a
+number, a temperature of 198.66 K for example. The two files the tests read have none.
+
+netCDF-4 files, and the rarer 64-bit data format (files beginning `CDF` and 5), are refused with
+the conversion above.
 
 ## What it leaves out
 
@@ -164,7 +206,8 @@ are refused with the conversion above.
   read.
 - **GRIB and netCDF-4.** Convert them first, as above.
 - **Geoid.** ERA5's heights are above sea level. hpr has no geoid model, so a flight takes them as
-  heights above the WGS 84 ellipsoid unless you give the site's geoid height.
+  heights above the WGS 84 ellipsoid unless you give the site's geoid height, the height of sea
+  level above the ellipsoid, which is up to about 100 m ([Geodesy](../physics/geodesy.md)).
 
 ## Sources
 

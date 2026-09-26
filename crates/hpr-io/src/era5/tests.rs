@@ -4,6 +4,7 @@ use hpr_atmos::wind::Wind;
 use serde_json::Value;
 
 use super::*;
+use crate::netcdf::Variable;
 
 /// The extracts `validation/oracles/netcdf/era5.py` cut from RocketPy's ERA5 files.
 fn extract(id: &str) -> NetCdf {
@@ -71,11 +72,33 @@ fn close(a: f64, b: f64, relative: f64, what: &str) {
     );
 }
 
+/// WMO-No. 8 (2023), Vol. I, eqs. 12.15 and 12.16, written out here rather than taken from
+/// `hpr_atmos`: the normal gravity `γ_s(φ)` and radius `R(φ)` at latitude `φ`.
+fn wmo_gravity_and_radius(latitude_rad: f64) -> (f64, f64) {
+    let s2 = latitude_rad.sin().powi(2);
+    let gamma_s = 9.780_325 * (1.0 + 0.001_931_85 * s2) / (1.0 - 0.006_694_35 * s2).sqrt();
+    (gamma_s, 6_378_137.0 / (1.006_803 - 0.006_706 * s2))
+}
+
+/// Geometric height of WMO geopotential height `z` at latitude `φ`: eq. 12.15,
+/// `Z = (γ_s/γ₄₅) R h/(R + h)`, solved for `h`.
+fn wmo_geometric(z: f64, latitude_rad: f64) -> f64 {
+    let (gamma_s, radius) = wmo_gravity_and_radius(latitude_rad);
+    let reduced = z * ERA5_GRAVITY_M_S2 / gamma_s;
+    radius * reduced / (radius - reduced)
+}
+
+fn latitude_rad(case: &Value) -> f64 {
+    case["latitude_deg"].as_f64().unwrap().to_radians()
+}
+
 #[test]
 fn on_the_hour_it_reads_the_levels_rocketpy_reads() {
+    // RocketPy's values are the same arithmetic on the same stored numbers, so the two agree to
+    // rounding; 1e-12 leaves room for the order of the operations.
     let fixture = rocketpy();
     let mut readings = 0;
-    let mut height_gaps = 0;
+    let mut levels_checked = 0;
     for id in ["bella-lui", "ndrt-2020", "ndrt-2020-cds"] {
         let case = case(&fixture, id);
         let file = extract(id);
@@ -96,29 +119,51 @@ fn on_the_hour_it_reads_the_levels_rocketpy_reads() {
                 // RocketPy's h = R Z/(R − Z), inverted for its Z.
                 let z = radius * h / (radius + h);
                 close(ours.geopotential_height_m, z, 1e-12, &what);
-                // The two geometric heights differ by the conversion from Z: hpr divides by the
-                // site's normal gravity γ_s(φ) (WMO-No. 8 eq. 12.16), RocketPy by g₀, so hpr's
-                // differ by g₀/γ_s(φ) − 1 of the height (−1.58e-4 at 47.2°, +3.43e-4 at 41.8°),
-                // plus a radius term growing with height (2.0e-5 of it at 17 km).
-                let s2 = ours_latitude(case).sin().powi(2);
-                let s2_2 = (2.0 * ours_latitude(case)).sin().powi(2);
-                let gamma_s = 9.780_356 * (1.0 + 0.005_288_5 * s2 - 0.000_005_9 * s2_2);
-                let ratio = ERA5_GRAVITY_M_S2 / gamma_s - 1.0;
-                let gap = (ours.height_msl_m - h) / h;
-                assert!(
-                    (gap - ratio).abs() < 2.5e-5,
-                    "{what}: gap {gap}, ratio {ratio}"
+                // hpr's geometric height is WMO's from that Z.
+                close(
+                    ours.height_msl_m,
+                    wmo_geometric(z, latitude_rad(case)),
+                    1e-12,
+                    &what,
                 );
-                height_gaps += 1;
+                levels_checked += 1;
             }
         }
     }
     assert_eq!(readings, 5);
-    assert_eq!(height_gaps, 3 * 14 + 14 + 37);
+    assert_eq!(levels_checked, 3 * 14 + 14 + 37);
 }
 
-fn ours_latitude(case: &Value) -> f64 {
-    case["latitude_deg"].as_f64().unwrap().to_radians()
+#[test]
+fn the_two_height_readings_differ_as_the_guide_says() {
+    // Near the ground the two readings differ by g₀/γ_s(φ) − 1 of the height; the guide and the
+    // module documentation quote it, and the gap at each file's top level used in the guide.
+    let fixture = rocketpy();
+    for (id, ratio, top_gap_m) in [
+        ("bella-lui", -1.58e-4, "-0.69"),
+        ("ndrt-2020", 3.43e-4, "1.45"),
+    ] {
+        let case = case(&fixture, id);
+        let (gamma_s, _) = wmo_gravity_and_radius(latitude_rad(case));
+        let exact = ERA5_GRAVITY_M_S2 / gamma_s - 1.0;
+        assert_eq!(format!("{exact:.2e}"), format!("{ratio:.2e}"), "{id}");
+        let reading = &case["readings"][0];
+        let unix_s = reading["unix_s"].as_f64().unwrap();
+        let profile = Era5Profile::read(&extract(id), request(case, unix_s)).unwrap();
+        let (ours, theirs) = (profile.levels.last().unwrap(), levels(reading)[13]);
+        assert_eq!(
+            format!("{:.2}", ours.height_msl_m - theirs[1]),
+            top_gap_m,
+            "{id}"
+        );
+        // At the lowest level the gap is that fraction of the height, to the radius term.
+        let (low, low_theirs) = (&profile.levels[0], levels(reading)[0]);
+        let gap = (low.height_msl_m - low_theirs[1]) / low_theirs[1];
+        assert!(
+            (gap - exact).abs() < 1e-6 * exact.abs().max(1e-4) + 1e-7,
+            "{id}: {gap}"
+        );
+    }
 }
 
 #[test]
@@ -164,6 +209,10 @@ fn between_hours_it_weights_the_two_hours_in_time() {
                 let expected = (1.0 - weight) * a[k][column] + weight * b[k][column];
                 close(value, expected, 1e-12, &what);
             }
+            // Geopotential too, from RocketPy's heights: Z = R h/(R + h).
+            let z = |r: &[f64; 6]| r[5] * r[1] / (r[5] + r[1]);
+            let expected = (1.0 - weight) * z(&a[k]) + weight * z(&b[k]);
+            close(ours.geopotential_height_m, expected, 1e-12, &what);
         }
     }
 }
@@ -173,9 +222,9 @@ fn the_current_data_store_file_converted_as_the_guide_says_reads_like_the_older_
     // The same ERA5 analysis, downloaded in 2021 as packed shorts and in 2024 as netCDF-4 floats
     // (then converted). Both are quantized: the older to half its packing step (0.31 m² s⁻² in
     // z, 0.19 mK in t, 0.16 and 0.14 mm/s in u and v), the newer by the GRIB packing it was made
-    // from, whose step the file does not keep. They agree to 0.23 m² s⁻², 0.35 mK and 0.11 mm/s.
-    // The bounds below are a sanity check on the conversion, not a precision: a flipped axis, a
-    // wrong level or unit would miss them by kelvins and metres.
+    // from, whose step the file does not keep. The bounds are a sanity check on the conversion,
+    // not a precision: a flipped axis, a wrong level or unit would miss them by kelvins and
+    // metres. The largest gaps, which the guide quotes, are pinned as it rounds them.
     let fixture = rocketpy();
     let case = case(&fixture, "ndrt-2020");
     let unix_s = case["readings"][0]["unix_s"].as_f64().unwrap();
@@ -183,6 +232,7 @@ fn the_current_data_store_file_converted_as_the_guide_says_reads_like_the_older_
     let old = Era5Profile::read(&old_file, request(case, unix_s)).unwrap();
     let new = Era5Profile::read(&extract("ndrt-2020-cds"), request(case, unix_s)).unwrap();
     assert_eq!(new.levels.len(), 37);
+    let mut largest = [0.0_f64; 4];
     for ours in &old.levels {
         let theirs = new
             .levels
@@ -198,7 +248,14 @@ fn the_current_data_store_file_converted_as_the_guide_says_reads_like_the_older_
         assert!(du.abs() < 1e-3, "{what}: u {du}");
         let dv = ours.wind_north_m_s - theirs.wind_north_m_s;
         assert!(dv.abs() < 1e-3, "{what}: v {dv}");
+        for (slot, gap) in largest.iter_mut().zip([dz, dt, du, dv]) {
+            *slot = slot.max(gap.abs());
+        }
     }
+    let [dz, dt, du, dv] = largest;
+    assert_eq!(format!("{dz:.2}"), "0.23", "z, m² s⁻²");
+    assert_eq!(format!("{:.2}", dt * 1e3), "0.35", "t, mK");
+    assert_eq!(format!("{:.2}", du.max(dv) * 1e3), "0.11", "wind, mm/s");
 }
 
 #[test]
@@ -374,6 +431,48 @@ fn a_file_without_the_variables_or_units_it_needs_is_refused() {
 }
 
 #[test]
+fn coordinates_must_lie_along_their_own_dimension_and_be_present() {
+    let time = UtcTime::from_civil(2020, 2, 22, 13, 0, 0.0).unwrap();
+    let site = Era5Request {
+        latitude_deg: 47.213476,
+        longitude_deg: 9.003336,
+        time,
+    };
+    let edit = |change: &dyn Fn(&mut Variable)| {
+        let mut file = extract("bella-lui");
+        for variable in &mut file.variables {
+            if variable.name == "latitude" {
+                change(variable);
+            }
+        }
+        Era5Profile::read(&file, site)
+    };
+    assert!(matches!(
+        edit(&|v| v.dimensions = vec!["longitude".into()]),
+        Err(Era5Error::Dimensions { ref variable, .. }) if variable == "latitude"
+    ));
+    assert!(matches!(
+        edit(&|v| if let crate::netcdf::Values::Float(values) = &mut v.values {
+            values[1] = f32::NAN;
+        }),
+        Err(Era5Error::MissingCoordinate { ref axis, index: 1 }) if axis == "latitude"
+    ));
+    assert!(matches!(
+        edit(&|v| v.values = crate::netcdf::Values::Float(vec![])),
+        Err(Era5Error::EmptyAxis { ref axis }) if axis == "latitude"
+    ));
+}
+
+#[test]
+fn a_time_serializes_as_its_seconds_and_refuses_what_is_not_finite() {
+    let time = UtcTime::from_civil(2020, 2, 22, 13, 0, 0.0).unwrap();
+    let text = serde_json::to_string(&time).unwrap();
+    assert_eq!(text, "1582376400.0");
+    assert_eq!(serde_json::from_str::<UtcTime>(&text).unwrap(), time);
+    assert!(UtcTime::try_from(f64::NAN).is_err());
+}
+
+#[test]
 fn time_units_read_as_cf_writes_them() {
     let hours = time_units("hours since 1900-01-01 00:00:00.0", Some("gregorian")).unwrap();
     assert_eq!(hours, (3600.0, -2_208_988_800.0));
@@ -432,6 +531,8 @@ fn civil_dates_count_seconds_as_posix_does() {
 #[test]
 fn directions_are_where_the_wind_blows_from() {
     assert_eq!(direction_from_rad(0.0, -1.0), 0.0);
+    // Positive zero, so it never prints as "-0".
+    assert!(direction_from_rad(0.0, -1.0).is_sign_positive());
     close(
         direction_from_rad(-1.0, 0.0),
         FRAC_PI_2,

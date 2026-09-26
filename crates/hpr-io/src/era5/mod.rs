@@ -23,15 +23,24 @@
 //! **At launch time**, the two hourly fields around it are weighted linearly in time; a launch
 //! on the hour takes that hour's field alone. RocketPy takes the nearest hour instead.
 //!
-//! **Heights.** ERA5's geopotential height is `Z = z/g₀`, `g₀ = 9.80665 m s⁻²` (ECMWF, *ERA5:
-//! data documentation*, "geopotential"). It is the WMO geopotential height that
-//! [`SoundingProfile`] works in, so each level's geometric height is WMO-No. 8's
-//! ([`geometric_from_wmo_geopotential_m`]) at the site's latitude, and the profile recovers the
-//! level's `Z` from it. RocketPy uses `h = R Z/(R − Z)` with the ellipsoid's radius at the site,
-//! which takes gravity at sea level to be `g₀` at every latitude. hpr's heights differ from
-//! RocketPy's by `g₀/γ_s(φ) − 1` of the height, `γ_s(φ)` being the normal gravity at the site:
-//! −0.0158% at Bella Lui's 47.2° N (−0.69 m at 4.4 km) and +0.0343% at 41.8° N (+1.45 m at
-//! 4.2 km), measured in the tests against RocketPy's reading of the same files.
+//! **Heights.** ERA5's geopotential height is `Z = z/g₀`, with `g₀ = 9.80665 m s⁻²` fixed in
+//! ECMWF's model. "Geometric height is not represented in ERA5", and ECMWF suggests
+//! `h = R Z/(R − Z)`, "neglecting horizontal variations in the Earth's gravitational
+//! acceleration" (ECMWF Knowledge Base, "ERA5: compute pressure and geopotential on model levels,
+//! geopotential height and geometric height", captured 2026-09-26). RocketPy does that. hpr
+//! instead reads `Z` as a WMO geopotential height, as for any sounding, and takes the geometric
+//! height by WMO-No. 8 eqs. 12.15–12.16 at the site's latitude
+//! ([`geometric_from_wmo_geopotential_m`]), the relation [`SoundingProfile`] inverts.
+//!
+//! Both are approximations. The model sets the surface's geopotential to `g₀` times the surface
+//! height `h_s` and integrates the true geopotential above it, so a level at true height `h` has
+//! `Z ≈ h_s + (h − h_s) γ/g₀`. Solved for `h`, hpr's reading is off by a constant
+//! `h_s (g₀/γ_s − 1)` at every height and ECMWF's by `−(h − h_s)(g₀/γ_s − 1)`, growing with the
+//! height above the model's ground. For a pad near the model's ground the constant is the smaller
+//! over a flight: 0.06 m at Bella Lui's 407 m and 47.2° N, 1.6 m at a pad 1400 m up at 33° N, where
+//! ECMWF's reaches 3.4 m at 3 km above it. The two readings differ by `g₀/γ_s(φ) − 1` of the
+//! height, −1.58e-4 at 47.2° N and +3.43e-4 at 41.8° N (−0.69 m at 4.4 km and +1.45 m at 4.2 km on
+//! the tests' files).
 //!
 //! **What it leaves out.** Humidity is not read, so the air is dry: at 20 °C and 50% relative
 //! humidity dry air is about 0.4% denser than the real air. Between and beyond the levels the
@@ -114,6 +123,20 @@ pub enum Era5Error {
         /// The grid's last value.
         last: f64,
     },
+    /// A coordinate axis has no values.
+    #[error("the `{axis}` axis is empty")]
+    EmptyAxis {
+        /// The axis.
+        axis: String,
+    },
+    /// A coordinate value is missing (a fill value).
+    #[error("`{axis}` is missing its value at index {index}")]
+    MissingCoordinate {
+        /// The axis.
+        axis: String,
+        /// The position along it.
+        index: usize,
+    },
     /// A coordinate axis is not strictly monotonic.
     #[error("the `{axis}` axis is not strictly monotonic")]
     NotMonotonic {
@@ -144,6 +167,7 @@ pub enum Era5Error {
 /// An instant in Coordinated Universal Time, as seconds since 1970-01-01T00:00:00Z (leap seconds
 /// not counted, as in POSIX time).
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(try_from = "f64", into = "f64")]
 pub struct UtcTime {
     unix_s: f64,
 }
@@ -205,6 +229,20 @@ impl UtcTime {
     /// Seconds since 1970-01-01T00:00:00Z.
     pub fn unix_seconds(self) -> f64 {
         self.unix_s
+    }
+}
+
+impl TryFrom<f64> for UtcTime {
+    type Error = Era5Error;
+
+    fn try_from(seconds: f64) -> Result<Self, Era5Error> {
+        UtcTime::from_unix_seconds(seconds)
+    }
+}
+
+impl From<UtcTime> for f64 {
+    fn from(time: UtcTime) -> f64 {
+        time.unix_s
     }
 }
 
@@ -312,23 +350,30 @@ fn check_units(variable: &Variable, accepted: &[&str]) -> Result<(), Era5Error> 
 
 /// A one-dimensional coordinate variable's unpacked values.
 fn axis(variable: &Variable) -> Result<Vec<f64>, Era5Error> {
-    if variable.dimensions.len() != 1 {
+    // A coordinate variable lies along the dimension of its own name (CF Conventions 1.11 §1.2),
+    // so the data variables' dimensions of that name are indexed by it.
+    if variable.dimensions != [variable.name.as_str()] {
         return Err(Era5Error::Dimensions {
             variable: variable.name.clone(),
             found: variable.dimensions.clone(),
-            expected: "one dimension".into(),
+            expected: format!("[\"{}\"]", variable.name),
+        });
+    }
+    if variable.values.is_empty() {
+        return Err(Era5Error::EmptyAxis {
+            axis: variable.name.clone(),
         });
     }
     let packing = variable.packing()?;
     (0..variable.values.len())
-        .map(|i| {
+        .map(|index| {
             variable
                 .values
-                .get(i)
+                .get(index)
                 .and_then(|stored| packing.unpack(stored))
-                .ok_or_else(|| Era5Error::MissingValue {
-                    variable: variable.name.clone(),
-                    pressure_pa: f64::NAN,
+                .ok_or_else(|| Era5Error::MissingCoordinate {
+                    axis: variable.name.clone(),
+                    index,
                 })
         })
         .collect()
@@ -493,13 +538,8 @@ impl Era5Profile {
             });
         }
         let t = request.time.unix_seconds();
-        let (Some(&first), Some(&last)) = (times.first(), times.last()) else {
-            return Err(Era5Error::OutsideTimes {
-                requested: t,
-                first: f64::NAN,
-                last: f64::NAN,
-            });
-        };
+        // `axis` refuses an empty axis.
+        let (first, last) = (times[0], times[times.len() - 1]);
         let Some((t1, t2, a1, a2, span)) = bracket(&times, t) else {
             return Err(Era5Error::OutsideTimes {
                 requested: t,
@@ -686,7 +726,8 @@ pub fn direction_from_rad(u: f64, v: f64) -> f64 {
         return 0.0;
     }
     let angle = (-u).atan2(-v).rem_euclid(TAU);
-    if angle >= TAU { 0.0 } else { angle }
+    // `+ 0.0` turns a -0 (a wind from due north) into 0.
+    if angle >= TAU { 0.0 } else { angle + 0.0 }
 }
 
 #[cfg(test)]

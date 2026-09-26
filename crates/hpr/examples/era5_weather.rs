@@ -8,8 +8,8 @@
 //! cargo run --example era5_weather -p hpr
 //! ```
 //!
-//! The documentation site's *Weather from ERA5 files* page (`docs/weather-files.md`) walks
-//! through it. What it prints is kept next to it in `era5_weather.output.txt`, and CI checks that
+//! The documentation site's *ERA5 weather files* page (`docs/format/era5.md`) walks through
+//! it. What it prints is kept next to it in `era5_weather.output.txt`, and CI checks that
 //! the two still agree (`cargo xtask examples --check`).
 //!
 //! The file is a small cut of the ERA5 file RocketPy ships for Bella Lui's flight (EPFL, 22
