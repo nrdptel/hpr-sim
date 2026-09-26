@@ -597,6 +597,11 @@ Genesis and Lince were added to the public designs for this.
 Juno III flies its team's own motor too, but its design was already public, and hpr flies the
 thrust file as it would any other: nothing of the motor is modelled ([ADR-082][adr-082]).
 
+The [private designs](format/ork.md#hprs-flights-of-the-private-designs) add none: none of them
+is the rocket of a flight in the [private collection of logs](VALIDATION.md#real-flight-data), so
+none has a log to compare with ([ADR-083][adr-083]; [M2.3c](decisions-and-roadmap.md#m2-3c) waits
+for one).
+
 **Reading the logs.** Every log here comes from a [barometric
 altimeter](glossary.md#barometric-altimeter), or is assumed to. Such an altimeter turns pressure
 into the [standard atmosphere](glossary.md#standard-atmosphere)'s altitude. On a day warmer than the
@@ -795,6 +800,7 @@ rest.
 [plan]: VALIDATION.md#principles
 [real-report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md
 [adr-082]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-082-real-flights-read-from-refs-compared-over-the-ascent-with-checked-explanations-2026-09-26
+[adr-083]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-083-m23c-blocked-no-private-design-is-the-rocket-of-a-logged-flight-2026-09-26
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [rocket-notes]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md
 [valetudo-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-valetudo.toml
