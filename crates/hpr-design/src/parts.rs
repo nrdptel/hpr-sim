@@ -301,7 +301,16 @@ impl BodyTube {
 }
 
 /// A tube inside the airframe: a coupler, a motor mount tube, an engine block or thrust ring. It
-/// may sit off the axis, as in a cluster.
+/// may sit off the axis, and it may be a cluster: several like tubes side by side, as in a
+/// cluster's motor mount.
+///
+/// **A cluster.** [`Self::cluster_m`] lists where each tube's axis sits, `[x, y]` in body axes
+/// from the axis the radial offset and angle give. The tubes are the one tube written here,
+/// repeated at each place: their mass is the sum of the copies, each with its own parallel-axis
+/// term. What the tube holds (an engine block, a motor) is repeated in every tube in the same way
+/// (`docs/physics/design.md`, the decision record on clusters, [ADR-075][adr-075]).
+///
+/// [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InnerTube {
@@ -319,14 +328,19 @@ pub struct InnerTube {
     pub angle_rad: f64,
     /// Material (bulk).
     pub material: Material,
+    /// A cluster's tubes: each tube's axis, `[x, y]` in body axes, m, measured from the axis the
+    /// radial offset and angle give. Empty (the default) for one tube on that axis.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cluster_m: Vec<[f64; 2]>,
 }
 
 impl InnerTube {
-    /// Mass properties in the tube's frame.
+    /// Mass properties in the tube's frame: every tube of a cluster.
     ///
     /// # Errors
     ///
-    /// Geometry and material errors.
+    /// Geometry and material errors, and [`DesignError::Domain`] for a cluster offset that is not
+    /// finite.
     pub fn mass_properties(&self) -> Result<MassProperties, DesignError> {
         check_dimension("inner tube radial offset", self.radial_offset_m, true)?;
         check_angle("inner tube angle", self.angle_rad)?;
@@ -337,10 +351,33 @@ impl InnerTube {
             self.length_m,
             self.outer_radius_m,
             self.thickness_m,
-        )?;
-        Ok(tube
-            .translated(DVec3::new(self.radial_offset_m, 0.0, 0.0))
-            .rolled(self.angle_rad))
+        )?
+        .translated(DVec3::new(self.radial_offset_m, 0.0, 0.0))
+        .rolled(self.angle_rad);
+        Ok(MassProperties::copied(tube, &self.tubes_m()?))
+    }
+
+    /// Where each tube sits, `[x, y]` from the axis the radial offset and angle give, m: the
+    /// cluster's places, or `[0, 0]` alone for one tube.
+    ///
+    /// # Errors
+    ///
+    /// [`DesignError::Domain`] for a cluster offset that is not finite.
+    pub fn tubes_m(&self) -> Result<Vec<[f64; 2]>, DesignError> {
+        if self.cluster_m.is_empty() {
+            return Ok(vec![[0.0, 0.0]]);
+        }
+        for &[x, y] in &self.cluster_m {
+            for value in [x, y] {
+                if !value.is_finite() {
+                    return Err(DesignError::Domain {
+                        what: "inner tube cluster offset (m)",
+                        value,
+                    });
+                }
+            }
+        }
+        Ok(self.cluster_m.clone())
     }
 }
 
@@ -793,6 +830,57 @@ mod tests {
         close(whole.mass_kg, body.mass_kg + fore.mass_kg, 1e-14, "mass");
     }
 
+    /// A cluster is its tubes: a 4-ring of tubes 0.02 m from the cluster's axis, the cluster
+    /// itself 0.01 m off the body's, weighs four tubes, has its centre on the cluster's axis, and
+    /// about the body's axis its roll inertia is, for each tube, its own plus `m d²` to that tube,
+    /// worked by hand. A tube with no cluster is the one tube, bit for bit; a cluster offset that
+    /// is not finite is refused.
+    #[test]
+    fn a_cluster_is_its_tubes_each_with_its_parallel_axis_term() {
+        let tube = |cluster_m: Vec<[f64; 2]>| InnerTube {
+            length_m: 0.3,
+            outer_radius_m: 0.015,
+            thickness_m: 0.001,
+            radial_offset_m: 0.01,
+            angle_rad: 0.0,
+            material: cardboard(),
+            cluster_m,
+        };
+        let one = hollow_cylinder("t", 790.0, 0.3, 0.015, 0.001).unwrap();
+        let single = tube(Vec::new()).mass_properties().unwrap();
+        assert_eq!(
+            single,
+            one.translated(DVec3::new(0.01, 0.0, 0.0)).rolled(0.0)
+        );
+        assert_eq!(tube(Vec::new()).tubes_m().unwrap(), [[0.0, 0.0]]);
+
+        let square = vec![[0.02, 0.0], [0.0, 0.02], [-0.02, 0.0], [0.0, -0.02]];
+        let g = tube(square.clone()).mass_properties().unwrap();
+        close(g.mass_kg, 4.0 * one.mass_kg, 1e-15, "four tubes");
+        assert!((g.cg_m - DVec3::new(0.01, 0.0, -0.15)).length() < 1e-15);
+        let roll: f64 = square
+            .iter()
+            .map(|[x, y]| {
+                let (dx, dy) = (0.01 + x, *y);
+                one.inertia_kg_m2.z_axis.z + one.mass_kg * (dx * dx + dy * dy)
+            })
+            .sum();
+        close(
+            g.inertia_about(DVec3::new(0.0, 0.0, -0.15)).z_axis.z,
+            roll,
+            1e-15,
+            "roll about the body axis",
+        );
+
+        let Err(DesignError::Domain { what, value }) =
+            tube(vec![[f64::NAN, 0.0]]).mass_properties()
+        else {
+            panic!("refused");
+        };
+        assert_eq!(what, "inner tube cluster offset (m)");
+        assert!(value.is_nan());
+    }
+
     #[test]
     fn off_axis_parts_carry_their_offsets() {
         // An inner tube in a cluster, a lug and a mass component, each against the parallel-axis
@@ -804,6 +892,7 @@ mod tests {
             radial_offset_m: 0.03,
             angle_rad: PI / 2.0,
             material: cardboard(),
+            cluster_m: Vec::new(),
         };
         let g = tube.mass_properties().unwrap();
         assert!((g.cg_m - DVec3::new(0.0, 0.03, -0.15)).length() < 1e-15);
@@ -930,6 +1019,7 @@ mod zero_wall_tests {
             radial_offset_m: 0.0,
             angle_rad: 0.0,
             material: Material::bulk("cardboard", 680.0),
+            cluster_m: Vec::new(),
         };
         let mass = tube.mass_properties().expect("a tube of no wall");
         assert_eq!(mass.mass_kg, 0.0);

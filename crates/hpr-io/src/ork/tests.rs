@@ -2514,9 +2514,10 @@ fn a_configuration_flies_only_as_written() {
             .collect()
     };
 
-    // The cluster tube is read as one tube, so this airframe is not the design's.
+    // The cluster tube is read with its three tubes (M1.9b), so the airframe is the design's, and
+    // it is the second stage that keeps `boost` out.
     let two = read_one(&two_stage);
-    assert_eq!(why(&two, "boost"), Some(NotFlown::AirframeNotAsWritten));
+    assert_eq!(why(&two, "boost"), Some(NotFlown::Staged));
     assert_eq!(why(&two, "two"), Some(NotFlown::IgnitesInFlight));
     assert_eq!(why(&two, "clu"), Some(NotFlown::Cluster));
     assert_eq!(why(&two, "off"), Some(NotFlown::InactiveStage));
@@ -2526,7 +2527,7 @@ fn a_configuration_flies_only_as_written() {
     let configurations = &two.value.motors.configurations;
     let off = configurations.iter().find(|c| c.id == "off").expect("off");
     assert_eq!(off.inactive_stages, [None]);
-    // Without the cluster, the airframe is whole, and it is the second stage that keeps `boost` out.
+    // So it is without the cluster.
     assert_eq!(
         why(&read_one(&plain_two_stage), "boost"),
         Some(NotFlown::Staged)

@@ -765,8 +765,10 @@ mod tests {
     ///   −0.805%).
     /// - A single fin: the rule about the fin's own centre, `m hₑ²/12`, agrees; its pitch is
     ///   apart by 0.406%.
-    /// - A 3-ring clustered inner tube: hpr reads one tube and pins the measured departure
-    ///   (−12.85% mass, +5.95 mm centre, −2.43% roll and −3.68% pitch) until M1.9.
+    /// - A 3-ring clustered inner tube: hpr reads all three tubes (M1.9b), so the mass and centre
+    ///   agree; the roll inertia is +5.11% and the pitch +0.273%, the tubes' parallel-axis terms
+    ///   `3 m d²` and half of it, which OpenRocket leaves out (ADR-075). Before M1.9b hpr read one
+    ///   tube: −12.85% mass, +5.95 mm centre, −2.43% roll and −3.68% pitch.
     ///
     /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
     /// [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
@@ -880,7 +882,7 @@ mod tests {
         ("a tube and an inner tube", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a clustered inner tube",
-            [-0.1285, 0.00595, -0.0243, -0.0368],
+            [0.0, 0.0, 0.0511, 0.00273],
         ),
         ("a tube and rectangular fins", [0.0, 0.0, 0.0, 2.3e-6]),
         (
@@ -906,13 +908,7 @@ mod tests {
         for (question, pinned) in ALONE {
             let probe = probe(&record, question);
             let (ours, theirs, warnings) = both(probe);
-            if question == "a tube and a clustered inner tube" {
-                assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
-                assert!(
-                    warnings[0].contains("a cluster of motor tubes is read as the one tube"),
-                    "{warnings:?}"
-                );
-            } else if question == "a tube and a fin set with fillets"
+            if question == "a tube and a fin set with fillets"
                 || question == "a tube and a fin set with wider fillets"
             {
                 assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
@@ -1106,6 +1102,155 @@ mod tests {
         assert_eq!(fins, 1);
         let apart = relative(ours, theirs);
         assert!(apart.abs() < 2e-6, "{apart:e}");
+    }
+
+    fn clusters() -> Value {
+        let text = include_str!("../../../validation/fixtures/ork/openrocket-clusters.json");
+        serde_json::from_str(text).expect("the committed record is JSON")
+    }
+
+    /// Every tube of every cluster OpenRocket 24.12 was asked about sits where OpenRocket puts it,
+    /// to 1e-15 m: each of its fourteen patterns at scale 1, a scale, a rotation, a radial offset,
+    /// and all three at once, with OpenRocket's `(y, z)` read as hpr's `(x, y)` (ADR-075). A
+    /// pattern OpenRocket has no name for is one tube, as OpenRocket reads it, with a warning.
+    #[test]
+    fn every_tube_of_a_cluster_is_where_openrocket_puts_it() {
+        let record = clusters();
+        let patterns = record["patterns"].as_object().expect("patterns");
+        assert_eq!(patterns.len(), 14);
+        for name in patterns.keys() {
+            assert!(
+                record["probes"][format!("{name} at scale 1")].is_object(),
+                "no probe of {name}"
+            );
+        }
+        for (question, probe) in record["probes"].as_object().expect("probes") {
+            let (layout, warnings) = hpr(probe);
+            let unnamed = question == "a pattern OpenRocket has no name for";
+            assert_eq!(
+                warnings.len(),
+                usize::from(unnamed),
+                "{question}: {warnings:?}"
+            );
+            if unnamed {
+                assert!(
+                    warnings[0].contains("is not one of OpenRocket's cluster patterns"),
+                    "{warnings:?}"
+                );
+            }
+            for (id, tube) in probe["tubes"].as_object().expect("tubes") {
+                let (_, placed) = layout.find(id).expect("the tube");
+                let Part::InnerTube(inner) = &placed.part else {
+                    panic!("{question}: {id} is not an inner tube");
+                };
+                let [x, y] = placed.part.axis_offset_m();
+                let ours: Vec<[f64; 2]> = inner
+                    .tubes_m()
+                    .expect("finite")
+                    .iter()
+                    .map(|[u, v]| [x + u, y + v])
+                    .collect();
+                let theirs: Vec<[f64; 2]> = tube["instance_offsets_m"]
+                    .as_array()
+                    .expect("offsets")
+                    .iter()
+                    .map(|c| [c[1].as_f64().expect("y"), c[2].as_f64().expect("z")])
+                    .collect();
+                assert_eq!(ours.len(), theirs.len(), "{question}");
+                assert_eq!(
+                    tube["count"].as_u64(),
+                    Some(ours.len() as u64),
+                    "{question}"
+                );
+                for (ours, theirs) in ours.iter().zip(&theirs) {
+                    let apart = (ours[0] - theirs[0]).hypot(ours[1] - theirs[1]);
+                    assert!(apart <= 1e-15, "{question}: {ours:?} vs {theirs:?}");
+                }
+            }
+        }
+    }
+
+    /// A cluster weighs what OpenRocket 24.12 says, but for the spread of its own tubes about the
+    /// cluster's axis. The mass and centre agree to 1e-12 on every probe: every tube counted, an
+    /// engine block inside counted once in each tube, a mass override on the cluster its whole
+    /// mass, and an automatic ring's bore the tube's own radius, as if the cluster were one tube on
+    /// the axis. OpenRocket weighs a cluster's tubes stacked on its axis (a 3-ring at scale 1 and at
+    /// 1.5 have the same inertias), while hpr places each where it is: so on every cluster on the
+    /// body's axis, hpr's roll inertia is OpenRocket's plus `Σ m |c|²` over the tubes, `c` each
+    /// tube's offset and `m` its mass, and the pitch inertia (the mean across the axis) plus half
+    /// of it, to 1e-12, worked here by hand (ADR-075). Off the axis the roll rule still holds for a
+    /// cluster, but three departures are left, pinned as measured, less the spread: a lone tube
+    /// 10 mm off the axis, whose offset OpenRocket leaves out of both inertias, and the pitch of
+    /// two clusters off the axis, 0.015% and 0.021%, which hpr has not traced.
+    #[test]
+    fn a_cluster_weighs_as_openrocket_s_but_for_its_tubes_spread() {
+        const OFF_AXIS: [(&str, [f64; 2]); 3] = [
+            (
+                "an unclustered tube 10 mm off the axis at 30",
+                [0.00303, 0.000164],
+            ),
+            ("a 2-row 10 mm off the axis at 30", [0.0, 0.00015]),
+            (
+                "a 3-ring 10 mm off the axis at 30, turned 20",
+                [0.0, 0.000206],
+            ),
+        ];
+        let record = clusters();
+        for (question, probe) in record["probes"].as_object().expect("probes") {
+            let (ours, theirs, _) = both(probe);
+            assert!(
+                relative(ours[0], theirs[0]).abs() <= 1e-12,
+                "{question}: mass"
+            );
+            assert!((ours[1] - theirs[1]).abs() <= 1e-12, "{question}: centre");
+            let (layout, _) = hpr(probe);
+            let mut spread = 0.0;
+            for id in probe["tubes"].as_object().expect("tubes").keys() {
+                let (_, placed) = layout.find(id).expect("the tube");
+                let Part::InnerTube(inner) = &placed.part else {
+                    panic!("{question}: {id} is not an inner tube");
+                };
+                let tubes = inner.tubes_m().expect("finite");
+                let each_kg = placed.own.mass_kg / tubes.len() as f64;
+                spread += tubes
+                    .iter()
+                    .map(|[u, v]| each_kg * (u * u + v * v))
+                    .sum::<f64>();
+            }
+            // Roll and pitch less the spread, against OpenRocket's.
+            let found = [
+                relative(ours[2] - spread, theirs[2]),
+                relative(ours[3] - spread / 2.0, theirs[3]),
+            ];
+            let pinned = OFF_AXIS
+                .iter()
+                .find(|(q, _)| q == question)
+                .map_or([0.0, 0.0], |(_, pinned)| *pinned);
+            for (k, (found, pinned)) in found.iter().zip(pinned).enumerate() {
+                let bound = if pinned == 0.0 {
+                    1e-12
+                } else {
+                    5e-3 * pinned.abs()
+                };
+                assert!(
+                    (found - pinned).abs() <= bound,
+                    "{question}: inertia {k} less the spread is {found:e}, not {pinned:e}"
+                );
+            }
+        }
+    }
+
+    /// The cluster record was written by the script it names, from OpenRocket 24.12, and every
+    /// probe in it is one the tests above read, which read them all.
+    #[test]
+    fn the_cluster_record_is_openrocket_s() {
+        let record = clusters();
+        assert_eq!(record["openrocket"], "24.12");
+        assert_eq!(
+            record["source"],
+            "validation/oracles/openrocket/clusters.py"
+        );
+        assert!(record["probes"].as_object().expect("probes").len() >= 22);
     }
 
     /// The record was written by the script it names, from OpenRocket 24.12 with no default

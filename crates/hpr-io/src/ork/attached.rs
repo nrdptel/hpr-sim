@@ -264,24 +264,114 @@ fn inner_tube(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<
     let (stated_m, outer_radius_m) =
         stated_radius(values, &["outerradius"], AutoDimension::OuterRadius, auto);
     let thickness_m = tube_wall(values, stated_m)?;
-    if values
-        .word(&["clusterconfiguration"])
-        .is_some_and(|c| c != "single")
-    {
-        values.warn_at(
-            WarningKind::Dropped,
-            "a cluster of motor tubes is read as the one tube it is written as; hpr does not \
-             model clusters yet",
-        );
-    }
+    let angle_rad = roll_angle(values);
+    let cluster_m = cluster(values, outer_radius_m, angle_rad);
     Some(Part::InnerTube(InnerTube {
         length_m,
         outer_radius_m,
         thickness_m,
         radial_offset_m: values.number(&["radialposition"]).unwrap_or_default(),
-        angle_rad: roll_angle(values),
+        angle_rad,
         material: material(values, &["material"], "bulk"),
+        cluster_m,
     }))
+}
+
+/// A clustered tube's places ([`InnerTube::cluster_m`]), or none for one tube.
+///
+/// `clusterconfiguration` names one of OpenRocket's patterns ([`cluster_pattern`]), whose points
+/// are in units of the separation between neighbouring tubes' axes: `2 R s`, for the tube's outer
+/// radius `R` and `clusterscale` `s` (1 unless written), so tubes of scale 1 touch. The pattern is
+/// turned by the tube's roll angle `θ` less `clusterrotation` `ρ` (degrees, as every `.ork` angle):
+///
+/// `[x, y]ₖ = 2 R s · Rot(θ − ρ) · pₖ`
+///
+/// with OpenRocket's `(y, z)` read as hpr's `(x, y)`, as the roll angle is ([`roll_angle`]). No
+/// document gives the patterns or this rule; OpenRocket 24.12 was asked, as an external oracle, on
+/// probes of every pattern, of a scale, a rotation, a radial offset and all three at once
+/// (`validation/oracles/openrocket/clusters.py`), and `hpr_validate`'s tests hold every tube of
+/// its record to this reading. A name OpenRocket has no pattern for, it reads as one tube; so does
+/// this reader, with a warning.
+fn cluster(values: &mut Values<'_>, outer_radius_m: f64, angle_rad: f64) -> Vec<[f64; 2]> {
+    let Some(name) = values.word(&["clusterconfiguration"]) else {
+        return Vec::new();
+    };
+    let Some(points) = cluster_pattern(&name) else {
+        values.warn_at(
+            WarningKind::Dropped,
+            format!(
+                "`{name}` is not one of OpenRocket's cluster patterns, so the tube is read as one \
+                 tube, as OpenRocket reads it"
+            ),
+        );
+        return Vec::new();
+    };
+    let scale = values.number(&["clusterscale"]).unwrap_or(1.0);
+    let rotation_rad = values
+        .number(&["clusterrotation"])
+        .unwrap_or_default()
+        .to_radians();
+    if name == "single" {
+        return Vec::new();
+    }
+    let separation_m = 2.0 * outer_radius_m * scale;
+    let (sin, cos) = (angle_rad - rotation_rad).sin_cos();
+    points
+        .iter()
+        .map(|&[u, v]| {
+            [
+                separation_m * (u * cos - v * sin),
+                separation_m * (u * sin + v * cos),
+            ]
+        })
+        .collect()
+}
+
+/// OpenRocket's cluster pattern called `name` in a `.ork`: each tube's place in units of the
+/// separation between neighbouring tubes' axes, in the order OpenRocket lists them. These are the
+/// points OpenRocket 24.12 gives, as measured by `validation/oracles/openrocket/clusters.py`
+/// (`validation/fixtures/ork/openrocket-clusters.json`), written as the figures they are: rows
+/// one apart, a triangle and a square of side one, rings of radius one round a centre tube (the
+/// stars), a pentagon of side one, and a grid and an eight-ring of spacing 1.4. `None` for a name
+/// OpenRocket has no pattern for.
+pub(crate) fn cluster_pattern(name: &str) -> Option<Vec<[f64; 2]>> {
+    // `n` places on a circle of radius `r`, the first at `start` degrees, running clockwise.
+    let ring = |n: u32, r: f64, start: f64| -> Vec<[f64; 2]> {
+        (0..n)
+            .map(|k| {
+                let (sin, cos) = (start - 360.0 * f64::from(k) / f64::from(n))
+                    .to_radians()
+                    .sin_cos();
+                [r * cos, r * sin]
+            })
+            .collect()
+    };
+    let star = |mut points: Vec<[f64; 2]>| {
+        points.insert(0, [0.0, 0.0]);
+        points
+    };
+    let third = 3.0_f64.sqrt() / 6.0;
+    Some(match name {
+        "single" => vec![[0.0, 0.0]],
+        "double" => vec![[-0.5, 0.0], [0.5, 0.0]],
+        "3-row" => vec![[-1.0, 0.0], [0.0, 0.0], [1.0, 0.0]],
+        "3-ring" => vec![[-0.5, -third], [0.5, -third], [0.0, 2.0 * third]],
+        "3-star" => star(ring(3, 1.0, 90.0)),
+        "4-row" => vec![[-1.5, 0.0], [-0.5, 0.0], [0.5, 0.0], [1.5, 0.0]],
+        "4-ring" => vec![[-0.5, 0.5], [0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]],
+        "4-star" => star(ring(4, 1.0, 135.0)),
+        // A pentagon of side one has circumradius 1 / (2 sin 36°).
+        "5-ring" => ring(5, 0.5 / 36.0_f64.to_radians().sin(), 90.0),
+        "5-star" => star(ring(5, 1.0, 90.0)),
+        "6-ring" => ring(6, 1.0, 90.0),
+        "6-star" => star(ring(6, 1.0, 90.0)),
+        "9-grid" => [1.4, 0.0, -1.4]
+            .into_iter()
+            .flat_map(|y| [-1.4, 0.0, 1.4].map(|x| [x, y]))
+            .collect(),
+        "9-star" => star(ring(8, 1.4, 0.0)),
+        _ => return None,
+    })
 }
 
 /// A tube's wall, in metres, or `None` when the tube cannot be read at all.
@@ -956,6 +1046,33 @@ fn roll_angle(values: &mut Values<'_>) -> f64 {
 mod tests {
     use super::*;
     use hpr_design::Material;
+
+    /// Each of OpenRocket's fourteen cluster patterns, written here as the figure it is, is the
+    /// list of points OpenRocket 24.12 gives for it, in its order, to 1e-15; and there is no other
+    /// (`validation/fixtures/ork/openrocket-clusters.json`).
+    #[test]
+    fn cluster_patterns_are_openrocket_s_points() {
+        let text = include_str!("../../../../validation/fixtures/ork/openrocket-clusters.json");
+        let record: serde_json::Value = serde_json::from_str(text).unwrap();
+        let patterns = record["patterns"].as_object().unwrap();
+        assert_eq!(patterns.len(), 14);
+        for (name, pattern) in patterns {
+            let theirs: Vec<f64> = pattern["points"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_f64().unwrap())
+                .collect();
+            let ours = cluster_pattern(name).unwrap_or_else(|| panic!("no pattern {name}"));
+            assert_eq!(pattern["count"].as_u64(), Some(ours.len() as u64), "{name}");
+            assert_eq!(theirs.len(), 2 * ours.len(), "{name}");
+            for (k, [x, y]) in ours.iter().enumerate() {
+                let apart = (x - theirs[2 * k]).hypot(y - theirs[2 * k + 1]);
+                assert!(apart <= 1e-15, "{name} point {k}: {x}, {y}");
+            }
+        }
+        assert_eq!(cluster_pattern("4-square"), None);
+    }
 
     /// A row of two 10 mm buttons 0.1 m apart: its first button's centre must land where OpenRocket
     /// puts it, a part of no length placed by the same words, whichever end the offset is from.

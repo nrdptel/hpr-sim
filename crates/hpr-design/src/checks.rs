@@ -353,11 +353,22 @@ fn attached_findings(
             let Part::InnerTube(inner) = &tube.part else {
                 continue;
             };
-            // The tube covers radii [d − R, d + R] about the ring's (the body) axis.
+            // Each tube (every tube of a cluster) covers radii [d − R, d + R] about the ring's
+            // (the body) axis.
             let [x, y] = tube.part.axis_offset_m();
-            let d = x.hypot(y);
-            let radial = (d + inner.outer_radius_m).min(ring.outer_radius_m)
-                - (d - inner.outer_radius_m).max(ring.inner_radius_m);
+            let tubes = if inner.cluster_m.is_empty() {
+                &[[0.0, 0.0]][..]
+            } else {
+                inner.cluster_m.as_slice()
+            };
+            let radial = tubes
+                .iter()
+                .map(|&[u, v]| {
+                    let d = (x + u).hypot(y + v);
+                    (d + inner.outer_radius_m).min(ring.outer_radius_m)
+                        - (d - inner.outer_radius_m).max(ring.inner_radius_m)
+                })
+                .fold(f64::NEG_INFINITY, f64::max);
             if overlap(fore, aft, tube.fore_station_m, tube.aft_station_m()) > LENGTH_TOLERANCE_M
                 && radial > LENGTH_TOLERANCE_M
             {

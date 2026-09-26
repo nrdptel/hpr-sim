@@ -5,18 +5,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M1.9b, clusters (L31), after M1.9a's staging (ADR-074); then M1.9c.
+  follow-on work is M1.9c, `.ork` staging and clusters against OpenRocket, after M1.9b (ADR-075).
 - **Order:** M1.8e16 waits on #108; M2.2e5 on M1.9 (17), then 3 of #173, #174, M1.13, #133; so M1.9.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M1.9a; site published.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M1.9a-b; site published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M1.9a complete, M1.9b next.
+- **Last updated:** 2026-09-25; M1.9b complete, M1.9c next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.9b** on a fresh `m1.9b-<slug>` branch: several motors in one mount (hpr-io reads
-  `clusterconfiguration`), L31's test in `hpr_sim::staging::tests`. M1.9c maps the `.ork` ignition
-  and separation hpr-io reads onto ADR-074's and flies OR's 4 staged, 2 cluster public designs;
+- **Start M1.9c** on a fresh `m1.9c-<slug>` branch: map the `.ork` ignition and separation hpr-io
+  reads onto ADR-074's, drop `NotFlown::Cluster` (clusters read since M1.9b, ADR-075; OR stacks a
+  cluster's tubes in its inertia, hpr doesn't), and fly OR's 4 staged, 2 cluster public designs;
   M2.2e5 needs them, each apogee over 5% a cause sized as ADR-073: `flights.py` flies OR without it
   (`undeployed`, `undeployed_without_drag_overrides`, `..._parts_set_to_no_drag`). Leads, not
   causes: #177 (a blunt nose's drag below Mach 0.8), private flights above sea level reading low,
@@ -54,6 +54,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-25: M1.9b Clusters (ADR-075): a motor out within 3.7e-7 of hand; OR's tubes to 1e-15 m.
 - 2026-09-25: M1.9a Staging (ADR-074; M1.9 split a to c): motors lit at their own times; a sustainer
   flies on, the booster lands; L30, L93 live; a canopy opened before a split now counts.
 - 2026-09-25: M2.2e4 The causes (ADR-073): all 5 sized by OR without them; 4 within 5%, #177 left.
@@ -74,7 +75,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-074: M1.9 split a to c; a separation with body 0 still to burn flies it on, the booster descends.
+- ADR-074, ADR-075: M1.9 split a to c; a powered split flies body 0 on; a cluster, a motor per tube.
 - ADR-073: a cause is sized by OR flying without it; within the bar if every such flight is within 5%.
 - ADR-072: private flights by id, differences only; public copies out; bar of 20 waits on M1.9.
 - ADR-071: M2.2e's corpus is the library's 27 `.ork` files; its `.CDX1`, `.rkt` wait (#168).
@@ -135,8 +136,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 2 of 170
   configurations (68 with OpenRocket's database supplied, ADR-067), staging waits for M1.9c,
   and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
-  reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and
-  motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may be
+  reason, among them the corpus's only tube fins (#133); fin fillets and a rail button's screw head
+  are read as the simpler part, with a warning; OR stacks a cluster's tubes in its inertia. `polished` is 2 µm here and may be
   0.5 µm in a newer OpenRocket; a zero-wall part weighs nothing, as in OpenRocket (ADR-061).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against

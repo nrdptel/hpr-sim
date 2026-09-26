@@ -49,8 +49,8 @@ The numbers match the drawing.
    forces and their turning effects:
    - the thrust of each burning motor, along the rocket's axis. So a
      [cluster](glossary.md#cluster) of motors that all light at once is flown, with their thrusts
-     added, and a motor off the centre line adds a turning effect. No test or comparison has
-     checked a cluster flight yet;
+     added, and a motor off the centre line adds a turning effect, as a motor that fails to light
+     does ([Clusters](physics/design.md#clusters)). Tests check it; no other simulator has yet;
    - the weight and the [Coriolis](glossary.md#coriolis-acceleration) force, at the centre of
      gravity;
    - the air's forces, from the air's velocity past the rocket, wind included: the drag along the
@@ -154,8 +154,8 @@ flight:
 - **Staging and air starts are checked only by tests.** Each motor lights at its own time, and a
   sustainer flies on after a powered separation ([Staging](physics/staging.md)), but no staged
   flight has been compared with another simulator yet ([M1.9c](decisions-and-roadmap.md#m1-9c)).
-  A cluster whose motors sit in their own mounts is flown, but no test or comparison has checked
-  one yet ([M1.9b](decisions-and-roadmap.md#m1-9b)).
+  A cluster is flown and checked by tests, including a motor that fails to light, but not yet
+  against another simulator ([Clusters](physics/design.md#clusters)).
 - [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
   axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
   modelled, and checked against measurements only from Mach 1.5 up

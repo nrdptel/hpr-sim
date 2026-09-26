@@ -37,7 +37,8 @@ pub struct MotorMount {
     pub overhang_m: f64,
 }
 
-/// A set of motors to fly with: at most one per mount.
+/// A set of motors to fly with: at most one per mount. A mount that is a cluster
+/// ([`InnerTube::cluster_m`](crate::InnerTube::cluster_m)) takes its motor in every tube.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Configuration {
@@ -113,9 +114,16 @@ pub struct MountedMotor {
     /// When it lights.
     #[serde(default, skip_serializing_if = "Ignition::is_launch")]
     pub ignition: Ignition,
+    /// The tubes whose motor fails to light, by index into the mount's tubes (a cluster's in the
+    /// order of [`InnerTube::cluster_m`](crate::InnerTube::cluster_m), `0` for a single tube): a
+    /// motor out. Each is carried loaded and gives no thrust, and a device or ignition waiting on
+    /// it alone never fires. Empty (the default) when every motor lights.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub failed_tubes: Vec<usize>,
 }
 
-/// A motor placed in the rocket.
+/// A motor placed in the rocket: one per tube of its mount, so a cluster's mount gives several,
+/// one after another in the order of its tubes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlacedMotor {
     /// The mount's id.
@@ -126,6 +134,12 @@ pub struct PlacedMotor {
     pub nozzle_m: DVec3,
     /// The motor as configured.
     pub mounted: MountedMotor,
+    /// Which of the mount's tubes it is in (`0` for a single tube).
+    #[serde(default)]
+    pub tube: usize,
+    /// Whether it fails to light ([`MountedMotor::failed_tubes`]).
+    #[serde(default)]
+    pub fails: bool,
 }
 
 impl PlacedMotor {
@@ -205,12 +219,13 @@ impl Assembly {
     /// lights. `separated_s(stage)` gives the time at which the stage aft of `stage` came away, if
     /// it has; [`Ignition::Separation`] counts from it.
     ///
-    /// A motor lit by another's burnout lights when that one's ignition is known; a chain that
-    /// never reaches a known time (a cycle is refused by [`Layout::place_motors`], so only a
-    /// separation that never comes) leaves it unlit.
+    /// A motor lit by another mount's burnout lights when one of that mount's motors that lights
+    /// has a known ignition; a chain that never reaches a known time (a cycle is refused by
+    /// [`Layout::place_motors`], so only a separation that never comes, or a mount whose every
+    /// motor fails) leaves it unlit. A motor that fails ([`PlacedMotor::fails`]) never lights.
     #[must_use]
     pub fn ignition_times_s(&self, separated_s: impl Fn(usize) -> Option<f64>) -> Vec<Option<f64>> {
-        ignition_times_s(&self.motors, separated_s)
+        ignition_times_s(&self.motors, separated_s, true)
     }
 
     /// The rocket with every motor spent: the structure and the motors' dry masses.
@@ -223,14 +238,18 @@ impl Assembly {
     }
 }
 
-/// As [`Assembly::ignition_times_s`], over `motors`.
+/// As [`Assembly::ignition_times_s`], over `motors`; with `failures` false, as if every motor
+/// lit.
 fn ignition_times_s(
     motors: &[PlacedMotor],
     separated_s: impl Fn(usize) -> Option<f64>,
+    failures: bool,
 ) -> Vec<Option<f64>> {
+    let fails = |motor: &PlacedMotor| failures && motor.fails;
     let mut times: Vec<Option<f64>> = motors
         .iter()
         .map(|motor| match &motor.mounted.ignition {
+            _ if fails(motor) => None,
             Ignition::Launch => Some(0.0),
             Ignition::Time { time_s } => Some(*time_s),
             Ignition::Separation { delay_s } => separated_s(motor.stage).map(|t| t + delay_s),
@@ -245,15 +264,15 @@ fn ignition_times_s(
             let Ignition::Burnout { mount, delay_s } = &motor.mounted.ignition else {
                 continue;
             };
-            if times[index].is_some() {
+            if times[index].is_some() || fails(motor) {
                 continue;
             }
+            // Every motor of a mount lights together, so the first that lights gives the burnout.
             let lit = motors
                 .iter()
-                .position(|other| other.mount == *mount)
-                .and_then(|other| {
-                    times[other].map(|t| t + motors[other].mounted.motor.burnout_time_s())
-                });
+                .zip(&times)
+                .filter(|(other, _)| other.mount == *mount)
+                .find_map(|(other, time)| time.map(|t| t + other.mounted.motor.burnout_time_s()));
             if let Some(burnout_s) = lit {
                 times[index] = Some(burnout_s + delay_s);
                 changed = true;
@@ -278,6 +297,9 @@ impl Layout {
     ///   ignition time or delay that is negative or not finite.
     /// - [`DesignError::Tree`] for an ignition by the burnout of a mount with no motor in this
     ///   configuration, or by a chain of burnouts that comes back to the motor itself.
+    /// - [`DesignError::InComponent`] (with the mount's id) wrapping [`DesignError::Domain`] for a
+    ///   failed tube the mount doesn't have, or one named twice, or a cluster offset that is not
+    ///   finite.
     pub fn place_motors(
         &self,
         configuration: &Configuration,
@@ -343,13 +365,27 @@ impl Layout {
                     }
                 }
             }
+            let tubes = mount.contents_copies_m().map_err(in_mount)?;
+            for (k, &tube) in mounted.failed_tubes.iter().enumerate() {
+                if tube >= tubes.len() || mounted.failed_tubes[..k].contains(&tube) {
+                    return Err(in_mount(DesignError::Domain {
+                        what: "failed tube (index into the mount's tubes, each named once)",
+                        value: tube as f64,
+                    }));
+                }
+            }
             let [x, y] = mount.part.axis_offset_m();
-            motors.push(PlacedMotor {
-                mount: mount.id.clone(),
-                stage: mount.stage,
-                nozzle_m: DVec3::new(x, y, -(mount.aft_station_m() + spec.overhang_m)),
-                mounted: mounted.clone(),
-            });
+            let z = -(mount.aft_station_m() + spec.overhang_m);
+            for (tube, [u, v]) in tubes.into_iter().enumerate() {
+                motors.push(PlacedMotor {
+                    mount: mount.id.clone(),
+                    stage: mount.stage,
+                    nozzle_m: DVec3::new(x + u, y + v, z),
+                    mounted: mounted.clone(),
+                    tube,
+                    fails: mounted.failed_tubes.contains(&tube),
+                });
+            }
         }
         for motor in &motors {
             if let Ignition::Burnout { mount, .. } = &motor.mounted.ignition
@@ -365,8 +401,9 @@ impl Layout {
                 });
             }
         }
-        // With every separation at once, only a cycle of burnouts is left unlit.
-        let lit = ignition_times_s(&motors, |_| Some(0.0));
+        // With every separation at once and every motor lit, only a cycle of burnouts is left
+        // unlit.
+        let lit = ignition_times_s(&motors, |_| Some(0.0), false);
         if let Some(index) = lit.iter().position(Option::is_none) {
             return Err(DesignError::Tree {
                 id: motors[index].mount.clone(),
@@ -521,6 +558,92 @@ mod tests {
         assert!(offset.y_axis.x.abs() < 1e-18);
         assert!(assembly.mass_properties(0.0).inertia_kg_m2.z_axis.y.abs() > 1e-6);
         assert_ne!(m.inertia_kg_m2, DMat3::ZERO);
+    }
+
+    /// The sample rocket with its mount a cluster of `tubes` 18 mm tubes (their axes where
+    /// `tubes` says), holding a 0.1 m envelope motor, and no centering rings.
+    fn clustered(tubes: Vec<[f64; 2]>) -> Rocket {
+        let mut design = three_fin_rocket();
+        let mount = &mut design.stages[0].components[1].children[0];
+        if let crate::Part::InnerTube(tube) = &mut mount.part {
+            tube.outer_radius_m = 0.0095;
+            tube.cluster_m = tubes;
+        }
+        design.stages[0].components[1].children.drain(1..3);
+        design.configurations[0].motors = vec![motor("mmt", 0.018, 0.1)];
+        design
+    }
+
+    /// Three tubes on a ring of radius `d = 0.02` m, at 90°, 210° and 330°.
+    fn ring_of_three() -> Vec<[f64; 2]> {
+        [90.0_f64, 210.0, 330.0]
+            .iter()
+            .map(|a| [0.02 * a.to_radians().cos(), 0.02 * a.to_radians().sin()])
+            .collect()
+    }
+
+    /// A motor in a 3-ring cluster is three motors, one in each tube, their nozzles where the tubes
+    /// are and at the one station. The rocket weighs the structure and all three at every time,
+    /// and about the body's axis its roll inertia is the structure's plus, for each motor, its own
+    /// axial inertia and `m d²`, worked by hand.
+    #[test]
+    fn a_cluster_mount_takes_its_motor_in_every_tube() {
+        let assembly = clustered(ring_of_three()).assemble("main").unwrap();
+        assert_eq!(assembly.motors.len(), 3);
+        for (k, (placed, [x, y])) in assembly.motors.iter().zip(ring_of_three()).enumerate() {
+            assert_eq!((placed.tube, placed.fails), (k, false));
+            assert_eq!(placed.mount, "mmt");
+            assert_eq!((placed.nozzle_m.x, placed.nozzle_m.y), (x, y));
+            assert!((placed.nozzle_station_m() - 1.01).abs() < 1e-15);
+        }
+        let structure = assembly.layout.structure;
+        for (t, motor_kg) in [(0.0, 1.0), (0.5, 0.75), (2.0, 0.5)] {
+            let whole = assembly.mass_properties(t);
+            assert!((whole.mass_kg - (structure.mass_kg + 3.0 * motor_kg)).abs() < 1e-12);
+            let axis = DVec3::new(0.0, 0.0, whole.cg_m.z);
+            let own = assembly.motors[0].mounted.motor.state(t).total;
+            let want = structure.inertia_about(axis).z_axis.z
+                + 3.0 * (own.axial_inertia_kg_m2 + motor_kg * 0.02 * 0.02);
+            let got = whole.inertia_about(axis).z_axis.z;
+            assert!((got - want).abs() < 1e-12 * want, "{t}: {got} vs {want}");
+        }
+    }
+
+    /// A motor out: the tube named in `failed_tubes` keeps its motor loaded and never lights it,
+    /// the others burn. A tube the mount doesn't have, or one named twice, is refused.
+    #[test]
+    fn a_failed_tube_never_lights() {
+        let mut design = clustered(ring_of_three());
+        design.configurations[0].motors[0].failed_tubes = vec![0];
+        let assembly = design.assemble("main").unwrap();
+        let fails: Vec<bool> = assembly.motors.iter().map(|m| m.fails).collect();
+        assert_eq!(fails, [true, false, false]);
+        let lit = assembly.ignition_times_s(|_| None);
+        assert_eq!(lit, [None, Some(0.0), Some(0.0)]);
+        let spent = assembly.mass_properties_lit(2.0, &lit);
+        let structure = assembly.layout.structure.mass_kg;
+        assert!((spent.mass_kg - (structure + 1.0 + 0.5 + 0.5)).abs() < 1e-12);
+        // The loaded motor pulls the centre toward its tube, at 90°: +y.
+        assert!(spent.cg_m.y > assembly.mass_properties(2.0).cg_m.y + 1e-4);
+
+        for (failed, value) in [(vec![3], 3.0), (vec![1, 1], 1.0)] {
+            let mut design = clustered(ring_of_three());
+            design.configurations[0].motors[0].failed_tubes = failed;
+            let Err(DesignError::InComponent { id, source }) = design.assemble("main") else {
+                panic!("refused");
+            };
+            assert_eq!(id, "mmt");
+            assert!(
+                matches!(*source, DesignError::Domain { what, value: v }
+                    if what.starts_with("failed tube") && v == value),
+                "{source:?}"
+            );
+        }
+        // One tube is tube 0.
+        let mut design = three_fin_rocket();
+        design.configurations[0].motors[0].failed_tubes = vec![0];
+        let assembly = design.assemble("main").unwrap();
+        assert_eq!(assembly.ignition_times_s(|_| None), [None]);
     }
 
     #[test]
@@ -1043,6 +1166,37 @@ mod tests {
         .unwrap();
         rocket.configurations[0].motors[1].ignition = ignition;
         rocket
+    }
+
+    /// A sustainer lit by a clustered booster's burnout lights at the burnout of the booster's
+    /// first motor that lights, so one motor out doesn't hold it back; with every booster motor
+    /// out it never lights, and that is not the cycle of burnouts assembly refuses.
+    #[test]
+    fn a_burnout_of_a_cluster_is_its_first_motor_that_lights() {
+        let mut rocket = two_stage(Ignition::Burnout {
+            mount: "booster-motor-mount".to_owned(),
+            delay_s: 1.0,
+        });
+        let booster = rocket.stages[1].components[1]
+            .children
+            .iter_mut()
+            .find(|c| c.id == "booster-motor-mount")
+            .expect("the booster's mount");
+        if let crate::Part::InnerTube(tube) = &mut booster.part {
+            tube.cluster_m = vec![[-0.01, 0.0], [0.01, 0.0]];
+        }
+        let booster_burnout_s =
+            |assembly: &Assembly| assembly.motors[0].mounted.motor.burnout_time_s();
+        rocket.configurations[0].motors[0].failed_tubes = vec![0];
+        let assembly = rocket.assemble("j760-i175").unwrap();
+        let burnout_s = booster_burnout_s(&assembly);
+        assert_eq!(
+            assembly.ignition_times_s(|_| None),
+            [None, Some(0.0), Some(burnout_s + 1.0)]
+        );
+        rocket.configurations[0].motors[0].failed_tubes = vec![1, 0];
+        let assembly = rocket.assemble("j760-i175").unwrap();
+        assert_eq!(assembly.ignition_times_s(|_| None), [None, None, None]);
     }
 
     #[test]

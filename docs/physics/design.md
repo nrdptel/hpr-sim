@@ -19,15 +19,18 @@
   (relative) at the times RocketPy computed, and within 1.1e-5 in mass and 2.6e-5 in inertia
   between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand; the whole structure against
-  OpenRocket on 71 compared designs, within 1% in mass on 58 and in centre of mass on 59
+  OpenRocket on 71 compared designs, within 1% in mass on 62 and in centre of mass on 63
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
-  the `.ork` import ([`.ork` design files](../format/ork.md)). Not compared with a real flight.
-- **What it leaves out:** several motors in one mount ([M1.9b](../decisions-and-roadmap.md#m1-9b)).
-  Each motor lights at its own `ignition`, at launch unless told otherwise, so a two-stage design
-  whose file says nothing flies with every motor lit at once, and nothing warns; a staged flight
-  gives the sustainer its ignition ([Staging](staging.md)). A [cluster](../glossary.md#cluster) with a mount per motor
-  is flown, but no test or comparison checks one yet. Fins on a nose cone or transition are
-  refused.
+  the `.ork` import ([`.ork` design files](../format/ork.md)). A
+  [cluster](../glossary.md#cluster)'s tubes sit where OpenRocket puts them, to 1e-15 m, and a motor
+  out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). Not
+  compared with a real flight, and a cluster's flight not yet with another simulator's
+  ([M1.9c](../decisions-and-roadmap.md#m1-9c)).
+- **What it leaves out:** each motor lights at its own `ignition`, at launch unless told
+  otherwise, so a two-stage design whose file says nothing flies with every motor lit at once, and
+  nothing warns; a staged flight gives the sustainer its ignition ([Staging](staging.md)). A
+  cluster's motors light together, or not at all: no spread in ignition and no thrust misalignment.
+  Fins on a nose cone or transition are refused.
   [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and
   overrides; the OpenRocket comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) is mapping them,
   and the mass conventions it has found are on the [mass page](mass.md#checked-against-openrocket).
@@ -189,8 +192,7 @@ The reference area is `π d²/4`.
 
 - **Mounts.** A [`MotorMount`](../api/hpr_design/config/struct.MotorMount.html) on a body tube or
   inner tube holds a motor. Its `overhang_m` is how far the nozzle exit sits aft of the mount's aft
-  end. Each mount holds at most one motor, so a cluster has a mount per motor, such as inner tubes
-  set off the body axis.
+  end. A mount that is a cluster of tubes holds the motor in every tube ([below](#clusters)).
 - **Configurations.** A [`Configuration`](../api/hpr_design/config/struct.Configuration.html)
   puts at most one [`MountedMotor`](../api/hpr_design/config/struct.MountedMotor.html) in each
   mount. A mounted motor is a [`SolidMotor`](../api/hpr_motor/motor/struct.SolidMotor.html) with its case diameter and length (for the checks),
@@ -213,9 +215,8 @@ The reference area is `π d²/4`.
 - **More than one motor.** In a flight, each burning motor's thrust points along the rocket's axis
   (`z_B`) and acts at its own nozzle exit, and the thrusts and their moments are summed
   ([Rigid-body flight](flight.md#equations-of-motion)):
-  - A cluster whose motors each sit in their own mount is flown, and a motor off the body axis
-    adds a turning moment. No test or comparison checks a cluster flight yet, and several motors
-    in one mount come with [M1.9b](../decisions-and-roadmap.md#m1-9b).
+  - A cluster is flown, whether its motors share one mount ([below](#clusters)) or each has its
+    own, and a motor off the body axis adds a turning moment.
   - A two-stage design fires in sequence when its motors are given their ignitions, and drops its
     booster at a separation ([Staging](staging.md)). Its design file alone lights every motor at
     launch, booster and sustainer together, unless it says otherwise.
@@ -223,6 +224,47 @@ The reference area is `π d²/4`.
   RocketPy names the moment of inertia in pitch and yaw `I_11` and the one in roll `I_33`. Its
   `I_11(t)` is taken about the centre of dry mass (the rocket without propellant), so hpr's tensor
   is moved there before comparing. `I_33` sums the axial moments (every element is on the axis).
+
+## Clusters
+
+A cluster is several like motors side by side. In hpr it is one inner tube repeated: the tube's
+[`cluster_m`](../api/hpr_design/parts/struct.InnerTube.html#structfield.cluster_m) lists where
+each tube's axis sits, `[x, y]` in metres across the body from the axis the tube's radial offset
+and angle give. An empty list is one tube. The decision record is
+[ADR-075][adr-075].
+
+- **Mass.** The tube weighs all its copies, each with its own
+  [parallel-axis](../glossary.md#parallel-axis-theorem) term `m d²`. Whatever the tube holds (an
+  engine block, a mass) is repeated in every tube the same way, and a mass override on the cluster
+  sets the whole cluster's mass.
+- **Motors.** The configuration names one motor for the mount, and placing it gives one motor per
+  tube, one after another in the order of the tubes, each nozzle on its tube's axis. Their thrusts,
+  masses and moments add up like any other motors'.
+- **A motor out.** A mounted motor's
+  [`failed_tubes`](../api/hpr_design/config/struct.MountedMotor.html#structfield.failed_tubes)
+  names tubes whose motor never lights. That motor stays loaded and pushes nothing, which is how a
+  cluster most often fails. The lit motors then push off-centre, and the rocket turns toward the
+  motor that is out.
+- **From a `.ork` file.** The reader turns OpenRocket's named pattern into the list
+  ([`.ork` design files](../format/ork.md#clusters)).
+
+**Worked example.** The tests' single-stage rocket
+([`synthetic-54mm-three-fin`](https://github.com/nrdptel/hpr-sim/blob/main/validation/designs/synthetic-54mm-three-fin.json)),
+with its mount made a ring of three tubes `A = 0.02` m from the axis, at 0°, 120° and 240°, and an
+I175 in each. With the motor at 0° out, 1 s into the burn:
+
+| quantity | value |
+|---|---|
+| each lit motor's thrust `T`, in a vacuum | 193.98 N |
+| centre of mass across the axis, `c_x` (the loaded motor pulls it toward itself) | 1.33 mm |
+| pitch moment `T (A + 2 c_x)` about the centre of mass | 4.396 N m |
+| pitch acceleration `I_c⁻¹ M`, at rest | 41.80 rad/s² |
+
+The two lit motors sit at `x = −A/2` each, so about the centre of mass their thrust has the lever
+`A/2 + c_x` twice. The flight's equations give the same angular acceleration to 3.7e-7; the
+difference is the mass-flow terms (the centre of mass moving as two motors burn and one doesn't,
+and the jets). With all three lit, the thrusts balance, and the rocket turns only a fortieth as
+fast, from its rail buttons setting the structure's centre 0.027 mm off the axis.
 
 ## Checks
 
@@ -277,6 +319,17 @@ unless the caller sets
   - `config::tests`: the placed motor's nozzle station, and the rocket's mass, centre and inertia
     at loaded, burning and burnt out, by the parallel-axis theorem, to 1e-12; an off-axis mount's
     `I_yz = −m y z`.
+- **Clusters by hand:**
+  - `parts::tests::a_cluster_is_its_tubes_each_with_its_parallel_axis_term`: four tubes' mass,
+    centre and roll inertia about the body's axis, to 1e-15.
+  - `tree::tests::a_cluster_repeats_what_it_holds_in_every_tube`: an engine block in every tube of
+    a 3-ring, the structure gaining two tubes and two blocks, and the checks' warnings.
+  - `config::tests`: a motor in a 3-ring is three motors at their tubes, the rocket's roll inertia
+    gaining each one's `m d²`; a failed tube stays loaded and unlit, a tube the mount lacks is
+    refused; a sustainer lit by a clustered booster's burnout lights with one booster motor out.
+  - `hpr_sim::staging::tests`: three motors' thrust and mass summed, and the motor out above
+    (`cluster_motor_out_produces_pitch_moment`, [Loft lesson L31](../decisions-and-roadmap.md#l31));
+    a clustered sustainer lit after a powered separation.
 - **Overrides** (`overrides_rescale_move_and_replace`, `nested_overrides_apply_deepest_first`):
   each step, the scopes, a stage override, deeper overrides first, the massless case, and refusal
   of non-finite and unphysical results.
@@ -330,3 +383,4 @@ unless the caller sets
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [levels]: ../accuracy.md#four-kinds-of-evidence
+[adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
