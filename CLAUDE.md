@@ -41,6 +41,11 @@ At the start of every session, read these in order. They are short on purpose; k
    publish: counts, error statistics, and anonymised case ids. The same goes for any third-party
    data whose license is unclear. Fetch it, cache it, don't commit it. Record the status in
    `THIRD-PARTY-NOTICES.md`.
+   - Never publish a private design's name, sizes or masses, nor a ratio that back-computes them.
+     GitHub keeps every revision of an issue or PR body, so screen the text before posting.
+   - The guard hook stops a post, comment or commit message that names a private design, or that
+     discusses one alongside measured values. Re-read the text, fix it, then re-run with a
+     trailing `# private-data-checked`.
 5. **Offline-first.** Every core capability works with no network on macOS, Windows and Linux.
    Network features live in `hpr-net`, behind a cargo feature, with an on-disk cache and a
    clear offline fallback. Core crates do no I/O and compile to `wasm32-unknown-unknown`.
