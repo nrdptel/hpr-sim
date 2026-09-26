@@ -198,6 +198,23 @@ fn one(
         return None;
     }
 
+    // OpenRocket places a part inside an inner tube from that tube's axis; `hpr-design` measures
+    // every part's offset from the body's axis, and this reader does not compose the two yet
+    // (#181). Nothing in the reference library does this, so it is said out loud.
+    let [x, y] = parent.axis_offset_m();
+    if !part.is_external() && (x != 0.0 || y != 0.0) {
+        values.warn_at(
+            WarningKind::Unusual,
+            format!(
+                "the {} sits inside a {} {} m off the body's axis: OpenRocket places it from that \
+                 tube's axis, and hpr from the body's axis (issue #181)",
+                spoken(&part),
+                spoken(parent),
+                x.hypot(y)
+            ),
+        );
+    }
+
     let name = values.word(&["name"]).unwrap_or_default();
     let position = match &part {
         Part::RailButton(button) => centred_on_its_position(position(&mut values), button),

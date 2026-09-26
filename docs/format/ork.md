@@ -262,8 +262,8 @@ departs from [F] but leaves the file readable is a warning that travels with the
 | `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 39 warnings over 73
-readable files: 8 dropped, 12 skipped and 19 unusual. Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 35 warnings over 73
+readable files: 4 dropped, 12 skipped and 19 unusual. Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -809,7 +809,8 @@ Each pattern is a figure of points `pₖ`, one per tube, in units of `2 R s` (de
 | `9-star` | 9 | a centre tube and eight on a ring of radius 1.4 |
 
 The unit is `2 R s`, for the tube's outer radius `R` and the scale `s`: at scale 1 neighbouring
-tubes touch, except in `9-grid` and `9-star`, whose tubes are 1.4 diameters apart. The pattern is
+tubes touch, except in `9-grid`, whose rows and columns are 1.4 diameters apart, and `9-star`,
+whose ring is 1.4 diameters from its centre tube. The pattern is
 turned by the tube's roll angle `θ` less the rotation `ρ` (`Rot` turns a point by that angle):
 
 `[x, y]ₖ = 2 R s · Rot(θ − ρ) · pₖ`
@@ -824,15 +825,19 @@ doesn't know (`4-square`), it reads as one tube; so does hpr, with a warning.
 
 A cluster's mass and centre of mass agree with OpenRocket's. Its inertia does not: OpenRocket weighs
 the tubes as if stacked on the cluster's axis, and hpr weighs each where it sits
-([Mass properties](../physics/mass.md#clusters-and-fillets)). Two more readings are OpenRocket's
-own:
+([Mass properties](../physics/mass.md#clusters-and-fillets)). Two more readings differ from what
+a builder would expect:
 
 - A centering ring with an automatic bore beside a cluster takes one tube's radius as its bore, as
   OpenRocket gives it, so the tubes run through the ring and that mass counts twice. For a 3-ring
   of 40 mm tubes in a ring 98 mm across, the ring weighs about two thirds more than one with three
   holes would. The design checks warn of it (`ring_overlaps_inner_tube`).
 - A part inside an inner tube set off the body's axis is read at its own offset from the body's
-  axis, with no parent's offset added. A cluster on the axis, the common case, is not affected.
+  axis, with no parent's offset added. OpenRocket places it from the tube's axis: an engine block
+  in a tube 10 mm off the axis sits on that tube's axis in OpenRocket and on the body's axis in
+  hpr. hpr warns of it (`Unusual`), and no file in the survey has one
+  ([#181](https://github.com/nrdptel/hpr-sim/issues/181)). A cluster on the axis, the common case,
+  is not affected, and neither are motors, whose nozzles take their mount's offset.
 
 A configuration with a motor in a cluster is read, but hpr's flights of `.ork` files leave it out until
 [M1.9c](../decisions-and-roadmap.md#m1-9c) compares a cluster's flight with OpenRocket's

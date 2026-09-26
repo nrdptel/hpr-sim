@@ -258,7 +258,7 @@ two causes, so the last column adds to 7:
 | pods, parallel stages, tube fins and parts left out | keeps them unread (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 5 |
 
 A third cause, a cluster read as one tube, went when
-[M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files are now within both
+[M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files by content are now within both
 thresholds. `cargo xtask ork` prints each of the 9 with the parts that differ most, by id, or by name in an
 older file that writes no ids. A private design is named only by the start of its file's hash.
 

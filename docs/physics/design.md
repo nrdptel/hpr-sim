@@ -248,7 +248,8 @@ these two fields (the rest of the inner tube and the mounted motor as usual):
 - **Mass.** The tube weighs all its copies, each with its own
   [parallel-axis](../glossary.md#parallel-axis-theorem) term `m d²`. Whatever the tube holds (an
   engine block, a mass) is repeated in every tube the same way. A mass override on the cluster
-  sets the whole cluster's mass; one on a part inside it sets each copy's, as OpenRocket does.
+  sets the whole cluster's mass; one on a part inside it (its mass, centre or inertia) sets each
+  copy's, as OpenRocket does for the mass.
 - **Motors.** The configuration names one motor for the mount, and placing it gives one motor per
   tube, one after another in the order of the tubes, each nozzle on its tube's axis. Their thrusts,
   masses and moments add up like any other motors'.

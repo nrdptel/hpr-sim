@@ -196,7 +196,9 @@ pub struct Assembly {
 
 impl Assembly {
     /// The rocket `t_s` seconds after ignition: the structure and every motor, but for a motor
-    /// that fails ([`PlacedMotor::fails`]), which stays loaded.
+    /// that fails ([`PlacedMotor::fails`]), which stays loaded. Every other motor is taken as lit,
+    /// even one waiting on a mount whose every motor fails; [`Self::mass_properties_lit`] with
+    /// [`Self::ignition_times_s`] gives the flight's.
     pub fn mass_properties(&self, t_s: f64) -> MassProperties {
         self.motors
             .iter()

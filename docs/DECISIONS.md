@@ -6770,6 +6770,8 @@ inner tube as the one tube it is written as, with a warning, leaving its configu
 - Not modelled: a ring's automatic bore round a cluster is the tube's own radius, as OpenRocket
   gives it, so the tubes run through the ring, and the design checks warn of it. A part inside a
   tube off the body's axis is read at its own radial offset from the body's axis; the `.ork`
-  reader adds no parent's offset to it, as before, and a cluster on the axis, the common case, is
-  not affected. Real clusters' thrust misalignment and ignition spread, short of a motor that fails
+  reader adds no parent's offset to it, as before, where OpenRocket places it from the tube's axis
+  (measured with an engine block in a tube 10 mm off the axis). The reader warns of it and no
+  survey file has one; a cluster on the axis, the common case, is not affected
+  ([#181](https://github.com/nrdptel/hpr-sim/issues/181)). Real clusters' thrust misalignment and ignition spread, short of a motor that fails
   outright, are not modelled.
