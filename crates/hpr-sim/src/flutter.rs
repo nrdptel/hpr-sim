@@ -80,9 +80,10 @@ pub const HEAT_CAPACITY_RATIO: f64 = 1.4;
 ///
 /// Measured on the scan of NACA TN 4197's figure 3 (p. 19) rendered at 250 dpi: both log axes
 /// calibrated on their tick marks (222.5 and 224.8 pixels a decade), the band's edges traced in
-/// 69 columns from `G_E` = 0.03 to 10 × 10⁶ psi. Its middle stays at `D/G_E` = 0.28 to 0.29
-/// along the whole axis, and it is about 0.08 of a decade wide. Above it, Martin's wings fluttered
-/// or failed; below it, they flew to at least Mach 1.3 without known failure.
+/// 69 columns along the axis, `G_E` = 0.05 to 10 × 10⁶ psi (0.34 to 69 GPa). Its middle stays at
+/// `D/G_E` = 0.28 to 0.29 along the whole axis, and it is about 0.08 of a decade wide. Above it lie
+/// mostly wings that fluttered or failed, and a few that didn't; below it, wings that flew to at
+/// least Mach 1.3 without known failure.
 pub const FIGURE_3_BAND: [f64; 2] = [0.25, 0.31];
 
 /// The planform numbers Martin's criterion takes from one fin.
@@ -110,7 +111,7 @@ pub const FIGURE_3_BAND: [f64; 2] = [0.25, 0.31];
 /// Its numbers are checked when it is made, by [`FlutterPanel::new`], and when it is read from
 /// JSON.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(try_from = "PanelNumbers", deny_unknown_fields)]
+#[serde(try_from = "PanelNumbers")]
 pub struct FlutterPanel {
     aspect_ratio: f64,
     taper_ratio: f64,
@@ -238,8 +239,9 @@ impl FlutterPanel {
     }
 
     /// Martin's figure 3 reading, `D/G_E = (a/V_f)²`, at static pressure `p`: above
-    /// [`FIGURE_3_BAND`] his wings fluttered, below it they didn't. Martin takes `p` where the
-    /// wing flies; at the launch site's, the highest a flight sees, it is the largest.
+    /// [`FIGURE_3_BAND`] lie mostly his wings that fluttered, below it wings that didn't. Martin
+    /// takes `p` where the wing flies; at the launch site's, the highest a flight sees, it is the
+    /// largest. Outside his axis, `G_E` from 0.34 to 69 GPa, it is an extrapolation.
     ///
     /// # Errors
     ///
@@ -327,9 +329,10 @@ pub struct FlutterMargin {
     /// The dynamic pressure at eq. 18's flutter speed, Pa.
     pub flutter_dynamic_pressure_pa: f64,
     /// Eq. 18's flutter speed over the airspeed there, `V_f / V = √(q_f / q)`, the flight's least.
-    /// Below 1 the fin flies faster than eq. 18's flutter speed. Martin's data doesn't make 1 a
-    /// safe line: his band puts `V_f` at 1.8 to 2.0 times the speed of sound, and his surviving
-    /// wings flew to at least Mach 1.3, so wings on the band had ratios of up to about 1.5.
+    /// Below 1 the fin flies faster than eq. 18's flutter speed. No fixed value is a safe line:
+    /// Martin's band ([`FIGURE_3_BAND`]) puts `V_f` at 1.8 to 2.0 times the speed of sound, so at
+    /// Mach `M` its edge is at a ratio of about `1.8/M` to `2.0/M`. Judge a fin by
+    /// [`FlutterPanel::figure_3_ratio`].
     pub speed_ratio: f64,
 }
 
@@ -416,8 +419,6 @@ mod tests {
             let v = base.flutter_speed_m_s(g, p, a).unwrap();
             let q = 0.5 * HEAT_CAPACITY_RATIO * p / (a * a) * v * v;
             assert!((q / q_f - 1.0).abs() < 1e-12, "{q} {q_f}");
-            let ratio = base.figure_3_ratio(g, p).unwrap();
-            assert!((ratio - (a / v).powi(2)).abs() < 1e-12 * ratio);
         }
     }
 
@@ -430,9 +431,10 @@ mod tests {
     /// His verdicts on the first are the margin half: in solid magnesium the wing "would plot in
     /// the flutter region", in aluminium it "would be marginal", in steel "probably safe". With
     /// the moduli he marks on figure 3's axis, each a small box measured on the 250 dpi scan
-    /// (× 10⁶ psi: magnesium 2.40 to 2.63, aluminium 3.82 to 4.28, titanium 5.98 to 6.55, steel
-    /// 8.94 to 11.6), and his band, magnesium's ratio lies wholly above the band, aluminium's
-    /// overlaps it, and steel's lies wholly below; titanium held to 0.8 × 10⁶ psi lies below it.
+    /// (outer walls, × 10⁶ psi: magnesium 2.40 to 2.63, aluminium 3.82 to 4.28, titanium 5.78 to
+    /// 6.34, steel 8.92 to 11.3), and his band, magnesium's ratio lies wholly above the band,
+    /// aluminium's overlaps it, and steel's lies wholly below; his second example's titanium, held
+    /// to 0.8 × 10⁶ psi, lies below it.
     #[test]
     fn martins_worked_examples() {
         let x_psi = |a: f64, tc: f64| ordinate_psi(&panel(a, 1.0, tc), P0);
@@ -445,14 +447,18 @@ mod tests {
             assert_eq!((200.0 * tc).round() / 2.0, printed_percent, "{a}: {tc}");
         }
         let [low, high] = FIGURE_3_BAND;
-        // The ratio `D/G_E` over a material's box: the stiffest end gives the least.
-        let ratios = |ordinate: f64, box_msi: [f64; 2]| {
-            [ordinate / (box_msi[1] * 1e6), ordinate / (box_msi[0] * 1e6)]
+        // The figure 3 ratio over a material's box: the stiffest end gives the least.
+        let ratios = |p: &FlutterPanel, [soft, stiff]: [f64; 2]| {
+            [stiff, soft].map(|g| p.figure_3_ratio(g * 1e6 * PSI, P0).unwrap())
         };
-        let magnesium = ratios(x, [2.40, 2.63]);
-        let aluminium = ratios(x, [3.82, 4.28]);
-        let steel = ratios(x, [8.94, 11.6]);
-        let titanium = ratios(0.8e6, [5.98, 6.55]);
+        let first = panel(2.0, 1.0, 0.04);
+        let magnesium = ratios(&first, [2.40, 2.63]);
+        let aluminium = ratios(&first, [3.82, 4.28]);
+        let steel = ratios(&first, [8.92, 11.3]);
+        // The second example's titanium wing: the thickness that holds X at 0.8 × 10⁶ psi.
+        let held = panel(2.0, 1.0, 0.04 * (x / 0.8e6).cbrt());
+        assert!((ordinate_psi(&held, P0) / 0.8e6 - 1.0).abs() < 1e-12);
+        let titanium = ratios(&held, [5.78, 6.34]);
         assert!(magnesium[0] > high, "{magnesium:?}");
         assert!(aluminium[0] < high && aluminium[1] > low, "{aluminium:?}");
         assert!(steel[1] < low, "{steel:?}");
@@ -679,5 +685,8 @@ mod tests {
                                      "thickness_ratio": 0.02});
         let err = serde_json::from_value::<FlutterPanel>(bad).unwrap_err();
         assert!(err.to_string().contains("taper ratio"), "{err}");
+        let extra = serde_json::json!({"aspect_ratio": 1.0, "taper_ratio": 0.5,
+                                       "thickness_ratio": 0.02, "extra": 1});
+        assert!(serde_json::from_value::<FlutterPanel>(extra).is_err());
     }
 }

@@ -13,10 +13,10 @@
   [shear modulus](../glossary.md#shear-modulus); hpr has one, with its source, for 14 of its
   built-in materials.
 - **How well it is validated:** hpr reproduces Martin's formula and both of his worked examples,
-  including his verdicts on four metals ([Tests](#tests)). His safe/unsafe line is a band that hpr
-  measured off his printed chart: 0.25 to 0.31
-  ([The line in Martin's data](#the-line-in-martins-data)). His wings flew to at least Mach 1.3;
-  nothing here is checked against a hobby rocket. Where the source allows two readings, hpr takes
+  including his verdicts on three metals and his titanium design ([Tests](#tests)). His
+  safe/unsafe line is a band that hpr measured off his printed chart: 0.25 to 0.31
+  ([The line in Martin's data](#the-line-in-martins-data)). His unfailed wings flew to at least
+  Mach 1.3; nothing here is checked against a hobby rocket. Where the source allows two readings, hpr takes
   the one with the lower flutter speed. That doesn't make the whole result conservative: nothing
   shows that it is.
 - **What it leaves out:** sweep, and how the fin is mounted: Martin's wings were clamped at the
@@ -85,16 +85,20 @@ hpr calls this ratio `D / G_E` the *figure 3 ratio*:
 
 | Figure 3 ratio `D / G_E` | Martin's data |
 |---|---|
-| above 0.31 | wings fluttered or failed |
+| above 0.31 | mostly wings that fluttered or failed (a few that didn't lie there too) |
 | 0.25 to 0.31 | the band: marginal |
-| below 0.25 | wings flew to at least Mach 1.3 without known failure |
+| below 0.25 | wings that flew to at least Mach 1.3 without known failure |
 
 Martin takes `p` where the wing flies. At the launch site's pressure, the highest a flight sees, the
-ratio is at its largest.
+ratio is at its largest. Figure 3's axis runs from 0.05 to 10 × 10⁶ psi (0.34 to 69 GPa) in `G_E`;
+balsa's modulus is left of it, so its ratio is an extrapolation.
 
-What this means for `V_f / V`: a wing on the band has `V_f` of about 1.9 times the speed of sound.
-Flown to Mach 1.3, it reaches a ratio `V_f / V` of about 1.5, and such wings were marginal. So
-`V_f / V = 1` is not a safe line. Treat a ratio below about 1.5 as not shown to be safe.
+**Which reading decides.** The figure 3 ratio does: it is Martin's own check, and a fin must be
+below the band. `V_f / V` alone is not a safe line, at 1 or at any fixed number. At the flight's
+max q the two are tied by `D / G_E = 1 / (M · V_f/V)²`, with `M` the Mach number there, so the
+band's edge is at `V_f / V` of about 1.8/M to 2.0/M: 1.5 at Mach 1.3, but 3.6 at Mach 0.5.
+Martin's data show nothing about a fin above the band on a rocket slower than Mach 1.3: treat it as
+not shown to be safe.
 
 **Loft's mistake.** Loft, hpr's predecessor, wrote the constant as `1.337 · (λ + 1)/2` per psi,
 half of `39.3 / 14.696 = 2.674`. So its flutter speeds were `√2` too high, about 41%, on the unsafe
@@ -118,15 +122,16 @@ be at each aspect ratio.
 Martin read these off a log-scale chart and printed them on grids of 0.05 × 10⁶ psi and half a
 percent (his thicknesses all end in .5). Each of hpr's values rounds to his on that grid.
 
-His verdicts on the first wing are the margin half of the example. hpr checks them with the
-moduli Martin marks on figure 3's axis, each a small box read off the same scan:
+His verdicts on the first wing are the margin half of the example; the titanium row is his second
+example, at the ordinate he chose. hpr checks them with the moduli Martin marks on figure 3's axis,
+each a small box read off the same scan:
 
 | Material | Martin's mark, 10⁶ psi | Figure 3 ratio | Martin says | Against the band |
 |---|---|---|---|---|
 | Magnesium | 2.40 to 2.63 | 0.47 to 0.51 | "in the flutter region" | above |
 | Aluminium | 3.82 to 4.28 | 0.29 to 0.32 | "marginal" | on it |
-| Steel | 8.94 to 11.6 | 0.11 to 0.14 | "probably safe" | below |
-| Titanium, held to 0.8 × 10⁶ psi | 5.98 to 6.55 | 0.12 to 0.13 | a margin of safety | below |
+| Steel | 8.92 to 11.3 | 0.11 to 0.14 | "probably safe" | below |
+| Titanium, his second example at 0.8 × 10⁶ psi | 5.78 to 6.34 | 0.13 to 0.14 | his design, with "a reasonable margin of safety" | below |
 
 ## A rocket's fins
 
@@ -155,8 +160,9 @@ The columns `V_f 0 m` and `V_f 3 km` are eq. 18's flutter speed in standard air 
 - **Aluminium** passes both readings: its figure 3 ratio is well below the band, and at max q the
   rocket flies at under a third of `V_f`.
 - **Carbon fibre** at 3.2 mm has `V_f / V` of 1.46, but its figure 3 ratio, 0.45, is above the
-  band, where Martin's wings failed. Its modulus is a unidirectional ply's, the lowest a laminate
-  can have, so a real ±45° layup would do better. Still, this is not shown to be safe.
+  band, where Martin's wings failed: not shown to be safe. Its modulus is a unidirectional ply's of
+  one aerospace prepreg; a ±45° layup of it would be stiffer, but wet-laid or woven hobby sheet may
+  be softer.
 - **Plywood, basswood and balsa** fins of this size fail both: at max q the rocket flies at 1.75
   times plywood's `V_f`.
 
@@ -179,7 +185,8 @@ extrapolation.
 
 ## Readings where the source leaves room
 
-Each of these gives the lower of the flutter speeds the source allows, but one.
+Most of these give the lower of the flutter speeds the source allows. Two can go the other way:
+an airfoiled fin's modulus, and a booster's max q.
 
 - **Thickness ratio at the root.** Martin's wings keep one thickness ratio from root to tip. A
   hobby fin keeps one thickness, so its ratio grows toward the tip. hpr takes the root's, the
@@ -204,7 +211,7 @@ Each of these gives the lower of the flutter speeds the source allows, but one.
 
 The criterion needs the fin's shear modulus in its own plane. `hpr_design::materials::SHEAR_MODULI`
 gives it for 14 built-in materials, each with its source, page and the web address it was read
-from, and `shear_modulus_of` finds a design's built-in material by name. Where a source gives a
+from, and `shear_modulus_of` finds a design's copy of a built-in material by its name and density. Where a source gives a
 range, the lower value is kept. Metals are given in ksi (1000 psi) and Msi (10⁶ psi); 1 Msi is
 6.895 GPa.
 
@@ -251,8 +258,8 @@ In `crates/hpr-sim/src/flutter.rs`, unless named otherwise:
 | Test | What it pins |
 |---|---|
 | `flutter_denominator_matches_tn_4197_eq_18` | The constant against Martin's 39.3 psi, and `D` against eq. 18 on three panels at two pressures, to his rounding; twice Loft's constant ([L32](../decisions-and-roadmap.md#l32)) |
-| `martins_worked_examples` | Both of Martin's examples on his grid, and his four verdicts against the band (the tables above) |
-| `scaling_laws_in_thickness_shear_modulus_and_pressure` | `V_f` as `(t/c)^1.5`, `√G_E`, `1/√p` and `a`, to 1e-12; `q_f` the same in three atmospheres; the figure 3 ratio is `(a/V_f)²` |
+| `martins_worked_examples` | Both of Martin's examples on his grid, and his three verdicts and his titanium design against the band, through `figure_3_ratio` (the tables above) |
+| `scaling_laws_in_thickness_shear_modulus_and_pressure` | `V_f` as `(t/c)^1.5`, `√G_E`, `1/√p` and `a`, to 1e-12; `q_f` the same in three atmospheres |
 | `taper_factor_against_the_frequency_factors` | `(λ + 1)/2` against `1/(f₁² f₂²)`: 3% at `λ = 0`, at most 47% at `λ = 0.308` |
 | `the_margin_is_the_flights_least_at_its_peak_dynamic_pressure` | On the flight of Valetudo (a RocketPy example rocket), the margin is at max q and at or below every row of a 1 ms record; `V_f` from each row's pressure and speed of sound agrees with `√(q_f/q)`, to 1e-12; no peak gives `None`, a peak that isn't a number is refused |
 | `a_trapezoidal_fin_set_gives_its_panel`, `out_of_range_inputs_are_refused` | A fin set's `A`, `λ` and `t/c`; elliptical and reverse-tapered fins, a taper outside 0 to 1 and inputs that aren't positive are refused by name, from code and from JSON |

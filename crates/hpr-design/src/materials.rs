@@ -680,10 +680,12 @@ pub fn shear_modulus(id: &str) -> Option<&'static BuiltinShearModulus> {
     SHEAR_MODULI.iter().find(|m| m.id == id)
 }
 
-/// The built-in shear modulus of `material`, found by its name, as a design stores a built-in
-/// material; `None` for a material that isn't built in or has no modulus.
+/// The built-in shear modulus of `material`, a design's copy of a built-in one (its name and
+/// density both match); `None` for a material that isn't built in or has no modulus.
 pub fn shear_modulus_of(material: &Material) -> Option<&'static BuiltinShearModulus> {
-    let builtin = BUILTIN.iter().find(|m| m.name == material.name)?;
+    let builtin = BUILTIN
+        .iter()
+        .find(|m| m.name == material.name && m.density == material.density)?;
     shear_modulus(builtin.id)
 }
 
@@ -760,6 +762,9 @@ mod tests {
         let plywood = find("birch_plywood").unwrap().material();
         assert_eq!(shear_modulus_of(&plywood).unwrap().id, "birch_plywood");
         assert!(shear_modulus_of(&Material::bulk("Birch plywood (mine)", 680.0)).is_none());
+        assert!(shear_modulus_of(&Material::bulk("Birch plywood", 500.0)).is_none());
+        let names: BTreeSet<_> = BUILTIN.iter().map(|m| m.name).collect();
+        assert_eq!(names.len(), BUILTIN.len(), "built-in names must be unique");
         assert!(shear_modulus_of(&find("fiberglass_g10").unwrap().material()).is_none());
     }
 

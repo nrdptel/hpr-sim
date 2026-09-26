@@ -7001,10 +7001,10 @@ Theodorsen and Garrick's flutter speed; his worked examples (pp. 6–7) read his
    measured on a 250 dpi scan (both log axes calibrated on their ticks, 69 columns traced), runs
    at `D/G_E` = 0.25 to 0.31 along the whole axis: `V_f` of 1.8 to 2.0 times the speed of sound,
    for wings that flew to at least Mach 1.3. `FIGURE_3_BAND` holds it and
-   `FlutterPanel::figure_3_ratio` gives `D/G_E`. The hobby convention of `V_f/V = 1` as the limit
-   isn't calibrated by the source; a wing on the band flown to Mach 1.3 has a ratio of about 1.5,
-   so the docs say a ratio below about 1.5 is not shown to be safe. (A first draft treated 1 as
-   the line; review caught it.)
+   `FlutterPanel::figure_3_ratio` gives `D/G_E`, the reading that decides. The hobby convention of
+   `V_f/V = 1` as the limit isn't calibrated by the source, and no fixed `V_f/V` is: at max q,
+   `D/G_E = 1/(M · V_f/V)²`, so the band's edge is at about `1.8/M` to `2.0/M`. (A first draft
+   treated 1 as the line, and a second 1.5; review caught both.)
 5. **The lower flutter speed wherever the source leaves room.** The thickness ratio is taken at
    the root, the smallest on a constant-thickness fin. A solid fin's `G_E` is its material's `G`,
    as Martin's text says (p. 6), though his eq. 12 with a flat plate's `J = ct³/3` would give
