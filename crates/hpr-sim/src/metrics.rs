@@ -5,8 +5,8 @@
 //! - [`FlightMetrics`] is an [`Observer`]: fly a [`Simulation`] with it, then ask it for a
 //!   [`FlightSummary`]. It finds each peak on the integrator's dense output, not in a recorded
 //!   table, so a peak between two rows is not missed ([Loft lesson L34][l34]).
-//! - [`stability`] gives the static margin and the margin in the flight's own air at one instant,
-//!   and [`margin`] the margin of one flow. A margin that would be a ratio of nearly cancelling
+//! - [`stability`] gives the static margin and the margin at the flight's Mach number at one
+//!   instant, and [`margin`] the margin of any flow. A margin that would be a ratio of nearly cancelling
 //!   slopes is `None`, with the pitch-moment slope beside it ([L33][l33]).
 //! - [`optimum_delays`] flies the rocket with its charges held and gives, for each motor, the delay
 //!   from its burnout to that apogee, so it doesn't depend on the delay flown ([L94][l94]).
@@ -53,12 +53,6 @@ use crate::recovery::BodySample;
 ///
 /// [l33]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l33
 pub const MARGIN_CONDITION_LIMIT: f64 = 3.162_277_660_168_379_5;
-
-/// The largest angle of attack at which a flight margin counts toward
-/// [`FlightSummary::min_flight_margin_cal`]: 15°, where a fin stalls and the linear model means
-/// nothing (the same limit as a fin's cant, [`hpr_aero::MAX_CANT_RAD`]). Past it, near apogee on
-/// a tilted rail or at a slow rail exit in wind, the margin is kept in the series but not counted.
-pub const FLIGHT_MARGIN_MAX_ANGLE_RAD: f64 = hpr_aero::MAX_CANT_RAD;
 
 /// The Mach number of the static margin: the air at rest, as RocketPy's `static_margin` takes it.
 pub const STATIC_MARGIN_MACH: f64 = 0.0;
@@ -118,9 +112,10 @@ pub struct Stability {
     /// The static margin: the air along the axis at [`STATIC_MARGIN_MACH`], with the centre of
     /// mass of this instant (RocketPy's `static_margin`).
     pub static_margin: Margin,
-    /// The margin in the flight's own air: its Mach number, total angle of attack and the roll
-    /// of the crossing air, as the equations of motion see them at the centre of mass. RocketPy's
-    /// `stability_margin` is this at zero angle of attack.
+    /// The flight margin: the air along the axis at the flight's Mach number, with the centre of
+    /// mass of this instant (RocketPy's `stability_margin`). The angle of attack is left out: near
+    /// apogee it swings toward 90° as the air stops pressing, and a margin that followed it would
+    /// be least wherever a cut-off on the angle fell.
     pub flight_margin: Margin,
 }
 
@@ -158,7 +153,7 @@ pub fn margin(aero: &AeroModel, flow: &Flow, cg_station_m: f64) -> Result<Margin
 
 /// The static margin and the flight margin of `aero` at `time_s`, with the centre of mass
 /// `height_above_ground_m` above the launch site and at `cg_station_m` on the airframe, and the
-/// flight's air at `flow` pressing with `dynamic_pressure_pa`.
+/// flight's air at Mach `mach` pressing with `dynamic_pressure_pa`.
 ///
 /// # Errors
 ///
@@ -169,7 +164,7 @@ pub fn stability(
     height_above_ground_m: f64,
     dynamic_pressure_pa: f64,
     cg_station_m: f64,
-    flow: &Flow,
+    mach: f64,
 ) -> Result<Stability, SimError> {
     Ok(Stability {
         time_s,
@@ -178,7 +173,7 @@ pub fn stability(
         cg_station_m,
         reference_diameter_m: aero.reference_diameter_m(),
         static_margin: margin(aero, &Flow::axial(STATIC_MARGIN_MACH), cg_station_m)?,
-        flight_margin: margin(aero, flow, cg_station_m)?,
+        flight_margin: margin(aero, &Flow::axial(mach), cg_station_m)?,
     })
 }
 
@@ -275,13 +270,12 @@ pub struct FlightSummary {
     /// The largest acceleration under the recovery devices, m/s²: the opening shock, which
     /// follows the inflation model, kept apart from the boost's.
     pub max_descent_acceleration_m_s2: Option<Peak>,
-    /// The smallest static margin over [`FlightMetrics::stability`], calibres, where it is
-    /// defined. After a powered separation the sustainer's margins count its own diameter.
+    /// The smallest static margin from the rail exit to apogee or the first deployment,
+    /// calibres, where it is defined, found inside steps as a peak is. After a powered separation
+    /// the sustainer's margins count its own diameter.
     pub min_static_margin_cal: Option<Peak>,
-    /// The smallest flight margin over [`FlightMetrics::stability`] at angles of attack up to
-    /// [`FLIGHT_MARGIN_MAX_ANGLE_RAD`], calibres, where it is defined. Near apogee the angle of
-    /// attack swings toward 90°, where a fin has stalled and a margin says nothing about
-    /// stability; the entries are all kept in the series.
+    /// The smallest flight margin over the same span, calibres, found the same way: RocketPy's
+    /// `min_stability_margin`.
     pub min_flight_margin_cal: Option<Peak>,
     /// The stability as the last rail guide left the rail.
     pub rail_exit_stability: Option<Stability>,
@@ -299,15 +293,17 @@ impl FlightSummary {
     }
 }
 
-/// Watches a flight and keeps its peaks, and its stability from the rail exit to apogee.
+/// Watches a flight and keeps its peaks, and its stability from the rail exit to apogee or the
+/// first deployment.
 ///
 /// Each step is sampled at its start, middle and end. When the parabola through the three has its
 /// top inside the step, a golden-section search on the dense output finds the peak there; the
-/// largest of what it finds and the three samples is kept. Thrust-curve knots and events end
-/// steps, so a thrust spike's peak is a step's end. Nothing is kept on the pad.
+/// largest of what it finds and the three samples is kept. The least margins are found the same
+/// way, with the parabola turned over. Thrust-curve knots and events end steps, so a thrust
+/// spike's peak is a step's end. Nothing is kept on the pad.
 ///
 /// A watcher keeps one flight: [`FlightMetrics::clear`] it before watching another, and
-/// [`FlightMetrics::summary`] refuses a flight it didn't see end. Like
+/// [`FlightMetrics::summary`] refuses a flight whose steps it didn't all see, once each. Like
 /// [`crate::Recorder`], it serializes what it holds for inspection and is built with
 /// [`FlightMetrics::new`], not deserialized.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
@@ -322,12 +318,12 @@ pub struct FlightMetrics {
     last_end_s: Option<f64>,
     /// How many steps it saw: a flight's accepted steps, one each.
     steps: u64,
-    /// Whether a step started before the one ahead of it ended: a second flight, not cleared.
-    rewound: bool,
     on_rail: bool,
     past_apogee: bool,
     rail_exit: Option<Stability>,
     stability: Vec<Stability>,
+    min_static_margin: Option<Peak>,
+    min_flight_margin: Option<Peak>,
 }
 
 /// What a peak is of.
@@ -391,8 +387,7 @@ impl FlightMetrics {
     ) -> Result<FlightSummary, SimError> {
         // A flight can end without a step (before its first, or on a stop a few ulps ahead that
         // the clock just moves to), so the steps are counted rather than its end matched.
-        if self.rewound
-            || self.steps != result.stats.accepted_steps
+        if self.steps != result.stats.accepted_steps
             || self
                 .last_end_s
                 .is_some_and(|end| end > result.final_sample.time_s)
@@ -412,19 +407,6 @@ impl FlightMetrics {
             }
         });
         let rail_exit = result.event(EventKind::RailExit).map(|event| event.sample);
-        let minimum = |pick: fn(&Stability) -> &Margin, max_angle_rad: f64| {
-            self.stability
-                .iter()
-                .filter(|s| pick(s).angle_of_attack_rad <= max_angle_rad)
-                .filter_map(|s| {
-                    pick(s).margin_cal.map(|value| Peak {
-                        value,
-                        time_s: s.time_s,
-                        height_above_ground_m: s.height_above_ground_m,
-                    })
-                })
-                .min_by(|a, b| a.value.total_cmp(&b.value))
-        };
         let landing = if result.termination == Termination::GroundHit {
             let s = &result.final_sample;
             Some(Landing::at(
@@ -464,8 +446,8 @@ impl FlightMetrics {
             max_dynamic_pressure_pa: self.max_q,
             max_acceleration_m_s2: self.max_acceleration,
             max_descent_acceleration_m_s2: self.max_descent_acceleration,
-            min_static_margin_cal: minimum(|s| &s.static_margin, f64::INFINITY),
-            min_flight_margin_cal: minimum(|s| &s.flight_margin, FLIGHT_MARGIN_MAX_ANGLE_RAD),
+            min_static_margin_cal: self.min_static_margin,
+            min_flight_margin_cal: self.min_flight_margin,
             rail_exit_stability: self.rail_exit,
             landing,
             body_landings,
@@ -499,35 +481,13 @@ impl Observer for FlightMetrics {
             }
         }
         self.steps += 1;
-        if self.last_end_s.is_some_and(|end| a < end) {
-            self.rewound = true;
-        }
         self.last_end_s = Some(b);
         if phase == Phase::Pad {
             return Ok(());
         }
-        let middle = step.sample(0.5 * (a + b))?;
-        let end = step.sample(b)?;
-        let peak_of = |value: f64, sample: &Sample| Peak {
-            value,
-            time_s: sample.time_s,
-            height_above_ground_m: sample.height_above_ground_m,
-        };
+        let samples = [start, step.sample(0.5 * (a + b))?, step.sample(b)?];
         for quantity in Quantity::ALL {
-            let (va, vm, vb) = (quantity.of(&start), quantity.of(&middle), quantity.of(&end));
-            let mut best = [peak_of(va, &start), peak_of(vm, &middle), peak_of(vb, &end)]
-                .into_iter()
-                .max_by(|x, y| x.value.total_cmp(&y.value))
-                .unwrap_or(peak_of(va, &start));
-            // The parabola through the three, on x = −1, 0, 1 across the step, has its top at
-            // x = (va − vb) / (2 (va − 2 vm + vb)) when it bends down.
-            let bend = va - 2.0 * vm + vb;
-            if bend < 0.0 && (va - vb).abs() < -2.0 * bend {
-                let found = golden_peak(step, quantity, a, b)?;
-                if found.value > best.value {
-                    best = found;
-                }
-            }
+            let best = step_peak(step, quantity, &samples)?;
             let slot = self.slot(quantity, phase);
             if slot.is_none_or(|peak| best.value > peak.value) {
                 *slot = Some(best);
@@ -539,14 +499,33 @@ impl Observer for FlightMetrics {
         // On the rail the rail holds the rocket, and its slow climb through the wind makes angles
         // of attack near 90°, so stability starts at the rail exit.
         if !self.past_apogee && phase == Phase::Free {
-            if self.stability.is_empty() {
-                let first = step.stability(a)?;
-                if self.on_rail {
-                    self.rail_exit = Some(first);
+            let first = match self.stability.last() {
+                Some(last) => *last,
+                None => {
+                    let first = step.stability(a)?;
+                    if self.on_rail {
+                        self.rail_exit = Some(first);
+                    }
+                    self.stability.push(first);
+                    first
                 }
-                self.stability.push(first);
+            };
+            let end = step.stability(b)?;
+            let entries = [first, step.stability(0.5 * (a + b))?, end];
+            for (pick, slot) in [
+                (
+                    static_of as fn(&Stability) -> &Margin,
+                    &mut self.min_static_margin,
+                ),
+                (flight_of, &mut self.min_flight_margin),
+            ] {
+                if let Some(least) = least_margin(step, a, b, &entries, pick)?
+                    && slot.is_none_or(|peak| least.value < peak.value)
+                {
+                    *slot = Some(least);
+                }
             }
-            self.stability.push(step.stability(b)?);
+            self.stability.push(end);
         }
         Ok(())
     }
@@ -565,39 +544,107 @@ const INVERSE_PHI: f64 = 0.618_033_988_749_894_9;
 /// value's error goes as the square of the time's, so it is far below the integration's.
 const PEAK_TIME_RESOLUTION: f64 = 1e-9;
 
-/// The largest value of `quantity` on the step `[a, b]`, where it has one top: a golden-section
-/// search (Kiefer 1953) on the step's dense output, each point one evaluation of the equations of
-/// motion.
-fn golden_peak(
-    step: &dyn FlightStep,
-    quantity: Quantity,
+/// The largest of `value` on `[a, b]`, where it has one top: a golden-section search (Kiefer
+/// 1953) on a step's dense output, to [`PEAK_TIME_RESOLUTION`].
+fn golden_max(
     mut a: f64,
     mut b: f64,
+    mut value: impl FnMut(f64) -> Result<Peak, SimError>,
 ) -> Result<Peak, SimError> {
-    let value = |t: f64| step.sample(t).map(|sample| (quantity.of(&sample), sample));
     let mut c = b - INVERSE_PHI * (b - a);
     let mut d = a + INVERSE_PHI * (b - a);
-    let (mut fc, mut sc) = value(c)?;
-    let (mut fd, mut sd) = value(d)?;
+    let mut fc = value(c)?;
+    let mut fd = value(d)?;
     while b - a > PEAK_TIME_RESOLUTION * b.abs().max(1.0) {
-        if fc >= fd {
+        if fc.value >= fd.value {
             b = d;
-            (d, fd, sd) = (c, fc, sc);
+            (d, fd) = (c, fc);
             c = b - INVERSE_PHI * (b - a);
-            (fc, sc) = value(c)?;
+            fc = value(c)?;
         } else {
             a = c;
-            (c, fc, sc) = (d, fd, sd);
+            (c, fc) = (d, fd);
             d = a + INVERSE_PHI * (b - a);
-            (fd, sd) = value(d)?;
+            fd = value(d)?;
         }
     }
-    let (value, at) = if fc >= fd { (fc, sc) } else { (fd, sd) };
-    Ok(Peak {
-        value,
-        time_s: at.time_s,
-        height_above_ground_m: at.height_above_ground_m,
-    })
+    Ok(if fc.value >= fd.value { fc } else { fd })
+}
+
+/// Where the parabola through `(−1, va)`, `(0, vm)` and `(1, vb)` has its top inside: it bends
+/// down, and its top `x = (va − vb) / (2 (va − 2 vm + vb))` has `|x| < 1`.
+fn top_inside(va: f64, vm: f64, vb: f64) -> bool {
+    let bend = va - 2.0 * vm + vb;
+    bend < 0.0 && (va - vb).abs() < -2.0 * bend
+}
+
+/// The peak of `quantity` on the step, from its start, middle and end samples and, when the
+/// parabola through them has its top inside, a search between.
+fn step_peak(
+    step: &dyn FlightStep,
+    quantity: Quantity,
+    samples: &[Sample; 3],
+) -> Result<Peak, SimError> {
+    let peak_of = |sample: &Sample| Peak {
+        value: quantity.of(sample),
+        time_s: sample.time_s,
+        height_above_ground_m: sample.height_above_ground_m,
+    };
+    let [start, middle, end] = samples.each_ref().map(peak_of);
+    let mut best = [middle, end]
+        .into_iter()
+        .fold(start, |x, y| if y.value > x.value { y } else { x });
+    if top_inside(start.value, middle.value, end.value) {
+        let found = golden_max(step.start_s(), step.end_s(), |t| {
+            step.sample(t).map(|sample| peak_of(&sample))
+        })?;
+        if found.value > best.value {
+            best = found;
+        }
+    }
+    Ok(best)
+}
+
+fn static_of(s: &Stability) -> &Margin {
+    &s.static_margin
+}
+
+fn flight_of(s: &Stability) -> &Margin {
+    &s.flight_margin
+}
+
+/// The least of one margin on the step `[a, b]`, from its `entries` at the start, middle and end
+/// and, when all three are defined and the parabola through them has its bottom inside, a search
+/// between; `None` if it is nowhere defined among them.
+fn least_margin(
+    step: &dyn FlightStep,
+    a: f64,
+    b: f64,
+    entries: &[Stability; 3],
+    pick: fn(&Stability) -> &Margin,
+) -> Result<Option<Peak>, SimError> {
+    // Searched as the largest of its negative; an undefined margin is never the least.
+    let negated = |s: &Stability| Peak {
+        value: pick(s).margin_cal.map_or(f64::NEG_INFINITY, |m| -m),
+        time_s: s.time_s,
+        height_above_ground_m: s.height_above_ground_m,
+    };
+    let [start, middle, end] = entries.each_ref().map(negated);
+    let mut best = [middle, end]
+        .into_iter()
+        .fold(start, |x, y| if y.value > x.value { y } else { x });
+    if [start, middle, end].iter().all(|p| p.value.is_finite())
+        && top_inside(start.value, middle.value, end.value)
+    {
+        let found = golden_max(a, b, |t| step.stability(t).map(|s| negated(&s)))?;
+        if found.value > best.value {
+            best = found;
+        }
+    }
+    Ok(best.value.is_finite().then_some(Peak {
+        value: -best.value,
+        ..best
+    }))
 }
 
 /// The ejection delay that would fire a motor's charge at apogee.
@@ -684,6 +731,7 @@ mod tests {
 
     use super::*;
     use crate::flight::FlightSettings;
+    use crate::integrator::{Adaptive, Method};
     use crate::rail::Rail;
     use crate::recorder::{Channel, Recorder};
     use crate::recovery::{Device, DeviceDrag, Trigger};
@@ -781,7 +829,7 @@ mod tests {
             "a margin of {} cal",
             (cp - cg_m) / 0.1
         );
-        let static_margin = stability(&aero, 0.0, 0.0, 0.0, cg_m, &Flow::axial(0.3))
+        let static_margin = stability(&aero, 0.0, 0.0, 0.0, cg_m, 0.3)
             .unwrap()
             .static_margin;
         assert_eq!(static_margin.margin_cal, None);
@@ -1293,20 +1341,18 @@ mod tests {
                 .iter()
                 .all(|s| s.static_margin.margin_cal.unwrap() >= min.value)
         );
-        // In calm air the apogee's angle of attack swings toward 90° as the air stops pressing,
-        // and its flight margin with it; the least flight margin counts angles up to the fins'
-        // stall, so it is the climb's.
-        let at_apogee = series.last().unwrap();
-        assert!(
-            at_apogee.flight_margin.angle_of_attack_rad > FLIGHT_MARGIN_MAX_ANGLE_RAD,
-            "{at_apogee:?}"
-        );
+        // The least margins are found inside steps, so they are at or below every entry.
         let least = summary.min_flight_margin_cal.unwrap();
-        assert!(least.time_s < apogee_s - 1.0, "{least:?}");
+        assert!(
+            series
+                .iter()
+                .all(|s| s.flight_margin.margin_cal.unwrap() >= least.value)
+        );
         assert!(least.value > 3.0, "{least:?}");
 
-        // In a crosswind the rail exit's flight margin is the model's at the flight's own Mach
-        // number and angle of attack (Valetudo's four fins make it independent of the roll).
+        // The flight margin is the model's at the flight's own Mach number with the air along the
+        // axis, whatever the angle of attack: at the rail exit in a crosswind the rocket meets the
+        // air more than 0.2 rad off its axis, and the margin leaves that out.
         let windy = valetudo(
             windy_environment(ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap()),
             capped(600.0),
@@ -1324,100 +1370,176 @@ mod tests {
             .mass_properties_lit(exit.time_s, &lit)
             .cg_m
             .z;
-        let expected = margin(
-            windy.aero(),
-            &Flow::new(exit.mach, exit.angle_of_attack_rad, 0.0),
-            cg_m,
-        )
-        .unwrap();
+        let expected = margin(windy.aero(), &Flow::axial(exit.mach), cg_m).unwrap();
         let got = summary.rail_exit_stability.unwrap().flight_margin;
+        assert_eq!(got.angle_of_attack_rad, 0.0);
+        close(got.mach, exit.mach, 1e-12, "Mach number");
         close(
             got.margin_cal.unwrap(),
             expected.margin_cal.unwrap(),
-            1e-9,
-            "flight margin",
-        );
-        close(
-            got.angle_of_attack_rad,
-            exit.angle_of_attack_rad,
             1e-12,
-            "angle of attack",
+            "flight margin",
         );
     }
 
     #[test]
-    fn the_least_flight_margin_skips_stalled_fins() {
-        // On an 84° rail the air presses harder at apogee than at the rail exit, since the rocket
-        // still flies across it, but at an angle of attack past the fins' stall. The least flight margin is
-        // the least of the entries at angles up to the stall, and those past it aren't counted.
-        let sim = Simulation::new(
-            &design("rocketpy-valetudo"),
-            "example",
-            Environment::standard(site()).unwrap(),
-            Rail {
-                elevation_rad: 84.0_f64.to_radians(),
-                ..Rail::vertical(2.0)
-            },
-            capped(600.0),
-        )
-        .unwrap();
-        let (result, metrics) = fly(&sim);
-        let summary = metrics.summary(&result, sim.environment()).unwrap();
-        let series = metrics.stability();
-        let at_apogee = series.last().unwrap();
-        assert_eq!(at_apogee.time_s, summary.apogee.unwrap().time_s);
-        assert!(
-            at_apogee.flight_margin.angle_of_attack_rad > FLIGHT_MARGIN_MAX_ANGLE_RAD,
-            "{at_apogee:?}"
-        );
-        assert!(at_apogee.dynamic_pressure_pa > series[0].dynamic_pressure_pa);
-        let least = summary.min_flight_margin_cal.unwrap();
-        // As the rocket turns over late in the arc its angle of attack grows toward the stall,
-        // and body lift draws the centre of pressure forward: the least comes there, in the last
-        // 1.5 s before apogee and more than a calibre below the least static margin.
-        let apogee_s = summary.apogee.unwrap().time_s;
-        assert!(
-            least.time_s < apogee_s && apogee_s - least.time_s < 1.5,
-            "{least:?}"
-        );
-        let least_static = summary.min_static_margin_cal.unwrap().value;
-        assert!(least.value < least_static - 1.0, "{least:?} {least_static}");
-        let counted: Vec<&Stability> = series
-            .iter()
-            .filter(|s| s.flight_margin.angle_of_attack_rad <= FLIGHT_MARGIN_MAX_ANGLE_RAD)
-            .collect();
-        assert!(counted.len() < series.len());
-        let entry = counted
-            .iter()
-            .find(|s| s.time_s == least.time_s)
-            .expect("the least is a counted entry");
-        assert_eq!(entry.flight_margin.margin_cal, Some(least.value));
-        assert!(
-            counted
-                .iter()
-                .all(|s| s.flight_margin.margin_cal.is_none_or(|m| m >= least.value))
-        );
-        // One not counted is below it: the cap is what keeps it out.
-        assert!(series.iter().any(|s| {
-            s.flight_margin.angle_of_attack_rad > FLIGHT_MARGIN_MAX_ANGLE_RAD
-                && s.flight_margin.margin_cal.is_some_and(|m| m < least.value)
-        }));
+    fn least_margins_do_not_depend_on_where_steps_end() {
+        // The same flight flown in steps of at most 1 ms gives the same least margins, to a
+        // millionth of a calibre: Valetudo in calm air off a vertical and an 84° rail and in a
+        // crosswind, and Prometheus past Mach 2. On all four the least is at the rail exit, where
+        // the rocket is heaviest and its centre of mass furthest aft.
+        let fine = |settings: FlightSettings| FlightSettings {
+            method: Method::DormandPrince54(Adaptive {
+                max_step_s: Some(1e-3),
+                ..Adaptive::default()
+            }),
+            ..settings
+        };
+        let tilted = Rail {
+            elevation_rad: 84.0_f64.to_radians(),
+            ..Rail::vertical(2.0)
+        };
+        let calm = || Environment::standard(site()).unwrap();
+        let wind =
+            || windy_environment(ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap());
+        let cases = [
+            ("rocketpy-valetudo", calm(), Rail::vertical(3.0), 15.0),
+            ("rocketpy-valetudo", calm(), tilted, 15.0),
+            ("rocketpy-valetudo", wind(), Rail::vertical(3.0), 15.0),
+            (
+                "rocketpy-prometheus-2022-generic-motor",
+                calm(),
+                Rail::vertical(5.0),
+                60.0,
+            ),
+        ];
+        for (name, environment, rail, max_time_s) in cases {
+            let least = |settings: FlightSettings| {
+                let sim = Simulation::new(
+                    &design(name),
+                    "example",
+                    environment.clone(),
+                    rail,
+                    settings,
+                )
+                .unwrap();
+                let (result, metrics) = fly(&sim);
+                let summary = metrics.summary(&result, sim.environment()).unwrap();
+                let series = metrics.stability().to_vec();
+                (
+                    summary.min_static_margin_cal.unwrap(),
+                    summary.min_flight_margin_cal.unwrap(),
+                    series,
+                )
+            };
+            let (coarse_static, coarse_flight, series) = least(capped(max_time_s));
+            assert_eq!(coarse_flight.time_s, series[0].time_s, "{name}");
+            let (fine_static, fine_flight, _) = least(fine(capped(max_time_s)));
+            for (coarse, fine, what) in [
+                (coarse_static, fine_static, "static"),
+                (coarse_flight, fine_flight, "flight"),
+            ] {
+                assert!(
+                    (coarse.value - fine.value).abs() < 1e-6,
+                    "{name} {what}: {coarse:?} against {fine:?}"
+                );
+            }
+        }
+    }
+
+    /// A step whose only use is its margins: both are `margin_cal(t)`.
+    struct MarginStep {
+        margin_cal: fn(f64) -> Option<f64>,
+    }
+
+    impl FlightStep for MarginStep {
+        fn phase(&self) -> Phase {
+            Phase::Free
+        }
+        fn start_s(&self) -> f64 {
+            0.0
+        }
+        fn end_s(&self) -> f64 {
+            1.0
+        }
+        fn state_at(&self, _t_s: f64) -> crate::state::State {
+            unreachable!("the margin search reads only the stability")
+        }
+        fn sample(&self, _t_s: f64) -> Result<Sample, SimError> {
+            unreachable!("the margin search reads only the stability")
+        }
+        fn stability(&self, t_s: f64) -> Result<Stability, SimError> {
+            let margin_cal = (self.margin_cal)(t_s);
+            let margin = Margin {
+                mach: 0.0,
+                angle_of_attack_rad: 0.0,
+                normal_force_slope_per_rad: 1.0,
+                slope_magnitude_sum_per_rad: 1.0,
+                pitch_moment_slope_per_rad: -margin_cal.unwrap_or(0.0),
+                cp_station_m: margin_cal,
+                margin_cal,
+            };
+            Ok(Stability {
+                time_s: t_s,
+                height_above_ground_m: 100.0 * t_s,
+                dynamic_pressure_pa: 0.0,
+                cg_station_m: 0.0,
+                reference_diameter_m: 1.0,
+                static_margin: margin,
+                flight_margin: margin,
+            })
+        }
+    }
+
+    fn least_of(margin_cal: fn(f64) -> Option<f64>) -> Option<Peak> {
+        let step = MarginStep { margin_cal };
+        let entries = [0.0, 0.5, 1.0].map(|t| step.stability(t).unwrap());
+        least_margin(&step, 0.0, 1.0, &entries, flight_of).unwrap()
+    }
+
+    #[test]
+    fn a_least_margin_between_step_ends_is_found() {
+        // 2 + (t − 0.37)² reads 2.137, 2.017 and 2.397 at the step's start, middle and end; the
+        // parabola through them has its bottom inside, and the search finds 2 at 0.37 s.
+        let least = least_of(|t| Some(2.0 + (t - 0.37).powi(2))).unwrap();
+        close(least.value, 2.0, 1e-15, "least");
+        assert!((least.time_s - 0.37).abs() < 1e-7, "{least:?}");
+        close(least.height_above_ground_m, 37.0, 1e-5, "height");
+        // Falling across the step, it is least at the end, with no search.
+        let least = least_of(|t| Some(3.0 - t)).unwrap();
+        assert_eq!((least.value, least.time_s), (2.0, 1.0));
+        // Undefined at the middle: the least of the defined ends, and no search through the gap.
+        let least = least_of(|t| (t != 0.5).then_some(2.0 + (t - 0.37).powi(2))).unwrap();
+        assert_eq!(least.time_s, 0.0);
+        assert_eq!(least_of(|_| None), None);
     }
 
     #[test]
     fn a_summary_needs_the_flight_it_watched() {
-        // A watcher that saw nothing, or saw another flight, refuses to sum one up; cleared, it
+        // A watcher that saw nothing, or saw another flight too, refuses to sum one up; cleared, it
         // sums up the next. A flight started in the air has no launch height, and no climb.
+        // The refusal names the steps the watcher saw.
+        let refused = |summary: Result<FlightSummary, SimError>, steps: u64| match summary {
+            Err(SimError::Domain { what, value }) => {
+                assert!(what.starts_with("steps this watcher saw"), "{what}");
+                assert_eq!(value, steps as f64);
+            }
+            other => panic!("{other:?}"),
+        };
         let sim = valetudo(Environment::standard(site()).unwrap(), capped(20.0));
         let (result, mut metrics) = fly(&sim);
-        assert!(
-            FlightMetrics::new()
-                .summary(&result, sim.environment())
-                .is_err()
-        );
+        let steps = result.stats.accepted_steps;
+        refused(FlightMetrics::new().summary(&result, sim.environment()), 0);
+        // The same steps, but a flight that ended before the watcher's last step did.
+        let mut early = result.clone();
+        early.final_sample.time_s -= 1.0;
+        refused(metrics.summary(&early, sim.environment()), steps);
         let other = valetudo(Environment::standard(site()).unwrap(), capped(15.0));
         let other_result = other.run(&mut metrics).unwrap();
-        assert!(metrics.summary(&other_result, other.environment()).is_err());
+        refused(
+            metrics.summary(&other_result, other.environment()),
+            steps + other_result.stats.accepted_steps,
+        );
         metrics.clear();
         let other_result = other.run(&mut metrics).unwrap();
         let summary = metrics.summary(&other_result, other.environment()).unwrap();
@@ -1435,12 +1557,15 @@ mod tests {
 
         // Reused forward in time, not cleared: the first flight's steps are still counted.
         let short = valetudo(Environment::standard(site()).unwrap(), capped(5.0));
-        let (_, mut reused) = fly(&short);
+        let (short_result, mut reused) = fly(&short);
         let apogee = result.event(EventKind::Apogee).unwrap().sample;
         let free = sim
             .run_free(apogee.time_s, apogee.state, &mut reused)
             .unwrap();
-        assert!(reused.summary(&free, sim.environment()).is_err());
+        refused(
+            reused.summary(&free, sim.environment()),
+            short_result.stats.accepted_steps + free.stats.accepted_steps,
+        );
 
         // Begun in the air on its way down, it keeps no stability: its apogee is behind it.
         let mut falling = FlightMetrics::new();

@@ -115,8 +115,6 @@ pub(crate) struct Evaluation {
     pub(crate) airspeed_m_s: f64,
     pub(crate) mach: f64,
     pub(crate) angle_of_attack_rad: f64,
-    /// The roll angle of the crossing air at the centre of mass, rad ([`hpr_aero::Flow`]).
-    pub(crate) flow_roll_rad: f64,
     pub(crate) dynamic_pressure_pa: f64,
     pub(crate) axial_coefficient: f64,
     pub(crate) thrust_n: f64,
@@ -484,7 +482,6 @@ impl Vehicle {
             airspeed_m_s: aero.airspeed_m_s,
             mach: aero.mach,
             angle_of_attack_rad: aero.angle_of_attack_rad,
-            flow_roll_rad: aero.flow_roll_rad,
             dynamic_pressure_pa: aero.dynamic_pressure_pa,
             axial_coefficient: aero.axial_coefficient,
             thrust_n: thrust.z,
@@ -539,7 +536,6 @@ impl Vehicle {
         }
         let (alpha, roll) = flow_angles(v_cg, speed);
         out.angle_of_attack_rad = alpha;
-        out.flow_roll_rad = roll;
         let q = 0.5 * rho * speed * speed;
         out.dynamic_pressure_pa = q;
         let reynolds_per_m = speed / air.kinematic_viscosity_m2_s();
@@ -639,7 +635,6 @@ struct Aerodynamics {
     airspeed_m_s: f64,
     mach: f64,
     angle_of_attack_rad: f64,
-    flow_roll_rad: f64,
     dynamic_pressure_pa: f64,
     axial_coefficient: f64,
 }

@@ -35,7 +35,7 @@
 use std::fmt;
 use std::ops::ControlFlow;
 
-use hpr_aero::{AeroModel, DragTable, Flow, NormalForceTable};
+use hpr_aero::{AeroModel, DragTable, NormalForceTable};
 use hpr_core::DVec3;
 use hpr_design::Rocket;
 use hpr_design::checks::{check, has_errors};
@@ -1971,7 +1971,7 @@ impl FlightStep for StepView<'_> {
             e.height_above_ground_m,
             e.dynamic_pressure_pa,
             -e.mass.cg_m.z,
-            &Flow::new(e.mach, e.angle_of_attack_rad, e.flow_roll_rad),
+            e.mach,
         )
     }
 }

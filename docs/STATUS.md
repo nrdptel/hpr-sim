@@ -18,7 +18,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   worked example) into `refs/papers/`; shear moduli need a cited source each (`Material` has none
   yet). Then M1.10c, exports built as text/bytes in the core (no I/O), GeoJSON by schema, KML by
   `roxmltree`. Metrics (ADR-077): `hpr_sim::metrics`, `FlightStep::stability`, margin `None` past
-  `κ = √10`; stability from rail exit; least flight margin at angles up to 15° (fin stall).
+  `κ = √10`; stability from rail exit; margins at zero angle, least refined in steps.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
   Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
   (#172). After any physics change run `cargo xtask ork-flights --check` and `--library --check`:

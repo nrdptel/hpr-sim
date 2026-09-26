@@ -6918,19 +6918,19 @@ compute but not write files.
    rail and free phases, the opening shock's in the descent phase, apart (L34).
 4. **Two margins.** The static margin is the centre of pressure at Mach 0 with the air along the
    axis, against the centre of mass of the instant: RocketPy's `static_margin`. The roadmap's
-   "dynamic" margin is read as the margin in the flight's own air (its Mach number, total angle of
-   attack and the crossing air's roll), which is what OpenRocket's in-flight stability shows and
-   RocketPy's `stability_margin` at zero angle. A pitch damping ratio, the other reading, is not
-   built here. Both margins are kept at each step's end from the rail exit to apogee or the first
-   deployment: on the rail the rail holds the rocket, and a slow climb through the wind gives
-   angles near 90°. For the same reason the least flight margin counts only entries at angles of
-   attack up to 15°, where a fin stalls and the linear fin model means nothing (the limit on a
-   fin's cant, `MAX_CANT_RAD`): near apogee the angle swings toward 90° again (a first version
-   reported a calm Valetudo's apogee, 1.28 calibres, as its least). A second version counted
-   entries whose dynamic pressure was at least the rail exit's; review showed that off a tilted
-   rail the rocket still crosses the air at apogee as fast as it left the rail, so the apogee
-   passed. Off a tilted rail the least now often comes late in the arc, below 15°, where body lift
-   draws the centre of pressure forward: that is the model's answer at an angle it covers.
+   "dynamic" margin is read as the flight margin: the margin at the flight's own Mach number with
+   the air along the axis, RocketPy's `stability_margin`, whose least is its
+   `min_stability_margin`. A pitch damping ratio, the other reading, is not built here. Both
+   margins are kept at each step's end from the rail exit to apogee or the first deployment: on the
+   rail the rail holds the rocket, and a slow climb through the wind gives angles near 90°. The
+   least of each is searched for inside steps, as a peak is, so it doesn't depend on where steps
+   end. The angle of attack is left out, after three versions that followed it failed review: its
+   least came at the apogee in calm air (1.28 calibres on Valetudo); a floor on the dynamic
+   pressure at the rail exit's let the apogee through off a tilted rail, which still crosses the
+   air there as fast as it left the rail; and a 15° cap on the angle (the limit on a fin's cant)
+   put the least on the cap, where it moved with the step size (0.84 to 1.23 calibres on one
+   trajectory in review), and hpr models no stall to justify that cap. `metrics::margin` gives the
+   margin at any angle for whoever wants it.
 5. **No margin where it would be noise (L33).** With `κ = Σ |C_Nα,i| / Σ C_Nα,i` over the
    components (the table's own slope with a normal-force table), each acting at a station on the
    rocket, the centre of pressure lies within `κ L` of every station, so a fractional error `ε` in

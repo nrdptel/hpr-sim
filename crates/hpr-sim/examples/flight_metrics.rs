@@ -23,8 +23,8 @@ use hpr_core::geodesy::Geodetic;
 use hpr_design::Rocket;
 use hpr_sim::metrics::{Peak, optimum_delays};
 use hpr_sim::{
-    CanopyType, Device, DeviceDrag, Environment, FlightMetrics, FlightSettings, Rail, Simulation,
-    Trigger,
+    CanopyType, Device, DeviceDrag, Environment, EventKind, FlightMetrics, FlightSettings, Rail,
+    Simulation, Trigger,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -104,12 +104,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!();
 
     let exit = summary.rail_exit_stability.ok_or("no rail exit")?;
-    let exit_speed = summary.rail_exit_speed_m_s.ok_or("no rail exit")?;
+    let exit_sample = flight
+        .event(EventKind::RailExit)
+        .ok_or("no rail exit")?
+        .sample;
     println!(
         "Rail exit:            {:.1} m/s at {:.2} s, {:.1}° off the oncoming air",
-        exit_speed.value,
-        exit_speed.time_s,
-        exit.flight_margin.angle_of_attack_rad.to_degrees()
+        exit_sample.cg_velocity_enu_m_s.length(),
+        exit_sample.time_s,
+        exit_sample.angle_of_attack_rad.to_degrees()
     );
     let cal = |margin: Option<f64>| margin.map_or("none".to_owned(), |m| format!("{m:.2} cal"));
     println!(

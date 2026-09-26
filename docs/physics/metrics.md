@@ -17,9 +17,7 @@
 - **How well it is validated:** each number is only as good as the flight it comes from. The
   flight is checked against RocketPy and OpenRocket ([Accuracy](../accuracy.md)), and the metrics
   add no physics of their own. Tests check each against a hand calculation or against hpr's own
-  models evaluated directly ([Tests](#tests)). None is validated against a real flight. The flight
-  margin in a crosswind rests on hpr's body lift, which nothing has measured for a slow rocket in
-  wind ([Aerodynamics](aero.md#body-lift)): read it as a warning sign, not a number to design to.
+  models evaluated directly ([Tests](#tests)). None is validated against a real flight.
 - **What it leaves out:**
   - Fin flutter and file exports. Both are later parts of the same milestone:
     [M1.10b](../decisions-and-roadmap.md#m1-10b) (flutter) and
@@ -27,6 +25,8 @@
   - The descent of a separated body, such as a dropped [booster](../glossary.md#booster). It gets
     a landing, but no peaks.
   - A damping ratio: how fast a wobble dies out. Both margins here are static quantities.
+  - The margin at the flight's [angle of attack](../glossary.md#angle-of-attack). Both margins
+    take the air along the rocket's axis ([Stability margins](#stability-margins) says why).
 
 ## Why these rules
 
@@ -78,9 +78,9 @@ Boost acceleration:     47.2 m/s² at 0.03 s, 1 m up
 Opening shock:         153.4 m/s² at 9.76 s, 698 m up
 
 Rail exit:            16.2 m/s at 0.37 s, 17.2° off the oncoming air
-At rail exit (0.37 s): static margin 3.09 cal, flight margin 0.69 cal at Mach 0.051
+At rail exit (0.37 s): static margin 3.09 cal, flight margin 3.09 cal at Mach 0.051
 Least static margin:    3.09 cal at 0.37 s, 4 m up
-Least flight margin:    0.95 cal at 0.46 s, 6 m up
+Least flight margin:    3.09 cal at 0.37 s, 4 m up
 
 Optimum delay:        10.6 s after burnout at 3.26 s (flown: 6.0 s), for an apogee of 778.7 m at 13.83 s
 Landing:              32.990000° N, 106.967084° W: 272.6 m east and 0.0 m north of the site, at 11.6 m/s, at 78.67 s
@@ -166,32 +166,33 @@ Here `x` is a station measured aft of the nose tip, and `C_Nα,i` is component `
 
 - **Static margin:** the centre of pressure at zero angle of attack and Mach 0, against the centre
   of mass of that instant. This is RocketPy's `static_margin`. It changes only as propellant burns.
-- **Flight margin:** the centre of pressure in the flight's own air, at its Mach number and
-  [angle of attack](../glossary.md#angle-of-attack). RocketPy's `stability_margin` is this at zero
-  angle of attack. In hpr, body lift grows with the angle and acts ahead of the fins, so in a
-  crosswind the flight margin is lower. Valetudo leaves its rail at 16.2 m/s, 17.2° off the
-  oncoming air in a 5 m/s crosswind. Its flight margin there is 0.69 calibres, against a static
-  3.09. That drop comes from the body-lift model named in [In short](#in-short).
+- **Flight margin:** the centre of pressure at the flight's own Mach number, still with the air
+  along the axis, against the centre of mass of that instant. This is RocketPy's
+  `stability_margin`, and its least over the flight is RocketPy's `min_stability_margin`. The
+  Mach number moves the centre of pressure: the fins' own centre moves aft from Mach 0.8, and past
+  Mach 1 their slope falls, so a fast rocket's centre of pressure moves forward
+  ([Your rocket's centre of pressure](aero.md#your-rockets-centre-of-pressure)). Valetudo is slow:
+  at its rail exit, at Mach 0.051, both margins read 3.09 calibres.
+
+Both margins leave out the [angle of attack](../glossary.md#angle-of-attack). In hpr, body lift
+grows with the angle and acts ahead of the fins, so at an angle the centre of pressure moves
+forward. But the angle is not a steady property of the rocket. Valetudo leaves its rail 17.2° off
+the oncoming air in the example's 5 m/s crosswind, and near apogee the angle swings toward 90° as
+the air stops pressing. A least margin that followed the angle would come wherever a cut-off on the
+angle fell, and hpr's fin model has no [stall](../glossary.md#stall) to place one. For the margin
+at a given angle, call [`margin`](../api/hpr_sim/metrics/fn.margin.html) with that flow.
 
 The watcher keeps both margins in `FlightMetrics::stability()`. The series starts at the rail exit
 and ends at apogee or when a recovery device opens, whichever comes first. Before the rail exit the
 rail holds the rocket, and its slow climb through the wind gives angles of attack near 90°, where a
 margin means nothing about stability.
 
-The summary's least static margin is the smallest in the series. Its least flight margin counts
-only the entries at angles of attack up to 15°, where a fin stalls and hpr's linear fin model means
-nothing (the same limit hpr puts on a fin's [cant](../glossary.md#cant)). The entries past it stay
-in the series.
-
-- Near apogee the angle of attack swings toward 90°, and the flight margin with it. A test checks
-  that in calm air, off a vertical rail, Valetudo's least flight margin comes from the climb, above
-  3 calibres, and not from the apogee.
-- A slow rail exit in wind can be past the stall too. The example's rail exit, at 17.2°, is not
-  counted; its least, 0.95 calibres, comes 0.09 s later, once the rocket has turned into the wind.
-- Off a tilted rail, the rocket turns over late in the arc and its angle of attack grows toward
-  15°. Body lift then draws the centre of pressure forward, so the least flight margin often
-  comes there. A test flies Valetudo off an 84° rail in calm air: its least comes in the last
-  1.5 s before apogee, more than a calibre below its least static margin.
+The summary's least margins cover the same span. Each is looked for inside every step, as a peak
+is ([Peaks](#peaks)): when the parabola through a step's start, middle and end bends up with its
+bottom inside the step, a golden-section search finds the bottom. So the least does not depend on
+where the steps happen to end. Flown in steps of at most 1 ms, the tests' four flights give the
+same least margins to a millionth of a calibre. On those flights both leasts come at the rail exit,
+where the rocket is heaviest and its centre of mass furthest aft; so does the example's.
 
 After a powered separation the margins are the sustainer's, in its own diameter.
 
@@ -298,9 +299,10 @@ In `crates/hpr-sim/src/metrics.rs`, unless named otherwise:
 | `optimum_delay_independent_of_flown_delay` | Delays of 1 s and 20 s give the same optimum, equal to a flight with no recovery ([L94](../decisions-and-roadmap.md#l94)) |
 | `peaks_are_refined_inside_steps` | On three rockets, max q and top Mach are above every row of a 1 ms record, and the record's best row is within 0.01% of them; on Valetudo max q comes before top speed, and top speed before top Mach |
 | `landings_are_placed_on_the_ellipsoid` | A landing more than 100 m downwind, against the radii of curvature at the site, to second order |
-| `stability_is_kept_from_rail_exit_to_apogee` | The series' ends; the static margin at the rail exit and, in a crosswind, the flight margin against the model and the masses directly; the least flight margin in calm air is the climb's |
-| `the_least_flight_margin_skips_stalled_fins` | Off an 84° rail, the entries past 15° are left out of the least flight margin, one of them below it; the least comes in the last 1.5 s before apogee |
-| `a_summary_needs_the_flight_it_watched` | A watcher refuses a flight whose steps it didn't all see, or saw with another's, and sums up one that ended without a step; a flight started in the air has no launch height, and one started on its way down keeps no stability |
+| `stability_is_kept_from_rail_exit_to_apogee` | The series' ends; the static margin at the rail exit and, in a crosswind, the flight margin at the flight's Mach number, against the model and the masses directly, to 1e-12; the least flight margin is at or below every entry |
+| `least_margins_do_not_depend_on_where_steps_end` | Valetudo in calm air off a vertical and an 84° rail and in a crosswind, and Prometheus past Mach 2: the least margins agree with steps of at most 1 ms to 1e-6 calibres |
+| `a_least_margin_between_step_ends_is_found` | A margin of `2 + (t − 0.37)²` across a step: the search finds 2 at 0.37 s; a margin falling across the step, or undefined in its middle, is not searched |
+| `a_summary_needs_the_flight_it_watched` | A watcher refuses a flight when it missed some of its steps or also watched another flight, naming the steps it saw, and sums up one that ended without a step; a flight started in the air has no launch height, and one started on its way down keeps no stability |
 | `staging::tests::metrics_follow_a_powered_separation` | Both landings, the sustainer's diameter after the split, and no optimum for the booster's motor |
 | `staging::tests::a_held_flight_holds_a_separation_after_the_last_burnout` | A split after the last burnout is held: the same optimum for delays of 3 s and 30 s |
 
