@@ -121,18 +121,19 @@ In the standard's troposphere this is the altimeter formula
 `H = 44330.8 m × [1 − (P / 101325 Pa)^0.190263]`. The result is in
 [geopotential](../glossary.md#geopotential-height) metres, m′, as an altimeter's is.
 
-**A worked example.** An altimeter on a pad at 86000 Pa reads 1361.8 m′ there. At 58000 Pa it
-reads 4464.4 m′, so it logs a climb of 3102.6 m′. On a day 20 K warmer than the standard all the
-way up, with the same sea-level pressure, the same two pressures lie 3318.0 m′ apart: the rocket
-climbed 6.9% more than its altimeter says, and the altimeter reads 6.5% less than the climb. Warm air is less dense, so pressure falls more slowly
-with height. In the troposphere, with the sea-level pressure unchanged, the ratio is exactly
-`(T₀ + ΔT) / T₀` = 308.15 / 288.15.
+**A worked example.** An altimeter on a pad at 86000 Pa reads 1361.8 m′ there. At 58000 Pa it reads
+4464.4 m′, so it logs a climb of 3102.6 m′. On a day 20 K warmer than the standard all the way up,
+with the same sea-level pressure, the same two pressures lie 3318.0 m′ apart: the rocket climbed
+6.9% more than its altimeter says, and the altimeter reads 6.5% less than the climb. Warm air is
+less dense, so pressure falls more slowly with height. In the troposphere, with the sea-level
+pressure unchanged, the ratio is exactly `(T₀ + ΔT) / T₀` = 308.15 / 288.15.
 
 **Where it is used.** hpr's flights don't use it: they fly in the air of the day. The real-flight
-comparison reads hpr's height through it, from the ERA5 pressure at the centre of mass, when the
-log is barometric (`hpr_validate::real_flight::Barometer`). Two logs that record their
-pressure, Prometheus's and Juno III's, are this reading less the first row's, to 0.195 m and
-1.321 m over the rows compared ([report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
+comparison reads hpr's height through it, from the ERA5 pressure at the centre of mass, when the log
+is barometric (`hpr_validate::real_flight::Barometer`). Two logs that record their pressure,
+Prometheus's and Juno III's, are this reading less the first row's, to 0.195 m and 1.321 m over the
+rows compared
+([report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
 
 ## Moist air
 

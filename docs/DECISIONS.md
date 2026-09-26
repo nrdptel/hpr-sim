@@ -7231,7 +7231,9 @@ designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing abo
    which the report reads: Juno III's rises 3369.3 m above its pad and Prometheus's 4133.0 m, so
    their barometric apogees are 0.935 and 0.943 of those, where hpr's conversion makes its own
    0.921 and 0.932 of its height. The conversion has the right direction and nearly the right
-   size; it reads about a point lower on both, on the side of both flights' misses.
+   size; it reads 1 to 2 points lower on both, on the side of both flights' misses. Juno III's
+   log is cut while still climbing (item 5); at the cut its satellite height is about 3350 m,
+   which would make its ratio 0.941.
 5. **Apogee** is the log's highest reading, read up to the recovery. Three logs have pressure
    transients near apogee: Juno III's reading, as it levels off, dips 94 m, then rises 62 m above
    the level within 0.3 s (the flight card gives that spike, 3213 m); Prometheus's drops 600 m and
@@ -7268,20 +7270,20 @@ designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing abo
    digests of the committed files read and of each flight's inputs against the code's, so a
    change that makes a claim false or the report stale fails.
 
-**Consequences.** Over seven flights, the mean absolute apogee error is 6.04%, outside the 5%
-target (−8.90% to +10.40%; mean −0.25%), and the trace RMS is at most 7.26% of an apogee. The
-target is missed however the assumed altimeters are read: 6.63% with only the three known
-barometric logs read so (Lince, at +7.99%, would then miss with no checked explanation), and 4.47%
-only were every log a height, which three of them are known not to be. Reading hpr as a barometer moves its apogee by −7.9% (Juno III, in June's heat) to +1.7%
-(NDRT 2020, in February). Five flights are outliers. Four are consistent with hpr's drag: on
-their teams' drag NDRT 2020 (+10.40%) lands at +0.17%, Prometheus (−8.90%) at +0.45%, Cavour
-(+5.63%) at −2.29% and Genesis (−5.85%) at −0.08%; hpr's drag is low for two and high for two.
-Prometheus's reading also rests on weather a year off its day, which by its satellite height is
-about a point of its miss. Juno III (−7.24%) is consistent with its motor's impulse: the notebook
-reshapes its team's curve to 8800 N s, 4.9% below the file (9249.0 N s; 9251.7 N s with its
-negative end read as zero), and on the file as recorded hpr lands at +1.13%, where on the team's
-drag it lands at −9.05%. Lince, inside the target, is −12.20% on its team's drag, not
-investigated. These are consistent
-explanations, not proofs: the teams' drags and the reshape are estimates too. A log is a single
-flight, with its own sensor and filter; the numbers are those seven flights', not a bound. The
-report is not reproduced in CI, only held to itself there.
+**Consequences.** Over seven flights, the mean absolute apogee error is 6.04%, outside the 5% target
+(−8.90% to +10.40%; mean −0.25%), and the trace RMS is at most 7.26% of an apogee. The target is
+missed however the assumed altimeters are read: 6.63% with only the three known barometric logs read
+so (Lince, at +7.99%, would then miss with no checked explanation), and 4.47% only were every log a
+height, which three of them are known not to be. Reading hpr as a barometer moves its apogee by
+−7.9% (Juno III, in June's heat) to +1.7% (NDRT 2020, in February). Five flights are outliers. Four
+are consistent with hpr's drag: on their teams' drag NDRT 2020 (+10.40%) lands at +0.17%, Prometheus
+(−8.90%) at +0.45%, Cavour (+5.63%) at −2.29% and Genesis (−5.85%) at −0.08%; hpr's drag is low for
+two and high for two. Prometheus's reading also rests on weather a year off its day; its share can't
+be told apart, since Juno III, on its own day, shows as large a gap against its satellite height.
+Juno III (−7.24%) is consistent with its motor's impulse: the notebook reshapes its team's curve to
+8800 N s, 4.9% below the file (9249.0 N s; 9251.7 N s with its negative end read as zero), and on
+the file as recorded hpr lands at +1.13%, where on the team's drag it lands at −9.05%. Lince, inside
+the target, is −12.20% on its team's drag, not investigated. These are consistent explanations, not
+proofs: the teams' drags and the reshape are estimates too. A log is a single flight, with its own
+sensor and filter; the numbers are those seven flights', not a bound. The report is not reproduced
+in CI, only held to itself there.

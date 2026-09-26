@@ -163,10 +163,10 @@
       "recorded_thrust": null,
       "pressure_reading_max_m": 0.19515728329315607,
       "gnss_apogee_m": 4133.0,
-      "inputs_sha256": "19c2f27073d002718a87028988b3bccad15b4c24c530826a8d17852ce6ff1169",
+      "inputs_sha256": "ae50b1c0076bf084ce718943ba1dfe1c430ea78e5152843799d129f26eba3a7a",
       "note": "flown in the weather of 24 June 2023, a year after the flight, as RocketPy's example flies it: RocketPy has no ERA5 file of the day. The log is read to 29.58 s: a pressure transient then drops the reading 600 m and returns it 8 m above the highest reading before",
       "explanation_kind": "drag",
-      "explanation": "consistent with hpr's drag. On the example's own drag, the team's table from Mach 0.15, the apogee is within the target. The reading is built on weather a year off the flight's day (the note); by the flight's satellite height, that is about a point of the miss."
+      "explanation": "consistent with hpr's drag. On the example's own drag, the team's table from Mach 0.15, the apogee is within the target. The reading is built on weather a year off the flight's day (the note). Against the satellite heights, hpr's conversion reads 1 to 2 points below the altimeter here and on Juno III, which flew in its own day's weather, so the wrong day's share of the miss can't be told apart."
     },
     {
       "id": "juno-iii",

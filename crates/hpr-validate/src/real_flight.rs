@@ -200,7 +200,8 @@ pub enum ExampleDrag {
 pub enum Explanation {
     /// Within the target: nothing to explain.
     None,
-    /// Consistent with hpr's drag: on the example's own drag the apogee is within the target.
+    /// Consistent with hpr's drag: on the example's own drag the apogee is within the target, and
+    /// on the thrust file as recorded, where there is that flight, it is not.
     Drag(&'static str),
     /// Consistent with the motor's impulse: on the thrust file as recorded, without the reshape
     /// the example applies, the apogee is within the target, and on the example's own drag it is
@@ -397,8 +398,9 @@ pub const FLIGHTS: [RealFlight; 7] = [
         explanation: Explanation::Drag(
             "consistent with hpr's drag. On the example's own drag, the team's table from Mach \
              0.15, the apogee is within the target. The reading is built on weather a year off \
-             the flight's day (the note); by the flight's satellite height, that is about a point \
-             of the miss.",
+             the flight's day (the note). Against the satellite heights, hpr's conversion reads \
+             1 to 2 points below the altimeter here and on Juno III, which flew in its own day's \
+             weather, so the wrong day's share of the miss can't be told apart.",
         ),
     },
     RealFlight {
@@ -1180,8 +1182,46 @@ fn example_thrust(root: &Path, flight: &RealFlight) -> Result<ExampleThrust, Rea
     }
 }
 
+/// A satellite log's apogee: its highest altitude above its first row, the pad's, m.
+///
+/// The first row must be within [`GNSS_PAD_TOLERANCE_M`] of the site's elevation (a receiver
+/// without a fix reads far from it), and the apogee must be above the pad.
+fn satellite_apogee_m(gnss: &Gnss, text: &str, site_elevation_m: f64) -> Result<f64, String> {
+    let rows = read_rows(
+        text,
+        gnss.header_lines,
+        &[gnss.time_column, gnss.altitude_column],
+    );
+    let pad = rows
+        .first()
+        .map(|row| row[1])
+        .ok_or_else(|| format!("{} has no altitude", gnss.file))?;
+    if (pad * gnss.metres_per_unit - site_elevation_m).abs() > GNSS_PAD_TOLERANCE_M {
+        return Err(format!(
+            "{}'s first altitude, {} m, is not the site's {site_elevation_m} m",
+            gnss.file,
+            pad * gnss.metres_per_unit
+        ));
+    }
+    let apogee_m = rows
+        .iter()
+        .map(|row| (row[1] - pad) * gnss.metres_per_unit)
+        .fold(f64::NEG_INFINITY, f64::max);
+    if apogee_m > 0.0 {
+        Ok(apogee_m)
+    } else {
+        Err(format!("{} never rises above its first row", gnss.file))
+    }
+}
+
+/// How far a satellite log's first altitude may be from the site's elevation, m: satellite
+/// heights are over the ellipsoid or a geoid model, and the example's elevation is its own
+/// (Juno III's pad reads 83 m below its site's).
+const GNSS_PAD_TOLERANCE_M: f64 = 150.0;
+
 /// The largest gap between a log's height column and the standard atmosphere's reading of its
-/// pressure column less the first row's, over the rows [`parse_log`] reads, m.
+/// pressure column less that of the first row with one, over the rows up to [`Log::until_s`]
+/// whose time, height and pressure all read, m.
 fn pressure_reading_gap_m(
     log: &Log,
     column: usize,
@@ -1258,26 +1298,14 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
     };
     let gnss_apogee_m = match flight.log.gnss {
         Some(gnss) => {
-            let path = format!("{ROCKETPY}/data/rockets/{}", gnss.file);
-            let bytes = if gnss.file == flight.log.file {
-                log_bytes.clone()
+            let apogee_m = if gnss.file == flight.log.file {
+                satellite_apogee_m(&gnss, &log_text, flight.site.2)
             } else {
-                read(path, "reading a satellite log")?
+                let path = format!("{ROCKETPY}/data/rockets/{}", gnss.file);
+                let bytes = read(path, "reading a satellite log")?;
+                satellite_apogee_m(&gnss, &String::from_utf8_lossy(&bytes), flight.site.2)
             };
-            let rows = read_rows(
-                &String::from_utf8_lossy(&bytes),
-                gnss.header_lines,
-                &[gnss.time_column, gnss.altitude_column],
-            );
-            let pad = rows
-                .first()
-                .map(|row| row[1])
-                .ok_or_else(|| input(format!("{} has no altitude", gnss.file)))?;
-            Some(
-                rows.iter()
-                    .map(|row| (row[1] - pad) * gnss.metres_per_unit)
-                    .fold(f64::NEG_INFINITY, f64::max),
-            )
+            Some(apogee_m.map_err(input)?)
         }
         None => None,
     };
@@ -1742,7 +1770,10 @@ impl RealFlightReport {
                 .map(|flown| flown.apogee_error_percent);
             let holds = match row.explanation_kind.as_str() {
                 "" => !outside,
-                "drag" => example.abs() <= APOGEE_TARGET_PERCENT,
+                "drag" => {
+                    example.abs() <= APOGEE_TARGET_PERCENT
+                        && recorded.is_none_or(|error| error.abs() > APOGEE_TARGET_PERCENT)
+                }
                 "thrust" => {
                     recorded.is_some_and(|error| error.abs() <= APOGEE_TARGET_PERCENT)
                         && example.abs() > APOGEE_TARGET_PERCENT
@@ -2178,6 +2209,56 @@ mod tests {
             (reading - expected).abs() < 1e-9 * climbed,
             "{reading} vs {expected}"
         );
+    }
+
+    /// The pressure gap against the standard's troposphere in closed form,
+    /// `p = 101325 Pa (1 − L H / T₀)^(g₀′ M₀ / (R* L))`: a height column 5 m off its pressure's
+    /// reading gives a 5 m gap, and rows past the cut don't count, readable or not.
+    #[test]
+    fn a_height_column_is_held_to_its_pressure() {
+        let pressure_hpa = |h: f64| {
+            1013.25 * (1.0 - 0.0065 * h / 288.15).powf(9.806_65 * 28.9644 / (8314.32 * 0.0065))
+        };
+        let text = format!(
+            "t,h,p\n0,0,{}\n1,1000,{}\n2,2005,{}\n3,9999,x\n4,9999,{}\n",
+            pressure_hpa(0.0),
+            pressure_hpa(1000.0),
+            pressure_hpa(2000.0),
+            pressure_hpa(0.0)
+        );
+        let log = Log {
+            file: "x.csv",
+            header_lines: 1,
+            time_column: 0,
+            height_column: 1,
+            metres_per_unit: 1.0,
+            until_s: Some(3.5),
+            altimeter: Altimeter::Barometric(""),
+            pressure: Some((2, 100.0)),
+            gnss: None,
+        };
+        let gap = pressure_reading_gap_m(&log, 2, 100.0, &text).unwrap();
+        assert!((gap - 5.0).abs() < 1e-6, "{gap}");
+        assert!(pressure_reading_gap_m(&log, 2, 100.0, "t,h,p\n").is_err());
+    }
+
+    /// A satellite apogee is above the first row, in the file's units; a first row far from the
+    /// site, or a log that never climbs, is refused.
+    #[test]
+    fn a_satellite_apogee_is_above_its_first_row() {
+        let gnss = Gnss {
+            file: "g.csv",
+            header_lines: 1,
+            time_column: 0,
+            altitude_column: 1,
+            metres_per_unit: 0.3048,
+        };
+        let text = "t,alt\n0,4600\n1,5100\n2,5600\n3,5400\n";
+        let apogee = satellite_apogee_m(&gnss, text, 1400.0).unwrap();
+        assert!((apogee - 304.8).abs() < 1e-9, "{apogee}");
+        assert!(satellite_apogee_m(&gnss, text, 0.0).is_err());
+        assert!(satellite_apogee_m(&gnss, "t,alt\n0,4600\n1,4600\n", 1400.0).is_err());
+        assert!(satellite_apogee_m(&gnss, "t,alt\n", 1400.0).is_err());
     }
 
     #[test]

@@ -597,15 +597,15 @@ Genesis and Lince were added to the public designs for this.
 Juno III flies its team's own motor too, but its design was already public, and hpr flies the
 thrust file as it would any other: nothing of the motor is modelled ([ADR-082][adr-082]).
 
-**Reading the logs.** Every log here comes from a
-[barometric altimeter](glossary.md#barometric-altimeter), or is assumed to. Such an altimeter
-turns pressure into the [standard atmosphere](glossary.md#standard-atmosphere)'s altitude. On a
-day warmer than the standard it reads less than the height climbed, 6.5% less on a day 20 K
-warmer ([worked example](physics/atmosphere.md#pressure-altitude-what-a-barometric-altimeter-reads)),
-and more on a cold one. Two logs record their pressure, and their heights are that reading, to
-0.195 m and 1.321 m ([report][real-report]). So hpr's height is read the same way, from the ERA5 pressure at its centre of mass. The
-table gives hpr's apogee both ways. The reading moves it from −7.9% (Juno III, in June at
-Spaceport America) to +1.7% (NDRT 2020, in February) ([report][real-report],
+**Reading the logs.** Every log here comes from a [barometric
+altimeter](glossary.md#barometric-altimeter), or is assumed to. Such an altimeter turns pressure
+into the [standard atmosphere](glossary.md#standard-atmosphere)'s altitude. On a day warmer than the
+standard it reads less than the height climbed, 6.5% less on a day 20 K warmer ([worked
+example](physics/atmosphere.md#pressure-altitude-what-a-barometric-altimeter-reads)), and more on a
+cold one. Two logs record their pressure, and their heights are that reading, to 0.195 m and 1.321 m
+([report][real-report]). So hpr's height is read the same way, from the ERA5 pressure at its centre
+of mass. The table gives hpr's apogee both ways. The reading moves it from −7.9% (Juno III, in June
+at Spaceport America) to +1.7% (NDRT 2020, in February) ([report][real-report],
 [ADR-082][adr-082]).
 
 The kind of four altimeters is assumed rather than known; each row of the
@@ -616,9 +616,10 @@ than 5% with no checked explanation, and Genesis would not ([report][real-report
 [ADR-082][adr-082]).
 
 Two logs also carry satellite (GNSS) heights, a geometric reference. Their barometric apogees are
-0.943 and 0.935 of the satellite ones, and hpr's conversion makes its own apogee 0.932 and 0.921 of
-its height: the same direction and nearly the same size, about a point lower on both, on the side
-of both flights' misses ([report][real-report]).
+0.943 and 0.935 of the satellite ones, and hpr's conversion makes its own apogee 0.932 and 0.921
+of its height ([report][real-report]). That is the same direction and nearly the same size, 1 to
+2 points lower on both, on the side of both flights' misses. Juno III's log is cut up to 20 m
+below its apogee, which would put its own ratio as high as 0.941 ([ADR-082][adr-082]).
 
 Three logs are cut by hand just before a pressure transient at their apogee, where the reading
 jumps. Juno III's rises 62 m in 0.3 s as it levels off, and the team's reported apogee is that
@@ -673,9 +674,10 @@ only where the pinned RocketPy copy is. CI checks each claim against the committ
   0.44, the apogee is +0.17% ([report][real-report]). hpr's own drag is lower, as it was against
   RocketPy flying the same constant.
 - **Prometheus, −8.90%: consistent with hpr's drag.** On the team's drag table the apogee is
-  +0.45%. The barometric reading uses the temperatures of 24 June 2023, a year after the flight.
-  By the flight's own satellite height the day's air read 0.943 of the height where hpr's reads
-  0.932, so the wrong day is about a point of the miss ([report][real-report]).
+  +0.45% ([report][real-report]). The barometric reading uses the temperatures of 24 June 2023,
+  a year after the flight. Against the satellite heights, hpr's conversion reads 1 to 2 points
+  below the altimeter both here and on Juno III, which flew in its own day's weather, so the
+  wrong day's share of the miss can't be told apart.
 - **Juno III, −7.24%: consistent with the motor's impulse.** The notebook reshapes the team's
   own motor curve to 8800 N s, 4.9% less than the file. On the file as recorded (9251.7 N s, its
   negative end read as zero) the apogee is +1.13%, while on the team's drag it is −9.05%

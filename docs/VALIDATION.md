@@ -204,16 +204,16 @@ platforms ([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/mai
 This section covers the [M2.3b real-flights milestone](decisions-and-roadmap.md#m2-3b)
 ([ADR-082 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-082-real-flights-read-from-refs-compared-over-the-ascent-with-checked-explanations-2026-09-26)).
 
-`cargo xtask real-flights [--check]` flies seven of RocketPy's documented rockets (Bella Lui,
-NDRT 2020, Prometheus, Juno III, Cavour, Genesis, Lince) with hpr's own aerodynamics, on each
-example's own thrust file, from its rail and site, in the ERA5 file and hour its notebook reads,
-and compares each with its team's altitude log: the apogee, the RMS of the height over the
-ascent with both clocks aligned where each trace first reaches 30 m. hpr's height is read as the log's barometric altimeter reads the air: the standard
-atmosphere's altitude of the ERA5 pressure, less the start's. Each log is read up to its apogee,
-stopping before the recovery's pressure transients. The logs, thrust files and
-weather files are read from the pinned `refs/rocketpy` checkout and never committed; the report,
-`validation/reports/real-flights.{json,md}`, commits only the numbers and each file's SHA-256.
-Each flight is flown again on its example's own drag as a diagnostic.
+`cargo xtask real-flights [--check]` flies seven of RocketPy's documented rockets (Bella Lui, NDRT
+2020, Prometheus, Juno III, Cavour, Genesis, Lince) with hpr's own aerodynamics, on each example's
+own thrust file, from its rail and site, in the ERA5 file and hour its notebook reads, and compares
+each with its team's altitude log: the apogee, the RMS of the height over the ascent with both
+clocks aligned where each trace first reaches 30 m. hpr's height is read as the log's barometric
+altimeter reads the air: the standard atmosphere's altitude of the ERA5 pressure, less the start's.
+Each log is read up to its apogee, stopping before the recovery's pressure transients. The logs,
+thrust files and weather files are read from the pinned `refs/rocketpy` checkout and never
+committed; the report, `validation/reports/real-flights.{json,md}`, commits only the numbers and
+each file's SHA-256. Each flight is flown again on its example's own drag as a diagnostic.
 
 The mean absolute apogee error is reported against the 5% target of the principles above, not
 gated. A flight outside 5% must carry an explanation that is a checked claim (`drag`: the flight

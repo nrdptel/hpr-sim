@@ -1792,6 +1792,16 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
             "{}: rerun `cargo xtask real-flights`",
             row.id
         );
+        // Each cross-check is there exactly when the flight has its data.
+        assert_eq!(
+            (
+                row.pressure_reading_max_m.is_some(),
+                row.gnss_apogee_m.is_some()
+            ),
+            (flight.log.pressure.is_some(), flight.log.gnss.is_some()),
+            "{}",
+            row.id
+        );
         // So are its numbers: sites, rails, log columns, drags.
         assert_eq!(
             row.inputs_sha256,
@@ -1914,6 +1924,18 @@ fn a_real_flight_explanation_that_stops_holding_fails() {
         &|row| {
             row.example_drag_apogee_m = row.log_apogee_m;
             row.example_drag_apogee_error_percent = 0.0;
+        },
+        "doesn't hold",
+    );
+    // "drag" fails where the recorded thrust would explain it as well.
+    fails_with(
+        "drag",
+        &|row| {
+            row.recorded_thrust = Some(crate::real_flight::RecordedThrust {
+                impulse_ns: row.total_impulse_ns,
+                apogee_m: row.log_apogee_m,
+                apogee_error_percent: 0.0,
+            });
         },
         "doesn't hold",
     );
