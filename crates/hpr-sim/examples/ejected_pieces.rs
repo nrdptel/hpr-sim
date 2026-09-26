@@ -90,7 +90,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let flight = simulation.run(&mut ())?;
 
-    println!("A 54 mm rocket on an I175 in a 4 m/s west wind, ejecting its nose cone and a payload");
+    println!(
+        "A 54 mm rocket on an I175 in a 4 m/s west wind, ejecting its nose cone and a payload"
+    );
     println!("Not yet validated: see the Accuracy page before trusting these numbers.");
     println!();
     for event in &flight.events {

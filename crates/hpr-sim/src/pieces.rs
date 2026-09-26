@@ -567,10 +567,7 @@ mod tests {
         assert_eq!(result.termination, Termination::Separated);
         let apogee = result.event(EventKind::Apogee).unwrap().sample;
         let ejected = result.event(EventKind::Ejection(0)).unwrap().sample;
-        assert!(
-            (ejected.time_s - apogee.time_s).abs() < 1e-9,
-            "{ejected:?}"
-        );
+        assert!((ejected.time_s - apogee.time_s).abs() < 1e-9, "{ejected:?}");
         assert!(result.event(EventKind::Ejection(1)).is_none());
         assert_eq!(result.bodies.len(), 3);
         for (index, body) in result.bodies.iter().enumerate() {
@@ -589,7 +586,10 @@ mod tests {
         let airframe = &result.bodies[1];
         let payload = &result.bodies[2];
         let parting = airframe.event(EventKind::Ejection(1)).unwrap().sample;
-        assert!((parting.height_above_ground_m - 300.0).abs() < 1e-6, "{parting:?}");
+        assert!(
+            (parting.height_above_ground_m - 300.0).abs() < 1e-6,
+            "{parting:?}"
+        );
         assert_eq!(payload.start_sample.time_s, parting.time_s);
         assert!(result.bodies_landed());
         let landings = result.landings();
@@ -600,7 +600,11 @@ mod tests {
         // Measured: apogee at 14.985 s; the nose cone (0.063 kg) lands at 559.21 s, 2 048 m
         // downwind, the airframe (0.556 kg) at 331.76 s and the payload (0.250 kg), let out at
         // 261.17 s, at 331.33 s, both near 1 135 m.
-        let pinned = [(559.212, 2_047.87), (331.760, 1_136.24), (331.332, 1_134.53)];
+        let pinned = [
+            (559.212, 2_047.87),
+            (331.760, 1_136.24),
+            (331.332, 1_134.53),
+        ];
         for (landing, (time_s, east_m)) in landings.iter().zip(pinned) {
             assert!((landing.time_s - time_s).abs() < 0.05, "{landing:?}");
             assert!((landing.cg_enu_m.x - east_m).abs() < 0.5, "{landing:?}");
@@ -643,7 +647,12 @@ mod tests {
             1e-12,
             "the two bodies' mass",
         );
-        close(nose.mass_kg, component_kg(&sim, "nose"), 1e-12, "the nose cone");
+        close(
+            nose.mass_kg,
+            component_kg(&sim, "nose"),
+            1e-12,
+            "the nose cone",
+        );
         close(payload.mass_kg, PAYLOAD_KG, 1e-12, "the payload");
         close(
             nose.mass_kg + airframe.mass_kg + payload.mass_kg,
@@ -773,9 +782,13 @@ mod tests {
         );
         // The booster is its stage and motor, as a separation alone makes it.
         let lit = vec![Some(0.0); sim.assembly().motors.len()];
-        let booster =
-            crate::recovery::body_mass_properties(sim.assembly(), (1, 1), START_S, &lit);
-        close(result.bodies[1].mass_kg, booster.mass_kg, 1e-12, "the booster");
+        let booster = crate::recovery::body_mass_properties(sim.assembly(), (1, 1), START_S, &lit);
+        close(
+            result.bodies[1].mass_kg,
+            booster.mass_kg,
+            1e-12,
+            "the booster",
+        );
     }
 
     #[test]
@@ -785,7 +798,10 @@ mod tests {
         let sim = simulation(analytic_environment(UniformAir::sea_level(), G));
         let start = dropped(&sim, 1_500.0, DVec3::new(0.0, 0.0, -0.5), DVec3::ZERO);
         let result = sim.run_free(START_S, start, &mut ()).unwrap();
-        let parting = result.bodies[1].event(EventKind::Ejection(1)).unwrap().sample;
+        let parting = result.bodies[1]
+            .event(EventKind::Ejection(1))
+            .unwrap()
+            .sample;
         assert!(parting.time_s > START_S + 10.0, "{parting:?}");
         assert!(parting.vertical_speed_m_s < 0.0);
 
@@ -949,7 +965,10 @@ mod tests {
     #[test]
     fn ejections_outside_their_domain_are_refused() {
         // During the burn: every body is a point mass of constant mass.
-        let error = refused(vec![Ejection::aft_of(Trigger::Time { time_s: 0.5 }, "nose")]);
+        let error = refused(vec![Ejection::aft_of(
+            Trigger::Time { time_s: 0.5 },
+            "nose",
+        )]);
         assert_eq!(
             what(error).0,
             "time of an ejection (every motor must have burned out by then; this is when one of \
