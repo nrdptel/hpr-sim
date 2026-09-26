@@ -45,6 +45,88 @@ Every number here links to the page or file it comes from. [Checking a claim](ch
 shows how to follow one back to its source and its test, and
 [how the site keeps the two in step](checking-a-claim.md#rules-that-keep-the-trail-honest).
 
+## The census
+
+**In short: the census counts the numbers the validation reports hold hpr to, once each, and says
+what each group was compared with, how, how many flights it holds and how fast they flew. It is
+also a check: CI fails when any of those numbers moves, better or worse, until the change is
+accepted with a written reason.** A code-to-code line measures how closely hpr agrees with another
+simulator, not which of the two is right; only the real flights are measurements.
+
+<!-- census: written by `cargo xtask census --accept` from validation/reports/census.json; do not edit -->
+
+| compared with | kind | held to | flights (speed) | result |
+|---|---|---|---|---|
+| [RocketPy 1.13.0](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): descents under a parachute | code-to-code, same inputs | gate: each metric's tolerance, at most 3% | 5 descents | 30 of 30 gated metrics pass |
+| [RocketPy 1.13.0, patched](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights on the same drag | code-to-code, same inputs | gate: each metric's tolerance, at most 3% | 9 flights (8 subsonic, 1 transonic) | 142 of 142 gated metrics pass; apogee +0.04% to +1.21%; 11 not scored, each for a written reason |
+| [RocketPy 1.13.0, patched](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights, each code on its own drag | code-to-code, each code's own drag | target: 3% on each metric, reported, not enforced | 6 flights (5 subsonic, 1 transonic) | 75 of 102 metrics within target; apogee -7.28% to +10.30% |
+| [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of OpenRocket's examples | code-to-code, each code's own model | no target; an apogee more than 5% off needs a written cause | 33 flights (32 subsonic, 1 transonic); 24 more not flown | apogee -19.13% to +13.80%; apogee within 5% on 27 of 33, largest speed within 5% on 31 of 33, margin within 0.5 calibres on 33 of 33, launch mass within 1% on 33 of 33, mass at rod clearance within 1% on 32 of 33, centre of mass at rod clearance within 0.5 calibres on 33 of 33 |
+| [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of the private designs | code-to-code, each code's own model | no target; an apogee more than 5% off needs a written cause | 18 flights (13 subsonic, 5 transonic); 19 more not flown | apogee -4.84% to +1.17%; apogee within 5% on 18 of 18, largest speed within 5% on 18 of 18, margin within 0.5 calibres on 18 of 18, launch mass within 1% on 18 of 18, mass at rod clearance within 1% on 18 of 18, centre of mass at rod clearance within 0.5 calibres on 18 of 18 |
+| [the teams' altimeter logs](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): real flights | measured | target: mean absolute apogee error 5% | 7 flights (3 subsonic, 4 transonic) | mean absolute apogee error 6.04% (target 5%, missed); apogee -8.90% to +10.40%; apogee within 5% on 2 of 7, climb's RMS height error within 3% of apogee on 2 of 7 |
+
+<!-- census: end -->
+
+**Reading the table.**
+
+- *Compared with* names the reference and its version ([census][census]):
+  [RocketPy](glossary.md#rocketpy), "patched" where RocketPy 1.13.0 runs with two fixes from
+  RocketPy's own pull requests, which correct the point it takes the burn's turning moments about
+  (see [whole flights against RocketPy](#whole-flights-against-rocketpy)),
+  [OpenRocket](glossary.md#openrocket), or the teams' altimeter logs.
+- *Kind* says whether both programs flew the same inputs, each flew its own model, or hpr was
+  compared with a measurement.
+- *Held to* is what each report holds its numbers to ([gate and target](glossary.md#gate-and-target)).
+  A gate fails the run when a number falls outside it. A target is reported: missing it never fails
+  the run. The OpenRocket comparisons have neither, only a line past which an apogee needs a written
+  cause.
+- *Flights (speed)* classes each flight by its largest [Mach number](glossary.md#mach-number):
+  subsonic below 0.8, transonic from 0.8 to 1.2, supersonic above 1.2 ([census][census]). For the
+  harness's flights that is RocketPy's largest Mach number, for OpenRocket's flights OpenRocket's,
+  and for the logged flights hpr's own, since a log has none. A configuration an OpenRocket report
+  lists and hpr doesn't fly yet is counted as "not flown", with the report's reason.
+
+**What it counts.** Each of these is one row of the census ([census][census]):
+
+- every metric of every case in the harness's report, and each known gap;
+- each real flight's apogee and the RMS of its climb;
+- each OpenRocket flight's apogee, largest speed, stability margin, mass at launch and at rod
+  clearance, and centre of mass there, and each configuration not flown.
+
+It leaves out the figures the reports give to explain a difference rather than to measure one, such
+as a real flight's apogee on its team's own drag.
+
+**The check.** The census accepted last is committed, with a page of its own
+([census][census]). `cargo xtask validate --check`, which CI runs on macOS, Windows and Linux,
+holds every row of the committed reports to it. It fails when:
+
+- a row's difference moves by more than its slack, in either direction;
+- a row's standing changes, for instance a miss that starts meeting its target;
+- a row comes or goes, for instance a flight hpr used to refuse and now flies;
+- a group's reference changes, such as a new version of OpenRocket.
+
+A row's slack is 0.1% of its scale, and for a harness row never less than the harness's
+reproduction bound, 2e-6 in the metric's own unit or 1e-7 of the value, whichever is larger. The scale is the row's own
+tolerance where it has one, and otherwise the bar of its kind: 3% of its reference for a harness
+metric not scored, 5% for an OpenRocket apogee or largest speed, 1% for an OpenRocket mass, 0.5
+calibres for a stability margin or centre of mass, 5% for a logged apogee, and 3% of the apogee for a logged climb's RMS, the
+bound the RocketPy comparisons hold a whole flight's height RMS to ([census][census]). For example, a 3% tolerance on a 1000 m apogee allows 30 m, and the census lets
+the difference move by 0.03 m before it fails.
+
+So the census holds a number to where it was, not to its target. A flight on each code's own drag,
+whose 3% is only a target, is held that way too ([census][census]): hpr's own aerodynamics can't
+drift unseen inside the target.
+
+**Accepting a change.** `cargo xtask census --accept --reason "<why>"` writes the new census and
+the table above. The reason and the list of what changed go into the census page, so a worse number
+can still merge, but only in writing, in the change that brings it. An improvement has to be
+accepted too; otherwise it could slip back later without anyone seeing.
+
+**How far to trust it.** The census adds no evidence of its own: it is exactly as good as the
+reports it counts. CI flies the harness's RocketPy comparisons again on every change. The
+OpenRocket and real-flight reports need files that CI doesn't have, so CI holds their committed
+numbers, and a change to the code that would move them is caught only when someone runs them again
+and commits the result.
+
 ## How to read the numbers
 
 - **Powers of ten.** Very small and very large numbers are written the way programs print them.
@@ -660,7 +742,9 @@ file of the flight's day is available ([report][real-report]).
 
 The mean absolute apogee error is 6.04%, against the 5% target of the
 [validation plan][plan] ([gate and target](glossary.md#gate-and-target)). The largest climb RMS is
-Juno III's, 7.26% of its apogee ([report][real-report]).
+Juno III's, 7.26% of its apogee ([report][real-report]). No target is set on the climb. The
+[census](#the-census) counts each climb against a bar of 3% of its apogee, the bound the RocketPy
+comparisons hold a height RMS to; Bella Lui and Lince are within it ([census][census]).
 
 **The last column is a diagnostic, not a prediction.** It flies each flight again with hpr's drag
 replaced by the drag the example's RocketPy notebook specifies: the team's estimate, a table, a
@@ -798,6 +882,7 @@ rest.
 
 [ndrt-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-ndrt-2020-nose-to-tail.toml
 [plan]: VALIDATION.md#principles
+[census]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md
 [real-report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md
 [adr-082]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-082-real-flights-read-from-refs-compared-over-the-ascent-with-checked-explanations-2026-09-26
 [adr-083]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-083-m23c-blocked-no-private-design-is-the-rocket-of-a-logged-flight-2026-09-26

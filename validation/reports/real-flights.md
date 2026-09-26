@@ -24,15 +24,15 @@ Written by `cargo xtask real-flights` ([M2.3b][m2-3b], decision [ADR-082][adr-08
 
 ## Flights
 
-| flight | altimeter | log apogee (m) | hpr apogee (m) | apogee error | hpr apogee as a height (m) | log time to apogee (s) | hpr time to apogee (s) | trace RMS (m) | trace RMS (% of apogee) | rows |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Bella Lui, EPFL Rocket Team, 2020 (K828FJ) | barometric, assumed | 459.0 | 462.9 | +0.86% | 463.6 | 9.46 | 9.48 | 3.2 | 0.70% | 161 |
-| NDRT 2020, Notre Dame Rocketry Team (L1395) | barometric | 1320.4 | 1457.6 | +10.40% | 1432.8 | 15.76 | 16.71 | 89.9 | 6.81% | 316 |
-| Prometheus, Western Engineering, Spaceport America Cup 2022 (M1520) | barometric | 3895.8 | 3549.3 | -8.90% | 3809.9 | 28.44 | 26.55 | 190.9 | 4.90% | 2875 |
-| Juno III, Projeto Jupiter, Spaceport America Cup 2023 (the team's motor) | barometric | 3151.5 | 2923.4 | -7.24% | 3174.5 | 23.62 | 25.48 | 228.8 | 7.26% | 473 |
-| Cavour, Politecnico di Torino, EuRoC 2023 (L995) | barometric, assumed | 2789.0 | 2946.0 | +5.63% | 3052.1 | 23.07 | 22.68 | 125.3 | 4.49% | 122 |
-| Genesis, EuRoC 2023 (L995) | barometric, assumed | 2916.7 | 2746.0 | -5.85% | 2875.3 | 23.33 | 22.45 | 95.2 | 3.26% | 2244 |
-| Lince, EuRoC 2023 (M1101) | barometric, assumed | 3587.7 | 3709.2 | +3.39% | 3874.3 | 25.25 | 26.40 | 63.9 | 1.78% | 2526 |
+| flight | altimeter | log apogee (m) | hpr apogee (m) | apogee error | hpr apogee as a height (m) | log time to apogee (s) | hpr time to apogee (s) | trace RMS (m) | trace RMS (% of apogee) | rows | hpr's largest Mach |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Bella Lui, EPFL Rocket Team, 2020 (K828FJ) | barometric, assumed | 459.0 | 462.9 | +0.86% | 463.6 | 9.46 | 9.48 | 3.2 | 0.70% | 161 | 0.264 |
+| NDRT 2020, Notre Dame Rocketry Team (L1395) | barometric | 1320.4 | 1457.6 | +10.40% | 1432.8 | 15.76 | 16.71 | 89.9 | 6.81% | 316 | 0.536 |
+| Prometheus, Western Engineering, Spaceport America Cup 2022 (M1520) | barometric | 3895.8 | 3549.3 | -8.90% | 3809.9 | 28.44 | 26.55 | 190.9 | 4.90% | 2875 | 0.959 |
+| Juno III, Projeto Jupiter, Spaceport America Cup 2023 (the team's motor) | barometric | 3151.5 | 2923.4 | -7.24% | 3174.5 | 23.62 | 25.48 | 228.8 | 7.26% | 473 | 0.733 |
+| Cavour, Politecnico di Torino, EuRoC 2023 (L995) | barometric, assumed | 2789.0 | 2946.0 | +5.63% | 3052.1 | 23.07 | 22.68 | 125.3 | 4.49% | 122 | 0.933 |
+| Genesis, EuRoC 2023 (L995) | barometric, assumed | 2916.7 | 2746.0 | -5.85% | 2875.3 | 23.33 | 22.45 | 95.2 | 3.26% | 2244 | 0.854 |
+| Lince, EuRoC 2023 (M1101) | barometric, assumed | 3587.7 | 3709.2 | +3.39% | 3874.3 | 25.25 | 26.40 | 63.9 | 1.78% | 2526 | 0.993 |
 
 ## On each example's own drag
 

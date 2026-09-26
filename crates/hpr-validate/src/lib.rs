@@ -39,6 +39,7 @@
 )]
 
 pub mod case;
+pub mod census;
 pub mod flight_metrics;
 pub mod metrics;
 pub mod report;

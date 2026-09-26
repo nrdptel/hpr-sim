@@ -12,7 +12,10 @@
 //!
 //! `--check` runs every case, writes nothing, and fails unless the run reproduces the committed
 //! report, to the digits the platforms share (`Report::reproduces`). CI runs it on macOS, Windows
-//! and Linux, so a change that moves a number cannot merge without the report that says so.
+//! and Linux, so a change that moves a number cannot merge without the report that says so. It
+//! then holds the committed reports to the accepted accuracy census (`crate::census`, ADR-084), so
+//! a regenerated report can't carry a regression in either: that needs the census accepted again,
+//! with a written reason.
 
 use std::path::Path;
 
@@ -22,7 +25,8 @@ pub const USAGE: &str = "  validate [--fast|--check]
                            Run the validation cases and write
                            validation/reports/latest.{md,json}. --fast leaves out the cases the
                            lock marks slow and writes latest-fast.{md,json} instead. --check
-                           writes nothing and fails unless the committed report reproduces.";
+                           writes nothing and fails unless the committed report reproduces and
+                           holds to the accepted census (`census --check`).";
 
 /// Runs the suite and writes the reports.
 pub fn run(args: &[String]) -> Result<(), String> {
@@ -50,6 +54,21 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let written = write_reports(&root, &report)?;
     print_summary(&report);
     println!("validate: wrote validation/reports/{written}.md and {written}.json");
+    if !report.fast {
+        // Not a failure here: the report is new, and the census says what it changed. `--check`
+        // fails until the change is accepted.
+        // A census that can't be taken is printed, not returned, so the suite's own result stands.
+        match crate::census::changes(&root) {
+            Ok(changes) if !changes.is_empty() => println!(
+                "validate: {} census row(s) differ from the accepted census, {} for the worse; \
+                 `cargo xtask census` lists them, and `--check` fails until they are accepted",
+                changes.len(),
+                changes.iter().filter(|change| change.is_worse()).count()
+            ),
+            Ok(_) => {}
+            Err(error) => println!("validate: the census can't be taken: {error}"),
+        }
+    }
     if report.passed() {
         Ok(())
     } else {
@@ -68,13 +87,19 @@ fn check_committed(root: &Path, report: &Report) -> Result<(), String> {
             .map_err(|error| format!("reading {}: {error}", path.display()))
     };
     let reproduced = report.reproduces(&read("latest.md")?, &read("latest.json")?);
+    // The census compares committed files, so it is checked whether or not this run reproduces
+    // them: a report that fails both says so on every platform.
+    let census = crate::census::check(root);
     match (report.passed(), reproduced) {
         (true, Ok(())) => {
             println!("validate: the committed report reproduces");
-            Ok(())
+            census
         }
         (passed, reproduced) => {
             let mut problems = Vec::new();
+            if let Err(what) = census {
+                problems.push(what);
+            }
             if !passed {
                 problems.push(format!(
                     "{} metric(s) outside tolerance",
