@@ -1,5 +1,6 @@
 //! What a flight comes to: its peaks, its apogee, its stability margins, the ejection delay that
-//! would fire at apogee, and where each body landed (M1.10a, ADR-077).
+//! would fire at apogee, and where each body landed ([the flight-metrics milestone][m1-10a] and
+//! [its decision record][adr-077]; the guide's [Flight metrics][page] page).
 //!
 //! - [`FlightMetrics`] is an [`Observer`]: fly a [`Simulation`] with it, then ask it for a
 //!   [`FlightSummary`]. It finds each peak on the integrator's dense output, not in a recorded
@@ -21,6 +22,9 @@
 //! [l34]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l34
 //! [l35]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l35
 //! [l94]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l94
+//! [m1-10a]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-10a
+//! [adr-077]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-077-flight-metrics-peaks-on-the-dense-output-margins-only-where-they-mean-something-and-none-for-what-didnt-happen-2026-09-26
+//! [page]: https://nrdptel.github.io/hpr-sim/physics/metrics.html
 
 use hpr_aero::{AeroModel, Flow};
 use serde::{Deserialize, Serialize};

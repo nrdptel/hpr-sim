@@ -66,7 +66,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Not yet validated: see the Accuracy page before trusting these numbers.");
     println!();
     let launch_m = summary.launch_height_m.ok_or("no flight")?;
-    println!("Heights are the centre of mass's above the launch site; it starts {launch_m:.2} m up.");
+    println!(
+        "Heights are the centre of mass's above the launch site; it starts {launch_m:.2} m up."
+    );
     match summary.apogee {
         Some(apogee) => println!(
             "Apogee:              {:7.1} m above the site ({:.1} m of climb) at {:.2} s",
@@ -84,7 +86,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     peak("Top speed:", summary.max_speed_m_s, " m/s", 1);
     peak("Top Mach number:", summary.max_mach, "", 3);
     peak("Max q:", summary.max_dynamic_pressure_pa, " Pa", 0);
-    peak("Boost acceleration:", summary.max_acceleration_m_s2, " m/s²", 1);
+    peak(
+        "Boost acceleration:",
+        summary.max_acceleration_m_s2,
+        " m/s²",
+        1,
+    );
     peak(
         "Opening shock:",
         summary.max_descent_acceleration_m_s2,
