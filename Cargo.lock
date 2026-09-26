@@ -646,6 +646,7 @@ name = "hpr-io"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "hpr-atmos",
  "hpr-design",
  "hpr-format",
  "hpr-motor",
@@ -654,6 +655,7 @@ dependencies = [
  "roxmltree",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "zip",
 ]

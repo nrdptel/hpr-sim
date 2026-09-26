@@ -383,6 +383,15 @@ is hpr's internal height, and it is not
 [Frames](physics/frames.md#earth-centred-earth-fixed-ecef).
 
 
+## ERA5
+
+The European Centre for Medium-Range Weather Forecasts' [reanalysis](#reanalysis) of the whole
+Earth's weather, every hour since 1940 on a grid a quarter of a degree apart, from the Copernicus
+Climate Data Store. Its pressure-level files give the temperature, wind and
+[geopotential height](#geopotential-height) at each pressure level. See
+[ERA5 weather files](format/era5.md).
+
+
 ## Event
 
 A moment the simulator locates exactly and records, such as liftoff, rail exit, burnout, apogee and
@@ -464,6 +473,16 @@ Latitude as maps and GPS give it: the angle between the equator's plane and the
 the surface it runs from 9.780 m/s² at the equator to 9.832 m/s² at the poles. See
 [Frames](physics/frames.md#earth-centred-earth-fixed-ecef) and
 [Gravity](physics/gravity.md#formulas).
+
+
+## Geopotential height
+
+A height measured by the work done lifting a unit of mass against gravity, divided by standard
+gravity `g₀ = 9.80665 m/s²`, in geopotential metres. Weather data give heights this way. Where
+gravity is stronger than `g₀`, a geopotential metre is a little shorter than a metre; hpr turns it
+into height above sea level with the site's own gravity. See
+[Atmosphere](physics/atmosphere.md#sounding-and-forecast-profiles) and
+[ERA5 weather files](format/era5.md#how-hpr-reads-it).
 
 
 ## Height above sea level (MSL)
@@ -585,6 +604,13 @@ A motor's name, such as `F32` or `L1150R`: the [impulse class](#impulse-class) l
 propellant letter (the `R` of `L1150R`), the total impulse in N·s in front (`411I175`) or a delay
 after a dash. A RASP `.eng` file's name field is meant to hold only the class and average thrust,
 but often holds the full designation. See [RASP `.eng` files](format/eng.md#header-fields-r-header).
+
+
+## netCDF
+
+A file format for gridded data, such as weather over a map at several heights and times, from
+Unidata. hpr reads its two classic kinds; the newer netCDF-4 kind is HDF5 inside and is converted
+first. See [ERA5 weather files](format/era5.md#the-netcdf-reader).
 
 
 ## Newtonian theory
@@ -735,6 +761,14 @@ force and centre of pressure from RASAero II's exported table
 ## RASP and RockSim files
 
 The two thrust-curve file formats [ThrustCurve.org](#thrustcurveorg) serves. A RASP `.eng` file is plain text, named after RASP, the rocket simulation program it comes from; a RockSim `.rse` file is XML, from the RockSim simulator. hpr reads and writes both. See [Solid motors](physics/motor.md#a-motor-from-a-file).
+
+## Reanalysis
+
+A record of past weather made by running a weather model over the past, held at each step to the
+observations of the time (weather balloons, aircraft, satellites, ground stations). It gives the
+weather everywhere, not just where it was measured. [ERA5](#era5) is one. See
+[ERA5 weather files](format/era5.md).
+
 
 ## Reference area
 

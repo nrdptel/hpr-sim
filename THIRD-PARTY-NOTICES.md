@@ -68,6 +68,23 @@ adds a source.
   > ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
   > OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+- **ERA5 weather extracts** (Copernicus Climate Change Service, via RocketPy v1.13.0's
+  `data/weather/`): `validation/fixtures/weather/era5/*.nc` are 4 × 4-point cuts (every time and
+  level) of RocketPy's Bella Lui and NDRT 2020 ERA5 files, made by
+  `validation/oracles/netcdf/era5.py`, which also records RocketPy's reading of the full files
+  in `validation/fixtures/weather/era5-rocketpy.json`. The dataset is Hersbach, H. et al. (2023):
+  ERA5 hourly data on pressure levels from 1940 to present, Copernicus Climate Change Service
+  (C3S) Climate Data Store (CDS), DOI 10.24381/cds.bd0915c6, licensed CC BY 4.0
+  (<https://creativecommons.org/licenses/by/4.0/>; the Data Store's record is pinned as
+  `copernicus-era5-pressure-levels`). The extracts are cut from it (modified): each says so in its
+  `comment` attribute, "Contains modified Copernicus Climate Change Service information 2020",
+  and so does this notice. Neither the European Commission nor ECMWF is responsible for any use
+  that may be made of the Copernicus information or data it contains. The full files stay in
+  `refs/`. The example `crates/hpr/examples/era5_weather.rs` reads the Bella Lui extract.
+- **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
+  `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
+  invented for the tests (one variable borrows the packing scale and offset of an extract).
+
 ## Ported
 
 - **RocketPy** (MIT), `rocketpy/motors/solid_motor.py` at v1.13.0: the BATES grain regression
@@ -237,6 +254,10 @@ same license and mode.
 | `thrustcurve-motorstats` | ThrustCurve.org "Motor Statistics" page | unstated terms | fetched | cited for the NFPA 1125 burn-time normalization (M1.3) |
 | `thrustcurve-contribute` | ThrustCurve.org "Contribute" page | unstated terms | fetched | cited for the meaning of the curve data licenses (M1.3) |
 | `thrustcurve-simulators` | ThrustCurve.org "Flight Simulators" page | unstated terms | fetched | cited for RockSim's motor type and CG columns (M1.3, `docs/format/rse.md`) |
+| `unidata-netcdf-file-format` | Unidata, NetCDF File Format Specifications (netCDF-C documentation) | unstated terms | fetched | the grammar `hpr_io::netcdf` reads the classic and 64-bit offset formats by (M2.3a, `docs/format/era5.md`) |
+| `unidata-netcdf-attribute-conventions` | Unidata, netCDF Users Guide, Attribute Conventions (netCDF-C documentation) | unstated terms | fetched | the packing, fill and valid-range conventions `hpr_io::netcdf` applies (M2.3a) |
+| `copernicus-era5-pressure-levels` | Copernicus Climate Data Store catalogue record of "ERA5 hourly data on pressure levels from 1940 to present" (licence, DOI) | CC-BY-4.0 | fetched | the licence and citation of the committed ERA5 extracts (M2.3a) |
+| `ecmwf-era5-geometric-height` | ECMWF Knowledge Base, "ERA5: compute pressure and geopotential on model levels, geopotential height and geometric height" | unstated terms | fetched | cited for ERA5's fixed `g₀` and its suggested geometric height (M2.3a, `hpr_io::era5`) |
 | `motor-finder-meta` | motor.fusionspace.co API v1 `meta.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
 | `motor-finder-motors` | motor.fusionspace.co API v1 `motors.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
 | `motor-finder-in-stock` | motor.fusionspace.co API v1 `in-stock.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
@@ -253,6 +274,8 @@ Nothing here is bundled.
 | `JPype1` 1.7.1 | Apache-2.0 | run-only | starts the JVM for the OpenRocket oracle |
 | `mpmath` 1.3.0 | BSD-3-Clause | run-only | arbitrary-precision reference values from published formulas (`validation/oracles/wgs84/`, `validation/oracles/ussa76/`, `validation/oracles/atmosphere/`) |
 | `ambiance` 1.3.1 | Apache-2.0 | run-only | an independent 1976 standard atmosphere, cross-checking the transcribed tables (`validation/oracles/ussa76/`) |
+| `netCDF4` 1.7.4 | MIT | run-only | the Unidata netCDF C library's Python interface: writes the reader's test files and records its reading (`validation/oracles/netcdf/`) |
+| `xarray` 2026.7.0 | Apache-2.0 | run-only | runs the guide's conversion of a netCDF-4 ERA5 file to the classic format (`validation/oracles/netcdf/era5.py`) |
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
 | a Java 17 runtime (for example `brew install openjdk@17`) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 

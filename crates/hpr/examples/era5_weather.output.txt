@@ -1,0 +1,25 @@
+ERA5 over 47.213476° N, 9.003336° E at 2020-02-22 13:00 UTC
+
+level (hPa)   height (m)   temperature (°C)   wind (m/s)   from (°)
+       1000          240               14.6          1.3        212
+        975          453               13.2          1.3        213
+        950          670               12.1          1.1        213
+        925          892               10.3          1.7        207
+        900         1119                8.5          3.2        217
+        875         1351                7.6          5.6        232
+        850         1590                6.6          7.2        243
+        825         1834                6.0          8.7        253
+        800         2085                4.8         10.1        258
+        775         2344                3.5         10.7        261
+
+height above the pad (m)   pressure (hPa)   temperature (°C)   density (kg/m³)
+     0 ERA5                         980.4               13.5            1.1916
+     0 standard                     965.3               12.4            1.1778
+   500 ERA5                         923.4               10.2            1.1354
+   500 standard                     908.9                9.1            1.1218
+
+Bella Lui to apogee   apogee (m above the pad)   drift at apogee (m)
+ERA5                                      553.4                  40.7
+standard, calm                            555.2                   0.4
+
+Not yet validated against the real flight: that is milestone M2.3b.

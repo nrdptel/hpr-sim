@@ -686,6 +686,42 @@ dest = "refs/snapshots/motor-finder/vendors.json"
 license = "free to use, attribution appreciated"
 mode = "fetched"
 
+[[snapshot]]
+name = "unidata-netcdf-file-format"
+url = "https://docs.unidata.ucar.edu/netcdf-c/current/file_format_specifications.html"
+sha256 = "68f499b812774590eefc7c88fcce28fad103749bd21e0efff39b5277c2e289fc"
+captured = "2026-09-26"
+dest = "refs/snapshots/unidata/file_format_specifications.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "unidata-netcdf-attribute-conventions"
+url = "https://docs.unidata.ucar.edu/netcdf-c/current/attribute_conventions.html"
+sha256 = "1b8af2d85f542654435007e117b069dd8914dd33bc5f7fd09b38257c77d55bd5"
+captured = "2026-09-26"
+dest = "refs/snapshots/unidata/attribute_conventions.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "copernicus-era5-pressure-levels"
+url = "https://cds.climate.copernicus.eu/api/catalogue/v1/collections/reanalysis-era5-pressure-levels"
+sha256 = "64daf6afa2eda0dabe7a63d2928382ddd5cdea07a46c535f726abcdd78c701db"
+captured = "2026-09-26"
+dest = "refs/snapshots/copernicus/reanalysis-era5-pressure-levels.json"
+license = "CC-BY-4.0"
+mode = "fetched"
+
+[[snapshot]]
+name = "ecmwf-era5-geometric-height"
+url = "https://confluence.ecmwf.int/display/CKB/ERA5%3A+compute+pressure+and+geopotential+on+model+levels%2C+geopotential+height+and+geometric+height"
+sha256 = "bac7d364d23572567761ed631354c745a2167c6b68e2785214571d0f1dce12dc"
+captured = "2026-09-26"
+dest = "refs/snapshots/ecmwf/era5-geometric-height.html"
+license = "unstated terms"
+mode = "fetched"
+
 # The oracle Python environment: `uv sync --frozen` from validation/oracles/uv.lock, which pins
 # every package by hash. Selected on the command line as `python`.
 [python]
@@ -696,6 +732,8 @@ checks = [
     { module = "jpype" },
     { module = "mpmath", version = "1.3.0" },
     { module = "ambiance", version = "1.3.1" },
+    { module = "netCDF4", version = "1.7.4" },
+    { module = "xarray", version = "2026.7.0" },
 ]
 
 # The OpenRocket oracle's runtime. `doctor` looks in JAVA_HOME, /usr/libexec/java_home (macOS),

@@ -5,18 +5,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
-  #173, #174, M1.13, #133 (13 of 20 designs); active work is M2.3, real flights.
-- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; M1.10 is done, so M2.3 next.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
+  #173, #174, M1.13, #133 (13 of 20 designs); active work is M2.3b, RocketPy's logged flights.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; M2.3 is split a to c (ADR-081).
+  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M2.3a.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M1.10c2 Parquet (ADR-080) done, so M1.10; M2.3 next.
+- **Last updated:** 2026-09-26; M2.3a ERA5 weather (ADR-081) done; M2.3b next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.3** (real flights) on `m2.3-<slug>`: RocketPy's flight data with ERA5 weather needs
-  a netCDF reader or a documented conversion; likely split it (the reader, then the cases). Exports
-  (ADR-079, ADR-080): exact numbers; Parquet by hand behind `parquet`, read by `parquet-reader`.
+- **Start M2.3b** on `m2.3b-<slug>`: logs in `refs/rocketpy/data/rockets/` (NDRT in feet, Bella
+  Lui's time in column 2); sites and times in each acceptance test or notebook. COTS with designs:
+  Bella Lui, NDRT 2020, Prometheus (notebook flies 2023 weather for 2022), Cavour; add Genesis,
+  Astra, Lince, Andromeda (euroc_2022 is netCDF-4: convert). Juno III, Valetudo fly team motors.
+  Weather: `Era5Profile::read`, `.sounding(..)` (ADR-081); commit only extracts.
   Flutter (ADR-078): margin at max q; moduli cited in `materials::SHEAR_MODULI`; G10/FR-4 has none.
   Metrics (ADR-077): `FlightStep::stability`, margin `None` past `κ = √10`, least refined in steps.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
@@ -55,12 +57,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-26: M2.3a ERA5 weather (ADR-081; M2.3 split a to c): netCDF classic from the spec; RocketPy's levels to 1e-12.
 - 2026-09-26: M1.10c2 Parquet (ADR-080): in-house writer; Apache's reader agrees bit for bit; M1.10 done.
 - 2026-09-26: M1.10c1 Text exports (ADR-079): CSV, JSON, GeoJSON by the published schema, KML by parsing; exact.
 - 2026-09-26: M1.10b Fin flutter (ADR-078): TN 4197 eq. 18; Martin's examples at his resolution; 14 moduli; L32.
 - 2026-09-26: M1.10a Flight metrics (ADR-077; M1.10 split a to c): peaks on the dense output, margins, delay, landings; L33-35, L94.
 - 2026-09-25: M1.9c `.ork` staging and clusters (ADR-076): all within 5% of OR (3 vs no chute); M1.9 done; 13 of 20.
-- 2026-09-25: M1.9a, b Staging, clusters (ADR-074, 075): own ignition times; a motor out to 3.7e-7.
 - 2026-09-25: M2.2e4 The causes (ADR-073): all 5 sized by OR without them; 4 within 5%, #177 left.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **Scrub #186's first revision** (1 minute): it quotes a private design's sizes. On issue #186 click
@@ -77,12 +79,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-080: Parquet written by hand from the spec (no runtime dependency); Apache's crate reads it in tests.
-- ADR-079: M1.10c split c1, c2; exports as text in the core; GeoJSON on the ellipsoid, KML on MSL.
-- ADR-078: flutter by TN 4197 eq. 18; its figure 3 band measured (0.25-0.31); lower reading if two.
-- ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = √10; held recovery.
-- ADR-074 to ADR-076: M1.9 split a to c; body 0 flies on; a motor per tube; `.ork` within 5% of OR.
-- ADR-073: a cause is sized by OR flying without it; within the bar if every such flight is within 5%.
+- ADR-081: M2.3 split a to c; netCDF classic by hand, netCDF-4 converted; time-weighted; WMO heights.
+- ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
+  eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
+- ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.
 - ADR-071, ADR-072: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
   flights by id, differences only; public copies out.
 - ADR-069: hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.

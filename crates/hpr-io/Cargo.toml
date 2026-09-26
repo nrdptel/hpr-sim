@@ -1,6 +1,6 @@
 [package]
 name = "hpr-io"
-description = "Foreign design formats: OpenRocket `.ork`, RockSim `.rkt`, RASAero `.CDX1`, RocketPy export and the `.orc` parts database."
+description = "Foreign formats: OpenRocket `.ork`, RockSim `.rkt`, RASAero `.CDX1`, RocketPy export, the `.orc` parts database, and ERA5 weather in netCDF classic files."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -17,11 +17,13 @@ wasm = true
 
 [dependencies]
 flate2.workspace = true
+hpr-atmos.workspace = true
 hpr-design.workspace = true
 hpr-format.workspace = true
 hpr-motor.workspace = true
 roxmltree.workspace = true
-serde.workspace = true
+# `rc`: a variable's dimension names share one allocation per dimension.
+serde = { workspace = true, features = ["rc"] }
 thiserror.workspace = true
 zip.workspace = true
 
@@ -30,3 +32,4 @@ insta.workspace = true
 proptest.workspace = true
 roxmltree.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
