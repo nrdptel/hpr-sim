@@ -651,9 +651,8 @@ The example leaves out several kinds of part and setting that a design can have:
 
 ## What it can't do yet
 
-- **No stability output of its own.** hpr computes the CP and the CG; you compute the margin, as
-  this program does. A margin tracked through the flight comes with [M1.10](decisions-and-roadmap.md#m1-10), the outputs
-  milestone, and so does an optimum ejection delay.
+- **This program computes its margin by hand.** hpr also gives the margin through the flight, and
+  an optimum ejection delay, as [Flight metrics](physics/metrics.md) shows.
 - **Only in Rust, or in JSON.** A simpler builder ([M4.1](decisions-and-roadmap.md#m4-1), the simpler library interface),
   a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
 - **No import from other programs.** [OpenRocket](glossary.md#openrocket) `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)

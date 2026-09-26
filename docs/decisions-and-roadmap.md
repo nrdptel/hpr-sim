@@ -93,6 +93,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-074: Ignition times and powered staging: the sustainer flies on as a rigid body][adr-074] | [M1.9a](#m1-9a) lets each motor light at its own time (at launch, at a time, after another motor's burnout, or after its stage's separation). A separation with the forward part still to burn is powered: that part, the sustainer, flies on with its own shape and mass while the booster falls to its own landing. The sustainer keeps the nose, so its aerodynamics are an ordinary rocket's; nothing needs a model of a rocket without a nose. Checked by tests, not yet against another simulator. | [Staging](physics/staging.md) |
 | [ADR-075: A cluster is one tube repeated, and a motor in it one motor per tube][adr-075] | [M1.9b](#m1-9b) makes a cluster a list of tube places on one inner tube: the tube and what it holds are repeated in each, and its motor is one motor per tube, so thrust, mass and moments add up as for any motors. A tube can be marked as a motor out. A `.ork` file's pattern is read as OpenRocket places it, measured on 25 probes; OpenRocket weighs the tubes stacked on the cluster's axis, which hpr does not copy. | [Clusters](physics/design.md#clusters) |
 | [ADR-076: A `.ork` file's ignitions and one powered separation flown against OpenRocket][adr-076] | [M1.9c](#m1-9c) reads each motor's ignition in a `.ork` file into hpr's (at launch, at a time, or after the stage below burns out or fires its charge) and flies one powered separation, a cluster with a motor in every tube, and an air start. The tolerance, set before measuring: every flight of a design within 5% of OpenRocket's apogee and largest speed. OpenRocket's two-stage, cluster and air-start examples all are (three cluster apogees against OpenRocket's flight with no parachute, because its parachute opened before apogee) | [Staging](physics/staging.md#against-openrocket) |
+| [ADR-077: Flight metrics: peaks on the dense output, margins only where they mean something][adr-077] | [M1.10a](#m1-10a) finds each peak (speed, Mach number, dynamic pressure, the boost's acceleration and, apart, the opening shock) between the integrator's steps rather than in a recorded table. It keeps the static margin and the margin in the flight's own air from the rail exit to apogee, and gives none where the parts' normal-force slopes nearly cancel, since the margin is then noise. The optimum delay comes from a flight with the charges held, so it doesn't depend on the delay flown. Anything that didn't happen is `None`. Tests pin each against a hand calculation; nothing is checked against a real flight. | [Flight metrics](physics/metrics.md) |
 
 ## The roadmap
 
@@ -242,6 +243,9 @@ missing or its status disagrees.
 | <a id="m1-9b"></a>[M1.9b][phase-1] | Several motors in one mount, their thrusts and masses summed, a motor out turning the rocket as a hand calculation predicts, and a `.ork` file's clusters read with every tube where OpenRocket puts it ([ADR-075][adr-075], [Clusters](physics/design.md#clusters)) | done |
 | <a id="m1-9c"></a>[M1.9c][phase-1] | A two-stage and a cluster design from `.ork` files, each within the per-case tolerance of OpenRocket's flight: every flight of each within 5% in apogee and largest speed ([ADR-076][adr-076], [Staging](physics/staging.md#against-openrocket)) | done |
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
+| <a id="m1-10a"></a>[M1.10a][phase-1] | A flight's peaks, its apogee with the height it counts from, its static and in-flight stability margins from the rail exit to apogee, each motor's optimum ejection delay and each landing's latitude and longitude, with `None` for what didn't happen ([ADR-077][adr-077], [Flight metrics](physics/metrics.md)) | done |
+| <a id="m1-10b"></a>[M1.10b][phase-1] | Fin flutter speed and margin from a cited primary source, matching its worked example | not yet done |
+| <a id="m1-10c"></a>[M1.10c][phase-1] | Flights written as CSV, JSON, KML and GeoJSON files (Parquet optional), checked by schema and by parsing | not yet done |
 | <a id="m2-3"></a>[M2.3][phase-1] | Comparisons with real flights | not yet done |
 | <a id="m2-4"></a>[M2.4][phase-1] | A summary of accuracy for the README, and CI that fails on any regression | not yet done |
 | <a id="m1-11"></a>[M1.11][phase-1] | Ejected nose cones, body sections and payloads, each flown to its own landing | not yet done |
@@ -321,7 +325,9 @@ is the milestone that added or will add that test.
 | <a id="l26"></a>[L26][lessons-physics] | Loft's launch rail had no friction and no button geometry | [M1.6b](#m1-6b) |
 | <a id="l30"></a>[L30][lessons-physics] | Loft fixed the staging before the flight, so an apogee or height separation fell back to the burnout, and it never flew the booster | [M1.9a](#m1-9a) |
 | <a id="l31"></a>[L31][lessons-physics] | Loft's clusters sat on the axis only, so a motor out turned nothing, and it sent a mixed cluster to its oracle as copies of the first motor | [M1.9b](#m1-9b) |
-| <a id="l35"></a>[L35][lessons-physics] | Loft used zeros for "never happened", and never said which height apogee was measured from | [M1.10](#m1-10) |
+| <a id="l33"></a>[L33][lessons-physics] | Loft published static margins of ±12 to 15 calibres where the normal-force slope had all but cancelled and the margin meant nothing | [M1.10a](#m1-10a) |
+| <a id="l34"></a>[L34][lessons-physics] | Loft counted the opening shock as the peak acceleration, and read thrust spikes low from a finite difference of the speed | [M1.10a](#m1-10a) |
+| <a id="l35"></a>[L35][lessons-physics] | Loft used zeros for "never happened", and never said which height apogee was measured from | [M1.10a](#m1-10a) |
 | <a id="l36"></a>[L36][lessons-motors] | Loft's `.eng` reader read only the first header, and appended a second motor's points to the first curve | [M1.3](#m1-3) |
 | <a id="l37"></a>[L37][lessons-motors] | Loft's delay parsing lost `P` (plugged) and lists of delays, and read marker values as seconds | [M1.3](#m1-3) |
 | <a id="l38"></a>[L38][lessons-motors] | Loft's impulse class letter was off by one at the top of each band | [M1.3](#m1-3) |
@@ -362,6 +368,7 @@ is the milestone that added or will add that test.
 | <a id="l90"></a>[L90][lessons-tests] | Properties any drag model must keep, such as split fin sets dragging like one set, which hpr's tests check | [M1.5b](#m1-5b) |
 | <a id="l91"></a>[L91][lessons-tests] | Exact volumes of nose cones (cone, tangent ogive, Haack), which hpr's tests check | [M1.4a](#m1-4a) |
 | <a id="l93"></a>[L93][lessons-tests] | Staging: the sustainer lights at the booster's burnout plus its delay, the mass steps at the separation, and a trigger never reached lights nothing | [M1.9a](#m1-9a) |
+| <a id="l94"></a>[L94][lessons-tests] | The optimum ejection delay must come out the same whether the delay flown opens the parachute early or late | [M1.10a](#m1-10a) |
 
 [adr-000]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-000-kickoff-decisions-2026-09-16
 [adr-001]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-001-license-and-workspace-layout-2026-09-17
@@ -438,6 +445,7 @@ is the milestone that added or will add that test.
 [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 [adr-076]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-076-a-ork-files-ignitions-and-one-powered-separation-flown-against-openrocket-2026-09-25
+[adr-077]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-077-flight-metrics-peaks-on-the-dense-output-margins-only-where-they-mean-something-and-none-for-what-didnt-happen-2026-09-26
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

@@ -303,8 +303,8 @@ What changes it:
     body axes, so the CG's station is `−cg_m.z`.
   - The CP's station less the CG's, divided by `d_ref`, is the
     [stability margin](../glossary.md#stability-margin) in [calibres](../glossary.md#calibre-caliber).
-  - hpr doesn't report the margin yet: a margin over the flight comes with [M1.10](../decisions-and-roadmap.md#m1-10), the
-    outputs milestone.
+  - [Flight metrics](metrics.md) gives the margin from the rail exit to apogee, both in still air
+    at Mach 0 and in the flight's own air, and gives none where the slopes all but cancel.
 
 ## Bodies of revolution
 

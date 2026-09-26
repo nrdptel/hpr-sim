@@ -35,6 +35,7 @@ pub mod error;
 pub mod events;
 pub mod flight;
 pub mod integrator;
+pub mod metrics;
 pub mod rail;
 pub mod recorder;
 pub mod recovery;
@@ -52,6 +53,7 @@ pub use integrator::{
     Adaptive, Advance, DEFAULT_STEP_LIMIT, IntegrationError, Integrator, Method, OdeSystem,
     SettingsError, Stats, Step,
 };
+pub use metrics::{FlightMetrics, FlightSummary};
 pub use rail::{Guides, Rail};
 pub use recorder::{Channel, FlightStep, Observer, Recorder, Sample};
 pub use recovery::{

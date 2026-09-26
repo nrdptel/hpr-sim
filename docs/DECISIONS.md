@@ -82,6 +82,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-074 | Ignition times and powered staging: the sustainer flies on as a rigid body | accepted |
 | ADR-075 | A cluster is one tube repeated, and a motor in it one motor per tube | accepted |
 | ADR-076 | A `.ork` file's ignitions and one powered separation flown against OpenRocket | accepted |
+| ADR-077 | Flight metrics: peaks on the dense output, margins only where they mean something, and `None` for what didn't happen | accepted |
 
 ---
 
@@ -6883,3 +6884,65 @@ flight of a `.ork` against OpenRocket's had been written down: ADR-069 holds eac
   clearance, since only the booster burns between: 1.320 m then on *Two stage high power rocket*,
   under 0.2% of the H148R apogee (666 m) and under 0.1% of the other (1382 m), about the size of
   that flight's whole gap (−0.13%).
+
+## ADR-077: Flight metrics: peaks on the dense output, margins only where they mean something, and `None` for what didn't happen (2026-09-26)
+
+**Context.** M1.10 asks for the stability margin over the flight, the optimum ejection delay, max
+q, flutter, the landing point in latitude and longitude, and five file exports. That is more than
+one session, so it is split in three: a, the flight metrics; b, fin flutter; c, the exports. Four
+Loft lessons bear on a: L33 (margins of ±12 to 15 calibres published as the net normal-force slope
+went to zero), L34 (the opening shock taken as the peak acceleration, and a finite difference that
+read a thrust spike low), L35 (zeros for "never happened", and heights with no datum) and L94 (an
+optimum delay that moved with the delay flown). hpr-sim is a pure core crate, so the metrics can
+compute but not write files.
+
+**Decision.**
+
+1. **The split.** M1.10a: a `metrics` module in hpr-sim with an observer, `FlightMetrics`, and a
+   `FlightSummary`; L33, L34, L35 and L94 go live. M1.10b: flutter from its primary source, with
+   L32. M1.10c: the exports, written as text or bytes by the core, with the parent's schema and
+   parsing checks. The parent's three *done when* bullets are unchanged; a carries the first, b
+   the third, c the second.
+2. **Peaks on the dense output.** The observer evaluates the equations of motion at each accepted
+   step's start, middle and end. When the middle is above both ends it runs a golden-section search
+   (Kiefer 1953) on the step's dense output, down to 1e-9 of the flight's clock (at least 1 s).
+   Thrust-curve knots and events already end steps (M1.6a), so a spike's peak is a step's end.
+   Peaks start at liftoff; a rocket that never lifts off has none. Measured on Valetudo in a
+   vacuum: the peak acceleration matches the hand value from the motor and the masses to 1.6e-7,
+   where a 100 Hz finite difference reads it 1.3% low.
+3. **Acceleration.** The nose tip's (the body origin's) acceleration relative to the launch frame,
+   as `Sample::acceleration_enu_m_s2` gives it, including gravity. The boost's peak is kept in the
+   rail and free phases, the opening shock's in the descent phase, apart (L34).
+4. **Two margins.** The static margin is the centre of pressure at Mach 0 with the air along the
+   axis, against the centre of mass of the instant: RocketPy's `static_margin`. The roadmap's
+   "dynamic" margin is read as the margin in the flight's own air (its Mach number, total angle of
+   attack and the crossing air's roll), which is what OpenRocket's in-flight stability shows and
+   RocketPy's `stability_margin` at zero angle. A pitch damping ratio, the other reading, is not
+   built here. Both margins are kept at each step's end from the rail exit to apogee: on the rail
+   the rail holds the rocket, and a slow climb through the wind gives angles near 90°.
+5. **No margin where it would be noise (L33).** With `κ = Σ |C_Nα,i| / Σ C_Nα,i` over the
+   components (the table's own slope with a normal-force table), an error `ε` in one slope moves the
+   centre of pressure by up to `ε κ L`. The margin and the centre of pressure are `None` when the
+   net slope is not positive or `κ > 10`, where a 1% error can move the centre of pressure a tenth
+   of the rocket. The limit is a judgement, not a measurement: a finned rocket sits near 1 and a
+   rocket with a boattail a little above, so 10 leaves every ordinary design its margin. The
+   pitch-moment slope about the centre of mass, `C_mα = −Σ C_Nα,i (x_i − x_cg)/d`, is always given.
+6. **The optimum delay (L94).** A crate-private copy of the simulation with every stack charge
+   held flies to its apogee; each motor that burns out before it gets `apogee − burnout`. A
+   separation still happens, and a separated body's devices still act. No apogee (a separation
+   after the last burnout that comes first, say) gives `None`.
+7. **Datum and absence (L35).** Heights are the centre of mass's ellipsoidal height above the
+   site's; the summary adds the starting height, and the apogee's gain from it (OpenRocket's
+   altitude). Every metric that may not happen is an `Option`, which is `null` in JSON.
+8. **Landings.** The flight's own (the stack's, or the sustainer's after a powered separation) and
+   each separated body's that landed, in WGS 84 latitude and longitude through `LaunchFrame`, with
+   east and north metres and the ground-hit speed.
+9. **`FlightStep::stability`.** Each step gives the margins at a time from the model flying (the
+   sustainer's after a powered split), so a new required trait method; hpr-validate's test stub
+   refuses it. `Evaluation` carries the crossing air's roll angle for it.
+
+**Consequences.** The site gains *Flight metrics*, with an example whose output CI checks. The
+margin limit of 10 is a choice that a later model of component uncertainties could replace with a
+measured one. The metrics watch only the main flight: a separated body gets a landing but no
+peaks.
+

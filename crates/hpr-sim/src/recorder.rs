@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::dynamics::Phase;
 use crate::error::SimError;
 use crate::flight::FlightEvent;
+use crate::metrics::Stability;
 use crate::state::State;
 
 /// The flight's state and the quantities derived from it at one instant.
@@ -189,6 +190,15 @@ pub trait FlightStep {
     ///
     /// Whatever the evaluation returns (it succeeded at the step's own stages).
     fn sample(&self, t_s: f64) -> Result<Sample, SimError>;
+
+    /// The rocket's stability at `t` in `[start_s, end_s]`: its static margin and its margin in
+    /// the flight's air there, from the aerodynamic model flying (the sustainer's after a powered
+    /// separation) and the centre of mass at `t` ([`crate::metrics::stability`]).
+    ///
+    /// # Errors
+    ///
+    /// Whatever the evaluation or the aerodynamic model returns.
+    fn stability(&self, t_s: f64) -> Result<Stability, SimError>;
 }
 
 /// Watches a flight as it runs. Both methods do nothing by default; `()` watches nothing.

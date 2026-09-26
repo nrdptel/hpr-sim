@@ -35,7 +35,7 @@
 use std::fmt;
 use std::ops::ControlFlow;
 
-use hpr_aero::{AeroModel, DragTable, NormalForceTable};
+use hpr_aero::{AeroModel, DragTable, Flow, NormalForceTable};
 use hpr_core::DVec3;
 use hpr_design::Rocket;
 use hpr_design::checks::{check, has_errors};
@@ -48,6 +48,7 @@ use crate::events::Direction;
 use crate::integrator::{
     Adaptive, Advance, IntegrationError, Integrator, Method, OdeSystem, Stats, Step,
 };
+use crate::metrics::Stability;
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
 use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Separation, Trigger};
@@ -259,6 +260,9 @@ pub struct Simulation {
     configuration_id: String,
     /// Whether the aerodynamics were replaced by a table, which is the whole stack's only.
     aero_overridden: bool,
+    /// Whether the recovery charges are held: no device on the stack fires, whatever its trigger
+    /// ([`crate::metrics::optimum_delays`] flies the ascent so).
+    recovery_held: bool,
 }
 
 impl Simulation {
@@ -315,6 +319,7 @@ impl Simulation {
             rocket: rocket.clone(),
             configuration_id: configuration_id.to_owned(),
             aero_overridden: false,
+            recovery_held: false,
         })
     }
 
@@ -564,6 +569,30 @@ impl Simulation {
         }
     }
 
+    /// This simulation with its recovery charges held: the stack's devices never fire, so it
+    /// coasts through its apogee as if every delay were long. A separation still happens, and a
+    /// separated body's devices act as they would. User events, which can't be copied, are left
+    /// out.
+    pub(crate) fn with_recovery_held(&self) -> Self {
+        Self {
+            vehicle: self.vehicle.clone(),
+            environment: self.environment.clone(),
+            rail: self.rail,
+            guides: self.guides,
+            settings: self.settings,
+            user_events: Vec::new(),
+            devices: self.devices.clone(),
+            // No charge fires, so none of their times is a stop.
+            trigger_times_s: vec![None; self.devices.len()],
+            separation: self.separation,
+            separation_time_s: self.separation_time_s,
+            rocket: self.rocket.clone(),
+            configuration_id: self.configuration_id.clone(),
+            aero_overridden: self.aero_overridden,
+            recovery_held: true,
+        }
+    }
+
     /// Flies from ignition on the pad until the flight ends.
     ///
     /// # Errors
@@ -723,7 +752,10 @@ impl Simulation {
             // devices of body 0 act before a separation: a device meant for another body has a
             // drag area computed for that body (a booster's tumbling area, say), which is not a
             // model of the whole stack.
-            while !self.devices.is_empty() && matches!(phase, Phase::Free | Phase::Descent) {
+            while !self.recovery_held
+                && !self.devices.is_empty()
+                && matches!(phase, Phase::Free | Phase::Descent)
+            {
                 let mut again = false;
                 let window = (t, next_stop(&stops, t, cap));
                 let area = self.ascent_drag_area_m2(&run, t);
@@ -1044,7 +1076,8 @@ impl Simulation {
                                 for device in 0..self.devices.len() {
                                     // Only the stack's own: a body's device waits for its body,
                                     // which finds its own apogee.
-                                    if self.devices[device].trigger == Trigger::Apogee
+                                    if !self.recovery_held
+                                        && self.devices[device].trigger == Trigger::Apogee
                                         && run.pending(device)
                                         && self.acts_before_separation(device)
                                     {
@@ -1065,7 +1098,7 @@ impl Simulation {
                                 ground = true;
                             }
                             Watch::Altitude(device) => {
-                                if run.pending(device) {
+                                if !self.recovery_held && run.pending(device) {
                                     let deploy_s = run.trigger(&self.devices, device, t);
                                     insert_stop(&mut stops, deploy_s, cap);
                                     let sample =
@@ -1908,6 +1941,24 @@ impl FlightStep for StepView<'_> {
             t_s,
             &self.step.state_at(t_s),
             self.canopies.drag_area_m2(t_s),
+        )
+    }
+
+    fn stability(&self, t_s: f64) -> Result<Stability, SimError> {
+        let e = self.simulation.evaluate(
+            self.vehicle,
+            self.phase,
+            self.window,
+            t_s,
+            &self.step.state_at(t_s),
+            self.canopies.drag_area_m2(t_s),
+        )?;
+        crate::metrics::stability(
+            &self.vehicle.aero,
+            t_s,
+            e.height_above_ground_m,
+            -e.mass.cg_m.z,
+            &Flow::new(e.mach, e.angle_of_attack_rad, e.flow_roll_rad),
         )
     }
 }
