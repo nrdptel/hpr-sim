@@ -45,6 +45,69 @@ Every number here links to the page or file it comes from. [Checking a claim](ch
 shows how to follow one back to its source and its test, and
 [how the site keeps the two in step](checking-a-claim.md#rules-that-keep-the-trail-honest).
 
+## The census
+
+**In short: the census counts every number the validation reports compare, once each, and says
+what each group was compared with, how, how many flights it holds and how fast they flew. It is
+also a gate: CI fails when any of those numbers moves, better or worse, until the change is
+accepted with a written reason.** A code-to-code row measures how closely hpr agrees with another
+simulator, not which of the two is right; only the real flights are measurements.
+
+<!-- census: written by `cargo xtask census --accept` from validation/reports/census.json; do not edit -->
+
+| compared with | kind | held to | flights (speed) | result |
+|---|---|---|---|---|
+| [rocketpy 1.13.0](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): descents under a parachute | code-to-code, same inputs | gate: each metric's tolerance, at most 3% | 5 descents (5 under a parachute) | 30 of 30 gated metrics pass |
+| [rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py)](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights on the same drag | code-to-code, same inputs | gate: each metric's tolerance, at most 3% | 9 flights (8 subsonic, 1 transonic) | 142 of 142 gated metrics pass; 11 not scored, each for a written reason; apogee +0.04% to +1.21% |
+| [rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py)](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights, each code on its own drag | code-to-code, each code's own drag | target: 3% on each metric | 6 flights (5 subsonic, 1 transonic) | 75 of 102 metrics within target; apogee -7.28% to +10.30% |
+| [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of OpenRocket's examples | code-to-code, each code's own model | no target; over 5% needs a written cause | 33 flights (32 subsonic, 1 transonic) | 91 of 99 differences within the bar; apogee -19.13% to +13.80% |
+| [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of the private designs | code-to-code, each code's own model | no target; over 5% needs a written cause | 18 flights (13 subsonic, 5 transonic) | 54 of 54 differences within the bar; apogee -4.84% to +1.17% |
+| [the teams' altimeter logs, from RocketPy 1.13.0's examples](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): real flights | measured: the teams' altimeter logs | target: mean absolute apogee error 5% | 7 flights (3 subsonic, 4 transonic) | mean absolute apogee error 6.04% against the 5% target, outside it; apogee -8.90% to +10.40%, 2 of 7 within 5% |
+
+<!-- census: end -->
+
+**Reading the table.**
+
+- *Compared with* names the reference and its version ([census][census]):
+  [RocketPy](glossary.md#rocketpy), for most whole flights with two corrections of its own applied
+  (see [whole flights against RocketPy](#whole-flights-against-rocketpy)),
+  [OpenRocket](glossary.md#openrocket), or the teams' altimeter logs.
+- *Kind* says whether both programs flew the same inputs, each flew its own model, or hpr was
+  compared with a measurement.
+- *Held to* is what a difference is judged by. A gate fails the run. A target is reported, never
+  enforced. A bar only marks where a difference needs a written cause.
+- *Flights (speed)* classes each flight by its largest [Mach number](glossary.md#mach-number):
+  subsonic below 0.8, transonic from 0.8 to 1.2, supersonic above 1.2 ([census][census]). For the
+  harness's flights that is RocketPy's largest Mach number, for OpenRocket's flights OpenRocket's,
+  and for the logged flights hpr's own, since a log has none.
+
+**The gate.** The census accepted last is committed, with a page of its own
+([census][census]). `cargo xtask validate --check`, which CI runs on macOS, Windows and Linux,
+holds every row of the committed reports to it. A row fails the check when:
+
+- its difference moves by more than its slack, in either direction;
+- its standing changes, for instance a miss that starts meeting its target;
+- it comes or goes, for instance a flight hpr used to refuse and now flies.
+
+A row's slack is 0.1% of its scale. The scale is the row's own tolerance where it has one, and
+otherwise the bar of its kind: 3% of its reference for a harness metric not scored, 5% for an
+OpenRocket apogee or largest speed, 0.5 calibres for a stability margin, 5% for a logged apogee and
+3% for a logged climb ([census][census]). For example, a 3% tolerance on a 1000 m apogee allows
+30 m, and the census lets the difference move by 0.03 m before it fails. That is far above the
+reports' own noise between runs and platforms, so only a real change trips it. A flight on each
+code's own drag is held the same way, though its 3% is only a target
+([census][census]): hpr's own aerodynamics can't drift unseen inside it.
+
+**Accepting a change.** `cargo xtask census --accept --reason "<why>"` writes the new census and
+the table above. The reason and the list of what changed go into the census page, so a worse number
+can still merge, but only in writing, in the change that brings it. An improvement has to be
+accepted too; otherwise it could slip back later without anyone seeing.
+
+**How far to trust it.** The census adds no evidence of its own: it is exactly as good as the
+reports it counts, and it holds each number to where it was, not to the truth. The OpenRocket and
+real-flight reports need files that CI doesn't have, so CI holds their committed numbers, not a
+fresh run of them.
+
 ## How to read the numbers
 
 - **Powers of ten.** Very small and very large numbers are written the way programs print them.
@@ -798,6 +861,7 @@ rest.
 
 [ndrt-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-ndrt-2020-nose-to-tail.toml
 [plan]: VALIDATION.md#principles
+[census]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md
 [real-report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md
 [adr-082]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-082-real-flights-read-from-refs-compared-over-the-ascent-with-checked-explanations-2026-09-26
 [adr-083]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-083-m23c-blocked-no-private-design-is-the-rocket-of-a-logged-flight-2026-09-26

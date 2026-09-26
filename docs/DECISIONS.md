@@ -89,6 +89,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-081 | ERA5 weather read from netCDF classic in `hpr-io`; M2.3 split a to c | accepted |
 | ADR-082 | Real flights read from refs, compared over the ascent, with checked explanations | accepted |
 | ADR-083 | M2.3c blocked: no private design is the rocket of a logged flight | accepted |
+| ADR-084 | The accuracy census: every compared number held to the one accepted | accepted |
 
 ---
 
@@ -7338,3 +7339,59 @@ both manifests and in the files themselves.
 adds to it. When a pair is added, M2.3c reuses M2.3b's reading of a log and of a barometer
 (`hpr_validate::real_flight`) and M2.2e3's anonymised ids (`cargo xtask ork-flights --library`).
 It also needs a way to fly a `.ork` design from the library, where M2.3b flies committed designs.
+
+## ADR-084: The accuracy census: every compared number held to the one accepted (2026-09-26)
+
+**Context.** M2.4 asks for a census of the validation results, in the README with a badge, and for
+CI to fail on any per-case regression beyond tolerance; *done when* a perturbed drag coefficient on a
+throwaway draft PR turns CI red. CI already failed when the committed report was stale
+(`validate --check`, ADR-022), and a same-drag miss or a flipped predicted-mode verdict failed the
+run or a pinned test. What nothing caught was a report regenerated with a worse number that kept
+its verdict: a predicted-mode apogee going from 1% to 2.9% of RocketPy's, inside its 3% target
+(ADR-023), or an OpenRocket or real-flight difference, which have no gate at all. Loft's lessons
+L84 (hand-written counts), L85 (a "now passes" check at half the tolerance), L86 (a headline with
+no oracle, population or regime) and L88 (its own aerodynamics never gated) apply.
+
+**Decision.**
+
+1. **One row per compared number** (`hpr_validate::census`). The census reads the four committed
+   reports: the harness's (`latest.json`, every comparison and known gap), the real flights'
+   (each flight's apogee error and ascent-trace RMS), and OpenRocket's flights of its examples and
+   of the private designs (apogee, largest speed, margin). A row is keyed by its report's group,
+   its case and its metric; a key seen twice is refused, and every count is the census's own
+   (L84). Six groups, each naming its reference and version, its kind (code-to-code on the same
+   inputs, code-to-code on each code's own model, or measured), and what it is held to (a gate, a
+   target, or a bar that only marks a needed cause).
+2. **Speed classes** by the largest Mach number: subsonic below 0.8, transonic to 1.2, supersonic
+   above, the classes the OpenRocket library report already used. The harness's flights by
+   RocketPy's number (its `max_mach` reference), OpenRocket's by OpenRocket's, and the logged
+   flights by hpr's, which the real-flight report now records (`hpr_max_mach`), since a log has
+   none. Each headline names reference, kind, population and classes (L86).
+3. **A ratchet, both ways.** The census accepted last is committed (`census.json`). A row is a
+   change when its difference moves by more than its slack, when its standing changes (a miss
+   that starts passing too, at any margin: L85), when its unit, scale or class changes, or when it
+   comes or goes. An improvement is a change too, or it could slip back unseen. The slack is 0.1%
+   of the row's scale: its tolerance, or where it has none its kind's bar (3% of the reference for
+   a harness metric not scored, ADR-024's cap; 5% for OpenRocket's apogee and largest speed,
+   ADR-070's threshold for a cause; 0.5 calibres for a margin, M1.5's centre-of-pressure target;
+   5% for a logged apogee, the real-flight target; 3% for a logged climb, ADR-024's trace bound),
+   floored at the harness's reproduction bound. On a 3% gate that is 3e-5 of the reference, at
+   least 60 times the reports' noise between runs and platforms (1e-7 relative across platforms,
+   5e-7 per cent on a corpus rerun).
+4. **Checked in `validate --check`,** after the report reproduces, so CI's `validate` job holds it on
+   three platforms and the gate keeps its nine steps. A change passes only once accepted:
+   `cargo xtask census --accept --reason "<why>"` refuses a changed census without a reason, and
+   writes the reason and the list of changes into `census.json` and its page. A regression can
+   merge, in writing, in the diff that brings it; not by regenerating a report.
+5. **Its outputs are written from the accepted census and checked as text:** `census.md`, the table
+   between markers in `README.md` and `docs/accuracy.md` (the same table, linking the census page
+   at its GitHub address), and the badge `docs/images/census-badge.svg`, a static file (no
+   network), counting the gated code-to-code metrics that pass: "vs RocketPy, same inputs".
+
+**Consequences.** The first census holds 452 rows. Predicted mode's rows and the OpenRocket and
+real-flight differences, none of which a run could fail before, now fail CI when they move. Two
+limits stay. The census holds each number to where it was, not to the truth, and adds no evidence
+of its own. The OpenRocket and real-flight reports need files CI lacks, so CI holds their
+committed numbers, not a fresh run: a change to them is caught only when someone regenerates and
+commits them. Every physics change that moves any number now needs `census --accept` with a reason,
+one more command than before, which is the point.
