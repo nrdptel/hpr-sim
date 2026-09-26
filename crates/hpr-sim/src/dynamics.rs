@@ -84,7 +84,9 @@ struct MotorTerms {
     exit_radius_m: f64,
     /// The motor's cross-section, for power-on base drag, m².
     area_m2: f64,
-    /// The end of its thrust curve, s.
+    /// When it lights on the flight's clock, s: infinite for a motor that hasn't a known time.
+    ignition_s: f64,
+    /// The end of its thrust curve on the flight's clock, s: infinite for a motor unlit.
     burnout_s: f64,
 }
 
@@ -124,7 +126,8 @@ pub(crate) struct Evaluation {
     pub(crate) recovery_drag_area_m2: f64,
 }
 
-/// The rocket's models, fixed for a flight.
+/// The rocket's models: the whole stack's for a flight, or after a powered separation the
+/// sustainer's.
 #[derive(Debug, Clone)]
 pub(crate) struct Vehicle {
     pub(crate) assembly: Assembly,
@@ -132,15 +135,37 @@ pub(crate) struct Vehicle {
     /// The first fin set's index among the aerodynamic components.
     first_fin_index: usize,
     motors: Vec<MotorTerms>,
+    /// Each motor's ignition time on the flight's clock, `None` while it has no known time.
+    ignition_s: Vec<Option<f64>>,
     reference_area_m2: f64,
 }
 
 impl Vehicle {
+    /// The models of `assembly` flying on `aero`, every motor lit at launch.
+    #[cfg(test)]
     pub(crate) fn new(assembly: Assembly, aero: AeroModel) -> Result<Self, SimError> {
+        let ignition_s = vec![Some(0.0); assembly.motors.len()];
+        Self::lit(assembly, aero, ignition_s)
+    }
+
+    /// The models of `assembly` flying on `aero`, its motors lit at `ignition_s` (one per motor,
+    /// `None` for one with no known time, which stays loaded and gives no thrust).
+    pub(crate) fn lit(
+        assembly: Assembly,
+        aero: AeroModel,
+        ignition_s: Vec<Option<f64>>,
+    ) -> Result<Self, SimError> {
+        if ignition_s.len() != assembly.motors.len() {
+            return Err(SimError::Domain {
+                what: "count of ignition times (one per motor)",
+                value: ignition_s.len() as f64,
+            });
+        }
         let motors = assembly
             .motors
             .iter()
-            .map(|placed| MotorTerms {
+            .zip(&ignition_s)
+            .map(|(placed, ignition)| MotorTerms {
                 nozzle_m: placed.nozzle_m,
                 exit_radius_m: placed
                     .mounted
@@ -148,7 +173,10 @@ impl Vehicle {
                     .nozzle()
                     .map_or(0.0, |nozzle| nozzle.exit_radius_m),
                 area_m2: std::f64::consts::PI * (0.5 * placed.mounted.diameter_m).powi(2),
-                burnout_s: placed.mounted.motor.burnout_time_s(),
+                ignition_s: ignition.unwrap_or(f64::INFINITY),
+                burnout_s: ignition.map_or(f64::INFINITY, |ignition_s| {
+                    ignition_s + placed.mounted.motor.burnout_time_s()
+                }),
             })
             .collect();
         let reference_area_m2 = aero.reference_area_m2();
@@ -158,22 +186,45 @@ impl Vehicle {
             aero,
             first_fin_index,
             motors,
+            ignition_s,
             reference_area_m2,
         })
     }
 
-    /// The time the last motor burns out, s.
-    pub(crate) fn burnout_s(&self) -> f64 {
-        self.motors.iter().map(|m| m.burnout_s).fold(0.0, f64::max)
+    /// Each motor's ignition time on the flight's clock, `None` while it has no known time.
+    pub(crate) fn ignition_s(&self) -> &[Option<f64>] {
+        &self.ignition_s
     }
 
-    /// The times at which the thrust curves have knots or end, sorted, after `0`.
+    /// The time the last motor with a known ignition burns out, s (`0` with none).
+    pub(crate) fn burnout_s(&self) -> f64 {
+        self.motors
+            .iter()
+            .map(|m| m.burnout_s)
+            .filter(|t| t.is_finite())
+            .fold(0.0, f64::max)
+    }
+
+    /// The times at which the thrust curves start, have knots or end on the flight's clock,
+    /// sorted, after `0`.
     pub(crate) fn thrust_knots_s(&self) -> Vec<f64> {
         let mut times: Vec<f64> = self
             .assembly
             .motors
             .iter()
-            .flat_map(|placed| placed.mounted.motor.curve().times_s().iter().copied())
+            .zip(&self.ignition_s)
+            .filter_map(|(placed, ignition)| ignition.map(|ignition_s| (placed, ignition_s)))
+            .flat_map(|(placed, ignition_s)| {
+                std::iter::once(ignition_s).chain(
+                    placed
+                        .mounted
+                        .motor
+                        .curve()
+                        .times_s()
+                        .iter()
+                        .map(move |t| ignition_s + t),
+                )
+            })
             .filter(|t| *t > 0.0)
             .collect();
         times.sort_by(f64::total_cmp);
@@ -186,7 +237,7 @@ impl Vehicle {
     /// that no difference straddles a thrust-curve knot or a burnout.
     pub(crate) fn mass_state(&self, t: f64, window: (f64, f64)) -> MassState {
         let props = |t: f64| {
-            let mp = self.assembly.mass_properties(t);
+            let mp = self.assembly.mass_properties_lit(t, &self.ignition_s);
             (
                 mp.mass_kg,
                 mp.cg_m,
@@ -196,7 +247,10 @@ impl Vehicle {
         };
         let (mass_kg, cg_m, inertia_cg, inertia_o) = props(t);
         let (a, b) = window;
-        let burning = self.motors.iter().any(|m| a < m.burnout_s);
+        let burning = self
+            .motors
+            .iter()
+            .any(|m| a < m.burnout_s && b > m.ignition_s);
         let mut state = MassState {
             mass_kg,
             mass_rate_kg_s: 0.0,
@@ -300,14 +354,18 @@ impl Vehicle {
         let mut jet_gyration = DMat3::ZERO;
         let mut burning_area_m2 = 0.0;
         for (terms, placed) in self.motors.iter().zip(&self.assembly.motors) {
-            if a >= terms.burnout_s {
+            if a >= terms.burnout_s || b <= terms.ignition_s {
                 continue;
             }
             let motor = &placed.mounted.motor;
-            // The motor burns throughout this interval, so a stage evaluated on its ends (ignition
-            // or burnout, where the pressure correction switches) takes the one-sided limit
-            // inside the burn.
-            let t = t.max(0.0_f64.next_up()).min(terms.burnout_s.next_down());
+            // On the motor's own clock, from its ignition. Ignitions and burnouts are stop times,
+            // so the motor burns throughout this interval, and a stage evaluated on its ends
+            // (ignition or burnout, where the pressure correction switches) takes the one-sided
+            // limit inside the burn.
+            let (a, b) = (a - terms.ignition_s, b - terms.ignition_s);
+            let t = (t - terms.ignition_s)
+                .max(0.0_f64.next_up())
+                .min(motor.burnout_time_s().next_down());
             let force = DVec3::Z * motor.thrust_at_pressure_n(t, pressure_pa);
             thrust += force;
             thrust_moment += terms.nozzle_m.cross(force);

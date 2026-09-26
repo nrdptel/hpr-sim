@@ -145,6 +145,7 @@ pub(crate) fn motor(mount: &str, diameter_m: f64, length_m: f64) -> MountedMotor
         length_m,
         motor: SolidMotor::from_envelope(curve, diameter_m, length_m, 0.5, 1.0).unwrap(),
         delay: None,
+        ignition: crate::config::Ignition::Launch,
     }
 }
 

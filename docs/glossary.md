@@ -42,7 +42,7 @@ site, and a flight ends when the centre of mass comes back down to the site's he
 
 ## Air start
 
-A motor lit in flight, after liftoff, rather than on the pad. hpr can't fly one yet, because every motor in a configuration ignites at time zero. Air starts are planned for [M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone. See [The design tree](physics/design.md#motors-and-configurations).
+A motor lit in flight, after liftoff, rather than on the pad. In hpr each motor has an ignition: at launch, at a time, a delay after another motor's burnout, or a delay after its stage separates. Reading these from a `.ork` file comes with [M1.9c](decisions-and-roadmap.md#m1-9c). See [Staging](physics/staging.md#when-a-motor-lights).
 
 ## Angle of attack
 
@@ -104,6 +104,12 @@ and 270° west. [Getting started](getting-started.md#what-it-printed) gives the 
 distance and a bearing from the pad. A [wind direction](#wind-direction) is a bearing too: the one
 the wind blows from.
 
+
+## Booster
+
+The aft part of a staged rocket: the stage that lights first and is dropped when the stack
+separates. In hpr it descends as a point mass under its own recovery device, and its motors must
+have burned out when it separates. See [Staging](physics/staging.md).
 
 ## Boattail
 
@@ -207,7 +213,7 @@ An answer written as an exact formula, such as the parabola a body follows in a 
 
 ## Cluster
 
-Several motors in one rocket, burning side by side, each in its own mount. hpr lights every motor in a configuration together at time zero. It sums their thrusts along the rocket's axis, and adds the turning moment of any motor set off the axis. No test or comparison checks a cluster flight yet, and clusters with delayed ignition come with [M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone. See [The design tree](physics/design.md#motors-and-configurations).
+Several motors in one rocket, burning side by side, each in its own mount. hpr lights each motor at its own ignition (at launch unless told otherwise). It sums their thrusts along the rocket's axis, and adds the turning moment of any motor set off the axis. No test or comparison checks a cluster flight yet: that, and several motors in one mount, come with [M1.9b](decisions-and-roadmap.md#m1-9b). See [The design tree](physics/design.md#motors-and-configurations).
 
 ## Code-to-code comparison
 
@@ -220,7 +226,7 @@ RocketPy's within 3% on all 30 numbers compared; whole flights come next. See
 
 ## Configuration
 
-One choice of motors for a rocket design, at most one in each motor mount, named by an id such as `h54`. A design can hold several, such as the same rocket on different motors, and a flight names the one it flies. Every motor in a configuration lights at time zero until staging arrives with [M1.9](decisions-and-roadmap.md#m1-9). See [Your own rocket](your-own-rocket.md#the-program-step-by-step) and [The design tree](physics/design.md#motors-and-configurations).
+One choice of motors for a rocket design, at most one in each motor mount, named by an id such as `h54`. A design can hold several, such as the same rocket on different motors, and a flight names the one it flies. Each motor lights at launch unless its ignition says otherwise ([Staging](physics/staging.md#when-a-motor-lights)). See [Your own rocket](your-own-rocket.md#the-program-step-by-step) and [The design tree](physics/design.md#motors-and-configurations).
 
 ## Coriolis acceleration
 
@@ -786,8 +792,9 @@ A number that starts a random-number generator. The same seed gives the same seq
 
 A stack coming apart for recovery. At its trigger hpr splits the rocket into bodies (body 0 keeps
 the nose), and each descends on its own under its own recovery devices, which it must have. It adds
-no impulse and must come after the last burnout; staging under power is planned for
-[M1.9](decisions-and-roadmap.md#m1-9). See [Recovery](physics/recovery.md#separation).
+no impulse, and the aft part's motors must have burned out. When the forward part still has a
+motor to burn, it flies on as a [sustainer](#sustainer) and only the aft part descends. See
+[Recovery](physics/recovery.md#separation) and [Staging](physics/staging.md#powered-separation).
 
 
 ## Shoulder
@@ -842,7 +849,7 @@ the outputs milestone, [M1.10](decisions-and-roadmap.md#m1-10). See
 
 ## Stage
 
-A section of a rocket's stack in the design tree, listed forward to aft. A [separation](#separation) splits the rocket at the boundary between two stages, so a rocket that stays in one piece needs only one stage. Stages don't yet fire in sequence: every motor ignites at time zero until [M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone. See [The design tree](physics/design.md#the-tree).
+A section of a rocket's stack in the design tree, listed forward to aft. A [separation](#separation) splits the rocket at the boundary between two stages, so a rocket that stays in one piece needs only one stage. Each motor lights at its own time, so stages can fire in sequence. See [The design tree](physics/design.md#the-tree) and [Staging](physics/staging.md).
 
 ## Stall
 
@@ -914,6 +921,13 @@ the speed where it holds (about Mach 1.2 or later, set by each fin's sweep and s
 ## Surface layer
 
 The air nearest the ground, where friction with the ground sets how fast the wind grows with height. hpr's power-law and log-law winds describe it, but keep growing above it, so winds aloft should come from a table of levels. See [Wind](physics/wind.md#models).
+
+## Sustainer
+
+The forward part of a staged rocket, with the nose, that flies on after the booster is dropped and
+lights its own motor. In hpr a separation whose forward part still has a motor to burn makes it a
+sustainer, flown in six degrees of freedom with its own shape and mass. See
+[Staging](physics/staging.md#powered-separation).
 
 ## Tangent cone
 

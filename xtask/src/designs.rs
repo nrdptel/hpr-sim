@@ -820,6 +820,7 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
                 length_m: motor_length,
                 motor: solid,
                 delay: None,
+                ignition: hpr_design::Ignition::Launch,
             }],
         }],
     })
@@ -1005,6 +1006,7 @@ fn catalog_motor(
         length_m: entry.length_mm * 1e-3,
         motor: entry.bundled_motor().map_err(|e| e.to_string())?,
         delay: Some(Delay::Seconds(delay_s)),
+        ignition: hpr_design::Ignition::Launch,
     })
 }
 

@@ -293,9 +293,9 @@ q̇   = ½ q ⊗ (0, ω)
   - `StepLimit`.
 
   Any other failure is an error.
-- **Not yet modelled.** Staging, delayed ignition (planned with staging and airstarts in
-  [M1.9](../decisions-and-roadmap.md#m1-9)), turbulence and thrust misalignment. Recovery is modelled, and has
-  [its own page](recovery.md).
+- **Not yet modelled.** Turbulence and thrust misalignment. Recovery is modelled, and has
+  [its own page](recovery.md); so are motors lit at their own times and a powered separation,
+  on [Staging](staging.md).
 
 ## Integration settings
 

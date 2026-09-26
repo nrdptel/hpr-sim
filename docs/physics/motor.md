@@ -226,8 +226,9 @@ reaches 151.7 m above the pad at 6.09 s. These flight numbers are not validated;
 A design file holds configurations in the same form, as JSON, with the motor written out in full:
 see the `configurations` list at the end of
 [the Valetudo design](https://github.com/nrdptel/hpr-sim/blob/main/validation/designs/rocketpy-valetudo.json).
-Every motor in a configuration lights at the same moment, `t = 0`. Staging and air starts (motors
-lit in flight) are not modelled yet; they come with the staging milestone ([M1.9](../decisions-and-roadmap.md#m1-9)).
+Every motor lights at launch, `t = 0`, unless its `ignition` says otherwise: at a time, after
+another motor's burnout, or after its stage separates ([Staging](staging.md)). It then burns on its
+own clock from that moment.
 
 ## Code and sources
 
@@ -599,7 +600,7 @@ line for line the file CI runs. [Using a motor](#using-a-motor) walks through wh
 use std::error::Error;
 
 use hpr_core::geodesy::Geodetic;
-use hpr_design::{Configuration, MountedMotor, Rocket};
+use hpr_design::{Configuration, Ignition, MountedMotor, Rocket};
 use hpr_motor::catalog::MotorType;
 use hpr_motor::{Catalog, ImpulseClass, SolidMotor, eng};
 use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation, Termination};
@@ -721,6 +722,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             motor,
             // No ejection delay is chosen: this flight carries no parachutes.
             delay: None,
+            ignition: Ignition::Launch,
         }],
     });
 

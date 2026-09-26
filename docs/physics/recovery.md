@@ -434,7 +434,11 @@ bodies:
 
 Each body flies on as a point mass under the devices that name it (`Device::on_body`). The ascent
 ends there: its `FlightResult` has `Termination::Separated`, a `Separation` event, and one
-`BodyFlight` per body in `bodies`.
+`BodyFlight` per body in `bodies`. The exception is a powered separation, where body 0 still has a
+motor to burn: it flies on as a sustainer, and only body 1 descends here
+([Staging](staging.md#powered-separation)).
+
+This section describes the unpowered case, and the booster's descent after a powered one.
 
 **What happens at a separation:**
 
@@ -480,11 +484,11 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   matters.
   A spent booster's device is usually `DeviceDrag::tumbling_stages(&assembly, its stages)`, which
   is §3.5's model over that body's own components rather than the whole stack's.
-- **A separation must follow the last burnout**, because a body's mass is held constant through its
-  descent. A trigger that fires earlier is a flight-time error, not a silent approximation, since
-  whether it does depends on the flight. A release across the separation is refused too: a line
-  cuts a device on its own body. Powered staging, where a sustainer lights and keeps flying, is
-  planned for the staging milestone ([M1.9](../decisions-and-roadmap.md#m1-9)).
+- **The aft body's motors must have burned out**, because a body's mass is held constant through
+  its descent. A trigger that fires while one burns is an error, before the flight when its time is
+  known and in flight otherwise, not a silent approximation. A release across the separation is
+  refused too: a line cuts a device on its own body. A forward body with a motor still to burn
+  flies on as a sustainer ([Staging](staging.md)).
 
 ## Verification
 
@@ -510,12 +514,13 @@ name the [oracle](../glossary.md#oracle):
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts ([Loft lesson L24](../decisions-and-roadmap.md#l24): a run does not mutate the simulation) |
 | A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
 | The linear momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and each body starts at its own centre of mass to 1e-12 (0.817 m apart on this design) |
-| A separation before the last burnout | refused in flight, with the burnout time in the error |
+| A separation while the booster's motor burns | refused in flight, with the booster's burnout time in the error |
 | A separation while still climbing at 100 m/s | both bodies find their own apogee above 1,400 m, fire there, and land within 1% of their own `v_e` |
 | A timed separation, and a height separation | fire at their own time to 1e-9 s and at their own height to 1e-6 m, rather than at the next boundary that happens to exist (found in review: one fired 186 s late, another never) |
 | A body that runs out of time | says `TimeCap` in its own `BodyFlight`; `FlightResult::bodies_landed` is false and `landings()` is short |
-| A body whose device never fires (an altimeter above its apogee) | refused in flight, naming the body, rather than landed at 170 m/s |
-| A timed separation known to precede the burnout | refused when the separation is given; a height one that a climbing rocket passes early is refused in flight |
+| A body whose device never fires (a timer set after it lands) | refused in flight, naming the body, rather than landed at 170 m/s |
+| A body whose canopy opened on the stack just before the separation (an apogee separation with an apogee parachute) | lands: the open canopy counts, though its deployment is in the flight's events, not the body's (found with [M1.9a](../decisions-and-roadmap.md#m1-9a)) |
+| A timed separation known to precede the booster's burnout | refused when the separation is given; a height one that a climbing rocket passes early is refused in flight |
 
 ### Against RocketPy
 

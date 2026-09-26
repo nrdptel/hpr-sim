@@ -22,12 +22,12 @@
   OpenRocket on 71 compared designs, within 1% in mass on 58 and in centre of mass on 59
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). Not compared with a real flight.
-- **What it leaves out:** staged flight. Every motor in a configuration ignites together at
-  `t = 0`, on the pad. So a [cluster](../glossary.md#cluster) whose motors all light together is
-  flown (no test or comparison checks one yet), but a two-stage design flies with every motor lit
-  at once, which is not a staged flight, and nothing warns. Staging under power, delayed ignition
-  and [air starts](../glossary.md#air-start) are planned for [M1.9](../decisions-and-roadmap.md#m1-9) (staging, clusters
-  and air starts). Fins on a nose cone or transition are refused.
+- **What it leaves out:** several motors in one mount ([M1.9b](../decisions-and-roadmap.md#m1-9b)).
+  Each motor lights at its own `ignition`, at launch unless told otherwise, so a two-stage design
+  whose file says nothing flies with every motor lit at once; a staged flight gives the sustainer
+  its ignition ([Staging](staging.md)). A [cluster](../glossary.md#cluster) with a mount per motor
+  is flown, but no test or comparison checks one yet. Fins on a nose cone or transition are
+  refused.
   [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and
   overrides; the OpenRocket comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) is mapping them,
   and the mass conventions it has found are on the [mass page](mass.md#checked-against-openrocket).
@@ -193,29 +193,32 @@ The reference area is `π d²/4`.
   set off the body axis.
 - **Configurations.** A [`Configuration`](../api/hpr_design/config/struct.Configuration.html)
   puts at most one [`MountedMotor`](../api/hpr_design/config/struct.MountedMotor.html) in each
-  mount. A mounted motor is a [`SolidMotor`](../api/hpr_motor/motor/struct.SolidMotor.html) with its case diameter and length (for the checks) and
-  an optional [ejection delay](../glossary.md#ejection-delay): the time from burnout to its
-  ejection charge. It doesn't delay ignition.
+  mount. A mounted motor is a [`SolidMotor`](../api/hpr_motor/motor/struct.SolidMotor.html) with its case diameter and length (for the checks),
+  an optional [ejection delay](../glossary.md#ejection-delay) (the time from burnout to its
+  ejection charge, which doesn't delay ignition) and its
+  [`ignition`](../api/hpr_design/config/enum.Ignition.html): at launch unless told otherwise
+  ([Staging](staging.md#when-a-motor-lights)).
 - **Placement.** The motor's axis runs forward from the nozzle exit ([Solid motors](motor.md)).
   With `s_aft` the station of the mount's aft end, the nozzle exit is at station
   `s_aft + overhang`, on the mount's axis: for an inner tube offset `r` from the body axis at
   angle `θ` (from `x_B` toward `y_B`), at `(r cos θ, r sin θ)`; otherwise on the body axis. A motor
   element at `z_m` along the motor's own axis is at body `z = −(s_aft + overhang) + z_m`.
-- **Composition** at `t` seconds after ignition:
+- **Composition** at time `t`:
   [`Assembly::mass_properties`](../api/hpr_design/config/struct.Assembly.html#method.mass_properties)`(t)`
-  combines the structure with each motor's `SolidMotor::state(t).total` ([MK]). The dry assembly
-  uses each motor's dry element.
-- **More than one motor.** Every motor in a configuration ignites together at `t = 0`, on the pad.
-  In a flight, each burning motor's thrust points along the rocket's axis (`z_B`) and acts at its
-  own nozzle exit, and the thrusts and their moments are summed
+  combines the structure with each motor's `SolidMotor::state(t).total` ([MK]), every motor lit at
+  `t = 0`.
+  [`Assembly::mass_properties_lit`](../api/hpr_design/config/struct.Assembly.html#method.mass_properties_lit)
+  takes each motor's own ignition time: a motor burns on its own clock, `t − t_ignition`, and one
+  not yet lit is loaded. The dry assembly uses each motor's dry element.
+- **More than one motor.** In a flight, each burning motor's thrust points along the rocket's axis
+  (`z_B`) and acts at its own nozzle exit, and the thrusts and their moments are summed
   ([Rigid-body flight](flight.md#equations-of-motion)):
-  - A cluster whose motors all light together is flown, and a motor off the body axis adds a
-    turning moment. No test or comparison checks a cluster flight yet.
-  - A two-stage design flies with every motor lit at `t = 0`, booster and sustainer together.
-    That is not a staged flight, and
-    [`Simulation::new`](../api/hpr_sim/flight/struct.Simulation.html#method.new) doesn't warn.
-  - Staging under power, delayed ignition and air starts are planned for [M1.9](../decisions-and-roadmap.md#m1-9), the
-    staging, clusters and air starts milestone.
+  - A cluster whose motors each sit in their own mount is flown, and a motor off the body axis
+    adds a turning moment. No test or comparison checks a cluster flight yet, and several motors
+    in one mount come with [M1.9b](../decisions-and-roadmap.md#m1-9b).
+  - A two-stage design fires in sequence when its motors are given their ignitions, and drops its
+    booster at a separation ([Staging](staging.md)). Its design file alone lights every motor at
+    launch, booster and sustainer together, unless it says otherwise.
 - **Against RocketPy** [RP]: `total_mass(t)` and `center_of_mass(t)` are the same combination.
   RocketPy names the moment of inertia in pitch and yaw `I_11` and the one in roll `I_33`. Its
   `I_11(t)` is taken about the centre of dry mass (the rocket without propellant), so hpr's tensor

@@ -19,7 +19,7 @@
 use std::error::Error;
 
 use hpr_core::geodesy::Geodetic;
-use hpr_design::{Configuration, MountedMotor, Rocket};
+use hpr_design::{Configuration, Ignition, MountedMotor, Rocket};
 use hpr_motor::catalog::MotorType;
 use hpr_motor::{Catalog, ImpulseClass, SolidMotor, eng};
 use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation, Termination};
@@ -141,6 +141,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             motor,
             // No ejection delay is chosen: this flight carries no parachutes.
             delay: None,
+            ignition: Ignition::Launch,
         }],
     });
 

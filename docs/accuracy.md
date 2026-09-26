@@ -96,6 +96,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given; and on each code's own drag, against a target; OpenRocket on 21 configurations of its examples | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
+| [Staging](physics/staging.md) | ✓ | — | — (OpenRocket with [M1.9c](decisions-and-roadmap.md#m1-9c)) | — |
 | [Interpolation](physics/interpolation.md) | ✓ | — | — | — |
 | [Quadrature](physics/quadrature.md) | ✓ | — | — | — |
 

@@ -243,8 +243,9 @@ use hpr_aero::{AeroModel, Flow};
 use hpr_core::geodesy::Geodetic;
 use hpr_design::{
     AutoDimension, BodyTube, Component, Configuration, FinCrossSection, FinPlanform, FinSet,
-    InnerTube, MassComponent, Material, MotorMount, MountedMotor, NoseCone, NoseShape, Overrides,
-    Packing, Part, Position, ReferenceDiameter, Rocket, Shoulder, Stage, Wall, materials,
+    Ignition, InnerTube, MassComponent, Material, MotorMount, MountedMotor, NoseCone, NoseShape,
+    Overrides, Packing, Part, Position, ReferenceDiameter, Rocket, Shoulder, Stage, Wall,
+    materials,
 };
 use hpr_motor::{Catalog, Delay};
 use hpr_sim::{
@@ -357,6 +358,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         length_m: entry.length_mm / 1000.0,
         motor: entry.bundled_motor()?,
         delay: Some(Delay::Seconds(10.0)),
+        ignition: Ignition::Launch,
     };
 
     // The rocket: one stage, and one configuration, "h54", with that motor in the mount.
@@ -538,7 +540,9 @@ It has eight steps.
    [designation](glossary.md#motor-designation) or common name, ignoring case, spaces and hyphens,
    so `"h54"` finds this one too. `bundled_motor()` builds the motor from its thrust curve and the
    catalog's size and masses. The [`MountedMotor`](api/hpr_design/config/struct.MountedMotor.html)
-   names the mount by its id, and carries the ejection delay and the case's diameter and length.
+   names the mount by its id, and carries the ejection delay, the case's diameter and length, and
+   when the motor lights: `Ignition::Launch` here, and a later time for an air start or a
+   sustainer ([Staging](physics/staging.md)).
    The design checks compare the case with its mount: a case wider than the mount's bore is an
    error. While the motor burns, hpr also uses the case's diameter for the
    [base drag](glossary.md#base-drag), the drag on the rocket's flat aft end: the part of that end
@@ -667,9 +671,10 @@ The example leaves out several kinds of part and setting that a design can have:
   steep boattail, high with thin, sharp fins. Treat a supersonic flight's apogee as rough until
   [M1.8b3](decisions-and-roadmap.md#m1-8b3) (a boattail's drag faster than sound) and the issues
   it leaves are done.
-- **No staging.** Every motor in a configuration lights at the same moment, on the pad, so a
-  two-stage rocket flies with both stages burning at once. Staging comes with [M1.9](decisions-and-roadmap.md#m1-9)
-  (staging, clusters and air starts).
+- **Staging needs its settings.** A motor lights at launch unless its `ignition` says otherwise, so a
+  two-stage design flies with both stages burning at once until you give the sustainer its
+  ignition and the flight a separation ([Staging](physics/staging.md)). Staged flights are checked
+  by tests only, not yet against another simulator ([M1.9c](decisions-and-roadmap.md#m1-9c)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
