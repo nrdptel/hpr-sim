@@ -259,7 +259,7 @@ departs from [F] but leaves the file readable is a warning that travels with the
 |---|---|---|
 | `Skipped` | a whole part was left out | a **component** this reader cannot give an honest shape ([below](#what-is-left-out-and-why)); an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
 | `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace; a tag whose text is not the number, count or flag it should be; two names for one value that disagree; a dimension the file does not give, read as zero; a fin's fillets or a rail button's screw head, whose mass hpr does not model |
-| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
+| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a part inside an inner tube set off the body's axis, placed from the body's axis ([below](#clusters)); a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
 file that opens is ordinary. Building a *rocket* from those documents raises 35 warnings over 73
@@ -837,7 +837,8 @@ a builder would expect:
   in a tube 10 mm off the axis sits on that tube's axis in OpenRocket and on the body's axis in
   hpr. hpr warns of it (`Unusual`), and no file in the survey has one
   ([#181](https://github.com/nrdptel/hpr-sim/issues/181)). A cluster on the axis, the common case,
-  is not affected, and neither are motors, whose nozzles take their mount's offset.
+  is not affected, and neither is a motor in a mount that sits in the body tube, whose nozzle takes
+  its mount's offset.
 
 A configuration with a motor in a cluster is read, but hpr's flights of `.ork` files leave it out until
 [M1.9c](../decisions-and-roadmap.md#m1-9c) compares a cluster's flight with OpenRocket's

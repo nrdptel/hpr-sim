@@ -16,8 +16,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Start M1.9c** on a fresh `m1.9c-<slug>` branch: map the `.ork` ignition and separation hpr-io
   reads onto ADR-074's, drop `NotFlown::Cluster` (clusters read since M1.9b, ADR-075; OR stacks a
-  cluster's tubes in its inertia, hpr doesn't), and fly OR's 4 staged, 2 cluster public designs;
-  M2.2e5 needs them, each apogee over 5% a cause sized as ADR-073: `flights.py` flies OR without it
+  cluster's tubes in its inertia, hpr doesn't; parts in off-axis tubes: #181), fly OR's 4 staged,
+  2 cluster public designs; M2.2e5 needs them, each apogee over 5% a cause sized as ADR-073: OR without it
   (`undeployed`, `undeployed_without_drag_overrides`, `..._parts_set_to_no_drag`). Leads, not
   causes: #177 (a blunt nose's drag below Mach 0.8), private flights above sea level reading low,
   `C03`, `C09` margins (#172). After any physics change run `cargo xtask ork-flights --check` and

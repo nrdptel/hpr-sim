@@ -207,10 +207,15 @@ fn one(
             WarningKind::Unusual,
             format!(
                 "the {} sits inside a {} {} m off the body's axis: OpenRocket places it from that \
-                 tube's axis, and hpr from the body's axis (issue #181)",
+                 tube's axis, and hpr from the body's axis (issue #181){}",
                 spoken(&part),
                 spoken(parent),
-                x.hypot(y)
+                x.hypot(y),
+                match nested(element) {
+                    0 => String::new(),
+                    1 => "; so is the one part inside it".to_owned(),
+                    many => format!("; so are the {many} parts inside it"),
+                }
             ),
         );
     }
