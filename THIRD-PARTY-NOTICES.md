@@ -129,10 +129,12 @@ adds a source.
 
 | crate | license | used by | why |
 |---|---|---|---|
+| `bytes` | MIT | `hpr-sim` (tests only) | the byte buffer `parquet` reads an exported file from (ADR-080) |
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `flate2` | MIT OR Apache-2.0 | `hpr-io` | gzip and deflate, with the pure-Rust `miniz_oxide` backend so that `hpr-io` still builds for wasm32 and links no C: one of the three containers a `.ork` design arrives in, and the compression inside the other |
 | `jsonschema` | MIT | `hpr-sim` (tests only) | checks exported GeoJSON against the published GeoJSON schema; no default features, so it fetches and reads nothing (ADR-079) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
+| `parquet` | Apache-2.0 | `hpr-sim` (tests only, as `parquet-reader`) | Apache's own Parquet implementation, the independent reader of the Parquet files `hpr-sim` writes by hand; no default features, so no Arrow and no compression codecs (ADR-080) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
 | `pulldown-cmark` | MIT | `xtask` | reads the documentation site's Markdown, with the parser mdBook itself uses, to check its links and labels (ADR-016) |
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |

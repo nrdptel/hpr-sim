@@ -25,10 +25,20 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
+[features]
+# `export::parquet`: a recording as an Apache Parquet file. It adds no dependency.
+parquet = []
+
 [dev-dependencies]
+bytes.workspace = true
 criterion.workspace = true
 jsonschema.workspace = true
+parquet-reader.workspace = true
 roxmltree.workspace = true
+
+[[example]]
+name = "export_flight"
+required-features = ["parquet"]
 
 [[bench]]
 name = "flight"

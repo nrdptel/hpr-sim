@@ -32,6 +32,8 @@ hpr-sim = { path = "crates/hpr-sim", version = "0.1.0" }
 hpr-validate = { path = "crates/hpr-validate", version = "0.1.0" }
 
 # Third-party crates. Each one needs a line of justification in the PR that adds it.
+# Tests only: the byte buffer Apache's Parquet reader (`parquet-reader`) reads a file from.
+bytes = "1.12.1"
 # Benchmarks only: statistics and the cargo bench harness, without the plotting and rayon defaults.
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 glam = { version = "0.33.7", default-features = false, features = ["f64", "serde", "std"] }
@@ -42,6 +44,9 @@ insta = { version = "1.48.0", default-features = false, features = ["json"] }
 # Tests only: checks exported GeoJSON against the published GeoJSON schema. No default features:
 # they fetch remote `$ref`s over HTTP and read files.
 jsonschema = { version = "0.58.0", default-features = false }
+# Tests only: Apache's own Parquet implementation reads back the files `hpr_sim::export` writes
+# by hand. No default features: no Arrow, no compression codecs, just the file reader.
+parquet-reader = { package = "parquet", version = "60.0.0", default-features = false }
 proptest = "1.11.0"
 # xtask only: reads the documentation site's Markdown with the parser mdBook itself uses, to check
 # its links and labels. Parser only: no HTML renderer, no command-line tool.

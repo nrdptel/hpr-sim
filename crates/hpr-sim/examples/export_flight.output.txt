@@ -1,6 +1,7 @@
 wrote 67 rows of 5 columns, a path of 67 points
   flight.csv
   flight.json
+  flight.parquet
   flight.geojson
   flight.kml
 landed at 32.99000° N, 106.96904° W, 90 m from the pad, at 58.9 s

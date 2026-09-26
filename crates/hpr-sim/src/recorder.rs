@@ -291,6 +291,19 @@ impl Recorder {
         })
     }
 
+    /// A recorder holding `rows` as if it had recorded them, for tests of what reads its rows.
+    #[cfg(test)]
+    pub(crate) fn with_rows(channels: Vec<Channel>, rows: Vec<Vec<f64>>) -> Self {
+        Self {
+            channels,
+            interval_s: None,
+            next_index: 0,
+            samples: rows.len(),
+            last_time_s: None,
+            rows,
+        }
+    }
+
     /// Forgets the recorded rows, ready for another flight.
     pub fn clear(&mut self) {
         self.next_index = 0;

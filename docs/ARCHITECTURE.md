@@ -78,7 +78,8 @@ Check each one on crates.io before adding it, and record any change in an ADR.
   root-finding, plus fixed-step RK4. Integration is core IP and needs event handling tuned for
   flight phases. `diffsol` or `ode_solvers` can serve as cross-checks in tests.
 - **Serialization:** `serde`, `serde_json`, `toml`, `schemars` (JSON Schema), `quick-xml` or
-  `roxmltree` (XML), `zip`, `csv`, optionally `arrow`/`parquet` for large outputs.
+  `roxmltree` (XML), `zip`, `csv`; Parquet is written in-house, with Apache's `parquet` crate as
+  its test reader (ADR-080).
 - **Errors, logging, CLI:** `thiserror`, `anyhow` (binaries only), `tracing`, `clap`.
 - **Parallelism and bindings:** `rayon`; `pyo3` + `maturin` + `numpy`; `wasm-bindgen` + `tsify`;
   `cbindgen`; later `uniffi` for native mobile bindings.

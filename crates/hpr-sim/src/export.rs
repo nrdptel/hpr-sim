@@ -1,5 +1,5 @@
-//! Writing a flight out: a [`Recorder`]'s rows as CSV or JSON, and the centre of mass's path with
-//! the landings as GeoJSON or KML for a map.
+//! Writing a flight out: a [`Recorder`]'s rows as CSV or JSON (or Parquet, with the `parquet`
+//! feature), and the centre of mass's path with the landings as GeoJSON or KML for a map.
 //!
 //! Every function builds text and returns it; none writes a file (the core crates do no I/O).
 //! Numbers are written in Rust's shortest round-trip form, so each parses back to the exact `f64`
@@ -26,6 +26,11 @@ use crate::environment::Environment;
 use crate::error::SimError;
 use crate::metrics::{FlightSummary, Landing};
 use crate::recorder::Recorder;
+
+#[cfg(feature = "parquet")]
+mod parquet;
+#[cfg(feature = "parquet")]
+pub use parquet::{PAGE_ROWS, parquet};
 
 /// One point of the centre of mass's path, placed on the Earth.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -272,7 +277,7 @@ mod tests {
 
     /// Valetudo under a canopy from apogee, carried east by a 6 m/s west wind: its recording at
     /// 1 s, its path and its summary.
-    fn flown() -> (Recorder, Vec<TrackPoint>, FlightSummary, Environment) {
+    pub(super) fn flown() -> (Recorder, Vec<TrackPoint>, FlightSummary, Environment) {
         let wind = ConstantWind::new(6.0, 1.5 * std::f64::consts::PI).unwrap();
         let canopy = Device::new(
             "main",
@@ -375,6 +380,14 @@ mod tests {
             Err(SimError::Unsupported { what }) if what.contains("control character")
         ));
         assert!(kml(&fine, &summary, "tab\tok").is_ok());
+
+        let recorder = Recorder::with_rows(vec![Channel::Time], vec![vec![0.0], vec![f64::NAN]]);
+        for result in [csv(&recorder), json(&recorder)] {
+            assert!(matches!(
+                result,
+                Err(SimError::Domain { what: "recorded value", value }) if value.is_nan()
+            ));
+        }
     }
 
     #[test]

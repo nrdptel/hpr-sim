@@ -681,6 +681,13 @@ axes. A part on the rocket's centre line adds nothing to the roll inertia this w
 and yaw. hpr uses its tensor form to add up the inertias of a rocket's parts. See
 [Mass properties](physics/mass.md#frames-and-conventions).
 
+## Parquet data page
+
+A Parquet file stores a table column by column, and each column in pieces called data pages, each
+with a small header saying how many values it holds and how they are stored. A reader decodes a
+page at a time. hpr-sim's pages hold up to 1024 numbers, the 8 KiB the format's specification
+recommends. See [Exporting a flight](exporting-a-flight.md).
+
 ## Power-on and power-off drag
 
 Drag while a motor burns, and while the rocket coasts. Under power, the part of the base the
