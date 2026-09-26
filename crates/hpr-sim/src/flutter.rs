@@ -80,8 +80,8 @@ pub const HEAT_CAPACITY_RATIO: f64 = 1.4;
 ///
 /// Measured on the scan of NACA TN 4197's figure 3 (p. 19) rendered at 250 dpi: both log axes
 /// calibrated on their tick marks (222.5 and 224.8 pixels a decade), the band's edges traced in
-/// 69 columns along the axis, `G_E` = 0.05 to 10 × 10⁶ psi (0.34 to 69 GPa). Its middle stays at
-/// `D/G_E` = 0.28 to 0.29 along the whole axis, and it is about 0.08 of a decade wide. Above it lie
+/// 69 columns from `G_E` = 0.05 to 10 × 10⁶ psi (0.34 to 69 GPa; the axis runs on to 20 × 10⁶ psi).
+/// Its middle stays at `D/G_E` = 0.28 to 0.29 all along, and it is about 0.08 of a decade wide. Above it lie
 /// mostly wings that fluttered or failed, and a few that didn't; below it, wings that flew to at
 /// least Mach 1.3 without known failure.
 pub const FIGURE_3_BAND: [f64; 2] = [0.25, 0.31];
@@ -241,7 +241,7 @@ impl FlutterPanel {
     /// Martin's figure 3 reading, `D/G_E = (a/V_f)²`, at static pressure `p`: above
     /// [`FIGURE_3_BAND`] lie mostly his wings that fluttered, below it wings that didn't. Martin
     /// takes `p` where the wing flies; at the launch site's, the highest a flight sees, it is the
-    /// largest. Outside his axis, `G_E` from 0.34 to 69 GPa, it is an extrapolation.
+    /// largest. Outside his axis, `G_E` from 0.34 to 138 GPa, it is an extrapolation.
     ///
     /// # Errors
     ///
@@ -331,7 +331,7 @@ pub struct FlutterMargin {
     /// Eq. 18's flutter speed over the airspeed there, `V_f / V = √(q_f / q)`, the flight's least.
     /// Below 1 the fin flies faster than eq. 18's flutter speed. No fixed value is a safe line:
     /// Martin's band ([`FIGURE_3_BAND`]) puts `V_f` at 1.8 to 2.0 times the speed of sound, so at
-    /// Mach `M` its edge is at a ratio of about `1.8/M` to `2.0/M`. Judge a fin by
+    /// Mach `M` the band is at a ratio of `1.8/M` to `2.0/M`, and below it above `2.0/M`. Judge a fin by
     /// [`FlutterPanel::figure_3_ratio`].
     pub speed_ratio: f64,
 }

@@ -6,7 +6,8 @@
   twisting feed each other until the fin shakes itself apart. hpr gives two readings of one
   criterion. The first is Martin's own chart check: is the fin on the flutter side of the line his
   flight data draws? The second is the ratio of the criterion's flutter speed to the rocket's
-  airspeed at the flight's peak [dynamic pressure](../glossary.md#dynamic-pressure).
+  airspeed at the flight's peak [dynamic pressure](../glossary.md#dynamic-pressure). The first
+  decides; the second alone is not a safe line.
 - **Sources:** D. J. Martin's criterion in NACA TN 4197 (1958), eq. 18, and his figure 3, which
   separates missile and wind-tunnel wings that fluttered from those that didn't
   ([References](#references)). The fin's stiffness enters as its
@@ -78,8 +79,8 @@ for missiles and wind-tunnel models (his figure 3). Wings that fluttered or fail
 shaded band, and wings that flew to at least Mach 1.3 without known failure lie below it.
 
 hpr measured the band on a 250 dots-per-inch scan of the figure. Both log axes were calibrated on
-their tick marks, and the band's edges were traced in 69 pixel columns. The band runs at
-`D / G_E` = 0.25 to 0.31 along the whole axis, from wood to steel. In eq. 18's terms that is
+their tick marks, and the band's edges were traced in 69 pixel columns from `G_E` = 0.05 to
+10 × 10⁶ psi. The band runs at `D / G_E` = 0.25 to 0.31 all along that range, from wood to steel. In eq. 18's terms that is
 `(V_f/a)²` = 3.2 to 4.0, so Martin's line sits where `V_f` is 1.8 to 2.0 times the speed of sound.
 hpr calls this ratio `D / G_E` the *figure 3 ratio*:
 
@@ -90,13 +91,14 @@ hpr calls this ratio `D / G_E` the *figure 3 ratio*:
 | below 0.25 | wings that flew to at least Mach 1.3 without known failure |
 
 Martin takes `p` where the wing flies. At the launch site's pressure, the highest a flight sees, the
-ratio is at its largest. Figure 3's axis runs from 0.05 to 10 × 10⁶ psi (0.34 to 69 GPa) in `G_E`;
+ratio is at its largest. Figure 3's axis runs from 0.05 to 20 × 10⁶ psi (0.34 to 138 GPa) in `G_E`;
 balsa's modulus is left of it, so its ratio is an extrapolation.
 
 **Which reading decides.** The figure 3 ratio does: it is Martin's own check, and a fin must be
 below the band. `V_f / V` alone is not a safe line, at 1 or at any fixed number. At the flight's
 max q the two are tied by `D / G_E = 1 / (M · V_f/V)²`, with `M` the Mach number there, so the
-band's edge is at `V_f / V` of about 1.8/M to 2.0/M: 1.5 at Mach 1.3, but 3.6 at Mach 0.5.
+band is at `V_f / V` from about 1.8/M to 2.0/M. A fin is below the band only if `V_f / V` is above
+about 2.0/M: 1.5 at Mach 1.3, but 4.0 at Mach 0.5.
 Martin's data show nothing about a fin above the band on a rocket slower than Mach 1.3: treat it as
 not shown to be safe.
 
@@ -160,7 +162,7 @@ The columns `V_f 0 m` and `V_f 3 km` are eq. 18's flutter speed in standard air 
 - **Aluminium** passes both readings: its figure 3 ratio is well below the band, and at max q the
   rocket flies at under a third of `V_f`.
 - **Carbon fibre** at 3.2 mm has `V_f / V` of 1.46, but its figure 3 ratio, 0.45, is above the
-  band, where Martin's wings failed: not shown to be safe. Its modulus is a unidirectional ply's of
+  band, where most of Martin's wings fluttered or failed: not shown to be safe. Its modulus is a unidirectional ply's of
   one aerospace prepreg; a ±45° layup of it would be stiffer, but wet-laid or woven hobby sheet may
   be softer.
 - **Plywood, basswood and balsa** fins of this size fail both: at max q the rocket flies at 1.75
