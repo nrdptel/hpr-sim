@@ -35,14 +35,14 @@ Service information"), and you accept it once on the dataset's page before the f
    1000 hPa down to 500 hPa covers the lowest 5.5 km. Include a level below the pad too (ERA5
    continues its levels beneath high ground), so the pad lies between two levels. Below the
    lowest level hpr continues the standard atmosphere and marks the air as extrapolated.
-4. Choose the day and every hour around the launch, in UTC. hpr weighs the two file times on
-   either side of the launch, however far apart they are, so a file with gaps between its hours
-   blends weather six hours apart.
+4. Choose the day and every hour around the launch, in UTC, not every third or sixth hour. hpr
+   blends the two file times on either side of the launch however far apart they are, so a file
+   with gaps blends weather hours apart.
 5. Choose a small area around the site, at least a quarter of a degree beyond it on each side.
    ERA5's grid points are a quarter of a degree apart, and hpr needs the four around the site.
    hpr doesn't join a whole-Earth grid's last longitude to its first, so a site between them is
    refused: on a grid from 0° to 359.75° east, the last quarter degree west of 0°.
-6. Choose the NetCDF format, then convert the file as below. hpr does not read GRIB, the other
+6. Choose the [NetCDF](../glossary.md#netcdf) format, then convert the file as below. hpr does not read GRIB, the other
    format offered (the weather services' own binary format).
 
 ## Converting a current file
@@ -64,7 +64,7 @@ read a file, its error says which kind the file is and gives this conversion.
 This conversion is checked. The test takes NDRT 2020's launch day, downloaded from the Data Store
 in 2021 as a classic file and in 2024 as netCDF-4 and converted as above. NDRT 2020 is the
 University of Notre Dame's rocket for NASA's 2020 Student Launch. The two files agree at every
-level to 0.23 m²/s² of geopotential (about 2 cm of height), 0.35 thousandths of a kelvin and
+level to 0.23 m²/s² of [geopotential](../glossary.md#geopotential-height) (about 2 cm of height), 0.35 thousandths of a kelvin and
 0.11 mm/s of wind. The older file stores its values as 16-bit whole numbers and the newer one
 carries the rounding of ECMWF's own archive, so the gaps are consistent with each file's
 rounding. The test pins these largest gaps.
@@ -116,8 +116,10 @@ the air at the pad was 1.2% denser than the standard's. The wind was light at th
 
 **Reading your own file.** hpr reads ERA5 from Rust only for now; there is no command-line tool
 yet. Copy the example and change three things: read your file from disk
-(`std::fs::read("my-file.nc")`) instead of the bundled one, and give your site's latitude,
-longitude and height and your launch time in UTC. The steps are the example's own:
+(`let bytes = std::fs::read("my-file.nc")?;` then `NetCdf::parse(&bytes)`) instead of the bundled
+one, and give your site's latitude, longitude and height and your launch time in UTC (the printed
+heading has the date written in, so change it too). The copy still flies the example's rocket,
+Bella Lui; [Your own rocket](../your-own-rocket.md) shows how to describe yours. The steps are the example's own:
 `NetCdf::parse` on the file's bytes, `Era5Profile::read` with the site and time, then
 `Era5Profile::sounding` gives the atmosphere and the wind for the flight's `Environment`.
 
@@ -151,7 +153,7 @@ NDRT's day from today's Data Store. RocketPy 1.13 reads the same files.
 | | hpr | RocketPy 1.13 | measured difference |
 |---|---|---|---|
 | Temperature, wind and geopotential at each level, on the hour | bilinear | bilinear | the same to 12 digits (5 readings, 14 or 37 levels each) |
-| Height of a level | WMO's formula, with gravity at the site's latitude | ECMWF's formula, with `g₀` at every latitude | −0.0158% at 47.2° N (−0.69 m at 4.4 km); +0.0343% at 41.8° N (+1.45 m at 4.2 km) |
+| Height of a level | WMO's formula, with gravity at the site's latitude | ECMWF's formula, with `g₀` at every latitude | −0.0158% at Bella Lui, 47.21° N (−0.69 m at 4.4 km); +0.0343% at NDRT, 41.78° N (+1.45 m at 4.2 km) |
 | Launch between two of the file's hours | both hours, weighted by time | the nearer hour | hpr's value is the weighted mean of RocketPy's two readings, to 12 digits |
 | Pressure between levels | hydrostatic | straight line in height | not measured yet |
 | Above the top level | the standard atmosphere, continued | the top level's values, held | not measured yet; Bella Lui's file stops at 4.4 km |
@@ -163,12 +165,20 @@ height, and says it neglects gravity's change across the Earth. RocketPy uses it
 World Meteorological Organization's formula, which takes gravity at the site's latitude: at sea
 level it is 9.780 m/s² at the equator and 9.832 m/s² at the poles.
 
-ERA5's model measures geopotential from its own ground, and at that ground it uses `g₀`. So hpr's
-reading is off by a fixed amount at every height, set by the ground's height: 0.06 m at Bella
-Lui's pad. ECMWF's is off by an amount that grows with height above the ground: at a pad 1400 m up
-at 33° N, hpr's is off by 1.6 m and ECMWF's by 3.4 m at 3 km above the pad. The derivation is in
-the `hpr_io::era5` module's documentation
-([API reference](../api/hpr_io/era5/index.html)).
+How far off each is depends on how ERA5's model builds the geopotential of its own ground, which
+ECMWF doesn't say. Taking it as `g₀` times the ground's height, hpr's reading is off by a fixed
+amount at every height and ECMWF's by an amount that grows with height above the ground. Neither
+is always the smaller:
+
+| model ground | hpr's error | ECMWF's error, at the ground | ECMWF's, 3 km above it |
+|---|---|---|---|
+| 407 m at 47.2° N | −0.04 m | +0.03 m | +0.50 m |
+| 1400 m at 33° N (like Spaceport America's) | +1.88 m | +0.31 m | −3.05 m |
+
+At the second site ECMWF's reading is the closer one up to 1.95 km above the ground, and hpr's
+above that. hpr keeps WMO's formula because it is the one it uses for every sounding. The
+derivation is in the `hpr_io::era5` module's documentation
+([API reference](../api/hpr_io/era5/index.html)), and a test pins these numbers.
 
 ## The netCDF reader
 
@@ -193,7 +203,10 @@ The first row matters for ERA5. Many ERA5 files store each value as a 16-bit who
 fill of −32767, and a few values sit at −32768. Two of RocketPy's other ERA5 files (both
 netCDF-4) have them: 102 of 5,241,600 geopotential values and 4 temperatures in one, 298 of
 5,184,000 geopotential values and 2 temperatures in the other. hpr reads those as missing, where netCDF4-python returns a
-number, a temperature of 198.66 K for example. The two files the tests read have none.
+number, a temperature of 198.66 K for example, among neighbours near 301 K. Such values look
+like damaged data, so reading them as missing is the safer choice. `Era5Profile::read` then
+refuses the whole reading, naming the level, rather than print a wrong number. None of the files
+the tests read has such values.
 
 netCDF-4 files, and the rarer 64-bit data format (files beginning `CDF` and 5), are refused with
 the conversion above.
@@ -205,6 +218,9 @@ the conversion above.
 - **Surface files.** ERA5's single-level files, with the 10 m wind and 2 m temperature, are not
   read.
 - **GRIB and netCDF-4.** Convert them first, as above.
+- **The longitude seam.** On a whole-Earth grid, a site between the grid's last longitude and its
+  first is refused (on a 0° to 359.75° grid, the last quarter degree west of 0°). Download a
+  regional area around the site instead.
 - **Geoid.** ERA5's heights are above sea level. hpr has no geoid model, so a flight takes them as
   heights above the WGS 84 ellipsoid unless you give the site's geoid height, the height of sea
   level above the ellipsoid, which is up to about 100 m ([Geodesy](../physics/geodesy.md)).
@@ -217,6 +233,9 @@ the conversion above.
   in the [reference lock file](https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml).
 - **[H]** H. Hersbach et al., "The ERA5 global reanalysis", *Quarterly Journal of the Royal
   Meteorological Society* 146 (2020), 1999–2049.
+- **[ECMWF]** ECMWF Knowledge Base, "ERA5: compute pressure and geopotential on model levels,
+  geopotential height and geometric height", captured 2026-09-26 and pinned as
+  `ecmwf-era5-geometric-height`.
 - **[WMO]** WMO-No. 8, *Guide to Instruments and Methods of Observation*, Vol. I (2023), eqs.
   12.15–12.16, `wmo-no8-vol1-2023`.
 - **RocketPy** 1.13.0 (MIT): its reading of the same files is the reference in the tests.
@@ -226,8 +245,14 @@ the conversion above.
 - `hpr_io::netcdf::tests::every_file_reads_as_the_unidata_library_reads_it`: every type, record
   variables, the padding cases and the packing conventions, on 12 files the Unidata library wrote
   (`validation/oracles/netcdf/write_cases.py`), with each difference from netCDF4-python listed.
+- `hpr_io::netcdf::tests::each_break_of_the_grammar_is_refused_for_its_reason`,
+  `variables_that_claim_more_bytes_than_the_file_holds_are_refused` and
+  `a_slab_too_large_to_pad_is_refused`, with two fuzz tests: damaged or hostile files are refused,
+  never a crash.
 - `hpr_io::era5::tests::on_the_hour_it_reads_the_levels_rocketpy_reads`, and the height
-  difference's cause, level by level.
+  difference's cause, level by level (`the_two_height_readings_differ_as_the_guide_says`).
+- `hpr_io::era5::tests::each_height_reading_errs_as_the_module_documentation_says`: the table of
+  height errors above.
 - `hpr_io::era5::tests::between_hours_it_weights_the_two_hours_in_time`.
 - `hpr_io::era5::tests::the_current_data_store_file_converted_as_the_guide_says_reads_like_the_older_file`.
 - The extracts and RocketPy's reading come from `validation/oracles/netcdf/era5.py`.

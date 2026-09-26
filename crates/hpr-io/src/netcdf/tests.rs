@@ -145,7 +145,8 @@ fn every_file_reads_as_the_unidata_library_reads_it() {
                 .iter()
                 .map(|d| d.as_str().unwrap())
                 .collect();
-            assert_eq!(ours.dimensions, dims, "{what}");
+            let ours_dims: Vec<&str> = ours.dimensions.iter().map(|d| &**d).collect();
+            assert_eq!(ours_dims, dims, "{what}");
             let shape: Vec<u64> = theirs["shape"]
                 .as_array()
                 .unwrap()
@@ -165,10 +166,18 @@ fn every_file_reads_as_the_unidata_library_reads_it() {
                 values => assert_eq!(numbers(values), raw, "{what}"),
             }
             // Raw values compare bit for bit, so -0.0 and the subnormals are checked too.
-            if let Values::Double(values) = &ours.values {
-                for (a, b) in values.iter().zip(&raw) {
-                    assert_eq!(a.to_bits(), b.to_bits(), "{what}");
+            match &ours.values {
+                Values::Double(values) => {
+                    for (a, b) in values.iter().zip(&raw) {
+                        assert_eq!(a.to_bits(), b.to_bits(), "{what}");
+                    }
                 }
+                Values::Float(values) => {
+                    for (a, b) in values.iter().zip(&raw) {
+                        assert_eq!(f64::from(*a).to_bits(), b.to_bits(), "{what}");
+                    }
+                }
+                _ => {}
             }
 
             let packing = ours.packing().unwrap();
@@ -501,9 +510,9 @@ fn each_break_of_the_grammar_is_refused_for_its_reason() {
 }
 
 #[test]
-fn variables_that_share_their_bytes_are_refused() {
+fn variables_that_claim_more_bytes_than_the_file_holds_are_refused() {
     // Twenty variables of 200 bytes each, all at the same offset: 4000 bytes claimed from a file
-    // of about a thousand.
+    // of about a thousand. Refused on the total, before any value is read.
     let names: Vec<String> = (0..20).map(|i| format!("v{i}")).collect();
     let vars: Vec<(&str, &[u32], u32, u32)> = names
         .iter()
@@ -512,6 +521,43 @@ fn variables_that_share_their_bytes_are_refused() {
     let bytes = forged(0, &[("x", 200)], &vars, &[0; 200]);
     assert!(bytes.len() < 2000);
     assert!(malformed_reason(&bytes).contains("more than the file's"));
+    // A record variable claims its slab once per record.
+    let bytes = forged(0xFFFF_FFFE, &[("t", 0)], &[("v", &[0], 1, 80)], &[]);
+    assert!(malformed_reason(&bytes).contains("more than the file's"));
+}
+
+#[test]
+fn a_slab_too_large_to_pad_is_refused() {
+    // 2^64 − 1 = 3·5·17·257·641·65537·6700417, each a legal dimension length, so a byte record
+    // variable over all of them has a slab of u64::MAX, which does not round up to four.
+    let factors = [3, 5, 17, 257, 641, 65_537, 6_700_417];
+    let mut dims = vec![("r", 0)];
+    let names: Vec<String> = factors.iter().map(|f| format!("d{f}")).collect();
+    dims.extend(names.iter().map(String::as_str).zip(factors));
+    let ids: Vec<u32> = (0..dims.len() as u32).collect();
+    let bytes = forged(1, &dims, &[("a", &ids, 1, 0), ("b", &ids, 1, 0)], &[]);
+    let reason = malformed_reason(&bytes);
+    assert!(
+        reason.starts_with("a size of 18446744073709551615 bytes"),
+        "{reason}"
+    );
+}
+
+#[test]
+fn variables_share_their_dimension_names() {
+    // One allocation per dimension, whatever the number of axes that name it.
+    let header = forged(0, &[("x", 4)], &[("a", &[0], 1, 0), ("b", &[0], 1, 0)], &[]).len();
+    let begin = header as u32;
+    let bytes = forged(
+        0,
+        &[("x", 4)],
+        &[("a", &[0], 1, begin), ("b", &[0], 1, begin + 4)],
+        &[0; 8],
+    );
+    let file = NetCdf::parse(&bytes).unwrap();
+    let (a, b) = (file.variable("a").unwrap(), file.variable("b").unwrap());
+    assert_eq!(&*a.dimensions[0], "x");
+    assert!(std::sync::Arc::ptr_eq(&a.dimensions[0], &b.dimensions[0]));
 }
 
 #[test]

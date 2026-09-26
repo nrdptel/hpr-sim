@@ -32,15 +32,17 @@
 //! height by WMO-No. 8 eqs. 12.15–12.16 at the site's latitude
 //! ([`geometric_from_wmo_geopotential_m`]), the relation [`SoundingProfile`] inverts.
 //!
-//! Both are approximations. The model sets the surface's geopotential to `g₀` times the surface
-//! height `h_s` and integrates the true geopotential above it, so a level at true height `h` has
-//! `Z ≈ h_s + (h − h_s) γ/g₀`. Solved for `h`, hpr's reading is off by a constant
-//! `h_s (g₀/γ_s − 1)` at every height and ECMWF's by `−(h − h_s)(g₀/γ_s − 1)`, growing with the
-//! height above the model's ground. For a pad near the model's ground the constant is the smaller
-//! over a flight: 0.06 m at Bella Lui's 407 m and 47.2° N, 1.6 m at a pad 1400 m up at 33° N, where
-//! ECMWF's reaches 3.4 m at 3 km above it. The two readings differ by `g₀/γ_s(φ) − 1` of the
-//! height, −1.58e-4 at 47.2° N and +3.43e-4 at 41.8° N (−0.69 m at 4.4 km and +1.45 m at 4.2 km on
-//! the tests' files).
+//! Both are approximations. Suppose the model's ground lies at true height `h_s` with geopotential
+//! `g₀ h_s`, as reading surface geopotential over `g₀` as the ground's height takes it (ECMWF does
+//! not say how the model builds it, so this is an assumption), and gravity above it falls off as
+//! WMO's formula has it. To first order hpr's reading is then off by `h_s (g₀/γ_s − 1) + h_s²/R`,
+//! the same at every height, and ECMWF's by `h_s²/R − (h − h_s)(g₀/γ_s − 1)`, which grows with the
+//! height above the model's ground. Neither is always the smaller. For a model ground at 407 m at
+//! 47.2° N hpr's is −0.04 m. For one 1400 m up at 33° N hpr's is 1.88 m, and ECMWF's is 0.31 m at
+//! the ground and −3.05 m 3 km above it; ECMWF's is the smaller up to 1.95 km above that ground.
+//! hpr keeps WMO's because it is the rule [`SoundingProfile`] uses for every sounding, so a level's
+//! geopotential round-trips. The two readings differ by `g₀/γ_s(φ) − 1` of the height, −1.58e-4 at
+//! 47.21° N and +3.43e-4 at 41.78° N (−0.69 m at 4.4 km and +1.45 m at 4.2 km on the tests' files).
 //!
 //! **What it leaves out.** Humidity is not read, so the air is dry: at 20 °C and 50% relative
 //! humidity dry air is about 0.4% denser than the real air. Between and beyond the levels the
@@ -348,14 +350,19 @@ fn check_units(variable: &Variable, accepted: &[&str]) -> Result<(), Era5Error> 
     }
 }
 
+/// A variable's dimension names, for an error.
+fn names_of(variable: &Variable) -> Vec<String> {
+    variable.dimensions.iter().map(|d| d.to_string()).collect()
+}
+
 /// A one-dimensional coordinate variable's unpacked values.
 fn axis(variable: &Variable) -> Result<Vec<f64>, Era5Error> {
     // A coordinate variable lies along the dimension of its own name (CF Conventions 1.11 §1.2),
     // so the data variables' dimensions of that name are indexed by it.
-    if variable.dimensions != [variable.name.as_str()] {
+    if !matches!(&variable.dimensions[..], [only] if **only == *variable.name) {
         return Err(Era5Error::Dimensions {
             variable: variable.name.clone(),
-            found: variable.dimensions.clone(),
+            found: names_of(variable),
             expected: format!("[\"{}\"]", variable.name),
         });
     }
@@ -483,7 +490,7 @@ fn time_units(units: &str, calendar: Option<&str>) -> Result<(f64, f64), Era5Err
 fn positions(variable: &Variable, names: [&str; 4]) -> Result<[usize; 4], Era5Error> {
     let error = || Era5Error::Dimensions {
         variable: variable.name.clone(),
-        found: variable.dimensions.clone(),
+        found: names_of(variable),
         expected: format!("{names:?} in any order"),
     };
     if variable.dimensions.len() != 4 {
@@ -494,7 +501,7 @@ fn positions(variable: &Variable, names: [&str; 4]) -> Result<[usize; 4], Era5Er
         *slot = variable
             .dimensions
             .iter()
-            .position(|d| d == name)
+            .position(|d| **d == *name)
             .ok_or_else(error)?;
     }
     Ok(out)

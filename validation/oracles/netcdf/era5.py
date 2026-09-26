@@ -18,7 +18,8 @@
    holds everything the reading uses.
 
 The extracts contain modified Copernicus Climate Change Service information (2020): ERA5 hourly
-data on pressure levels (Hersbach et al., 2020), as redistributed by RocketPy.
+data on pressure levels (Hersbach et al., 2023, doi:10.24381/cds.bd0915c6), as redistributed by
+RocketPy.
 
 Run from the repository root with the oracle environment:
 
@@ -29,6 +30,7 @@ Run from the repository root with the oracle environment:
 import bisect
 import datetime
 import hashlib
+import importlib.metadata
 import json
 import os
 import sys
@@ -46,12 +48,8 @@ COMMAND = (
     "refs/venv/bin/python validation/oracles/netcdf/era5.py "
     "> validation/fixtures/weather/era5-rocketpy.json"
 )
-
-
-def sha256(path):
-    with open(path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
 OUT = "validation/fixtures/weather/era5"
+ROCKETPY = importlib.metadata.version("rocketpy")
 ATTRIBUTION = (
     "Contains modified Copernicus Climate Change Service information 2020 (ERA5 hourly data on "
     "pressure levels), cut from RocketPy v1.13.0's data/weather/{source} by "
@@ -89,6 +87,11 @@ CASES = [
         "times": [(2020, 2, 23, 16)],
     },
 ]
+
+
+def sha256(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 def window(values, x):
@@ -207,10 +210,11 @@ def main():
         inputs[case["source"]] = sha256(os.path.join(WEATHER, case["source"]))
     json.dump(
         {
-            "source": "RocketPy 1.13.0 Environment(type='Reanalysis', dictionary='ECMWF') on the "
-            "full files, which read the same on the extracts (validation/oracles/netcdf/era5.py)",
+            "source": f"RocketPy {ROCKETPY} Environment(type='Reanalysis', dictionary='ECMWF') "
+            "on the full files, which read the same on the extracts "
+            "(validation/oracles/netcdf/era5.py)",
             "generator": "validation/oracles/netcdf/era5.py",
-            "tool": f"RocketPy 1.13.0, netCDF4-python {netCDF4.__version__}, "
+            "tool": f"RocketPy {ROCKETPY}, netCDF4-python {netCDF4.__version__}, "
             f"xarray {xarray.__version__}",
             "generated": GENERATED,
             "command": COMMAND,

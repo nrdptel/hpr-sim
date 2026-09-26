@@ -23,6 +23,9 @@
 //! them readable ([`CONVERSION`]). A file whose record count was never written (`numrecs` "streaming") is
 //! refused, as the specification leaves it unimplemented.
 
+use std::collections::BTreeSet;
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -289,8 +292,9 @@ pub struct Attribute {
 pub struct Variable {
     /// Its name.
     pub name: String,
-    /// Its dimensions' names, outermost first.
-    pub dimensions: Vec<String>,
+    /// Its dimensions' names, outermost first. Each is shared with every other variable along that
+    /// dimension, so a header that names one dimension many times costs no copy per axis.
+    pub dimensions: Vec<Arc<str>>,
     /// Its length along each dimension (the record count for the record dimension).
     pub shape: Vec<u64>,
     /// Its attributes.
@@ -532,10 +536,12 @@ impl NetCdf {
         }
         let numrecs = u64::from(numrecs);
 
+        // Names seen so far go in sets, so a header of many names costs no quadratic time.
         let mut dimensions = Vec::new();
+        let mut seen = BTreeSet::new();
         for _ in 0..header.list(NC_DIMENSION, "dimension")? {
             let name = header.name()?;
-            if dimensions.iter().any(|d: &Dimension| d.name == name) {
+            if !seen.insert(name.clone()) {
                 return Err(malformed(format!("two dimensions are called `{name}`")));
             }
             let length = header.count("a dimension length")?;
@@ -552,9 +558,10 @@ impl NetCdf {
         let attributes = header.attributes()?;
 
         let mut layouts = Vec::new();
+        let mut seen = BTreeSet::new();
         for _ in 0..header.list(NC_VARIABLE, "variable")? {
             let name = header.name()?;
-            if layouts.iter().any(|l: &Layout| l.name == name) {
+            if !seen.insert(name.clone()) {
                 return Err(malformed(format!("two variables are called `{name}`")));
             }
             let rank = header.count("a variable's rank")?;
@@ -610,7 +617,7 @@ impl NetCdf {
             let padded = if record_variables == 1 {
                 layout.slab
             } else {
-                pad4(layout.slab)
+                pad4(layout.slab)?
             };
             record_size = record_size
                 .checked_add(padded)
@@ -638,6 +645,10 @@ impl NetCdf {
             )));
         }
 
+        let names: Vec<Arc<str>> = dimensions
+            .iter()
+            .map(|d: &Dimension| Arc::from(d.name.as_str()))
+            .collect();
         let mut variables = Vec::with_capacity(layouts.len());
         for layout in layouts {
             let values = if layout.is_record {
@@ -661,7 +672,7 @@ impl NetCdf {
                 dimensions: layout
                     .dims
                     .iter()
-                    .map(|&id| dimensions[id].name.clone())
+                    .map(|&id| Arc::clone(&names[id]))
                     .collect(),
                 shape: layout
                     .dims
@@ -709,8 +720,12 @@ struct Layout {
     slab: u64,
 }
 
-fn pad4(n: u64) -> u64 {
-    n.div_ceil(4) * 4
+/// `n` rounded up to a multiple of four, or an error if that overflows (a header can make a
+/// record variable's slab as large as `u64::MAX`).
+fn pad4(n: u64) -> Result<u64, NetCdfError> {
+    n.div_ceil(4)
+        .checked_mul(4)
+        .ok_or_else(|| malformed(format!("a size of {n} bytes is too large")))
 }
 
 /// `len` bytes of `bytes` from `start`, or [`NetCdfError::Truncated`].
@@ -784,7 +799,7 @@ impl Reader<'_> {
 
     fn name(&mut self) -> Result<String, NetCdfError> {
         let n = self.count("a name's length")?;
-        let raw = self.take(pad4(n), "a name")?;
+        let raw = self.take(pad4(n)?, "a name")?;
         let text = std::str::from_utf8(&raw[..raw.len().min(n as usize)])
             .map_err(|_| malformed("a name is not UTF-8"))?;
         Ok(text.to_owned())
@@ -792,9 +807,10 @@ impl Reader<'_> {
 
     fn attributes(&mut self) -> Result<Vec<Attribute>, NetCdfError> {
         let mut attributes = Vec::new();
+        let mut seen = BTreeSet::new();
         for _ in 0..self.list(NC_ATTRIBUTE, "attribute")? {
             let name = self.name()?;
-            if attributes.iter().any(|a: &Attribute| a.name == name) {
+            if !seen.insert(name.clone()) {
                 return Err(malformed(format!("two attributes are called `{name}`")));
             }
             let kind = Type::from_tag(self.u32("an attribute's type")?)?;
@@ -802,7 +818,7 @@ impl Reader<'_> {
             let size = n
                 .checked_mul(kind.size())
                 .ok_or_else(|| malformed(format!("attribute `{name}` is too large")))?;
-            let raw = self.take(pad4(size), &format!("attribute `{name}`"))?;
+            let raw = self.take(pad4(size)?, &format!("attribute `{name}`"))?;
             let values = Values::decode(kind, &raw[..size as usize]);
             attributes.push(Attribute { name, values });
         }

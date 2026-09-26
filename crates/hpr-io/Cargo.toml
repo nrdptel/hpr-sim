@@ -22,7 +22,8 @@ hpr-design.workspace = true
 hpr-format.workspace = true
 hpr-motor.workspace = true
 roxmltree.workspace = true
-serde.workspace = true
+# `rc`: a variable's dimension names share one allocation per dimension.
+serde = { workspace = true, features = ["rc"] }
 thiserror.workspace = true
 zip.workspace = true
 
@@ -31,3 +32,4 @@ insta.workspace = true
 proptest.workspace = true
 roxmltree.workspace = true
 serde_json.workspace = true
+sha2.workspace = true

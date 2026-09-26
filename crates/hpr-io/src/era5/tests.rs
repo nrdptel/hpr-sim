@@ -167,6 +167,49 @@ fn the_two_height_readings_differ_as_the_guide_says() {
 }
 
 #[test]
+fn each_height_reading_errs_as_the_module_documentation_says() {
+    // A model ground at true height `h_s` with geopotential `g₀ h_s`, and gravity above it falling
+    // off as WMO's eq. 12.15 takes it: a level at true height `h` has
+    // `Z = h_s + (γ_s/g₀) R (h/(R + h) − h_s/(R + h_s))`. hpr reads `Z` by WMO, ECMWF by
+    // `R Z/(R − Z)`; the module documentation and the guide quote the errors and the crossing.
+    let errors = |latitude_deg: f64, ground_m: f64, above_m: f64| {
+        let latitude = latitude_deg.to_radians();
+        let (gamma_s, radius) = wmo_gravity_and_radius(latitude);
+        let wmo = |h: f64| gamma_s / ERA5_GRAVITY_M_S2 * radius * h / (radius + h);
+        let h = ground_m + above_m;
+        let z = ground_m + wmo(h) - wmo(ground_m);
+        let hpr = wmo_geometric(z, latitude) - h;
+        let ecmwf = radius * z / (radius - z) - h;
+        (hpr, ecmwf)
+    };
+    let two = |x: f64| format!("{x:.2}");
+    // A model ground at 407 m at 47.2° N: hpr's error is a constant few centimetres.
+    for above_m in [0.0, 3000.0] {
+        assert_eq!(two(errors(47.2, 407.0, above_m).0), "-0.04");
+    }
+    assert_eq!(two(errors(47.2, 407.0, 0.0).1), "0.03");
+    assert_eq!(two(errors(47.2, 407.0, 3000.0).1), "0.50");
+    // A pad 1400 m up at 33° N: hpr's is constant, ECMWF's grows with the height above the ground.
+    for above_m in [0.0, 3000.0] {
+        assert_eq!(two(errors(33.0, 1400.0, above_m).0), "1.88");
+    }
+    assert_eq!(two(errors(33.0, 1400.0, 0.0).1), "0.31");
+    assert_eq!(two(errors(33.0, 1400.0, 3000.0).1), "-3.05");
+    // ECMWF's is the smaller up to about 1.95 km above that ground, hpr's beyond.
+    let (mut low, mut high) = (0.0, 3000.0);
+    for _ in 0..60 {
+        let mid = 0.5 * (low + high);
+        let (hpr, ecmwf) = errors(33.0, 1400.0, mid);
+        if ecmwf.abs() < hpr.abs() {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    assert_eq!(format!("{:.2}", low / 1000.0), "1.95");
+}
+
+#[test]
 fn between_hours_it_weights_the_two_hours_in_time() {
     let fixture = rocketpy();
     let case = case(&fixture, "bella-lui");
@@ -548,4 +591,38 @@ fn directions_are_where_the_wind_blows_from() {
     );
     assert_eq!(direction_from_rad(0.0, 0.0), 0.0);
     assert_eq!(direction_from_rad(-0.0, -0.0), 0.0);
+}
+
+/// The weather records move only when their scripts run (Loft lesson L76), and the scripts they
+/// name are the committed ones. `.gitattributes` keeps the scripts LF on every platform.
+#[test]
+fn the_weather_records_are_their_scripts_output() {
+    use sha2::Digest as _;
+    let hex = |bytes: &[u8]| -> String {
+        sha2::Sha256::digest(bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    };
+    let netcdf: Value = serde_json::from_str(include_str!(
+        "../../../../validation/fixtures/weather/netcdf-reads.json"
+    ))
+    .unwrap();
+    for (record, script) in [
+        (
+            &netcdf,
+            include_bytes!("../../../../validation/oracles/netcdf/write_cases.py").as_slice(),
+        ),
+        (
+            &rocketpy(),
+            include_bytes!("../../../../validation/oracles/netcdf/era5.py").as_slice(),
+        ),
+    ] {
+        assert_eq!(
+            record["inputs_sha256"]["script"],
+            hex(script).as_str(),
+            "{} changed since its record was written: rerun it",
+            record["generator"]
+        );
+    }
 }

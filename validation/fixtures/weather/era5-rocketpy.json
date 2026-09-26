@@ -5,7 +5,7 @@
  "generated": "2026-09-26",
  "command": "refs/venv/bin/python validation/oracles/netcdf/era5.py > validation/fixtures/weather/era5-rocketpy.json",
  "inputs_sha256": {
-  "script": "a936148e97cb25d5f97aaf84cdfd853d0141279dca67bde9cc7728c1abd14314",
+  "script": "56780931acfb6dac1969990dc05e50f4072b2ee2a1b2d58c8b07e0caf11b7ffe",
   "bella_lui_weather_data_ERA5.nc": "51a60794fca3a4511436ee54821307a557576399fe5d1252bbf7c7b639809e95",
   "ndrt_2020_weather_data_ERA5.nc": "e23b2e402bd2b8ed22cee249264601bf85d40e46391daa32dbd7b781b9979034",
   "ndrt_2020_weather_data_ERA5_new.nc": "00d82fc57376adf0242e9e2c2f8ce6b22ae59a72e11603e73ebb385364086600"
