@@ -277,7 +277,9 @@ To get it in code:
 
 What changes it:
 
-- **Speed.** Only the fins' terms change with Mach number; the bodies' don't. Up to Mach 0.8 the
+- **Speed.** Below Mach 1.2 only the fins' terms change with Mach number; past it the bodies' can
+  too ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). Up to
+  Mach 0.8 the
   fins' slope grows through the Prandtl–Glauert factor, the classic correction for the air's
   compressibility, whose effect grows as the speed nears that of sound (*Prandtl–Glauert*, under
   Fins). How much a fin set gains depends on its span, area and sweep. So as the rocket speeds

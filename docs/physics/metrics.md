@@ -10,7 +10,7 @@
   [ejection delay](../glossary.md#ejection-delay) that would fire the charge at apogee, and each
   landing's latitude and longitude. Anything that didn't happen is `None`, never a zero.
 - **Sources:** the margin is [Barrowman's](../glossary.md#barrowmans-method) centre of pressure
-  (to Mach 0.8; faster, as [Aerodynamics](aero.md#fins-through-mach-1) describes)
+  (to Mach 0.8; faster, as [Aerodynamics](aero.md#your-rockets-centre-of-pressure) describes)
   against the [centre of mass](../glossary.md#centre-of-gravity-cg) (the CG), defined as [RocketPy](../glossary.md#rocketpy) defines its static
   margin and stability margin. The peak search is Kiefer's golden-section search
   ([References](#references)). Latitude and longitude come from hpr's WGS 84 conversions
@@ -28,8 +28,9 @@
   - A damping ratio: how fast a wobble dies out. Both margins here are static quantities.
   - The margin at the flight's [angle of attack](../glossary.md#angle-of-attack). Both margins
     take the air along the rocket's axis. In hpr's model a rocket meeting the air at an angle, as
-    it does leaving a rail in wind, has a smaller margin than these
-    ([Stability margins](#stability-margins) says why they leave it out).
+    it does leaving a rail in wind, can have a smaller or a larger margin than these, depending on
+    where its body's lift acts ([Stability margins](#stability-margins) says why they leave it
+    out).
 
 ## Why these rules
 
@@ -59,7 +60,7 @@ let best = hpr_sim::metrics::optimum_delays(&simulation)?;
 ```
 
 A watcher keeps one flight. Call `metrics.clear()` before it watches another; `summary` refuses a
-flight the watcher didn't see end.
+flight unless the watcher saw each of its steps once.
 
 The example program
 [`flight_metrics.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/flight_metrics.rs)
@@ -98,10 +99,10 @@ The 6 s delay is too short:
   [Getting started](../getting-started.md) flight, whose drogue fires at apogee.
 - So the optimum delay is 10.6 s. The opening shock, 153.4 m/s², is three times the boost's
   47.2 m/s², and it is not counted as the boost's peak.
-- Don't size a shock cord from the 153.4 m/s²: it is no bound either way. This canopy opens at
-  once when it deploys (hpr's default, with no filling time), which leaves out the rocket slowing
-  while a real canopy fills and so reads high. hpr also leaves out the overshoot of a canopy's
-  drag near the end of filling, which reads low
+- Don't size a shock cord from the 153.4 m/s²; it is no bound either way. The canopy reaches
+  full drag at line stretch, 0.5 s after the charge, with no filling time (hpr's default), so the
+  rocket doesn't slow while it fills: that reads high. hpr also leaves out a canopy's drag
+  overshoot near the end of filling: that reads low
   ([The opening load](recovery.md#the-opening-load)).
 
 Top speed comes at 3.00 s, before the 3.26 s burnout, because in the thrust curve's last moments
@@ -176,34 +177,42 @@ Here `x` is a station measured aft of the nose tip, and `C_Nα,i` is component `
   along the axis, against the centre of mass of that instant. It is defined as RocketPy's
   `stability_margin` is. RocketPy's `min_stability_margin` takes the least over its whole flight,
   on the rail and in the descent too, at its solver's steps, so it can differ from hpr's least
-  below. No page compares hpr's margins with RocketPy's yet. At rod clearance, in calm air, hpr's
-  margin at the flight's Mach number agrees with OpenRocket's within 0.016 calibres on 33 flights
-  ([Accuracy](../accuracy.md)).
+  below. No page compares hpr's margins with RocketPy's yet. Against OpenRocket, in calm air at
+  rod clearance, where a rocket is still slow, hpr's margin at the flight's Mach number is within
+  0.016 calibres on the 33 flights of OpenRocket's own examples, and up to 0.11 calibres higher on
+  18 flights of private designs, cause not yet traced ([Accuracy](../accuracy.md)). Near Mach 1
+  hpr puts the Arcas Robin's centre of pressure up to 2.36 calibres behind the wind tunnel's
+  ([Normal force through Mach 1](aero.md#normal-force-through-mach-1)), so there its flight margin
+  reads high.
 
-  The Mach number moves the centre of pressure. On a rocket with fins only at the tail it moves
-  aft up to where supersonic theory starts for the fins, Mach 1.2 or later: their slope grows, and
-  from Mach 0.8 their own centre moves aft too. Past that their slope falls, and the centre of
-  pressure moves forward again
+  The Mach number moves the centre of pressure. On a rocket with fins only at the tail it
+  generally moves aft up to where supersonic theory starts for the fins, Mach 1.2 or later: their
+  slope grows, and from Mach 0.8 their own centre moves aft too. Past that their slope falls and
+  the body's lift can grow, and the centre of pressure mostly moves forward again
   ([Your rocket's centre of pressure](aero.md#your-rockets-centre-of-pressure)). Valetudo is slow:
   at its rail exit, at Mach 0.051, both margins read 3.09 calibres.
 
 Both margins leave out the [angle of attack](../glossary.md#angle-of-attack). In hpr,
-[body lift](aero.md#body-lift) grows with the angle and acts ahead of the fins, so at an angle the
-centre of pressure moves forward and the margin shrinks. But the angle is not a steady property of
+[body lift](aero.md#body-lift) grows with the angle and acts at each body's side-view centroid, and
+the centre of pressure moves toward it. Where that centroid lies ahead of the zero-angle centre of
+pressure, the margin at an angle shrinks; on a long body with small fins it can lie behind, and the
+margin grows. No test pins either direction. But the angle is not a steady property of
 the rocket. Valetudo leaves its rail 17.2° off the oncoming air in the example's 5 m/s crosswind,
 and near apogee the angle swings toward 90° as the rocket slows and tips over. If the least margin
 followed the angle, it would land wherever hpr chose to stop counting large angles, and hpr models
 no fin [stall](../glossary.md#stall) that could say where that is. For the margin at a given
 angle, call [`margin`](../api/hpr_sim/metrics/fn.margin.html) with
-`Flow::new(mach, angle_rad, roll_rad)`.
+[`Flow::new(mach, angle_rad, roll_rad)`](../api/hpr_aero/model/struct.Flow.html#method.new).
 
 The watcher keeps both margins in `FlightMetrics::stability()`. The series starts at the rail exit
 and ends at apogee or when a recovery device opens, whichever comes first. Before the rail exit the
 rail holds the rocket, so its margin says nothing about how it flies.
 
 The summary's least margins cover the same span. Each is looked for inside every step, as a peak
-is ([Peaks](#peaks)): wherever the parabola through a step's start, middle and end bends up with
-its bottom inside the step, a golden-section search finds the bottom. A margin with a sharp corner
+is ([Peaks](#peaks)): wherever the margin is defined at a step's start, middle and end and the
+parabola through them bends up with its bottom inside the step, a golden-section search finds the
+bottom. A later least replaces an earlier one only when lower by more than rounding, so a flat
+least keeps its first time. A margin with a sharp corner
 near a step's end can still hide from the parabola.
 
 - On four test flights, and in the example, both leasts come at the rail exit, where the rocket is

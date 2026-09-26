@@ -6925,8 +6925,9 @@ compute but not write files.
    at each step's end from the rail exit to apogee or the first deployment, since on the rail the
    rail holds the rocket; a powered separation adds the sustainer's own entry at the split. The
    least of each is searched for inside steps, as a peak is, and a later least replaces an earlier
-   one only when lower by more than 1e-12 relative, so a flat least keeps its first time. The angle of attack is left out, after three versions that followed it failed review: its
-   least came at the apogee in calm air (1.28 calibres on Valetudo); a floor on the dynamic
+   one only when lower by more than 1e-12 of the earlier (or 1e-12 calibres below one calibre), so
+   a flat least keeps its first time. The angle of attack is left out, after three versions that
+   followed it failed review: its least came at the apogee in calm air (1.28 calibres on Valetudo); a floor on the dynamic
    pressure at the rail exit's let the apogee through off a tilted rail, which still crosses the
    air there as fast as it left the rail; and a 15° cap on the angle (the limit on a fin's cant)
    put the least on the cap, where it moved with the step size (0.84 to 1.23 calibres on one

@@ -1040,8 +1040,9 @@ mod tests {
             (least_static.value, scanned.least_static),
             (least_flight.value, scanned.least_flight),
         ] {
+            // A least only gives way to one lower by more than rounding (1e-12).
             assert!(
-                least <= scan && scan - least < 1e-7,
+                least <= scan + 1e-12 && scan - least < 1e-7,
                 "{least} against {scan}"
             );
         }

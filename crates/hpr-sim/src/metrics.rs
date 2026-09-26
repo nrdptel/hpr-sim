@@ -114,8 +114,8 @@ pub struct Stability {
     pub static_margin: Margin,
     /// The flight margin: the air along the axis at the flight's Mach number, with the centre of
     /// mass of this instant (RocketPy's `stability_margin`). The angle of attack is left out: near
-    /// apogee it swings toward 90° as the air stops pressing, and a margin that followed it would
-    /// be least wherever a cut-off on the angle fell.
+    /// apogee it swings toward 90° as the rocket slows and tips over, and a least margin that
+    /// followed it would land wherever large angles stopped being counted.
     pub flight_margin: Margin,
 }
 
@@ -369,7 +369,9 @@ impl FlightMetrics {
 
     /// The stability from the rail exit (or the start of a flight begun in the air) to apogee or
     /// the first deployment, whichever comes first: at the rail exit and at every step's end, in
-    /// time order.
+    /// time order. A powered separation adds the sustainer's own entry at the split, after the
+    /// stack's and at the same time, so the watcher needs the flight's events as well as its
+    /// steps.
     #[must_use]
     pub fn stability(&self) -> &[Stability] {
         &self.stability
@@ -619,8 +621,9 @@ fn flight_of(s: &Stability) -> &Margin {
     &s.flight_margin
 }
 
-/// How far below a least margin another must be to replace it, relative: a flat margin, which
-/// rounding can nudge by an ulp, keeps its first time.
+/// How far below a least margin another must be to replace it: this fraction of the least, or of
+/// 1 calibre below 1 calibre. A flat margin, which rounding can nudge by an ulp, keeps its first
+/// time.
 const MARGIN_TIE: f64 = 1e-12;
 
 /// Whether margin `a` is below `b` by more than [`MARGIN_TIE`].
@@ -908,8 +911,8 @@ mod tests {
 
     #[test]
     fn ordinary_rockets_keep_their_margin() {
-        // The other side of the limit: every design in `validation/designs/`, from Mach 0 to 2 and
-        // at angles of attack to 20°, is far from it. Its slopes nearly all push one way.
+        // The other side of the limit: every design in `validation/designs/`, at Mach 0 to 2 and
+        // angles of attack of 0° to 20° (the points below), is far from it. Its slopes nearly all push one way.
         let mut worst: f64 = 0.0;
         for name in [
             "synthetic-54mm-three-fin",
