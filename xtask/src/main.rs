@@ -41,6 +41,7 @@ mod ork_motors;
 mod ork_recovery;
 mod ork_simulations;
 mod ork_supply;
+mod real_flights;
 mod refs;
 mod site;
 mod validate;
@@ -64,6 +65,7 @@ Commands:
 {EXAMPLES}
 {ORK}
 {ORK_FLIGHTS}
+{REAL_FLIGHTS}
   help                     Print this message.";
 
 fn usage() -> String {
@@ -76,6 +78,7 @@ fn usage() -> String {
         .replace("{EXAMPLES}", examples::USAGE)
         .replace("{ORK}", ork::USAGE)
         .replace("{ORK_FLIGHTS}", ork_flights::USAGE)
+        .replace("{REAL_FLIGHTS}", real_flights::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -90,6 +93,7 @@ fn main() -> ExitCode {
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
         Some("ork") => ork::run(&args.collect::<Vec<_>>()),
         Some("ork-flights") => ork_flights::run(&args.collect::<Vec<_>>()),
+        Some("real-flights") => real_flights::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())

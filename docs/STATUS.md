@@ -5,26 +5,28 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
-  #173, #174, M1.13, #133 (13 of 20 designs); active work is M2.3b, RocketPy's logged flights.
+  #173, #174, M1.13, #133 (13 of 20 designs); active work is M2.3c, the corpus flights with logs.
 - **Order:** M1.8e16 waits on #108, M2.2e5 on its four; M2.3 is split a to c (ADR-081).
-  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M2.3a.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M2.3a-b.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M2.3a ERA5 weather (ADR-081) done; M2.3b next.
+- **Last updated:** 2026-09-26; M2.3b real flights (ADR-082) done; M2.3c next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.3b** on `m2.3b-<slug>`: logs in `refs/rocketpy/data/rockets/` (NDRT in feet, Bella
-  Lui's time in column 2); sites and times in each acceptance test or notebook. COTS with designs:
-  Bella Lui, NDRT 2020, Prometheus (notebook flies 2023 weather for 2022), Cavour; add Genesis,
-  Astra, Lince, Andromeda (euroc_2022 is netCDF-4: convert). Juno III, Valetudo fly team motors.
-  Weather: `Era5Profile::read`, `.sounding(..)` (ADR-081); commit only extracts.
+- **Start M2.3c** on `m2.3c-<slug>`: private designs with a flight log (`refs/debrief-fixtures`
+  logs, `refs/loft-fixtures` designs), in their day's weather, published as anonymised statistics
+  beside `validation/reports/real-flights.md`. First find which logs match a design, and whether
+  an ERA5 file of the day exists (none is cached; the Data Store needs an account: Needs Neer if
+  so). Reuse `hpr_validate::real_flight` (`compare_traces`, `parse_log`, checked `Explanation`s);
+  commit only statistics (rule 4). `cargo xtask real-flights --check` needs `refs/rocketpy`.
+  Astra and Andromeda (EuRoC 2022 netCDF-4, ADR-081's conversion) are M2.3b's leftovers.
   Flutter (ADR-078): margin at max q; moduli cited in `materials::SHEAR_MODULI`; G10/FR-4 has none.
   Metrics (ADR-077): `FlightStep::stability`, margin `None` past `κ = √10`, least refined in steps.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
   Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
-  (#172). After any physics change run `cargo xtask ork-flights --check` and `--library --check`:
-  CI can't fly them (jar, `corpus-out/`); corpus reruns jitter (≤5e-7).
+  (#172). After any physics change run `cargo xtask ork-flights --check`, `--library --check`
+  and `real-flights --check`: CI can't fly them; corpus reruns jitter (≤5e-7).
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -57,6 +59,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-26: M2.3b Real flights (ADR-082): 7 logged flights, mean |apogee error| 4.23% (target 5%); 3 outliers checked.
 - 2026-09-26: M2.3a ERA5 weather (ADR-081; M2.3 split a to c): netCDF classic from the spec; RocketPy's levels to 1e-12.
 - 2026-09-26: M1.10c2 Parquet (ADR-080): in-house writer; Apache's reader agrees bit for bit; M1.10 done.
 - 2026-09-26: M1.10c1 Text exports (ADR-079): CSV, JSON, GeoJSON by the published schema, KML by parsing; exact.
@@ -79,6 +82,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-082: real flights read from `refs/`, only numbers committed; ascent RMS aligned at 30 m;
+  each outlier's explanation a checked claim, with a flight on the team's drag as evidence.
 - ADR-081: M2.3 split a to c; netCDF classic by hand, netCDF-4 converted; time-weighted; WMO heights.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
@@ -89,22 +94,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".
 - ADR-062 to ADR-066: M2.2b2-b5, c split; exact fin inertia and sections, clusters, fillets pinned
   as departures; packed parts as OR packs them; screens apart; the oracle integrates one file twice.
-- ADR-061: what a `.ork` leaves unsaid is OpenRocket's reading; two override rules stay hpr's.
-- ADR-060: M2.2 split a to e, mass first; thresholds (1% mass, 1% of length) set before measuring.
-- ADR-059: "agrees on the key geometry" means no number of hpr's is apart from both RocketSerializer
-  and OpenRocket; RocketSerializer pinned as a tool, `--no-deps`, so `orhelper` is never installed.
+- ADR-060, ADR-061: M2.2 split a to e, mass first, thresholds set first; a `.ork`'s unsaid is OR's.
+- ADR-059: key geometry agrees unless apart from both RocketSerializer and OR; `orhelper` never installed.
 - ADR-055 to ADR-058: a motor's curve is its file's own first; only what lights at launch flies;
   recovery and stored simulations read as written, not flown; the unread kept in `x-openrocket`.
 - ADR-051 to ADR-054: M3.1 split a to d; a `.ork` document kept whole; an automatic dimension
   keeps both halves; angles are degrees; a radius with nothing to take is OpenRocket's 25 mm.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
   own; a cylinder's and a boattail's keep the refusal (#123). Edges from the corner.
-- ADR-049: a step in radius keeps the model it has (no source gives a step's normal force faster
-  than sound); its size is published. #87 narrowed to it, #120 and #121 carry the rest.
-- ADR-048: model 2's drawing is closed on the base, not on its printed lengths; a blunt nose may
-  span more than one curved segment but a cap may not reach a cylinder.
-- ADR-047: a flare's attachment test is NACA 1135's wedge limit at the flow reaching the corner (TN
-  D-4865 p. 5's) under the cone tables' 30°; a steeper flare reads the same radii drawn out.
+- ADR-048, ADR-049: model 2 closed on the base; a step in radius keeps its model (#87, #120, #121).
+- ADR-047: a flare attaches by NACA 1135's wedge limit under the cone tables' 30°.
 - ADR-046: Debrief folded in; `hpr-flightdata` off `hpr-sim`, `hpr-forensics` added, Phase 5
   re-cut, `hpr analyze` in M4.2. Its `.ork` parser is clean room, `COMPETITION.md` is not.
 - ADR-038 to ADR-040: the march behind a blunt tip starts from the tangent cone, not TN D-4865's

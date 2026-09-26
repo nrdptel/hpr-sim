@@ -40,8 +40,9 @@ These are built from `validation/fixtures/design/rocketpy-rocket-mass.json`, whi
   - The rockets whose curves RocketPy labels RASAero (both Calisto designs, Juno III, Cavour,
     Valetudo) take RASAero II's default smooth finish (`mirror`), because the exports don't record
     theirs. The others keep the default finish.
-- **Cavour** has no motor dry mass in RocketPy; hpr's motor needs a positive one, so it gets
-  1e-15 kg.
+- **Cavour, Genesis and Lince** have no motor dry mass in RocketPy; hpr's motor needs a positive
+  one, so each gets 1e-15 kg. Genesis and Lince are here for their logged flights (M2.3b,
+  `cargo xtask real-flights`), which fly each example's own thrust file in place of the stand-in.
 - **Calisto at −1.373 m:** RocketPy's tests give no geometry for this rocket, so it takes the
   `calisto_robust` test fixture's surfaces.
 

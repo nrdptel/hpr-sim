@@ -661,8 +661,9 @@
     - The Data Store's netCDF-4 file for NDRT 2020, converted as the guide says, reads like the
       older file of the same analysis.
     - A guide page explains getting, converting and reading an ERA5 file, with an example CI runs.
-  - [ ] **M2.3b RocketPy's logged flights.** Bella Lui, NDRT 2020, Prometheus, Juno III, Cavour
-    and more in their ERA5 weather; *done when* the parent's three bullets are met.
+  - [x] **M2.3b RocketPy's logged flights.** Met (ADR-082): seven flights in their ERA5 weather,
+    apogee and ascent RMS each; mean absolute apogee error 4.23% against 5%; the three outliers
+    explained by claims the report checks. Astra and Andromeda (EuRoC 2022, netCDF-4) wait.
   - [ ] **M2.3c Corpus flights with logs.** The private designs that have a flight log, in their
     day's weather; *done when* each is in a report as anonymised statistics beside M2.3b's.
 

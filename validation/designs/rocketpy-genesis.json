@@ -1,0 +1,266 @@
+{
+  "name": "RocketPy example: genesis",
+  "stages": [
+    {
+      "id": "rocket",
+      "name": "",
+      "components": [
+        {
+          "id": "nose",
+          "name": "",
+          "part": {
+            "nose_cone": {
+              "shape": {
+                "kind": "haack",
+                "parameter": 0.0
+              },
+              "length_m": 0.27,
+              "base_radius_m": 0.047,
+              "wall": {
+                "kind": "shell",
+                "thickness_m": 0.002
+              },
+              "shoulder": null,
+              "material": {
+                "name": "Fiberglass laminate (G10/FR-4)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 1800.0
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "body-tube-1",
+          "name": "",
+          "part": {
+            "body_tube": {
+              "length_m": 2.102,
+              "outer_radius_m": 0.047,
+              "thickness_m": 0.002,
+              "material": {
+                "name": "Fiberglass laminate (G10/FR-4)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 1800.0
+                }
+              }
+            }
+          },
+          "children": [
+            {
+              "id": "motor-mount",
+              "name": "",
+              "part": {
+                "inner_tube": {
+                  "length_m": 0.428,
+                  "outer_radius_m": 0.043854000000000004,
+                  "thickness_m": 0.0015,
+                  "radial_offset_m": 0.0,
+                  "angle_rad": 0.0,
+                  "material": {
+                    "name": "Fiberglass laminate (G10/FR-4)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 1800.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "bottom",
+                "aft_offset_m": 0.0
+              },
+              "motor_mount": {
+                "overhang_m": 0.0
+              }
+            },
+            {
+              "id": "fins-1",
+              "name": "",
+              "part": {
+                "fin_set": {
+                  "count": 4,
+                  "planform": {
+                    "kind": "trapezoidal",
+                    "root_chord_m": 0.2,
+                    "tip_chord_m": 0.11,
+                    "span_m": 0.105,
+                    "sweep_m": 0.09000000000000001
+                  },
+                  "thickness_m": 0.003,
+                  "cross_section": "square",
+                  "tab": null,
+                  "cant_rad": 0.0,
+                  "base_angle_rad": 0.0,
+                  "material": {
+                    "name": "Fiberglass laminate (G10/FR-4)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 1800.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "absolute",
+                "station_m": 2.122
+              }
+            },
+            {
+              "id": "rail-buttons",
+              "name": "",
+              "part": {
+                "rail_button": {
+                  "outer_diameter_m": 0.0113,
+                  "inner_diameter_m": 0.0064,
+                  "height_m": 0.0081,
+                  "base_height_m": 0.002,
+                  "flange_height_m": 0.002,
+                  "angle_rad": 0.7853981633974483,
+                  "count": 2,
+                  "spacing_m": 0.8849999999999998,
+                  "material": {
+                    "name": "Acetal (POM, Delrin)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 1420.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "absolute",
+                "station_m": 1.38635
+              }
+            }
+          ]
+        }
+      ],
+      "overrides": {
+        "mass_kg": 9.214,
+        "cg_aft_m": 1.4769999999999999,
+        "cg_xy_m": [
+          0.0,
+          0.0
+        ],
+        "inertia": {
+          "xx_kg_m2": 7.5046,
+          "yy_kg_m2": 7.5046,
+          "zz_kg_m2": 0.042241,
+          "xy_kg_m2": 0.0,
+          "xz_kg_m2": 0.0,
+          "yz_kg_m2": 0.0
+        }
+      }
+    }
+  ],
+  "reference_diameter": {
+    "kind": "maximum"
+  },
+  "configurations": [
+    {
+      "id": "example",
+      "name": "the example's motor inputs with the L1040LR curve in place of Cesaroni_3618L995-P.eng",
+      "motors": [
+        {
+          "mount": "motor-mount",
+          "designation": "L1040LR",
+          "diameter_m": 0.084708,
+          "length_m": 0.428,
+          "motor": {
+            "curve": {
+              "times_s": [
+                0.0,
+                0.015,
+                0.03,
+                0.074,
+                0.115,
+                0.218,
+                0.392,
+                0.514,
+                0.744,
+                1.032,
+                1.251,
+                1.517,
+                2.013,
+                2.161,
+                2.257,
+                2.416,
+                2.453,
+                2.512,
+                2.612,
+                2.735,
+                2.838,
+                2.897,
+                3.012,
+                3.212,
+                3.297,
+                3.404,
+                3.475,
+                3.549,
+                3.619,
+                3.7
+              ],
+              "thrusts_n": [
+                0.0,
+                1021.164,
+                1237.857,
+                1289.322,
+                1324.534,
+                1232.44,
+                1189.101,
+                1197.227,
+                1232.44,
+                1297.448,
+                1340.786,
+                1392.251,
+                1394.959,
+                1386.833,
+                1343.495,
+                1067.212,
+                999.495,
+                961.574,
+                939.905,
+                755.716,
+                604.031,
+                509.228,
+                474.015,
+                257.323,
+                170.646,
+                119.181,
+                113.764,
+                92.094,
+                54.173,
+                0.0
+              ]
+            },
+            "propellant": {
+              "model": "grains",
+              "count": 3,
+              "density_kg_m3": 1815.0,
+              "outer_radius_m": 0.033,
+              "initial_inner_radius_m": 0.015,
+              "initial_height_m": 0.12,
+              "separation_m": 0.005,
+              "center_m": 0.243,
+              "inhibited_ends": false
+            },
+            "dry": {
+              "mass_kg": 1e-15,
+              "cg_m": 0.895,
+              "axial_inertia_kg_m2": 0.0,
+              "transverse_inertia_kg_m2": 0.0
+            },
+            "nozzle": {
+              "exit_radius_m": 0.042354,
+              "throat_radius_m": 0.00925,
+              "reference_pressure_pa": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

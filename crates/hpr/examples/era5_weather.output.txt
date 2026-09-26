@@ -22,4 +22,5 @@ Bella Lui to apogee   apogee (m above the pad)   drift at apogee (m)
 ERA5                                      553.4                  40.7
 standard, calm                            555.2                   0.4
 
-Not yet validated against the real flight: that is milestone M2.3b.
+This design flies a stand-in motor; Bella Lui's real flight, on its own K828FJ, is
+compared on the accuracy page.

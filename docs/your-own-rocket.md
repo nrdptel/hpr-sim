@@ -14,8 +14,9 @@ motor from the catalog that comes with hpr-sim. It then finds the rocket's
 > [normal-force slope](glossary.md#normal-force-slope) is 2.87% high
 > ([Aerodynamics](physics/aero.md#verification)). The mass and CG come from each part's shape and a
 > published density, so glue, paint and hardware are missing until you weigh the parts and enter
-> the weights ([What else a design can hold](#what-else-a-design-can-hold)). The flight is not
-> validated: no whole flight from hpr has yet been compared with another simulator or a real flight
+> the weights ([What else a design can hold](#what-else-a-design-can-hold)). This rocket's flight is
+> not validated: whole flights of other rockets have been compared with RocketPy's, OpenRocket's
+> and seven real flights' ([Accuracy](accuracy.md#real-flights)), but not this one's
 > ([Getting started](getting-started.md#how-far-to-trust-it)).
 
 ## Run it

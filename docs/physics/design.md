@@ -16,7 +16,7 @@
   [kinds of evidence][levels]. A hand-worked rocket agrees to 1e-12 through the burn. For eight
   cases of [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets),
   a given structure with its motor placed agrees in mass, centre and inertia within 8.0e-10
-  (relative) at the times RocketPy computed, and within 1.1e-5 in mass and 2.6e-5 in inertia
+  (relative) at the times RocketPy computed, and within 1.3e-5 in mass and 2.6e-5 in inertia
   between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand; the whole structure against
   OpenRocket on 71 compared designs, within 1% in mass on 62 and in centre of mass on 63
@@ -394,7 +394,7 @@ unless the caller sets
     | products of inertia (of `I_11`) | 0 | 1e-15 |
     | at LSODA knots: total mass, centre (of length), `I_11`, `I_33` | 8.0e-10 | 1e-8 |
     | at LSODA knots: grain propellant mass (of initial) | 2.4e-9 | 1e-8 |
-    | even grid: total mass | 1.1e-5 (Cavour) | 5e-5 |
+    | even grid: total mass | 1.3e-5 (Lince) | 5e-5 |
     | even grid: centre of mass (of the rocket's length) | 3.6e-6 (Cavour) | 2e-5 |
     | even grid: `I_11` about the dry centre and about the centre of mass | 2.6e-5 | 1e-4 |
     | even grid: `I_33` | 1.4e-5 | 1e-4 |

@@ -87,6 +87,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-079 | Exports as text built in the core, heights on each format's own datum | accepted |
 | ADR-080 | Parquet written in-house, read back by Apache's library | accepted |
 | ADR-081 | ERA5 weather read from netCDF classic in `hpr-io`; M2.3 split a to c | accepted |
+| ADR-082 | Real flights read from refs, compared over the ascent, with checked explanations | accepted |
 
 ---
 
@@ -7178,3 +7179,65 @@ sites, and two downloads of the same analysis four years apart agree to 0.23 m²
 Data Store file runs three lines of Python first; a native
 netCDF-4 reader stays open for later. Humidity and single-level (surface) files are not read yet.
 
+## ADR-082: Real flights read from refs, compared over the ascent, with checked explanations (2026-09-26)
+
+**Context.** M2.3b compares hpr with real flights: at least six in the report, each with its
+apogee error and an altitude-trace RMS, the mean absolute apogee error against the 5% target of
+`docs/VALIDATION.md`, and an explanation for each outlier. RocketPy 1.13.0's documentation flies
+ten rockets against their teams' logs, most in an ERA5 file of the day. Its logs were shared with
+RocketPy by the teams (each notebook records the permission), its motor files come from
+ThrustCurve.org with each file's own terms, and only some of those are public domain. The public
+designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing about a real flight.
+
+**Decision.**
+
+1. **The inputs stay in `refs/`.** `cargo xtask real-flights` reads each log, the example's own
+   thrust file and the ERA5 file from the pinned RocketPy checkout, and commits only
+   `validation/reports/real-flights.{json,md}`: each flight's apogees, errors, RMS and counts,
+   and every file's SHA-256. Committing the logs would redistribute data shared with RocketPy,
+   not with us (rule 4). So the flights run where the checkout is, as the corpus flights do
+   (ADR-071); `--check` flies them again. CI, without `refs/`, holds the committed report to
+   itself: its summary to its rows, its page to its data, and each explanation to its numbers
+   (`hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms`).
+2. **Seven flights:** the five with a public design already (Bella Lui, NDRT 2020, Prometheus,
+   Juno III, Cavour), and Genesis and Lince, added to `rocket_mass.py` for this: COTS motors, in
+   EuRoC 2023's classic file (their motors have no dry mass, like Cavour's). Left for later:
+   Astra and Andromeda (COTS, but EuRoC 2022's file is netCDF-4 and needs ADR-081's conversion);
+   Camões, Erebus 11, Halcyon and Hedy (their teams' own motors, outside rule 6's COTS scope);
+   Valetudo and Defiance (an apogee, no trace); Valkyrie (inputs only in a data file, ADR-007).
+   Juno III also flies its team's motor, but its design was already public: hpr flies the thrust
+   file like any other, and nothing of a research motor is modelled.
+3. **As a user would fly it:** the design (the example's masses, inertias and geometry), hpr's own
+   aerodynamics, the example's own thrust file read as RocketPy reads it (a `(0, 0)` point first
+   for `.eng`, clipped at the example's burn time, reshaped where the example reshapes; the
+   total impulse matches RocketPy's reading of all seven to 1e-15, but Juno III's),
+   the example's rail, site and launch hour (local hours converted to UTC), hpr's WGS84 Earth,
+   and the ERA5 profile of ADR-081. Juno III's thrust file ends in five negative points, which
+   hpr refuses; they are read as zero, adding 2.62 N s to its 8800 (reported). Prometheus flies
+   the weather of 24 June 2023 for a 2022 flight, as RocketPy's example does; RocketPy has no
+   file of the day, and the row says so.
+4. **Apogee** is the log's highest reading above its pad against hpr's above its centre of mass's
+   start. **The trace RMS is over the ascent**: each clock is aligned where its trace first
+   reaches 30 m, since a log's zero is its own (armed, launch detected, power on), not ignition;
+   the RMS runs over every log row from there to the first of the two apogees, hpr's heights
+   interpolated on a 0.01 s grid of its dense output. The descent is left out: its events are the
+   team's (Juno III's main never opened, Lince's opened at apogee), not a model's. The corrupted
+   end of Juno III's log (two rows at the drogue's firing, 10700.59 m and −2490.543 m) is cut.
+5. **A diagnostic flight on each example's own drag** (a constant, the notebook's knots, or its
+   CSV files, scaled as the notebook scales them, on the example's radius), beside the
+   prediction. It is not a second prediction: a team's drag is an estimate, from RASAero II, CFD
+   or a fit. It says whether a miss is hpr's drag.
+6. **An explanation is a checked claim.** An outlier (outside the 5% target) must carry one, and a
+   flight inside it must not. `drag` claims the diagnostic flight is within the target;
+   `drag between` claims the two flights miss on opposite sides of the log, so a drag between
+   hpr's and the team's meets it. The check runs in CI, so a change that makes a claim false
+   fails with the words that argued it.
+
+**Consequences.** The mean absolute apogee error is 4.23%, within the 5% target, over seven
+flights (+1.01% to +9.43%; mean +2.79%), and the trace RMS is at most 7.50% of an apogee. Three
+flights are outliers. NDRT 2020 (+8.52%) and Cavour (+9.43%) are hpr's drag: on their teams'
+drag they land at −1.61% and +1.29%. Lince (+5.61%) is bracketed: on its team's drag hpr flies
+−10.33%, as RocketPy's own simulation does, and its log reads 2.3% above its flight card. hpr's
+drag is not biased one way: on the teams' drag Prometheus and Genesis fly higher than on hpr's.
+A log is a single flight, with its own sensor and filter; the numbers are those seven flights',
+not a bound. The report is not reproduced in CI, only held to itself there.

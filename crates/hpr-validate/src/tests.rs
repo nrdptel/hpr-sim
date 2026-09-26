@@ -1736,3 +1736,87 @@ fn metric_for_missing_event_is_withheld_not_scored() {
         assert_eq!(back, outcome);
     }
 }
+
+#[test]
+fn real_flight_cases_report_apogee_and_trace_rms() {
+    // Loft lesson L83: no real-flight validation ever happened. The committed real-flight report
+    // (M2.3b) has at least six flights, each with its apogee error and its altitude-trace RMS
+    // against a log; its mean absolute apogee error is reported against the 5% target; and each
+    // flight outside that target carries an explanation whose claim holds against its own numbers.
+    // The logs are not in CI (they live under `refs/`), so this holds the committed report to
+    // itself; `cargo xtask real-flights --check` flies it again where they are.
+    use crate::real_flight::{
+        APOGEE_TARGET_PERCENT, FLIGHTS, REPORT_JSON, REPORT_MD, RealFlightReport,
+    };
+    let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
+    let report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+    let page = std::fs::read_to_string(root().join(REPORT_MD)).expect("the page is committed");
+    report
+        .check_consistent(&page)
+        .expect("the report holds together");
+    assert!(
+        report.flights.len() >= 6,
+        "{} flights",
+        report.flights.len()
+    );
+    let ids: Vec<&str> = report.flights.iter().map(|row| row.id.as_str()).collect();
+    let listed: Vec<&str> = FLIGHTS.iter().map(|flight| flight.id).collect();
+    assert_eq!(
+        ids, listed,
+        "the report flies every listed flight, in order"
+    );
+    for row in &report.flights {
+        assert!(
+            row.log_apogee_m > 0.0 && row.hpr_apogee_m > 0.0,
+            "{}",
+            row.id
+        );
+        assert!(row.apogee_error_percent.is_finite(), "{}", row.id);
+        assert!(
+            row.trace_rms_m.is_finite() && row.trace_rms_m > 0.0 && row.trace_rows > 10,
+            "{}: an RMS over {} rows",
+            row.id,
+            row.trace_rows
+        );
+        // Every file it read is recorded by its digest.
+        assert!(row.files.len() >= 4, "{}", row.id);
+        assert!(
+            row.files.iter().all(|file| file.sha256.len() == 64),
+            "{}",
+            row.id
+        );
+    }
+    assert_eq!(report.summary.target_percent, APOGEE_TARGET_PERCENT);
+    assert!(page.contains("Mean absolute apogee error"));
+}
+
+#[test]
+fn a_real_flight_explanation_that_stops_holding_fails() {
+    // An explanation is a claim checked against the row's numbers: "drag" says the flight on the
+    // example's own drag is within the target, so a row where it isn't fails the check.
+    use crate::real_flight::{REPORT_JSON, RealFlightReport};
+    let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
+    let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+    let row = report
+        .flights
+        .iter_mut()
+        .find(|row| row.explanation_kind == "drag")
+        .expect("a flight explained by its drag");
+    row.example_drag_apogee_error_percent = 7.0;
+    report.summary = crate::real_flight::summarise(&report.flights);
+    let page = report.to_markdown();
+    let error = report.check_consistent(&page).unwrap_err();
+    assert!(error.contains("doesn't hold"), "{error}");
+    // And a flight outside the target with no explanation fails too.
+    let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+    let row = report
+        .flights
+        .iter_mut()
+        .find(|row| !row.explanation.is_empty())
+        .expect("an outlier");
+    row.explanation.clear();
+    row.explanation_kind.clear();
+    let page = report.to_markdown();
+    let error = report.check_consistent(&page).unwrap_err();
+    assert!(error.contains("no explanation"), "{error}");
+}

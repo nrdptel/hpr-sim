@@ -10,10 +10,11 @@ kilometres or more.
 **How far to trust it.** hpr reads these files the way RocketPy does, to 12 digits, on two real
 launch days (below). What it does with the numbers differs from RocketPy in four places. Two are
 measured here: the heights of the levels, and a launch between two of the file's hours. Two are
-not measured yet: the pressure between levels, and the air above the file's top level. No flight
-in ERA5 weather has been compared with a real flight yet; that is milestone
-[M2.3b](../decisions-and-roadmap.md#m2-3b), RocketPy's logged flights. Humidity is not read yet,
-so the air is taken as dry.
+not measured yet: the pressure between levels, and the air above the file's top level. Seven
+real flights have been flown in ERA5 weather and compared with their logs
+([real flights](../accuracy.md#real-flights), milestone
+[M2.3b](../decisions-and-roadmap.md#m2-3b)): their apogees miss by 4.23% on average. Humidity is
+not read yet, so the air is taken as dry.
 
 Code: `hpr_io::era5` and `hpr_io::netcdf`
 ([API reference](../api/hpr_io/era5/index.html)), written for the ERA5-weather milestone
@@ -106,7 +107,8 @@ Bella Lui to apogee   apogee (m above the pad)   drift at apogee (m)
 ERA5                                      553.4                  40.7
 standard, calm                            555.2                   0.4
 
-Not yet validated against the real flight: that is milestone M2.3b.
+This design flies a stand-in motor; Bella Lui's real flight, on its own K828FJ, is
+compared on the accuracy page.
 ```
 
 The 1000 hPa level lies at 240 m, below the pad: ERA5 continues its levels beneath the ground,
