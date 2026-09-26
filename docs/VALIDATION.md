@@ -215,19 +215,18 @@ thrust files and weather files are read from the pinned `refs/rocketpy` checkout
 committed; the report, `validation/reports/real-flights.{json,md}`, commits only the numbers and
 each file's SHA-256. Each flight is flown again on its example's own drag as a diagnostic.
 
-The mean absolute apogee error is reported against the 5% target of the principles above, not
-gated. A flight outside 5% must carry an explanation that is a checked claim (`drag`: the flight
-on the example's drag is within the target; `thrust`: where the example reshapes its thrust file,
-the flight on the file as recorded is within it and the one on the example's drag is not), and
-one inside must not. CI has no
-`refs/`, so it holds the committed report to itself
-(`hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms`): the summary to the rows,
-each percentage to its metres, the words and each flight's inputs to the code's, the committed
+The mean absolute apogee error is reported against the 5% target of the principles above, not gated.
+A flight outside 5% must carry an explanation that is a checked claim (`drag`: the flight on the
+example's drag is within the target and any on the recorded thrust file is not; `thrust`: where the
+example reshapes its thrust file, the flight on the file as recorded is within it and the one on the
+example's drag is not), and one inside must not. CI has no `refs/`, so it holds the committed report
+to itself (`hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms`): the summary to the
+rows, each percentage to its metres, the words and each flight's inputs to the code's, the committed
 files read to their digests, the page to the data, and each explanation to its numbers; `--check`
 flies it again where the checkout is. Today: 6.04% over seven flights, outside the target, five
-outside 5% (NDRT 2020, Prometheus, Cavour and Genesis consistent with hpr's drag; Juno III with
-its motor's impulse). Four of the seven altimeters' kinds are assumed barometric; with those four
-read as heights instead, the mean is 6.63%.
+outside 5% (NDRT 2020, Prometheus, Cavour and Genesis consistent with hpr's drag; Juno III with its
+motor's impulse). Four of the seven altimeters' kinds are assumed barometric; with those four read
+as heights instead, the mean is 6.63%.
 
 ## Reference simulators (oracles)
 

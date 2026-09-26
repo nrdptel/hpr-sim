@@ -1196,7 +1196,7 @@ fn satellite_apogee_m(gnss: &Gnss, text: &str, site_elevation_m: f64) -> Result<
         .first()
         .map(|row| row[1])
         .ok_or_else(|| format!("{} has no altitude", gnss.file))?;
-    if (pad * gnss.metres_per_unit - site_elevation_m).abs() > GNSS_PAD_TOLERANCE_M {
+    if pad == 0.0 || (pad * gnss.metres_per_unit - site_elevation_m).abs() > GNSS_PAD_TOLERANCE_M {
         return Err(format!(
             "{}'s first altitude, {} m, is not the site's {site_elevation_m} m",
             gnss.file,
@@ -1214,9 +1214,10 @@ fn satellite_apogee_m(gnss: &Gnss, text: &str, site_elevation_m: f64) -> Result<
     }
 }
 
-/// How far a satellite log's first altitude may be from the site's elevation, m: satellite
-/// heights are over the ellipsoid or a geoid model, and the example's elevation is its own
-/// (Juno III's pad reads 83 m below its site's).
+/// How far a satellite log's first altitude may be from the site's elevation, m. Juno III's pad
+/// reads 83 m below the 1480 m its example gives, which Prometheus's example gives as 1401 m at
+/// the same coordinates, so hpr flies Juno III from about 80 m above its real pad. A first
+/// altitude of exactly zero, a receiver without a fix, is refused wherever the site is.
 const GNSS_PAD_TOLERANCE_M: f64 = 150.0;
 
 /// The largest gap between a log's height column and the standard atmosphere's reading of its
@@ -2212,26 +2213,30 @@ mod tests {
     }
 
     /// The pressure gap against the standard's troposphere in closed form,
-    /// `p = 101325 Pa (1 − L H / T₀)^(g₀′ M₀ / (R* L))`: a height column 5 m off its pressure's
-    /// reading gives a 5 m gap, and rows past the cut don't count, readable or not.
+    /// `p = 101325 Pa (1 − L H / T₀)^(g₀′ M₀ / (R* L))`, on a pad 1400 m up and a height column
+    /// in feet: a height 5 m off its pressure's reading less the pad's gives a 5 m gap, a row
+    /// whose pressure doesn't read is skipped, and rows past the cut don't count.
     #[test]
     fn a_height_column_is_held_to_its_pressure() {
         let pressure_hpa = |h: f64| {
             1013.25 * (1.0 - 0.0065 * h / 288.15).powf(9.806_65 * 28.9644 / (8314.32 * 0.0065))
         };
+        let feet = |m: f64| m / 0.3048;
         let text = format!(
-            "t,h,p\n0,0,{}\n1,1000,{}\n2,2005,{}\n3,9999,x\n4,9999,{}\n",
-            pressure_hpa(0.0),
-            pressure_hpa(1000.0),
-            pressure_hpa(2000.0),
-            pressure_hpa(0.0)
+            "t,h,p\n0,0,{}\n1,{},{}\n2,{},{}\n3,9999,x\n4,9999,{}\n",
+            pressure_hpa(1400.0),
+            feet(1000.0),
+            pressure_hpa(2400.0),
+            feet(2005.0),
+            pressure_hpa(3400.0),
+            pressure_hpa(1400.0)
         );
         let log = Log {
             file: "x.csv",
             header_lines: 1,
             time_column: 0,
             height_column: 1,
-            metres_per_unit: 1.0,
+            metres_per_unit: 0.3048,
             until_s: Some(3.5),
             altimeter: Altimeter::Barometric(""),
             pressure: Some((2, 100.0)),
@@ -2259,6 +2264,7 @@ mod tests {
         assert!(satellite_apogee_m(&gnss, text, 0.0).is_err());
         assert!(satellite_apogee_m(&gnss, "t,alt\n0,4600\n1,4600\n", 1400.0).is_err());
         assert!(satellite_apogee_m(&gnss, "t,alt\n", 1400.0).is_err());
+        assert!(satellite_apogee_m(&gnss, "t,alt\n0,0\n1,500\n", 100.0).is_err());
     }
 
     #[test]

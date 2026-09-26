@@ -7232,8 +7232,9 @@ designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing abo
    their barometric apogees are 0.935 and 0.943 of those, where hpr's conversion makes its own
    0.921 and 0.932 of its height. The conversion has the right direction and nearly the right
    size; it reads 1 to 2 points lower on both, on the side of both flights' misses. Juno III's
-   log is cut while still climbing (item 5); at the cut its satellite height is about 3350 m,
-   which would make its ratio 0.941.
+   log is cut while still climbing (item 5). Lining the two logs up by vertical speed (17.5 m/s,
+   the log's at its cut), the satellite height there is about 3350 m, which would make its ratio
+   0.941.
 5. **Apogee** is the log's highest reading, read up to the recovery. Three logs have pressure
    transients near apogee: Juno III's reading, as it levels off, dips 94 m, then rises 62 m above
    the level within 0.3 s (the flight card gives that spike, 3213 m); Prometheus's drops 600 m and
@@ -7262,8 +7263,9 @@ designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing abo
    so it flies Bella Lui on 0.43 and Juno III on the unscaled curve. hpr flies what the notebooks
    specify.
 8. **An explanation is a checked claim.** An outlier (outside the 5% target) must carry one, and a
-   flight inside it must not. `drag` claims the flight on the team's drag is within the target:
-   the miss is consistent with hpr's drag. `thrust` claims the flight on the recorded thrust file
+   flight inside it must not. `drag` claims the flight on the team's drag is within the target,
+   and the one on the recorded thrust file, where there is one, is not: the miss is consistent
+   with hpr's drag. `thrust` claims the flight on the recorded thrust file
    is within the target and the one on the team's drag is not: the miss is consistent with the
    impulse the notebook sets, and not with drag. CI checks
    each claim against the row, each row's percentages against its metres, and the words, the
