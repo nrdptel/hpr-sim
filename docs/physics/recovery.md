@@ -541,7 +541,7 @@ joined, and a payload flying alone takes its own:
 |---|---|
 | The nose's side of the airframe | 0 |
 | A separation, if the flight has one: the stages aft of it | 1 |
-| Each ejection, in the order you give them | the next number: 2, 3 … with a separation, 1, 2 … without |
+| Each ejection, in the order you give them | 1, 2, … in order; after 1 if the flight has a separation (2, 3, …) |
 
 Each body needs a device that names it (`Device::on_body`). A flight whose bodies are not all
 covered is refused when you give the ejections. A device on a body that nothing makes is refused
@@ -550,8 +550,9 @@ error naming that body.
 
 **When devices act.** Only body 0's devices act before the airframe first comes apart. After
 that, a device acts only once its own body flies on its own. So a parachute on the nose cone
-(body 0) triggered at apogee opens on the whole rocket at apogee, the same instant the nose cone
-leaves, and the example below records it among the flight's events. A device on a piece that
+(body 0) triggered at apogee fires and opens in the same step as the nose cone leaves. It is
+logged in the flight's own events, as the example below shows, and its drag acts on the nose cone
+alone from then on. A device on a piece that
 hasn't left yet waits for it, even if its trigger has come. Give a piece a trigger that follows
 its ejection. A drogue on the airframe, with the nose cone only ejected at 300 m, would leave the
 whole rocket falling from apogee to 300 m with nothing open.
@@ -559,7 +560,8 @@ whole rocket falling from apogee to 300 m with nothing open.
 **What happens at each parting:**
 
 - **When the airframe first comes apart**, each body starts at its own centre of mass with the
-  velocity that point had, `v_O + ω × r_cg`, as at a separation. The linear momenta add to the
+  velocity that point had, `v_O + ω × r_cg` (defined under [Separation](#separation)), as at a
+  separation. The linear momenta add to the
   stack's, which is a test.
 - **When a body parts again on the way down**, it is already a point mass with no attitude, so
   there is nothing to place its pieces by. Both pieces start at the body's position and velocity,
@@ -604,8 +606,8 @@ its canopy opening and the payload leaving the airframe, is in that body's own l
   `DeviceDrag::tumbling_stages` takes whole stages, so on a piece that is part of a stage it
   gives the whole stage's area.
 - **No powered separation with ejections.** A sustainer flies on a design cut at its stage
-  boundary, whose components aren't the pieces the ejections were given for, so the flight
-  refuses it. So is an ejection ahead of a separation that would light a motor.
+  boundary, whose components aren't the pieces the ejections were given for, so it is refused,
+  and so is an ejection ahead of a separation that would light a motor.
 - **A piece's spin and attitude are not tracked**, as for a separated body.
 - **A `.ork` file's recovery settings don't make ejections**, and hpr has no names for pieces:
   you find the component ids in the design file.
