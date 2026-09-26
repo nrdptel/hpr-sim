@@ -641,7 +641,8 @@
     - [x] **M1.10c2 Parquet.** Met (ADR-080): written in-house behind the `parquet` feature;
       Apache's `parquet` crate reads every value back bit for bit, over several pages.
 
-- [ ] **M2.3 Real flights.** Split a to c (ADR-081).
+- [ ] **M2.3 Real flights.** Split a to c (ADR-081); its bullets met by M2.3b, open for
+  M2.3c (ADR-083).
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
@@ -666,8 +667,9 @@
     against 5%, outside it; the five outliers explained (drag, impulse) by claims the report
     checks. Astra and
     Andromeda (EuRoC 2022, netCDF-4) wait.
-  - [ ] **M2.3c Corpus flights with logs.** The private designs that have a flight log, in their
-    day's weather; *done when* each is in a report as anonymised statistics beside M2.3b's.
+  - [ ] [blocked] **M2.3c Corpus flights with logs.** The private designs that have a flight log,
+    in their day's weather; *done when* each is in a report as anonymised statistics beside
+    M2.3b's. Blocked (ADR-083): no private design is the rocket of a logged flight; needs a pair.
 
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.

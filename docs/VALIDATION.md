@@ -342,6 +342,11 @@ excellent offline test fixtures for the weather-file readers.
   `d909aeae6e063b629a161ba36dcc0f8b51e45313997789c8ecbc71e342971510`. Many `.ork` files carry
   stored OpenRocket simulation results, so they are a free code-to-code reference once the `.ork`
   importer exists. **Never commit these files** (rule 4 in `CLAUDE.md`).
+- **`nrdptel/debrief-fixtures`** (private): flight logs gathered for Debrief, 62 files in its
+  manifest (commit `722f07cd5d9d8595b31c64e2964fb7fbd5e751e7`), from about 30 flights of team,
+  certification and sport rockets, recorded by altimeters of a dozen makes. None is a flight of a
+  `loft-fixtures` design ([ADR-083 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-083-m23c-blocked-no-private-design-is-the-rocket-of-a-logged-flight-2026-09-26)).
+  **Never commit these files** (rule 4 in `CLAUDE.md`).
 - **`nrdptel/fusionspace-loft`** (MIT, Neer's):
   - Eight demo `.ork`/`.rkt`/`.CDX1` fixtures in `fixtures/src/` (as XML).
   - A RocketPy cross-check (`fixtures/rocketpy-cross-check.json`, `scripts/rocketpy/`).

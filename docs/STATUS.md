@@ -4,25 +4,24 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
-  #173, #174, M1.13, #133 (13 of 20 designs); active work is M2.3c, the corpus flights with logs.
-- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; M2.3 is split a to c (ADR-081).
+- **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e5 on #173, #174,
+  M1.13, #133, M2.3c on Neer (no private design has a log); active work is M2.4, the census gate.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its four, M2.3c on a design with its log.
   **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M2.3a-b.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M2.3b real flights (ADR-082) done; M2.3c next.
+- **Last updated:** 2026-09-26; M2.3c blocked (ADR-083); M2.4 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.3c** on `m2.3c-<slug>`: private designs with a flight log (`refs/debrief-fixtures`
-  logs, `refs/loft-fixtures` designs), in their day's weather, published as anonymised statistics
-  beside `validation/reports/real-flights.md`. First find which logs match a design, and whether
-  an ERA5 file of the day exists (none is cached; the Data Store needs an account: Needs Neer if
-  so). Reuse `hpr_validate::real_flight` (`compare_traces`, `parse_log`, checked `Explanation`s);
-  commit only statistics (rule 4). `cargo xtask real-flights --check` needs `refs/rocketpy`.
-  Astra and Andromeda (EuRoC 2022 netCDF-4, ADR-081's conversion) are M2.3b's leftovers.
-  Flutter (ADR-078): margin at max q; moduli cited in `materials::SHEAR_MODULI`; G10/FR-4 has none.
-  Metrics (ADR-077): `FlightStep::stability`, margin `None` past `κ = √10`, least refined in steps.
+- **Start M2.4** on `m2.4-<slug>`: a census (README table and badge) generated from the committed
+  reports, and CI failing on any per-case regression beyond tolerance; *done when* a perturbed drag
+  coefficient on a throwaway draft PR turns CI red (close that PR after). Lessons L84-L86, L88.
+  M2.3c (ADR-083): once Neer adds a pair, fly the `.ork` with `hpr_validate::real_flight`
+  (`parse_log`, `Barometer`, `compare_traces`) under M2.2e3's ids; commit only statistics.
+  `cargo xtask real-flights --check` needs `refs/rocketpy`. Astra and Andromeda (EuRoC 2022
+  netCDF-4, ADR-081's conversion) are M2.3b's leftovers.
+  Flutter (ADR-078): moduli in `materials::SHEAR_MODULI`; metrics (ADR-077): margin `None` past `κ = √10`.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
   Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
   (#172). After any physics change run `cargo xtask ork-flights --check`, `--library --check`
@@ -68,6 +67,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-25: M1.9c `.ork` staging and clusters (ADR-076): all within 5% of OR (3 vs no chute); M1.9 done; 13 of 20.
 - 2026-09-25: M2.2e4 The causes (ADR-073): all 5 sized by OR without them; 4 within 5%, #177 left.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
+- **M2.3c needs a design with its flight's log** (ADR-083): no `loft-fixtures` design is the rocket
+  of a `debrief-fixtures` log. Add one pair (design file as flown, plus log, date, site, motor) to
+  those repos, and an ERA5 file of the day unless cached (Data Store account). Or drop M2.3c.
 - **Scrub #186's first revision** (1 minute): it quotes a private design's sizes. On issue #186 click
   *edited* → the oldest revision (marked *created*) → *Delete revision from history*. No API can.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
@@ -82,9 +84,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-082: real flights read from `refs/`, only numbers committed; hpr read as a barometer; logs
-  cut before recovery transients; each outlier's explanation a checked claim (team's drag, file's impulse).
-- ADR-081: M2.3 split a to c; netCDF classic by hand, netCDF-4 converted; time-weighted; WMO heights.
+- ADR-081 to ADR-083 (M2.3): netCDF classic by hand; real flights from `refs/`, hpr read as a
+  barometer, outliers' explanations checked; M2.3c blocked, nothing flown on a guessed pair.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
 - ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.
