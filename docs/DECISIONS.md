@@ -7518,34 +7518,41 @@ lone nose cone that is the whole area.
    stack whose attitude froze when a device opened at an earlier time (review found the first
    draft pushing such a stack along its apogee attitude, nearly sideways, after minutes under a
    drogue). hpr then goes by the velocity through the air `v − w`:
-   - a body hanging from an open device points its forward end up `v − w`, toward the device,
-     which left through that end, as the airframe's canopy does once the nose cone is off (review
-     found the first draft pushing a payload down, away from the canopy it leaves toward);
-   - a body with nothing open points its nose along `v − w`, as a statically stable airframe
-     does;
+   - a body hanging from a canopy or streamer deployed before that instant, and not released,
+     points its forward end against `v − w`, toward the device, assumed to have left through that
+     end, as a main does once the nose cone is off (review found the first draft pushing a payload
+     down, away from the canopy it leaves toward). A device deploying at the parting's own instant
+     doesn't count yet, whatever its inflation law (review found the push flipping with it);
+   - a body with nothing open, or only a tumble, points its nose along `v − w`, as a statically
+     stable airframe does;
    - below 1 mm/s through the air (a body's own apogee in still air), up. That speed is drift or
      round-off, not a flight path.
 
-   Nothing in hand says how a body hangs under a drogue, so these are stated assumptions. Which
-   splits fire together, and the direction, are decided on the body as the pass starts, so a
-   push that turns it upward doesn't delay a split that fired with the first. The push itself
-   moves little where every device opens as its piece leaves: in the example, 1 N·s at apogee and
-   at 300 m moves the airframe's and the payload's landings by 0.0 m and 1.3 m.
-5. **The body after a parting is recorded.** `BodyEvent::after` holds the body just after a piece
+   Nothing in hand says how a body hangs under a drogue, so these are stated assumptions. The
+   push itself moves little where every device opens as its piece leaves: in the example, 1 N·s
+   at apogee and at 300 m moves the airframe's and the payload's landings by 0.0 m and 1.3 m.
+5. **Partings at one instant part a body together,** on the way down as at the first parting:
+   which fire and the direction are decided on the body as the pass starts, every firing split
+   opens, and each final body takes the pushes of the joints on its sides. Review found the first
+   draft taking them one at a time, so that the list order moved the nose cone's push from 15.85
+   to 17.66 m/s, and a push could delay a split that fired with it. The events are the parting
+   body's, each with the body before and after the whole instant. A pushed payload whose
+   section's forward joint hasn't parted by then is an error in flight.
+6. **The body after a parting is recorded.** `BodyEvent::after` holds the body just after a piece
    leaves it on the way down (mass without the piece, velocity after the push), so the remaining
    body's change of velocity can be checked. It is `None` for every other event, and not written.
-6. **A piece tumbles over its own components.** `Simulation::tumbling_piece(k)` applies the tumble
+7. **A piece tumbles over its own components.** `Simulation::tumbling_piece(k)` applies the tumble
    model to the body components and fin sets of piece `k`, which leads body `k`. A payload is
    refused, since it has no body tube or fin of its own. So is a piece the airframe doesn't part
    into. Cut into sections, the pieces' drag areas add to the whole airframe's.
-7. **The side profile is integrated.** `A_bt` is now `∫ d dx` over each nose cone's and
+8. **The side profile is integrated.** `A_bt` is now `∫ d dx` over each nose cone's and
    transition's own profile, by `hpr_design::revolve`'s planform area. Tubes and cones are
    unchanged. It is a fix to merged physics, not a new model: the documentation defines `A_bt`
    as the side profile area, and the end-diameter reading was a stated approximation. Valetudo
    tumbling moves from 36.77 to 36.38 m/s, and the `.ork` two-stage example's tumbling
    sustainer from 10.6 to 10.4 m/s. The drop-test replay and the two-stage booster are
    unchanged, since they have no curved part.
-8. **A lone nose cone is outside the model's fit.** The constants were fitted to whole model
+9. **A lone nose cone is outside the model's fit.** The constants were fitted to whole model
    rockets. The milestone asks that the nose cone land at *its model's* terminal speed, which is
    what the test shows. That the model is right for a nose cone on its own is not claimed.
 

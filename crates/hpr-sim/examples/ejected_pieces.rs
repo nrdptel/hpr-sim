@@ -203,13 +203,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         .event(EventKind::Ejection(1))
         .ok_or("the payload never left")?;
     let after = parting.after.ok_or("no body after the parting")?;
+    let payload_change =
+        payload.start_sample.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s;
+    let airframe_change = after.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s;
     println!();
     println!(
-        "At 300 m the charge changes the payload's velocity by {:.2} m/s (1 N·s / 0.250 kg), up \
-         toward the airframe's parachute, and the airframe's by {:.2} m/s (1 N·s / {:.3} kg), down.",
-        (payload.start_sample.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s).length(),
-        (after.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s).length(),
+        "At 300 m the charge changes the payload's velocity by {:.2} m/s (1 N·s / 0.250 kg), {:+.2} \
+         m/s of it upward, toward the airframe's parachute,",
+        payload_change.length(),
+        payload_change.z,
+    );
+    println!(
+        "and the airframe's by {:.2} m/s (1 N·s / {:.3} kg), {:+.2} m/s of it upward.",
+        airframe_change.length(),
         after.mass_kg,
+        airframe_change.z,
     );
     Ok(())
 }

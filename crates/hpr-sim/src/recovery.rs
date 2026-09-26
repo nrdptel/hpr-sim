@@ -1195,6 +1195,27 @@ impl Run {
         self.devices[index].released_s
     }
 
+    /// Whether a canopy or streamer among the devices for which `member` is true had deployed
+    /// before `t` and is not released by then: something a body hangs from as it falls. A tumble
+    /// is not, and a device that deploys at `t` itself is not yet.
+    pub(crate) fn hung_before(
+        &self,
+        devices: &[Device],
+        member: impl Fn(usize) -> bool,
+        t: f64,
+    ) -> bool {
+        devices.iter().enumerate().any(|(index, device)| {
+            member(index)
+                && !matches!(device.drag, DeviceDrag::Tumble { .. })
+                && self.devices[index]
+                    .deployed_s
+                    .is_some_and(|deployed_s| deployed_s < t)
+                && !self.devices[index]
+                    .released_s
+                    .is_some_and(|released_s| released_s <= t)
+        })
+    }
+
     /// Whether device `index`'s release has come and has not been recorded.
     pub(crate) fn release_due(&self, index: usize, t: f64) -> bool {
         let run = self.devices[index];
@@ -1310,8 +1331,8 @@ pub struct BodyEvent {
     /// The body at that instant.
     pub sample: BodySample,
     /// For a piece leaving it, the body just after: its mass without the piece, and its velocity
-    /// once the ejection's impulse has pushed it ([`crate::Ejection::with_impulse`]). `None` for
-    /// every other event.
+    /// once the ejections' impulses have pushed it ([`crate::Ejection::with_impulse`]). Partings
+    /// at one instant share it: it is the body after all of them. `None` for every other event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub after: Option<BodySample>,
 }

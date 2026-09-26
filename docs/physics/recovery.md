@@ -605,21 +605,28 @@ The push is equal and opposite:
   newton-second is 4 m/s on a 250 g payload, and 1.8 m/s on the 556 g airframe it leaves.
 - The momenta still add up exactly, which is a test.
 - **Which way is "toward the nose"?** While the airframe flies whole with nothing open, it is
-  its axis at that instant. Otherwise it has no attitude to go by: a body flying on its own is a
-  point mass, and a whole airframe that has hung from a device since earlier has the attitude it
+  its axis at that instant. A device that opens at the same instant as the parting doesn't count
+  as open yet. Otherwise the body has no attitude to go by: a body flying on its own is a point
+  mass, and a whole airframe that has hung from a device since earlier has only the attitude it
   had when the device opened. So hpr goes by the body's velocity through the air:
-  - A body hanging from an open device points its forward end up that velocity, toward the
-    device, which left through that end. A payload let out under the airframe's parachute is
-    pushed up, toward it.
-  - A body with nothing open points its nose along that velocity, as a stable rocket does.
+  - A body hanging from a parachute or streamer opened before that instant points its forward
+    end against that velocity (upward, as it falls), toward the device. hpr assumes the device
+    left through that end, as a main does once the nose cone is off: a payload let out under the
+    airframe's parachute is pushed up, toward it. For a drogue that left between the booster and
+    the avionics bay, the airframe more likely hangs near level, and this direction is a guess.
+  - A body with nothing open, or only tumbling, points its nose along that velocity, as a stable
+    rocket does.
   - A body moving through the air at under 1 mm/s, at its own apogee in still air say, points up.
 
-  These are assumptions, not measurements ([ADR-086][adr-086]).
+  These are assumptions, not measurements ([ADR-086][adr-086]). All the partings that fire on a
+  body at one instant part it together, each final body taking the pushes of the joints on its
+  sides, so the order you list them in doesn't matter.
 - A separation has no push. A payload always leaves forward, so a push on a payload in the nose's
-  own section, which is closed at the nose, is refused.
+  own section, which is closed at the nose, is refused when you give it. A pushed payload whose
+  section's forward joint hasn't parted by the time it leaves is an error in flight.
 
 In the example below, where every piece's device opens as it leaves, 1 N·s at each parting moves
-the airframe's and the payload's landings by a metre or less: the drag takes the push away within
+the airframe's landing by 0.0 m and the payload's by 1.3 m: the drag takes the push away within
 seconds. A piece that coasts with nothing open keeps its push longer.
 
 **A piece that tumbles.** A piece needs some drag of its own, or it falls as if in a vacuum. hpr
@@ -668,7 +675,8 @@ canopy on the nose cone, which tumbles:
 Tumbling, the nose cone comes down nearly five times as fast as under its canopy, and lands 1.8 km
 nearer the pad. The push barely moves the other two. At 300 m it changes the payload's velocity by
 4.00 m/s, up toward the airframe's parachute, and the airframe's by 1.80 m/s, down: `J/m` for
-each. Within seconds the drag has taken that away.
+each (the example prints the upward parts, +4.00 and −1.80 m/s). Within seconds the drag has
+taken that away.
 
 **Limits:**
 
@@ -736,9 +744,11 @@ The ejected pieces' tests are in `crates/hpr-sim/src/pieces.rs`, also analytic:
 | A 1 N·s push at both partings, from a stack tilted 60° up toward 30° east of north, in wind, moving sideways and turning at 0.6 rad/s | each body's velocity changes by `J/m` to 1e-9 against the same flight unpushed. At the first parting that is along the hand-computed rail axis, 15.9 m/s on the nose cone. At the second, the airframe under its canopy, it is 4 m/s on the 250 g payload, up its velocity through the air. The momenta add up to 1e-9 at both, and every piece still lands within 0.1% of its `v_e` |
 | The same push at 300 m with the airframe's canopy not yet open | the payload is pushed down its velocity through the air, 4 m/s, and the airframe the other way, to 1e-9 |
 | A nose cone pushed off at 300 m from a stack that has hung from a drogue since apogee | pushed up its velocity through the air to 1e-9, not along the attitude frozen at apogee (found in review: it went along the frozen axis) |
-| A push at a body's own apogee, climbing straight up in still air | straight up, 4 m/s on the payload, to 1e-9 |
+| A push at a body's own apogee, climbing straight up in still air with nothing open | straight up, 4 m/s on the payload, to 1e-9, where along its flight would point down |
 | A separation and a pushed nose cone at apogee (the two-stage design) | the booster, the separation's body, gets no push; the nose cone and the sustainer's airframe get ±`J/m` along the axis to 1e-9; the momenta add up to 1e-9 |
-| Two pushed partings in one pass on the way down (the two-stage design) | the interstage, aft of its joint, takes `−J` on the nose's way; the three bodies carry the one body's momentum to 1e-9 |
+| Two pushed partings at one instant on the way down (the two-stage design), given in either order | by hand, the nose cone `+J/m`, the airframe between the joints 0, the interstage `−J/m`, each to 1e-9; the momenta add up to 1e-9, and the landings agree between the orders to 1e-6 m (found in review: taken one at a time, the order moved the nose cone's push from 15.85 to 17.66 m/s) |
+| The airframe's canopy opening at the same instant as the payload leaves | not yet hung from: the payload is pushed down its flight, 4 m/s, whether the canopy opens at once or fills over a second (found in review: the push flipped with the inflation law) |
+| A pushed payload let out at apogee while its section's forward joint waits for 300 m | an error in flight, at the ejection's time |
 | A parting on the way down with no push | the body after it has the same point and velocity, and its mass without the piece; only partings record a body after |
 | A nose cone tumbling on its own after apogee, in uniform sea-level air | its drag area is 0.56 times its tangent ogive's closed-form side area, to 1e-12; it lands at 13.849 m/s, its model's `v_e` to 1e-6 (the example's 14.82 m/s is in its own, thinner air at 1,400 m) |
 | The tumbling drag areas of an airframe cut into a nose cone and the rest | add to the whole airframe's to 1e-12; a payload or a piece not made is refused |

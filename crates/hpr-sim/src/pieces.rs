@@ -63,9 +63,10 @@ pub enum Parting {
 /// velocity by `J/m` for its own mass `m` and the momentum is unchanged. The axis is the
 /// airframe's while it flies with nothing open. A body with no attitude of its own (a point mass,
 /// or a stack whose attitude froze when a device opened earlier) is taken to point its forward end
-/// up its velocity through the air if it hangs from an open device, and along it, as a stable
-/// airframe does, if nothing is open; below 1 mm/s through the air, up ([ADR-086][adr-086]). A
-/// separation adds no impulse, and a pushed payload in the nose's piece is refused.
+/// against its velocity through the air if it hangs from a canopy or streamer opened before that
+/// instant, and along it, as a stable airframe does, if nothing is open or it only tumbles; below
+/// 1 mm/s through the air, up ([ADR-086][adr-086]). Partings at one instant part a body together.
+/// A separation adds no impulse, and a pushed payload in the nose's piece is refused.
 ///
 /// [adr-085]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-085-ejected-pieces-an-airframe-that-parts-at-any-joint-2026-09-26
 /// [adr-086]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-086-ejection-impulse-and-tumbling-pieces-2026-09-26
@@ -479,6 +480,11 @@ impl Pieces {
         MassProperties::combine(parts.iter())
     }
 
+    /// The piece that carries `piece`, when it is a payload.
+    pub(crate) fn host(&self, piece: usize) -> Option<usize> {
+        self.host[piece]
+    }
+
     /// The piece on the other side of the split that makes `piece` (not piece 0), and whether
     /// `piece` is forward of that split: a section is aft of its joint, with the section forward
     /// of the joint on the other side, and a payload leaves its host forward.
@@ -565,7 +571,9 @@ mod tests {
     use super::*;
     use crate::flight::{EventKind, FlightResult, FlightSettings, Simulation, Termination};
     use crate::rail::Rail;
-    use crate::recovery::{CanopyType, Device, DeviceDrag, terminal_speed_m_s};
+    use crate::recovery::{
+        BodyEvent, CanopyType, Device, DeviceDrag, Inflation, terminal_speed_m_s,
+    };
     use crate::state::State;
     use crate::testing::{UniformAir, analytic_environment, analytic_wind_environment, design};
 
@@ -1179,7 +1187,8 @@ mod tests {
     fn a_push_in_still_air_is_taken_as_up() {
         // Climbing straight up in calm air, the nose cone leaves on a timer; the payload leaves
         // the airframe's body at its own apogee, where it doesn't move through the air, so the
-        // push is up: 4 m/s on the payload.
+        // push is up: 4 m/s on the payload. The airframe's canopy waits for 200 m, so nothing is
+        // open, and along its velocity (a hair downward, past the apogee) would point down.
         let sim = Simulation::new(
             &with_payload(),
             "i175",
@@ -1193,7 +1202,13 @@ mod tests {
         .unwrap()
         .with_recovery(vec![
             canopy(0, 0.45, Trigger::Apogee),
-            canopy(1, 0.9, Trigger::Apogee),
+            canopy(
+                1,
+                0.9,
+                Trigger::Altitude {
+                    height_above_ground_m: 200.0,
+                },
+            ),
             canopy(2, 0.6, Trigger::Apogee),
         ])
         .unwrap()
@@ -1208,6 +1223,7 @@ mod tests {
         let payload = &result.bodies[2];
         let parting = airframe.event(EventKind::Ejection(1)).unwrap().sample;
         assert!(parting.airspeed_m_s < 1e-3, "{parting:?}");
+        assert_eq!(parting.recovery_drag_area_m2, 0.0);
         close_vec(
             payload.start_sample.cg_velocity_enu_m_s - parting.cg_velocity_enu_m_s,
             DVec3::new(0.0, 0.0, 4.0),
@@ -1295,48 +1311,172 @@ mod tests {
     }
 
     #[test]
-    fn pushed_sections_parting_together_on_the_way_down_conserve_momentum() {
+    fn pushed_sections_parting_together_on_the_way_down_push_as_the_stack_does() {
         // The booster section leaves at apogee; at 300 m the nose and the interstage both leave
-        // the body left, each with 1 N·s, in one pass. The interstage is the section aft of its
-        // joint, so it takes the push's aft half, `−J` on the way the nose points: here up the
-        // velocity through the air, since the body hangs under its canopy.
+        // the body left, each with 1 N·s, in one pass, as the stack's partings do at the first:
+        // each final body takes the pushes of the joints on its sides. By hand, on the way the
+        // nose points (up the velocity through the air, under the canopy it hangs from since
+        // apogee): the nose cone `+J/m`, the sustainer's airframe between the two joints `−J/m +
+        // J/m = 0`, and the interstage `−J/m`. Given in either order, the same (found in review:
+        // taken one at a time, the order moved the nose cone's push from 15.85 to 17.66 m/s).
         let at_300_m = Trigger::Altitude {
             height_above_ground_m: 300.0,
         };
-        let (_, result) = two_stage_pieces(
+        let orders = [
             vec![
                 Ejection::aft_of(Trigger::Apogee, "interstage"),
                 Ejection::aft_of(at_300_m, "nose").with_impulse(1.0),
                 Ejection::aft_of(at_300_m, "sustainer-airframe").with_impulse(1.0),
             ],
-            4,
+            vec![
+                Ejection::aft_of(Trigger::Apogee, "interstage"),
+                Ejection::aft_of(at_300_m, "sustainer-airframe").with_impulse(1.0),
+                Ejection::aft_of(at_300_m, "nose").with_impulse(1.0),
+            ],
+        ];
+        let mut landings = Vec::new();
+        for (order, ejections) in orders.into_iter().enumerate() {
+            let (sim, result) = two_stage_pieces(ejections, 4);
+            assert!(result.bodies_landed(), "order {order}");
+            // Both partings are the nose's body's, at the one instant.
+            let nose = &result.bodies[0];
+            let partings: Vec<&BodyEvent> = nose
+                .events
+                .iter()
+                .filter(|event| matches!(event.kind, EventKind::Ejection(_)))
+                .collect();
+            assert_eq!(partings.len(), 2, "order {order}");
+            let (before, after) = (partings[0].sample, partings[0].after.unwrap());
+            assert_eq!(partings[1].sample, before);
+            let nose_ward = -before.cg_velocity_enu_m_s.normalize();
+            let (airframe, interstage) = if order == 0 {
+                (&result.bodies[2], &result.bodies[3])
+            } else {
+                (&result.bodies[3], &result.bodies[2])
+            };
+            close(
+                after.mass_kg,
+                component_kg(&sim, "nose"),
+                1e-12,
+                "the nose cone",
+            );
+            let change = |velocity: DVec3| velocity - before.cg_velocity_enu_m_s;
+            close_vec(
+                change(after.cg_velocity_enu_m_s),
+                nose_ward * (1.0 / after.mass_kg),
+                1e-9,
+                "the nose cone's push",
+            );
+            assert!(
+                change(airframe.start_sample.cg_velocity_enu_m_s).length() < 1e-12,
+                "order {order}: {}",
+                change(airframe.start_sample.cg_velocity_enu_m_s)
+            );
+            close_vec(
+                change(interstage.start_sample.cg_velocity_enu_m_s),
+                -nose_ward * (1.0 / interstage.start_sample.mass_kg),
+                1e-9,
+                "the interstage's push",
+            );
+            let momentum = after.cg_velocity_enu_m_s * after.mass_kg
+                + airframe.start_sample.cg_velocity_enu_m_s * airframe.start_sample.mass_kg
+                + interstage.start_sample.cg_velocity_enu_m_s * interstage.start_sample.mass_kg;
+            close_vec(
+                momentum,
+                before.cg_velocity_enu_m_s * before.mass_kg,
+                1e-9,
+                "the momentum",
+            );
+            landings.push([
+                nose.final_sample.cg_enu_m,
+                airframe.final_sample.cg_enu_m,
+                interstage.final_sample.cg_enu_m,
+            ]);
+        }
+        for (first, second) in landings[0].iter().zip(&landings[1]) {
+            assert!((*first - *second).length() < 1e-6, "{first} vs {second}");
+        }
+    }
+
+    #[test]
+    fn a_device_opening_as_its_body_parts_is_not_yet_hung_from() {
+        // The airframe falls with nothing open, and its canopy and the payload's parting both
+        // come at 300 m. At that instant it doesn't yet hang from the canopy, so the payload
+        // leaves down its flight, whether the canopy opens at once or fills over a second (found
+        // in review: the push flipped with the inflation law).
+        let at_300_m = Trigger::Altitude {
+            height_above_ground_m: 300.0,
+        };
+        let changes: Vec<DVec3> = [
+            Inflation::Instant,
+            Inflation::FillingTime {
+                time_s: 1.0,
+                exponent: 2.0,
+            },
+        ]
+        .into_iter()
+        .map(|inflation| {
+            let sim = Simulation::new(
+                &with_payload(),
+                "i175",
+                analytic_environment(UniformAir::sea_level(), G),
+                Rail::vertical(3.0),
+                FlightSettings {
+                    max_time_s: 3600.0,
+                    ..FlightSettings::default()
+                },
+            )
+            .unwrap()
+            .with_recovery(vec![
+                canopy(0, 0.45, Trigger::Apogee),
+                canopy(1, 0.9, at_300_m).with_inflation(inflation),
+                canopy(2, 0.6, at_300_m),
+            ])
+            .unwrap()
+            .with_ejections(pushed(1.0))
+            .unwrap();
+            let start = dropped(&sim, 1_500.0, DVec3::new(2.0, 1.0, -0.5), DVec3::ZERO);
+            let result = sim.run_free(START_S, start, &mut ()).unwrap();
+            let parting = result.bodies[1]
+                .event(EventKind::Ejection(1))
+                .unwrap()
+                .sample;
+            let change =
+                result.bodies[2].start_sample.cg_velocity_enu_m_s - parting.cg_velocity_enu_m_s;
+            close_vec(
+                change,
+                parting.cg_velocity_enu_m_s.normalize() * 4.0,
+                1e-9,
+                "the payload's push",
+            );
+            change
+        })
+        .collect();
+        assert!(changes[0].z < -3.9, "{}", changes[0]);
+    }
+
+    #[test]
+    fn a_pushed_payload_whose_way_forward_is_still_closed_is_refused_in_flight() {
+        // The payload is pushed out at apogee, but the joint forward of its airframe only parts
+        // at 300 m: it has no way out forward then.
+        let sim = simulation_with(
+            analytic_environment(UniformAir::sea_level(), G),
+            vec![
+                Ejection::aft_of(
+                    Trigger::Altitude {
+                        height_above_ground_m: 300.0,
+                    },
+                    "nose",
+                ),
+                Ejection::payload(Trigger::Apogee, "payload").with_impulse(1.0),
+            ],
         );
-        assert!(result.bodies_landed());
-        let nose = result.bodies[0].event(EventKind::Ejection(1)).unwrap();
-        let airframe = &result.bodies[2];
-        let interstage = &result.bodies[3];
-        // The nose's parting hands the airframe and the interstage on as body 2, which parts
-        // again at its own start.
-        let second = airframe.event(EventKind::Ejection(2)).unwrap();
-        let (before, after) = (second.sample, second.after.unwrap());
-        assert_eq!(before.cg_enu_m, nose.sample.cg_enu_m);
-        let through_air = before.cg_velocity_enu_m_s.normalize();
-        close_vec(
-            interstage.start_sample.cg_velocity_enu_m_s - before.cg_velocity_enu_m_s,
-            through_air * (1.0 / interstage.start_sample.mass_kg),
-            1e-9,
-            "the interstage's push",
-        );
-        // All three bodies together carry the momentum the one body had before either parting.
-        let nose_after = nose.after.unwrap();
-        let momentum = nose_after.cg_velocity_enu_m_s * nose_after.mass_kg
-            + after.cg_velocity_enu_m_s * after.mass_kg
-            + interstage.start_sample.cg_velocity_enu_m_s * interstage.start_sample.mass_kg;
-        close_vec(
-            momentum,
-            nose.sample.cg_velocity_enu_m_s * nose.sample.mass_kg,
-            1e-9,
-            "the momentum",
+        let start = dropped(&sim, 1_500.0, DVec3::new(0.0, 0.0, -0.5), DVec3::ZERO);
+        let error = sim.run_free(START_S, start, &mut ()).unwrap_err();
+        assert!(
+            matches!(error, SimError::Domain { what, value }
+                if what.starts_with("time of a pushed payload's ejection") && value == START_S),
+            "{error:?}"
         );
     }
 
