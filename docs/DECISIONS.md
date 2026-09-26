@@ -7093,13 +7093,19 @@ wrote it doesn't show that someone else's reader agrees.
    no default features) is a test-only dependency, renamed `parquet-reader` so that it doesn't
    clash with the feature's name. Tests read every file back through it and compare every value
    bit for bit: a flight's recording, one of every channel (30 columns, over 2048 rows, so at least
-   three pages per column), an empty recording and extreme values. The compact-protocol encoder is checked against
-   the protocol specification's own examples. Once, when this was written, pyarrow 25.0.1 and
-   DuckDB 1.5.5 read the example's file and a 30-column, 3005-row file equal to their CSV.
+   three pages per column, with the chunks' offsets and sizes checked to tile the file), an empty
+   recording and extreme values. The fields that reader ignores (uncompressed sizes, the row
+   group's offset) are pinned by a two-row file compared byte for byte with bytes worked out by
+   hand from the specification, and the compact-protocol encoder by the protocol's own examples.
+   Once, when this was written, pyarrow 25.0.1 and DuckDB 1.5.5 read the example's file and a
+   30-column, 3005-row file equal to their CSV. `cargo xtask wasm-check` builds the feature for
+   wasm32.
 4. **The text exports' rules.** A value that isn't finite is refused with `SimError::Domain`, and a
-   recorder with no columns with `SimError::Unsupported`.
+   recorder with no columns with `SimError::Unsupported`. `Recorder::new` now refuses a channel
+   listed twice (`SimError::Unsupported`): two columns of one name make pyarrow and Polars refuse
+   the file, and made the CSV header ambiguous.
 
-**Consequences.** A file is 8 bytes per value, plus about 21 bytes per page and a footer; without
+**Consequences.** A file is 8 bytes per value, plus about 20 bytes per page and a footer; without
 statistics a query tool can't skip pages by value. The `export_flight` example needs the feature
 (`required-features`), so its command gains `--features parquet`. The `parquet` crate stays out of
 every build but the tests. `ARCHITECTURE.md` now names this writer instead of the

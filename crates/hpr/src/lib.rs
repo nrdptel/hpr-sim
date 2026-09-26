@@ -10,7 +10,8 @@
 //!
 //! Status: pre-alpha skeleton. The builder API is planned for milestone [M4.1][roadmap] of the
 //! roadmap. The `net` feature adds the online data sources from `hpr-net`, and the `parquet`
-//! feature turns on `hpr-sim`'s Parquet export. One module holds code today: [`ork`], which flies
-//! the stage separation an OpenRocket `.ork` file describes.
+//! feature turns on `hpr-sim`'s Parquet export (`hpr_sim::export::parquet`, which `hpr` doesn't
+//! re-export yet). One module holds code today: [`ork`], which flies the stage separation an
+//! OpenRocket `.ork` file describes.
 
 pub mod ork;

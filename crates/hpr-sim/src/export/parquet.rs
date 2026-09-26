@@ -10,18 +10,18 @@
 //!
 //! - one `REQUIRED` `DOUBLE` column per recorded column, under the recorder's column name;
 //! - one row group holding every row, or none when nothing was recorded;
-//! - version 1 data pages of at most [`PAGE_ROWS`] values each, `PLAIN` encoded (each value is
-//!   its 8 little-endian IEEE 754 bytes) and uncompressed. A required column that isn't nested
-//!   has no repetition or definition levels, so a page is its values and nothing else.
+//! - version 1 data pages of at most [`PARQUET_PAGE_ROWS`] values each, `PLAIN` encoded (each
+//!   value is its 8 little-endian IEEE 754 bytes) and uncompressed. A required column that isn't
+//!   nested has no repetition or definition levels, so a page is its values and nothing else.
 //!
 //! It carries no statistics, dictionary, index or compression.
 
 use crate::error::SimError;
 use crate::recorder::Recorder;
 
-/// The most values in one data page: 1024 doubles, the 8 KiB page the specification recommends
-/// (`README.md`, "Configurations").
-pub const PAGE_ROWS: usize = 1024;
+/// The most values in one Parquet data page: 1024 doubles, the 8 KiB page the specification
+/// recommends (`README.md`, "Configurations").
+pub const PARQUET_PAGE_ROWS: usize = 1024;
 
 /// The file's first and last four bytes.
 const MAGIC: &[u8; 4] = b"PAR1";
@@ -186,7 +186,7 @@ pub fn parquet(recorder: &Recorder) -> Result<Vec<u8>, SimError> {
     if !rows.is_empty() {
         for column in 0..columns.len() {
             let offset = out.len();
-            for page in rows.chunks(PAGE_ROWS) {
+            for page in rows.chunks(PARQUET_PAGE_ROWS) {
                 let size: i32 = count(page.len() * 8)?;
                 let mut header = Compact::new();
                 header.i32(1, PAGE_DATA);
@@ -343,12 +343,30 @@ mod tests {
         let mut recorder = Recorder::new(Channel::ALL.to_vec(), Some(0.01)).unwrap();
         sim.run(&mut recorder).unwrap();
         let n = recorder.rows().len();
-        assert!(n > 2 * PAGE_ROWS, "{n} rows");
+        assert!(n > 2 * PARQUET_PAGE_ROWS, "{n} rows");
         assert!(recorder.columns().len() >= 15);
 
-        let (reader, names, rows) = read(parquet(&recorder).unwrap());
+        let file = parquet(&recorder).unwrap();
+        let (reader, names, rows) = read(file.clone());
         assert_eq!(names, recorder.columns());
         assert_eq!(rows, recorder.rows());
+        // The chunks follow the magic number and each other, and the last ends where the footer
+        // begins: before the footer, its 4-byte length and the closing magic number.
+        let metadata = reader.metadata().row_group(0);
+        let mut end = MAGIC.len() as i64;
+        for chunk in metadata.columns() {
+            assert_eq!(chunk.data_page_offset(), end);
+            assert_eq!(chunk.compressed_size(), chunk.uncompressed_size());
+            assert_eq!(chunk.num_values(), n as i64);
+            end += chunk.compressed_size();
+        }
+        let length = u32::from_le_bytes(file[file.len() - 8..file.len() - 4].try_into().unwrap());
+        assert_eq!(end, (file.len() - 8 - length as usize) as i64);
+        assert_eq!(metadata.total_byte_size(), end - MAGIC.len() as i64);
+        assert_eq!(metadata.compressed_size(), metadata.total_byte_size());
+        assert_eq!(metadata.file_offset(), Some(MAGIC.len() as i64));
+        assert_eq!(metadata.ordinal(), Some(0));
+
         let group = reader.get_row_group(0).unwrap();
         for column in 0..names.len() {
             let pages: Vec<_> = group
@@ -356,12 +374,12 @@ mod tests {
                 .unwrap()
                 .map(Result::unwrap)
                 .collect();
-            assert_eq!(pages.len(), n.div_ceil(PAGE_ROWS));
+            assert_eq!(pages.len(), n.div_ceil(PARQUET_PAGE_ROWS));
             let mut values = 0;
             for page in &pages {
                 assert_eq!(page.page_type(), PageType::DATA_PAGE);
                 assert_eq!(page.encoding(), Encoding::PLAIN);
-                assert!(page.num_values() as usize <= PAGE_ROWS);
+                assert!(page.num_values() as usize <= PARQUET_PAGE_ROWS);
                 values += page.num_values() as usize;
             }
             assert_eq!(values, n);
@@ -393,6 +411,7 @@ mod tests {
             values.iter().map(|&v| vec![v, -v]).collect(),
         );
         let (_, _, rows) = read(parquet(&recorder).unwrap());
+        assert_eq!(rows.len(), values.len());
         for (row, &v) in rows.iter().zip(&values) {
             assert_eq!(row[0].to_bits(), v.to_bits());
             assert_eq!(row[1].to_bits(), (-v).to_bits());
@@ -414,6 +433,60 @@ mod tests {
                     if value.to_bits() == bad.to_bits()
             ));
         }
+    }
+
+    /// A two-row file of one column, byte for byte, each byte worked out by hand from
+    /// `parquet.thrift` and the compact protocol. It pins every field the reader ignores, such as
+    /// the uncompressed sizes and the row group's offset.
+    #[test]
+    fn a_small_file_is_the_bytes_the_specification_gives() {
+        let recorder = Recorder::with_rows(vec![Channel::Time], vec![vec![1.0], vec![2.0]]);
+        let mut expected: Vec<u8> = b"PAR1".to_vec();
+        // PageHeader, each field one on from the last (delta 1: 0x15 for an i32) but the fifth:
+        // type DATA_PAGE (0), uncompressed and compressed sizes 16 (zigzag 32), DataPageHeader
+        // (field 5, delta 2, a struct: 0x2c) of 2 values (zigzag 4), PLAIN (0), RLE levels
+        // (zigzag 6), then two stops.
+        expected.extend([
+            0x15, 0x00, 0x15, 0x20, 0x15, 0x20, 0x2c, 0x15, 0x04, 0x15, 0x00, 0x15, 0x06, 0x15,
+            0x06, 0x00, 0x00,
+        ]);
+        // The two values, little-endian: 1.0 and 2.0. The chunk is 17 + 16 = 33 bytes from 4.
+        expected.extend(1.0_f64.to_le_bytes());
+        expected.extend(2.0_f64.to_le_bytes());
+        let footer_start = expected.len();
+        // FileMetaData: version 1; schema, a list of 2 structs: the root ("schema", 6 bytes, 1
+        // child) and `time_s` (DOUBLE = zigzag 10, REQUIRED at field 3 by delta 2); 2 rows.
+        expected.extend([0x15, 0x02, 0x19, 0x2c, 0x48, 0x06]);
+        expected.extend(b"schema");
+        expected.extend([0x15, 0x02, 0x00, 0x15, 0x0a, 0x25, 0x00, 0x18, 0x06]);
+        expected.extend(b"time_s");
+        expected.extend([0x00, 0x16, 0x04]);
+        // Row groups, a list of 1: its columns, a list of 1 ColumnChunk: file_offset 0 (field 2),
+        // then ColumnMetaData (3): DOUBLE, encodings [PLAIN], path ["time_s"], UNCOMPRESSED, 2
+        // values, sizes 33 and 33 (zigzag 66), data_page_offset 4 (field 9 by delta 2, zigzag 8).
+        expected.extend([
+            0x19, 0x1c, 0x19, 0x1c, 0x26, 0x00, 0x1c, 0x15, 0x0a, 0x19, 0x15,
+        ]);
+        expected.extend([0x00, 0x19, 0x18, 0x06]);
+        expected.extend(b"time_s");
+        expected.extend([
+            0x15, 0x00, 0x16, 0x04, 0x16, 0x42, 0x16, 0x42, 0x26, 0x08, 0x00, 0x00,
+        ]);
+        // The row group: total_byte_size 33, 2 rows, file_offset 4 (field 5 by delta 2),
+        // total_compressed_size 33, ordinal 0 (i16), stop.
+        expected.extend([
+            0x16, 0x42, 0x16, 0x04, 0x26, 0x08, 0x16, 0x42, 0x14, 0x00, 0x00,
+        ]);
+        // created_by (field 6 by delta 2), then the file's stop.
+        let created_by = concat!("hpr-sim version ", env!("CARGO_PKG_VERSION"));
+        expected.extend([0x28, created_by.len() as u8]);
+        expected.extend(created_by.as_bytes());
+        expected.push(0x00);
+        let footer_length = (expected.len() - footer_start) as u32;
+        expected.extend(footer_length.to_le_bytes());
+        expected.extend(b"PAR1");
+
+        assert_eq!(parquet(&recorder).unwrap(), expected);
     }
 
     /// The compact protocol's encodings against its specification's own examples.

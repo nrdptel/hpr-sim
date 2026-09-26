@@ -271,7 +271,8 @@ impl Recorder {
     ///
     /// # Errors
     ///
-    /// [`SimError::Domain`] for an interval that isn't finite and positive.
+    /// [`SimError::Domain`] for an interval that isn't finite and positive;
+    /// [`SimError::Unsupported`] for a channel listed twice, which would give two columns one name.
     pub fn new(channels: Vec<Channel>, interval_s: Option<f64>) -> Result<Self, SimError> {
         if let Some(dt) = interval_s
             && !(dt.is_finite() && dt > 0.0)
@@ -279,6 +280,15 @@ impl Recorder {
             return Err(SimError::Domain {
                 what: "recorder interval",
                 value: dt,
+            });
+        }
+        if channels
+            .iter()
+            .enumerate()
+            .any(|(i, channel)| channels[..i].contains(channel))
+        {
+            return Err(SimError::Unsupported {
+                what: "a recorder channel listed twice",
             });
         }
         Ok(Self {

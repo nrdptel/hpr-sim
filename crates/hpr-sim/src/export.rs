@@ -1,9 +1,10 @@
 //! Writing a flight out: a [`Recorder`]'s rows as CSV or JSON (or Parquet, with the `parquet`
 //! feature), and the centre of mass's path with the landings as GeoJSON or KML for a map.
 //!
-//! Every function builds text and returns it; none writes a file (the core crates do no I/O).
-//! Numbers are written in Rust's shortest round-trip form, so each parses back to the exact `f64`
-//! that was recorded. A value that isn't finite is refused rather than written as text a reader
+//! Every function builds the file's contents (text, or bytes for Parquet) and returns them; none
+//! writes a file (the core crates do no I/O). Text numbers are written in Rust's shortest
+//! round-trip form and Parquet stores each `f64`'s own 8 bytes, so each reads back as the exact
+//! value recorded. A value that isn't finite is refused rather than written as something a reader
 //! would misread (`NaN`, or JSON's `null`).
 //!
 //! The two map formats put heights on different datums, as their specifications require:
@@ -30,7 +31,7 @@ use crate::recorder::Recorder;
 #[cfg(feature = "parquet")]
 mod parquet;
 #[cfg(feature = "parquet")]
-pub use parquet::{PAGE_ROWS, parquet};
+pub use parquet::{PARQUET_PAGE_ROWS, parquet};
 
 /// One point of the centre of mass's path, placed on the Earth.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]

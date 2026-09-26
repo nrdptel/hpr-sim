@@ -118,8 +118,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         recorder.columns().len(),
         track.len()
     );
-    for (name, _) in &files {
-        println!("  {name}");
+    for (name, contents) in &files {
+        // The Parquet file's size is the same on every system: its numbers take 8 bytes each,
+        // however many digits they have.
+        if name.ends_with(".parquet") {
+            println!("  {name}, {} bytes", contents.len());
+        } else {
+            println!("  {name}");
+        }
     }
     if let Some(landing) = summary.landing {
         println!(

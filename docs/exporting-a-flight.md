@@ -23,14 +23,15 @@ which writes five files into the folder `my-flight` (without a folder, into `hpr
 the system's temporary folder) and prints what it wrote. Parquet is an optional
 [feature](https://doc.rust-lang.org/cargo/reference/features.html) of `hpr-sim`, named `parquet`,
 so the command turns it on; without it, cargo says the example needs it. The feature adds no other
-library.
+library; it is optional so that a program with no use for a binary file format leaves it out. In
+your own program, turn it on in `Cargo.toml` with `hpr-sim = { ..., features = ["parquet"] }`.
 
 <!-- quote: crates/hpr-sim/examples/export_flight.output.txt -->
 ```text
 wrote 67 rows of 5 columns, a path of 67 points
   flight.csv
   flight.json
-  flight.parquet
+  flight.parquet, 3127 bytes
   flight.geojson
   flight.kml
 landed at 32.99000° N, 106.96904° W, 90 m from the pad, at 58.9 s
@@ -46,9 +47,18 @@ program prints a rounded summary instead of the files.
 |---|---|---|
 | `flight.csv` | a header naming each column with its unit (`time_s`, `cg_east_m`, ...), then one line per recorded moment, lines ending in CRLF as RFC 4180 says | a spreadsheet, pandas, any plotting tool |
 | `flight.json` | the same table as `{"columns": [...], "rows": [[...], ...]}` | any programming language |
-| `flight.parquet` | the same table in [Apache Parquet](https://parquet.apache.org/), a binary format that stores it column by column: one column of 64-bit numbers per recorded column, with the CSV header's names | pandas (`pandas.read_parquet`), Polars, DuckDB, Apache Arrow |
+| `flight.parquet` | the same table in [Apache Parquet](https://parquet.apache.org/), a binary format that stores it column by column: one column of 64-bit numbers per recorded column, with the CSV header's names | [pandas](https://pandas.pydata.org/) with [pyarrow](https://arrow.apache.org/docs/python/) (Apache Arrow's Python library), [DuckDB](https://duckdb.org/) |
 | `flight.geojson` | the flight path as a line, and a point for each landing: the rocket's and any separated body's | QGIS, geojson.io, web maps |
 | `flight.kml` | the same path and landing | Google Earth |
+
+To look at the Parquet file from Python, install pandas and pyarrow (`pip install pandas pyarrow`;
+pandas can't read Parquet on its own), then:
+
+```bash
+python -c "import pandas; print(pandas.read_parquet('my-flight/flight.parquet'))"
+```
+
+or, with DuckDB's command-line program, `duckdb -c "SELECT * FROM 'my-flight/flight.parquet'"`.
 
 The tables hold whatever [channels](recording-a-trajectory.md#record-something-else) the
 recorder kept, one row per recorded moment. The maps need the recorder to keep the time and the
@@ -102,12 +112,12 @@ trust.
 - **KML:** parsed by a strict XML parser, and checked for the KML 2.2 namespace, the height mode
   and every coordinate.
 - **Parquet:** hpr-sim writes the file itself, from the format's specification. The tests read it
-  back with code hpr-sim didn't write, Apache's own Parquet library for Rust, and compare every
-  number bit for bit. One test uses a recording long enough to fill several
-  [data pages](glossary.md#parquet-data-page) per column: 30 columns and over 2000 rows. When
-  this was written, two more readers, pyarrow 25.0.1 and DuckDB 1.5.5, also read the example's
-  file and a similar one of 3005 rows equal to their CSV. That was a one-time check; CI doesn't
-  run it.
+  back with an independent reader, Apache's own Parquet library for Rust, and compare every number
+  bit for bit. One test uses a recording of every channel (30 columns today) long enough to fill at
+  least three [data pages](glossary.md#parquet-data-page) per column, and another compares a small
+  file with bytes worked out by hand from the specification. Once, by hand, when this was written,
+  pyarrow 25.0.1 and DuckDB 1.5.5 each read the example's file and a 30-column, 3005-row file and
+  got the same numbers as the matching CSV. CI does not repeat that check.
 
 The tests are in
 [`crates/hpr-sim/src/export.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/src/export.rs)
@@ -117,9 +127,11 @@ and
 ## What it leaves out
 
 - **Parquet compression and statistics:** the Parquet file is not compressed and carries no
-  per-page minimum and maximum. It takes 8 bytes per number, plus about 21 bytes per 1024 numbers
-  of each column and a short footer: the example's is 3127 bytes against the CSV's 5550. A query
-  tool reads every page rather than skipping by value.
+  per-page minimum and maximum. It takes 8 bytes per number, plus a header of about 20 bytes per
+  page of up to 1024 numbers and a short index of the columns at the end of the file: the
+  example's is 3127 bytes, and its CSV about 5.5 kB. Without the minimums and maximums, a tool
+  such as DuckDB can't skip parts of the file when filtering (say `WHERE time_s > 10`) and reads
+  it all, which for one flight takes no noticeable time.
 - **A path over the antimeridian** (±180° longitude) is not cut in two as RFC 7946 asks, so a map
   would draw it the long way round the globe.
 - **Landing heights:** a landing is a point on the ground, without a height.
@@ -260,8 +272,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         recorder.columns().len(),
         track.len()
     );
-    for (name, _) in &files {
-        println!("  {name}");
+    for (name, contents) in &files {
+        // The Parquet file's size is the same on every system: its numbers take 8 bytes each,
+        // however many digits they have.
+        if name.ends_with(".parquet") {
+            println!("  {name}, {} bytes", contents.len());
+        } else {
+            println!("  {name}");
+        }
     }
     if let Some(landing) = summary.landing {
         println!(

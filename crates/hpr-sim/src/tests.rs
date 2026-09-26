@@ -883,6 +883,12 @@ fn a_recorder_is_cleared_between_flights_and_simulations_are_shareable() {
     shareable::<Recorder>();
     shareable::<Environment>();
     assert!(Recorder::new(vec![Channel::Time], Some(0.0)).is_err());
+    // A channel listed twice would name two columns alike, which Parquet readers refuse.
+    let twice = std::iter::once(Channel::Time).chain(Channel::ALL.iter().copied());
+    assert!(matches!(
+        Recorder::new(twice.collect(), None),
+        Err(SimError::Unsupported { what }) if what.contains("listed twice")
+    ));
     let sim = valetudo(Environment::standard(site()).unwrap(), capped(8.0));
     let mut recorder = Recorder::new(vec![Channel::Time], Some(0.1)).unwrap();
     sim.run(&mut recorder).unwrap();
