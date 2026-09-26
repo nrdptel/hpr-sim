@@ -154,7 +154,9 @@ pub fn skin_friction_coefficient(
     let cf = incompressible_skin_friction(reynolds, relative_roughness)?;
     let m2 = mach * mach;
     if mach < 1.0 {
-        return Ok(cf * (1.0 - 0.1 * m2));
+        // Throwaway: a deliberately perturbed drag coefficient, 2% more skin friction, to show
+        // the accuracy census failing CI (M2.4). Never merged.
+        return Ok(1.02 * cf * (1.0 - 0.1 * m2));
     }
     let turbulent = turbulent_friction(reynolds) / (1.0 + 0.15 * m2).powf(0.58);
     Ok(if roughness_limited(reynolds, relative_roughness)? {
