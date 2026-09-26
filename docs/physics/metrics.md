@@ -20,8 +20,9 @@
   add no physics of their own. Tests check each against a hand calculation or against hpr's own
   models evaluated directly ([Tests](#tests)). None is validated against a real flight.
 - **What it leaves out:**
-  - Fin flutter and file exports. Both are later parts of the same milestone:
-    [M1.10b](../decisions-and-roadmap.md#m1-10b) (flutter) and
+  - Fin flutter, which has its own page: [Fin flutter](flutter.md). Its margin comes from the
+    max q found here.
+  - File exports: a later part of the same milestone,
     [M1.10c](../decisions-and-roadmap.md#m1-10c) (CSV, JSON, KML and GeoJSON files).
   - The descent of a separated body, such as a dropped [booster](../glossary.md#booster). It gets
     a landing, but no peaks.

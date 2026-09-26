@@ -5,20 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
-  #173, #174, M1.13, #133 (13 of 20 designs); active work is M1.10b, fin flutter.
-- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; so M1.10 (split a to c, ADR-077), then b.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10a, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
+  #173, #174, M1.13, #133 (13 of 20 designs); active work is M1.10c, exports.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; so M1.10 (split a to c, ADR-077), now c.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10a-b, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M1.10a flight metrics (ADR-077) done, M1.10b next.
+- **Last updated:** 2026-09-26; M1.10b fin flutter (ADR-078) done, M1.10c next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.10b** (flutter, L32) on `m1.10b-<slug>`: read NACA TN 4197 itself (eq. 18, its
-  worked example) into `refs/papers/`; shear moduli need a cited source each (`Material` has none
-  yet). Then M1.10c, exports built as text/bytes in the core (no I/O), GeoJSON by schema, KML by
-  `roxmltree`. Metrics (ADR-077): `hpr_sim::metrics`, `FlightStep::stability`, margin `None` past
-  `κ = √10`; stability from rail exit; margins at zero angle, least refined in steps.
+- **Start M1.10c** (exports) on `m1.10c-<slug>`: text/bytes built in the core (no I/O), GeoJSON
+  by schema, KML by `roxmltree`. Flutter (ADR-078): `hpr_sim::flutter`, margin at max q; moduli in
+  `materials::SHEAR_MODULI`, sources cached in `refs/sources/shear-moduli/`; G10/FR-4 has none.
+  Metrics (ADR-077): `FlightStep::stability`, margin `None` past `κ = √10`, least refined in steps.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
   Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
   (#172). After any physics change run `cargo xtask ork-flights --check` and `--library --check`:
@@ -55,6 +54,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-26: M1.10b Fin flutter (ADR-078): TN 4197 eq. 18; Martin's examples at his resolution; 14 moduli; L32.
 - 2026-09-26: M1.10a Flight metrics (ADR-077; M1.10 split a to c): peaks on the dense output, margins, delay, landings; L33-35, L94.
 - 2026-09-25: M1.9c `.ork` staging and clusters (ADR-076): all within 5% of OR (3 vs no chute); M1.9 done; 13 of 20.
 - 2026-09-25: M1.9b Clusters (ADR-075): a motor out within 3.7e-7 of hand; OR's tubes to 1e-15 m.
@@ -75,6 +75,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-078: flutter by TN 4197 eq. 18, the lower reading where it allows two; solid fin G_E = G.
 - ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = √10; held recovery.
 - ADR-076: a `.ork` flies its ignitions and one powered split; tolerance 5% in apogee and speed.
 - ADR-074, ADR-075: M1.9 split a to c; a powered split flies body 0 on; a cluster, a motor per tube.

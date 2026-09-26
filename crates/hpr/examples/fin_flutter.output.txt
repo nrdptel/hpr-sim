@@ -1,0 +1,9 @@
+Panel: aspect ratio 0.667, taper ratio 0.400, thickness ratio 0.0212
+Max q: 72455 Pa at 2.09 s, 432 m above the pad
+
+material            G (GPa)   q_f (kPa)   V_f 0 m (m/s)   V_f 3 km (m/s)   V_f/V at max q
+aluminum_6061        26.200       836.3            1169             1356             3.40
+carbon_fiber          4.826       154.1             502              582             1.46
+birch_plywood         0.750        23.9             198              229             0.57
+basswood              0.511        16.3             163              189             0.47
+balsa                 0.138         4.4              85               99             0.25

@@ -83,6 +83,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-075 | A cluster is one tube repeated, and a motor in it one motor per tube | accepted |
 | ADR-076 | A `.ork` file's ignitions and one powered separation flown against OpenRocket | accepted |
 | ADR-077 | Flight metrics: peaks on the dense output, margins only where they mean something, and `None` for what didn't happen | accepted |
+| ADR-078 | Fin flutter by NACA TN 4197: the lower reading wherever the source leaves room | accepted |
 
 ---
 
@@ -6968,3 +6969,49 @@ margin limit of √10 is a choice that a later model of component uncertainties 
 measured one. The metrics watch only the main flight: a separated body gets a landing but no
 peaks.
 
+## ADR-078: Fin flutter by NACA TN 4197: the lower reading wherever the source leaves room (2026-09-26)
+
+**Context.** M1.10b asks for the flutter speed and margin from a cited primary source, matching its
+worked example, with each shear modulus cited (L32: Loft's constant was half the source's, and 7
+of its moduli had no source). The source is D. J. Martin, NACA TN 4197 (1958), eq. 18, which the
+hobby community's flutter formulas descend from. Martin's appendix derives it from
+Theodorsen and Garrick's flutter speed; his worked examples (pp. 6–7) read his figure 4.
+
+**Decision.**
+
+1. **Martin's eq. 18 as printed, constant from eq. 16.** `(V_f/a)² = G_E / D` with
+   `D = (24εγ/π) p · A³/((t/c)³(A + 2)) · (λ + 1)/2`, `ε = 0.25`, `γ = 1.4`. The constant is
+   computed (`24 · 0.25 · 1.4/π · 14.696 psi = 39.29 psi`), not his rounded 39.3.
+   `hpr_sim::flutter::FlutterPanel` holds `A`, `λ` and `t/c`; `λ` must lie in `[0, 1]`, where
+   his taper factors are defined.
+2. **A flutter dynamic pressure.** Eq. 16 depends on the air only through `ρa²`, so it fixes
+   `q_f = π G_E / (24 ε X (λ + 1))` at every height, and `V_f/V = √(q_f/q)`. The margin of a
+   flight is that ratio at its max q, which M1.10a's watcher already finds on the dense output; no
+   new observer is needed. A booster's fins get the whole flight's max q, which can only
+   understate their margin.
+3. **The worked example is matched at Martin's printed resolution.** His examples are chart
+   readings: `X` "about 1.25 × 10⁶" psi (eq. 19: 1.228, which rounds to 1.25 at his 0.05 steps),
+   and titanium thicknesses 2.5, 4.5 and "about 6.5" percent (eq. 19: 2.54, 4.61, 6.43, each
+   those at his half-percent steps). The test asserts that rounding, not a percentage tolerance.
+4. **The lower flutter speed wherever the source leaves room.** The thickness ratio is taken at
+   the root, the smallest on a constant-thickness fin. A solid fin's `G_E` is its material's `G`,
+   as Martin's text says (p. 6), though his eq. 12 with a flat plate's `J = ct³/3` would give
+   twice that (a `√2` higher speed). His `(λ + 1)/2` replaces `1/(f₁² f₂²)`, which it exceeds by
+   up to 47% at `λ = 0.31` (17% lower speed); it is kept, since his figure 3 was drawn with it.
+5. **Shear moduli with their own sources, beside the densities.** `Material` is unchanged (a
+   design stores a density only); `hpr_design::materials::SHEAR_MODULI` gives 14 built-in
+   materials an in-plane shear modulus with source, page, URL and basis: metals from MIL-HDBK-5J,
+   carbon from NCAMP's AS4/8552 `G₁₂`, plywood from Riga Wood's panel shear, woods from the Wood
+   Handbook's `G_LT/E_L` times 1.10 × the bending modulus (its footnote), and nylon and acetal as
+   `E/(2(1 + ν))` from their data sheets. Where a source gives a range, the lower is kept. No
+   source found gives G10/FR-4's, or PLA's, ABS's, PETG's, polycarbonate's or acrylic's; they have
+   none, and the caller passes one.
+6. **Refused, not guessed.** Elliptical and freeform fins return `SimError::Unsupported` (a new
+   variant): Martin's taper factors are for trapezoids.
+
+**Consequences.** hpr's flutter speeds are conservative by construction and are a screening
+number: Martin's figure 3 separates flutter from none with a band of scatter, and the criterion
+is not checked against any hobby rocket. On the synthetic 54 mm rocket on an I175, 3.2 mm birch
+plywood fins reach 1.75 times their flutter speed at max q (a ratio `V_f/V` of 0.57), and
+aluminium fins fly at under a third of theirs (3.40). A later milestone could add a plate-theory or measured-stiffness
+option; this one doesn't.

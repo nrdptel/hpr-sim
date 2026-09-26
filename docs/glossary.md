@@ -432,6 +432,13 @@ the attached flow would give. hpr blends a boattail's drag toward that value bet
 where measured boattails separate. Not the same as a [separation](#separation) of stages or
 recovery bodies. See [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
 
+## Flutter
+
+A fin shaking itself apart: above a certain speed, the air's push twists the fin, the twist changes
+the push, and the fin's bending and twisting feed each other instead of dying out. How fast that
+happens depends on the fin's outline and thickness, its [shear modulus](#shear-modulus) and the
+air. hpr screens for it with NACA TN 4197's criterion. See [Fin flutter](physics/flutter.md).
+
 ## Forebody
 
 Everything of a rocket but its flat aft end, the base: the nose, the body tube, the fins and any
@@ -797,6 +804,13 @@ no impulse, and the aft part's motors must have burned out. When the forward par
 motor to burn, it flies on as a [sustainer](#sustainer) and only the aft part descends. See
 [Recovery](physics/recovery.md#separation) and [Staging](physics/staging.md#powered-separation).
 
+
+## Shear modulus
+
+How hard a material resists being twisted or sheared, `G`, in pascals (Pa): the shear stress over
+the shear strain it causes. Aluminium's is about 26 GPa, birch plywood's 0.75 GPa. A fin twists in
+its own plane, so its flutter speed needs the shear modulus in that plane. See
+[Fin flutter](physics/flutter.md#shear-moduli).
 
 ## Shoulder
 
