@@ -346,6 +346,7 @@ dependencies = [
  "hpr-motor",
  "hpr-net",
  "hpr-sim",
+ "serde_json",
 ]
 
 [[package]]

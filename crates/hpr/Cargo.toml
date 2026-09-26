@@ -33,3 +33,6 @@ hpr-net = { workspace = true, optional = true }
 default = []
 # Online data sources with an on-disk cache (does I/O, so not for wasm32).
 net = ["dep:hpr-net"]
+
+[dev-dependencies]
+serde_json.workspace = true

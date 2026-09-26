@@ -36,6 +36,7 @@
 - [Recovery](physics/recovery.md)
 - [Staging](physics/staging.md)
 - [Flight metrics](physics/metrics.md)
+- [Fin flutter](physics/flutter.md)
 
 # Numerical tools
 

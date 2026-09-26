@@ -17,6 +17,23 @@
 //!
 //! Units: 1 oz/yd² = 33.9057 g/m², 1 oz/yd = 0.0310034 kg/m, and a minimum `L` ft/lb gives a
 //! maximum `1.488164 / L` kg/m. See `docs/physics/mass.md`.
+//!
+//! **Shear moduli.** [`SHEAR_MODULI`] gives some of these materials the in-plane shear modulus a
+//! fin's flutter speed needs (NACA TN 4197's `G_E`), each with its own source; the others have
+//! none. Among fin materials, no source found states one for G10/FR-4, eastern white pine, PLA,
+//! ABS, PETG, polycarbonate or acrylic.
+//! Where a source gives a range, the lower value is kept: a lower modulus gives a lower flutter
+//! speed.
+//!
+//! - Metals are stated by MIL-HDBK-5J, in 10³ ksi (1 psi = 6894.757 Pa).
+//! - A wood's is `G_LT = (G_LT/E_L) · 1.10 E_bend`: the Wood Handbook's elastic ratio (Table
+//!   5-1, p. 5-2) times its bending modulus at 12% moisture raised by 10%, as the table's
+//!   footnote a says for `E_L`. `G_LT` is the smaller of the two in-plane ratios for every wood
+//!   here: a fin whose grain runs along its span or chord shears in the L-T or L-R plane.
+//! - An unfilled plastic's is `E / (2 (1 + ν))`, taking it as isotropic, from its data sheet's
+//!   tensile modulus and Poisson's ratio; for nylon, the conditioned (moist) values.
+//! - The carbon laminate's is its unidirectional ply's `G₁₂`: a 0/90 laminate's in-plane shear
+//!   modulus, and less than one with ±45° plies.
 
 use serde::Serialize;
 
@@ -494,6 +511,184 @@ pub fn find(id: &str) -> Option<&'static BuiltinMaterial> {
     BUILTIN.iter().find(|m| m.id == id)
 }
 
+/// A built-in material's in-plane shear modulus, for fin flutter.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct BuiltinShearModulus {
+    /// The [`BuiltinMaterial::id`] it belongs to.
+    pub id: &'static str,
+    /// Shear modulus, Pa.
+    pub shear_modulus_pa: f64,
+    /// The source, with the table or page.
+    pub source: &'static str,
+    /// Where the source was read.
+    pub url: &'static str,
+    /// How the value relates to the source.
+    pub basis: Basis,
+}
+
+/// One pound per square inch, Pa (NIST SP 811, 2008, B.9).
+const PSI_PA: f64 = 6_894.757;
+
+/// A modulus in 10⁶ psi, Pa.
+const fn msi(value: f64) -> f64 {
+    value * 1e6 * PSI_PA
+}
+
+/// A wood's `G_LT` from the Wood Handbook's ratio `G_LT/E_L` and bending modulus in MPa, Pa.
+const fn wood_shear(g_lt_over_e_l: f64, e_bend_mpa: f64) -> f64 {
+    g_lt_over_e_l * 1.10 * e_bend_mpa * 1e6
+}
+
+/// An isotropic material's `E / (2 (1 + ν))`, Pa.
+const fn isotropic_shear(e_pa: f64, poisson: f64) -> f64 {
+    e_pa / (2.0 * (1.0 + poisson))
+}
+
+const MIL_HDBK_5J: &str =
+    "https://everyspec.com/MIL-HDBK/MIL-HDBK-0001-0099/download.php?spec=MIL_HDBK_5J.139.pdf";
+
+/// Every built-in shear modulus.
+pub const SHEAR_MODULI: &[BuiltinShearModulus] = &[
+    BuiltinShearModulus {
+        id: "aluminum_6061",
+        shear_modulus_pa: msi(3.8),
+        source: "MIL-HDBK-5J (2003), Table 3.6.2.0(b1), 6061 sheet T4 to T62, p. 3-264: \
+                 G 3.8 x 10^3 ksi",
+        url: MIL_HDBK_5J,
+        basis: Basis::Published,
+    },
+    BuiltinShearModulus {
+        id: "aluminum_7075",
+        shear_modulus_pa: msi(3.9),
+        source: "MIL-HDBK-5J (2003), Table 3.7.6.0(b1), 7075-T6 sheet and T651 plate, p. 3-371: \
+                 G 3.9 x 10^3 ksi",
+        url: MIL_HDBK_5J,
+        basis: Basis::Published,
+    },
+    BuiltinShearModulus {
+        id: "steel",
+        shear_modulus_pa: msi(11.0),
+        source: "MIL-HDBK-5J (2003), Table 2.2.1.0(b), AISI 1025, p. 2-8: G 11.0 x 10^3 ksi",
+        url: MIL_HDBK_5J,
+        basis: Basis::Published,
+    },
+    BuiltinShearModulus {
+        id: "titanium_6al4v",
+        shear_modulus_pa: msi(6.2),
+        source: "MIL-HDBK-5J (2003), Table 5.4.1.0(b), Ti-6Al-4V annealed, p. 5-53: G 6.2 x 10^3 \
+                 ksi; TIMET's TIMETAL 6-4 properties (p. 15) give 6.2 and 6.66 x 10^6 psi",
+        url: MIL_HDBK_5J,
+        basis: Basis::Published,
+    },
+    BuiltinShearModulus {
+        id: "carbon_fiber",
+        shear_modulus_pa: msi(0.70),
+        source: "NCAMP NCP-RP-2010-008 Rev D (2011), Hexcel 8552 AS4 unitape, Table 3-3, p. 37: \
+                 in-plane shear modulus G12 0.70 Msi, room temperature dry",
+        url: "https://www.wichita.edu/industry_and_defense/NIAR/Research/hexcel-8552/AS4-Unitape-3.pdf",
+        basis: Basis::Published,
+    },
+    BuiltinShearModulus {
+        id: "balsa",
+        shear_modulus_pa: wood_shear(0.037, 3_400.0),
+        source: concat!(
+            "Forest Products Laboratory, Wood Handbook, FPL-GTR-190 (2010), Table 5-1, p. 5-2 ",
+            "(G_LT/E_L 0.037) and Table 5-5a, p. 5-18 (modulus of elasticity 3,400 MPa at 12%)"
+        ),
+        url: WOOD_HANDBOOK,
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "basswood",
+        shear_modulus_pa: wood_shear(0.046, 10_100.0),
+        source: concat!(
+            "Forest Products Laboratory, Wood Handbook, FPL-GTR-190 (2010), Table 5-1, p. 5-2 ",
+            "(G_LT/E_L 0.046) and Table 5-3a, p. 5-4 (modulus of elasticity 10,100 MPa at 12%)"
+        ),
+        url: WOOD_HANDBOOK,
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "birch",
+        shear_modulus_pa: wood_shear(0.068, 13_900.0),
+        source: concat!(
+            "Forest Products Laboratory, Wood Handbook, FPL-GTR-190 (2010), Table 5-1, p. 5-2 ",
+            "(G_LT/E_L 0.068) and Table 5-3a, p. 5-4 (modulus of elasticity 13,900 MPa at 12%)"
+        ),
+        url: WOOD_HANDBOOK,
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "spruce",
+        shear_modulus_pa: wood_shear(0.061, 10_800.0),
+        source: concat!(
+            "Forest Products Laboratory, Wood Handbook, FPL-GTR-190 (2010), Table 5-1, p. 5-2 ",
+            "(G_LT/E_L 0.061) and Table 5-3a, p. 5-8 (modulus of elasticity 10,800 MPa at 12%)"
+        ),
+        url: WOOD_HANDBOOK,
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "maple",
+        shear_modulus_pa: wood_shear(0.063, 12_600.0),
+        source: concat!(
+            "Forest Products Laboratory, Wood Handbook, FPL-GTR-190 (2010), Table 5-1, p. 5-2 ",
+            "(G_LT/E_L 0.063) and Table 5-3a, p. 5-5 (modulus of elasticity 12,600 MPa at 12%)"
+        ),
+        url: WOOD_HANDBOOK,
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "oak",
+        shear_modulus_pa: wood_shear(0.081, 12_500.0),
+        source: concat!(
+            "Forest Products Laboratory, Wood Handbook, FPL-GTR-190 (2010), Table 5-1, p. 5-2 ",
+            "(red oak, G_LT/E_L 0.081) and Table 5-3a, p. 5-5 (northern red, modulus of ",
+            "elasticity 12,500 MPa at 12%)"
+        ),
+        url: WOOD_HANDBOOK,
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "birch_plywood",
+        shear_modulus_pa: 750e6,
+        source: "Riga Wood, Plywood Handbook (2022), Table 4.11, p. 89: mean modulus of rigidity \
+                 in panel shear (EN 789) 750 N/mm2, every thickness, both directions",
+        url: "https://www.finieris.com/wp-content/uploads/2024/04/Riga-Wood_Plywood-Handbook_2022-1.pdf",
+        basis: Basis::Published,
+    },
+    BuiltinShearModulus {
+        id: "nylon",
+        shear_modulus_pa: isotropic_shear(1_400e6, 0.43),
+        source: "Celanese, Zytel 101L NC010 data sheet (2023): conditioned tensile modulus \
+                 1400 MPa (p. 1) and Poisson's ratio 0.43 (p. 2)",
+        url: "https://quickparts.com/wp-content/uploads/2023/04/zytel%C2%AE-101l-nc010-gb.pdf",
+        basis: Basis::Derived,
+    },
+    BuiltinShearModulus {
+        id: "acetal",
+        shear_modulus_pa: isotropic_shear(421_000.0 * PSI_PA, 0.37),
+        source: "Delrin 100P NC010 data sheet: tensile modulus 421000 psi (p. 1) and Poisson's \
+                 ratio 0.37 (p. 2)",
+        url: "https://quickparts.com/wp-content/uploads/2023/05/QP-Materials-Delrin-100P-NC010.pdf",
+        basis: Basis::Derived,
+    },
+];
+
+/// The built-in shear modulus of the material with `id`, if a source gives one.
+pub fn shear_modulus(id: &str) -> Option<&'static BuiltinShearModulus> {
+    SHEAR_MODULI.iter().find(|m| m.id == id)
+}
+
+/// The built-in shear modulus of `material`, a design's copy of a built-in one (its name and
+/// density both match); `None` for a material that isn't built in or has no modulus.
+pub fn shear_modulus_of(material: &Material) -> Option<&'static BuiltinShearModulus> {
+    let builtin = BUILTIN
+        .iter()
+        .find(|m| m.name == material.name && m.density == material.density)?;
+    shear_modulus(builtin.id)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -543,5 +738,51 @@ mod tests {
         assert!((kg_m("elastic_cord_quarter_inch") - 0.035_72).abs() < 1e-5);
         assert!((kg_m2("mylar") - 0.035_306).abs() < 1e-6);
         assert!(find("unobtainium").is_none());
+    }
+
+    #[test]
+    fn every_shear_modulus_belongs_to_a_bulk_material_and_has_a_source() {
+        let mut ids = BTreeSet::new();
+        for m in SHEAR_MODULI {
+            assert!(ids.insert(m.id), "duplicate id {}", m.id);
+            let material = find(m.id).unwrap_or_else(|| panic!("no material {}", m.id));
+            assert!(matches!(material.density, Density::Bulk { .. }), "{}", m.id);
+            assert!(m.source.len() > 20 && m.url.starts_with("http"), "{}", m.id);
+            assert!(
+                m.shear_modulus_pa.is_finite() && m.shear_modulus_pa > 0.0,
+                "{}",
+                m.id
+            );
+        }
+        assert_eq!(SHEAR_MODULI.len(), 14);
+        for none in ["fiberglass_g10", "pine", "polycarbonate"] {
+            assert!(shear_modulus(none).is_none(), "{none}");
+        }
+        // A design's copy of a built-in material finds its modulus by name.
+        let plywood = find("birch_plywood").unwrap().material();
+        assert_eq!(shear_modulus_of(&plywood).unwrap().id, "birch_plywood");
+        assert!(shear_modulus_of(&Material::bulk("Birch plywood (mine)", 680.0)).is_none());
+        assert!(shear_modulus_of(&Material::bulk("Birch plywood", 500.0)).is_none());
+        let names: BTreeSet<_> = BUILTIN.iter().map(|m| m.name).collect();
+        assert_eq!(names.len(), BUILTIN.len(), "built-in names must be unique");
+        assert!(shear_modulus_of(&find("fiberglass_g10").unwrap().material()).is_none());
+    }
+
+    #[test]
+    fn shear_moduli_reproduce_the_sources() {
+        let gpa = |id: &str| shear_modulus(id).unwrap().shear_modulus_pa / 1e9;
+        // 3.8, 3.9, 11.0 and 6.2 × 10⁶ psi.
+        assert!((gpa("aluminum_6061") - 26.200_077).abs() < 1e-6);
+        assert!((gpa("aluminum_7075") - 26.889_552).abs() < 1e-6);
+        assert!((gpa("steel") - 75.842_327).abs() < 1e-6);
+        assert!((gpa("titanium_6al4v") - 42.747_493).abs() < 1e-6);
+        assert!((gpa("carbon_fiber") - 4.826_330).abs() < 1e-6);
+        // 0.046 · 1.10 · 10 100 MPa and 0.037 · 1.10 · 3400 MPa.
+        assert!((gpa("basswood") - 0.511_06).abs() < 1e-9);
+        assert!((gpa("balsa") - 0.138_38).abs() < 1e-9);
+        // 1400 / 2.86 MPa and 421 000 psi / 2.74.
+        assert!((gpa("nylon") - 0.489_510).abs() < 1e-6);
+        assert!((gpa("acetal") - 1.059_377).abs() < 1e-6);
+        assert!((gpa("birch_plywood") - 0.75).abs() < 1e-12);
     }
 }

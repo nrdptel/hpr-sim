@@ -20,6 +20,12 @@ pub enum SimError {
         /// The offending value.
         value: f64,
     },
+    /// A model doesn't cover the input, such as a flutter panel of an elliptical fin.
+    #[error("unsupported: {what}")]
+    Unsupported {
+        /// What isn't covered.
+        what: &'static str,
+    },
     /// The design's checks found errors, and the settings don't accept them.
     #[error("the design has {} error finding(s); the first is {:?}", .0.len(), .0.first())]
     DesignChecks(Vec<Finding>),

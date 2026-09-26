@@ -21,19 +21,23 @@
 //! - [`integrator`]: adaptive Dormand–Prince 5(4) with dense output, and fixed-step RK4, advancing
 //!   to stop times and events.
 //! - [`events`]: event directions and Brent's root finder.
+//! - [`metrics`]: what a flight comes to: its peaks, apogee, stability margins, optimum ejection
+//!   delays and landings.
+//! - [`flutter`]: a fin's flutter speed and margin by NACA TN 4197's criterion.
 //!
 //! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, a
 //! separation whose bodies each land, and staging: each motor lights at its own time, and a
 //! separation with the nose's body still to burn lets that body fly on as a sustainer while the
 //! booster descends ([`flight`]). A cluster flies one motor in each of its tubes, and a tube can
-//! be set never to light. A `.ork` file's staging settings and clusters are not flown yet
-//! (milestone [M1.9][roadmap] of the roadmap).
+//! be set never to light, and a `.ork` file's staging settings and clusters fly too (milestone
+//! [M1.9][roadmap] of the roadmap).
 
 pub mod dynamics;
 pub mod environment;
 pub mod error;
 pub mod events;
 pub mod flight;
+pub mod flutter;
 pub mod integrator;
 pub mod metrics;
 pub mod rail;
@@ -49,6 +53,7 @@ pub use events::{Direction, EVENT_TIME_RESOLUTION_S, RootError, find_root};
 pub use flight::{
     EventKind, FlightEvent, FlightResult, FlightSettings, Simulation, Termination, UserEvent,
 };
+pub use flutter::{FlutterMargin, FlutterPanel};
 pub use integrator::{
     Adaptive, Advance, DEFAULT_STEP_LIMIT, IntegrationError, Integrator, Method, OdeSystem,
     SettingsError, Stats, Step,
