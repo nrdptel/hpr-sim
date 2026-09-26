@@ -272,11 +272,29 @@ fn known_gap_that_starts_passing_fails_the_gate() {
     .unwrap();
     let changes = compare(&accepted, &flown);
     assert!(
-        matches!(&changes[..], [Change::Flown(row)] if row.case == "flight-g"),
+        matches!(
+            &changes[..],
+            [Change::Flown { accepted, now }] if accepted.case == "flight-g" && now.len() == 2
+        ),
         "the gap is flown, and its new rows come with it: {changes:#?}"
     );
     assert!(changes[0].describe().contains("hpr flies it now"));
+    assert!(changes[0].describe().contains("apogee_agl_m +0.000000"));
     assert!(!changes[0].is_worse());
+    // Flown now, but failing a gate: still a change for the better? No: it is named for the worse.
+    let failing = take(&harness(
+        vec![
+            Comparison::new("flight-g", "apogee_agl_m", 6000.0, 5000.0, "s", gate),
+            Comparison::new("flight-g", "max_mach", 5.2, 5.2, "s", gate),
+        ],
+        Vec::new(),
+    ))
+    .unwrap();
+    let changes = compare(&accepted, &failing);
+    assert!(
+        matches!(&changes[..], [Change::Flown { .. }]) && changes[0].is_worse(),
+        "{changes:#?}"
+    );
     // A gap whose case is simply gone is a loss, not a flight.
     let gone = take(&harness(Vec::new(), Vec::new())).unwrap();
     let changes = compare(&accepted, &gone);
@@ -385,11 +403,13 @@ fn predicted_mode_regressions_fail_the_gate() {
     // Just inside the slack holds; just past it doesn't.
     let inside = Row {
         difference: accepted.difference + 0.059,
+        percent: Some(100.0 * (accepted.difference + 0.059) / 2000.0),
         ..accepted.clone()
     };
     assert!(compare(&single(accepted.clone()), &single(inside)).is_empty());
     let past = Row {
         difference: accepted.difference + 0.061,
+        percent: Some(100.0 * (accepted.difference + 0.061) / 2000.0),
         ..accepted.clone()
     };
     assert!(matches!(
@@ -418,7 +438,11 @@ fn a_census_reads_back_as_it_was_written() {
     assert_eq!(accepted.reason, "the first census");
     let text = serde_json::to_string_pretty(&accepted).unwrap();
     let back: Accepted = serde_json::from_str(&text).unwrap();
-    assert_eq!(back, accepted);
+    assert!(
+        back.summaries.is_empty(),
+        "stored summaries are not read back"
+    );
+    assert_eq!(back.refreshed(), accepted);
     assert!(compare(&back.census, &census).is_empty());
     let page = accepted.to_markdown();
     for summary in &accepted.summaries {
@@ -498,9 +522,42 @@ fn a_change_of_reference_rule_or_definition_is_a_change() {
         slack: 2.0 * row.slack,
         ..row.clone()
     };
+    let changes = compare(&single(row.clone()), &single(looser));
+    assert!(
+        matches!(&changes[..], [Change::Redefined { .. }]) && changes[0].is_worse(),
+        "{changes:#?}"
+    );
+    // A wider tolerance that turns a miss into a pass names the redefinition as well as the
+    // standing, and counts for the worse (hard rule 2: never weaken a check to get green).
+    let missing = predicted_apogee(3.5);
+    let widened = Row {
+        scale: 2.0 * missing.scale,
+        slack: 2.0 * missing.slack,
+        standing: Standing::WithinTarget,
+        ..missing.clone()
+    };
+    let changes = compare(&single(missing), &single(widened));
+    assert!(
+        matches!(
+            &changes[..],
+            [Change::Redefined { .. }, Change::Standing { .. }]
+        ) && changes[0].is_worse(),
+        "{changes:#?}"
+    );
+    // A percentage that moves while its difference doesn't: the reference moved.
+    let rereferenced = Row {
+        percent: row.percent.map(|percent| 0.9 * percent),
+        ..row.clone()
+    };
     assert!(matches!(
-        &compare(&single(row.clone()), &single(looser))[..],
+        &compare(&single(row.clone()), &single(rereferenced))[..],
         [Change::Redefined { .. }]
+    ));
+    // One that follows its difference is no redefinition, however far the difference moved.
+    let moved = predicted_apogee(2.0);
+    assert!(matches!(
+        &compare(&single(row.clone()), &single(moved))[..],
+        [Change::Regressed { .. }]
     ));
     let reclassed = Row {
         regime: Regime::Subsonic,
@@ -570,6 +627,48 @@ fn openrocket_reports_count_what_they_leave_unflown() {
     assert_eq!(rows[0].regime, Regime::Unknown);
     library["flights"][0]["mach"] = Value::Null;
     assert!(openrocket_library_rows(&library, &mut Vec::new(), &mut references).is_err());
+    // A mass missing from a flight that ran is refused, rather than read as withheld; an aborted
+    // flight withholds it.
+    let mut library: Value = committed("openrocket-library-flights.json");
+    let key = "launch_mass_percent";
+    library["flights"][0].as_object_mut().unwrap().remove(key);
+    assert!(matches!(
+        openrocket_library_rows(&library, &mut Vec::new(), &mut references),
+        Err(CensusError::Report { what, .. }) if what.contains("launch_mass is missing")
+    ));
+    library["flights"][0]["aborted"] = json!(true);
+    let mut rows = Vec::new();
+    openrocket_library_rows(&library, &mut rows, &mut references).unwrap();
+    assert_eq!(rows[3].metric, "launch_mass");
+    assert_eq!(rows[3].standing, Standing::Withheld);
+    let mut broken = examples.clone();
+    broken["flights"][0]["launch_mass_kg"]
+        .as_object_mut()
+        .unwrap()
+        .remove("hpr");
+    assert!(matches!(
+        openrocket_example_rows(&broken, &mut Vec::new(), &mut references),
+        Err(CensusError::Report { what, .. }) if what.contains("launch_mass is missing")
+    ));
+    // A configuration both flown and listed as not flown is refused.
+    let mut twice = examples.clone();
+    let flown = twice["flights"][0].clone();
+    twice["not_flown"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"design": flown["design"], "configuration": flown["configuration"]}));
+    let report = harness(Vec::new(), Vec::new());
+    let real: RealFlightReport = committed("real-flights.json");
+    let library: Value = committed("openrocket-library-flights.json");
+    assert!(matches!(
+        Census::take(Reports {
+            harness: &report,
+            real_flights: &real,
+            openrocket_examples: &twice,
+            openrocket_library: &library,
+        }),
+        Err(CensusError::Report { what, .. }) if what.contains("both compared and not")
+    ));
     // A metric with no outcome is refused too, rather than read as withheld.
     let mut examples = examples;
     examples["flights"][0]["metrics"]["apogee_m"]["outcome"] = Value::Null;

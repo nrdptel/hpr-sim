@@ -62,15 +62,16 @@ simulator, not which of the two is right; only the real flights are measurements
 | [RocketPy 1.13.0, patched](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): whole flights, each code on its own drag | code-to-code, each code's own drag | target: 3% on each metric, reported, not enforced | 6 flights (5 subsonic, 1 transonic) | 75 of 102 metrics within target; apogee -7.28% to +10.30% |
 | [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of OpenRocket's examples | code-to-code, each code's own model | no target; an apogee more than 5% off needs a written cause | 33 flights (32 subsonic, 1 transonic); 24 more not flown | apogee -19.13% to +13.80%; apogee within 5% on 27 of 33, largest speed within 5% on 31 of 33, margin within 0.5 calibres on 33 of 33, launch mass within 1% on 33 of 33, mass at rod clearance within 1% on 32 of 33, centre of mass at rod clearance within 0.5 calibres on 33 of 33 |
 | [OpenRocket 24.12](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): calm flights of the private designs | code-to-code, each code's own model | no target; an apogee more than 5% off needs a written cause | 18 flights (13 subsonic, 5 transonic); 19 more not flown | apogee -4.84% to +1.17%; apogee within 5% on 18 of 18, largest speed within 5% on 18 of 18, margin within 0.5 calibres on 18 of 18, launch mass within 1% on 18 of 18, mass at rod clearance within 1% on 18 of 18, centre of mass at rod clearance within 0.5 calibres on 18 of 18 |
-| [the teams' altimeter logs](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): real flights | measured | target: mean absolute apogee error 5% | 7 flights (3 subsonic, 4 transonic) | mean absolute apogee error 6.04% (target 5%, missed); apogee -8.90% to +10.40%; apogee within 5% on 2 of 7, climb within 3% on 2 of 7 |
+| [the teams' altimeter logs](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md): real flights | measured | target: mean absolute apogee error 5% | 7 flights (3 subsonic, 4 transonic) | mean absolute apogee error 6.04% (target 5%, missed); apogee -8.90% to +10.40%; apogee within 5% on 2 of 7, climb's RMS height error within 3% of apogee on 2 of 7 |
 
 <!-- census: end -->
 
 **Reading the table.**
 
 - *Compared with* names the reference and its version ([census][census]):
-  [RocketPy](glossary.md#rocketpy), "patched" where hpr flies it with two corrections of its own
-  applied (see [whole flights against RocketPy](#whole-flights-against-rocketpy)),
+  [RocketPy](glossary.md#rocketpy), "patched" where RocketPy 1.13.0 runs with two fixes from
+  RocketPy's own pull requests, which correct the point it takes the burn's turning moments about
+  (see [whole flights against RocketPy](#whole-flights-against-rocketpy)),
   [OpenRocket](glossary.md#openrocket), or the teams' altimeter logs.
 - *Kind* says whether both programs flew the same inputs, each flew its own model, or hpr was
   compared with a measurement.
@@ -104,11 +105,11 @@ holds every row of the committed reports to it. It fails when:
 - a group's reference changes, such as a new version of OpenRocket.
 
 A row's slack is 0.1% of its scale, and for a harness row never less than the harness's
-reproduction bound, 2e-6 or 1e-7 of the value, whichever is larger. The scale is the row's own
+reproduction bound, 2e-6 in the metric's own unit or 1e-7 of the value, whichever is larger. The scale is the row's own
 tolerance where it has one, and otherwise the bar of its kind: 3% of its reference for a harness
 metric not scored, 5% for an OpenRocket apogee or largest speed, 1% for an OpenRocket mass, 0.5
-calibres for a stability margin or centre of mass, 5% for a logged apogee and 3% for a logged climb
-([census][census]). For example, a 3% tolerance on a 1000 m apogee allows 30 m, and the census lets
+calibres for a stability margin or centre of mass, 5% for a logged apogee, and 3% of the apogee for a logged climb's RMS, the
+bound the RocketPy comparisons hold a whole flight's height RMS to ([census][census]). For example, a 3% tolerance on a 1000 m apogee allows 30 m, and the census lets
 the difference move by 0.03 m before it fails.
 
 So the census holds a number to where it was, not to its target. A flight on each code's own drag,
@@ -741,7 +742,9 @@ file of the flight's day is available ([report][real-report]).
 
 The mean absolute apogee error is 6.04%, against the 5% target of the
 [validation plan][plan] ([gate and target](glossary.md#gate-and-target)). The largest climb RMS is
-Juno III's, 7.26% of its apogee ([report][real-report]).
+Juno III's, 7.26% of its apogee ([report][real-report]). No target is set on the climb; the
+[census](#the-census) holds each to 3% of its apogee, the bound the RocketPy comparisons hold a
+height RMS to, and Bella Lui and Lince are within it ([census][census]).
 
 **The last column is a diagnostic, not a prediction.** It flies each flight again with hpr's drag
 replaced by the drag the example's RocketPy notebook specifies: the team's estimate, a table, a

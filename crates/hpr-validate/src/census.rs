@@ -470,6 +470,19 @@ impl Census {
                 });
             }
         }
+        let unflown: BTreeSet<(Group, &str)> = rows
+            .iter()
+            .filter(|row| row.standing.unflown())
+            .map(|row| (row.group, row.case.as_str()))
+            .collect();
+        if let Some(row) = rows.iter().find(|row| {
+            !row.standing.unflown() && unflown.contains(&(row.group, row.case.as_str()))
+        }) {
+            return Err(CensusError::Report {
+                report: row.group.report(),
+                what: format!("{} is both compared and not compared", row.case),
+            });
+        }
         rows.sort_by(|a, b| a.key().cmp(&b.key()));
         Ok(Self {
             slack_share: SLACK_SHARE,
@@ -682,6 +695,31 @@ fn scored(
     }
 }
 
+/// A mass or centre-of-mass difference: `None` only for an aborted flight, which the reports
+/// withhold them from. An absent or null value on a flight that ran is a partial report.
+fn measured(
+    value: Option<f64>,
+    flight: &Value,
+    case: &str,
+    metric: &str,
+    name: &'static str,
+) -> Result<Option<f64>, CensusError> {
+    let aborted = flight["aborted"]
+        .as_bool()
+        .ok_or_else(|| CensusError::Report {
+            report: name,
+            what: format!("{case} doesn't say whether it was aborted"),
+        })?;
+    match value.filter(|value| value.is_finite()) {
+        Some(value) => Ok(Some(value)),
+        None if aborted => Ok(None),
+        None => Err(CensusError::Report {
+            report: name,
+            what: format!("{case} {metric} is missing from a flight that ran"),
+        }),
+    }
+}
+
 /// Per cent of `openrocket`'s by which `hpr` differs, as `cargo xtask ork-flights` computes it.
 fn percent_of(hpr: &Value, openrocket: &Value) -> Option<f64> {
     hpr.as_f64()
@@ -767,6 +805,7 @@ fn openrocket_example_rows(
             ),
             ("rod_clearance_cg", cg, CALIBRE_BAR),
         ] {
+            let value = measured(value, flight, &case, metric, EXAMPLES)?;
             rows.push(barred(group, &case, metric, value, bar, regime));
         }
     }
@@ -830,13 +869,12 @@ fn openrocket_library_rows(
             )?;
             rows.push(barred(group, &case, metric, value, bar, regime));
         }
-        // The report withholds these, as null, for an aborted flight.
         for (metric, field, bar) in [
             ("launch_mass", "launch_mass_percent", MASS_BAR),
             ("rod_clearance_mass", "rod_clearance_mass_percent", MASS_BAR),
             ("rod_clearance_cg", "rod_clearance_cg_cal", CALIBRE_BAR),
         ] {
-            let value = flight[field].as_f64();
+            let value = measured(flight[field].as_f64(), flight, &case, metric, LIBRARY)?;
             rows.push(barred(group, &case, metric, value, bar, regime));
         }
     }
@@ -908,15 +946,16 @@ pub struct BarCount {
     pub compared: usize,
 }
 
-/// The metrics judged by a bar, in the order the census reads them out, with their names.
-const BARRED: [(&str, &str); 7] = [
-    ("apogee", "apogee"),
-    ("max_speed", "largest speed"),
-    ("margin", "margin"),
-    ("launch_mass", "launch mass"),
-    ("rod_clearance_mass", "mass at rod clearance"),
-    ("rod_clearance_cg", "centre of mass at rod clearance"),
-    ("climb", "climb"),
+/// The metrics judged by a bar, in the order the census reads them out, with their names and
+/// what their bar is a share of, where that isn't the reference's own value.
+const BARRED: [(&str, &str, &str); 7] = [
+    ("apogee", "apogee", ""),
+    ("max_speed", "largest speed", ""),
+    ("margin", "margin", ""),
+    ("launch_mass", "launch mass", ""),
+    ("rod_clearance_mass", "mass at rod clearance", ""),
+    ("rod_clearance_cg", "centre of mass at rod clearance", ""),
+    ("climb", "climb's RMS height error", " of apogee"),
 ];
 
 /// What one group adds up to.
@@ -970,7 +1009,7 @@ impl Summary {
         }
         let bars = BARRED
             .iter()
-            .filter_map(|(metric, _)| {
+            .filter_map(|(metric, ..)| {
                 let judged: Vec<&Row> = rows
                     .iter()
                     .copied()
@@ -1078,12 +1117,12 @@ impl Summary {
             .bars
             .iter()
             .map(|bar| {
-                let name = BARRED
+                let (name, of) = BARRED
                     .iter()
-                    .find(|(metric, _)| *metric == bar.metric)
-                    .map_or(bar.metric.as_str(), |(_, name)| name);
+                    .find(|(metric, ..)| *metric == bar.metric)
+                    .map_or((bar.metric.as_str(), ""), |(_, name, of)| (name, of));
                 format!(
-                    "{name} within {}{} on {} of {}",
+                    "{name} within {}{}{of} on {} of {}",
                     bar.scale,
                     match bar.unit {
                         Unit::Calibre => " calibres",
@@ -1165,7 +1204,12 @@ pub enum Change {
     /// A row the accepted census has and this one doesn't.
     Removed(Row),
     /// A known gap, or a configuration not flown, that hpr flies now.
-    Flown(Row),
+    Flown {
+        /// The case's row as accepted.
+        accepted: Row,
+        /// Its rows now.
+        now: Vec<Row>,
+    },
     /// A row whose standing changed, better or worse.
     Standing {
         /// As accepted.
@@ -1187,7 +1231,8 @@ pub enum Change {
         /// Now.
         now: Row,
     },
-    /// A row whose unit, scale, slack or speed class changed: it is not the same comparison.
+    /// A row whose unit, scale, slack or speed class changed, or whose percentage no longer
+    /// follows its difference (its reference moved): it is not the same comparison.
     Redefined {
         /// As accepted.
         accepted: Row,
@@ -1230,10 +1275,20 @@ impl Change {
         match self {
             Self::Added(row) => format!("added: {} ({})", row.describe(), row.standing.name()),
             Self::Removed(row) => format!("removed: {} ({})", row.describe(), row.standing.name()),
-            Self::Flown(row) => format!(
-                "flown: {}, {} before: hpr flies it now (L85)",
-                row.describe(),
-                row.standing.name()
+            Self::Flown { accepted, now } => format!(
+                "flown: {}, {} before: hpr flies it now (L85); {}",
+                accepted.describe(),
+                accepted.standing.name(),
+                now.iter()
+                    .map(|row| format!(
+                        "{} {:+.6}{} ({})",
+                        row.metric,
+                        row.difference,
+                        row.unit.suffix(),
+                        row.standing.name()
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ),
             Self::Standing { accepted, now } => format!(
                 "{}: {} to {}; {}",
@@ -1249,17 +1304,19 @@ impl Change {
                 format!("improved: {}: {}", now.describe(), moved(accepted, now))
             }
             Self::Redefined { accepted, now } => format!(
-                "redefined: {}: unit, scale, slack or speed class changed ({:?}, {}, {:.2e}, {} \
-                 to {:?}, {}, {:.2e}, {})",
+                "redefined: {}: unit, scale, slack, speed class or percentage changed ({:?}, {}, \
+                 {:.2e}, {}, {:?} to {:?}, {}, {:.2e}, {}, {:?})",
                 now.describe(),
                 accepted.unit,
                 accepted.scale,
                 accepted.slack,
                 accepted.regime.name(),
+                accepted.percent,
                 now.unit,
                 now.scale,
                 now.slack,
-                now.regime.name()
+                now.regime.name(),
+                now.percent
             ),
             Self::Reference {
                 group,
@@ -1275,30 +1332,37 @@ impl Change {
         }
     }
 
-    /// Whether it makes the record worse: a regression, a row lost, a standing that fell, or a
-    /// wider slack.
+    /// Whether it makes the record worse: a regression, a row lost, a standing that fell, a
+    /// wider scale or slack, a changed unit, or a case flown now that fails or misses a bar.
     #[must_use]
     pub fn is_worse(&self) -> bool {
         match self {
             Self::Regressed { .. } | Self::Removed(_) => true,
             Self::Standing { accepted, now } => now.standing.rank() < accepted.standing.rank(),
             Self::Rule { accepted, now } => now > accepted,
-            Self::Added(_)
-            | Self::Flown(_)
-            | Self::Improved { .. }
-            | Self::Redefined { .. }
-            | Self::Reference { .. } => false,
+            Self::Redefined { accepted, now } => {
+                now.unit != accepted.unit
+                    || now.scale > accepted.scale
+                    || now.slack > accepted.slack
+            }
+            Self::Flown { now, .. } => now.iter().any(|row| {
+                matches!(
+                    row.standing,
+                    Standing::Fail | Standing::OverBar | Standing::OutsideTarget
+                )
+            }),
+            Self::Added(_) | Self::Improved { .. } | Self::Reference { .. } => false,
         }
     }
 }
 
 /// Every way `now` differs from `accepted`. Empty when the census holds.
 ///
-/// A row is a change when its standing differs, when its unit, scale, slack or speed class
-/// differs, or when its difference moved by more than the accepted slack either way: a ratchet
-/// that only watched for regressions would let an improvement slip back unseen. A case that was
-/// a known gap or not flown, and is compared now, is [`Change::Flown`]; its new rows are not
-/// listed again.
+/// A row is a change when its unit, scale, slack, speed class or percentage's reference differs
+/// ([`Change::Redefined`], listed as well as what follows), when its standing differs, or when its
+/// difference moved by more than the accepted slack either way: a ratchet that only watched for
+/// regressions would let an improvement slip back unseen. A case that was a known gap or not
+/// flown, and is compared now, is one [`Change::Flown`] carrying its new rows.
 #[must_use]
 pub fn compare(accepted: &Census, now: &Census) -> Vec<Change> {
     let mut changes = Vec::new();
@@ -1348,23 +1412,33 @@ pub fn compare(accepted: &Census, now: &Census) -> Vec<Change> {
     for key in keys {
         let flown = newly_flown.contains(&(key.0, key.1));
         match (before.get(&key), after.get(&key)) {
-            (Some(was), None) if flown => changes.push(Change::Flown((*was).clone())),
+            (Some(was), None) if flown => changes.push(Change::Flown {
+                accepted: (*was).clone(),
+                now: now
+                    .rows
+                    .iter()
+                    .filter(|row| row.group == key.0 && row.case == key.1)
+                    .cloned()
+                    .collect(),
+            }),
             (Some(was), None) => changes.push(Change::Removed((*was).clone())),
             (None, Some(_)) if flown => {}
             (None, Some(is)) => changes.push(Change::Added((*is).clone())),
             (Some(was), Some(is)) => {
                 let (was, is) = ((*was).clone(), (*is).clone());
-                if was.standing != is.standing {
-                    changes.push(Change::Standing {
-                        accepted: was,
-                        now: is,
-                    });
-                } else if was.unit != is.unit
+                if was.unit != is.unit
                     || was.regime != is.regime
                     || differs(was.scale, is.scale)
                     || differs(was.slack, is.slack)
+                    || !percent_follows(&was, &is)
                 {
                     changes.push(Change::Redefined {
+                        accepted: was.clone(),
+                        now: is.clone(),
+                    });
+                }
+                if was.standing != is.standing {
+                    changes.push(Change::Standing {
                         accepted: was,
                         now: is,
                     });
@@ -1388,6 +1462,25 @@ pub fn compare(accepted: &Census, now: &Census) -> Vec<Change> {
     changes
 }
 
+/// Whether `now`'s percentage is still its difference over the reference `accepted`'s was: a
+/// percentage that moved on its own means the reference moved, which the difference can't show.
+/// Held to the accepted slack, carried into per cent.
+fn percent_follows(accepted: &Row, now: &Row) -> bool {
+    match (accepted.percent, now.percent) {
+        (None, None) => true,
+        // A zero difference has a zero percentage, and says nothing of its reference.
+        (Some(was), Some(_)) if accepted.difference == 0.0 => was == 0.0,
+        (Some(was), Some(is)) => {
+            // Per cent per unit of difference: 100 over the reference, as accepted.
+            let per_unit = was / accepted.difference;
+            let expected = now.difference * per_unit;
+            (is - expected).abs()
+                <= accepted.slack * per_unit.abs() + 1e-9 * is.abs().max(expected.abs())
+        }
+        _ => false,
+    }
+}
+
 /// The census as accepted: the rows, what they add up to, and why it was last accepted.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Accepted {
@@ -1398,7 +1491,8 @@ pub struct Accepted {
     /// What changed then, one line each.
     pub changes: Vec<String>,
     /// What each group added up to: [`Census::summaries`], written out for a reader, and
-    /// recomputed, never trusted, when the census is read back ([`Accepted::refreshed`]).
+    /// never read back: [`Accepted::refreshed`] computes them again.
+    #[serde(default, skip_deserializing)]
     pub summaries: Vec<Summary>,
     /// The census.
     pub census: Census,
@@ -1638,27 +1732,29 @@ pub fn badges(summaries: &[Summary]) -> Vec<(&'static str, String)> {
             },
         ),
     )];
-    if let Some(apogee) = summaries
+    let flights = summaries
         .iter()
         .find(|summary| summary.group == Group::FlightLogs)
-        .and_then(|summary| summary.apogee_percent)
-    {
-        out.push((
-            "real-flights-badge.svg",
-            badge(
-                &format!("{} real flights", apogee.count),
-                &format!(
-                    "mean apogee error {:.2}% (target {APOGEE_TARGET_PERCENT}%)",
-                    apogee.mean_absolute
-                ),
-                if apogee.mean_absolute <= APOGEE_TARGET_PERCENT {
-                    "#2e7d32"
-                } else {
-                    "#b35c00"
-                },
-            ),
-        ));
-    }
+        .and_then(|summary| summary.apogee_percent);
+    // Always written, so a badge from an earlier census can't linger unchecked.
+    out.push((
+        "real-flights-badge.svg",
+        flights.map_or_else(
+            || badge("real flights", "none compared", "#6e6e6e"),
+            |apogee| {
+                let met = apogee.mean_absolute <= APOGEE_TARGET_PERCENT;
+                badge(
+                    &format!("{} real flights", apogee.count),
+                    &format!(
+                        "mean absolute apogee error {:.2}% (target {APOGEE_TARGET_PERCENT}%, {})",
+                        apogee.mean_absolute,
+                        if met { "met" } else { "missed" }
+                    ),
+                    if met { "#2e7d32" } else { "#b35c00" },
+                )
+            },
+        ),
+    ));
     out
 }
 

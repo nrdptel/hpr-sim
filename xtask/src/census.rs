@@ -1,14 +1,14 @@
 //! `cargo xtask census [--check | --accept --reason <why>]`: the accuracy census and its gate.
 //!
-//! The census (`hpr_validate::census`) counts every number the committed reports compare. The
+//! The census (`hpr_validate::census`) counts the numbers the committed reports hold hpr to. The
 //! census accepted last is committed as `validation/reports/census.json`, with its page
-//! `census.md`, the table in `README.md` and `docs/accuracy.md`, and the badge
-//! `docs/images/census-badge.svg`, all written from it.
+//! `census.md`, the table in `README.md` and `docs/accuracy.md`, and the two badges in
+//! `docs/images/` (`census-badge.svg` and `real-flights-badge.svg`), all written from it.
 //!
 //! - No flag prints how the committed reports differ from the accepted census.
 //! - `--check` fails on any such difference, or on an output that isn't what the accepted census
-//!   writes. `cargo xtask validate --check` runs it after the report reproduces, so CI holds every
-//!   row to the census on each platform (ADR-084).
+//!   writes. `cargo xtask validate --check` runs it whether or not the report reproduces, so CI
+//!   holds every row to the census on each platform (ADR-084).
 //! - `--accept --reason <why>` takes the census of the committed reports and writes it and its
 //!   outputs. The reason is required whenever a row changed, and is kept in the census, so a
 //!   regression is accepted in writing, in the diff that brings it, or not at all.
@@ -24,7 +24,7 @@ pub const USAGE: &str = "  census [--check | --accept --reason <why>]
                            The accuracy census of the committed reports, held to the one accepted
                            in validation/reports/census.json. No flag prints the differences;
                            --check fails on any; --accept writes the census, its page, the tables
-                           in README.md and docs/accuracy.md and the badge, and needs --reason when
+                           in README.md and docs/accuracy.md and the badges, and needs --reason when
                            a row changed.";
 
 /// The accepted census.
@@ -89,19 +89,9 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
     let accepted = read_accepted(root)?.ok_or_else(|| {
         format!("{CENSUS_JSON} is missing; run `cargo xtask census --accept --reason <why>`")
     })?;
-    let stale: Vec<String> = outputs(root, &accepted)?
-        .into_iter()
-        .filter_map(
-            |(path, text)| match std::fs::read_to_string(root.join(&path)) {
-                Ok(committed) if committed == text => None,
-                Ok(_) => Some(format!(
-                    "{} is not what the accepted census writes",
-                    path.display()
-                )),
-                Err(error) => Some(format!("{}: {error}", path.display())),
-            },
-        )
-        .collect();
+    let stale = stale(outputs(root, &accepted)?, |path| {
+        std::fs::read_to_string(root.join(path))
+    });
     if changes.is_empty() && stale.is_empty() {
         println!(
             "census: the committed reports hold to the accepted census ({} rows)",
@@ -130,6 +120,24 @@ pub(crate) fn check(root: &Path) -> Result<(), String> {
         ));
     }
     Err(problems.join("; "))
+}
+
+/// The outputs whose committed text, as `read` gives it, isn't what the census writes.
+fn stale(
+    outputs: Vec<(PathBuf, String)>,
+    read: impl Fn(&Path) -> std::io::Result<String>,
+) -> Vec<String> {
+    outputs
+        .into_iter()
+        .filter_map(|(path, text)| match read(&path) {
+            Ok(committed) if committed == text => None,
+            Ok(_) => Some(format!(
+                "{} is not what the accepted census writes",
+                path.display()
+            )),
+            Err(error) => Some(format!("{}: {error}", path.display())),
+        })
+        .collect()
 }
 
 /// The differences between the committed reports and the accepted census; every row is added
@@ -324,6 +332,36 @@ mod tests {
     }
 
     #[test]
+    fn an_output_edited_by_hand_is_stale() {
+        let root = crate::designs::root().unwrap();
+        let accepted = read_accepted(&root).unwrap().unwrap();
+        let files = outputs(&root, &accepted).unwrap();
+        let committed = |path: &Path| std::fs::read_to_string(root.join(path));
+        assert!(stale(files.clone(), committed).is_empty());
+        // A summary edited in census.json, or a number in a table, is stale: both are written
+        // from the rows.
+        for (target, from, to) in [
+            (CENSUS_JSON, "\"rows\": 30", "\"rows\": 31"),
+            ("README.md", "6.04%", "4.04%"),
+        ] {
+            let edited = |path: &Path| {
+                committed(path).map(|text| {
+                    if path == Path::new(target) {
+                        assert!(text.contains(from), "{target} has no `{from}`");
+                        text.replacen(from, to, 1)
+                    } else {
+                        text
+                    }
+                })
+            };
+            assert_eq!(
+                stale(files.clone(), edited),
+                vec![format!("{target} is not what the accepted census writes")]
+            );
+        }
+    }
+
+    #[test]
     fn a_change_is_accepted_only_with_a_reason() {
         let root = crate::designs::root().unwrap();
         let accepted = read_accepted(&root).unwrap().unwrap();
@@ -338,7 +376,11 @@ mod tests {
         );
         // A row moved: accepted only with a reason, which is kept with the changes.
         let mut moved = now.clone();
-        moved.rows[0].difference += 1.0 + 2.0 * moved.rows[0].slack;
+        let row = &mut moved.rows[0];
+        let was = row.difference;
+        row.difference += 1.0 + 2.0 * row.slack;
+        // Its percentage follows it: the reference stays where it was.
+        row.percent = row.percent.map(|percent| percent * row.difference / was);
         assert!(
             acceptance(Some(accepted.clone()), moved.clone(), " ")
                 .unwrap_err()

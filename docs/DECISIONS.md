@@ -89,7 +89,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-081 | ERA5 weather read from netCDF classic in `hpr-io`; M2.3 split a to c | accepted |
 | ADR-082 | Real flights read from refs, compared over the ascent, with checked explanations | accepted |
 | ADR-083 | M2.3c blocked: no private design is the rocket of a logged flight | accepted |
-| ADR-084 | The accuracy census: every compared number held to the one accepted | accepted |
+| ADR-084 | The accuracy census: the reports' numbers held to the ones accepted | accepted |
 
 ---
 
@@ -7340,7 +7340,7 @@ adds to it. When a pair is added, M2.3c reuses M2.3b's reading of a log and of a
 (`hpr_validate::real_flight`) and M2.2e3's anonymised ids (`cargo xtask ork-flights --library`).
 It also needs a way to fly a `.ork` design from the library, where M2.3b flies committed designs.
 
-## ADR-084: The accuracy census: every compared number held to the one accepted (2026-09-26)
+## ADR-084: The accuracy census: the reports' numbers held to the ones accepted (2026-09-26)
 
 **Context.** M2.4 asks for a census of the validation results, in the README with a badge, and for
 CI to fail on any per-case regression beyond tolerance; *done when* a perturbed drag coefficient on a
@@ -7398,8 +7398,9 @@ no oracle, population or regime) and L88 (its own aerodynamics never gated) appl
    inputs") and, beside it, the real flights' mean apogee error against its target, so the one
    measurement is as visible as the agreement with another program.
 
-**Consequences.** The first census holds 648 rows. Predicted mode's rows and the OpenRocket and
-real-flight differences, none of which a run could fail before, now fail CI when they move. On the
+**Consequences.** The first census holds 648 rows. Predicted mode's rows, which failed a run before
+only when a verdict flipped, and the OpenRocket and real-flight differences, which no run could
+fail, now fail CI when they move. On the
 throwaway PR, 2% more subsonic skin friction with the report regenerated failed the check on 74
 rows, 17 for the worse. Two limits stay. The census holds each number to where it was, not to the
 truth, and adds no evidence of its own. The OpenRocket and real-flight reports need files CI lacks,

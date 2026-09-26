@@ -16,7 +16,7 @@ frozen. See [Rigid-body flight](physics/flight.md#phases).
 
 ## Accuracy census
 
-The count of every number the validation reports hold hpr to, one row each, kept as it was last
+The count of the numbers the validation reports hold hpr to, one row each, kept as it was last
 accepted. CI fails when a row moves by more than its *slack* (a small share of the bound it is
 judged by), changes its *standing* (pass, within target, not flown and so on), or comes or goes,
 until the change is accepted with a written reason. It holds a number to where it was, not to the
@@ -485,7 +485,7 @@ bound, but a miss is only reported, with its explanation in the case file, and n
 suite: it is used where neither side of the comparison is known to be right, as for hpr's own drag
 against the drag RocketPy's examples ship. Either way the report is committed, so any number that
 moves shows up in review. See [Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag).
-Separately from both, the [accuracy census](#accuracy-census) fails CI when any compared number
+Separately from both, the [accuracy census](#accuracy-census) fails CI when any number it counts
 moves, whether or not it is inside its gate or target.
 
 ## Geodetic latitude
