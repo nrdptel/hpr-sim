@@ -84,11 +84,12 @@ impl Sustainer {
         // The cut places the same motors in the same order; a failure is kept with its tube.
         debug_assert!(
             assembly.motors.len() == motors.len()
-                && assembly
-                    .motors
-                    .iter()
-                    .zip(&motors)
-                    .all(|(cut, &index)| cut.nozzle_m == stack.motors[index].nozzle_m)
+                && assembly.motors.iter().zip(&motors).all(|(cut, &index)| {
+                    let stacked = &stack.motors[index];
+                    cut.nozzle_m == stacked.nozzle_m
+                        && cut.tube == stacked.tube
+                        && cut.fails == stacked.fails
+                })
         );
         let aero = AeroModel::new(&assembly.layout)?;
         Ok(Self {
@@ -325,10 +326,29 @@ mod tests {
     /// test of the thrust; `a_cluster_sums_its_motors_thrust_and_mass` is.)
     #[test]
     fn a_clustered_sustainer_flies_on_with_every_motor() {
+        clustered_sustainer(&[]);
+    }
+
+    /// A sustainer tube that fails to light stays out through the separation: its motor never
+    /// lights and lands loaded, while the other tube's flies as before.
+    #[test]
+    fn a_failed_sustainer_tube_stays_out_after_the_separation() {
+        clustered_sustainer(&[1]);
+    }
+
+    /// The two-stage rocket with its sustainer mount a pair of tubes (8 mm apart, so they cross:
+    /// a timing test, not a buildable rocket), each tube in `failed` never lighting.
+    fn clustered_sustainer(failed: &[usize]) {
         let mut rocket = two_stage(Ignition::Burnout {
             mount: BOOSTER_MOUNT.to_owned(),
             delay_s: 1.0,
         });
+        rocket.configurations[0]
+            .motors
+            .iter_mut()
+            .find(|m| m.mount == SUSTAINER_MOUNT)
+            .unwrap()
+            .failed_tubes = failed.to_vec();
         let mount = rocket.stages[0].components[1]
             .children
             .iter_mut()
@@ -351,7 +371,15 @@ mod tests {
         assert_eq!(sim.assembly().motors.len(), 3);
         let result = sim.run(&mut ()).unwrap();
         let burnout_s = booster_burnout_s(&sim);
-        for motor in [1, 2] {
+        let mut ignitions = [Some(0.0); 3];
+        for tube in 0..2 {
+            let motor = 1 + tube;
+            assert_eq!(sim.assembly().motors[motor].tube, tube);
+            if failed.contains(&tube) {
+                assert!(result.event(EventKind::Ignition(motor)).is_none());
+                ignitions[motor] = None;
+                continue;
+            }
             let lit = time_of(&result, EventKind::Ignition(motor));
             assert!((lit - (burnout_s + 1.0)).abs() < 1e-12, "{motor}: {lit}");
         }
@@ -365,7 +393,7 @@ mod tests {
             sim.assembly(),
             (0, 0),
             f64::MAX,
-            &[Some(0.0), Some(0.0), Some(0.0)],
+            &ignitions,
         );
         assert_eq!(result.termination, Termination::GroundHit);
         assert!(
@@ -883,8 +911,8 @@ mod tests {
 
     /// Three motors in one mount sum their thrust and their mass: at rest, 1 s into the burn, the
     /// cluster pushes three times the one motor's thrust and weighs the structure and three
-    /// motors. On the ring the thrusts balance, so it turns only as far as its structure's centre
-    /// of mass sits off the axis (its rail buttons put it 2.7e-5 m aside): as the hand calculation
+    /// motors. On the ring the thrusts balance, so it turns only as far as its centre of mass sits
+    /// off the axis (its rail buttons put it 0.033 mm aside at 1 s): as the hand calculation
     /// says, to the mass-flow terms (below), 3.2e-6 of it here; the check allows 1e-5.
     #[test]
     fn a_cluster_sums_its_motors_thrust_and_mass() {
@@ -907,7 +935,7 @@ mod tests {
     /// clusters were on the axis only). With the motor at 0° out, the two lit at 120° and 240°
     /// push on the side away from it: `Σ xᵢ = −A`, `Σ yᵢ = 0`, so about the centre of mass `c`
     /// (pulled toward the loaded motor) the moment is `T (−2 c_y, A + 2 c_x, 0)`, a pitch about
-    /// `+y` that leans the nose toward the motor out, forty times the full cluster's; the rocket's
+    /// `+y` that leans the nose toward the motor out, 225 times the full cluster's; the rocket's
     /// products of inertia (its fins and rail buttons) turn a little of it into roll and yaw
     /// through `I_c⁻¹`. The rest of the equations add the mass-flow terms (the centre's own motion
     /// as two motors burn and one doesn't, and the jets'), which here are 3.7e-7 of it; the check
@@ -935,7 +963,7 @@ mod tests {
         assert!(want.y > 0.0);
         let error = (omega_dot - want).length() / want.length();
         assert!(error <= 1e-6, "{omega_dot:?} vs {want:?}: {error:e}");
-        // Mostly a pitch; the full cluster's turn is under a fortieth of it.
+        // Mostly a pitch; the full cluster's turn is under a fortieth of it (1/225 measured).
         assert!(omega_dot.y > 50.0 * omega_dot.x.abs().max(omega_dot.z.abs()));
         let (full, _) = at_rest(&cluster_of_three(Vec::new()), t);
         assert!(full.length() < omega_dot.length() / 40.0, "{full:?}");

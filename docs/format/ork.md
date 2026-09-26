@@ -796,7 +796,7 @@ motor in it becomes one motor per tube ([Clusters](../physics/design.md#clusters
 
 No published document gives the patterns, so OpenRocket 24.12 was asked, run as an outside program
 through its public interface (`validation/oracles/openrocket/clusters.py`, [ADR-075][adr-075]).
-Each pattern is a figure, in units of the distance between neighbouring tubes' axes:
+Each pattern is a figure of points `pₖ`, one per tube, in units of `2 R s` (defined below):
 
 | pattern | tubes | figure |
 |---|---|---|
@@ -808,23 +808,33 @@ Each pattern is a figure, in units of the distance between neighbouring tubes' a
 | `9-grid` | 9 | a 3 × 3 grid, 1.4 apart |
 | `9-star` | 9 | a centre tube and eight on a ring of radius 1.4 |
 
-The distance between neighbouring axes is `2 R s`, for the tube's outer radius `R` and the scale
-`s`: at scale 1 the tubes touch. The pattern is turned by the tube's roll angle `θ` less the
-rotation `ρ`:
+The unit is `2 R s`, for the tube's outer radius `R` and the scale `s`: at scale 1 neighbouring
+tubes touch, except in `9-grid` and `9-star`, whose tubes are 1.4 diameters apart. The pattern is
+turned by the tube's roll angle `θ` less the rotation `ρ` (`Rot` turns a point by that angle):
 
 `[x, y]ₖ = 2 R s · Rot(θ − ρ) · pₖ`
 
 measured from the tube's own radial offset. For example, a `3-ring` of 40 mm tubes at scale 1 puts
 the three axes 23.09 mm from the centre (`40 mm / √3`). OpenRocket's `(y, z)` are read as hpr's
 `(x, y)`, the same assumption as for every roll angle ([above](#which-way-round)).
-On 24 probes (every pattern, a scale, a rotation, a radial offset, and all three at once) hpr puts
-every tube within 1e-15 m of where OpenRocket does. A pattern name OpenRocket doesn't know
-(`4-square`), it reads as one tube; so does hpr, with a warning.
+On 25 probes (every pattern, a scale, a rotation, a radial offset, and all three at once) hpr puts
+every tube within 1e-15 m of where OpenRocket does (the test
+`every_tube_of_a_cluster_is_where_openrocket_puts_it` in `hpr-validate`). A pattern name OpenRocket
+doesn't know (`4-square`), it reads as one tube; so does hpr, with a warning.
 
 A cluster's mass and centre of mass agree with OpenRocket's. Its inertia does not: OpenRocket weighs
 the tubes as if stacked on the cluster's axis, and hpr weighs each where it sits
-([Mass properties](../physics/mass.md#clusters-and-fillets)). A configuration with a motor in a
-cluster is read, but hpr's flights of `.ork` files leave it out until
+([Mass properties](../physics/mass.md#clusters-and-fillets)). Two more readings are OpenRocket's
+own:
+
+- A centering ring with an automatic bore beside a cluster takes one tube's radius as its bore, as
+  OpenRocket gives it, so the tubes run through the ring and that mass counts twice. For a 3-ring
+  of 40 mm tubes in a ring 98 mm across, the ring weighs about two thirds more than one with three
+  holes would. The design checks warn of it (`ring_overlaps_inner_tube`).
+- A part inside an inner tube set off the body's axis is read at its own offset from the body's
+  axis, with no parent's offset added. A cluster on the axis, the common case, is not affected.
+
+A configuration with a motor in a cluster is read, but hpr's flights of `.ork` files leave it out until
 [M1.9c](../decisions-and-roadmap.md#m1-9c) compares a cluster's flight with OpenRocket's
 ([below](#which-configurations-the-rocket-flies)).
 
@@ -1042,7 +1052,7 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 39: 8 dropped, 12 skipped, 19 unusual (below) |
+| warnings raised | 35: 4 dropped, 12 skipped, 19 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is

@@ -228,43 +228,70 @@ The reference area is `π d²/4`.
 ## Clusters
 
 A cluster is several like motors side by side. In hpr it is one inner tube repeated: the tube's
-[`cluster_m`](../api/hpr_design/parts/struct.InnerTube.html#structfield.cluster_m) lists where
-each tube's axis sits, `[x, y]` in metres across the body from the axis the tube's radial offset
-and angle give. An empty list is one tube. The decision record is
-[ADR-075][adr-075].
+[`cluster_m`](../api/hpr_design/parts/struct.InnerTube.html#structfield.cluster_m) lists each
+tube's axis, `[x, y]` in metres in [body axes](frames.md), measured from the point the tube's
+`radial_offset_m` and `angle_rad` set (the body's axis when both are 0). An empty list is one tube.
+Motors of different kinds need one mount per kind. The decision record is [ADR-075][adr-075].
+
+In a JSON design, a mount of three tubes 25 mm from the axis, with the first tube's motor out, is
+these two fields (the rest of the inner tube and the mounted motor as usual):
+
+```json
+"cluster_m": [[0.025, 0.0], [-0.0125, 0.021650635], [-0.0125, -0.021650635]]
+```
+
+```json
+"failed_tubes": [0]
+```
+
 
 - **Mass.** The tube weighs all its copies, each with its own
   [parallel-axis](../glossary.md#parallel-axis-theorem) term `m d²`. Whatever the tube holds (an
-  engine block, a mass) is repeated in every tube the same way, and a mass override on the cluster
-  sets the whole cluster's mass.
+  engine block, a mass) is repeated in every tube the same way. A mass override on the cluster
+  sets the whole cluster's mass; one on a part inside it sets each copy's, as OpenRocket does.
 - **Motors.** The configuration names one motor for the mount, and placing it gives one motor per
   tube, one after another in the order of the tubes, each nozzle on its tube's axis. Their thrusts,
   masses and moments add up like any other motors'.
 - **A motor out.** A mounted motor's
   [`failed_tubes`](../api/hpr_design/config/struct.MountedMotor.html#structfield.failed_tubes)
-  names tubes whose motor never lights. That motor stays loaded and pushes nothing, which is how a
-  cluster most often fails. The lit motors then push off-centre, and the rocket turns toward the
-  motor that is out.
+  names tubes whose motor never lights, counted from 0 in the order of `cluster_m`. That motor
+  stays loaded and pushes nothing, which is how a cluster most often fails. The lit motors then
+  push off-centre, and the rocket turns toward the motor that is out.
+- **Motor numbers.** Every tube's motor counts as a motor, so a cluster of three before another
+  mount moves that mount's motor from index 1 to 3. An ignition on the cluster's burnout takes its
+  first motor that lights. A recovery trigger or separation on one motor's burnout or delay
+  ([recovery](recovery.md)) waits on that motor alone: point it at a tube that lights, or with that
+  motor out your parachute never opens.
 - **From a `.ork` file.** The reader turns OpenRocket's named pattern into the list
   ([`.ork` design files](../format/ork.md#clusters)).
 
 **Worked example.** The tests' single-stage rocket
 ([`synthetic-54mm-three-fin`](https://github.com/nrdptel/hpr-sim/blob/main/validation/designs/synthetic-54mm-three-fin.json)),
-with its mount made a ring of three tubes `A = 0.02` m from the axis, at 0°, 120° and 240°, and an
-I175 in each. With the motor at 0° out, 1 s into the burn:
+with its mount made a ring of three tubes `A = 0.02` m from the axis, at 0°, 120° and 240°
+(measured from the body's `x` axis toward its `y` axis, as in [frames](frames.md)), and a Cesaroni
+411I175-14A in each. It is an equation check, not a buildable rocket: three 38 mm motors don't fit
+a 54 mm body, and the design checks say so. It is held at rest in a vacuum, so no air and no motion
+add anything to the motors' push. With the motor at 0° out, 1 s into the burn:
 
 | quantity | value |
 |---|---|
 | each lit motor's thrust `T`, in a vacuum | 193.98 N |
+| the loaded motor, and each lit one at 1 s | 0.4375 kg, 0.3332 kg |
+| the rocket's mass `m` | 1.584 kg |
 | centre of mass across the axis, `c_x` (the loaded motor pulls it toward itself) | 1.33 mm |
-| pitch moment `T (A + 2 c_x)` about the centre of mass | 4.396 N m |
-| pitch acceleration `I_c⁻¹ M`, at rest | 41.80 rad/s² |
+| pitch moment `M = T (A + 2 c_x)` about the centre of mass | 4.396 N m |
+| pitch inertia `I_yy` about the centre of mass | 0.1052 kg m² |
+| pitch acceleration `M / I_yy`, at rest | 41.80 rad/s² |
 
-The two lit motors sit at `x = −A/2` each, so about the centre of mass their thrust has the lever
-`A/2 + c_x` twice. The flight's equations give the same angular acceleration to 3.7e-7; the
-difference is the mass-flow terms (the centre of mass moving as two motors burn and one doesn't,
-and the jets). With all three lit, the thrusts balance, and the rocket turns only a fortieth as
-fast, from its rail buttons setting the structure's centre 0.027 mm off the axis.
+The centre of mass moves toward the loaded motor: `(0.4375 × 20 − 2 × 0.3332 × 10) mm / 1.584`
+is 1.32 mm, and the structure's own centre, 0.10 mm off the axis from its rail buttons, adds the
+rest. The two lit motors sit at `x = −A/2` each, so about the centre of mass their thrust has the
+lever `A/2 + c_x` twice. The flight's equations give the same angular acceleration to 3.7e-7 (the
+full inertia tensor, not only `I_yy`, turns the moment into a turn); the difference is the
+mass-flow terms (the centre of mass moving as two motors burn and one doesn't, and the jets). With
+all three lit, the thrusts balance, and the rocket turns 225 times slower (0.186 rad/s²), from its
+centre of mass sitting 0.033 mm off the axis. The numbers are pinned by the test
+`cluster_motor_out_produces_pitch_moment` in `hpr-sim`.
 
 ## Checks
 
@@ -284,6 +311,7 @@ slack (`LENGTH_TOLERANCE_M`), so round-off never raises one.
 | `motor_past_mount_top` | warning | the case's forward end is forward of the mount's |
 | `attachment_past_body_end` | warning | an external part runs past an end of its body tube |
 | `internal_part_past_parent_end` | warning | an internal part runs past an end of its parent |
+| `cluster_tubes_overlap` | warning | two tubes of a [cluster](#clusters) are closer than a tube's diameter, so they cross and that mass counts twice |
 | `ring_overlaps_inner_tube` | warning | a centering ring crosses an inner tube beside it (a cluster's off-axis tubes), counting that mass twice |
 | `radius_step` | warning | adjacent body components' radii differ where they meet |
 | `no_nose_cone` | warning | the first body component isn't a nose cone |

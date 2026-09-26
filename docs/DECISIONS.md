@@ -6708,7 +6708,10 @@ inner tube as the one tube it is written as, with a warning, leaving its configu
    tube, as before, bit for bit. The part weighs every tube, each with its own parallel-axis term.
    Whatever the tube holds (an engine block, a mass) is repeated in every tube, so each placed
    component carries its copies (`PlacedComponent::copies_m`) and its mass counts them all. A mass
-   override on a cluster sets the whole cluster's mass, as OpenRocket's does. A general list rather
+   override on a cluster sets the whole cluster's mass, as OpenRocket's does; an override on a part
+   inside it is each copy's (OpenRocket 24.12 weighs an engine block overridden to 0.01 kg in a
+   3-ring as 0.03 kg), so a part is weighed and overridden in one tube and then repeated. A
+   general list rather
    than named patterns keeps the library free of OpenRocket's names; the `.ork` reader turns a
    pattern into the list.
 2. **A motor in a cluster is one motor per tube.** A configuration still names one motor per
@@ -6725,7 +6728,7 @@ inner tube as the one tube it is written as, with a warning, leaving its configu
    one entry per mount, keeping the failed tubes.
 4. **OpenRocket's patterns, measured.** `validation/oracles/openrocket/clusters.py` asks
    OpenRocket 24.12, run as an external oracle through its public API, for each of its fourteen
-   patterns' points and, on 24 probes, for where it puts every tube and what it weighs. The points
+   patterns' points and, on 25 probes, for where it puts every tube and what it weighs. The points
    are the figures they look like, in units of the separation between neighbouring axes: rows one
    apart, a triangle and a square of side one, a pentagon of side one, rings of radius one round a
    centre tube (the stars), and a grid and an eight-ring of spacing 1.4. A tube's place is

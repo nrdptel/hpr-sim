@@ -680,7 +680,8 @@ pub struct PlacedComponent {
     /// Where the copies of it sit, each `[x, y]` in body axes from where it is written, m: one
     /// `[0, 0]` for a part in no cluster, and one per tube for a part inside a clustered inner
     /// tube ([`InnerTube::cluster_m`](crate::InnerTube::cluster_m)). [`Self::own`] and
-    /// [`Self::with_children`] count every copy. A clustered tube's own tubes are its part's.
+    /// [`Self::with_children`] count every copy. A clustered tube's own tubes are its part's. An
+    /// empty list is no copy: the part weighs nothing and a motor in it is not placed.
     #[serde(default = "one_copy")]
     pub copies_m: Vec<[f64; 2]>,
 }
@@ -1322,6 +1323,14 @@ fn packed_for_override(
 }
 
 /// Places a component's children, applies its overrides, and returns it with its children.
+///
+/// Masses are worked one copy at a time: a part inside a cluster is weighed, and its overrides
+/// applied, as one part in one tube, and only then repeated in every tube ([ADR-075][adr-075]).
+/// So an override on an engine block in a cluster is each block's, and an override on the cluster
+/// tube itself is the whole cluster's, since that part is all its tubes. What is stored in
+/// `components[index]` is every copy; what is returned is one copy of the part with its children.
+///
+/// [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 fn finish(
     components: &mut Vec<PlacedComponent>,
     index: usize,
@@ -1331,7 +1340,14 @@ fn finish(
     let (p_fore, p_length, stage) = (parent.fore_station_m, parent.length_m, parent.stage);
     let (p_kind, p_inner) = (parent.part.kind_name(), parent.part.inner_radius_m());
     let p_axis = parent.part.axis_offset_m();
-    // What this part holds is repeated in each of its tubes when it is a cluster.
+    // What this part holds is repeated in each of its tubes when it is a cluster: `p_tubes` for one
+    // copy of this part, `p_contents` for all of them.
+    let p_tubes = match &parent.part {
+        Part::InnerTube(tube) => tube.tubes_m(),
+        _ => Ok(one_copy()),
+    }
+    .map_err(|e| within(&node.id, e))?;
+    let p_copies = parent.copies_m.clone();
     let p_contents = parent
         .contents_copies_m()
         .map_err(|e| within(&node.id, e))?;
@@ -1466,8 +1482,8 @@ fn finish(
         } else {
             None
         };
-        let placed =
-            MassProperties::copied(place(&part, body_radius_m, fore, &child.id)?, &p_contents);
+        // One copy: `finish` applies the child's overrides to it and then repeats it.
+        let placed = place(&part, body_radius_m, fore, &child.id)?;
         let child_index = components.len();
         components.push(PlacedComponent {
             id: child.id.clone(),
@@ -1484,7 +1500,10 @@ fn finish(
             centre_overridden: child.overrides.sets_axial_centre(),
             copies_m: p_contents.clone(),
         });
-        parts.push(finish(components, child_index, child)?);
+        parts.push(MassProperties::copied(
+            finish(components, child_index, child)?,
+            &p_tubes,
+        ));
     }
 
     let mut with_children = MassProperties::combine(&parts);
@@ -1498,8 +1517,8 @@ fn finish(
         .and_then(|mass| node.overrides.apply(mass, p_fore))
         .map_err(|e| within(&node.id, e))?;
     }
-    components[index].own = own;
-    components[index].with_children = with_children;
+    components[index].own = MassProperties::copied(own, &p_copies);
+    components[index].with_children = MassProperties::copied(with_children, &p_copies);
     Ok(with_children)
 }
 
@@ -1927,6 +1946,56 @@ mod tests {
                 .iter()
                 .any(|f| matches!(f, crate::Finding::RingOverlapsInnerTube { .. }))
         );
+    }
+
+    /// An override on a part inside a cluster is each copy's: set to the part's own mass it changes
+    /// nothing, and doubled it doubles every copy. Both a solid part (an engine block) and a packed
+    /// one (a mass component, rebuilt as its packing's cylinder) are worked one tube at a time.
+    #[test]
+    fn an_override_inside_a_cluster_is_each_copy_s() {
+        let three: Vec<[f64; 2]> = [90.0_f64, 210.0, 330.0]
+            .iter()
+            .map(|a| [0.02 * a.to_radians().cos(), 0.02 * a.to_radians().sin()])
+            .collect();
+        let with = |part: Part, mass_kg: Option<f64>| {
+            let mut design = crate::testing::three_fin_rocket();
+            let mount = &mut design.stages[0].components[1].children[0];
+            if let Part::InnerTube(tube) = &mut mount.part {
+                tube.cluster_m = three.clone();
+            }
+            let mut inside = attached("inside", part, top(0.0));
+            inside.overrides.mass_kg = mass_kg;
+            mount.children = vec![inside];
+            design.layout().unwrap()
+        };
+        for part in [
+            inner_tube(0.01, 0.019, 0.005),
+            mass_component(0.05, 0.04, 0.015),
+        ] {
+            let free = with(part.clone(), None);
+            let (_, one) = free.find("inside").unwrap();
+            let each_kg = one.own.mass_kg / 3.0;
+            let same = with(part.clone(), Some(each_kg));
+            let (a, b) = (&free.structure, &same.structure);
+            close(b.mass_kg, a.mass_kg, 1e-15, "structure mass");
+            assert!(
+                (b.cg_m - a.cg_m).length() < 1e-15,
+                "{:?} vs {:?}",
+                b.cg_m,
+                a.cg_m
+            );
+            for (x, y) in [
+                (a.inertia_kg_m2.x_axis, b.inertia_kg_m2.x_axis),
+                (a.inertia_kg_m2.y_axis, b.inertia_kg_m2.y_axis),
+                (a.inertia_kg_m2.z_axis, b.inertia_kg_m2.z_axis),
+            ] {
+                assert!((x - y).length() < 1e-15, "{x:?} vs {y:?}");
+            }
+            let doubled = with(part, Some(2.0 * each_kg));
+            let (_, inside) = doubled.find("inside").unwrap();
+            close(inside.own.mass_kg, 6.0 * each_kg, 1e-15, "doubled");
+            assert!(inside.own.cg_m.truncate().length() < 1e-17);
+        }
     }
 
     /// The tree's structure equals the parts placed by hand at their stations and combined.

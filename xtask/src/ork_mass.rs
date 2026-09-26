@@ -1108,6 +1108,7 @@ mod tests {
             "3-ring at scale 1",
             "a 3-ring at scale 1.5",
             "a 3-ring with an engine block",
+            "a 3-ring with its engine block's mass overridden",
             "a 3-ring with its mass overridden",
         ] {
             let (rocket, layout, probe) = clusters_probe(question);

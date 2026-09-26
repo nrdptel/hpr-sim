@@ -115,9 +115,12 @@ pub struct MountedMotor {
     #[serde(default, skip_serializing_if = "Ignition::is_launch")]
     pub ignition: Ignition,
     /// The tubes whose motor fails to light, by index into the mount's tubes (a cluster's in the
-    /// order of [`InnerTube::cluster_m`](crate::InnerTube::cluster_m), `0` for a single tube): a
-    /// motor out. Each is carried loaded and gives no thrust, and a device or ignition waiting on
-    /// it alone never fires. Empty (the default) when every motor lights.
+    /// order of [`InnerTube::cluster_m`](crate::InnerTube::cluster_m), `0` for a single tube; a
+    /// cluster inside another cluster counts the outer copies first, each with all its tubes): a
+    /// motor out. Each is carried loaded and gives no thrust. An ignition on the mount's burnout
+    /// takes its first motor that lights, but a recovery device or separation triggered by one
+    /// motor's index waits on that motor alone: point it at a tube that lights, or it never fires.
+    /// Empty (the default) when every motor lights.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub failed_tubes: Vec<usize>,
 }
@@ -192,12 +195,14 @@ pub struct Assembly {
 }
 
 impl Assembly {
-    /// The rocket `t_s` seconds after ignition: the structure and every motor.
+    /// The rocket `t_s` seconds after ignition: the structure and every motor, but for a motor
+    /// that fails ([`PlacedMotor::fails`]), which stays loaded.
     pub fn mass_properties(&self, t_s: f64) -> MassProperties {
         self.motors
             .iter()
             .fold(self.layout.structure, |sum, motor| {
-                MassProperties::combine([&sum, &motor.mass_properties(t_s)])
+                let ignition = (!motor.fails).then_some(0.0);
+                MassProperties::combine([&sum, &motor.mass_properties_lit(t_s, ignition)])
             })
     }
 
@@ -228,12 +233,18 @@ impl Assembly {
         ignition_times_s(&self.motors, separated_s, true)
     }
 
-    /// The rocket with every motor spent: the structure and the motors' dry masses.
+    /// The rocket with every motor spent: the structure and the motors' dry masses, but for a
+    /// motor that fails ([`PlacedMotor::fails`]), which is carried loaded.
     pub fn dry_mass_properties(&self) -> MassProperties {
         self.motors
             .iter()
             .fold(self.layout.structure, |sum, motor| {
-                MassProperties::combine([&sum, &motor.dry_mass_properties()])
+                let motor = if motor.fails {
+                    motor.mass_properties_lit(0.0, None)
+                } else {
+                    motor.dry_mass_properties()
+                };
+                MassProperties::combine([&sum, &motor])
             })
     }
 }
@@ -624,7 +635,9 @@ mod tests {
         let structure = assembly.layout.structure.mass_kg;
         assert!((spent.mass_kg - (structure + 1.0 + 0.5 + 0.5)).abs() < 1e-12);
         // The loaded motor pulls the centre toward its tube, at 90°: +y.
-        assert!(spent.cg_m.y > assembly.mass_properties(2.0).cg_m.y + 1e-4);
+        let all_burning = assembly.mass_properties_lit(2.0, &[Some(0.0); 3]);
+        assert!(spent.cg_m.y > all_burning.cg_m.y + 1e-4);
+        assert_eq!(assembly.mass_properties(2.0), spent);
 
         for (failed, value) in [(vec![3], 3.0), (vec![1, 1], 1.0)] {
             let mut design = clustered(ring_of_three());
@@ -644,6 +657,13 @@ mod tests {
         design.configurations[0].motors[0].failed_tubes = vec![0];
         let assembly = design.assemble("main").unwrap();
         assert_eq!(assembly.ignition_times_s(|_| None), [None]);
+        // A motor that never lights is carried loaded, spent or burning as the rest may be.
+        let loaded = MassProperties::combine([
+            &assembly.layout.structure,
+            &assembly.motors[0].mass_properties(0.0),
+        ]);
+        assert_eq!(assembly.dry_mass_properties(), loaded);
+        assert_eq!(assembly.mass_properties(10.0), loaded);
     }
 
     #[test]

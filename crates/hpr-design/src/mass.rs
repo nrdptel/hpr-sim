@@ -152,7 +152,7 @@ impl MassProperties {
 
     /// Copies of `body`, one moved by each `[x, y]` of `offsets_m` across the axis, combined into
     /// one rigid body: a cluster's tubes, or what each of them holds. One copy that is not moved
-    /// is `body` itself, bit for bit.
+    /// is `body` itself, bit for bit; no offsets at all is no body (zero mass).
     #[must_use]
     pub fn copied(body: Self, offsets_m: &[[f64; 2]]) -> Self {
         if let [[x, y]] = offsets_m

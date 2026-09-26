@@ -655,7 +655,7 @@
   - [x] **M1.9b Clusters.** *Done when:* several motors in one mount sum their thrust and mass, a
     motor out gives the pitch moment the hand calculation predicts, and `.ork` clusters are read.
     *Result:* met (ADR-075): a motor out's turn is the hand calculation's to 3.7e-7; every tube of
-    24 OpenRocket probes within 1e-15 m; `.ork` cluster flights wait for M1.9c.
+    25 OpenRocket probes within 1e-15 m; `.ork` cluster flights wait for M1.9c.
     - Loft lessons: L31.
   - [ ] **M1.9c Against OpenRocket.** *Done when:* the parent's first bullet is met: a `.ork`
     two-stage design and a cluster design each within the per-case tolerance of OpenRocket's flight.

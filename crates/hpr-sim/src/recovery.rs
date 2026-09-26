@@ -525,7 +525,8 @@ pub enum Trigger {
     /// A motor's ejection delay after that motor's burnout. The motor is its index in
     /// [`hpr_design::Assembly::motors`], and it must have a [`hpr_motor::Delay::Seconds`] delay.
     /// As [`Self::Time`], a delay that expires before the rail exit fires there. A motor that
-    /// never lights never fires it.
+    /// never lights never fires it, so on a cluster with a motor out
+    /// ([`hpr_design::MountedMotor::failed_tubes`]) name a tube that lights.
     MotorDelay {
         /// The motor's index.
         motor: usize,

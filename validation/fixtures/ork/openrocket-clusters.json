@@ -3,7 +3,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
-  "clusters.py": "986102fb73c17d888e8b5a961be9bd63e843b103b242f3e39eff5b1e2c1a3a1c",
+  "clusters.py": "e39a582d90d403a452590cb5267894a369e9022d6e60736100b7f1e695441e62",
   "conventions.py": "f79b2932fc2d979107c920b8778612013d2d699126baa804c132a1e0f6d401bf",
   "mass.py": "ce8b915d342ff631d3ad3ec74244d2c2faf55321f710a4b036eda5d7671cabe5"
  },
@@ -1941,6 +1941,106 @@
     "longitudinal_inertia": 0.007471450659253353,
     "mass_kg": 0.39694023178107085,
     "rotational_inertia": 0.0007801148684920912
+   },
+   "tubes": {
+    "00000000-0000-4000-8000-000000000004": {
+     "count": 3,
+     "instance_offsets_m": [
+      [
+       0.0,
+       -0.02,
+       -0.011547005383792518
+      ],
+      [
+       0.0,
+       0.02,
+       -0.011547005383792518
+      ],
+      [
+       0.0,
+       0.0,
+       0.023094010767585035
+      ]
+     ],
+     "pattern": "3-ring",
+     "rotation": 0.0,
+     "separation_m": 0.04
+    }
+   }
+  },
+  "a 3-ring with its engine block's mass overridden": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><innertube><name>Inner</name><id>00000000-0000-4000-8000-000000000004</id><position type=\"top\">0.1</position><length>0.2</length><outerradius>0.02</outerradius><thickness>0.001</thickness><clusterconfiguration>3-ring</clusterconfiguration><clusterscale>1.0</clusterscale><clusterrotation>0.0</clusterrotation><subcomponents><engineblock><name>Block</name><id>00000000-0000-4000-8000-000000000005</id><position type=\"top\">0.0</position><length>0.01</length><outerradius>0.019</outerradius><thickness>0.005</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material><overridemass>0.01</overridemass></engineblock></subcomponents><material type=\"bulk\" density=\"1000.0\">Probe</material></innertube></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "InnerTube",
+     "cm_x_m": 0.2,
+     "component_mass_kg": 0.07351326809400122,
+     "each_mass_kg": 0.07351326809400122,
+     "id": "00000000-0000-4000-8000-000000000004",
+     "mass_kg": 0.07351326809400122,
+     "mass_overridden": false,
+     "name": "Inner",
+     "overridden_by": null,
+     "override_mass_kg": 0.07351326809400122
+    },
+    {
+     "class": "EngineBlock",
+     "cm_x_m": 0.10500000000000002,
+     "component_mass_kg": 0.00518362787842316,
+     "each_mass_kg": 0.01,
+     "id": "00000000-0000-4000-8000-000000000005",
+     "mass_kg": 0.03,
+     "mass_overridden": true,
+     "name": "Block",
+     "overridden_by": null,
+     "override_mass_kg": 0.01
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.23049131937695266,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4113893481458014,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4113893481458014,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4113893481458014,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.23049131937695266,
+    "ixx": 0.0007918451427941917,
+    "iyy": 0.007713264865540902,
+    "izz": 0.007713264865540902,
+    "longitudinal_inertia": 0.007713264865540902,
+    "mass_kg": 0.4113893481458014,
+    "rotational_inertia": 0.0007918451427941917
    },
    "tubes": {
     "00000000-0000-4000-8000-000000000004": {

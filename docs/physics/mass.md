@@ -18,7 +18,7 @@
   length on 63. Every file outside either shows a difference hpr names in a warning. The roll
   inertia is a median 1.686% apart, and that is explained: OpenRocket takes a shortcut for fins that
   hpr does not, and hpr's figure is the exact one for the fin as drawn
-  ([below](#fins-rail-buttons-and-roll-inertia)); on the four designs with a cluster, OpenRocket
+  ([below](#fins-rail-buttons-and-roll-inertia)); on the four files with a cluster (two designs by content), OpenRocket
   also stacks the tubes on the cluster's axis ([below](#clusters-and-fillets)). The pitch inertia
   is within 1% on 54, and the rest have no named cause yet. Not compared with weighed parts or a real flight
   ([checked against OpenRocket](#checked-against-openrocket)).
@@ -30,8 +30,9 @@
   fin weighs 0.6851 of a square slab of its outline, where OpenRocket's weighs 0.85, so hpr's
   airfoil fins are 19.4% lighter, with no warning ([below](#fins-rail-buttons-and-roll-inertia)). Packed
   recovery gear and mass components are OpenRocket's too, down to the size one takes when its file
-  writes none ([below](#packed-parts)). A cluster's inertia and fin fillets remain measured,
-  visible departures ([below](#clusters-and-fillets)); designs with parts hpr does not read (pods, parallel stages and
+  writes none ([below](#packed-parts)). A cluster's inertia differs from OpenRocket's on purpose, since OpenRocket stacks the tubes
+  on the axis and hpr weighs each where it sits, and fin fillets remain a measured, visible
+  departure ([below](#clusters-and-fillets)); designs with parts hpr does not read (pods, parallel stages and
   five skipped parts across three kinds) are retained as reduced designs ([the format guide](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)).
 
 ## Code and sources
@@ -192,13 +193,14 @@ OpenRocket opens among hpr's `.ork` test files: the *reference library* (designs
 inside OpenRocket's program file (its Java *jar*). The current default survey compares 71 designs.
 Some hold the same design found in two places (several private files are copies of OpenRocket's
 examples), so there are 51 different files by content. Mass and centre of mass agree closely on most,
-and every file outside 1% has a cause hpr already warns about. The roll inertia is a median 2.351%
-apart, and that gap is
-OpenRocket's shortcut for fins ([below](#fins-rail-buttons-and-roll-inertia)).
+and every file outside 1% has a cause hpr already warns about. The roll inertia is a median 1.686%
+apart: OpenRocket's shortcut for fins ([below](#fins-rail-buttons-and-roll-inertia)), and on the
+cluster designs its stacking of their tubes on the axis ([below](#clusters-and-fillets)).
 This was [M2.2a](../decisions-and-roadmap.md#m2-2a); [ADR-060][adr-060] records how it was decided.
 The numbers below are from the current scratch-excluding rerun after
-[M2.2b4](../decisions-and-roadmap.md#m2-2b4), which settled two more of its causes
-([next section](#what-a-ork-leaves-unsaid-and-overrides)).
+[M1.9b](../decisions-and-roadmap.md#m1-9b), which weighs every tube of a cluster
+([below](#clusters-and-fillets)); [M2.2b4](../decisions-and-roadmap.md#m2-2b4) settled two more of
+its causes before that ([next section](#what-a-ork-leaves-unsaid-and-overrides)).
 
 **What you can check yourself.** The private files are not public, so only counts come from them,
 and a fresh clone cannot reproduce the 71-file table. It can check the probe tube and Loft's public
@@ -545,7 +547,7 @@ script writes these, and `cargo test -p hpr-validate openrocket` checks them.
 A [cluster](../glossary.md#cluster) is a motor mount with more than one motor tube. Since
 [M1.9b](../decisions-and-roadmap.md#m1-9b) hpr weighs every tube where it sits, each with its own
 [parallel-axis](../glossary.md#parallel-axis-theorem) term, and repeats what a tube holds in every
-tube ([Clusters](design.md#clusters)). OpenRocket 24.12, asked on 24 probes
+tube ([Clusters](design.md#clusters)). OpenRocket 24.12, asked on 25 probes
 ([ADR-075][adr-075]), agrees on the mass and the centre of mass to 1e-12, but not on the inertia.
 It weighs a cluster's tubes as if stacked on the cluster's axis: a 3-ring at scale 1 and at scale
 1.5 have the same inertias in OpenRocket. It does weigh an engine block inside each tube where it
@@ -555,12 +557,16 @@ The fixed 3-ring probe is a tube and a 200 mm inner tube with a 20 mm outer radi
 three of them 23.09 mm from the axis. OpenRocket's saved structure is 0.3813893481458014 kg, with
 centre 0.24036243822075784 m, roll 0.0007674901427941916 kg m² and pitch 0.007191233036548777
 kg m². hpr's mass and centre are the same, and its roll inertia is +5.11% and its pitch +0.273%
-apart: the tubes' `3 m d²` (3.92e-5 kg m²) and half of it. On every cluster probe on the body's
-axis the difference is exactly that, to 1e-12, whatever the pattern, scale or contents. Off the
-axis, three differences are left and pinned as measured, with the spread taken out: a lone tube
-10 mm off the axis (+0.303% roll, +0.016% pitch), and the pitch of two clusters off the axis
-(+0.015%, +0.021%). Before then, reading one tube left hpr 12.85% light, 5.95 mm forward, 2.43% low
-in roll and 3.68% low in pitch. `each_part_alone_is_openrocket_s_or_pinned` and
+apart: the spread of the tubes, `3 m d²` (3.92e-5 kg m², each tube's mass `m` at `d` = 23.09 mm
+from the axis), and half of it. On every cluster probe on the body's axis the difference is exactly
+that, to 1e-12, whatever the pattern, scale, contents or overrides. Off the axis, three differences
+are left and pinned as measured, with the spread taken out. A lone tube 10 mm off the axis is
++0.303% in roll and +0.016% in pitch: that is `m d² (1 − m/M)` in roll and half of it in pitch, for
+the tube's mass `m`, its offset `d` and the structure's mass `M`, as if OpenRocket left the offset
+out. The pitch of two clusters
+off the axis is +0.015% and +0.021%, which hpr has not traced. Before
+[M1.9b](../decisions-and-roadmap.md#m1-9b), reading one tube left hpr 12.85% light, 5.95 mm forward,
+2.43% low in roll and 3.68% low in pitch. `each_part_alone_is_openrocket_s_or_pinned` and
 `a_cluster_weighs_as_openrocket_s_but_for_its_tubes_spread` check these.
 
 A fin fillet is the rounded joint along a fin root. hpr reads a positive `filletradius`, warns, and

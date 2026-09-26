@@ -529,7 +529,9 @@ pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) ->
     let cluster = element
         .child("clusterconfiguration")
         .map(|c| c.text().trim().to_owned())
-        .filter(|c| c != "single");
+        // A pattern of one tube, or a name OpenRocket doesn't know (read as one tube, with a
+        // warning), is no cluster.
+        .filter(|c| super::attached::cluster_pattern(c).is_some_and(|tubes| tubes.len() > 1));
     Some(MountRead {
         at: at.to_owned(),
         overhang_m,

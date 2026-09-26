@@ -1,7 +1,7 @@
 """Where OpenRocket 24.12 puts the tubes of a clustered inner tube, and what it weighs.
 
 An inner tube in a `.ork` may be a cluster: `clusterconfiguration` names a pattern (`3-ring`,
-`4-square` and so on), `clusterscale` spreads it and `clusterrotation` turns it. No published
+`4-star` and so on), `clusterscale` spreads it and `clusterrotation` turns it. No published
 document gives the patterns' geometry, so this script asks OpenRocket (M1.9b): it records each
 pattern's own points as OpenRocket lists them, then has OpenRocket read small probe designs, each
 one clustered tube in a body tube, and records where it puts every tube (the instance offsets), the
@@ -90,6 +90,12 @@ def probes(patterns):
             ),
             "a 3-ring with an engine block": clustered("3-ring", children=BLOCK),
             "a 3-ring beside a ring with an automatic bore": clustered("3-ring") + RING,
+            "a 3-ring with its engine block's mass overridden": clustered(
+                "3-ring",
+                children=BLOCK.replace(
+                    "</engineblock>", conventions.overrides(mass_kg="0.01") + "</engineblock>"
+                ),
+            ),
             "a 3-ring with its mass overridden": clustered(
                 "3-ring", extra=conventions.overrides(mass_kg="0.03")
             ),

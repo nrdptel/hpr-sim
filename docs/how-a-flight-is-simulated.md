@@ -49,8 +49,8 @@ The numbers match the drawing.
    forces and their turning effects:
    - the thrust of each burning motor, along the rocket's axis. So a
      [cluster](glossary.md#cluster) of motors that all light at once is flown, with their thrusts
-     added, and a motor off the centre line adds a turning effect, as a motor that fails to light
-     does ([Clusters](physics/design.md#clusters)). Tests check it; no other simulator has yet;
+     added, and a motor off the centre line adds a turning effect, as when one motor of a cluster
+     fails to light ([Clusters](physics/design.md#clusters)). Tests check it; no other simulator has yet;
    - the weight and the [Coriolis](glossary.md#coriolis-acceleration) force, at the centre of
      gravity;
    - the air's forces, from the air's velocity past the rocket, wind included: the drag along the
