@@ -42,7 +42,7 @@ site, and a flight ends when the centre of mass comes back down to the site's he
 
 ## Air start
 
-A motor lit in flight, after liftoff, rather than on the pad. In hpr each motor has an ignition: at launch, at a time, a delay after another motor's burnout, or a delay after its stage separates. Reading these from a `.ork` file comes with [M1.9c](decisions-and-roadmap.md#m1-9c). See [Staging](physics/staging.md#when-a-motor-lights).
+A motor lit in flight, some time after launch, rather than on the pad. It can be in the same stage as a motor lit at launch: OpenRocket's *Airstart timing* example lights a 3-ring of I211W motors 1, 2, 4 or 6 s after launch (and, in one configuration, at launch), beside a K550W lit at launch. In hpr each motor has an ignition: at launch, at a time, a delay after another motor's burnout, or a delay after its stage separates. A `.ork` file's ignitions are read into these ([`.ork` design files](format/ork.md#delays-and-ignition)), and each flight of OpenRocket's air-start example is within 5% of OpenRocket's apogee and largest speed ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket). See [Staging](physics/staging.md#when-a-motor-lights).
 
 ## Angle of attack
 
@@ -214,7 +214,7 @@ An answer written as an exact formula, such as the parabola a body follows in a 
 
 ## Cluster
 
-Several motors in one rocket, burning side by side: in one mount of several like tubes (an OpenRocket `3-ring`, say), or each in its own mount. hpr lights each motor at its own ignition (at launch unless told otherwise). It sums their thrusts and masses, and adds the turning moment of any motor set off the axis, as when one motor of a cluster fails to light (a "motor out"). Tests check this against hand calculations; a cluster flight is compared with OpenRocket's in [M1.9c](decisions-and-roadmap.md#m1-9c). See [Clusters](physics/design.md#clusters).
+Several motors in one rocket, burning side by side: in one mount of several like tubes (an OpenRocket `3-ring`, say), or each in its own mount. hpr lights each motor at its own ignition (at launch unless told otherwise). It sums their thrusts and masses, and adds the turning moment of any motor set off the axis, as when one motor of a cluster fails to light (a "motor out"). Tests check this against hand calculations, and OpenRocket's cluster example, read from its `.ork` file with a motor in every tube, flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket). See [Clusters](physics/design.md#clusters).
 
 ## Code-to-code comparison
 

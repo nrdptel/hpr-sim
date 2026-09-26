@@ -2339,7 +2339,9 @@ fn per_config_overrides_and_dangling_mount_warn() {
     assert_eq!(a.ignition.delay_s, 0.0);
     assert_eq!(a.delay, Some(hpr_motor::Delay::Plugged));
     assert!(matches!(a.curve, Curve::Catalog { .. }));
-    // `b` keeps the mount's event and takes its own delay, so it lights 1.5 s after launch.
+    // `b` keeps the mount's event and takes its own delay, so it lights 1.5 s after launch: an
+    // air start hpr flies (M1.9c), though not on this rocket, whose pod keeps every configuration
+    // out (below).
     let b = by_id("b");
     assert_eq!(
         b.motors[0].ignition,
@@ -2350,7 +2352,7 @@ fn per_config_overrides_and_dangling_mount_warn() {
     );
     assert_eq!(
         b.left_out.as_ref().map(|l| l.why),
-        Some(NotFlown::IgnitesInFlight)
+        Some(NotFlown::AirframeNotAsWritten)
     );
     // `c`'s only motor is in the pod: read nowhere, flown from nowhere.
     let c = by_id("c");
@@ -2381,7 +2383,8 @@ fn per_config_overrides_and_dangling_mount_warn() {
     assert!(design.value.rocket.configurations.is_empty());
     assert!(design.value.rocket.assemble("c").is_err());
 
-    // Without the pod, `a` and `d` fly from the body tube, and `c` holds no motor.
+    // Without the pod, `a`, `b` and `d` fly from the body tube, `b` lit 1.5 s after launch, and
+    // `c` holds no motor.
     let bare = read_design(
         motor_design(
             r#"<motorconfiguration configid="a" default="true"/>
@@ -2398,11 +2401,17 @@ fn per_config_overrides_and_dangling_mount_warn() {
         .iter()
         .map(|c| c.id.as_str())
         .collect();
-    assert_eq!(flown, ["a", "d"]);
+    assert_eq!(flown, ["a", "b", "d"]);
     for id in flown {
         let assembly = bare.rocket.assemble(id).expect("assembles");
         assert_eq!(assembly.motors[0].mount, "body");
         assert_eq!(assembly.motors[0].stage, 0);
+        let lit = if id == "b" {
+            hpr_design::Ignition::Time { time_s: 1.5 }
+        } else {
+            hpr_design::Ignition::Launch
+        };
+        assert_eq!(assembly.motors[0].mounted.ignition, lit, "{id}");
     }
     let c = bare
         .motors
@@ -2413,11 +2422,9 @@ fn per_config_overrides_and_dangling_mount_warn() {
     assert_eq!(c.left_out.as_ref().map(|l| l.why), Some(NotFlown::NoMotor));
 }
 
-/// Which configurations a design flies. hpr lights every motor at launch and flies the airframe as
-/// one body, so a configuration is flown only when that is what the file says. In a two-stage
-/// design none is (`Staged`), and each is left out with the first reason that applies: a
-/// sustainer's `automatic` motor lit in flight, a cluster, a switched-off stage, a hybrid, a missing
-/// case size. The same booster flown alone, from its inner tube, is. A motor with a blank
+/// Which configurations a design flies. In a two-stage design whose booster states no separation
+/// event none is (`SeparationNotFlown`), and each is left out with the first reason that applies: a
+/// switched-off stage, a hybrid, a missing case size, and last the separation. The same booster flown alone, from its inner tube, is. A motor with a blank
 /// `configid`, and a second motor for one configuration in one mount, are warned about and left out
 /// without costing any other configuration its flight; an Estes `B4` does not take the catalog's
 /// Quest `B4`; and a `0` delay is a charge at burnout.
@@ -2545,11 +2552,21 @@ fn a_configuration_flies_only_as_written() {
     };
 
     // The cluster tube is read with its three tubes (M1.9b), so the airframe is the design's, and
-    // it is the second stage that keeps `boost` out.
+    // the booster states no separation event, which keeps `boost`, `two` and `clu` out (M1.9c).
     let two = read_one(&two_stage);
-    assert_eq!(why(&two, "boost"), Some(NotFlown::Staged));
-    assert_eq!(why(&two, "two"), Some(NotFlown::IgnitesInFlight));
-    assert_eq!(why(&two, "clu"), Some(NotFlown::Cluster));
+    assert_eq!(why(&two, "boost"), Some(NotFlown::SeparationNotFlown));
+    assert_eq!(why(&two, "two"), Some(NotFlown::SeparationNotFlown));
+    assert_eq!(why(&two, "clu"), Some(NotFlown::SeparationNotFlown));
+    for id in ["boost", "two", "clu"] {
+        let configuration = two.value.motors.configurations.iter().find(|c| c.id == id);
+        let message = configuration
+            .and_then(|c| c.left_out.as_ref())
+            .map(|l| &l.message);
+        assert!(
+            message.is_some_and(|m| m.contains("states no separation event")),
+            "{id}: {message:?}"
+        );
+    }
     assert_eq!(why(&two, "off"), Some(NotFlown::InactiveStage));
     assert_eq!(why(&two, "hyb"), Some(NotFlown::NoCurve));
     assert_eq!(why(&two, "nosize"), Some(NotFlown::NoSize));
@@ -2560,7 +2577,7 @@ fn a_configuration_flies_only_as_written() {
     // So it is without the cluster.
     assert_eq!(
         why(&read_one(&plain_two_stage), "boost"),
-        Some(NotFlown::Staged)
+        Some(NotFlown::SeparationNotFlown)
     );
     // A mount with a second motor for one configuration, and a motor in none, says both; the
     // second motor keeps `dup` out, and the mount's warnings keep every configuration on it out.
@@ -3534,4 +3551,474 @@ fn loft_demo_designs_read_as_snapshotted() {
     );
     let file = read(flies.as_bytes()).expect("a readable design");
     insta::assert_json_snapshot!("synthetic_f15", snapshot_of(&design(&file.value)));
+}
+
+/// A two-stage design's ignitions and separation, read as hpr flies them (M1.9c, ADR-076): a
+/// sustainer lit at the booster's burnout or ejection charge or at a time, a separation at a time,
+/// at a motor's ignition, burnout or charge, and each way of staging hpr can't fly left out with
+/// its own reason. Every motor is an Estes F15 from the bundled catalog.
+#[test]
+fn ignitions_and_one_powered_separation_are_read_as_hpr_flies_them() {
+    /// One configuration: the sustainer's delay (`None`: no motor, a payload) and its ignition
+    /// override, the booster's delay (empty: no motor) and ignition override, and the booster
+    /// stage's separation.
+    struct Case {
+        id: &'static str,
+        sustainer: Option<&'static str>,
+        sustainer_lights: Option<(&'static str, &'static str)>,
+        booster: &'static str,
+        booster_lights: Option<(&'static str, &'static str)>,
+        separates: Option<(&'static str, &'static str)>,
+    }
+    let case = |id, sustainer, sustainer_lights, booster, separates| Case {
+        id,
+        sustainer,
+        sustainer_lights,
+        booster,
+        booster_lights: None,
+        separates,
+    };
+    let cases = [
+        // The booster's own `burnout`, the file's default, with the sustainer lit by its charge.
+        case("hh", Some("6.0"), None, "0.0", None),
+        case(
+            "up",
+            Some("6.0"),
+            Some(("burnout", "0.5")),
+            "none",
+            Some(("upperignition", "0.0")),
+        ),
+        case("ej", Some("6.0"), None, "1.0", Some(("ejection", "0.0"))),
+        case(
+            "lau",
+            Some("6.0"),
+            Some(("launch", "6.0")),
+            "0.0",
+            Some(("launch", "4.0")),
+        ),
+        case(
+            "ign",
+            Some("6.0"),
+            Some(("launch", "6.0")),
+            "0.0",
+            Some(("ignition", "5.0")),
+        ),
+        case("apo", Some("6.0"), None, "0.0", Some(("apogee", "0.0"))),
+        case(
+            "desc",
+            Some("6.0"),
+            None,
+            "0.0",
+            Some(("altitudedescending", "0.0")),
+        ),
+        case("never", Some("6.0"), None, "2.0", Some(("never", "0.0"))),
+        case("payapo", None, None, "3.0", Some(("apogee", "1.0"))),
+        // Left out.
+        case("plug", Some("6.0"), None, "none", None),
+        case("off", Some("6.0"), Some(("never", "0.0")), "0.0", None),
+        case("word", Some("6.0"), Some(("sometime", "0.0")), "0.0", None),
+        case("negign", Some("6.0"), Some(("launch", "-1.0")), "0.0", None),
+        Case {
+            booster_lights: Some(("burnout", "0.0")),
+            ..case("bottom", Some("6.0"), Some(("launch", "0.0")), "0.0", None)
+        },
+        case(
+            "asc",
+            Some("6.0"),
+            None,
+            "0.0",
+            Some(("altitudeascending", "0.0")),
+        ),
+        case(
+            "negsep",
+            Some("6.0"),
+            None,
+            "0.0",
+            Some(("burnout", "-0.5")),
+        ),
+        case(
+            "sepplug",
+            Some("6.0"),
+            Some(("burnout", "0.0")),
+            "none",
+            Some(("ejection", "0.0")),
+        ),
+        case(
+            "hot",
+            Some("6.0"),
+            Some(("launch", "6.0")),
+            "0.0",
+            Some(("launch", "1.0")),
+        ),
+        case("spent", Some("6.0"), None, "0.0", Some(("burnout", "9.0"))),
+        case("pay", None, None, "3.0", Some(("ejection", "0.0"))),
+        case("emptyauto", Some("6.0"), None, "", Some(("launch", "4.0"))),
+        case(
+            "emptyburn",
+            Some("6.0"),
+            Some(("launch", "0.0")),
+            "",
+            Some(("burnout", "0.0")),
+        ),
+        case(
+            "payupper",
+            None,
+            None,
+            "3.0",
+            Some(("upperignition", "0.0")),
+        ),
+        case(
+            "sepword",
+            Some("6.0"),
+            None,
+            "0.0",
+            Some(("sometime", "0.0")),
+        ),
+        // Both lit at launch and dropped at the booster's burnout: the sustainer is out too.
+        case(
+            "both",
+            Some("6.0"),
+            Some(("launch", "0.0")),
+            "0.0",
+            Some(("burnout", "0.0")),
+        ),
+        // The booster lit at 6 s, after a split at 4 s.
+        Case {
+            booster_lights: Some(("launch", "6.0")),
+            ..case(
+                "late",
+                Some("6.0"),
+                Some(("launch", "8.0")),
+                "0.0",
+                Some(("launch", "4.0")),
+            )
+        },
+    ];
+    let f15 = |config: &str, delay: &str| {
+        format!(
+            "<motor configid='{config}'><type>single</type><manufacturer>Estes</manufacturer>\
+             <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>\
+             <delay>{delay}</delay></motor>"
+        )
+    };
+    let lights = |config: &str, (event, delay): (&str, &str)| {
+        format!(
+            "<ignitionconfiguration configid='{config}'><ignitionevent>{event}</ignitionevent>\
+             <ignitiondelay>{delay}</ignitiondelay></ignitionconfiguration>"
+        )
+    };
+    let mount = |motors: String| {
+        format!(
+            "<motormount><ignitionevent>automatic</ignitionevent>\
+             <ignitiondelay>0.0</ignitiondelay><overhang>0.0</overhang>{motors}</motormount>"
+        )
+    };
+    let sustainer_mount = mount(
+        cases
+            .iter()
+            .map(|c| {
+                c.sustainer
+                    .map_or_else(String::new, |delay| f15(c.id, delay))
+                    + &c.sustainer_lights
+                        .map_or_else(String::new, |l| lights(c.id, l))
+            })
+            .collect(),
+    );
+    let booster_mount = mount(
+        cases
+            .iter()
+            .filter(|c| !c.booster.is_empty())
+            .map(|c| {
+                f15(c.id, c.booster)
+                    + &c.booster_lights
+                        .map_or_else(String::new, |l| lights(c.id, l))
+            })
+            .collect(),
+    );
+    let separations: String = cases
+        .iter()
+        .filter_map(|c| {
+            let (event, delay) = c.separates?;
+            Some(format!(
+                "<separationconfiguration configid='{}'><separationevent>{event}\
+                 </separationevent><separationdelay>{delay}</separationdelay>\
+                 </separationconfiguration>",
+                c.id
+            ))
+        })
+        .collect();
+    let tube = |id: &str, mount: &str| {
+        format!(
+            "<bodytube><name>{id}</name><id>{id}</id>\
+             <material type='bulk' density='680.0'>Cardboard</material>\
+             <length>0.4</length><thickness>0.001</thickness><radius>0.0147</radius>{mount}\
+             </bodytube>"
+        )
+    };
+    let nose = r#"<nosecone><name>Nose</name><id>nose</id>
+          <material type="bulk" density="1000.0">Plastic</material>
+          <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+          <aftradius>0.0147</aftradius></nosecone>"#;
+    let configurations: String = cases
+        .iter()
+        .map(|c| format!("<motorconfiguration configid=\"{}\"/>", c.id))
+        .collect();
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Two-stage</name>{configurations}
+    <subcomponents>
+      <stage><name>Sustainer</name><id>upper</id>
+        <subcomponents>{nose}{sustainer}</subcomponents></stage>
+      <stage><name>Booster</name><id>lower</id>
+        <separationevent>burnout</separationevent><separationdelay>0.0</separationdelay>
+        {separations}
+        <subcomponents>{booster}</subcomponents></stage>
+    </subcomponents></rocket>
+</openrocket>"#,
+        sustainer = tube("sustainer", &sustainer_mount),
+        booster = tube("booster", &booster_mount),
+    );
+    let read = read(xml.as_bytes()).expect("a readable design");
+    let design = design(&read.value).value;
+    let configuration = |id: &str| {
+        design
+            .motors
+            .configurations
+            .iter()
+            .find(|c| c.id == id)
+            .expect("the configuration")
+    };
+    let lit = |id: &str| -> Vec<hpr_design::Ignition> {
+        design
+            .rocket
+            .configurations
+            .iter()
+            .find(|c| c.id == id)
+            .expect("flown")
+            .motors
+            .iter()
+            .map(|m| m.ignition.clone())
+            .collect()
+    };
+    let burn_s = configuration("hh").motors[1]
+        .curve
+        .motor()
+        .expect("the catalog's F15")
+        .burnout_time_s();
+    assert!((3.0..4.0).contains(&burn_s), "{burn_s}");
+    let after_booster = |delay_s: f64| hpr_design::Ignition::Burnout {
+        mount: "booster".to_owned(),
+        delay_s,
+    };
+    let launch = hpr_design::Ignition::Launch;
+    let at = |time_s: f64| hpr_design::Ignition::Time { time_s };
+    let staged = |trigger: StagingTrigger, time_s: f64| {
+        Some(Staging {
+            after_stage: 0,
+            trigger,
+            time_s,
+        })
+    };
+    let booster_burnout = |delay_s: f64| StagingTrigger::Burnout {
+        mount: "booster".to_owned(),
+        delay_s,
+    };
+    let flies = |id: &str, ignitions: &[hpr_design::Ignition], staging: Option<Staging>| {
+        let flown = configuration(id);
+        assert_eq!(flown.left_out, None, "{id}");
+        assert_eq!(lit(id), ignitions, "{id}");
+        assert_eq!(flown.staging, staging, "{id}");
+        design.rocket.assemble(id).expect("assembles");
+    };
+    let refused = |id: &str, why: NotFlown, said: &str| {
+        let out = configuration(id).left_out.as_ref().expect(id);
+        assert_eq!(out.why, why, "{id}");
+        assert!(out.message.contains(said), "{id}: {}", out.message);
+        assert!(design.rocket.assemble(id).is_err(), "{id}");
+    };
+
+    // `automatic` lights the sustainer at the booster's charge, at its burnout for a `0` delay,
+    // and the booster's `burnout` separation, the stage's default, is the same instant.
+    flies(
+        "hh",
+        &[after_booster(0.0), launch.clone()],
+        staged(booster_burnout(0.0), burn_s),
+    );
+    // `burnout` plus 0.5 s lights it whatever the booster's charge (plugged here), and
+    // `upperignition` separates the booster then.
+    flies(
+        "up",
+        &[after_booster(0.5), launch.clone()],
+        staged(booster_burnout(0.5), burn_s + 0.5),
+    );
+    // `ejection`: the booster's charge, 1 s after its burnout, which lights the sustainer too.
+    flies(
+        "ej",
+        &[after_booster(1.0), launch.clone()],
+        staged(booster_burnout(1.0), burn_s + 1.0),
+    );
+    // A sustainer lit at 6 s, the booster dropped at 4 s: at `launch` plus 4, or at its own
+    // motor's `ignition` (at launch) plus 5.
+    flies(
+        "lau",
+        &[at(6.0), launch.clone()],
+        staged(StagingTrigger::Time { time_s: 4.0 }, 4.0),
+    );
+    flies(
+        "ign",
+        &[at(6.0), launch.clone()],
+        staged(StagingTrigger::Time { time_s: 5.0 }, 5.0),
+    );
+    // At apogee, at a height on the way down, or never: the climb is the whole stack's, the
+    // sustainer lit on it.
+    flies("apo", &[after_booster(0.0), launch.clone()], None);
+    flies("desc", &[after_booster(0.0), launch.clone()], None);
+    flies("never", &[after_booster(2.0), launch.clone()], None);
+    // A payload with no motor: at apogee plus a delay, after the climb, so the climb flies whole.
+    flies("payapo", std::slice::from_ref(&launch), None);
+
+    // A plugged booster's charge never fires, so the sustainer it lights never would.
+    refused("plug", NotFlown::IgnitionNotFlown, "plugged");
+    refused("off", NotFlown::IgnitionNotFlown, "never to light");
+    refused(
+        "word",
+        NotFlown::IgnitionNotFlown,
+        "`sometime` is not known",
+    );
+    refused("negign", NotFlown::IgnitionNotFlown, "-1 s, is not a time");
+    // The booster has no stage below it to burn out.
+    refused("bottom", NotFlown::IgnitionNotFlown, "is the bottom stage");
+    refused("asc", NotFlown::SeparationNotFlown, "on the way up");
+    refused(
+        "negsep",
+        NotFlown::SeparationNotFlown,
+        "-0.5 s, is not a time",
+    );
+    refused(
+        "sepplug",
+        NotFlown::SeparationNotFlown,
+        "ejection charge of F15",
+    );
+    // The booster still burning at 1 s; the sustainer burned out before a split 9 s after the
+    // booster's burnout; a payload with nothing to burn dropped at the charge, maybe before apogee.
+    refused("hot", NotFlown::SeparationNotFlown, "behind it burns until");
+    refused(
+        "spent",
+        NotFlown::SeparationNotFlown,
+        "no motor ahead of it left to burn",
+    );
+    refused(
+        "emptyauto",
+        NotFlown::IgnitionNotFlown,
+        "stage 1 holds no motor",
+    );
+    refused(
+        "emptyburn",
+        NotFlown::SeparationNotFlown,
+        "separates at its own motor, and holds none",
+    );
+    refused(
+        "payupper",
+        NotFlown::SeparationNotFlown,
+        "the stage above's ignition, and stage 0 holds no motor",
+    );
+    refused(
+        "sepword",
+        NotFlown::SeparationNotFlown,
+        "separates at `sometime`, which hpr has no trigger for",
+    );
+    refused(
+        "both",
+        NotFlown::SeparationNotFlown,
+        "no motor ahead of it left to burn",
+    );
+    refused(
+        "late",
+        NotFlown::SeparationNotFlown,
+        "behind it burns until",
+    );
+    refused(
+        "pay",
+        NotFlown::SeparationNotFlown,
+        "can come before apogee",
+    );
+}
+
+/// A three-stage design separates twice, and hpr flies one separation (#183); its middle stage's
+/// motors in two mounts leave a sustainer lit by the stage below with no single burnout to wait on.
+#[test]
+fn a_second_separation_and_a_stage_of_two_mounts_are_left_out() {
+    let f15 = |config: &str| {
+        format!(
+            "<motor configid='{config}'><type>single</type><manufacturer>Estes</manufacturer>\
+             <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>\
+             <delay>0.0</delay></motor>"
+        )
+    };
+    let tube = |id: &str, configs: &[&str]| {
+        let motors: String = configs.iter().map(|c| f15(c)).collect();
+        format!(
+            "<bodytube><name>{id}</name><id>{id}</id>\
+             <material type='bulk' density='680.0'>Cardboard</material>\
+             <length>0.4</length><thickness>0.001</thickness><radius>0.0147</radius>\
+             <motormount><ignitionevent>automatic</ignitionevent><overhang>0.0</overhang>\
+             {motors}</motormount></bodytube>"
+        )
+    };
+    let nose = r#"<nosecone><name>Nose</name><id>nose</id>
+          <material type="bulk" density="1000.0">Plastic</material>
+          <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+          <aftradius>0.0147</aftradius></nosecone>"#;
+    let stage = |id: &str, parts: &str| {
+        format!(
+            "<stage><name>{id}</name><id>{id}</id><separationevent>upperignition\
+             </separationevent><separationdelay>0.0</separationdelay>\
+             <subcomponents>{parts}</subcomponents></stage>"
+        )
+    };
+    // `three` has a motor in each stage; `pair` a motor in each of the middle stage's two tubes
+    // and one in the sustainer, with the booster empty.
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Three-stage</name>
+    <motorconfiguration configid="three"/><motorconfiguration configid="pair"/>
+    <subcomponents>{top}{middle}{bottom}</subcomponents></rocket>
+</openrocket>"#,
+        top = stage(
+            "top",
+            &format!("{nose}{}", tube("top-tube", &["three", "pair"]))
+        ),
+        middle = stage(
+            "middle",
+            &format!(
+                "{}{}",
+                tube("middle-tube", &["three", "pair"]),
+                tube("middle-second", &["pair"])
+            )
+        ),
+        bottom = stage("bottom", &tube("bottom-tube", &["three"])),
+    );
+    let read = read(xml.as_bytes()).expect("a readable design");
+    let design = design(&read.value).value;
+    let out = |id: &str| {
+        design
+            .motors
+            .configurations
+            .iter()
+            .find(|c| c.id == id)
+            .and_then(|c| c.left_out.clone())
+            .expect(id)
+    };
+    let three = out("three");
+    assert_eq!(three.why, NotFlown::SeparationNotFlown);
+    assert!(
+        three.message.contains("2 stages separate"),
+        "{}",
+        three.message
+    );
+    let pair = out("pair");
+    assert_eq!(pair.why, NotFlown::IgnitionNotFlown);
+    assert!(pair.message.contains("in 2 mounts"), "{}", pair.message);
 }

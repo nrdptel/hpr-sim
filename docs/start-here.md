@@ -77,20 +77,28 @@ out.
 
 ### Staging, two-stage rockets, clusters and air starts
 
-- **Staging is new and not yet compared with another simulator.** Each motor lights at its own
-  time, an [air start](glossary.md#air-start) included, and a [sustainer](glossary.md#sustainer)
+- **Staging is new, and checked against OpenRocket on its own examples.** Each motor lights at its
+  own time, an [air start](glossary.md#air-start) included, and a [sustainer](glossary.md#sustainer)
   flies on after dropping its [booster](glossary.md#booster), which lands on its own
-  ([Staging](physics/staging.md)). Tests check the bookkeeping; the comparison with OpenRocket
-  comes with [M1.9c](decisions-and-roadmap.md#m1-9c).
-  - A `.ork` file's staging and ignition settings aren't read into a flight yet (also [M1.9c](decisions-and-roadmap.md#m1-9c)), so a
-    staged `.ork` design isn't flown.
+  ([Staging](physics/staging.md)). Tests check the bookkeeping. OpenRocket's two-stage example,
+  its cluster example and its air-start example, 12 flights in all, are each within 5% of
+  OpenRocket's apogee and largest speed. Three cluster apogees are compared with OpenRocket's
+  flight with no parachute, since its parachute opened before apogee
+  ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket;
+  [results](format/ork.md#staged-clustered-and-air-start-flights)).
+  - A `.ork` file's ignition settings and one powered separation are read. A powered separation
+    has a time known before the flight, and then a motor ahead of it is still burning or yet to
+    light and none behind it is. The ignitions come with the rocket. Your program passes the
+    separation to the flight, with a recovery device on each part, since hpr refuses the flight
+    without them; the example [`ork_two_stage.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs) does both. A design that separates more than once, or drops a part that
+    could come away before apogee with nothing ahead of it left to burn (a sustainer already
+    burnt out at the split, say), isn't flown yet
+    ([which configurations fly](format/ork.md#which-configurations-the-rocket-flies)).
   - A [cluster](glossary.md#cluster), several motors burning side by side, flies, whether they
     share one mount of several tubes or each has its own: hpr adds up their thrust and mass, and a
     motor off the rocket's centre line adds a turning moment. A motor that fails to light can be
     set, and the rocket then turns as a hand calculation says ([Clusters](physics/design.md#clusters)).
-    Tests check this; a cluster flight is compared with OpenRocket's in
-    [M1.9c](decisions-and-roadmap.md#m1-9c), and a `.ork` file's cluster is read but not yet
-    flown until then.
+    A `.ork` file's cluster flies with a motor in every tube.
   - A rocket can [separate](glossary.md#separation) into parts for recovery once the aft part's
     motors have burnt out.
 

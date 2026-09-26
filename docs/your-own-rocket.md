@@ -675,8 +675,17 @@ The example leaves out several kinds of part and setting that a design can have:
   it leaves are done.
 - **Staging needs its settings.** A motor lights at launch unless its `ignition` says otherwise, so a
   two-stage design flies with both stages burning at once until you give the sustainer its
-  ignition and the flight a separation ([Staging](physics/staging.md)). Staged flights are checked
-  by tests only, not yet against another simulator ([M1.9c](decisions-and-roadmap.md#m1-9c)).
+  ignition and the flight a separation ([Staging](physics/staging.md)). A `.ork` file's own
+  ignitions and one powered separation are read for you. The ignitions come with the rocket, but
+  the separation doesn't: turn the configuration's `staging` into the flight's separation with
+  `hpr::ork::separation` and pass it to the flight, with a recovery device on each part, since hpr
+  refuses the flight without them. The example
+  [`ork_two_stage.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)
+  does both. Staged, clustered and air-start flights of OpenRocket's examples are within 5% of
+  OpenRocket's apogee and largest speed. Three cluster apogees are compared with OpenRocket's
+  flight with no parachute, since its parachute opened before apogee
+  ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket;
+  [results](format/ork.md#staged-clustered-and-air-start-flights)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins

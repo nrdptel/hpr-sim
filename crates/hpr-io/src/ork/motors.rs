@@ -21,13 +21,15 @@
 //! motor is looked up in the bundled catalog by manufacturer and designation. A motor found in none
 //! of these places is read with its reason, and nothing is invented for it.
 //!
-//! **What hpr flies.** [`hpr_design::Configuration`] holds a set of motors that all ignite at
-//! launch; staging and air starts come with [M1.9][m1-9]. So only a configuration whose every motor
-//! has a curve and ignites at launch, in a mount hpr reads, becomes one of the rocket's
-//! configurations. Every other one is kept here, whole, with the reason it is not flown.
+//! **What hpr flies.** A configuration whose every motor has a curve and a size, in a mount hpr
+//! reads, and lights when hpr can light it, becomes one of the rocket's configurations, with each
+//! motor's ignition and at most one powered separation read as the [`staging`]
+//! module says ([M1.9c][m1-9], decision [ADR-076][adr-076]). Every other one is kept here, whole,
+//! with the reason it is not flown.
 //!
 //! [spec]: https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html
-//! [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
+//! [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9c
+//! [adr-076]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-076-a-ork-files-ignitions-and-one-powered-separation-flown-against-openrocket-2026-09-25
 //! [l57]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l57
 //! [l65]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l65
 
@@ -37,6 +39,9 @@ use hpr_design::{Configuration, MountedMotor, Rocket};
 use hpr_motor::catalog::bundled_curve_text;
 use hpr_motor::{Catalog, Delay, MotorError, SolidMotor, rse};
 use serde::{Deserialize, Serialize};
+
+use super::recovery::StageSeparation;
+use super::staging::{self, Staging};
 
 use super::component::subcomponents;
 use super::container::Attachment;
@@ -354,6 +359,10 @@ pub struct MotorConfiguration {
     pub unread: Vec<UnreadMotor>,
     /// Why it is not among the rocket's configurations, or `None` when it is.
     pub left_out: Option<LeftOut>,
+    /// The powered separation it flies, for one among the rocket's configurations that has one
+    /// ([`staging`]). The rocket's configuration does not carry it: give it to the flight
+    /// (`hpr::ork::separation` maps it onto one), with a recovery device on each part.
+    pub staging: Option<Staging>,
 }
 
 /// Why a configuration is not among the rocket's.
@@ -383,17 +392,10 @@ pub enum NotFlown {
     NoCurve,
     /// A motor has no case diameter or length.
     NoSize,
-    /// A motor sits in a cluster of tubes. hpr reads the cluster and can fly it, a motor in every
-    /// tube; a `.ork` design's cluster is flown from [M1.9c][m1-9], which holds such a flight to
-    /// OpenRocket's.
-    ///
-    /// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
-    Cluster,
-    /// A motor ignites after launch: staging and air starts come with [M1.9][m1-9], the
-    /// milestone for staging, clusters and air starts.
-    ///
-    /// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
-    IgnitesInFlight,
+    /// A motor lights when hpr can't light it: never, at a word hpr does not know, at the
+    /// ejection charge of a plugged motor, or at an event of a stage below that holds no motor, or
+    /// motors in more than one mount ([`staging`]).
+    IgnitionNotFlown,
     /// The airframe or a motor mount was not read exactly as written: reading it raised a
     /// warning. A part was left out (a pod, a parallel stage, a part hpr could not give a shape), a
     /// value was dropped or simplified (fin fillets left off, a flipped nose cone read
@@ -401,9 +403,11 @@ pub enum NotFlown {
     /// not know read as a cone). Flying it would fly a
     /// rocket the design may not be.
     AirframeNotAsWritten,
-    /// The rocket has more than one stage. Until a stage's separation is read and flown, hpr would
-    /// fly the stack as one body to the ground, which is no configuration OpenRocket flies.
-    Staged,
+    /// Its stages come apart in a way hpr doesn't fly: more than one separation; one that can
+    /// come before apogee with no motor ahead of it still burning or yet to light when it fires,
+    /// or with a motor behind it not yet spent; a negative delay; or an event hpr has no trigger
+    /// for ([`staging`]).
+    SeparationNotFlown,
 }
 
 /// Every motor configuration a `.ork` design holds.
@@ -598,7 +602,7 @@ fn delay(text: &str, values: &mut Values<'_>) -> Option<Delay> {
 pub(super) fn read(
     rocket_element: &Element,
     rocket: &mut Rocket,
-    incomplete: Option<&str>,
+    airframe: Airframe<'_>,
     mounts: &[(String, MountRead)],
     attachments: &[Attachment],
     supplied: &SuppliedCurves,
@@ -647,6 +651,7 @@ pub(super) fn read(
             motors: Vec::new(),
             unread: Vec::new(),
             left_out: None,
+            staging: None,
         });
     }
 
@@ -718,16 +723,14 @@ pub(super) fn read(
         configurations[index].unread.push(motor);
     }
 
-    let last_stage = rocket.stages.len().saturating_sub(1);
-    let clusters: BTreeMap<&str, &str> = mounts
-        .iter()
-        .filter_map(|(id, mount)| Some((id.as_str(), mount.cluster.as_deref()?)))
-        .collect();
+    let stages = rocket.stages.len();
     for configuration in &mut configurations {
-        configuration.left_out =
-            left_out(configuration, last_stage, &clusters).or_else(|| airframe(rocket, incomplete));
-        if configuration.left_out.is_none() {
-            rocket.configurations.push(flown(configuration));
+        match flyable(configuration, stages, airframe) {
+            Ok((lit, staging)) => {
+                rocket.configurations.push(flown(configuration, lit));
+                configuration.staging = staging;
+            }
+            Err(out) => configuration.left_out = Some(out),
         }
     }
     Motors { configurations }
@@ -760,6 +763,7 @@ fn configuration(
         motors: Vec::new(),
         unread: Vec::new(),
         left_out: None,
+        staging: None,
     });
     configurations.len() - 1
 }
@@ -1091,32 +1095,63 @@ fn embedded(
     .map_err(|error| unusable(error.to_string()))
 }
 
-/// Why no configuration of `rocket` can be flown, whatever its motors: part of the airframe was
-/// left out (`incomplete` says what), or the rocket has more than one stage.
-fn airframe(rocket: &Rocket, incomplete: Option<&str>) -> Option<LeftOut> {
-    if let Some(what) = incomplete {
-        return Some(LeftOut {
+/// What the rocket's reading says about flying any of its configurations.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Airframe<'a> {
+    /// What was not read exactly as written, if anything: then no configuration flies.
+    pub(super) incomplete: Option<&'a str>,
+    /// The stages' separations.
+    pub(super) separations: &'a [StageSeparation],
+}
+
+/// Each motor's ignition and the powered separation `configuration` flies, or the first reason on
+/// [`NotFlown`]'s list that it can't be flown as written.
+fn flyable(
+    configuration: &MotorConfiguration,
+    stages: usize,
+    airframe: Airframe<'_>,
+) -> Result<(Vec<hpr_design::Ignition>, Option<Staging>), LeftOut> {
+    if let Some(out) = left_out(configuration) {
+        return Err(out);
+    }
+    let motors = &configuration.motors;
+    let last_stage = stages.saturating_sub(1);
+    let lit = motors
+        .iter()
+        .map(|motor| {
+            staging::ignition(motor, motors, last_stage).map_err(|why| LeftOut {
+                why: NotFlown::IgnitionNotFlown,
+                message: format!(
+                    "{}, in stage {}, can't be lit as written: {why}",
+                    motor.designation, motor.stage
+                ),
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    // Part of the airframe left out: no configuration of the rocket flies, whatever its motors.
+    if let Some(what) = airframe.incomplete {
+        return Err(LeftOut {
             why: NotFlown::AirframeNotAsWritten,
             message: format!("the airframe was not read exactly as written: {what}"),
         });
     }
-    (rocket.stages.len() > 1).then(|| LeftOut {
-        why: NotFlown::Staged,
-        message: format!(
-            "the rocket has {} stages, and hpr would fly them as one body until a stage's \
-             separation is read (M3.1c2) and flown (M1.9)",
-            rocket.stages.len()
-        ),
-    })
+    let staging = staging::staging(
+        &configuration.id,
+        motors,
+        &lit,
+        airframe.separations,
+        stages,
+    )
+    .map_err(|why| LeftOut {
+        why: NotFlown::SeparationNotFlown,
+        message: format!("its stages can't be flown apart as written: {why}"),
+    })?;
+    Ok((lit, staging))
 }
 
-/// Why `configuration` cannot be flown as written, or `None` when it can: every motor read, with
-/// a curve, a size and a single tube to sit in, igniting at launch, and every stage flying.
-fn left_out(
-    configuration: &MotorConfiguration,
-    last_stage: usize,
-    clusters: &BTreeMap<&str, &str>,
-) -> Option<LeftOut> {
+/// Why `configuration`'s motors cannot be flown as written, or `None` when they can: every motor
+/// read, with a curve and a size, and every stage flying.
+fn left_out(configuration: &MotorConfiguration) -> Option<LeftOut> {
     let out = |why: NotFlown, message: String| Some(LeftOut { why, message });
     if let Some(unread) = configuration.unread.first() {
         return out(
@@ -1160,53 +1195,20 @@ fn left_out(
             format!("{} has no case diameter and length", motor.designation),
         );
     }
-    if let Some((motor, cluster)) = motors
-        .iter()
-        .find_map(|m| Some((m, *clusters.get(m.mount.as_str())?)))
-    {
-        return out(
-            NotFlown::Cluster,
-            format!(
-                "{} sits in a cluster of motor tubes (`{cluster}`), which hpr reads but flies \
-                 from a `.ork` only once M1.9c holds a cluster's flight to OpenRocket's",
-                motor.designation
-            ),
-        );
-    }
-    let at_launch = |motor: &OrkMotor| {
-        motor.ignition.delay_s == 0.0
-            && match motor.ignition.event {
-                IgnitionEvent::Launch => true,
-                IgnitionEvent::Automatic => motor.stage == last_stage,
-                _ => false,
-            }
-    };
-    if let Some(motor) = motors.iter().find(|m| !at_launch(m)) {
-        return out(
-            NotFlown::IgnitesInFlight,
-            format!(
-                "{} ignites at `{}` plus {} s, in stage {}; hpr ignites every motor at launch \
-                 until staging and air starts (M1.9)",
-                motor.designation,
-                motor.ignition.event.as_str(),
-                motor.ignition.delay_s,
-                motor.stage
-            ),
-        );
-    }
     None
 }
 
-/// `configuration` as a [`Configuration`] for [`Rocket::assemble`]; every motor has a curve and a
-/// size, which [`left_out`] checked.
-fn flown(configuration: &MotorConfiguration) -> Configuration {
+/// `configuration` as a [`Configuration`] for [`Rocket::assemble`], each motor lit at `lit`; every
+/// motor has a curve and a size, which [`left_out`] checked.
+fn flown(configuration: &MotorConfiguration, lit: Vec<hpr_design::Ignition>) -> Configuration {
     Configuration {
         id: configuration.id.clone(),
         name: configuration.name.clone(),
         motors: configuration
             .motors
             .iter()
-            .filter_map(|motor| {
+            .zip(lit)
+            .filter_map(|(motor, ignition)| {
                 Some(MountedMotor {
                     mount: motor.mount.clone(),
                     designation: motor.designation.clone(),
@@ -1214,7 +1216,7 @@ fn flown(configuration: &MotorConfiguration) -> Configuration {
                     length_m: motor.length_m?,
                     motor: motor.curve.motor()?.clone(),
                     delay: motor.delay,
-                    ignition: hpr_design::Ignition::Launch,
+                    ignition,
                     failed_tubes: Vec::new(),
                 })
             })

@@ -9,4 +9,7 @@
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
 //! Status: pre-alpha skeleton. The builder API is planned for milestone [M4.1][roadmap] of the
-//! roadmap. The `net` feature adds the online data sources from `hpr-net`.
+//! roadmap. The `net` feature adds the online data sources from `hpr-net`. One module holds code
+//! today: [`ork`], which flies the stage separation an OpenRocket `.ork` file describes.
+
+pub mod ork;

@@ -154,6 +154,30 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
+      "apogee_percent": 0.779838,
+      "chute_early_s": null,
+      "design_checks": [
+        "attachment_off_body"
+      ],
+      "drag_overrides_not_applied": null,
+      "flight": "C08/1",
+      "launch_mass_percent": 0.004,
+      "mach": "subsonic",
+      "margin_cal": 0.110841,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.539628,
+      "reference_same": true,
+      "rod_clearance_cg_cal": -0.110245,
+      "rod_clearance_cp_cal": 0.000597,
+      "rod_clearance_mass_percent": 0.001,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
       "apogee_percent": -0.486218,
       "chute_early_s": null,
       "design_checks": [],
@@ -439,7 +463,7 @@
     {
       "aborted": false,
       "flight": "C04/1",
-      "why": "a motor igniting in flight"
+      "why": "a motor hpr can't light as written"
     },
     {
       "aborted": false,
@@ -470,11 +494,6 @@
       "aborted": false,
       "flight": "C06/1",
       "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
-      "flight": "C08/1",
-      "why": "a motor igniting in flight"
     },
     {
       "aborted": false,
@@ -512,28 +531,28 @@
     "apogee_over_5_percent": 0,
     "bar": 20,
     "bar_met": false,
-    "designs_with_all_five": 4,
-    "flown": 17,
+    "designs_with_all_five": 5,
+    "flown": 18,
     "mass_and_cg": {
       "launch_mass_percent": {
-        "count": 17,
+        "count": 18,
         "max": 0.004,
-        "mean_absolute": 0.0008823529411764705,
+        "mean_absolute": 0.0010555555555555555,
         "median": 0.0,
         "min": 0.0
       },
       "rod_clearance_cg_cal": {
-        "count": 17,
+        "count": 18,
         "max": 0.004178,
-        "mean_absolute": 0.012792823529411764,
-        "median": -0.01447,
-        "min": -0.027277
+        "mean_absolute": 0.018206833333333332,
+        "median": -0.016361,
+        "min": -0.110245
       },
       "rod_clearance_mass_percent": {
-        "count": 17,
+        "count": 18,
         "max": 0.065,
-        "mean_absolute": 0.012588235294117647,
-        "median": 0.004,
+        "mean_absolute": 0.011944444444444445,
+        "median": 0.0035,
         "min": -0.007
       }
     },
@@ -545,14 +564,14 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 17
+          "scored": 18
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 14,
+            "count": 15,
             "max": 1.167289,
-            "mean_absolute": 2.2491502142857143,
-            "median": -1.9491205,
+            "mean_absolute": 2.1511960666666665,
+            "median": -1.899173,
             "min": -4.844728
           },
           "reference parachute open before apogee": {
@@ -571,14 +590,14 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 17
+          "scored": 18
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 17,
+            "count": 18,
             "max": 2.281841,
-            "mean_absolute": 0.4948828823529412,
-            "median": -0.006728,
+            "mean_absolute": 0.49736872222222217,
+            "median": 0.008105000000000001,
             "min": -0.653208
           }
         }
@@ -590,22 +609,22 @@
         },
         "difference_unit": "calibres",
         "outcomes": {
-          "scored": 17
+          "scored": 18
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 17,
-            "max": 0.072976,
-            "mean_absolute": 0.040729588235294115,
-            "median": 0.044398,
+            "count": 18,
+            "max": 0.110841,
+            "mean_absolute": 0.04462466666666667,
+            "median": 0.044479500000000005,
             "min": -0.000849
           }
         }
       }
     },
-    "not_flown": 20,
-    "public_designs_with_all_five": 5,
-    "reference_same": 17,
-    "together": 9
+    "not_flown": 19,
+    "public_designs_with_all_five": 8,
+    "reference_same": 18,
+    "together": 13
   }
 }

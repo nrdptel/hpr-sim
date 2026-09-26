@@ -151,11 +151,15 @@ flight:
 - **Large angles of attack.** The aerodynamics are for small angles, with no
   [stall](glossary.md#stall), but a flight uses them at every angle: just off the rail in a strong
   crosswind, and near apogee.
-- **Staging and air starts are checked only by tests.** Each motor lights at its own time, and a
-  sustainer flies on after a powered separation ([Staging](physics/staging.md)), but no staged
-  flight has been compared with another simulator yet ([M1.9c](decisions-and-roadmap.md#m1-9c)).
-  A cluster is flown and checked by tests, including a motor that fails to light, but not yet
-  against another simulator ([Clusters](physics/design.md#clusters)).
+- **Staging, clusters and air starts are checked against OpenRocket on three of its examples.**
+  Each motor lights at its own time, and a sustainer flies on after a powered separation
+  ([Staging](physics/staging.md)). OpenRocket's two-stage, cluster and air-start examples, 12
+  flights, are each within 5% of OpenRocket's apogee and largest speed. Three cluster apogees are
+  compared with OpenRocket's flight with no parachute, since its parachute opened before apogee
+  ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket).
+  A motor that fails to light in a cluster is checked by tests only
+  ([Clusters](physics/design.md#clusters)). A rocket that separates more than once is not
+  compared yet.
 - [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
   axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
   modelled, and checked against measurements only from Mach 1.5 up

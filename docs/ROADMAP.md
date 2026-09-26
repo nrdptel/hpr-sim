@@ -632,18 +632,17 @@
       a test holding its words and sums. *Result:* met: 17 flights, 4 of 12 private designs, 9 in all.
     - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
       *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
-    - [ ] [blocked] **M2.2e5 Twenty designs** (on M1.9, #173, #174, M1.13, #133). *Done when:*
+    - [ ] [blocked] **M2.2e5 Twenty designs** (on #173, #174, M1.13, #133). *Done when:*
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
-      bar on the flights added. M1.9: 17 at most; 3 of #173's 1, #174's 5, 4 public the rest.
+      bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the four above.
 
-- [ ] **M1.9 Staging, clusters, airstarts (COTS).**
+- [x] **M1.9 Staging, clusters, airstarts (COTS).**
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
   - Booster tracked through recovery.
   - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
   - Loft lessons: L30, L31, L93.
-  *Done when:*
-  - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
-  - Event ordering tests pass.
+  *Done when:* a two-stage design and a cluster design each match OpenRocket within the per-case
+  tolerance; event ordering tests pass.
 
   Split into a to c (ADR-074).
   - [x] **M1.9a Ignition times and powered staging.** *Done when:* a motor lights at launch, at a
@@ -657,8 +656,9 @@
     *Result:* met (ADR-075): a motor out's turn is the hand calculation's to 3.7e-7; every tube of
     25 OpenRocket probes within 1e-15 m; `.ork` cluster flights wait for M1.9c.
     - Loft lessons: L31.
-  - [ ] **M1.9c Against OpenRocket.** *Done when:* the parent's first bullet is met: a `.ork`
+  - [x] **M1.9c Against OpenRocket.** *Done when:* the parent's first bullet is met: a `.ork`
     two-stage design and a cluster design each within the per-case tolerance of OpenRocket's flight.
+    *Result:* met (ADR-076): all within 5% in apogee (3 vs OR without its early chute) and largest speed.
 
 - [ ] **M1.10 Outputs and derived metrics.**
   - Static and dynamic stability margin over the flight.
