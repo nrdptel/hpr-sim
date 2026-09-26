@@ -88,7 +88,7 @@ The −1.373 value at `t = 0`, 10.516648, matches RocketPy's own pinned test val
   - Dry scalars match to 2e-16, and the products of inertia are exactly zero.
   - At RocketPy's LSODA knots, where its grain geometry holds computed values: mass, centre and
     inertia match to 8e-10, and propellant mass to 2.4e-9. That is the solver's accuracy.
-  - Between knots, on an even grid: mass to 8.3e-6, centre to 2.5e-6 of the length, `I_11` to
+  - Between knots, on an even grid: mass to 1.3e-5 (Lince), centre to 3.6e-6 of the length, `I_11` to
     2.6e-5 and `I_33` to 1.4e-5.
   - That residual is RocketPy's resampling. `SolidMotor` interpolates grain volumes linearly
     between LSODA knots (`motors/solid_motor.py:375-383`, `:603-630`). `GenericMotor` samples its

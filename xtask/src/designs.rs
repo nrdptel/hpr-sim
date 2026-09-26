@@ -1348,9 +1348,9 @@ mod tests {
     fn committed_designs_match_the_generator() {
         let root = root().unwrap();
         let designs = generate(&root).unwrap();
-        // Eight from RocketPy's examples, two synthetic, the two wind-tunnel models (M1.8a) and
-        // MIL-HDBK-762's sample drag rocket (M1.8b2).
-        assert_eq!(designs.len(), 13);
+        // Ten from RocketPy's examples (Genesis and Lince since M2.3b), two synthetic, the two
+        // wind-tunnel models (M1.8a) and MIL-HDBK-762's sample drag rocket (M1.8b2).
+        assert_eq!(designs.len(), 15);
         let stale = stale(&root.join(DIR), &designs);
         assert!(
             stale.is_empty(),

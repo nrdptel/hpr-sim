@@ -114,6 +114,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
     println!();
-    println!("Not yet validated against the real flight: that is milestone M2.3b.");
+    println!("This design flies a stand-in motor; Bella Lui's real flight, on its own K828FJ, is");
+    println!("compared on the accuracy page.");
     Ok(())
 }

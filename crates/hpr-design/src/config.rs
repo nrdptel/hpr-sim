@@ -737,7 +737,7 @@ mod tests {
         ));
     }
     /// The RocketPy example designs in `validation/designs/`, by oracle case name.
-    const ROCKETPY_DESIGNS: [(&str, &str); 8] = [
+    const ROCKETPY_DESIGNS: [(&str, &str); 10] = [
         (
             "calisto-getting-started-motor-at-minus-1.255",
             include_str!(
@@ -769,6 +769,14 @@ mod tests {
         (
             "cavour",
             include_str!("../../../validation/designs/rocketpy-cavour.json"),
+        ),
+        (
+            "genesis",
+            include_str!("../../../validation/designs/rocketpy-genesis.json"),
+        ),
+        (
+            "lince",
+            include_str!("../../../validation/designs/rocketpy-lince.json"),
         ),
         (
             "prometheus-2022-generic-motor",
@@ -1140,11 +1148,11 @@ mod tests {
         //   3.3e-10, centre 1.4e-10 of the length, `I_11` 8.0e-10, `I_33` 1.8e-10, grain propellant
         //   mass 2.4e-9 of its initial value. That is the solver's own accuracy (rtol 1e-11); the
         //   tolerance is 1e-8, a margin of 4 to 70.
-        // - On the even grid, between knots: total mass 8.3e-6, centre 2.5e-6, `I_11` 2.6e-5,
+        // - On the even grid, between knots: total mass 1.3e-5 (Lince), centre 3.6e-6, `I_11` 2.6e-5,
         //   `I_33` 1.4e-5, grain propellant mass 4.9e-5. `SolidMotor` interpolates its grain
         //   volumes linearly between LSODA knots (`solid_motor.py:375-383`, `:603-630`) and
         //   `GenericMotor` samples its inertias at the thrust knots, while hpr's are exact for a
-        //   piecewise-linear curve. Tolerances: 5e-5 (margin 6), 2e-5 (8), 1e-4 (3.9 and 7) and
+        //   piecewise-linear curve. Tolerances: 5e-5 (margin 3.8), 2e-5 (5.6), 1e-4 (3.9 and 7) and
         //   2.5e-4 (5).
         let tolerance = |what: &str| match what {
             "initial propellant mass"

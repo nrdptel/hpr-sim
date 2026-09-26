@@ -23,9 +23,8 @@ Python and used as a Python library. A command-line tool, Python bindings, desig
 graphical app are planned for hpr-sim. None of them exists yet.
 
 It is also built to be checked. Every model cites a published source, and tests pin every model.
-The simulator is being compared against RocketPy, and will be compared against
-[OpenRocket](https://openrocket.info/) and real flights, with the results committed to the
-repository.
+The simulator is compared against RocketPy, [OpenRocket](https://openrocket.info/) and the logs
+of real flights, with the results committed to the repository.
 
 For now it covers only commercial off-the-shelf solid rocket motors
 ([COTS motors](glossary.md#cots-motor)), the kind you buy from a manufacturer.
@@ -161,8 +160,12 @@ out.
   The larger gaps are where the two drags differ most: hpr's is well below the example's for two
   rockets, and above it at high speed for Prometheus 2022, which flies through Mach 1
   ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)).
-  No flight has been compared with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2)) or a real
-  one ([M2.3](decisions-and-roadmap.md#m2-3)).
+- **Against seven real flights, hpr's apogees miss by 6.04% on average,** outside the 5% target,
+  and by −8.90% to +10.40% one by one. hpr's height is read the way each log's barometric
+  altimeter reads the air (four of the seven assumed barometric); drift and speed are not
+  compared yet
+  ([real flights](accuracy.md#real-flights),
+  [report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
 - **The descent under a parachute matches RocketPy's.** The comparison flies the descents of five
   of RocketPy's [example rockets](glossary.md#example-rockets) in both codes:
   - Each starts from the same state near apogee, with the first parachute opening at once.

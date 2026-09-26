@@ -69,13 +69,14 @@ the example gave it. The propellant mass comes from the grain geometry (SolidMot
 initial mass (GenericMotor), so the substitute changes when the propellant burns, not how much there
 is. An .eng file must not contain a `0 0` point (see solid_motor.py); no bundled curve does.
 
-Which examples. Eight cases from seven rockets (Calisto at two motor positions), plus Prometheus's
+Which examples. Ten cases from nine rockets (Calisto at two motor positions), Prometheus's with a
 `GenericMotor`. Cavour's motor has no dry mass or inertia, so its mass tests little that Juno III
 doesn't; it is here because its drag curve is labelled RASAero II, which M1.5b compares (ADR-009).
+Genesis and Lince, whose motors have none either, are here for their logged flights (M2.3b).
 Left out: Valkyrie, whose inputs exist only in RocketPy's data file
-`data/rockets/valkyrie/VLK.json` (data files carry their own terms), and Andromeda, Astra, Camoes,
-Erebus 11, Genesis and Lince, whose motors have no dry mass or inertia and so test nothing Bella Lui,
-Valetudo and Juno III don't.
+`data/rockets/valkyrie/VLK.json` (data files carry their own terms), and Andromeda, Astra, Camoes
+and Erebus 11, whose motors have no dry mass or inertia and so test nothing Bella Lui, Valetudo and
+Juno III don't.
 
 `--example-curves` reads each example's own thrust file from refs/rocketpy/data/motors with the
 example's burn options instead, as a local cross-check of docs/research/rocketpy-rocket-mass.md.
@@ -527,6 +528,117 @@ CASES = [
             "rail_buttons": {"upper_button_position": 1.0954,
                              "lower_button_position": 0.005400000000000071},
             "parachutes": [],
+        },
+    },
+    {
+        # docs/examples/genesis_flight_sim.ipynb: motor :156-171 (Cesaroni_3618L995-P.eng,
+        # burn_time 3.8, zero dry mass and inertia, nozzle at 0 by default, default
+        # "nozzle_to_combustion_chamber"), rocket :236-244, rail buttons :246, add_motor :248, nose
+        # and fins :257-265 (no tail), parachutes :274-290. Added in M2.3b for its logged flight.
+        # Substitute: Loki L1040LR (3707 N s against the L995's 3618 N s), as Cavour's.
+        "name": "genesis",
+        "source": "docs/examples/genesis_flight_sim.ipynb:156-171 (motor), :236-248 (rocket, rail "
+                  "buttons, add_motor), :257-265 (nose, fins), :274-290 (parachutes)",
+        "rocket": {
+            "radius": 0.047,
+            "mass": 9.214,
+            "inertia": [7.5046, 7.5046, 0.042241],
+            "center_of_mass_without_motor": 0.895,
+            "coordinate_system_orientation": "tail_to_nose",
+            "motor_position": 0.0,
+        },
+        "motor_kind": "solid",
+        "motor": {
+            "dry_mass": 0,
+            "dry_inertia": [0, 0, 0],
+            "center_of_dry_mass_position": 0.895,
+            "nozzle_position": 0,
+            "nozzle_radius": 0.042354,
+            "throat_radius": 0.00925,
+            "grain_number": 3,
+            "grain_density": 1815,
+            "grain_outer_radius": 0.033,
+            "grain_initial_inner_radius": 0.015,
+            "grain_initial_height": 0.12,
+            "grain_separation": 0.005,
+            "grains_center_of_mass_position": 0.243,
+            "coordinate_system_orientation": "nozzle_to_combustion_chamber",
+            "burn_time": None,
+            "reshape_thrust_curve": False,
+            "interpolation_method": "linear",
+            "only_radial_burn": False,
+        },
+        "thrust_file": "curves/5f4294d20002e90000000839.eng",
+        "example_thrust": {"file": "cesaroni/Cesaroni_3618L995-P.eng", "burn_time": 3.8},
+        "geometry": {
+            "nose": {"length": 0.27, "kind": "vonKarman", "position": 2.372},
+            "fin_sets": [{
+                "type": "trapezoidal", "n": 4, "span": 0.105, "root_chord": 0.2, "tip_chord": 0.11,
+                "position": 0.25,
+            }],
+            "tails": [],
+            "rail_buttons": {"upper_button_position": 0.98, "lower_button_position": 0.095},
+            "parachutes": [
+                {"name": "Drogue", "cd_s": 0.285005285533666, "trigger": APOGEE,
+                 "sampling_rate": 105, "noise": NOISE, "lag": 1},
+                {"name": "Main", "cd_s": 1.1, "trigger": below(870), "sampling_rate": 105,
+                 "noise": NOISE, "lag": 1},
+            ],
+        },
+    },
+    {
+        # docs/examples/lince_flight_sim.ipynb: motor :154-170 (Cesaroni_M1101.eng, burn_time
+        # 4.736, zero dry mass and inertia, default "nozzle_to_combustion_chamber"), the rocket
+        # before its payload deploys :235-245 (rocket, add_motor), rail buttons :247, nose, fins
+        # and tail :249-256, parachute :265-266. Added in M2.3b for its logged flight.
+        # Substitute: AeroTech M1350W (5178 N s against the M1101's 5198 N s).
+        "name": "lince",
+        "source": "docs/examples/lince_flight_sim.ipynb:154-170 (motor), :235-247 (rocket, "
+                  "add_motor, rail buttons), :249-256 (nose, fins, tail), :265-266 (parachute)",
+        "rocket": {
+            "radius": 0.052,
+            "mass": 10.6851352,
+            "inertia": [4.9939475, 4.9939475, 0.0213204],
+            "center_of_mass_without_motor": 1.061,
+            "coordinate_system_orientation": "tail_to_nose",
+            "motor_position": 0,
+        },
+        "motor_kind": "solid",
+        "motor": {
+            "dry_mass": 0,
+            "dry_inertia": [0, 0, 0],
+            "center_of_dry_mass_position": 1.061,
+            "nozzle_position": 0,
+            "nozzle_radius": 0.0335,
+            "throat_radius": 0.0114,
+            "grain_number": 4,
+            "grain_density": 1363,
+            "grain_outer_radius": 0.035,
+            "grain_initial_inner_radius": 0.01,
+            "grain_initial_height": 0.16,
+            "grain_separation": 0.0,
+            "grains_center_of_mass_position": 0.315533,
+            "coordinate_system_orientation": "nozzle_to_combustion_chamber",
+            "burn_time": None,
+            "reshape_thrust_curve": False,
+            "interpolation_method": "linear",
+            "only_radial_burn": False,
+        },
+        "thrust_file": "curves/5f4294d20002e90000000875.eng",
+        "example_thrust": {"file": "cesaroni/Cesaroni_M1101.eng", "burn_time": 4.736},
+        "geometry": {
+            "nose": {"length": 0.28, "kind": "vonKarman", "position": 2.109417},
+            "fin_sets": [{
+                "type": "trapezoidal", "n": 4, "span": 0.0825, "root_chord": 0.17,
+                "tip_chord": 0.0425, "position": 0.17,
+            }],
+            "tails": [{"top_radius": 0.052, "bottom_radius": 0.04852, "length": 0.022,
+                       "position": 0}],
+            "rail_buttons": {"upper_button_position": 1.54049, "lower_button_position": 0.13549},
+            "parachutes": [
+                {"name": "Main", "cd_s": 3.9, "trigger": APOGEE, "sampling_rate": 150,
+                 "noise": [0, 0, 0], "lag": 0},
+            ],
         },
     },
     {

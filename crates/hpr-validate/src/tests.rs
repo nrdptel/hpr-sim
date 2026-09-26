@@ -1308,13 +1308,7 @@ fn agree(a: f64, b: f64) -> bool {
     (a - b).abs() <= 1e-9 * a.abs().max(1.0)
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
-    use sha2::Digest as _;
-    sha2::Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
+use crate::real_flight::sha256_hex;
 
 /// The record moves only when its script runs (Loft lesson L76), on the pinned jar, and the
 /// scripts it names are the committed ones.
@@ -1735,4 +1729,247 @@ fn metric_for_missing_event_is_withheld_not_scored() {
         let back: MetricOutcome = serde_json::from_str(&text).expect("deserializes");
         assert_eq!(back, outcome);
     }
+}
+
+#[test]
+fn real_flight_cases_report_apogee_and_trace_rms() {
+    // Loft lesson L83: no real-flight validation ever happened. The committed real-flight report
+    // (M2.3b) has at least six flights, each with its apogee error and its altitude-trace RMS
+    // against a log; its mean absolute apogee error is reported against the 5% target; and each
+    // flight outside that target carries an explanation whose claim holds against its own numbers.
+    // The logs are not in CI (they live under `refs/`), so this holds the committed report to
+    // itself; `cargo xtask real-flights --check` flies it again where they are.
+    use crate::real_flight::{
+        APOGEE_TARGET_PERCENT, FLIGHTS, MASS_FIXTURE, REPORT_JSON, REPORT_MD, RealFlightReport,
+    };
+    let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
+    let report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+    let page = std::fs::read_to_string(root().join(REPORT_MD)).expect("the page is committed");
+    report
+        .check_consistent(&page)
+        .expect("the report holds together");
+    assert!(
+        report.flights.len() >= 6,
+        "{} flights",
+        report.flights.len()
+    );
+    let ids: Vec<&str> = report.flights.iter().map(|row| row.id.as_str()).collect();
+    let listed: Vec<&str> = FLIGHTS.iter().map(|flight| flight.id).collect();
+    assert_eq!(
+        ids, listed,
+        "the report flies every listed flight, in order"
+    );
+    for (row, flight) in report.flights.iter().zip(&FLIGHTS) {
+        // The words the report carries are the ones the code flies with now.
+        let (year, month, day, hour) = flight.utc;
+        assert_eq!(
+            (
+                row.title.as_str(),
+                row.design.as_str(),
+                row.source.as_str(),
+                row.weather_time_utc.clone(),
+                row.log_until_s,
+                row.altimeter.as_str(),
+                row.altimeter_evidence.as_str(),
+                row.example_drag_source.as_str(),
+                row.note.as_str(),
+                row.explanation_kind.as_str(),
+                row.explanation.as_str(),
+            ),
+            (
+                flight.title,
+                flight.design,
+                flight.source,
+                format!("{year:04}-{month:02}-{day:02}T{hour:02}:00Z"),
+                flight.log.until_s,
+                flight.log.altimeter.kind(),
+                flight.log.altimeter.evidence(),
+                flight.example_drag_source,
+                flight.note,
+                flight.explanation.kind(),
+                flight.explanation.text(),
+            ),
+            "{}: rerun `cargo xtask real-flights`",
+            row.id
+        );
+        // Each cross-check is there exactly when the flight has its data.
+        assert_eq!(
+            (
+                row.pressure_reading_max_m.is_some(),
+                row.gnss_apogee_m.is_some()
+            ),
+            (flight.log.pressure.is_some(), flight.log.gnss.is_some()),
+            "{}",
+            row.id
+        );
+        // So are its numbers: sites, rails, log columns, drags.
+        assert_eq!(
+            row.inputs_sha256,
+            sha256_hex(format!("{flight:?}").as_bytes()),
+            "{}: its inputs changed; rerun `cargo xtask real-flights`",
+            row.id
+        );
+        // The committed files it read are the ones in the checkout: a regenerated design or
+        // fixture makes the report stale.
+        let design = format!("validation/designs/{}.json", flight.design);
+        for committed in [design.as_str(), MASS_FIXTURE] {
+            let file = row
+                .files
+                .iter()
+                .find(|file| file.path == committed)
+                .unwrap_or_else(|| panic!("{}: {committed} is not recorded", row.id));
+            let bytes = std::fs::read(root().join(committed)).expect("committed");
+            assert_eq!(
+                file.sha256,
+                sha256_hex(&bytes),
+                "{}: {committed} changed; rerun `cargo xtask real-flights`",
+                row.id
+            );
+        }
+        assert!(
+            row.log_apogee_m > 0.0 && row.hpr_apogee_m > 0.0,
+            "{}",
+            row.id
+        );
+        assert!(row.apogee_error_percent.is_finite(), "{}", row.id);
+        assert!(
+            row.trace_rms_m.is_finite() && row.trace_rms_m > 0.0 && row.trace_rows > 10,
+            "{}: an RMS over {} rows",
+            row.id,
+            row.trace_rows
+        );
+        // Every file it read is recorded by its digest.
+        assert!(row.files.len() >= 4, "{}", row.id);
+        assert!(
+            row.files.iter().all(|file| file.sha256.len() == 64),
+            "{}",
+            row.id
+        );
+    }
+    assert_eq!(report.summary.target_percent, APOGEE_TARGET_PERCENT);
+    // The mean with the assumed altimeters read as heights, worked here from the rows.
+    let assumed = |row: &&crate::real_flight::FlightRow| row.altimeter.ends_with("assumed");
+    assert_eq!(report.flights.iter().filter(assumed).count(), 4);
+    let known_barometric = report
+        .flights
+        .iter()
+        .map(|row| {
+            let apogee_m = if assumed(&row) {
+                row.hpr_height_apogee_m
+            } else {
+                row.hpr_apogee_m
+            };
+            (100.0 * (apogee_m - row.log_apogee_m) / row.log_apogee_m).abs()
+        })
+        .sum::<f64>()
+        / report.flights.len() as f64;
+    assert!(
+        (known_barometric
+            - report
+                .summary
+                .mean_absolute_known_barometric_apogee_error_percent)
+            .abs()
+            < 1e-9
+    );
+    assert!(page.contains("Mean absolute apogee error"));
+}
+
+#[test]
+fn a_real_flight_explanation_that_stops_holding_fails() {
+    // An explanation is a claim checked against the row's numbers: "drag" says the flight on the
+    // example's own drag is within the target, so a row where it isn't fails the check.
+    use crate::real_flight::{FlightRow, REPORT_JSON, RealFlightReport, summarise};
+    let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
+    let fails_with = |kind: &str, change: &dyn Fn(&mut FlightRow), expected: &str| {
+        let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+        let row = report
+            .flights
+            .iter_mut()
+            .find(|row| row.explanation_kind == kind)
+            .unwrap_or_else(|| panic!("a flight explained by {kind:?}"));
+        change(row);
+        report.summary = summarise(&report.flights);
+        let page = report.to_markdown();
+        let error = report.check_consistent(&page).unwrap_err();
+        assert!(error.contains(expected), "{kind}: {error}");
+    };
+    fails_with(
+        "drag",
+        &|row| {
+            row.example_drag_apogee_m = 1.07 * row.log_apogee_m;
+            row.example_drag_apogee_error_percent =
+                100.0 * (row.example_drag_apogee_m - row.log_apogee_m) / row.log_apogee_m;
+        },
+        "doesn't hold",
+    );
+    // "thrust" says the flight on the thrust file as recorded is within the target, and the one on
+    // the example's drag is not.
+    fails_with(
+        "thrust",
+        &|row| {
+            let flown = row
+                .recorded_thrust
+                .as_mut()
+                .expect("a recorded-thrust flight");
+            flown.apogee_m = 1.07 * row.log_apogee_m;
+            flown.apogee_error_percent =
+                100.0 * (flown.apogee_m - row.log_apogee_m) / row.log_apogee_m;
+        },
+        "doesn't hold",
+    );
+    fails_with("thrust", &|row| row.recorded_thrust = None, "doesn't hold");
+    // Drag would explain it as well, so it names no single candidate.
+    fails_with(
+        "thrust",
+        &|row| {
+            row.example_drag_apogee_m = row.log_apogee_m;
+            row.example_drag_apogee_error_percent = 0.0;
+        },
+        "doesn't hold",
+    );
+    // "drag" fails where the recorded thrust would explain it as well.
+    fails_with(
+        "drag",
+        &|row| {
+            row.recorded_thrust = Some(crate::real_flight::RecordedThrust {
+                impulse_ns: row.total_impulse_ns,
+                apogee_m: row.log_apogee_m,
+                apogee_error_percent: 0.0,
+            });
+        },
+        "doesn't hold",
+    );
+    // A kind the check doesn't know fails rather than passing.
+    fails_with(
+        "drag",
+        &|row| row.explanation_kind = "weather".to_owned(),
+        "no explanation is called",
+    );
+    // A percentage that isn't its metres' fails, whatever the summary says.
+    fails_with(
+        "drag",
+        &|row| row.apogee_error_percent = 1.0,
+        "its metres give",
+    );
+    // And a flight within the target that carries an explanation fails.
+    fails_with(
+        "",
+        &|row| {
+            row.explanation = "no reason".to_owned();
+            row.explanation_kind = "drag".to_owned();
+        },
+        "within the target",
+    );
+    // And a flight outside the target with no explanation fails too.
+    let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+    let row = report
+        .flights
+        .iter_mut()
+        .find(|row| !row.explanation.is_empty())
+        .expect("an outlier");
+    row.explanation.clear();
+    row.explanation_kind.clear();
+    let page = report.to_markdown();
+    let error = report.check_consistent(&page).unwrap_err();
+    assert!(error.contains("no explanation"), "{error}");
 }

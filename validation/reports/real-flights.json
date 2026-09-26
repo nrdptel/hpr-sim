@@ -1,0 +1,446 @@
+{
+  "generated_by": "cargo xtask real-flights",
+  "align_height_m": 30.0,
+  "grid_s": 0.01,
+  "flights": [
+    {
+      "id": "bella-lui",
+      "title": "Bella Lui, EPFL Rocket Team, 2020 (K828FJ)",
+      "design": "rocketpy-bella-lui",
+      "source": "bella_lui_flight_sim.ipynb:109-111 (rail), :139-153 (site, date), :761-765 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/EPFL_Bella_Lui/bella_lui_flight_data_filtered.csv",
+          "sha256": "ccf8bcecd91d5b912e8f8b3bcf9efe13248453e1a81dc79d2b4daea4e985de2d"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/aerotech/AeroTech_K828FJ.eng",
+          "sha256": "ba778b6add25bb0d866ca22b68eb63a0bac93313f4ed65afc5a720f396073d1b"
+        },
+        {
+          "path": "validation/designs/rocketpy-bella-lui.json",
+          "sha256": "795eceedc0b52249e7d1807efae7cd4c56bb313d06ffa19b05e3066b5f01f8e8"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/bella_lui_weather_data_ERA5.nc",
+          "sha256": "51a60794fca3a4511436ee54821307a557576399fe5d1252bbf7c7b639809e95"
+        }
+      ],
+      "weather_time_utc": "2020-02-22T13:00Z",
+      "log_rows": 768,
+      "log_until_s": null,
+      "altimeter": "barometric, assumed",
+      "altimeter_evidence": "the team's own avionics, filtered by a method the example doesn't record: barometric assumed, as hobby altimeters are",
+      "log_apogee_m": 458.971,
+      "hpr_apogee_m": 462.9052014503509,
+      "hpr_height_apogee_m": 463.6033967993702,
+      "apogee_error_percent": 0.8571786562442689,
+      "log_time_to_apogee_s": 9.45849567723343,
+      "hpr_time_to_apogee_s": 9.481159005720997,
+      "trace_rms_m": 3.193172092714476,
+      "trace_rms_percent": 0.6957241509190071,
+      "trace_rows": 161,
+      "total_impulse_ns": 2070.992004545454,
+      "negative_thrust_zeroed_ns": 0.0,
+      "example_drag_source": "bella_lui_flight_sim.ipynb:94-95, :453-484 (power off and on, times 1)",
+      "example_drag_apogee_m": 460.0552869021684,
+      "example_drag_apogee_error_percent": 0.23624300928999892,
+      "example_drag_trace_rms_m": 2.0448170876797316,
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "800cca188e84e89cb301eaaae1dea1d06156bb1144fbcd2e79878d5df26699a1",
+      "note": "",
+      "explanation_kind": "",
+      "explanation": ""
+    },
+    {
+      "id": "ndrt-2020",
+      "title": "NDRT 2020, Notre Dame Rocketry Team (L1395)",
+      "design": "rocketpy-ndrt-2020-nose-to-tail",
+      "source": "ndrt_2020_flight_sim.ipynb:115-117 (rail), :148-153 (site, date), :679-683 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/NDRT_2020/ndrt_2020_flight_data.csv",
+          "sha256": "5e64b446199988ac183b2f3965d76da27e57496bb2a33f78df73aa23fd18d7b8"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/cesaroni/Cesaroni_4895L1395-P.eng",
+          "sha256": "eb09768c01f3c5f7290e77e93ee5fc307ca282c079558cf7195b5a17c7bb9784"
+        },
+        {
+          "path": "validation/designs/rocketpy-ndrt-2020-nose-to-tail.json",
+          "sha256": "28576933bb5ce97e932e3a673d105dd64aff63d7e5e41b11a14829f11cbfb76d"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/ndrt_2020_weather_data_ERA5.nc",
+          "sha256": "e23b2e402bd2b8ed22cee249264601bf85d40e46391daa32dbd7b781b9979034"
+        }
+      ],
+      "weather_time_utc": "2020-02-23T16:00Z",
+      "log_rows": 1819,
+      "log_until_s": null,
+      "altimeter": "barometric",
+      "altimeter_evidence": "a Featherweight Raven (RocketPy's tests/acceptance/test_ndrt_2020_rocket.py:190), a barometric altimeter, in feet above the pad",
+      "log_apogee_m": 1320.3570240000001,
+      "hpr_apogee_m": 1457.6402332004773,
+      "hpr_height_apogee_m": 1432.8146859370584,
+      "apogee_error_percent": 10.39743089975618,
+      "log_time_to_apogee_s": 15.755455024631633,
+      "hpr_time_to_apogee_s": 16.711654799787073,
+      "trace_rms_m": 89.92104573950171,
+      "trace_rms_percent": 6.810358418595553,
+      "trace_rows": 316,
+      "total_impulse_ns": 4894.9055,
+      "negative_thrust_zeroed_ns": 0.0,
+      "example_drag_source": "ndrt_2020_flight_sim.ipynb:91 and :316-317 (the drag coefficient, power off and on)",
+      "example_drag_apogee_m": 1322.6368449369077,
+      "example_drag_apogee_error_percent": 0.1726670056255577,
+      "example_drag_trace_rms_m": 31.695720105854306,
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "d82d593eaa4e2eb96aae63b09ad453acd60a45b12d9e23f31221c973086cbe47",
+      "note": "",
+      "explanation_kind": "drag",
+      "explanation": "consistent with hpr's drag. On the example's own drag, a constant 0.44 the notebook gives no source for, the apogee is within the target. hpr's own drag is lower, as the predicted-mode comparison with RocketPy flying the same constant found (+10.3% in apogee), and the design's fin edges and finish are placeholders, since the example records none."
+    },
+    {
+      "id": "prometheus-2022",
+      "title": "Prometheus, Western Engineering, Spaceport America Cup 2022 (M1520)",
+      "design": "rocketpy-prometheus-2022-generic-motor",
+      "source": "prometheus_2022_flight_sim.ipynb:65-70 (site, date), :401-406 (rail), :508-526 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/prometheus/2022-06-24-serial-5115-flight-0001-TeleMetrum.csv",
+          "sha256": "9fe8d17a25e7944267b34a45ed955303afd5818b3f18479a5f7ffb31a574cecf"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/cesaroni/Cesaroni_7579M1520-P.eng",
+          "sha256": "f38ad06972a07e4ef04164a60718f099d732de6e433185e211dd87083f89e4ca"
+        },
+        {
+          "path": "validation/designs/rocketpy-prometheus-2022-generic-motor.json",
+          "sha256": "69048077a9249c42cc6783b191d72d01a158084fbe6c8cdd1da940c9cd40506a"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/spaceport_america_pressure_levels_2023_hourly.nc",
+          "sha256": "25d48e9d03554251dc2d0601dcaa1e441ca7e7c502f573fceb4ce5c058da8694"
+        }
+      ],
+      "weather_time_utc": "2023-06-24T15:00Z",
+      "log_rows": 3271,
+      "log_until_s": 29.58,
+      "altimeter": "barometric",
+      "altimeter_evidence": "an Altus Metrum TeleMetrum: its height column is the standard atmosphere's altitude of its pressure column less the first row's (the gap is below)",
+      "log_apogee_m": 3895.83,
+      "hpr_apogee_m": 3549.2858769673912,
+      "hpr_height_apogee_m": 3809.871692558215,
+      "apogee_error_percent": -8.895257827795584,
+      "log_time_to_apogee_s": 28.441315789473684,
+      "hpr_time_to_apogee_s": 26.55454631390058,
+      "trace_rms_m": 190.85377735968936,
+      "trace_rms_percent": 4.898924679970363,
+      "trace_rows": 2875,
+      "total_impulse_ns": 7579.081310500001,
+      "negative_thrust_zeroed_ns": 0.0,
+      "example_drag_source": "prometheus_2022_flight_sim.ipynb:224-261 (`prometheus_cd_at_ma` from Mach 0.15, where it starts to change, and power on 1.02 times it)",
+      "example_drag_apogee_m": 3913.5365576020777,
+      "example_drag_apogee_error_percent": 0.45450026315516173,
+      "example_drag_trace_rms_m": 98.3642239796445,
+      "recorded_thrust": null,
+      "pressure_reading_max_m": 0.19515728329315607,
+      "gnss_apogee_m": 4133.0,
+      "inputs_sha256": "ae50b1c0076bf084ce718943ba1dfe1c430ea78e5152843799d129f26eba3a7a",
+      "note": "flown in the weather of 24 June 2023, a year after the flight, as RocketPy's example flies it: RocketPy has no ERA5 file of the day. The log is read to 29.58 s: a pressure transient then drops the reading 600 m and returns it 8 m above the highest reading before",
+      "explanation_kind": "drag",
+      "explanation": "consistent with hpr's drag. On the example's own drag, the team's table from Mach 0.15, the apogee is within the target. The reading is built on weather a year off the flight's day (the note). Against the satellite heights, hpr's conversion reads 1 to 2 points below the altimeter here and on Juno III, which flew in its own day's weather, so the wrong day's share of the miss can't be told apart."
+    },
+    {
+      "id": "juno-iii",
+      "title": "Juno III, Projeto Jupiter, Spaceport America Cup 2023 (the team's motor)",
+      "design": "rocketpy-juno-iii",
+      "source": "juno3_flight_sim.ipynb:54-67 (site, date), :448-456 (rail), :543-553 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/juno3/cots_altimeter.csv",
+          "sha256": "eef81b3bcc4c285667727c1e2c9ca502a67cb374f5e31bc4f87ed76b8a04c1ee"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/juno3/cots_GNSS.csv",
+          "sha256": "557c80be4c0d9a5e6a5493177a9adfaa3b02c11b8ff814ed238b53540ac9f062"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/projeto-jupiter/mandioca_thrust_curve.csv",
+          "sha256": "25e9cd7a80fa346df7575ce466400426abe8f37990ebe268491d5fbb3245ec44"
+        },
+        {
+          "path": "validation/designs/rocketpy-juno-iii.json",
+          "sha256": "21de304b1b6a22e3c4c62322a7dc62c5800ad6427e9773495e3a36e25fe09225"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/spaceport_america_pressure_levels_2023_hourly.nc",
+          "sha256": "25d48e9d03554251dc2d0601dcaa1e441ca7e7c502f573fceb4ce5c058da8694"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/juno3/drag_curve.csv",
+          "sha256": "02711cd44cd877427b6b951ffe792253526149c2afeb17097e398cb7d8fd6511"
+        }
+      ],
+      "weather_time_utc": "2023-06-23T23:00Z",
+      "log_rows": 493,
+      "log_until_s": 24.6,
+      "altimeter": "barometric",
+      "altimeter_evidence": "a Missile Works RRC3 (juno3/README.txt:21): its height column is the standard atmosphere's altitude of its pressure column less the first row's (the gap is below)",
+      "log_apogee_m": 3151.507,
+      "hpr_apogee_m": 2923.3555415408528,
+      "hpr_height_apogee_m": 3174.474784176552,
+      "apogee_error_percent": -7.239440003120644,
+      "log_time_to_apogee_s": 23.624469738141922,
+      "hpr_time_to_apogee_s": 25.47642548509022,
+      "trace_rms_m": 228.7703073600908,
+      "trace_rms_percent": 7.259076605576024,
+      "trace_rows": 473,
+      "total_impulse_ns": 8802.620990250454,
+      "negative_thrust_zeroed_ns": 2.6209902504597267,
+      "example_drag_source": "juno3_flight_sim.ipynb:244-251, :356-359 (`drag_curve.csv`, scaled to 0.38 at Mach 0.6 \"from CFD analysis\")",
+      "example_drag_apogee_m": 2866.141348773376,
+      "example_drag_apogee_error_percent": -9.054895046294483,
+      "example_drag_trace_rms_m": 255.26149005263582,
+      "recorded_thrust": {
+        "impulse_ns": 9251.717584802198,
+        "apogee_m": 3187.22107146692,
+        "apogee_error_percent": 1.133237891171427
+      },
+      "pressure_reading_max_m": 1.3212411887507187,
+      "gnss_apogee_m": 3369.2592,
+      "inputs_sha256": "e14ebf0fde011b89f4d984e6475a0d652a7f7f25f7eb67c7cefbb81d7bd4ce2b",
+      "note": "the log is read to 24.60 s, as it levels off: a pressure transient there dips the reading by 94 m, then lifts it 62 m above the level within 0.3 s, to the 3213.4 m the team reports as its apogee, and the record's last two rows are corrupt. At the cut the log's own velocity column still reads 17.5 m/s up, so its apogee may be 10 m to 20 m low. The thrust file's last five points are negative (-6.8 to -47.3 N); hpr, which refuses a negative thrust, reads them as zero, and RocketPy's flight holds its thrust at zero too",
+      "explanation_kind": "thrust",
+      "explanation": "consistent with the motor's impulse. The notebook reshapes the team's own motor curve (`mandioca_thrust_curve.csv`) to 5.8 s and 8800 N s, 4.9% less than the file; on the file as recorded the apogee is within the target, and on the team's drag it is not."
+    },
+    {
+      "id": "cavour",
+      "title": "Cavour, Politecnico di Torino, EuRoC 2023 (L995)",
+      "design": "rocketpy-cavour",
+      "source": "cavour_flight_sim.ipynb:125-132 (site, date), :314-315 (rail), :379-389 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/polito/altimeter_cavour.csv",
+          "sha256": "f912724676eea0ca9ba031c3779e48f861538814170b050b7bda2887c31f29a8"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/cesaroni/Cesaroni_3618L995-P.eng",
+          "sha256": "efc04492a3527bdb626d8ec0c18bbbd51f02012393d3b82e00b11d167b2dad2b"
+        },
+        {
+          "path": "validation/designs/rocketpy-cavour.json",
+          "sha256": "56e3f72130731a2749504b09f7ba3af08fc1e5f2b5faa673b6fc9f0f1bd7e77a"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/euroc_2023_all_windows.nc",
+          "sha256": "a3d9e08eb3bb4480d1b8ef03b06878a1a1f76397fdc9dcc929fe5cc856f61d56"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/polito/drag_coefficient_power_off.csv",
+          "sha256": "e47b9398b9e7802ac2f6edafe291edc1015fbb1ee6cb02df52404cf1b276f1c9"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/polito/drag_coefficient_power_on.csv",
+          "sha256": "5f588e25e43b843470e1882f35e2a3be0b7f1760c6652da0c757ad203e7469ed"
+        }
+      ],
+      "weather_time_utc": "2023-10-13T12:00Z",
+      "log_rows": 404,
+      "log_until_s": null,
+      "altimeter": "barometric, assumed",
+      "altimeter_evidence": "the CATS Vega EuRoC 2023 required, sent by radio in whole metres: a Kalman filter's estimate from a barometer and an accelerometer, barometric assumed",
+      "log_apogee_m": 2789.0,
+      "hpr_apogee_m": 2945.972576179635,
+      "hpr_height_apogee_m": 3052.0705006309804,
+      "apogee_error_percent": 5.628274513432587,
+      "log_time_to_apogee_s": 23.075,
+      "hpr_time_to_apogee_s": 22.677210071739353,
+      "trace_rms_m": 125.25548900548814,
+      "trace_rms_percent": 4.491053747059453,
+      "trace_rows": 122,
+      "total_impulse_ns": 3617.98,
+      "negative_thrust_zeroed_ns": 0.0,
+      "example_drag_source": "cavour_flight_sim.ipynb:250-251",
+      "example_drag_apogee_m": 2725.023297959112,
+      "example_drag_apogee_error_percent": -2.293893941946507,
+      "example_drag_trace_rms_m": 26.933048367466732,
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "a182a025cf57845c26c2c261dcda7818cf754332e0e945c51d8ff96706f4b289",
+      "note": "",
+      "explanation_kind": "drag",
+      "explanation": "consistent with hpr's drag. On the example's own curves, labelled RASAero II, the apogee is within the target. hpr's drag is below them: at Mach 0.3, 8.3% below power off and 18.3% below power on (the aerodynamics page's comparison; the power-on gap's cause is open), and the design's fin edges are placeholders, since the example records none."
+    },
+    {
+      "id": "genesis",
+      "title": "Genesis, EuRoC 2023 (L995)",
+      "design": "rocketpy-genesis",
+      "source": "genesis_flight_sim.ipynb:124-131 (site, date), :326-327 (rail), :391-406 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/genesis/flight_data_faraday.csv",
+          "sha256": "d88a7fc53cbd55d1dafeed5d5c6fcfcad27c7cf8e0a15221e67aae97eaa05a74"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/cesaroni/Cesaroni_3618L995-P.eng",
+          "sha256": "efc04492a3527bdb626d8ec0c18bbbd51f02012393d3b82e00b11d167b2dad2b"
+        },
+        {
+          "path": "validation/designs/rocketpy-genesis.json",
+          "sha256": "ddd9eb0b04a64b1b94a961c0abf93b43f10015b2c4483064ffff662e58575312"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/euroc_2023_all_windows.nc",
+          "sha256": "a3d9e08eb3bb4480d1b8ef03b06878a1a1f76397fdc9dcc929fe5cc856f61d56"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/genesis/drag_coefficient_power_off.csv",
+          "sha256": "39dd622fdd50f05be5a443ff30825c717b0b0c705d71f8a09e590b077009c2d2"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/genesis/drag_coefficient_power_on.csv",
+          "sha256": "39dd622fdd50f05be5a443ff30825c717b0b0c705d71f8a09e590b077009c2d2"
+        }
+      ],
+      "weather_time_utc": "2023-10-12T13:00Z",
+      "log_rows": 17933,
+      "log_until_s": null,
+      "altimeter": "barometric, assumed",
+      "altimeter_evidence": "a filtered estimate (`filtered_altitude_AGL`), probably the CATS Vega's barometer and accelerometer Kalman filter: barometric assumed",
+      "log_apogee_m": 2916.691650390625,
+      "hpr_apogee_m": 2745.9601179205765,
+      "hpr_height_apogee_m": 2875.261373153397,
+      "apogee_error_percent": -5.853602400760562,
+      "log_time_to_apogee_s": 23.329191523370028,
+      "hpr_time_to_apogee_s": 22.44817588810453,
+      "trace_rms_m": 95.16379597165766,
+      "trace_rms_percent": 3.2627307709717144,
+      "trace_rows": 2244,
+      "total_impulse_ns": 3617.98,
+      "negative_thrust_zeroed_ns": 0.0,
+      "example_drag_source": "genesis_flight_sim.ipynb:241-242",
+      "example_drag_apogee_m": 2914.4761491347876,
+      "example_drag_apogee_error_percent": -0.07595939240065491,
+      "example_drag_trace_rms_m": 32.68171640908355,
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "bddb3d88ed423e01e63c8afcbd69736029740d4027a71d51f2863150f9776473",
+      "note": "",
+      "explanation_kind": "drag",
+      "explanation": "consistent with hpr's drag. On the example's own curves the apogee is within the target; the design's fin edges and finish are placeholders, since the example records none."
+    },
+    {
+      "id": "lince",
+      "title": "Lince, EuRoC 2023 (M1101)",
+      "design": "rocketpy-lince",
+      "source": "lince_flight_sim.ipynb:123-129 (site, date), :432-437 (rail), :609-619 (log)",
+      "files": [
+        {
+          "path": "refs/rocketpy/data/rockets/lince/main_data.csv",
+          "sha256": "a9cf47fe2b2e5be03168d36b1c41f0a5651a0c3b6db4ed091e1afc274bd7473e"
+        },
+        {
+          "path": "validation/fixtures/design/rocketpy-rocket-mass.json",
+          "sha256": "4ae6e9567e60390e1c4b7b604a2d8ddd294f316aeef7e171df9f49b84bb8400c"
+        },
+        {
+          "path": "refs/rocketpy/data/motors/cesaroni/Cesaroni_M1101.eng",
+          "sha256": "8ebd097ec531581451f170380d7258029b61d0a36f37444f9329a8dc4e936d50"
+        },
+        {
+          "path": "validation/designs/rocketpy-lince.json",
+          "sha256": "bfd0d7cc6d84ca472af61c1c2467c5d507c179c85c4338ca5949b76ac5962ff2"
+        },
+        {
+          "path": "refs/rocketpy/data/weather/euroc_2023_all_windows.nc",
+          "sha256": "a3d9e08eb3bb4480d1b8ef03b06878a1a1f76397fdc9dcc929fe5cc856f61d56"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/lince/drag_coefficient_power_off.csv",
+          "sha256": "ed42edeecc92c749d9390a055772d318a54996fd974e994d8b3fb03a5a007d78"
+        },
+        {
+          "path": "refs/rocketpy/data/rockets/lince/drag_coefficient_power_on.csv",
+          "sha256": "ed42edeecc92c749d9390a055772d318a54996fd974e994d8b3fb03a5a007d78"
+        }
+      ],
+      "weather_time_utc": "2023-10-12T10:00Z",
+      "log_rows": 2756,
+      "log_until_s": 26.8,
+      "altimeter": "barometric, assumed",
+      "altimeter_evidence": "a filtered estimate (`filtered_altitude_AGL`, as Genesis's) from a computer the example doesn't name: barometric assumed",
+      "log_apogee_m": 3587.7236328125,
+      "hpr_apogee_m": 3709.2409007186093,
+      "hpr_height_apogee_m": 3874.325300872656,
+      "apogee_error_percent": 3.387029781077342,
+      "log_time_to_apogee_s": 25.250236133577225,
+      "hpr_time_to_apogee_s": 26.397662590817742,
+      "trace_rms_m": 63.932484413963934,
+      "trace_rms_percent": 1.7819790752345595,
+      "trace_rows": 2526,
+      "total_impulse_ns": 5199.604636,
+      "negative_thrust_zeroed_ns": 0.0,
+      "example_drag_source": "lince_flight_sim.ipynb:240-241",
+      "example_drag_apogee_m": 3149.904053174589,
+      "example_drag_apogee_error_percent": -12.20326938322989,
+      "example_drag_trace_rms_m": 279.92823891511676,
+      "recorded_thrust": null,
+      "pressure_reading_max_m": null,
+      "gnss_apogee_m": null,
+      "inputs_sha256": "6718d2cbbe9130e461efdde195feb4a2e1953d3f3747c0436ae8f634f4b4aad1",
+      "note": "the log is read to 26.80 s: past it, as the recovery fires, the filtered height swings by hundreds of metres, up to 3668.5 m; its highest reading before is the 3587 m the team reports as its apogee",
+      "explanation_kind": "",
+      "explanation": ""
+    }
+  ],
+  "summary": {
+    "flights": 7,
+    "mean_absolute_apogee_error_percent": 6.03688772602674,
+    "target_percent": 5.0,
+    "within_target": false,
+    "mean_apogee_error_percent": -0.2454837687380588,
+    "mean_absolute_height_apogee_error_percent": 4.4718580822353875,
+    "mean_absolute_known_barometric_apogee_error_percent": 6.62610192246524,
+    "outliers": [
+      "ndrt-2020",
+      "prometheus-2022",
+      "juno-iii",
+      "cavour",
+      "genesis"
+    ],
+    "max_trace_rms_percent": 7.259076605576024,
+    "example_drag_mean_absolute_apogee_error_percent": 3.498775434563179
+  }
+}

@@ -10,7 +10,9 @@ some Rust, but no knowledge of this project.
 > rockets that leave the rail slowly in a wind (see [How far to trust it](#how-far-to-trust-it)). With its own drag, hpr flies this rocket about 10% higher than RocketPy does on the drag
 > table RocketPy's example ships (770 m against 700 m in the
 > [validation case](accuracy.md#whole-flights-with-each-codes-own-drag)); which drag is closer to
-> the truth is open. No flight has been compared with a real one.
+> the truth is open. This rocket left no flight log, so it can't be checked against its real flight;
+> seven other rockets have been, and hpr's apogees missed theirs by 6.04% on average, outside the
+> 5% target ([real flights](accuracy.md#real-flights)).
 > [How far to trust it](#how-far-to-trust-it) below says what that means for this one.
 
 ## What you need
@@ -165,8 +167,9 @@ Below the table:
   its later release from the rail put the drifts of two of RocketPy's rockets 11 to 43% from
   RocketPy's; how much body lift a body makes is itself uncertain
   ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). So this example's apogee 86 m upwind
-  and its landing point are the least trustworthy numbers it prints. No flight has been compared
-  with a real one.
+  and its landing point are the least trustworthy numbers it prints. Drift and landing have not
+  been compared with any real flight yet ([real flights](accuracy.md#real-flights) compare
+  heights).
 - **The thrust is likely a little low for this site.** hpr flies the curve as measured, to match
   RocketPy's example. A motor fired on a test stand near sea level gives somewhat more thrust in
   the thinner air at 1,400 m. With hpr's correction for that, which assumes a sea-level test,

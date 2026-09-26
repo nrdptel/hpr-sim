@@ -4,14 +4,17 @@
 
 - **What it models:** the air's temperature, pressure, density, speed of sound and viscosity by
   height: the 1976 U.S. Standard Atmosphere, optionally shifted to field conditions, humid air,
-  and weather-balloon soundings or forecasts.
+  and weather-balloon soundings or forecasts; and the pressure altitude a barometric altimeter
+  reads.
 - **Sources:** the *U.S. Standard Atmosphere, 1976*; the WMO's *Guide to Instruments and Methods
   of Observation* (WMO-No. 8, 2023); the CIPM-2007 moist-air density formula (Picard et al.,
   2008).
 - **How well it is validated:** every value within 0.1% of the 1976 tables at 32 altitudes from
   −2 to 86 km; humid density within 0.047% of CIPM-2007 over 15–27 °C. Against RocketPy, its
   density agrees within 3.7e-4 over the 23 heights its parachute descents sample
-  ([Recovery](recovery.md#against-rocketpy)). No real-flight check.
+  ([Recovery](recovery.md#against-rocketpy)). Its pressure altitude matches two flight logs'
+  own altimeter readings of their pressure, to 0.195 m and 1.321 m
+  ([report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)); the air itself has no real-flight check.
 - **What it leaves out:** a real day's changes aloft. A field-condition offset holds all the way
   up (+20 K at a 1400 m field puts density +30% off the standard's at 30 km), so higher flights
   need a sounding. Viscosity ignores humidity, which lowers it 2.1% at 30 °C and saturation.
@@ -98,6 +101,39 @@ standard (`conventions.py`):
 | density | −5.7% | +14% | +30% |
 
 Field conditions suit flights of a few kilometres; higher flights need a sounding.
+
+## Pressure altitude: what a barometric altimeter reads
+
+A [barometric altimeter](../glossary.md#barometric-altimeter) measures pressure, not height. It
+turns the pressure into the height at which the 1976 standard has that pressure, its **pressure
+altitude**, and subtracts the pad's. `Ussa76::pressure_altitude_m(P)` computes the same number,
+so hpr can read its own flight the way a logged flight was read
+([Accuracy: real flights](../accuracy.md#real-flights)).
+
+It inverts eqs. 33a and 33b in the layer whose base pressures bracket `P`:
+
+```text
+H = H_b + (T_M,b / L_M,b) [(P / P_b)^(−R* L_M,b / (g₀′ M₀)) − 1]      L_M,b ≠ 0
+H = H_b − (R* T_M,b / (g₀′ M₀)) ln(P / P_b)                         L_M,b = 0
+```
+
+In the standard's troposphere this is the altimeter formula
+`H = 44330.8 m × [1 − (P / 101325 Pa)^0.190263]`. The result is in
+[geopotential](../glossary.md#geopotential-height) metres, m′, as an altimeter's is.
+
+**A worked example.** An altimeter on a pad at 86000 Pa reads 1361.8 m′ there. At 58000 Pa it reads
+4464.4 m′, so it logs a climb of 3102.6 m′. On a day 20 K warmer than the standard all the way up,
+with the same sea-level pressure, the same two pressures lie 3318.0 m′ apart: the rocket climbed
+6.9% more than its altimeter says, and the altimeter reads 6.5% less than the climb. Warm air is
+less dense, so pressure falls more slowly with height. In the troposphere, with the sea-level
+pressure unchanged, the ratio is exactly `(T₀ + ΔT) / T₀` = 308.15 / 288.15.
+
+**Where it is used.** hpr's flights don't use it: they fly in the air of the day. The real-flight
+comparison reads hpr's height through it, from the ERA5 pressure at the centre of mass, when the log
+is barometric (`hpr_validate::real_flight::Barometer`). Two logs that record their pressure,
+Prometheus's and Juno III's, are this reading less the first row's, to 0.195 m and 1.321 m over the
+rows compared
+([report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
 
 ## Moist air
 
@@ -208,6 +244,12 @@ milestone ([M2.1](../decisions-and-roadmap.md#m2-1)), not yet pinned by fixtures
   - `fifty_km_is_270_65_k_and_79_779_pa` ([Loft lesson L3](../decisions-and-roadmap.md#l3))
   - `sea_level_viscosity_is_1_7894e_5` ([Loft lesson L4](../decisions-and-roadmap.md#l4))
   - `profile::tests::sounding_temperature_overrides_standard_lapse` ([Loft lesson L5](../decisions-and-roadmap.md#l5))
+- **Pressure altitude:**
+  - `pressure_altitude_inverts_the_1976_tables`: each printed pressure's altitude is the printed
+    geopotential altitude at all 32 rows, to what the prints resolve.
+  - `pressure_altitude_is_the_altimeter_formula_in_the_troposphere`, and its refusals.
+  - `pressure_altitude_inverts_the_pressure`: a property test over offsets and heights, the
+    extrapolated layers included.
 - **Constants and structure:**
   - `constants_match_the_transcription` checks the constants and Tables 4 and 8.
   - Hydrostatic balance `dP/dZ = −ρg` is checked in every layer, and as a property test over
