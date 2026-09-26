@@ -6998,8 +6998,9 @@ Theodorsen and Garrick's flutter speed; his worked examples (pp. 6–7) read his
    on figure 3's axis, each box measured on the scan, magnesium's figure 3 ratio lies wholly above
    his band, aluminium's overlaps it, steel's and titanium's lie below.
 4. **Martin's line is a measured band, and `V_f/V = 1` is not it.** Figure 3's shaded band,
-   measured on a 250 dpi scan (both log axes calibrated on their ticks, 69 columns traced), runs
-   at `D/G_E` = 0.25 to 0.31 along the whole axis: `V_f` of 1.8 to 2.0 times the speed of sound,
+   measured on a 250 dpi scan (both log axes calibrated on their ticks, 69 columns traced from
+   `G_E` = 0.05 to 10 × 10⁶ psi; the axis runs to 20), runs at `D/G_E` = 0.25 to 0.31 all along
+   that range: `V_f` of 1.8 to 2.0 times the speed of sound,
    for wings that flew to at least Mach 1.3. `FIGURE_3_BAND` holds it and
    `FlutterPanel::figure_3_ratio` gives `D/G_E`, the reading that decides. The hobby convention of
    `V_f/V = 1` as the limit isn't calibrated by the source, and no fixed `V_f/V` is: at max q,
