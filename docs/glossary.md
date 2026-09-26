@@ -385,6 +385,14 @@ kilograms; ThrustCurve.org's catalog has a median of 1,867 m/s. See
 [Solid motors](physics/motor.md#propellant-consumption).
 
 
+## Ejection
+
+A piece of the airframe leaving the rest on a trigger, at a joint you choose rather than only at a
+stage boundary: a nose cone pushed off its airframe, a body section, or a payload carried inside.
+Each piece then comes down on its own under its own recovery device. Pieces tied together by a
+shock cord fly as one, so they are not an ejection. Compare [separation](#separation), which parts
+the rocket at a stage boundary. See [Recovery: ejected pieces](physics/recovery.md#ejected-pieces).
+
 ## Ejection delay
 
 The time from a motor's [burnout](#burnout) to its ejection charge, in seconds. Motor files list
@@ -864,7 +872,8 @@ A number that starts a random-number generator. The same seed gives the same seq
 A stack coming apart for recovery. At its trigger hpr splits the rocket into bodies (body 0 keeps
 the nose), and each descends on its own under its own recovery devices, which it must have. It adds
 no impulse, and the aft part's motors must have burned out. When the forward part still has a
-motor to burn, it flies on as a [sustainer](#sustainer) and only the aft part descends. See
+motor to burn, it flies on as a [sustainer](#sustainer) and only the aft part descends. A part
+leaving at any other joint is an [ejection](#ejection). See
 [Recovery](physics/recovery.md#separation) and [Staging](physics/staging.md#powered-separation).
 
 

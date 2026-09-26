@@ -42,6 +42,7 @@ pub mod flight;
 pub mod flutter;
 pub mod integrator;
 pub mod metrics;
+pub mod pieces;
 pub mod rail;
 pub mod recorder;
 pub mod recovery;
@@ -62,6 +63,7 @@ pub use integrator::{
     SettingsError, Stats, Step,
 };
 pub use metrics::{FlightMetrics, FlightSummary};
+pub use pieces::{Ejection, Parting};
 pub use rail::{Guides, Rail};
 pub use recorder::{Channel, FlightStep, Observer, Recorder, Sample};
 pub use recovery::{

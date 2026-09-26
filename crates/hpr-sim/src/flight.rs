@@ -49,6 +49,7 @@ use crate::integrator::{
     Adaptive, Advance, IntegrationError, Integrator, Method, OdeSystem, Stats, Step,
 };
 use crate::metrics::Stability;
+use crate::pieces::{Ejection, Pieces};
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
 use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Separation, Trigger};
@@ -112,6 +113,9 @@ pub enum EventKind {
     /// The stack came apart at its separation's stage boundary; the descents of the bodies that
     /// don't fly on are in [`FlightResult::bodies`].
     Separation,
+    /// A piece left the airframe at an ejection, by its index in the flight's ejections
+    /// ([`crate::Ejection`]); the bodies it leaves are in [`FlightResult::bodies`].
+    Ejection(usize),
     /// A user event, by its index in the order added.
     User(usize),
     /// A motor lit after launch, by its index in [`hpr_design::Assembly::motors`].
@@ -254,6 +258,10 @@ pub struct Simulation {
     separation: Option<Separation>,
     /// The separation's trigger time, when it is one that is known before the flight.
     separation_time_s: Option<f64>,
+    /// The pieces that leave the airframe, and when.
+    ejections: Vec<Ejection>,
+    /// Each ejection's trigger time, when it is one that is known before the flight.
+    ejection_times_s: Vec<Option<f64>>,
     /// The design, kept to build a sustainer's models from at a powered separation.
     rocket: Rocket,
     /// The configuration flown.
@@ -316,6 +324,8 @@ impl Simulation {
             trigger_times_s: Vec::new(),
             separation: None,
             separation_time_s: None,
+            ejections: Vec::new(),
+            ejection_times_s: Vec::new(),
             rocket: rocket.clone(),
             configuration_id: configuration_id.to_owned(),
             aero_overridden: false,
@@ -409,10 +419,10 @@ impl Simulation {
             &self.vehicle.assembly.motors,
             self.vehicle.ignition_s(),
         )?;
-        if self.separation.is_some() {
-            // Already given a separation, so the bodies are known; otherwise the check waits for
-            // one, and for the flight, so that the two builders work in either order.
-            check_bodies(&devices, self.separation)?;
+        if self.parts() {
+            // Already given a separation or ejections, so the bodies are known; otherwise the
+            // check waits for them, and for the flight, so that the builders work in any order.
+            check_bodies(&devices, self.body_count(), false)?;
         }
         self.devices = devices;
         Ok(self)
@@ -447,10 +457,19 @@ impl Simulation {
                 value: separation.after_stage as f64,
             });
         }
+        if !self.ejections.is_empty() {
+            // Its boundary may be a joint an ejection parts at too.
+            Pieces::new(
+                &self.rocket,
+                &self.vehicle.assembly,
+                Some(separation),
+                &self.ejections,
+            )?;
+        }
         if !self.devices.is_empty() {
             // With the devices already given they are checked now; given afterwards they are
             // checked then, and either way again when the flight starts.
-            check_bodies(&self.devices, Some(separation))?;
+            check_bodies(&self.devices, 2 + self.ejections.len(), false)?;
         }
         if let Trigger::Altitude {
             height_above_ground_m,
@@ -487,6 +506,93 @@ impl Simulation {
         self.separation_time_s = time_s;
         self.separation = Some(separation);
         Ok(self)
+    }
+
+    /// Flies with ejections: at each one's trigger a piece leaves the airframe, at the joint aft of
+    /// a body component or as a payload from inside it, and each body flies on to its own landing
+    /// under its own devices ([`crate::Ejection`]). With a separation as well, the separation's aft
+    /// body is body 1 and ejection `k` makes body `k + 2`; without one, ejection `k` makes body
+    /// `k + 1`.
+    ///
+    /// Call this after [`Self::with_recovery`]: it checks the devices against the bodies. The
+    /// builders can be given in any order, and the checks run again when the flight starts.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Parting`] for a parting the design can't make ([`crate::Ejection`] lists
+    /// them); [`SimError::Domain`] if a device names a body that doesn't exist or a body carries
+    /// no device, if a trigger is out of its domain, if its time is known and a motor burns past
+    /// it, or if it is timed from a motor with no ignition known before the flight.
+    pub fn with_ejections(mut self, ejections: Vec<Ejection>) -> Result<Self, SimError> {
+        Pieces::new(
+            &self.rocket,
+            &self.vehicle.assembly,
+            self.separation,
+            &ejections,
+        )?;
+        let bodies = 1 + usize::from(self.separation.is_some()) + ejections.len();
+        if !self.devices.is_empty() && !ejections.is_empty() {
+            check_bodies(&self.devices, bodies, false)?;
+        }
+        let mut times_s = Vec::with_capacity(ejections.len());
+        for ejection in &ejections {
+            if let Trigger::Altitude {
+                height_above_ground_m,
+            } = ejection.trigger
+                && !(height_above_ground_m.is_finite() && height_above_ground_m > 0.0)
+            {
+                return Err(SimError::Domain {
+                    what: "height above the launch site at which a piece is ejected, m",
+                    value: height_above_ground_m,
+                });
+            }
+            let time_s = recovery::trigger_time_s(
+                ejection.trigger,
+                &self.vehicle.assembly.motors,
+                self.vehicle.ignition_s(),
+            )?;
+            if let Some(time_s) = time_s {
+                // Every body is a point mass of constant mass once the airframe parts.
+                self.check_spent(self.vehicle.ignition_s(), time_s)?;
+            }
+            if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
+                (time_s, ejection.trigger)
+            {
+                return Err(SimError::Domain {
+                    what: "index of the motor an ejection is timed from (it has no ignition time \
+                           before the flight, so the ejection could never fire)",
+                    value: motor as f64,
+                });
+            }
+            times_s.push(time_s);
+        }
+        self.ejections = ejections;
+        self.ejection_times_s = times_s;
+        Ok(self)
+    }
+
+    /// The ejections, in the order given.
+    #[must_use]
+    pub fn ejections(&self) -> &[Ejection] {
+        &self.ejections
+    }
+
+    /// Refuses an ejection at `t_s` while any motor lit at `ignition_s` burns: once the airframe
+    /// parts, every body is a point mass of constant mass.
+    fn check_spent(&self, ignition_s: &[Option<f64>], t_s: f64) -> Result<(), SimError> {
+        for (placed, ignition) in self.vehicle.assembly.motors.iter().zip(ignition_s) {
+            if let Some(ignition_s) = ignition {
+                let burnout_s = ignition_s + placed.mounted.motor.burnout_time_s();
+                if burnout_s > t_s {
+                    return Err(SimError::Domain {
+                        what: "time of an ejection (every motor must have burned out by then; \
+                               this is when one of them does)",
+                        value: burnout_s,
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Refuses a separation at `t_s` while a motor of its aft body, lit at `ignition_s`, burns or
@@ -587,6 +693,8 @@ impl Simulation {
             trigger_times_s: vec![None; self.devices.len()],
             separation: self.separation,
             separation_time_s: self.separation_time_s,
+            ejections: self.ejections.clone(),
+            ejection_times_s: self.ejection_times_s.clone(),
             rocket: self.rocket.clone(),
             configuration_id: self.configuration_id.clone(),
             aero_overridden: self.aero_overridden,
@@ -671,7 +779,7 @@ impl Simulation {
         }
         // The builders can be given in either order, and the last one wins, so the devices and
         // the bodies are checked against each other here as well.
-        check_bodies(&self.devices, self.separation)?;
+        check_bodies(&self.devices, self.body_count(), true)?;
         if start_phase == Phase::Free {
             let height = self
                 .evaluate(
@@ -708,6 +816,7 @@ impl Simulation {
         stops.push(cap);
         stops.extend(trigger_times_s.iter().flatten().copied());
         stops.extend(self.separation_time_s);
+        stops.extend(self.ejection_times_s.iter().flatten().copied());
         stops.retain(|t| *t <= cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
@@ -719,7 +828,9 @@ impl Simulation {
         let mut lifted = start_phase != Phase::Pad;
         let mut burnout_recorded = t0 >= burnout_s;
         let mut separated = false;
-        // An unpowered separation that a held flight skips.
+        // The splits that have happened, in piece order: the separation, then the ejections.
+        let mut opened = vec![false; self.body_count() - 1];
+        // An unpowered separation or an ejection that a held flight skips.
         let mut separation_held = false;
         let mut events: Vec<FlightEvent> = Vec::new();
         let mut run = Run::new(self.devices.len());
@@ -867,70 +978,131 @@ impl Simulation {
                 }
             }
 
-            // The separation: the same triggers as a device's. When it fires with the nose's body
-            // still to burn, that body flies on as the sustainer and the booster descends;
-            // otherwise the ascent ends and every body descends on its own.
-            if let Some(separation) = self.separation
+            // The separation and the ejections: the same triggers as a device's. When the
+            // separation fires with the nose's body still to burn, that body flies on as the
+            // sustainer and the booster descends; otherwise the ascent ends and every body flies
+            // on as a point mass.
+            if self.parts()
                 && !staged
                 && !separation_held
                 && matches!(phase, Phase::Free | Phase::Descent)
             {
                 let window = (t, next_stop(&stops, t, cap));
                 let area = self.ascent_drag_area_m2(&run, t);
-                let fires = match separation.trigger {
-                    Trigger::Time { .. } | Trigger::MotorDelay { .. } | Trigger::Burnout { .. } => {
-                        self.separation_time_s.is_some_and(|time| t >= time)
-                    }
-                    // At or past the apogee, as a device's apogee trigger is.
-                    Trigger::Apogee => {
-                        self.evaluate(vehicle, phase, window, t, &y, area)?
+                let mut here: Option<Evaluation> = None;
+                let mut fires = |trigger: Trigger, time_s: Option<f64>| -> Result<bool, SimError> {
+                    Ok(match trigger {
+                        Trigger::Time { .. }
+                        | Trigger::MotorDelay { .. }
+                        | Trigger::Burnout { .. } => time_s.is_some_and(|time| t >= time),
+                        // At or past the apogee, as a device's apogee trigger is.
+                        Trigger::Apogee => {
+                            cached(&mut here, || {
+                                self.evaluate(vehicle, phase, window, t, &y, area)
+                            })?
                             .vertical_speed_m_s
-                            <= 0.0
-                    }
-                    Trigger::Altitude {
-                        height_above_ground_m,
-                    } => {
-                        let e = self.evaluate(vehicle, phase, window, t, &y, area)?;
-                        e.vertical_speed_m_s < 0.0
-                            && e.height_above_ground_m <= height_above_ground_m
-                    }
+                                <= 0.0
+                        }
+                        Trigger::Altitude {
+                            height_above_ground_m,
+                        } => {
+                            let e = cached(&mut here, || {
+                                self.evaluate(vehicle, phase, window, t, &y, area)
+                            })?;
+                            e.vertical_speed_m_s < 0.0
+                                && e.height_above_ground_m <= height_above_ground_m
+                        }
+                    })
                 };
-                if fires {
+                let separates = match self.separation {
+                    Some(separation) => fires(separation.trigger, self.separation_time_s)?,
+                    None => false,
+                };
+                let mut ejected = Vec::new();
+                for (index, ejection) in self.ejections.iter().enumerate() {
+                    if fires(ejection.trigger, self.ejection_times_s[index])? {
+                        ejected.push(index);
+                    }
+                }
+                if separates || !ejected.is_empty() {
                     // The stack's motors as the separation lights them: one lit by it counts from
                     // now. A body's mass is held constant through its descent, so the booster's
                     // motors must be spent.
-                    let lit = self
-                        .vehicle
-                        .assembly
-                        .ignition_times_s(|stage| (stage == separation.after_stage).then_some(t));
-                    let powered =
-                        self.vehicle
-                            .assembly
-                            .motors
-                            .iter()
-                            .zip(&lit)
-                            .any(|(placed, ignition)| {
+                    let mut lit = ignition_s.clone();
+                    // The separation, when it fires with a motor ahead of it still to burn.
+                    let mut powered: Option<Separation> = None;
+                    if let Some(separation) = self.separation.filter(|_| separates) {
+                        lit = self.vehicle.assembly.ignition_times_s(|stage| {
+                            (stage == separation.after_stage).then_some(t)
+                        });
+                        let burning = self.vehicle.assembly.motors.iter().zip(&lit).any(
+                            |(placed, ignition)| {
                                 placed.stage <= separation.after_stage
                                     && ignition.is_some_and(|ignition| {
                                         ignition + placed.mounted.motor.burnout_time_s() > t
                                     })
+                            },
+                        );
+                        powered = burning.then_some(separation);
+                        // Checked before a held flight holds it, so that the delay's flight
+                        // refuses what the flown one would.
+                        self.check_aft_body_spent(separation, &lit, t)?;
+                    }
+                    if powered.is_some() && !self.ejections.is_empty() {
+                        // The sustainer flies on a cut design whose components aren't the
+                        // pieces the ejections were given for.
+                        return Err(SimError::Domain {
+                            what: "time of a powered separation in a flight with ejections (the \
+                                   pieces of a sustainer aren't tracked)",
+                            value: t,
+                        });
+                    }
+                    if !ejected.is_empty() {
+                        // Every body is a point mass of constant mass once the airframe parts.
+                        self.check_spent(&lit, t)?;
+                        if let Some(separation) = self.separation.filter(|_| !separates)
+                            && self
+                                .vehicle
+                                .assembly
+                                .ignition_times_s(|stage| {
+                                    (stage == separation.after_stage).then_some(t)
+                                })
+                                .iter()
+                                .zip(&lit)
+                                .any(|(would, is)| would.is_some() && is.is_none())
+                        {
+                            return Err(SimError::Domain {
+                                what: "time of an ejection before the separation that lights a \
+                                       motor (the pieces would never light it)",
+                                value: t,
                             });
-                    // Checked before a held flight holds it, so that the delay's flight refuses
-                    // what the flown one would.
-                    self.check_aft_body_spent(separation, &lit, t)?;
-                    if self.recovery_held && !powered {
+                        }
+                    }
+                    if self.recovery_held && powered.is_none() {
                         // With nothing ahead of it left to burn it is part of the recovery, so it
                         // is held with the charges.
                         separation_held = true;
                         continue;
                     }
                     let sample = self.sample(vehicle, phase, window, t, &y, area)?;
-                    record(&mut events, observer, EventKind::Separation, sample);
-                    if !powered {
+                    if separates {
+                        record(&mut events, observer, EventKind::Separation, sample);
+                    }
+                    for &index in &ejected {
+                        record(&mut events, observer, EventKind::Ejection(index), sample);
+                    }
+                    let Some(separation) = powered else {
+                        if separates {
+                            opened[0] = true;
+                        }
+                        let first = usize::from(self.separation.is_some());
+                        for &index in &ejected {
+                            opened[first + index] = true;
+                        }
                         ignition_s = lit;
                         separated = true;
                         break Termination::Separated;
-                    }
+                    };
                     if phase == Phase::Descent {
                         // The descent is a point mass under canopies; a sustainer under thrust
                         // is not something it can fly.
@@ -956,7 +1128,13 @@ impl Simulation {
                     )?;
                     let lit_here = model.motors.iter().map(|&index| lit[index]).collect();
                     let flown = Vehicle::lit(model.assembly, model.aero, lit_here)?;
-                    booster = self.fly_bodies(t, &State::from_array(&y), &mut run, &lit, 1)?;
+                    booster = self.fly_bodies(
+                        t,
+                        &State::from_array(&y),
+                        &mut run,
+                        &lit,
+                        (&[true], true),
+                    )?;
                     // The booster's descent has no airframe drag, and a powered separation comes
                     // near the top speed, so a coast to its device would climb as if in a vacuum
                     // (twice the sustainer's apogee in review). Its device must open at once.
@@ -1032,7 +1210,7 @@ impl Simulation {
                 canopies: Canopies {
                     devices: &self.devices,
                     run: &run,
-                    body: self.separation.map(|_| 0),
+                    body: self.parts().then_some(0),
                 },
                 watches: &watches,
                 observer: &mut *observer,
@@ -1123,9 +1301,9 @@ impl Simulation {
                                     );
                                 }
                             }
-                            Watch::SeparationHeight => {
-                                // The separation itself fires at the top of the next pass, which
-                                // is where its burnout check and its bodies live.
+                            Watch::SeparationHeight | Watch::EjectionHeight(_) => {
+                                // The separation or ejection itself fires at the top of the next
+                                // pass, which is where its burnout check and its bodies live.
                             }
                             Watch::User(user) => {
                                 let sample = self.sample(vehicle, phase, window, t, &y, area)?;
@@ -1155,7 +1333,13 @@ impl Simulation {
         let area = self.ascent_drag_area_m2(&run, t);
         let final_sample = self.sample(vehicle, phase, (t, next.max(t)), t, &y, area)?;
         let bodies = if separated {
-            self.fly_bodies(t, &State::from_array(&y), &mut run, &ignition_s, 0)?
+            self.fly_bodies(
+                t,
+                &State::from_array(&y),
+                &mut run,
+                &ignition_s,
+                (&opened, false),
+            )?
         } else {
             booster
         };
@@ -1168,76 +1352,92 @@ impl Simulation {
         })
     }
 
-    /// Flies the separated bodies from `first` on, from the separation at `t` to their landings,
-    /// with the stack's motors lit at `ignition_s`: every body, or the booster alone when the
-    /// sustainer flies on.
+    /// Flies the bodies of a stack that came apart at `t` to their landings, with the stack's
+    /// motors lit at `ignition_s`: `open[split]` says which splits happened (the separation, then
+    /// the ejections), and `skip_nose` leaves out body 0 when it flies on as a sustainer.
     ///
-    /// Each body is a point mass with its own stages' and motors' mass, starting where its own
-    /// centre of mass was and with the velocity that point already had, so the separation adds no
+    /// Each body is a point mass with its own pieces' and motors' mass, starting where its own
+    /// centre of mass was and with the velocity that point already had, so the parting adds no
     /// impulse. The bodies share the flight's devices and their progress: a device that had
-    /// already opened stays open on whichever body carries it.
+    /// already opened stays open on whichever body carries it. A body that parts again on the way
+    /// down hands the piece that leaves to a body of its own, flown after it.
     fn fly_bodies(
         &self,
         t: f64,
         state: &State,
         run: &mut Run,
         ignition_s: &[Option<f64>],
-        first: usize,
+        (open, skip_nose): (&[bool], bool),
     ) -> Result<Vec<BodyFlight>, SimError> {
-        let Some(separation) = self.separation else {
+        if !self.parts() {
             return Ok(Vec::new());
-        };
-        let stage_count = self.vehicle.assembly.layout.stages.len();
+        }
+        let pieces = Pieces::new(
+            &self.rocket,
+            &self.vehicle.assembly,
+            self.separation,
+            &self.ejections,
+        )?;
+        let mut open = open.to_vec();
+        open.resize(pieces.count() - 1, false);
         let attitude = state.unit_attitude();
         // A trigger on a motor the separation lit has its time only now.
         let trigger_times_s =
             recovery::plan(&self.devices, &self.vehicle.assembly.motors, ignition_s)?;
-        let mut bodies = Vec::new();
-        for body in first..recovery::Separation::BODIES {
-            let Some(stages) = separation.stages_of(body, stage_count) else {
+        let leaders = pieces.leaders(&open);
+        let mut queue = std::collections::VecDeque::new();
+        for body in 0..pieces.count() {
+            if leaders[body] != body || (skip_nose && body == 0) {
                 continue;
-            };
-            let mass =
-                recovery::body_mass_properties(&self.vehicle.assembly, stages, t, ignition_s);
-            if !(mass.mass_kg.is_finite() && mass.mass_kg > 0.0) {
-                return Err(SimError::Domain {
-                    what: "mass of a separated body, kg",
-                    value: mass.mass_kg,
-                });
             }
+            let mass = pieces.mass_properties(
+                |piece| leaders[piece] == body,
+                &self.vehicle.assembly,
+                t,
+                ignition_s,
+            );
             // Its own centre of mass, and the velocity that point had: `v_O + ω × r` in `L`.
             let cg_enu_m = state.point_enu_m(mass.cg_m);
             let velocity_enu_m_s =
                 state.velocity_enu_m_s + attitude.mul_vec3(state.body_rate_rad_s.cross(mass.cg_m));
-            bodies.push(self.fly_body(
-                Body {
-                    index: body,
-                    stages,
-                    mass_kg: mass.mass_kg,
-                },
-                t,
-                (cg_enu_m, velocity_enu_m_s),
-                run,
-                &trigger_times_s,
-            )?);
+            queue.push_back(Start {
+                body,
+                t_s: t,
+                cg_enu_m,
+                velocity_enu_m_s,
+                mass_kg: checked_body_mass(mass.mass_kg)?,
+            });
         }
+        let mut bodies = Vec::new();
+        while let Some(start) = queue.pop_front() {
+            let mut split = Split {
+                pieces: &pieces,
+                open: &mut open,
+                ignition_s,
+                queue: &mut queue,
+            };
+            bodies.push(self.fly_body(start, &mut split, run, &trigger_times_s)?);
+        }
+        bodies.sort_by_key(|body| body.body);
         Ok(bodies)
     }
 
-    /// Flies one body as a point mass from `(t, cg_enu_m, velocity_enu_m_s)` to its landing.
+    /// Flies one body as a point mass from its `start` to its landing, parting it on the way
+    /// down at each of its splits that fires.
     fn fly_body(
         &self,
-        body: Body,
-        t0: f64,
-        (cg_enu_m, velocity_enu_m_s): (DVec3, DVec3),
+        start: Start,
+        split: &mut Split<'_>,
         run: &mut Run,
         trigger_times_s: &[Option<f64>],
     ) -> Result<BodyFlight, SimError> {
-        let Body {
-            index: body,
-            stages,
-            mass_kg,
-        } = body;
+        let Start {
+            body,
+            t_s: t0,
+            cg_enu_m,
+            velocity_enu_m_s,
+            mut mass_kg,
+        } = start;
         let cap = self.settings.max_time_s;
         let start = [
             cg_enu_m.x,
@@ -1260,6 +1460,11 @@ impl Simulation {
             }
             stops.extend(trigger_times_s.get(index).copied().flatten());
             stops.extend(run.times_of(index));
+        }
+        // And its splits' known times.
+        let mut leaders = split.pieces.leaders(split.open);
+        for index in split.pending(&leaders, body) {
+            stops.extend(self.split(index).1);
         }
         stops.retain(|time| *time > t0 && *time <= cap);
         stops.push(cap);
@@ -1351,15 +1556,95 @@ impl Simulation {
                 }
             }
 
+            // Its splits whose trigger has come: the piece that leaves starts here, at this
+            // body's point and velocity, and is flown after it.
+            let sample = self.body_sample(body, mass_kg, t, &y, run)?;
+            let mut parted = false;
+            for index in split.pending(&leaders, body) {
+                let (trigger, time_s, kind) = self.split(index);
+                let fires = match trigger {
+                    Trigger::Time { .. } | Trigger::MotorDelay { .. } | Trigger::Burnout { .. } => {
+                        time_s.is_some_and(|time| t >= time)
+                    }
+                    Trigger::Apogee => sample.vertical_speed_m_s <= 0.0,
+                    Trigger::Altitude {
+                        height_above_ground_m,
+                    } => {
+                        sample.vertical_speed_m_s < 0.0
+                            && sample.height_above_ground_m <= height_above_ground_m
+                    }
+                };
+                if !fires {
+                    continue;
+                }
+                if let (EventKind::Separation, Some(separation)) = (kind, self.separation)
+                    && self
+                        .vehicle
+                        .assembly
+                        .ignition_times_s(|stage| (stage == separation.after_stage).then_some(t))
+                        .iter()
+                        .zip(split.ignition_s)
+                        .any(|(would, is)| would.is_some() && is.is_none())
+                {
+                    return Err(SimError::Domain {
+                        what: "time of a separation that lights a motor, after the airframe has \
+                               already come apart (the pieces are point masses)",
+                        value: t,
+                    });
+                }
+                events.push(BodyEvent { kind, sample });
+                split.open[index] = true;
+                leaders = split.pieces.leaders(split.open);
+                // The piece a split makes leads the body that leaves.
+                let leaving = index + 1;
+                let mass_of = |lead: usize| {
+                    split
+                        .pieces
+                        .mass_properties(
+                            |piece| leaders[piece] == lead,
+                            &self.vehicle.assembly,
+                            t,
+                            split.ignition_s,
+                        )
+                        .mass_kg
+                };
+                let leaving_kg = checked_body_mass(mass_of(leaving))?;
+                mass_kg = checked_body_mass(mass_of(body))?;
+                split.queue.push_back(Start {
+                    body: leaving,
+                    t_s: t,
+                    cg_enu_m: DVec3::new(y[0], y[1], y[2]),
+                    velocity_enu_m_s: DVec3::new(y[3], y[4], y[5]),
+                    mass_kg: leaving_kg,
+                });
+                parted = true;
+            }
+            if parted {
+                // The mass steps here, so the integrator starts afresh from the same state.
+                integrator.reset(t, y)?;
+                continue;
+            }
+
             let next = next_stop(&stops, t, cap);
-            let watches: Vec<usize> = mine
+            // The heights this body watches for: its devices' and its splits'.
+            let mut watches: Vec<f64> = mine
                 .iter()
-                .copied()
-                .filter(|index| {
-                    matches!(self.devices[*index].trigger, Trigger::Altitude { .. })
-                        && run.pending(*index)
+                .filter(|index| run.pending(**index))
+                .filter_map(|index| match self.devices[*index].trigger {
+                    Trigger::Altitude {
+                        height_above_ground_m,
+                    } => Some(height_above_ground_m),
+                    _ => None,
                 })
                 .collect();
+            for index in split.pending(&leaders, body) {
+                if let Trigger::Altitude {
+                    height_above_ground_m,
+                } = self.split(index).0
+                {
+                    watches.push(height_above_ground_m);
+                }
+            }
             // Every body watches for its own apogee: an apogee charge on a body separated while
             // climbing would never fire without it (found in review), and since the ascent ends
             // at the separation this is the only place a staged flight can record a peak.
@@ -1424,9 +1709,13 @@ impl Simulation {
                 value: body as f64,
             });
         }
+        let pieces: Vec<usize> = (0..leaders.len())
+            .filter(|piece| leaders[*piece] == body)
+            .collect();
         Ok(BodyFlight {
             body,
-            stages,
+            stages: split.pieces.stages(|piece| leaders[piece] == body),
+            pieces,
             mass_kg,
             start_sample,
             termination,
@@ -1470,19 +1759,49 @@ impl Simulation {
         })
     }
 
-    /// The drag area acting on the stack before a separation, m²: body 0's devices, which with
-    /// no separation is all of them.
+    /// Whether the airframe can come apart: it has a separation or an ejection.
+    fn parts(&self) -> bool {
+        self.separation.is_some() || !self.ejections.is_empty()
+    }
+
+    /// How many bodies the airframe can come apart into: one per piece.
+    fn body_count(&self) -> usize {
+        1 + usize::from(self.separation.is_some()) + self.ejections.len()
+    }
+
+    /// Split `split` of the flight, in piece order (the separation first, then the ejections):
+    /// its trigger, its time when that is known before the flight, and its event.
+    fn split(&self, split: usize) -> (Trigger, Option<f64>, EventKind) {
+        match (self.separation, split) {
+            (Some(separation), 0) => (
+                separation.trigger,
+                self.separation_time_s,
+                EventKind::Separation,
+            ),
+            _ => {
+                let ejection = split - usize::from(self.separation.is_some());
+                (
+                    self.ejections[ejection].trigger,
+                    self.ejection_times_s[ejection],
+                    EventKind::Ejection(ejection),
+                )
+            }
+        }
+    }
+
+    /// The drag area acting on the stack before it comes apart, m²: body 0's devices, which with
+    /// no separation or ejection is all of them.
     fn ascent_drag_area_m2(&self, run: &Run, t: f64) -> f64 {
-        if self.separation.is_some() {
+        if self.parts() {
             run.body_drag_area_m2(&self.devices, 0, t)
         } else {
             run.drag_area_m2(&self.devices, t)
         }
     }
 
-    /// Whether device `index` acts on the stack before a separation: only body 0's do.
+    /// Whether device `index` acts on the stack before it comes apart: only body 0's do.
     fn acts_before_separation(&self, index: usize) -> bool {
-        self.separation.is_none() || self.devices[index].body == 0
+        !self.parts() || self.devices[index].body == 0
     }
 
     /// What the integrator watches for in `phase`, in event order.
@@ -1509,6 +1828,13 @@ impl Simulation {
                 {
                     watches.push(Watch::SeparationHeight);
                 }
+                if separation_pending {
+                    for (index, ejection) in self.ejections.iter().enumerate() {
+                        if matches!(ejection.trigger, Trigger::Altitude { .. }) {
+                            watches.push(Watch::EjectionHeight(index));
+                        }
+                    }
+                }
                 watches.extend((0..self.user_events.len()).map(Watch::User));
                 watches
             }
@@ -1516,28 +1842,30 @@ impl Simulation {
     }
 }
 
-/// Checks the devices against the bodies a separation makes, whichever builder ran last.
+/// Checks the devices against the `bodies` a separation and ejections make, whichever builder ran
+/// last: one when there is neither.
 ///
-/// With a separation, every body it makes needs at least one device and no device may name a body
-/// it doesn't make. Without one there is only body 0, so a device that names another would have
-/// its drag area counted on the whole rocket and never be flown on a body of its own.
-fn check_bodies(devices: &[Device], separation: Option<Separation>) -> Result<(), SimError> {
-    let bodies = if separation.is_some() {
-        Separation::BODIES
-    } else {
-        1
-    };
-    if let Some(device) = devices.iter().find(|device| device.body >= bodies) {
+/// When the airframe can part, every body needs at least one device, and no device may name a
+/// body that doesn't exist. Without a parting there is only body 0, so a device that names another
+/// would have its drag area counted on the whole rocket and never be flown on a body of its own.
+/// A builder checks only the first (`complete` false): a separation or ejection given after it
+/// can still make the body a device names, and an ejection's number counts the separation.
+fn check_bodies(devices: &[Device], bodies: usize, complete: bool) -> Result<(), SimError> {
+    if let Some(device) = devices
+        .iter()
+        .find(|device| complete && device.body >= bodies)
+    {
         return Err(SimError::Domain {
-            what: if separation.is_some() {
-                "body a device is attached to (the separation makes two)"
+            what: if bodies > 1 {
+                "body a device is attached to (the separation and ejections don't make it)"
             } else {
-                "body a device is attached to (there is no separation, so there is only body 0)"
+                "body a device is attached to (there is no separation or ejection, so there is \
+                 only body 0)"
             },
             value: device.body as f64,
         });
     }
-    if separation.is_some() {
+    if bodies > 1 {
         for body in 0..bodies {
             if !devices.iter().any(|device| device.body == body) {
                 return Err(SimError::Domain {
@@ -1597,16 +1925,52 @@ enum Watch {
     Altitude(usize),
     /// The separation's height, descending.
     SeparationHeight,
+    /// An ejection's height, descending, by its index.
+    EjectionHeight(usize),
     /// A user event.
     User(usize),
 }
 
-/// Which body a descent is of: its index, its stages and its mass.
+/// Where a body's own flight starts: its number, the time, its centre of mass and that point's
+/// velocity, and its mass.
 #[derive(Debug, Clone, Copy)]
-struct Body {
-    index: usize,
-    stages: (usize, usize),
+struct Start {
+    body: usize,
+    t_s: f64,
+    cg_enu_m: DVec3,
+    velocity_enu_m_s: DVec3,
     mass_kg: f64,
+}
+
+/// What the bodies' flights share about the airframe's parting: its pieces, which splits have
+/// happened, the motors' ignitions, and the bodies still to fly.
+struct Split<'a> {
+    pieces: &'a Pieces,
+    open: &'a mut Vec<bool>,
+    ignition_s: &'a [Option<f64>],
+    queue: &'a mut std::collections::VecDeque<Start>,
+}
+
+impl Split<'_> {
+    /// The splits still to happen inside `body`, given each piece's body in `leaders`: those whose
+    /// piece is still joined to it.
+    fn pending(&self, leaders: &[usize], body: usize) -> Vec<usize> {
+        (0..self.open.len())
+            .filter(|&index| !self.open[index] && leaders[index + 1] == body)
+            .collect()
+    }
+}
+
+/// A body's mass, refused unless it is finite and positive.
+fn checked_body_mass(mass_kg: f64) -> Result<f64, SimError> {
+    if mass_kg.is_finite() && mass_kg > 0.0 {
+        Ok(mass_kg)
+    } else {
+        Err(SimError::Domain {
+            what: "mass of a separated body, kg",
+            value: mass_kg,
+        })
+    }
 }
 
 /// One separated body as the integrator sees it: a point mass under its open devices' drag area,
@@ -1621,8 +1985,9 @@ struct BodySystem<'a> {
     run: &'a Run,
     /// Whether the body is watching for its own apogee, which is event 1 when it is.
     apogee: bool,
-    /// The devices whose deployment height this body is watching for, after the apogee.
-    watches: &'a [usize],
+    /// The heights this body is watching for, after the apogee: its devices' deployment heights
+    /// and its splits'.
+    watches: &'a [f64],
     failure: Option<SimError>,
 }
 
@@ -1697,17 +2062,9 @@ impl OdeSystem<6> for BodySystem<'_> {
             return sample.vertical_speed_m_s;
         }
         let watch = index - 1 - usize::from(self.apogee);
-        match self
-            .watches
+        self.watches
             .get(watch)
-            .and_then(|device| self.simulation.devices.get(*device))
-            .map(|device| device.trigger)
-        {
-            Some(Trigger::Altitude {
-                height_above_ground_m,
-            }) => sample.height_above_ground_m - height_above_ground_m,
-            _ => f64::NAN,
-        }
+            .map_or(f64::NAN, |height_m| sample.height_above_ground_m - height_m)
     }
 }
 
@@ -1823,7 +2180,8 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                 | Watch::Apogee
                 | Watch::Ground
                 | Watch::Altitude(_)
-                | Watch::SeparationHeight,
+                | Watch::SeparationHeight
+                | Watch::EjectionHeight(_),
             ) => Direction::Falling,
             Some(Watch::User(user)) => self
                 .simulation
@@ -1867,8 +2225,14 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                     .map(|e| e.height_above_ground_m - height_m);
                 self.or_fail(value)
             }
-            Watch::SeparationHeight => {
-                let height_m = match self.simulation.separation.map(|s| s.trigger) {
+            Watch::SeparationHeight | Watch::EjectionHeight(_) => {
+                let trigger = match watch {
+                    Watch::EjectionHeight(index) => {
+                        self.simulation.ejections.get(index).map(|e| e.trigger)
+                    }
+                    _ => self.simulation.separation.map(|s| s.trigger),
+                };
+                let height_m = match trigger {
                     Some(Trigger::Altitude {
                         height_above_ground_m,
                     }) => height_above_ground_m,

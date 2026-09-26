@@ -159,7 +159,9 @@ flight:
   ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket).
   A motor that fails to light in a cluster is checked by tests only
   ([Clusters](physics/design.md#clusters)). A rocket that separates more than once is not
-  compared yet.
+  compared yet, and neither is one that ejects a nose cone or a payload to land on its own: those
+  pieces are checked against exact answers only
+  ([Recovery: ejected pieces](physics/recovery.md#ejected-pieces)).
 - [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
   axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
   modelled, and checked against measurements only from Mach 1.5 up

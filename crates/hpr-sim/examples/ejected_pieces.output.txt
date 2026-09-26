@@ -1,0 +1,17 @@
+A 54 mm rocket on an I175 in a 4 m/s west wind, ejecting its nose cone and a payload
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+liftoff                       0.00 s      0.4 m
+rail exit                     0.20 s      3.2 m
+burnout                       2.50 s    474.9 m
+apogee                       16.23 s   1747.2 m
+nose cone chute charge       16.23 s   1747.2 m
+nose cone chute opens        16.23 s   1747.2 m
+nose cone ejected            16.23 s   1747.2 m
+
+body         mass (kg)   flies from (s)   lands (s)   at (m/s)   terminal (m/s)   east (m)   north (m)
+0 nose cone      0.063            16.23      562.88       3.06             3.06     2035.4         2.8
+1 airframe       0.556            16.23      333.54       4.54             4.54     1115.6         2.9
+2 payload        0.250           268.05      333.14       4.57             4.57     1114.0         2.9
+
+The payload leaves at 268.05 s: the airframe's body goes from 0.806 kg to 0.556 kg.
