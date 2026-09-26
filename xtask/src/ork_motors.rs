@@ -263,10 +263,9 @@ pub(crate) fn not_flown(why: NotFlown) -> &'static str {
         NotFlown::InactiveStage => "a stage switched off",
         NotFlown::NoCurve => "a motor with no curve",
         NotFlown::NoSize => "a motor with no size",
-        NotFlown::Cluster => "a motor in a cluster",
-        NotFlown::IgnitesInFlight => "a motor igniting in flight",
+        NotFlown::IgnitionNotFlown => "a motor hpr can't light as written",
         NotFlown::AirframeNotAsWritten => "an airframe not read exactly as written",
-        NotFlown::Staged => "more than one stage",
+        NotFlown::SeparationNotFlown => "stages hpr can't separate as written",
         _ => "other",
     }
 }

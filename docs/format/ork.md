@@ -10,7 +10,9 @@ It preserves unread content for a future round trip, but normalizes layout and d
 instructions and XML namespaces.
 
 It currently builds supported stages, body components, tubes, rings, fins, lugs, rail buttons,
-recovery gear, motor configurations, recovery settings and stored simulations. Pods, parallel
+recovery gear, motor configurations, recovery settings and stored simulations. Staged, clustered
+and air-start configurations fly, with one powered stage separation at most
+([staged, clustered and air-start flights](#staged-clustered-and-air-start-flights)). Pods, parallel
 stages, unsupported shapes and recovery behaviour are not fully modelled; the trust limits below
 are measured against OpenRocket 24.12 and the current reference corpus. That is from Rust; there
 is no command-line tool yet.
@@ -25,19 +27,24 @@ is no command-line tool yet.
   and the centre of gravity are checked in [Mass properties](../physics/mass.md#checked-against-openrocket)
   ([checked against RocketSerializer](#checked-against-rocketserializer)).
 - **Few motor configurations fly with hpr alone.** Motors are read, but a configuration flies only
-  when every motor in it lights at launch, every motor has a thrust curve, and the airframe was
-  read without a warning. Most designs don't carry their curves. With the file's own curves and
-  hpr's small bundled catalog, **2 of the 170 motor configurations** in the reference library's 72
-  designs fly. When a caller also supplies OpenRocket's own motor database, as the validation
-  survey does, **68** fly. hpr doesn't ship that database
+  when every motor in it has a thrust curve and lights at a moment hpr can fly, its stages come
+  apart in a way hpr flies, and the airframe was read without a warning. Most designs don't carry
+  their curves. With the file's own curves and hpr's small bundled catalog, **4 of the 170 motor
+  configurations** in the reference library's 72 designs fly. When a caller also supplies
+  OpenRocket's own motor database, as the validation survey does, **93** fly. hpr doesn't ship that database
   ([motors in the reference library](#motors-in-the-reference-library)).
-- **Recovery is read, not flown.** Recovery and separation settings are read, but no flight uses
-  them yet ([when parachutes open](#when-parachutes-open-and-stages-separate)).
-- **Whole flights are compared with OpenRocket's on its own examples.** On the 21 configurations
+- **Recovery is read, not flown.** Parachute and streamer settings are read, but no flight uses
+  them yet. One stage separation per configuration is flown, when a motor ahead of it is still
+  burning or yet to light at that moment and none behind it is
+  ([when parachutes open and stages separate](#when-parachutes-open-and-stages-separate)).
+- **Whole flights are compared with OpenRocket's on its own examples.** On the 33 configurations
   of OpenRocket's examples that hpr flies, the stability margin off the rod agrees within 0.016
-  calibres. Where nothing named explains a difference, hpr's apogee is 0.06% to 4.34% low.
-  Parachutes that open while the rocket still climbs, and a part set to no drag, move five
-  apogees by more than 5% ([hpr's flights against OpenRocket's](#hprs-flights-against-openrockets)).
+  calibres. Where nothing named explains a difference, hpr's apogee is from 4.34% low to 1.03%
+  high. Parachutes that open while the rocket still climbs, and a part set to no drag, move six
+  apogees by more than 5%. A two-stage design, a cluster and an air start are each within 5% of
+  OpenRocket's apogee and largest speed. Three cluster apogees are compared with OpenRocket's
+  flight with no parachute, since its parachute opened before apogee
+  ([hpr's flights against OpenRocket's](#hprs-flights-against-openrockets)).
 - **Pods and parallel stages are kept, not modelled.** A design with them is marked *reduced*, and
   none of its configurations flies ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
 - **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone
@@ -840,9 +847,11 @@ a builder would expect:
   is not affected, and neither is a motor in a mount that sits in the body tube, whose nozzle takes
   its mount's offset.
 
-A configuration with a motor in a cluster is read, but hpr's flights of `.ork` files leave it out until
-[M1.9c](../decisions-and-roadmap.md#m1-9c) compares a cluster's flight with OpenRocket's
-([below](#which-configurations-the-rocket-flies)).
+A configuration with a motor in a cluster flies with one motor in every tube. On OpenRocket's
+*Clustered motors* example, four motors in a 4-ring, all five configurations are within 1% of
+OpenRocket's apogee and largest speed, with the parachute-opening cause removed
+([hpr's flights against OpenRocket's](#hprs-flights-against-openrockets); the
+[M1.9c milestone](../decisions-and-roadmap.md#m1-9c), which set a 5% bar before measuring).
 
 ### What is left out, and why
 
@@ -1119,8 +1128,8 @@ a radius the file doesn't give are
 **In short.** hpr reads every motor a design names, in every configuration, with when it lights and
 its ejection delay. It finds the thrust curve in the file itself, in curves a caller supplies, or in
 hpr's bundled catalog. A configuration becomes one the rocket can fly only when every motor in it
-has a curve and lights at launch. Most designs in the reference library name motors the bundled
-catalog doesn't hold, so **2 of their 170 configurations fly** with hpr alone, and **68** with
+has a curve and lights at a moment hpr can fly. Most designs in the reference library name motors the bundled
+catalog doesn't hold, so **4 of their 170 configurations fly** with hpr alone, and **93** with
 OpenRocket's motor database supplied. The rest are read, kept, and say why not.
 
 A **configuration** is one set of motors to fly the design with: OpenRocket calls it a *flight
@@ -1197,22 +1206,40 @@ reference library have one.
 A configuration's own `<ignitionconfiguration>` replaces the mount's event and delay one at a time:
 whichever it leaves out, the mount's own value stands.
 
+hpr flies each motor's ignition as the file says it. Here `d` is the ignition delay, and a missing
+delay is 0. "The stage below" is the next stage aft; its motors must sit in one mount (one tube, or
+one cluster), whose first burnout is then the stage's. The rules are also in the
+[`hpr_io::ork::staging`](../api/hpr_io/ork/staging/index.html) module's documentation.
+
+| the file says | hpr lights the motor |
+|---|---|
+| `launch` plus `d` | `d` seconds after launch |
+| `automatic` plus `d`, in the bottom stage | `d` seconds after launch (an [air start](../glossary.md#air-start) when `d` is more than 0) |
+| `automatic` plus `d`, in a stage above | as `ejectioncharge` |
+| `ejectioncharge` plus `d` | at the burnout of the stage below's motor, plus that motor's ejection delay, plus `d` |
+| `burnout` plus `d` | `d` seconds after the burnout of the stage below's motor |
+
+A configuration is not flown when a motor is set `never`, names a word hpr does not know, or
+waits on something that never happens: a plugged motor's charge, or a stage below with no motor.
+It is not flown either when the stage below has motors in more than one mount, since choosing the
+mount would be a guess. Its reason is *a motor hpr can't light as written*.
+
 ### Which configurations the rocket flies
 
-hpr reads no `.ork` ignition or separation setting into a flight yet: that comes with
-[M1.9c](../decisions-and-roadmap.md#m1-9c), though hpr itself can now fly them
-([Staging](../physics/staging.md)). So every motor it reads lights at launch, and a configuration
-becomes one of the rocket's only when
-all of these hold. Otherwise flying it would be wrong, for example lighting a sustainer on the pad.
+hpr reads each motor's ignition ([above](#delays-and-ignition)) and each stage's separation
+([below](#when-parachutes-open-and-stages-separate)) into the flight, since the
+[M1.9c milestone](../decisions-and-roadmap.md#m1-9c) (decision record
+[ADR-076, a `.ork` file's ignitions and one powered separation][adr-076]). A configuration becomes
+one of the rocket's only when all of these hold. Otherwise flying it would be wrong, for example
+lighting a sustainer on the pad.
 
 - Every motor has a thrust curve, and a case diameter and length.
-- Every motor lights at launch: `launch`, or `automatic` in the bottom stage (the booster, which
-  OpenRocket lists last), with no delay.
+- Every motor lights at a moment hpr can fly: at launch, at a time after launch, or after the
+  stage below burns out or fires its charge ([above](#delays-and-ignition)).
 - No motor sits in a part hpr doesn't read yet, such as a pod
-  ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)), and none sits in a
-  [cluster](../glossary.md#cluster) of motor tubes. hpr reads the cluster ([above](#clusters)) and
-  can fly it, but flies a `.ork` file's only once [M1.9c](../decisions-and-roadmap.md#m1-9c) has
-  compared one with OpenRocket's flight.
+  ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). A motor in a
+  [cluster](../glossary.md#cluster) of motor tubes flies with one motor in every tube
+  ([above](#clusters)).
 - No stage is switched off in the configuration's own stage list
   (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
   and hpr flies every stage.
@@ -1225,9 +1252,14 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
   [M2.2b1](../decisions-and-roadmap.md#m2-2b1) reads them as OpenRocket does, it flies.
 - No mount holds two motors for the configuration. Which one OpenRocket would fly is not known, so
   neither flies.
-- The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
-  ground, until its separation, read since [M3.1c2](../decisions-and-roadmap.md#m3-1c2), is
-  flown ([M1.9c](../decisions-and-roadmap.md#m1-9c)).
+- Its stages come apart in a way hpr can fly. At most one separation is flown, and its time
+  must be known before the flight: a time after launch, or after a motor lights, burns out or
+  fires its ejection charge. At that time a motor ahead of it must still be burning or yet to
+  light, and no motor behind it may be. That is a powered separation, which drops the booster and
+  flies the sustainer on. Any other separation must come only at apogee or on the way down; the
+  configuration then flies whole ([below](#when-parachutes-open-and-stages-separate)). Otherwise
+  its reason is *stages hpr can't separate as written*: two powered separations, a negative
+  delay, or a sustainer already burnt out at the split, for example.
 
 Every other configuration is still read, whole, with the first reason it can't be flown. The
 motors' reasons are checked first, each across every motor, and the two about the whole rocket
@@ -1260,7 +1292,7 @@ assert_eq!(assembly.motors[0].mount, "body");
 **In short.** Most designs in the reference library don't carry their motors' curves. They name each
 curve by its digest, OpenRocket's fingerprint (a hash) of the curve's data, and OpenRocket finds
 the curve in the motor database that ships inside its program. The validation survey supplies that
-database to hpr, so 68 of the 170 configurations fly instead of 2. Every curve involved matches
+database to hpr, so 93 of the 170 configurations fly instead of 4. Every curve involved matches
 OpenRocket's total impulse, and in every configuration hpr flies with a supplied curve, OpenRocket
 places that curve too. What still differs is where the motor's weight sits (below).
 
@@ -1305,20 +1337,19 @@ And of **configurations**, over 76 motor mounts in 63 designs (none named only b
 | configurations | count |
 |---|---|
 | declared | 170 |
-| the rocket flies | 68, in 16 designs, and all 68 assemble |
-| left out, by the first reason the reader finds | 29 an airframe not read exactly as written, 24 a motor with no curve, 20 a motor in a cluster, 13 a motor lighting in flight, 12 more than one stage, 4 a motor in a part not read |
+| the rocket flies | 93, in 23 designs, and all 93 assemble |
+| left out, by the first reason the reader finds | 30 an airframe not read exactly as written, 24 a motor with no curve, 18 stages hpr can't separate as written, 4 a motor in a part not read, 1 a motor hpr can't light as written |
 
 **What the database changed.** With the bundled catalog alone, 162 configurations were held back
-for want of a curve, and 2 flew. The table follows those 162. A configuration that now has its
+for want of a curve, and 4 flew. The table follows those 162. A configuration that now has its
 curves can still be held back for another reason, so these counts differ from the table above:
 
 | what became of the 162 | configurations |
 |---|---|
-| fly | 66 |
-| held back for another reason: an airframe not read exactly as written | 29 |
-| held back for another reason: a motor in a cluster | 20 |
-| held back for another reason: more than one stage | 12 |
-| held back for another reason: a motor lighting in flight | 11 |
+| fly | 89 |
+| held back for another reason: an airframe not read exactly as written | 30 |
+| held back for another reason: stages hpr can't separate as written | 18 |
+| held back for another reason: a motor hpr can't light as written | 1 |
 | still no curve: the motor records no digest, and the bundled catalog lacks it | 20 |
 | still no curve: a hybrid | 3 |
 | still no curve: a digest the database lacks | 1 |
@@ -1334,7 +1365,7 @@ curves can still be held back for another reason, so these counts differ from th
 - **The curve OpenRocket flies.** The oracle opens each design in OpenRocket with the database
   loaded, and records the digests of the motors it places in each configuration. The survey fails
   unless, in every configuration hpr flies with a supplied curve, OpenRocket places each supplied
-  curve too. It does in all 67 such configurations (67 motors), and OpenRocket opens every design
+  curve too. It does in all 90 such configurations (103 motors), and OpenRocket opens every design
   they are in, as the survey prints.
 - **What the survey doesn't supply:**
   - the 164 hybrid motors;
@@ -1348,7 +1379,7 @@ curves can still be held back for another reason, so these counts differ from th
   centre of mass of its own, and treats the motor as a solid cylinder for inertia. The 1,288 solid
   motors are 1,221 digests once the 54 repeats, the 12 motors sharing 6 digests and the refused one
   are set aside. For 163 of those 1,221, OpenRocket's centre of mass is more than 1 mm from
-  mid-case. Among the 31 distinct supplied motors in configurations that fly, 3 are, by up to
+  mid-case. Among the 37 distinct supplied motors in configurations that fly, 4 are, by up to
   5.0 mm. This matters to stability margin and roll, and
   [M2.2d](../decisions-and-roadmap.md#m2-2d) will meet it when it flies these designs against
   OpenRocket.
@@ -1362,9 +1393,16 @@ curves is in [ADR-055][adr-055].
 ## When parachutes open and stages separate
 
 **In short.** hpr reads when each parachute and streamer opens, with the drag coefficient it states,
-and when each stage separates, in every configuration. It reads them; it does not fly them yet.
-Turning them into hpr's own [recovery devices](../physics/recovery.md) waits for the flight that
-uses them. Every device and stage in the reference library is read, apart from 2 parachutes inside
+and when each stage separates, in every configuration. Parachutes and streamers are read but not
+flown yet: turning them into hpr's own [recovery devices](../physics/recovery.md) waits for the
+flight that uses them. Since the [M1.9c milestone](../decisions-and-roadmap.md#m1-9c)
+(`.ork` staging flown against OpenRocket), one powered separation per configuration is flown: one
+whose time is known before the flight, when a motor ahead of it is still burning or yet to light
+and none behind it is. It drops the booster and flies the sustainer on. A separation at apogee or
+on the way down is part of the descent: it is left out, and the configuration flies whole, even
+when a sustainer sits ahead of it. That assumes every motor is spent by apogee, which the report's
+tool checks of every flight. Any other separation, such as one after a sustainer has already burnt
+out, is not flown ([which configurations the rocket flies](#which-configurations-the-rocket-flies)). Every device and stage in the reference library is read, apart from 2 parachutes inside
 pods and the separations of 2 parallel stages, which hpr does not read yet
 ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)).
 
@@ -1429,14 +1467,14 @@ The same probe measures three things the words do not say:
 
 ### Recovery in the reference library
 
-`cargo xtask ork`, over the 72 designs, on 2026-09-23:
+`cargo xtask ork`, over the 72 designs, on 2026-09-25:
 
 | quantity | count |
 |---|---|
 | parachutes and streamers read | 134: 132 parachutes, 2 streamers |
 | left out, inside pod sets hpr does not read yet | 2 |
 | drag coefficient | 77 `auto`, 57 stated |
-| deploy event | 77 `ejection`, 35 `apogee`, 18 `altitude`, 6 `lowerstageseparation`, 1 `never` |
+| deploy event | 77 `ejection`, 32 `apogee`, 18 `altitude`, 6 `lowerstageseparation`, 1 `never` |
 | devices a configuration changes | 9, with 17 changes in all |
 | stages that state a separation | 18 of 90: 12 `ejection`, 4 `upperignition`, 2 `burnout`; 13 changes per configuration |
 | separations left out, in parallel stages hpr does not read yet | 2 |
@@ -1643,28 +1681,34 @@ checks all three.
 
 ### hpr's flights against OpenRocket's
 
-This section compares hpr's whole flights with OpenRocket 24.12's on the 21 configurations of
-OpenRocket's example designs that hpr can fly, in five of the examples. It is a
+This section compares hpr's whole flights with OpenRocket 24.12's on the 33 configurations of
+OpenRocket's example designs that hpr can fly, in eight of the examples. It is a
 [code-to-code comparison](../glossary.md#code-to-code-comparison): agreeing with OpenRocket is not
 the same as agreeing with real flights. Use it to judge how closely hpr's flight matches
 OpenRocket's on ordinary hobby rockets.
 
 - The [stability margin](../glossary.md#stability-margin) as the rocket leaves the rod agrees
-  within 0.016 [calibres](../glossary.md#calibre-caliber) on all 21.
+  within 0.016 [calibres](../glossary.md#calibre-caliber) on all 33.
 - The mass at launch agrees within 0.21%, and the
   [centre of mass (CG)](../glossary.md#centre-of-gravity-cg) as the rocket leaves the rod within
-  0.016 calibres, on all 21 ([M2.2e1](../decisions-and-roadmap.md#m2-2e1), mass and centre of
+  0.016 calibres, on all 33 ([M2.2e1](../decisions-and-roadmap.md#m2-2e1), mass and centre of
   mass).
-- On the 12 flights with no named cause, hpr's apogee is lower than OpenRocket's on every one, by
-  0.06% to 4.34%.
+- On the 21 flights with no named cause, hpr's apogee is from 4.34% low to 1.03% high. Only the
+  five *Airstart timing* flights read high.
 - On the six *Dual parachute deployment* flights, hpr's apogee is 0.63% to 4.34% low. The cause is
   not traced.
+- A two-stage design, a cluster and an air start fly, and every flight of each is within 5% of
+  OpenRocket's apogee and largest speed, the bar the
+  [M1.9c milestone](../decisions-and-roadmap.md#m1-9c) set before measuring. Three cluster
+  apogees are compared with OpenRocket's flight with no parachute, since its parachute opened
+  early ([staged, clustered and air-start flights](#staged-clustered-and-air-start-flights),
+  below).
 - The bar, set for the whole corpus ([M2.2](../decisions-and-roadmap.md#m2-2), OpenRocket
-  comparisons), is that every apogee more than 5% off has a written cause. Five apogees are
+  comparisons), is that every apogee more than 5% off has a written cause. Six apogees are
   more than 5% off, and each has a named cause, sized
   ([M2.2e4](../decisions-and-roadmap.md#m2-2e4), sizing the causes). OpenRocket flies each of
-  those flights again with the causes taken out. Against every such flight, four of the five
-  come within 5%. The fifth, the *Base drag hack* on an E12-4, stays 7.80% high like for like
+  those flights again with the causes taken out. Against every such flight, five of the six
+  come within 5%. The sixth, the *Base drag hack* on an E12-4, stays 7.80% high like for like
   (the part OpenRocket is told has no drag removed from both programs),
   and all three of that design's flights are left reading high, which the causes don't
   explain. There is a lead for that remainder
@@ -1691,13 +1735,14 @@ checks are hpr's tests of whether the parts fit together. The report lists what 
 examples: an inner part 0.46 mm wider than the room for it, and a 29 mm motor in a 28.956 mm
 mount.
 
-The record holds 57 powered configurations. The other 36 are listed in the report with the reason
+The record holds 57 powered configurations. The other 24 are listed in the report with the reason
 hpr doesn't fly them yet:
 
-- clustered motors (10);
-- an airframe hpr can't read exactly as written (8);
-- more than one stage (6);
-- a motor lit in flight (6);
+- stages hpr can't separate as written (9): the three-stage example, which separates twice
+  ([#183](https://github.com/nrdptel/hpr-sim/issues/183)), and two payload designs whose
+  separation has no motor ahead of it and could come before apogee
+  ([#184](https://github.com/nrdptel/hpr-sim/issues/184));
+- an airframe hpr can't read exactly as written (9);
 - a motor inside a part hpr doesn't read, such as a pod (3), among them OpenRocket's one aborted
   run;
 - a motor with no thrust curve (3), among them the one powered Loft demo.
@@ -1716,34 +1761,38 @@ the record's, and that every outcome, summary and table follows from hpr's figur
 
 | metric | named cause | flights | median | range |
 |---|---|---:|---:|---|
-| apogee | none | 12 | −1.46% | −4.34% to −0.06% |
-| apogee | OpenRocket's parachute opened before apogee | 6 | +0.01% | −0.64% to +13.80% |
+| apogee | none | 21 | −0.63% | −4.34% to +1.03% |
+| apogee | OpenRocket's parachute opened before apogee | 9 | −0.08% | −0.71% to +13.80% |
 | apogee | a part set to no drag, which hpr ignores | 3 | −16.77% | −19.13% to −15.47% |
-| largest speed | none | 18 | +0.17% | −0.69% to +0.85% |
+| largest speed | none | 30 | +0.29% | −0.69% to +0.92% |
 | largest speed | a part set to no drag, which hpr ignores | 3 | −9.55% | −12.33% to −3.69% |
-| margin at rod clearance | none | 21 | −0.0007 cal | −0.0151 to +0.0037 cal |
+| margin at rod clearance | none | 33 | −0.0007 cal | −0.0151 to +0.0037 cal |
 
-The rocket's mass and centre of mass, over the same 21 flights (hpr less OpenRocket):
+The rocket's mass and centre of mass, over the same 33 flights (hpr less OpenRocket):
 
 | quantity | flights | median | range |
 |---|---:|---:|---|
-| mass at launch | 21 | +0.016% | +0.000% to +0.209% |
-| mass as the rocket leaves the rod | 21 | +0.014% | −0.010% to +0.214% |
-| centre of mass as the rocket leaves the rod | 21 | +0.0007 cal | −0.0028 to +0.0159 cal |
+| mass at launch | 33 | +0.015% | +0.000% to +0.209% |
+| mass as the rocket leaves the rod | 33 | +0.014% | −0.010% to +1.650% |
+| centre of mass as the rocket leaves the rod | 33 | +0.0007 cal | −0.0028 to +0.0159 cal |
 
 A positive centre-of-mass difference means hpr's is further aft than OpenRocket's. That shortens
 the margin by the same number of calibres, so the flight at +0.0159 cal is also the one whose
 margin is 0.0151 cal short.
 
-- **Mass doesn't explain the apogee misses with no named cause.** On those 12 flights hpr's mass
-  is within 0.025% of OpenRocket's at launch and within 0.03% at rod clearance. On the largest
-  miss, *Dual parachute deployment* with a J570W (−4.34%), hpr is 0.01% *lighter* as it leaves
-  the rod, which would raise its apogee, not lower it.
-- **The largest mass differences are on the drag-override design.** The three *Base drag hack*
-  flights are 0.18% to 0.21% heavier at launch. Those flights already have a named cause.
+- **Mass doesn't explain the apogee misses with no named cause.** On those 21 flights hpr's mass
+  is within 0.04% of OpenRocket's at launch. As the rocket leaves the rod it is within 0.04% too,
+  on all but one: the two-stage example on two H148R-0 motors, where hpr is 1.65% heavier (see
+  [below](#staged-clustered-and-air-start-flights)). On the largest miss, *Dual parachute
+  deployment* with a J570W (−4.34%), hpr is 0.01% *lighter* as it leaves the rod, which would
+  raise its apogee, not lower it.
+- **The largest launch-mass differences are on the drag-override design.** The three *Base drag
+  hack* flights are 0.18% to 0.21% heavier at launch. Those flights already have a named cause.
+  As the rocket leaves the rod, only the two-stage flight on two H148R-0 motors differs more
+  (+1.65%).
 - **The largest centre-of-mass differences are on one design.** The six *Dual parachute
   deployment* flights are +0.010 to +0.016 cal, and they account for almost all of those flights'
-  margin difference. Every other flight is within 0.003 cal. That design overrides a part's mass,
+  margin difference. Every other flight is within 0.0032 cal. That design overrides a part's mass,
   covering everything inside it, which hpr applies as OpenRocket does: so its launch masses match
   exactly, and the matched mass says nothing about hpr's own mass model there.
 
@@ -1767,7 +1816,8 @@ same 5% of hpr's.
   2.99 s before the apogee the same flight reaches with nothing deployed. OpenRocket's apogee is
   280.2 m, and hpr's, with no parachute, is 318.9 m: +13.80%. Flown again with nothing deployed,
   OpenRocket climbs to 322.4 m, and against that hpr reads −1.07%. On the *3D printable nose cone
-  and fins* example the same pair reads +12.19% and −0.16%.
+  and fins* example the same pair reads +12.19% and −0.16%, and on the *Clustered motors* example
+  +9.43% and −0.72%.
 - **The check both ways.** A test (`a_parachute_moves_openrockets_apogee_only_when_it_opens_before_it`
   in `xtask/src/ork_flights.rs`) runs over all 56 flights of OpenRocket's record that finished.
   On the 41 whose parachute opens at or after apogee, the flight with nothing deployed reaches
@@ -1802,10 +1852,11 @@ same 5% of hpr's.
   (16.3 m against 16.2 m on the C11-5, 50.0 m against 45.7 m on the D12-3).
   With the cone removed from both programs it reads +7.80%, so it stays more than 5% off.
 
-**What the causes leave.** On the two C6-3 flights, what is left is −0.16% and −1.07%, like the
-flights with no named cause. On the *Base drag hack*, hpr is left reading high by +1.15% to
-+7.80%, the other sign from the 12 flights with no named cause, which all read low, and more so on
-bigger motors. The cone's own drag is not the reason, since the gap stays with the cone removed
+**What the causes leave.** On the three C6-3 flights, what is left is −0.16%, −1.07% and −0.72%,
+like the flights with no named cause. On the *Base drag hack*, hpr is left reading high by +1.15%
+to +7.80%, more so on bigger motors. That is more than any flight with no named cause reads high:
+16 of those 21 read low, and the five that read high, the *Airstart timing* flights, are at most
++1.03%. The cone's own drag is not the reason, since the gap stays with the cone removed
 from both.
 
 A part-by-part comparison of the two programs' drag at the same speeds, a one-off check that is
@@ -1837,13 +1888,53 @@ the gap is probably in the airframe, not the motors, but it is not traced yet.
 
 **What it leaves out.** Every flight is calm and vertical, with no wind and no recovery. One
 flight, the *Dual parachute deployment* example on a J570W, is briefly faster than sound
-(OpenRocket's largest Mach number is 1.147). The other 20 stay below Mach 0.72, so this barely
+(OpenRocket's largest Mach number is 1.147). The other 32 stay below Mach 0.72, so this barely
 tests hpr faster than sound. That flight is also the largest gap with no named cause: −4.34% in
 apogee, with its largest speed −0.69%. The Earth is not the same in both programs. hpr's is the
 [WGS 84](../glossary.md#wgs-84) ellipsoid, with its gravity and rotation. OpenRocket's runs record
-a flat Earth for 10 of the flights and a spherical one for the other 11 (the record's
+a flat Earth for 15 of the 33 flights and a spherical one for the other 18 (the record's
 `geodetic` field). Each program keeps its own
 model, and the effect of the difference is not measured. The decision is [ADR-069][adr-069].
+
+#### Staged, clustered and air-start flights
+
+Since the [M1.9c milestone](../decisions-and-roadmap.md#m1-9c), hpr flies three kinds of flight
+it used to leave out: a rocket that drops a booster, a cluster of motors, and an
+[air start](../glossary.md#air-start). The bar was written down before any of them was measured
+(decision record [ADR-076][adr-076]): every flight of a design within 5% of OpenRocket's apogee
+and of its largest speed. Where OpenRocket's parachute opened before apogee, the apogee is held to
+OpenRocket's flight of the same configuration with nothing deployed. All three designs meet it
+(hpr less OpenRocket):
+
+| design | what it tests | flights | apogee | largest speed |
+|---|---|---:|---|---|
+| *Two stage high power rocket* | a booster that separates, and a sustainer lit after it | 2 | −1.79% and −0.13% | −0.54% and −0.04% |
+| *Clustered motors* | four motors in a 4-ring, one in each tube | 5 | −0.79% to −0.35%, three against the flight with nothing deployed | +0.20% to +0.92% |
+| *Airstart timing* | a 3-ring of I211W motors beside a K550W in its own mount, the ring lit at launch or 1, 2, 4 or 6 s later | 5 | +0.48% to +1.03% | +0.46% to +0.81% |
+
+- **The two-stage flights separate when OpenRocket's do**, at 1.535 s and 1.515 s after launch
+  ([ADR-076][adr-076]). OpenRocket's record keeps the part with the nose, so both programs'
+  apogee and largest speed are the sustainer's. For its descent, hpr gives the booster a
+  recovery device that opens at the split and the sustainer one that opens at its apogee. Neither
+  acts on the climb, which is what is compared. How hpr flies a separation is in
+  [Staging](../physics/staging.md#against-openrocket).
+- **The rocket a configuration builds doesn't carry the separation.** The reader hands it over
+  separately, as the configuration's `staging`. A program turns it into the flight's separation
+  with `hpr::ork::separation` and passes that to the flight. hpr refuses that flight unless each
+  part has a recovery device, so the example gives both parts one. The example
+  [`ork_two_stage.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)
+  does this for a made-up two-stage `.ork`; run it with
+  `cargo run --example ork_two_stage -p hpr`.
+- **On two H148R-0 motors, OpenRocket's rocket gets lighter twice as fast before the sustainer
+  lights.** From launch to rod clearance it loses 0.0823 kg, and hpr's 0.0412 kg: 1.9992 times
+  as much. The launch masses agree, so hpr is 1.65% heavier as it leaves the rod. On the other
+  configuration, with two different motors, the two programs lose the same mass. OpenRocket's
+  recorded mass falls as if both H148Rs lost propellant from launch. What that does to the apogee
+  is not sized
+  ([#185](https://github.com/nrdptel/hpr-sim/issues/185)).
+- **Three of the cluster flights have a parachute that opens early** in OpenRocket, 0.37 s,
+  2.59 s and 0.59 s before apogee. Against its own record, the C6-3 reads +9.43%; against its
+  flight with nothing deployed, −0.72%.
 
 [adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25
 
@@ -1923,16 +2014,19 @@ This section compares hpr's flights of the 12 private designs with OpenRocket's
 ([M2.2e3](../decisions-and-roadmap.md#m2-2e3), hpr's flights of the corpus), as
 [the public comparison](#hprs-flights-against-openrockets) does for OpenRocket's examples, by the
 same definitions. **It is a [code-to-code](../glossary.md#code-to-code-comparison) comparison with
-no target, and hpr flies only 4 of the 12 designs.** On two of them hpr's stability margin is
-larger than OpenRocket's, so it calls those rockets more stable than OpenRocket does
+no target, and hpr flies only 5 of the 12 designs.** On three of them hpr's stability margin is
+clearly larger than OpenRocket's, so it calls those rockets more stable than OpenRocket does
 ([#172](https://github.com/nrdptel/hpr-sim/issues/172)). Nobody without the private library can
 fly them again: CI checks only that the report adds up and names nothing of a design.
 
 **How far it gets.** [M2.2](../decisions-and-roadmap.md#m2-2), the OpenRocket comparison, asks for
 at least 20 designs compared in five ways: apogee, largest speed, stability margin, mass and centre
-of mass. With the public report's 5, these make 9. Staging and clusters
-([M1.9](../decisions-and-roadmap.md#m1-9)) could add 2 of these private designs and 6 public ones,
-17 at most. The last three can come from a tilted launch rod
+of mass. With the public report's 8, these make 13. Staging and clusters
+([M1.9](../decisions-and-roadmap.md#m1-9)) added one of these private designs and three public
+ones. The three public designs whose stages hpr can't separate yet
+([#183](https://github.com/nrdptel/hpr-sim/issues/183),
+[#184](https://github.com/nrdptel/hpr-sim/issues/184)) and the private one with a motor hpr can't
+light as written could add four more, 17 at most. The last three can come from a tilted launch rod
 ([#173](https://github.com/nrdptel/hpr-sim/issues/173), one design), the airframes hpr reads
 simpler than written ([#174](https://github.com/nrdptel/hpr-sim/issues/174), five designs, the old
 override flag alone two), or the four public designs held by pods and parallel stages
@@ -1958,16 +2052,16 @@ because hpr's curve came from its own catalog, found by the motor's name. Three 
 because they launch from a tilted rod; this comparison flies a vertical rod only, until
 OpenRocket's rod direction is pinned against hpr's (#173).
 
-The 17 flights (from the committed report, 2026-09-25):
+The 18 flights (from the committed report, 2026-09-25):
 
 | metric | flights | median | from | to |
 |---|---:|---:|---:|---:|
-| apogee, no named cause | 14 | −1.95% | −4.84% | +1.17% |
+| apogee, no named cause | 15 | −1.90% | −4.84% | +1.17% |
 | apogee, OpenRocket's parachute open before apogee | 3 | −2.80% | −3.09% | +0.68% |
-| largest speed | 17 | −0.01% | −0.65% | +2.28% |
-| margin at rod clearance | 17 | +0.0444 cal | −0.0008 cal | +0.0730 cal |
-| mass at launch | 17 | +0.000% | +0.000% | +0.004% |
-| centre of mass at rod clearance | 17 | −0.0145 cal | −0.0273 cal | +0.0042 cal |
+| largest speed | 18 | +0.01% | −0.65% | +2.28% |
+| margin at rod clearance | 18 | +0.0445 cal | −0.0008 cal | +0.1108 cal |
+| mass at launch | 18 | +0.000% | +0.000% | +0.004% |
+| centre of mass at rod clearance | 18 | −0.0164 cal | −0.1102 cal | +0.0042 cal |
 
 For example, `C09/9` reads −4.84% in apogee: hpr's rocket peaks 4.84% lower than OpenRocket's on
 the same design and motor. Its largest speed is +0.26%, so the two agree on the climb under thrust
@@ -1978,8 +2072,8 @@ and part on the coast, where drag matters most.
   cannot explain `C03/3` and `C03/4`, which read low. It could explain `C07/1`, which reads +0.68%
   with the parachute 0.55 s early; how much of that it explains is not measured.
 - The 14 flights launched above sea level (designs `C03` and `C09`) all read low in apogee, and
-  the 3 at sea level (`C07`, `C11`) read high. The public report's 12 flights with no named cause
-  read low as well, and every public flight launches at sea level (its
+  the 4 at sea level (`C07`, `C08`, `C11`) read high. Most of the public report's flights with no
+  named cause read low as well (16 of 21), and every public flight launches at sea level (its
   [record](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/ork/openrocket-flights.json)
   gives a launch altitude of 0 m throughout). So altitude does not yet explain the sign.
   [M2.2e4](../decisions-and-roadmap.md#m2-2e4) sized only the apogees more than 5% off, so this
@@ -1988,15 +2082,22 @@ and part on the coast, where drag matters most.
   direction to worry about. `C03` reads +0.056 to +0.073 calibres: on every flight hpr's CP sits
   0.061 calibres further aft than OpenRocket's, and the CG accounts for the rest. `C09` reads about +0.04, half from its CP (+0.020) and half from
   its CG, which hpr puts forward of OpenRocket's by 0.0145 to 0.0273 calibres. The reference
-  diameters agree on all 17 flights, so the calibres are the same. On the public designs the
+  diameters agree on all 18 flights, so the calibres are the same. On the public designs the
   margin gap is at most 0.0151 calibres, and the largest (−0.0151) has hpr calling the rocket *less*
   stable. No milestone covers it yet: it is
-  [#172](https://github.com/nrdptel/hpr-sim/issues/172).
+  [#172](https://github.com/nrdptel/hpr-sim/issues/172). A third design, `C08`, a two-stage rocket
+  flown since the [M1.9c milestone](../decisions-and-roadmap.md#m1-9c), reads +0.1108 calibres
+  because hpr puts its CG 0.1102 calibres forward of OpenRocket's at rod clearance, with the mass
+  there within 0.001%. That gap is older than the staging: hpr's structure alone puts the CG
+  forward by less than the mass survey's 1% of length. A stage whose mass is set at several times
+  its parts' own weight magnifies where those parts sit, and two of them differ: an
+  airfoil fin set, a departure hpr keeps on purpose ([ADR-062][adr-062]), and packed parachutes
+  whose automatic radius OpenRocket seems to meet by stretching the packed length
+  ([#186](https://github.com/nrdptel/hpr-sim/issues/186)).
 - hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 8
   of the flights, all of `C03`'s among them. That puts mass in a slightly different place, not
   lift, so it cannot move the CP, and `C03`'s CG agrees within 0.013 calibres.
-- The 8 designs hpr does not fly wait on: a motor that lights in flight, which staging brings (2
-  designs); an airframe hpr reads simpler than written (5: pods 1, fin fillets 1, the single
+- The 7 designs hpr does not fly wait on: a motor hpr can't light as written (1 design); an airframe hpr reads simpler than written (5: pods 1, fin fillets 1, the single
   override flag older OpenRocket files use for a part and everything inside it 2, and an inner
   tube whose [automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)
   1); and a tilted rod (1). The report lists each configuration with its coarse reason; the
@@ -2035,6 +2136,7 @@ How the stored-result policy was decided is in [ADR-065][adr-065]; the underlyin
 is in [ADR-057][adr-057].
 
 [adr-065]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-065-stored-results-are-references-only-when-current-and-structurally-plausible-2026-09-24
+[adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
 [adr-057]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-057-a-ork-designs-stored-simulations-read-back-as-written-with-their-units-measured-2026-09-21
 
 ## What hpr keeps for writing the file back
@@ -2106,6 +2208,7 @@ How this was decided is in [ADR-058][adr-058].
 [adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
 [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
+[adr-076]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-076-a-ork-files-ignitions-and-one-powered-separation-flown-against-openrocket-2026-09-25
 
 ## What is not read yet
 

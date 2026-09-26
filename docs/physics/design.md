@@ -23,9 +23,12 @@
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). A
   [cluster](../glossary.md#cluster)'s tubes sit where OpenRocket puts them, to 1e-15 m, and a motor
-  out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). Not
-  compared with a real flight, and a cluster's flight not yet with another simulator's
-  ([M1.9c](../decisions-and-roadmap.md#m1-9c)).
+  out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). OpenRocket's
+  cluster example flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees
+  are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee
+  ([M1.9c](../decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against
+  OpenRocket; [results](../format/ork.md#staged-clustered-and-air-start-flights)). Not compared
+  with a real flight.
 - **What it leaves out:** each motor lights at its own `ignition`, at launch unless told
   otherwise, so a two-stage design whose file says nothing flies with every motor lit at once, and
   nothing warns; a staged flight gives the sustainer its ignition ([Staging](staging.md)). A

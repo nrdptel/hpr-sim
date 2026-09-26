@@ -786,7 +786,8 @@ pub(crate) fn page(report: &Value) -> String {
          designs with OpenRocket 24.12's, and publishes only the differences. It is a \
          code-to-code comparison with no target: agreeing with OpenRocket is not agreeing with a \
          real flight. {margin} \
-         ([#172](https://github.com/nrdptel/hpr-sim/issues/172)). With the [public \
+         (open leads: [#172](https://github.com/nrdptel/hpr-sim/issues/172) and \
+         [#186](https://github.com/nrdptel/hpr-sim/issues/186)). With the [public \
          report](openrocket-flights.md) it covers {} designs of the {} that [M2.2][m2-2] (the \
          OpenRocket comparison) asks for: {}. Nobody without the private library can fly these \
          again; CI checks only that this report adds up and names nothing of a design.\n\n",
@@ -1057,10 +1058,9 @@ mod tests {
                     NotFlown::InactiveStage,
                     NotFlown::NoCurve,
                     NotFlown::NoSize,
-                    NotFlown::Cluster,
-                    NotFlown::IgnitesInFlight,
+                    NotFlown::IgnitionNotFlown,
                     NotFlown::AirframeNotAsWritten,
-                    NotFlown::Staged,
+                    NotFlown::SeparationNotFlown,
                 ]
                 .map(crate::ork_motors::not_flown);
                 return importer

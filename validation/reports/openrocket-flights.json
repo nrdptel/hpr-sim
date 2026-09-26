@@ -880,6 +880,406 @@
     },
     {
       "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.2441244641044702,
+          "cp_from_nose_m": 1.5392971667828932,
+          "mass_kg": 12.623581370123363,
+          "reference_length_m": 0.19486880000000031
+        },
+        "mach": 0.04461967401793723,
+        "openrocket": {
+          "cg_from_nose_m": 1.243688820935281,
+          "cp_from_nose_m": 1.5390476195522573,
+          "mass_kg": 12.623330601328624,
+          "reference_length_m": 0.19486879999999998
+        },
+        "time_s": 0.17385465644516276
+      },
+      "clustered_motors": 3,
+      "configuration": "99b8d6a6-1379-4621-8b01-5d6dd55d686f",
+      "deployed_before_apogee_s": null,
+      "design": "Airstart timing",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
+      "launch_mass_kg": {
+        "hpr": 12.745796642696403,
+        "openrocket": 12.745756435836437
+      },
+      "max_mach_openrocket": 0.5492178202400615,
+      "metrics": {
+        "apogee_m": {
+          "difference": 12.381097813707811,
+          "hpr": 1329.8899710694848,
+          "openrocket": 1317.508873255777,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 1329.8899710694848,
+            "outcome": "scored",
+            "reference": 1317.508873255777
+          },
+          "relative_percent": 0.9397354404993206
+        },
+        "max_speed_m_s": {
+          "difference": 1.5160904836106965,
+          "hpr": 187.86587632094364,
+          "openrocket": 186.34978583733294,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 187.86587632094364,
+            "outcome": "scored",
+            "reference": 186.34978583733294
+          },
+          "relative_percent": 0.8135724314349955
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -0.000954980677018824,
+          "hpr": 1.5147253058387105,
+          "openrocket": 1.5156802865157293,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.5147253058387105,
+            "outcome": "scored",
+            "reference": 1.5156802865157293
+          },
+          "relative_percent": -0.06300673601912112
+        }
+      },
+      "motors": "[3× I211W-P, K550W-P]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.247924498327836,
+          "cp_from_nose_m": 1.5392461206718,
+          "mass_kg": 12.661394688061973,
+          "reference_length_m": 0.19486880000000031
+        },
+        "mach": 0.026914814853615736,
+        "openrocket": {
+          "cg_from_nose_m": 1.2474539749586593,
+          "cp_from_nose_m": 1.538996503760128,
+          "mass_kg": 12.660992662457094,
+          "reference_length_m": 0.19486879999999998
+        },
+        "time_s": 0.26912499999999995
+      },
+      "clustered_motors": 3,
+      "configuration": "bbf39580-3dab-4987-9c86-4b3932934a28",
+      "deployed_before_apogee_s": null,
+      "design": "Airstart timing",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
+      "launch_mass_kg": {
+        "hpr": 12.745796642696403,
+        "openrocket": 12.745756435836437
+      },
+      "max_mach_openrocket": 0.5239634766492244,
+      "metrics": {
+        "apogee_m": {
+          "difference": 10.824128204494855,
+          "hpr": 1306.8554852059972,
+          "openrocket": 1296.0313570015023,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 1306.8554852059972,
+            "outcome": "scored",
+            "reference": 1296.0313570015023
+          },
+          "relative_percent": 0.8351748702699258
+        },
+        "max_speed_m_s": {
+          "difference": 1.2755142150863605,
+          "hpr": 178.91057428193807,
+          "openrocket": 177.6350600668517,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 178.91057428193807,
+            "outcome": "scored",
+            "reference": 177.6350600668517
+          },
+          "relative_percent": 0.7180531898412001
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -0.0011336163485649031,
+          "hpr": 1.4949628793524854,
+          "openrocket": 1.4960964957010503,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.4949628793524854,
+            "outcome": "scored",
+            "reference": 1.4960964957010503
+          },
+          "relative_percent": -0.07577160643195718
+        }
+      },
+      "motors": "Airstart @2s",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.247924498327836,
+          "cp_from_nose_m": 1.5392461206718,
+          "mass_kg": 12.661394688061973,
+          "reference_length_m": 0.19486880000000031
+        },
+        "mach": 0.026914814853615736,
+        "openrocket": {
+          "cg_from_nose_m": 1.2474539749586593,
+          "cp_from_nose_m": 1.538996503760128,
+          "mass_kg": 12.660992662457094,
+          "reference_length_m": 0.19486879999999998
+        },
+        "time_s": 0.26912499999999995
+      },
+      "clustered_motors": 3,
+      "configuration": "bc7de2d0-b362-463a-9853-0200700175c7",
+      "deployed_before_apogee_s": null,
+      "design": "Airstart timing",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
+      "launch_mass_kg": {
+        "hpr": 12.745796642696403,
+        "openrocket": 12.745756435836437
+      },
+      "max_mach_openrocket": 0.5603407633844455,
+      "metrics": {
+        "apogee_m": {
+          "difference": 13.281896627781862,
+          "hpr": 1305.7727004369297,
+          "openrocket": 1292.4908038091478,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 1305.7727004369297,
+            "outcome": "scored",
+            "reference": 1292.4908038091478
+          },
+          "relative_percent": 1.0276202034581825
+        },
+        "max_speed_m_s": {
+          "difference": 1.4522005665902498,
+          "hpr": 191.59070360820135,
+          "openrocket": 190.1385030416111,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 191.59070360820135,
+            "outcome": "scored",
+            "reference": 190.1385030416111
+          },
+          "relative_percent": 0.7637593350950287
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -0.0011336163485649031,
+          "hpr": 1.4949628793524854,
+          "openrocket": 1.4960964957010503,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.4949628793524854,
+            "outcome": "scored",
+            "reference": 1.4960964957010503
+          },
+          "relative_percent": -0.07577160643195718
+        }
+      },
+      "motors": "Airstart @1s",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.247924498327836,
+          "cp_from_nose_m": 1.5392461206718,
+          "mass_kg": 12.661394688061973,
+          "reference_length_m": 0.19486880000000031
+        },
+        "mach": 0.026914814853615736,
+        "openrocket": {
+          "cg_from_nose_m": 1.2474539749586593,
+          "cp_from_nose_m": 1.538996503760128,
+          "mass_kg": 12.660992662457094,
+          "reference_length_m": 0.19486879999999998
+        },
+        "time_s": 0.26912499999999995
+      },
+      "clustered_motors": 3,
+      "configuration": "37647ba6-86f6-423d-a08c-4c68a3215fc0",
+      "deployed_before_apogee_s": null,
+      "design": "Airstart timing",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
+      "launch_mass_kg": {
+        "hpr": 12.745796642696403,
+        "openrocket": 12.745756435836437
+      },
+      "max_mach_openrocket": 0.46026620874901986,
+      "metrics": {
+        "apogee_m": {
+          "difference": 7.669176500819958,
+          "hpr": 1311.379974337127,
+          "openrocket": 1303.710797836307,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 1311.379974337127,
+            "outcome": "scored",
+            "reference": 1303.710797836307
+          },
+          "relative_percent": 0.5882574964898691
+        },
+        "max_speed_m_s": {
+          "difference": 0.7973814079388717,
+          "hpr": 156.56199532523792,
+          "openrocket": 155.76461391729904,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 156.56199532523792,
+            "outcome": "scored",
+            "reference": 155.76461391729904
+          },
+          "relative_percent": 0.5119143481216021
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -0.0011336163485649031,
+          "hpr": 1.4949628793524854,
+          "openrocket": 1.4960964957010503,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.4949628793524854,
+            "outcome": "scored",
+            "reference": 1.4960964957010503
+          },
+          "relative_percent": -0.07577160643195718
+        }
+      },
+      "motors": "airstart @4s",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.247924498327836,
+          "cp_from_nose_m": 1.5392461206718,
+          "mass_kg": 12.661394688061973,
+          "reference_length_m": 0.19486880000000031
+        },
+        "mach": 0.026914814853615736,
+        "openrocket": {
+          "cg_from_nose_m": 1.2474539749586593,
+          "cp_from_nose_m": 1.538996503760128,
+          "mass_kg": 12.660992662457094,
+          "reference_length_m": 0.19486879999999998
+        },
+        "time_s": 0.26912499999999995
+      },
+      "clustered_motors": 3,
+      "configuration": "7c4d659a-a836-434a-acd4-66e27ae5e053",
+      "deployed_before_apogee_s": null,
+      "design": "Airstart timing",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
+      "launch_mass_kg": {
+        "hpr": 12.745796642696403,
+        "openrocket": 12.745756435836437
+      },
+      "max_mach_openrocket": 0.4039594393098261,
+      "metrics": {
+        "apogee_m": {
+          "difference": 6.157222613199792,
+          "hpr": 1280.341352242251,
+          "openrocket": 1274.1841296290513,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 1280.341352242251,
+            "outcome": "scored",
+            "reference": 1274.1841296290513
+          },
+          "relative_percent": 0.4832286378415592
+        },
+        "max_speed_m_s": {
+          "difference": 0.624375554757421,
+          "hpr": 137.17512665527298,
+          "openrocket": 136.55075110051555,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 137.17512665527298,
+            "outcome": "scored",
+            "reference": 136.55075110051555
+          },
+          "relative_percent": 0.4572479826916629
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -0.0011336163485649031,
+          "hpr": 1.4949628793524854,
+          "openrocket": 1.4960964957010503,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.4949628793524854,
+            "outcome": "scored",
+            "reference": 1.4960964957010503
+          },
+          "relative_percent": -0.07577160643195718
+        }
+      },
+      "motors": "airstart @6s",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
       "apogee_with_the_causes_removed": {
         "drag_overrides_cleared_too": {
           "openrocket_m": 81.14608706441268,
@@ -1463,6 +1863,430 @@
       "aborted": false,
       "at_rod_clearance": {
         "hpr": {
+          "cg_from_nose_m": 0.43374865895302195,
+          "cp_from_nose_m": 0.5211827073451826,
+          "mass_kg": 0.22931268402694385,
+          "reference_length_m": 0.055
+        },
+        "mach": 0.04807984670276987,
+        "openrocket": {
+          "cg_from_nose_m": 0.4338284684179297,
+          "cp_from_nose_m": 0.5210861271371598,
+          "mass_kg": 0.22924103542068958,
+          "reference_length_m": 0.055
+        },
+        "time_s": 0.24135870874830098
+      },
+      "clustered_motors": 4,
+      "configuration": "da326836-0959-4c94-bcd5-49dee07235a4",
+      "deployed_before_apogee_s": null,
+      "design": "Clustered motors",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
+      "launch_mass_kg": {
+        "hpr": 0.23544043214113333,
+        "openrocket": 0.23535575964775263
+      },
+      "max_mach_openrocket": 0.0954108879111201,
+      "metrics": {
+        "apogee_m": {
+          "difference": -0.20514069532875823,
+          "hpr": 58.01669301920409,
+          "openrocket": 58.22183371453285,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 58.01669301920409,
+            "outcome": "scored",
+            "reference": 58.22183371453285
+          },
+          "relative_percent": -0.3523432400542079
+        },
+        "max_speed_m_s": {
+          "difference": 0.06385737862017038,
+          "hpr": 32.53570667003073,
+          "openrocket": 32.47184929141056,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 32.53570667003073,
+            "outcome": "scored",
+            "reference": 32.47184929141056
+          },
+          "relative_percent": 0.19665457931606597
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0032070849623724307,
+          "hpr": 1.5897099707665567,
+          "openrocket": 1.5865028858041843,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.5897099707665567,
+            "outcome": "scored",
+            "reference": 1.5865028858041843
+          },
+          "relative_percent": 0.2021480698881167
+        }
+      },
+      "motors": "[4× A8-3]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 143.07197936859887,
+          "relative_percent": -0.7861868513090807
+        },
+        "remaining_percent": -0.7861868513090807,
+        "within_5_percent": true
+      },
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.44302605167314263,
+          "cp_from_nose_m": 0.5212003372265138,
+          "mass_kg": 0.23856340064463302,
+          "reference_length_m": 0.055
+        },
+        "mach": 0.05636707708011363,
+        "openrocket": {
+          "cg_from_nose_m": 0.443101239364591,
+          "cp_from_nose_m": 0.5211037952462442,
+          "mass_kg": 0.23848727758030958,
+          "reference_length_m": 0.055
+        },
+        "time_s": 0.18419322117123152
+      },
+      "clustered_motors": 4,
+      "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
+      "deployed_before_apogee_s": 0.369644531250489,
+      "design": "Clustered motors",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
+      "launch_mass_kg": {
+        "hpr": 0.24564043214113332,
+        "openrocket": 0.24555575964775261
+      },
+      "max_mach_openrocket": 0.16975366370202588,
+      "metrics": {
+        "apogee_m": {
+          "difference": -1.022199489742178,
+          "hpr": 141.9471662788953,
+          "openrocket": 142.9693657686375,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 141.9471662788953,
+            "outcome": "scored",
+            "reference": 142.9693657686375
+          },
+          "relative_percent": -0.7149779844420441
+        },
+        "max_speed_m_s": {
+          "difference": 0.18041650229393014,
+          "hpr": 57.93937144726793,
+          "openrocket": 57.758954944974,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 57.93937144726793,
+            "outcome": "scored",
+            "reference": 57.758954944974
+          },
+          "relative_percent": 0.31236109182690364
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.003122357667600495,
+          "hpr": 1.4213506464249308,
+          "openrocket": 1.4182282887573303,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.4213506464249308,
+            "outcome": "scored",
+            "reference": 1.4182282887573303
+          },
+          "relative_percent": 0.22015903168426745
+        }
+      },
+      "motors": "[4× B4-4]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 308.57034749078036,
+          "relative_percent": -0.7216974040714681
+        },
+        "remaining_percent": -0.7216974040714681,
+        "within_5_percent": true
+      },
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.45862568775216483,
+          "cp_from_nose_m": 0.5211964859814169,
+          "mass_kg": 0.2559232335127051,
+          "reference_length_m": 0.055
+        },
+        "mach": 0.05466431776011704,
+        "openrocket": {
+          "cg_from_nose_m": 0.45871275965999636,
+          "cp_from_nose_m": 0.5210999356494759,
+          "mass_kg": 0.25586184905845066,
+          "reference_length_m": 0.055
+        },
+        "time_s": 0.20383583092677351
+      },
+      "clustered_motors": 4,
+      "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
+      "deployed_before_apogee_s": 2.588882812500107,
+      "design": "Clustered motors",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
+      "launch_mass_kg": {
+        "hpr": 0.26244043214113333,
+        "openrocket": 0.2623557596477526
+      },
+      "max_mach_openrocket": 0.2900077271210631,
+      "metrics": {
+        "apogee_m": {
+          "difference": 26.390965627219884,
+          "hpr": 306.3434033032051,
+          "openrocket": 279.9524376759852,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 306.3434033032051,
+            "outcome": "scored",
+            "reference": 279.9524376759852
+          },
+          "relative_percent": 9.42694617925227
+        },
+        "max_speed_m_s": {
+          "difference": 0.9077801655317614,
+          "hpr": 99.50093645410702,
+          "openrocket": 98.59315628857526,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 99.50093645410702,
+            "outcome": "scored",
+            "reference": 98.59315628857526
+          },
+          "relative_percent": 0.9207334461174491
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0033385861776824566,
+          "hpr": 1.1376508768954918,
+          "openrocket": 1.1343122907178094,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.1376508768954918,
+            "outcome": "scored",
+            "reference": 1.1343122907178094
+          },
+          "relative_percent": 0.29432689789244465
+        }
+      },
+      "motors": "[4× C6-3]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "apogee_with_the_causes_removed": {
+        "parachutes_held": {
+          "openrocket_m": 308.5703456978393,
+          "relative_percent": -0.7216968272171161
+        },
+        "remaining_percent": -0.7216968272171161,
+        "within_5_percent": true
+      },
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.45862568775216483,
+          "cp_from_nose_m": 0.5211964859814169,
+          "mass_kg": 0.2559232335127051,
+          "reference_length_m": 0.055
+        },
+        "mach": 0.05466431776011704,
+        "openrocket": {
+          "cg_from_nose_m": 0.45871275965999636,
+          "cp_from_nose_m": 0.5210999356494759,
+          "mass_kg": 0.25586184905845066,
+          "reference_length_m": 0.055
+        },
+        "time_s": 0.20383583092677351
+      },
+      "clustered_motors": 4,
+      "configuration": "e1dc7488-77c0-403a-b54f-c01db07aba2f",
+      "deployed_before_apogee_s": 0.5888828125002004,
+      "design": "Clustered motors",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
+      "launch_mass_kg": {
+        "hpr": 0.26244043214113333,
+        "openrocket": 0.2623557596477526
+      },
+      "max_mach_openrocket": 0.2900077271210631,
+      "metrics": {
+        "apogee_m": {
+          "difference": -1.7030914804557256,
+          "hpr": 306.3434033032051,
+          "openrocket": 308.0464947836608,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 306.3434033032051,
+            "outcome": "scored",
+            "reference": 308.0464947836608
+          },
+          "relative_percent": -0.5528683199761115
+        },
+        "max_speed_m_s": {
+          "difference": 0.9077801655317614,
+          "hpr": 99.50093645410702,
+          "openrocket": 98.59315628857526,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 99.50093645410702,
+            "outcome": "scored",
+            "reference": 98.59315628857526
+          },
+          "relative_percent": 0.9207334461174491
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0033385861776824566,
+          "hpr": 1.1376508768954918,
+          "openrocket": 1.1343122907178094,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.1376508768954918,
+            "outcome": "scored",
+            "reference": 1.1343122907178094
+          },
+          "relative_percent": 0.29432689789244465
+        }
+      },
+      "motors": "[4× C6-5]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.45862568775216483,
+          "cp_from_nose_m": 0.5211964859814169,
+          "mass_kg": 0.2559232335127051,
+          "reference_length_m": 0.055
+        },
+        "mach": 0.05466431776011704,
+        "openrocket": {
+          "cg_from_nose_m": 0.45871275965999636,
+          "cp_from_nose_m": 0.5210999356494759,
+          "mass_kg": 0.25586184905845066,
+          "reference_length_m": 0.055
+        },
+        "time_s": 0.20383583092677351
+      },
+      "clustered_motors": 4,
+      "configuration": "5d9a2765-395d-4d9c-9678-38eed0988c72",
+      "deployed_before_apogee_s": null,
+      "design": "Clustered motors",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
+      "launch_mass_kg": {
+        "hpr": 0.26244043214113333,
+        "openrocket": 0.2623557596477526
+      },
+      "max_mach_openrocket": 0.2900077271210631,
+      "metrics": {
+        "apogee_m": {
+          "difference": -2.2265223129114133,
+          "hpr": 306.3434033032051,
+          "openrocket": 308.5699256161165,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 306.3434033032051,
+            "outcome": "scored",
+            "reference": 308.5699256161165
+          },
+          "relative_percent": -0.7215616714641755
+        },
+        "max_speed_m_s": {
+          "difference": 0.9077801655317614,
+          "hpr": 99.50093645410702,
+          "openrocket": 98.59315628857526,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 99.50093645410702,
+            "outcome": "scored",
+            "reference": 98.59315628857526
+          },
+          "relative_percent": 0.9207334461174491
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0033385861776824566,
+          "hpr": 1.1376508768954918,
+          "openrocket": 1.1343122907178094,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 1.1376508768954918,
+            "outcome": "scored",
+            "reference": 1.1343122907178094
+          },
+          "relative_percent": 0.29432689789244465
+        }
+      },
+      "motors": "[4× C6-7]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
           "cg_from_nose_m": 0.9520975323573946,
           "cp_from_nose_m": 1.2039410562830666,
           "mass_kg": 1.5749799018742154,
@@ -1932,6 +2756,334 @@
       "motors": "[G64W-P]",
       "rod_length_m": 3.048,
       "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.3197704195541127,
+          "cp_from_nose_m": 1.54029412128389,
+          "mass_kg": 2.5331502880777954,
+          "reference_length_m": 0.1016
+        },
+        "mach": 0.059042241396192637,
+        "openrocket": {
+          "cg_from_nose_m": 1.3194413958844224,
+          "cp_from_nose_m": 1.540251569508049,
+          "mass_kg": 2.4920263279282318,
+          "reference_length_m": 0.1016
+        },
+        "time_s": 0.3600243475616635
+      },
+      "configuration": "cf7a0b8c-19e9-4112-912f-505bc8e01067",
+      "deployed_before_apogee_s": null,
+      "design": "Two stage high power rocket",
+      "design_errors_accepted": [
+        {
+          "component": "ea8ebe8b-955b-4d0e-bc42-bad00893b21e",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "1b6ccd8c-3617-4ef0-a8b9-8d7c2254b5df",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "7883e2a1-af01-473a-8829-2ee7f449020f",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "9836b369-28be-4825-81d5-b9c5d17d3bdf",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "46b32aa1-dc29-4f0d-8de9-5b07a9836915",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "8cf0397d-b6ab-40cc-b32f-84c4b3f80116",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "15da66e1-4072-4775-87f6-c0df55da51d4",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "5ec3bffd-83dd-4684-ab84-bdc6c6cc0c4a",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "209978b9-283e-446d-b8f5-207fca53dba0",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "95e2d3f8-2ac1-466d-9185-2e49a65a15b2",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "96f4154e-1f4e-4dca-bd7c-3105dad111f1",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "95e2d3f8-2ac1-466d-9185-2e49a65a15b2",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "003eb614-a1e7-4993-9313-755aeb59f777",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "96f4154e-1f4e-4dca-bd7c-3105dad111f1",
+          "reach_m": 0.048641,
+          "room_m": 0.04572
+        },
+        {
+          "component": "272ecc19-3819-42c6-9efc-1103650d8ddf",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "95e2d3f8-2ac1-466d-9185-2e49a65a15b2",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "37007aba-2fad-4292-8e93-72d5e280f559",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "ebb70147-d092-4f81-8cf1-8522f7038249",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        }
+      ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Two stage high power rocket.ork",
+      "launch_mass_kg": {
+        "hpr": 2.574304730842905,
+        "openrocket": 2.574301854035005
+      },
+      "max_mach_openrocket": 0.46825112586942846,
+      "metrics": {
+        "apogee_m": {
+          "difference": -12.161005636495474,
+          "hpr": 666.291696291703,
+          "openrocket": 678.4527019281985,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 666.291696291703,
+            "outcome": "scored",
+            "reference": 678.4527019281985
+          },
+          "relative_percent": -1.7924618181832355
+        },
+        "max_speed_m_s": {
+          "difference": -0.8523926343610242,
+          "hpr": 158.1029758800471,
+          "openrocket": 158.95536851440812,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 158.1029758800471,
+            "outcome": "scored",
+            "reference": 158.95536851440812
+          },
+          "relative_percent": -0.536246521477984
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -0.0028196052544204875,
+          "hpr": 2.170508875293085,
+          "openrocket": 2.1733284805475055,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.170508875293085,
+            "outcome": "scored",
+            "reference": 2.1733284805475055
+          },
+          "relative_percent": -0.12973672777297668
+        }
+      },
+      "motors": "[H148R-0; H148R-0]",
+      "rod_length_m": 3.048,
+      "staging": {
+        "after_stage": 0,
+        "separation_s": {
+          "hpr": 1.535,
+          "openrocket": 1.535
+        }
+      },
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 1.3202545425121295,
+          "cp_from_nose_m": 1.540374583785943,
+          "mass_kg": 2.749197196254747,
+          "reference_length_m": 0.1016
+        },
+        "mach": 0.08345483644179998,
+        "openrocket": {
+          "cg_from_nose_m": 1.3202557764904008,
+          "cp_from_nose_m": 1.5403318307251685,
+          "mass_kg": 2.749194319446847,
+          "reference_length_m": 0.1016
+        },
+        "time_s": 0.266
+      },
+      "configuration": "fadeeef3-4aa4-49e9-9581-71e14fa91c14",
+      "deployed_before_apogee_s": null,
+      "design": "Two stage high power rocket",
+      "design_errors_accepted": [
+        {
+          "component": "ea8ebe8b-955b-4d0e-bc42-bad00893b21e",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "1b6ccd8c-3617-4ef0-a8b9-8d7c2254b5df",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "7883e2a1-af01-473a-8829-2ee7f449020f",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "9836b369-28be-4825-81d5-b9c5d17d3bdf",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "46b32aa1-dc29-4f0d-8de9-5b07a9836915",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "8cf0397d-b6ab-40cc-b32f-84c4b3f80116",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "12474132-2b01-4503-87c9-27e6cd58a50f",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "15da66e1-4072-4775-87f6-c0df55da51d4",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "5ec3bffd-83dd-4684-ab84-bdc6c6cc0c4a",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "209978b9-283e-446d-b8f5-207fca53dba0",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "95e2d3f8-2ac1-466d-9185-2e49a65a15b2",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "96f4154e-1f4e-4dca-bd7c-3105dad111f1",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "95e2d3f8-2ac1-466d-9185-2e49a65a15b2",
+          "reach_m": 0.048641,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "003eb614-a1e7-4993-9313-755aeb59f777",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "96f4154e-1f4e-4dca-bd7c-3105dad111f1",
+          "reach_m": 0.048641,
+          "room_m": 0.04572
+        },
+        {
+          "component": "272ecc19-3819-42c6-9efc-1103650d8ddf",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "95e2d3f8-2ac1-466d-9185-2e49a65a15b2",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        },
+        {
+          "component": "37007aba-2fad-4292-8e93-72d5e280f559",
+          "kind": "internal_part_wider_than_parent",
+          "parent": "ebb70147-d092-4f81-8cf1-8522f7038249",
+          "reach_m": 0.04953,
+          "room_m": 0.048437799999999996
+        }
+      ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Two stage high power rocket.ork",
+      "launch_mass_kg": {
+        "hpr": 2.792504730842905,
+        "openrocket": 2.792501854035005
+      },
+      "max_mach_openrocket": 0.5187318048296213,
+      "metrics": {
+        "apogee_m": {
+          "difference": -1.821029292822459,
+          "hpr": 1382.368103796053,
+          "openrocket": 1384.1891330888755,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 1382.368103796053,
+            "outcome": "scored",
+            "reference": 1384.1891330888755
+          },
+          "relative_percent": -0.13155928256413604
+        },
+        "max_speed_m_s": {
+          "difference": -0.06870262519476,
+          "hpr": 175.8125777589198,
+          "openrocket": 175.88128038411455,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 175.8125777589198,
+            "outcome": "scored",
+            "reference": 175.88128038411455
+          },
+          "relative_percent": -0.03906193146008344
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.00043294329769549833,
+          "hpr": 2.166535839309189,
+          "openrocket": 2.1661028960114934,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.166535839309189,
+            "outcome": "scored",
+            "reference": 2.1661028960114934
+          },
+          "relative_percent": 0.01998719906116598
+        }
+      },
+      "motors": "[I59WN-P; I357T-14]",
+      "rod_length_m": 3.048,
+      "staging": {
+        "after_stage": 0,
+        "separation_s": {
+          "hpr": 1.515,
+          "openrocket": 1.515
+        }
+      },
+      "termination": "ground_hit"
     }
   ],
   "generated_by": "cargo xtask ork-flights",
@@ -1950,87 +3102,7 @@
       "design": "ARC payload rocket",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/ARC payload rocket.ork",
       "motors": "[None; F50T-9]",
-      "why": "more than one stage"
-    },
-    {
-      "aborted": false,
-      "configuration": "99b8d6a6-1379-4621-8b01-5d6dd55d686f",
-      "design": "Airstart timing",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
-      "motors": "[3× I211W-P, K550W-P]",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "bbf39580-3dab-4987-9c86-4b3932934a28",
-      "design": "Airstart timing",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
-      "motors": "Airstart @2s",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "bc7de2d0-b362-463a-9853-0200700175c7",
-      "design": "Airstart timing",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
-      "motors": "Airstart @1s",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "37647ba6-86f6-423d-a08c-4c68a3215fc0",
-      "design": "Airstart timing",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
-      "motors": "airstart @4s",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "7c4d659a-a836-434a-acd4-66e27ae5e053",
-      "design": "Airstart timing",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
-      "motors": "airstart @6s",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "da326836-0959-4c94-bcd5-49dee07235a4",
-      "design": "Clustered motors",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
-      "motors": "[4× A8-3]",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
-      "design": "Clustered motors",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
-      "motors": "[4× B4-4]",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
-      "design": "Clustered motors",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
-      "motors": "[4× C6-3]",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "e1dc7488-77c0-403a-b54f-c01db07aba2f",
-      "design": "Clustered motors",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
-      "motors": "[4× C6-5]",
-      "why": "a motor in a cluster"
-    },
-    {
-      "aborted": false,
-      "configuration": "5d9a2765-395d-4d9c-9678-38eed0988c72",
-      "design": "Clustered motors",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
-      "motors": "[4× C6-7]",
-      "why": "a motor in a cluster"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2038,7 +3110,7 @@
       "design": "Deployable payload",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; A8-3]",
-      "why": "more than one stage"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2046,7 +3118,7 @@
       "design": "Deployable payload",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; B4-4]",
-      "why": "more than one stage"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2054,7 +3126,7 @@
       "design": "Deployable payload",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; C6-3]",
-      "why": "more than one stage"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2062,7 +3134,7 @@
       "design": "Deployable payload",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; C6-5]",
-      "why": "more than one stage"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2070,7 +3142,7 @@
       "design": "Deployable payload",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; C6-7]",
-      "why": "more than one stage"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2142,7 +3214,7 @@
       "design": "Pods--powered with recovery deployment",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[C6-7; B6-0]",
-      "why": "a motor igniting in flight"
+      "why": "an airframe not read exactly as written"
     },
     {
       "aborted": false,
@@ -2182,7 +3254,7 @@
       "design": "Three stage low power rocket",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[A8-5; B6-0; B6-0]",
-      "why": "a motor igniting in flight"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2190,7 +3262,7 @@
       "design": "Three stage low power rocket",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[C6-5; B6-0; B6-0]",
-      "why": "a motor igniting in flight"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2198,7 +3270,7 @@
       "design": "Three stage low power rocket",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[C6-7; C6-0; C6-0]",
-      "why": "a motor igniting in flight"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -2207,22 +3279,6 @@
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Tube fin rocket.ork",
       "motors": "[D12-7]",
       "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
-      "configuration": "cf7a0b8c-19e9-4112-912f-505bc8e01067",
-      "design": "Two stage high power rocket",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Two stage high power rocket.ork",
-      "motors": "[H148R-0; H148R-0]",
-      "why": "a motor igniting in flight"
-    },
-    {
-      "aborted": false,
-      "configuration": "fadeeef3-4aa4-49e9-9581-71e14fa91c14",
-      "design": "Two stage high power rocket",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Two stage high power rocket.ork",
-      "motors": "[I59WN-P; I357T-14]",
-      "why": "a motor igniting in flight"
     }
   ],
   "record": "validation/fixtures/ork/openrocket-flights.json",
@@ -2231,39 +3287,39 @@
     "version": "24.12"
   },
   "summary": {
-    "apogee_over_5_percent": 5,
+    "apogee_over_5_percent": 6,
     "apogee_with_the_causes_removed": {
-      "over_5_percent": 5,
-      "over_5_percent_sized": 5,
-      "over_5_percent_within_5_percent_after": 4,
+      "over_5_percent": 6,
+      "over_5_percent_sized": 6,
+      "over_5_percent_within_5_percent_after": 5,
       "remaining_percent": {
-        "count": 9,
+        "count": 12,
         "max": 7.80041664097238,
-        "mean_absolute": 1.9429835715303563,
-        "median": -0.16258618846285092,
+        "mean_absolute": 1.6430361021975726,
+        "median": -0.5224999637590544,
         "min": -1.0747873967996686
       }
     },
-    "flown": 21,
+    "flown": 33,
     "mass_and_cg": {
       "launch_mass_percent": {
-        "count": 21,
+        "count": 33,
         "max": 0.20858652070791828,
-        "mean_absolute": 0.039222046766897285,
-        "median": 0.015547032795931963,
+        "mean_absolute": 0.030082883324738373,
+        "median": 0.014955839123536678,
         "min": 0.0
       },
       "rod_clearance_cg_cal": {
-        "count": 21,
+        "count": 33,
         "max": 0.015882095871440054,
-        "mean_absolute": 0.004643929432600969,
+        "mean_absolute": 0.003643467386643179,
         "median": 0.0006757222103437321,
         "min": -0.0028373891460418466
       },
       "rod_clearance_mass_percent": {
-        "count": 21,
-        "max": 0.2135103227770564,
-        "mean_absolute": 0.036634691356462336,
+        "count": 33,
+        "max": 1.650221736772437,
+        "mean_absolute": 0.0778633413336013,
         "median": 0.014419195763444593,
         "min": -0.010417464264358838
       }
@@ -2276,7 +3332,7 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 21
+          "scored": 33
         },
         "scored_by_cause": {
           "a part's drag override not applied": {
@@ -2287,18 +3343,18 @@
             "min": -19.130570894617726
           },
           "no named cause": {
-            "count": 12,
-            "max": -0.05748756677124336,
-            "mean_absolute": 1.6525443127951371,
-            "median": -1.4633803228494884,
+            "count": 21,
+            "max": 1.0276202034581825,
+            "mean_absolute": 1.2715464006841075,
+            "median": -0.6273157412808733,
             "min": -4.33892637359431
           },
           "reference parachute open before apogee": {
-            "count": 6,
+            "count": 9,
             "max": 13.801253044805415,
-            "mean_absolute": 4.522667329511131,
-            "median": 0.013708358565829519,
-            "min": -0.6410900246822078
+            "mean_absolute": 4.203421828970801,
+            "median": -0.07808922987769897,
+            "min": -0.7149779844420441
           }
         }
       },
@@ -2309,7 +3365,7 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 21
+          "scored": 33
         },
         "scored_by_cause": {
           "a part's drag override not applied": {
@@ -2320,10 +3376,10 @@
             "min": -12.329705355329528
           },
           "no named cause": {
-            "count": 18,
-            "max": 0.8544336414421261,
-            "mean_absolute": 0.3944586406031102,
-            "median": 0.17147836013432294,
+            "count": 30,
+            "max": 0.9207334461174491,
+            "mean_absolute": 0.4737109093491286,
+            "median": 0.2920019716393814,
             "min": -0.6925343975748737
           }
         }
@@ -2335,19 +3391,19 @@
         },
         "difference_unit": "calibres",
         "outcomes": {
-          "scored": 21
+          "scored": 33
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 21,
+            "count": 33,
             "max": 0.003707101548488856,
-            "mean_absolute": 0.00454583141896651,
+            "mean_absolute": 0.0036530198662033764,
             "median": -0.0006849146655585336,
             "min": -0.015088959942811009
           }
         }
       }
     },
-    "not_flown": 36
+    "not_flown": 24
   }
 }

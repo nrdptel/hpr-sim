@@ -12,6 +12,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+hpr.workspace = true
 hpr-aero.workspace = true
 hpr-atmos.workspace = true
 hpr-core.workspace = true

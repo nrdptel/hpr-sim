@@ -4,24 +4,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M1.9c, `.ork` staging and clusters against OpenRocket, after M1.9b (ADR-075).
-- **Order:** M1.8e16 waits on #108; M2.2e5 on M1.9 (17), then 3 of #173, #174, M1.13, #133; so M1.9.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M1.9a-b; site published.
+- **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
+  #173, #174, M1.13, #133 (13 of 20 designs); active work is M1.10, outputs and derived metrics.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; so M1.10, the next in the roadmap.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M1.9b complete, M1.9c next.
+- **Last updated:** 2026-09-25; M1.9 complete (M1.9c, ADR-076), M1.10 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.9c** on a fresh `m1.9c-<slug>` branch: map the `.ork` ignition and separation hpr-io
-  reads onto ADR-074's, drop `NotFlown::Cluster` (clusters read since M1.9b, ADR-075; OR stacks a
-  cluster's tubes in its inertia, hpr doesn't; parts in off-axis tubes: #181), fly OR's 4 staged,
-  2 cluster public designs; M2.2e5 needs them, each apogee over 5% a cause sized as ADR-073: OR without it
-  (`undeployed`, `undeployed_without_drag_overrides`, `..._parts_set_to_no_drag`). Leads, not
-  causes: #177 (a blunt nose's drag below Mach 0.8), private flights above sea level reading low,
-  `C03`, `C09` margins (#172). After any physics change run `cargo xtask ork-flights --check` and
-  `--library --check`: CI can't fly them (jar, `corpus-out/`); corpus reruns jitter (≤5e-7).
+- **Start M1.10** on a fresh `m1.10-<slug>` branch; split it in `ROADMAP.md` with an ADR (margin
+  over the flight and max q first; flutter needs its primary source). L32-L35, L94 go live with it.
+  `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
+  Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
+  (#172). After any physics change run `cargo xtask ork-flights --check` and `--library --check`:
+  CI can't fly them (jar, `corpus-out/`); corpus reruns jitter (≤5e-7).
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -54,15 +52,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-25: M1.9c `.ork` staging and clusters (ADR-076): all within 5% of OR (3 vs no chute); M1.9 done; 13 of 20.
 - 2026-09-25: M1.9b Clusters (ADR-075): a motor out within 3.7e-7 of hand; OR's tubes to 1e-15 m.
 - 2026-09-25: M1.9a Staging (ADR-074; M1.9 split a to c): motors lit at their own times; a sustainer
   flies on, the booster lands; L30, L93 live; a canopy opened before a split now counts.
 - 2026-09-25: M2.2e4 The causes (ADR-073): all 5 sized by OR without them; 4 within 5%, #177 left.
 - 2026-09-25: M2.2e3 hpr's flights of the corpus (ADR-072): 17 flights, 4 private designs; 9 of 20.
 - 2026-09-25: M2.2e2 OR's flights of the corpus (ADR-071, #168): 88 of 89 flown, none aborted.
-- 2026-09-25: M2.2e1 Mass and CG in the report (ADR-070): within 0.22% and 0.016 cal on 21.
-- 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21; 5 apogees over 5%, each with a cause.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
+- **Scrub #186's first revision** (1 minute): it quotes a private design's sizes. On issue #186 click
+  *edited* → the 03:28 UTC revision → *Delete revision from history*. No API can.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).
@@ -75,6 +74,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-076: a `.ork` flies its ignitions and one powered split; tolerance 5% in apogee and speed.
 - ADR-074, ADR-075: M1.9 split a to c; a powered split flies body 0 on; a cluster, a motor per tube.
 - ADR-073: a cause is sized by OR flying without it; within the bar if every such flight is within 5%.
 - ADR-072: private flights by id, differences only; public copies out; bar of 20 waits on M1.9.
@@ -133,8 +133,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in
   radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m up at a boattail —
   −8.65% to −11.34% (#87).
-- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 2 of 170
-  configurations (68 with OpenRocket's database supplied, ADR-067), staging waits for M1.9c,
+- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 4 of 170
+  configurations (93 with OpenRocket's database supplied, ADR-067), one powered split at most (#183),
   and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets and a rail button's screw head
   are read as the simpler part, with a warning; OR stacks a cluster's tubes in its inertia. `polished` is 2 µm here and may be

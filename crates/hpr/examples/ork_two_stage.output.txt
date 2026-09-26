@@ -1,0 +1,12 @@
+A made-up two-stage rocket read from .ork text, an F15 in each stage, calm air
+See the Accuracy page before trusting these numbers.
+
+the F15 in `sustainer` lights 0.0 s after the motor in `booster` burns out
+the F15 in `booster` lights at launch
+the booster drops away from stage 0 at 3.450 s
+
+sustainer lights    3.45 s   213.5 m  111.5 m/s
+separation          3.45 s   213.5 m  111.5 m/s
+apogee             15.30 s  1357.1 m    0.1 m/s
+sustainer lands   140.51 s     0.0 m   10.6 m/s
+the booster leaves at 3.45 s and lands at 30.14 s

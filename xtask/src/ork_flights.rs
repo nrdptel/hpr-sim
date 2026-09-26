@@ -17,7 +17,11 @@
 //!
 //! hpr flies no recovery device from a `.ork` yet (ADR-057 reads them, nothing flies them), so a
 //! reference whose parachute opened before its apogee is marked, with how long before, and is
-//! summarised apart. The configurations the record holds that hpr does not fly are listed with
+//! summarised apart. A configuration with a powered separation ([`ork::Staging`], M1.9c, ADR-076)
+//! flies it: the sustainer's apogee and largest speed are compared with OpenRocket's, whose
+//! record holds the flight of the branch that keeps the nose. hpr's descent of a separated body
+//! needs a device on each (ADR-074), so the sustainer tumbles from its apogee and the booster from
+//! the separation; neither changes the climb that is compared. The configurations the record holds that hpr does not fly are listed with
 //! the importer's reason.
 //!
 //! The motor curves come from OpenRocket's own database by digest (ADR-067), whose record lives
@@ -32,6 +36,7 @@ use std::path::Path;
 use hpr_aero::Flow;
 use hpr_core::geodesy::Geodetic;
 use hpr_io::ork;
+use hpr_sim::recovery::{Device, DeviceDrag, Trigger};
 use hpr_sim::{
     Environment, EventKind, FlightSettings, FlightStep, Observer, Rail, SimError, Simulation,
 };
@@ -307,8 +312,9 @@ pub(crate) fn fly_design(
             continue;
         };
         recorded_enough(flight).map_err(|error| format!("{motors}: {error}"))?;
+        let staging = matched.and_then(|matched| matched.staging.as_ref());
         let flew = |rocket: &hpr_design::Rocket| {
-            fly(name, rocket, &configuration.id, &motors, flight).map_err(|error| {
+            fly(name, rocket, &configuration.id, staging, &motors, flight).map_err(|error| {
                 if list_failures {
                     eprintln!("{motors}: {FLIGHT_FAILED}: {error}");
                 }
@@ -612,11 +618,34 @@ impl Observer for Peaks {
     }
 }
 
-/// Flies one configuration in the recorded conditions and compares it with the record.
+/// `simulation` with `staging`'s separation, the booster tumbling from it and the sustainer from
+/// its apogee: hpr's descent of a separated body needs a device on each (ADR-074).
+fn staged(simulation: Simulation, staging: &ork::Staging) -> Result<Simulation, SimError> {
+    let assembly = simulation.assembly();
+    let separation = hpr::ork::separation(staging, assembly)?;
+    let last = assembly.layout.stages.len().saturating_sub(1);
+    let sustainer = DeviceDrag::tumbling_stages(assembly, (0, staging.after_stage))?;
+    let booster = DeviceDrag::tumbling_stages(assembly, (staging.after_stage + 1, last))?;
+    simulation
+        .with_recovery(vec![
+            Device::new("the sustainer, tumbling", sustainer, Trigger::Apogee),
+            Device::new(
+                "the booster, tumbling",
+                booster,
+                Trigger::Time { time_s: 0.0 },
+            )
+            .on_body(1),
+        ])?
+        .with_separation(separation)
+}
+
+/// Flies one configuration in the recorded conditions, with its powered separation if it has
+/// one, and compares it with the record.
 fn fly(
     design: &str,
     rocket: &hpr_design::Rocket,
     configuration: &str,
+    staging: Option<&ork::Staging>,
     motors: &str,
     recorded: &Value,
 ) -> Result<Value, String> {
@@ -664,6 +693,10 @@ fn fly(
         settings,
     )
     .map_err(|error| format!("{at}: {error}"))?;
+    let simulation = match staging {
+        Some(staging) => staged(simulation, staging).map_err(|error| format!("{at}: {error}"))?,
+        None => simulation,
+    };
     let mut peaks = Peaks::default();
     let result = simulation
         .run(&mut peaks)
@@ -680,7 +713,25 @@ fn fly(
     let assembly = simulation.assembly();
     let clearance_time_s = number(&clearance["time_s"], "rod-clearance time")?;
     let clearance_mach = number(&clearance["mach"], "rod-clearance Mach number")?;
-    let mass = assembly.mass_properties(clearance_time_s);
+    // Before any separation, so a motor waiting on one counts as unlit.
+    let lit = assembly.ignition_times_s(|_| None);
+    // hpr-io leaves a separation at apogee or on the way down to the descent, and flies the
+    // configuration whole (ADR-076 §4). That holds only if every motor is spent by apogee, so
+    // a flight with one still to burn is refused rather than reported.
+    let spent_s = lit
+        .iter()
+        .zip(&assembly.motors)
+        .filter_map(|(lit_s, motor)| lit_s.map(|t| t + motor.mounted.motor.burnout_time_s()))
+        .fold(0.0, f64::max);
+    if let Some(apogee) = result.event(EventKind::Apogee)
+        && spent_s > apogee.sample.time_s
+    {
+        return Err(format!(
+            "{at}: a motor burns until {spent_s} s, after hpr's apogee at {} s",
+            apogee.sample.time_s
+        ));
+    }
+    let mass = assembly.mass_properties_lit(clearance_time_s, &lit);
     let cg_m = -mass.cg_m.z;
     let cp_m = simulation
         .aero()
@@ -721,7 +772,38 @@ fn fly(
 
     let deployed_before_apogee_s =
         early_chute(recorded).map_err(|error| format!("{at}: {error}"))?;
-    Ok(json!({
+    let events = recorded["events"]
+        .as_array()
+        .ok_or_else(|| format!("{at}: the record has no events"))?;
+    let separated_s = |kind: &str| {
+        events
+            .iter()
+            .find(|event| event["type"] == kind)
+            .and_then(|event| event["time_s"].as_f64())
+    };
+    // A staged or clustered flight says so, for M1.9c's tolerance (ADR-076).
+    let separated = staging.map(|staging| {
+        json!({
+            "after_stage": staging.after_stage,
+            "separation_s": {
+                "openrocket": separated_s("STAGE_SEPARATION"),
+                "hpr": result.event(EventKind::Separation).map(|event| event.sample.time_s),
+            },
+        })
+    });
+    // The motors in a mount that places more than one, a motor in each tube of a cluster.
+    let clusters: BTreeSet<&str> = assembly
+        .motors
+        .iter()
+        .filter(|motor| motor.tube > 0)
+        .map(|motor| motor.mounted.mount.as_str())
+        .collect();
+    let clustered_motors = assembly
+        .motors
+        .iter()
+        .filter(|motor| clusters.contains(motor.mounted.mount.as_str()))
+        .count();
+    let mut flown = json!({
         "design": design,
         "configuration": recorded["configuration"],
         "motors": motors,
@@ -750,9 +832,16 @@ fn fly(
         },
         "launch_mass_kg": {
             "openrocket": recorded["series"]["launch_mass_kg"],
-            "hpr": assembly.mass_properties(0.0).mass_kg,
+            "hpr": assembly.mass_properties_lit(0.0, &lit).mass_kg,
         },
-    }))
+    });
+    if let Some(separated) = separated {
+        flown["staging"] = separated;
+    }
+    if clustered_motors > 0 {
+        flown["clustered_motors"] = json!(clustered_motors);
+    }
+    Ok(flown)
 }
 
 /// How long before the apogee of the same flight with nothing deployed OpenRocket's first
@@ -1541,8 +1630,9 @@ mod tests {
         listed.sort();
         expected.sort();
         assert_eq!(listed, expected);
-        // M2.2d2's scope: the 21 configurations, in five of the jar's examples, that hpr flies.
-        assert_eq!(report["flights"].as_array().unwrap().len(), 21);
+        // M2.2d2's scope, the 21 configurations in five of the jar's examples that hpr flies, and
+        // M1.9c's 12: five clusters, five air starts beside a cluster and two two-stage flights.
+        assert_eq!(report["flights"].as_array().unwrap().len(), 33);
     }
 
     #[test]
@@ -1643,6 +1733,55 @@ mod tests {
         }
     }
 
+    /// M1.9c's bar (ADR-076 §1, set before these flights were measured): a two-stage design and a
+    /// cluster design, each with every configuration hpr flies within 5% of OpenRocket's apogee
+    /// (of its flight with nothing deployed, where its parachute opened before apogee) and of its
+    /// largest speed. A staged flight also separates when OpenRocket's does.
+    #[test]
+    fn a_two_stage_and_a_cluster_design_are_within_5_percent_of_openrocket() {
+        let (_, report) = committed();
+        let flights = report["flights"].as_array().unwrap();
+        let designs = |mark: &str| -> BTreeSet<&str> {
+            flights
+                .iter()
+                .filter(|flight| !flight[mark].is_null())
+                .map(|flight| flight["design"].as_str().unwrap())
+                .collect()
+        };
+        let staged = designs("staging");
+        let clustered = designs("clustered_motors");
+        assert!(!staged.is_empty(), "no staged design is flown");
+        assert!(!clustered.is_empty(), "no cluster design is flown");
+        for flight in flights {
+            let design = flight["design"].as_str().unwrap();
+            if !staged.contains(design) && !clustered.contains(design) {
+                continue;
+            }
+            let at = format!("{design} {}", flight["motors"]);
+            let apogee_percent = if flight["deployed_before_apogee_s"].is_null() {
+                &flight["metrics"]["apogee_m"]["relative_percent"]
+            } else {
+                &flight["apogee_with_the_causes_removed"]["parachutes_held"]["relative_percent"]
+            };
+            let speed_percent = &flight["metrics"]["max_speed_m_s"]["relative_percent"];
+            for (what, percent) in [("apogee", apogee_percent), ("largest speed", speed_percent)] {
+                let percent = percent.as_f64().unwrap_or(f64::NAN);
+                assert!(percent.abs() <= 5.0, "{at}: {what} {percent}% off");
+            }
+            if let Some(separation) = flight.get("staging") {
+                let times = &separation["separation_s"];
+                let (hpr, openrocket) = (
+                    times["hpr"].as_f64().unwrap(),
+                    times["openrocket"].as_f64().unwrap(),
+                );
+                assert!(
+                    (hpr - openrocket).abs() < 1e-6,
+                    "{at}: {hpr} s, {openrocket} s"
+                );
+            }
+        }
+    }
+
     #[test]
     fn every_named_cause_is_sized_by_openrockets_own_flight_without_it() {
         // M2.2e4: each named cause is sized by OpenRocket's flight of the same configuration
@@ -1704,7 +1843,8 @@ mod tests {
                 within += usize::from(agrees);
             }
         }
-        assert_eq!((sized, over, within), (9, 5, 4));
+        // M1.9c added the cluster's three flights with an early parachute, one of them over 5%.
+        assert_eq!((sized, over, within), (12, 6, 5));
         let summary = &report["summary"]["apogee_with_the_causes_removed"];
         assert_eq!(summary["over_5_percent"], over);
         assert_eq!(summary["over_5_percent_sized"], over);

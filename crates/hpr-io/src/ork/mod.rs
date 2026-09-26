@@ -41,6 +41,7 @@ pub mod motors;
 mod reads;
 pub mod recovery;
 pub mod simulations;
+pub mod staging;
 pub mod value;
 mod warning;
 
@@ -62,6 +63,7 @@ pub use simulations::{
     Atmosphere, LaunchConditions, OPENROCKET_CALCULATOR, OPENROCKET_SIMULATOR, StoredBranch,
     StoredEvent, StoredReferenceExclusion, StoredResults, StoredSimulation, WindLevel,
 };
+pub use staging::{Staging, StagingTrigger};
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
 
@@ -95,7 +97,10 @@ impl OrkFile {
 #[non_exhaustive]
 pub struct Design {
     /// The rocket, as [`rocket`] reads it, with [`Rocket::configurations`] holding the
-    /// configurations in [`Design::motors`] that were not left out.
+    /// configurations in [`Design::motors`] that were not left out, each motor lit as the file
+    /// says. A configuration whose [`MotorConfiguration::staging`] is set must be flown with that
+    /// separation (`hpr::ork::separation`): without it the stack carries its booster to the ground
+    /// with the sustainer lit on it.
     ///
     /// [`Rocket::configurations`]: hpr_design::Rocket::configurations
     pub rocket: hpr_design::Rocket,
@@ -320,17 +325,22 @@ fn read_design(
         extensions: Extensions::default(),
     };
     if let Some(element) = file.document.root.child("rocket") {
+        // The separations first: a configuration flies only if its stages come apart as hpr
+        // can fly them.
+        design.recovery =
+            recovery::read(element, &design.rocket, walked.devices, walked.separations);
         design.motors = motors::read(
             element,
             &mut design.rocket,
-            incomplete.as_deref(),
+            motors::Airframe {
+                incomplete: incomplete.as_deref(),
+                separations: &design.recovery.separations,
+            },
             &walked.mounts,
             &file.attachments,
             supplied,
             &mut warnings,
         );
-        design.recovery =
-            recovery::read(element, &design.rocket, walked.devices, walked.separations);
     }
     (design, warnings, walked.read)
 }
