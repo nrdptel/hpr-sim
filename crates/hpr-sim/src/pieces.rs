@@ -33,7 +33,8 @@ pub enum Parting {
         component: String,
     },
     /// Around the internal component with this id: it and everything inside it leave the piece
-    /// that carries it, as a payload pushed out of a body tube does.
+    /// that carries it, as a payload pushed out of a body tube does. It must be inside the
+    /// airframe, one part (not one copy of a cluster's), and not inside another payload.
     Payload {
         /// The id of the internal component that leaves.
         component: String,
@@ -59,6 +60,7 @@ pub enum Parting {
 /// [adr-085]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-085-ejected-pieces-an-airframe-that-parts-at-any-joint-2026-09-26
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Ejection {
     /// When the piece leaves: the same triggers as a recovery device's.
     pub trigger: Trigger,
@@ -116,9 +118,10 @@ impl Pieces {
     ///
     /// [`SimError::Parting`] for an ejection that names a component the design doesn't have, a
     /// joint aft of an internal component or of the last body component, a payload that is a body
-    /// component or one of several copies in a cluster, two partings at one joint or of one
-    /// payload, or a split through a stage or component whose overridden mass doesn't say how it
-    /// divides; [`SimError::Domain`] for a separation with no stage aft of it.
+    /// component, an external part, one of several copies in a cluster or inside another payload,
+    /// two partings at one joint or of one payload, or a split through a stage or component whose
+    /// overridden mass doesn't say how it divides; [`SimError::Domain`] for a separation with no
+    /// stage aft of it.
     pub(crate) fn new(
         rocket: &Rocket,
         assembly: &Assembly,
@@ -170,7 +173,13 @@ impl Pieces {
                         ));
                     }
                     // `index` is a body component, so it is in `top`.
-                    let at = top.iter().position(|&body| body == index).unwrap_or(0) + 1;
+                    let Some(at) = top.iter().position(|&body| body == index).map(|at| at + 1)
+                    else {
+                        return Err(refuse(
+                            "a body component missing from the layout",
+                            component,
+                        ));
+                    };
                     if at >= top.len() {
                         return Err(refuse(
                             "a joint aft of the last body component (nothing is aft of it)",
@@ -195,9 +204,16 @@ impl Pieces {
                             component,
                         ));
                     }
+                    if components[index].body_radius_m.is_some() {
+                        return Err(refuse(
+                            "a payload is carried inside the airframe, and this part is outside it",
+                            component,
+                        ));
+                    }
                     if components[index].copies_m.len() != 1 {
                         return Err(refuse(
-                            "a payload in a cluster of tubes (it is one of several copies)",
+                            "a payload that isn't exactly one part (one of several copies in a \
+                             cluster of tubes, or none)",
                             component,
                         ));
                     }
@@ -208,6 +224,20 @@ impl Pieces {
                 }
             }
             piece += 1;
+        }
+
+        // A payload inside another would need a piece carried by a piece; not flown yet.
+        for &(payload, _) in &payloads {
+            let mut ancestor = components[payload].parent;
+            while let Some(index) = ancestor {
+                if payloads.iter().any(|(other, _)| *other == index) {
+                    return Err(refuse(
+                        "a payload inside another payload",
+                        &components[payload].id,
+                    ));
+                }
+                ancestor = components[index].parent;
+            }
         }
 
         // Every component's piece. A parent is placed before its children, so its piece is known.
@@ -270,7 +300,8 @@ impl Pieces {
             }
             if rocket
                 .stages
-                .get(stage)
+                .iter()
+                .find(|stage| stage.id == placed.id)
                 .is_some_and(|stage| !stage.overrides.is_empty())
             {
                 return Err(refuse(
@@ -837,6 +868,94 @@ mod tests {
         );
     }
 
+    /// The two-stage test design with no separation, flown from a drop at 1,500 m with a canopy
+    /// on each of its `bodies` and `ejections`.
+    fn two_stage_pieces(ejections: Vec<Ejection>, bodies: usize) -> (Simulation, FlightResult) {
+        let air = UniformAir::sea_level();
+        let sim = Simulation::new(
+            &design("synthetic-two-stage-75mm-54mm"),
+            "j760-i175",
+            analytic_environment(air, G),
+            Rail::vertical(6.0),
+            FlightSettings {
+                max_time_s: 3600.0,
+                ..FlightSettings::default()
+            },
+        )
+        .unwrap()
+        .with_recovery(
+            (0..bodies)
+                .map(|body| canopy(body, 0.8, Trigger::Apogee))
+                .collect(),
+        )
+        .unwrap()
+        .with_ejections(ejections)
+        .unwrap();
+        let start = dropped(&sim, 1_500.0, DVec3::new(0.0, 0.0, -0.5), DVec3::ZERO);
+        let result = sim.run_free(START_S, start, &mut ()).unwrap();
+        (sim, result)
+    }
+
+    #[test]
+    fn partings_that_fire_together_on_the_way_down_count_each_piece_once() {
+        // The booster section leaves at apogee. At 300 m two more partings fire in the same pass
+        // on the body left: aft of the nose and aft of the sustainer's airframe. Whichever is
+        // handled first, the piece the other makes has moved to the body that left, so it must
+        // part there, not on the body it was listed against (found in review: the interstage was
+        // counted twice, 1.7651 kg landed from a 1.6752 kg rocket).
+        let at_300_m = Trigger::Altitude {
+            height_above_ground_m: 300.0,
+        };
+        let orders = [
+            vec![
+                Ejection::aft_of(Trigger::Apogee, "interstage"),
+                Ejection::aft_of(at_300_m, "nose"),
+                Ejection::aft_of(at_300_m, "sustainer-airframe"),
+            ],
+            vec![
+                Ejection::aft_of(Trigger::Apogee, "interstage"),
+                Ejection::aft_of(at_300_m, "sustainer-airframe"),
+                Ejection::aft_of(at_300_m, "nose"),
+            ],
+        ];
+        for (order, ejections) in orders.into_iter().enumerate() {
+            let (sim, result) = two_stage_pieces(ejections, 4);
+            assert!(result.bodies_landed(), "order {order}");
+            let pieces: Vec<Vec<usize>> = result
+                .bodies
+                .iter()
+                .map(|body| body.pieces.clone())
+                .collect();
+            assert_eq!(
+                pieces,
+                vec![vec![0], vec![1], vec![2], vec![3]],
+                "order {order}"
+            );
+            let whole_kg = sim.assembly().mass_properties(START_S).mass_kg;
+            let sum_kg: f64 = result.bodies.iter().map(|body| body.mass_kg).sum();
+            close(
+                sum_kg,
+                whole_kg,
+                1e-12,
+                &format!("order {order}: the bodies' mass"),
+            );
+            // Each body is its own components: the nose, and the interstage alone.
+            close(
+                result.bodies[0].mass_kg,
+                component_kg(&sim, "nose"),
+                1e-12,
+                "the nose cone",
+            );
+            let interstage = if order == 0 { 3 } else { 2 };
+            close(
+                result.bodies[interstage].mass_kg,
+                component_kg(&sim, "interstage"),
+                1e-12,
+                &format!("order {order}: the interstage"),
+            );
+        }
+    }
+
     /// The parting error of `ejections` on the payload design, with a device on every body.
     fn refused(ejections: Vec<Ejection>) -> SimError {
         let devices = (0..=ejections.len())
@@ -885,6 +1004,11 @@ mod tests {
                 "sustainer-airframe",
             ),
             (
+                vec![Ejection::payload(apogee, "sustainer-fins")],
+                "a payload is carried inside the airframe, and this part is outside it",
+                "sustainer-fins",
+            ),
+            (
                 vec![Ejection::payload(apogee, "nose")],
                 "a payload is carried inside the airframe, and this is a body component (a body \
                  component leaves at a joint, `Parting::AftOf`)",
@@ -915,6 +1039,41 @@ mod tests {
                 "{expected}"
             );
         }
+
+        // A payload inside another payload.
+        let mut rocket = with_payload();
+        let airframe = &mut rocket.stages[0].components[1];
+        let mut inner = airframe
+            .children
+            .iter()
+            .find(|child| child.id == "altimeter")
+            .cloned()
+            .unwrap();
+        inner.id = "inner".to_owned();
+        inner.position = Some(Position::Top { aft_offset_m: 0.0 });
+        let outer = airframe
+            .children
+            .iter_mut()
+            .find(|child| child.id == "sustainer-motor-mount")
+            .unwrap();
+        outer.children.push(inner);
+        let error = Simulation::new(
+            &rocket,
+            "i175",
+            analytic_environment(UniformAir::sea_level(), G),
+            Rail::vertical(3.0),
+            FlightSettings::default(),
+        )
+        .unwrap()
+        .with_ejections(vec![
+            Ejection::payload(apogee, "sustainer-motor-mount"),
+            Ejection::payload(apogee, "inner"),
+        ])
+        .unwrap_err();
+        assert_eq!(
+            what(error),
+            ("a payload inside another payload", "inner".to_owned())
+        );
 
         // A stage whose mass is overridden can't be divided between pieces.
         let mut rocket = with_payload();
@@ -1027,7 +1186,8 @@ mod tests {
 
     #[test]
     fn a_flight_without_partings_is_unchanged() {
-        // No ejection, no separation: one piece, and no bodies.
+        // No ejection, no separation: one piece, no bodies, and the same flight to the bit as one
+        // never given the empty list.
         let sim = Simulation::new(
             &with_payload(),
             "i175",
@@ -1040,11 +1200,168 @@ mod tests {
         )
         .unwrap()
         .with_recovery(vec![canopy(0, 0.9, Trigger::Apogee)])
-        .unwrap()
-        .with_ejections(Vec::new())
         .unwrap();
-        let result: FlightResult = sim.run(&mut ()).unwrap();
+        let plain: FlightResult = sim.run(&mut ()).unwrap();
+        let result = sim
+            .with_ejections(Vec::new())
+            .unwrap()
+            .run(&mut ())
+            .unwrap();
         assert_eq!(result.termination, Termination::GroundHit);
         assert!(result.bodies.is_empty());
+        assert_eq!(result, plain);
+    }
+
+    #[test]
+    fn an_override_that_covers_only_its_own_part_still_divides() {
+        // The airframe's own mass overridden, not what it holds: the payload's mass is still its
+        // own, and the pieces still add up to the rocket.
+        let mut rocket = with_payload();
+        rocket.stages[0].components[1].overrides.mass_kg = Some(0.5);
+        let sim = Simulation::new(
+            &rocket,
+            "i175",
+            analytic_environment(UniformAir::sea_level(), G),
+            Rail::vertical(3.0),
+            FlightSettings {
+                max_time_s: 3600.0,
+                ..FlightSettings::default()
+            },
+        )
+        .unwrap()
+        .with_recovery(devices())
+        .unwrap()
+        .with_ejections(ejections())
+        .unwrap();
+        let start = dropped(&sim, 1_500.0, DVec3::new(0.0, 0.0, -0.5), DVec3::ZERO);
+        let result = sim.run_free(START_S, start, &mut ()).unwrap();
+        assert!(result.bodies_landed());
+        let whole_kg = sim.assembly().mass_properties(START_S).mass_kg;
+        let sum_kg: f64 = result.bodies.iter().map(|body| body.mass_kg).sum();
+        close(sum_kg, whole_kg, 1e-12, "the pieces' mass");
+        close(result.bodies[2].mass_kg, PAYLOAD_KG, 1e-12, "the payload");
+    }
+
+    #[test]
+    fn refusals_in_flight_name_what_fired() {
+        // The two-stage design with its sustainer lit by the separation half a second after the
+        // booster burns out.
+        let mut rocket = design("synthetic-two-stage-75mm-54mm");
+        rocket.configurations[0]
+            .motors
+            .iter_mut()
+            .find(|motor| motor.mount == "sustainer-motor-mount")
+            .unwrap()
+            .ignition = hpr_design::Ignition::Separation { delay_s: 0.0 };
+        let build = || {
+            Simulation::new(
+                &rocket,
+                "j760-i175",
+                analytic_environment(UniformAir::sea_level(), G),
+                Rail::vertical(6.0),
+                FlightSettings {
+                    max_time_s: 3600.0,
+                    ..FlightSettings::default()
+                },
+            )
+            .unwrap()
+        };
+        let booster = build()
+            .assembly()
+            .motors
+            .iter()
+            .position(|motor| motor.mount == "booster-motor-mount")
+            .unwrap();
+        let sustainer = 1 - booster;
+        let devices = (0..3)
+            .map(|body| canopy(body, 0.8, Trigger::Time { time_s: 0.0 }))
+            .collect::<Vec<_>>();
+        let domain = |error: SimError| match error {
+            SimError::Domain { what, .. } => what,
+            other => panic!("{other:?}"),
+        };
+
+        // A powered separation in a flight with ejections: the sustainer's pieces aren't tracked.
+        let error = build()
+            .with_recovery(devices.clone())
+            .unwrap()
+            .with_separation(Separation::new(
+                Trigger::Burnout {
+                    motor: booster,
+                    delay_s: 0.5,
+                },
+                0,
+            ))
+            .unwrap()
+            .with_ejections(vec![Ejection::aft_of(Trigger::Apogee, "nose")])
+            .unwrap()
+            .run(&mut ())
+            .unwrap_err();
+        assert_eq!(
+            domain(error),
+            "time of a powered separation in a flight with ejections (the pieces of a sustainer \
+             aren't tracked)"
+        );
+
+        // An ejection ahead of a separation that would light the sustainer.
+        let error = build()
+            .with_recovery(devices.clone())
+            .unwrap()
+            .with_separation(Separation::new(Trigger::Time { time_s: 3_000.0 }, 0))
+            .unwrap()
+            .with_ejections(vec![Ejection::aft_of(Trigger::Apogee, "nose")])
+            .unwrap()
+            .run(&mut ())
+            .unwrap_err();
+        assert_eq!(
+            domain(error),
+            "time of an ejection before the separation that lights a motor (the pieces would \
+             never light it)"
+        );
+
+        // An ejection timed from the sustainer, which has no ignition before the flight.
+        let error = build()
+            .with_recovery(devices)
+            .unwrap()
+            .with_separation(Separation::new(Trigger::Time { time_s: 3_000.0 }, 0))
+            .unwrap()
+            .with_ejections(vec![Ejection::aft_of(
+                Trigger::MotorDelay { motor: sustainer },
+                "nose",
+            )])
+            .unwrap_err();
+        assert_eq!(
+            domain(error),
+            "index of the motor an ejection is timed from (it has no ignition time before the \
+             flight, so the ejection could never fire)"
+        );
+    }
+
+    #[test]
+    fn an_ejection_reads_and_writes_as_json() {
+        let ejection = Ejection::payload(
+            Trigger::Altitude {
+                height_above_ground_m: 300.0,
+            },
+            "payload",
+        );
+        let text = serde_json::to_string(&ejection).unwrap();
+        assert_eq!(
+            text,
+            r#"{"trigger":{"altitude":{"height_above_ground_m":300.0}},"parting":{"payload":{"component":"payload"}}}"#
+        );
+        assert_eq!(serde_json::from_str::<Ejection>(&text).unwrap(), ejection);
+        // A misspelt field is refused, inside the parting as well as outside it.
+        for text in [
+            r#"{"trigger":"apogee","parting":{"aft_of":{"component":"nose","x":1}}}"#,
+            r#"{"trigger":"apogee","parting":{"aft_of":{"component":"nose"}},"x":1}"#,
+        ] {
+            assert!(serde_json::from_str::<Ejection>(text).is_err(), "{text}");
+        }
+        let read: Ejection = serde_json::from_str(
+            r#"{"trigger":"apogee","parting":{"aft_of":{"component":"nose"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(read, Ejection::aft_of(Trigger::Apogee, "nose"));
     }
 }

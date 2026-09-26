@@ -391,7 +391,9 @@ A piece of the airframe leaving the rest on a trigger, at a joint you choose rat
 stage boundary: a nose cone pushed off its airframe, a body section, or a payload carried inside.
 Each piece then comes down on its own under its own recovery device. Pieces tied together by a
 shock cord fly as one, so they are not an ejection. Compare [separation](#separation), which parts
-the rocket at a stage boundary. See [Recovery: ejected pieces](physics/recovery.md#ejected-pieces).
+the rocket at a stage boundary. In hobby use "ejection" often means the charge firing; in hpr that
+is a recovery device's trigger (see [ejection delay](#ejection-delay)), and the charge's push on
+the pieces is not modelled yet. See [Recovery: ejected pieces](physics/recovery.md#ejected-pieces).
 
 ## Ejection delay
 

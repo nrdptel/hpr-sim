@@ -7447,17 +7447,22 @@ has no notion of a joint below a stage, but its layout places every component wi
    `with_children`, and a component whose subtree parts by `own` plus its children's. An override
    that doesn't say how its mass divides is refused rather than spread: a stage's, or a
    component's that covers what it holds (`overrides_include_children`). So is a payload that is
-   one copy of several in a cluster of tubes. A motor belongs to its mount's piece.
+   one copy of several in a cluster of tubes, an external part, or one inside another payload (the
+   numbering handles it, but nothing tests it yet). A motor belongs to its mount's piece.
 5. **Each parting adds no impulse.** At the first parting, from the rigid stack, every body starts
    at its own centre of mass with that point's velocity, `v_O + ω × r_cg`, as in ADR-014. A later
    parting happens to a body already flying as a point mass, which has no attitude to place its
    pieces by. Both pieces start at its point and velocity, and its mass steps down; the error in
    position is at most the rocket's length. In both cases the momenta add up exactly, less
-   rounding.
+   rounding; on the way down that is by construction. Partings that fire in one pass are taken
+   one at a time, asking after each which are still the body's: a parting can move another's
+   piece to the body that leaves, which then parts it at its start. Review found the first draft
+   asking once, which counted a piece twice.
 6. **Every motor must have burned out** when an ejection fires, as ADR-014 requires of an aft
    body's: a trigger known before the flight to come earlier is refused when it is given, and one
    that fires early is an error in flight. An ejection before a separation that would light a
-   motor is refused too, since the pieces would never light it.
+   motor is refused too, since the pieces would never light it. So a separation that fires on the
+   way down never lights one.
 7. **Devices act when their body flies.** As in ADR-014, only body 0's devices act before the
    airframe first parts. After it, a body's devices act on it, and a piece still joined to its
    body waits: its devices' drag area was computed for that piece, not for the body.

@@ -166,8 +166,9 @@ pub struct FlightResult {
     pub final_sample: Sample,
     /// The integrator's work.
     pub stats: Stats,
-    /// The descents of the separated bodies, in body order: every body when the flight ended with
-    /// [`Termination::Separated`], the booster alone after a powered separation (the sustainer's
+    /// The descents of the separated bodies, in body order: every body that flew on its own when
+    /// the flight ended with [`Termination::Separated`] (pieces whose parting never fired land as
+    /// one body), the booster alone after a powered separation (the sustainer's
     /// flight is the rest of this result), and none otherwise.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bodies: Vec<BodyFlight>,
@@ -443,12 +444,14 @@ impl Simulation {
     ///
     /// # Errors
     ///
-    /// [`SimError::Domain`] if the design has no stage aft of the split, if a device names a body
-    /// that the separation doesn't make, if a body carries no device (the descent has no airframe
-    /// drag, so it would fall as if in a vacuum), if the trigger is out of its domain, or if its
-    /// time is known and an aft body's motor burns past it, or if it is timed from a motor with no
-    /// ignition known before the flight, so that it could never fire. The same checks run again if
-    /// [`Self::with_recovery`] is called afterwards, so the builders can be given in either order.
+    /// [`SimError::Domain`] if the design has no stage aft of the split, if a body carries no
+    /// device (the descent has no airframe drag, so it would fall as if in a vacuum), if the
+    /// trigger is out of its domain, or if its time is known and an aft body's motor burns past
+    /// it, or if it is timed from a motor with no ignition known before the flight, so that it
+    /// could never fire; [`SimError::Parting`] if an ejection already given parts at its stage
+    /// boundary. The same checks run again if [`Self::with_recovery`] is called afterwards, so the
+    /// builders can be given in any order. A device on a body that nothing makes is refused when
+    /// the flight starts, since an ejection given later can make it.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
@@ -519,10 +522,12 @@ impl Simulation {
     ///
     /// # Errors
     ///
-    /// [`SimError::Parting`] for a parting the design can't make ([`crate::Ejection`] lists
-    /// them); [`SimError::Domain`] if a device names a body that doesn't exist or a body carries
-    /// no device, if a trigger is out of its domain, if its time is known and a motor burns past
-    /// it, or if it is timed from a motor with no ignition known before the flight.
+    /// [`SimError::Parting`] for a parting the design can't make; [`SimError::Domain`] if a body
+    /// carries no device, if a trigger is out of its domain, if its time is known and a motor burns
+    /// past it, or if it is timed from a motor with no ignition known before the flight. A device
+    /// on a body that nothing makes is refused when the flight starts. In flight, an ejection that
+    /// fires while a motor burns, or ahead of a separation that would light one, is an error, and
+    /// so is a powered separation in a flight with ejections.
     pub fn with_ejections(mut self, ejections: Vec<Ejection>) -> Result<Self, SimError> {
         Pieces::new(
             &self.rocket,
@@ -1557,12 +1562,15 @@ impl Simulation {
             }
 
             // Its splits whose trigger has come: the piece that leaves starts here, at this
-            // body's point and velocity, and is flown after it.
-            let sample = self.body_sample(body, mass_kg, t, &y, run)?;
+            // body's point and velocity, and is flown after it. One at a time, since a split can
+            // move another's piece to the body that leaves, which then parts it there. Asking
+            // once for them all counted the interstage twice when two fired in one pass (found
+            // in review).
+            let mut pending = split.pending(&leaders, body);
             let mut parted = false;
-            for index in split.pending(&leaders, body) {
-                let (trigger, time_s, kind) = self.split(index);
-                let fires = match trigger {
+            let fires = |index: usize, sample: &BodySample| {
+                let (trigger, time_s, _) = self.split(index);
+                match trigger {
                     Trigger::Time { .. } | Trigger::MotorDelay { .. } | Trigger::Burnout { .. } => {
                         time_s.is_some_and(|time| t >= time)
                     }
@@ -1573,25 +1581,17 @@ impl Simulation {
                         sample.vertical_speed_m_s < 0.0
                             && sample.height_above_ground_m <= height_above_ground_m
                     }
+                }
+            };
+            while !pending.is_empty() {
+                let sample = self.body_sample(body, mass_kg, t, &y, run)?;
+                let Some(index) = pending.iter().copied().find(|&index| fires(index, &sample))
+                else {
+                    break;
                 };
-                if !fires {
-                    continue;
-                }
-                if let (EventKind::Separation, Some(separation)) = (kind, self.separation)
-                    && self
-                        .vehicle
-                        .assembly
-                        .ignition_times_s(|stage| (stage == separation.after_stage).then_some(t))
-                        .iter()
-                        .zip(split.ignition_s)
-                        .any(|(would, is)| would.is_some() && is.is_none())
-                {
-                    return Err(SimError::Domain {
-                        what: "time of a separation that lights a motor, after the airframe has \
-                               already come apart (the pieces are point masses)",
-                        value: t,
-                    });
-                }
+                // A separation still to come here lights no motor: an ejection ahead of one that
+                // would is refused in the ascent.
+                let kind = self.split(index).2;
                 events.push(BodyEvent { kind, sample });
                 split.open[index] = true;
                 leaders = split.pieces.leaders(split.open);
@@ -1617,6 +1617,7 @@ impl Simulation {
                     velocity_enu_m_s: DVec3::new(y[3], y[4], y[5]),
                     mass_kg: leaving_kg,
                 });
+                pending = split.pending(&leaders, body);
                 parted = true;
             }
             if parted {
@@ -1637,7 +1638,7 @@ impl Simulation {
                     _ => None,
                 })
                 .collect();
-            for index in split.pending(&leaders, body) {
+            for &index in &pending {
                 if let Trigger::Altitude {
                     height_above_ground_m,
                 } = self.split(index).0

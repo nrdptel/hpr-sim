@@ -370,6 +370,8 @@ impl DeviceDrag {
 
     /// The drag area of the stages `first..=last` of `assembly` tumbling on their own, which is
     /// what a separated body does ([`Separation`]). [`Self::tumbling`] is this over every stage.
+    /// It covers whole stages only: for an ejected piece that is part of a stage
+    /// ([`crate::Ejection`]) it is the whole stage's area, not the piece's.
     ///
     /// # Errors
     ///
@@ -646,8 +648,10 @@ pub struct Device {
     /// deploys.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub released_by: Option<usize>,
-    /// Which body it is attached to, after a separation ([`Separation`]): body 0 keeps the nose,
-    /// body 1 is the stages aft of the split. Without a separation there is only body 0.
+    /// Which body it is attached to, after a separation ([`Separation`]) or an ejection
+    /// ([`crate::Ejection`]): body 0 keeps the nose, body 1 is the separation's aft stages, and each
+    /// ejection's piece the next number, in the order given, so with no separation the first
+    /// ejection makes body 1. Without either there is only body 0.
     #[serde(default)]
     pub body: usize,
 }
@@ -692,7 +696,9 @@ impl Device {
         self
     }
 
-    /// The same device, carried by body `index` after a separation ([`Separation`]).
+    /// The same device, carried by body `index` after a separation ([`Separation`]) or an
+    /// ejection ([`crate::Ejection`]); [`Self::body`] has the numbering. It acts only once that
+    /// body flies on its own.
     #[must_use]
     pub fn on_body(mut self, index: usize) -> Self {
         self.body = index;
@@ -1297,7 +1303,9 @@ pub struct BodyFlight {
     /// Its mass when it lands, kg. It is constant between splits, and steps down when a piece
     /// leaves it on the way down (an [`crate::EventKind::Ejection`] among its events).
     pub mass_kg: f64,
-    /// Where it started: the separation, with its own centre of mass and that point's velocity.
+    /// Where it started flying on its own: at the airframe's first parting, its own centre of mass
+    /// and that point's velocity; at a later one, on the way down, the point and velocity of the
+    /// body it left.
     pub start_sample: BodySample,
     /// Why its descent ended.
     pub termination: crate::Termination,
