@@ -7,7 +7,7 @@
 //! cargo run --example flight_metrics -p hpr-sim
 //! ```
 //!
-//! The documentation site's *Flight metrics* page (`docs/flight-metrics.md`) walks through it.
+//! The documentation site's *Flight metrics* page (`docs/physics/metrics.md`) walks through it.
 //! What it prints is kept next to it in `flight_metrics.output.txt`, and CI checks that the two
 //! still agree (`cargo xtask examples --check`).
 
@@ -37,7 +37,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let environment =
         Environment::standard(site)?.with_wind(ConstantWind::new(5.0, 270.0_f64.to_radians())?);
 
-    // One parachute, fired 6 s after the motor burns out: a guess at the motor's delay.
+    // One parachute, fired 6 s after the motor burns out (a guess at the motor's delay), which
+    // opens fully half a second after its charge.
     let simulation = Simulation::new(
         &rocket,
         "example",
@@ -62,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let flight = simulation.run(&mut metrics)?;
     let summary = metrics.summary(&flight, simulation.environment())?;
 
-    println!("Valetudo on a K400C, a 1.5 m parachute fired 6 s after burnout");
+    println!("Valetudo on a K400C, a 1.5 m parachute fired 6 s after burnout, open 0.5 s later");
     println!("Not yet validated: see the Accuracy page before trusting these numbers.");
     println!();
     let launch_m = summary.launch_height_m.ok_or("no flight")?;
@@ -72,7 +73,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     match summary.apogee {
         Some(apogee) => println!(
             "Apogee:              {:7.1} m above the site ({:.1} m of climb) at {:.2} s",
-            apogee.height_above_ground_m, apogee.gain_m, apogee.time_s
+            apogee.height_above_ground_m,
+            apogee.gain_m.ok_or("no launch height")?,
+            apogee.time_s
         ),
         None => println!("Apogee:              none"),
     }
@@ -101,6 +104,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!();
 
     let exit = summary.rail_exit_stability.ok_or("no rail exit")?;
+    let exit_speed = summary.rail_exit_speed_m_s.ok_or("no rail exit")?;
+    println!(
+        "Rail exit:            {:.1} m/s at {:.2} s, {:.1}° off the oncoming air",
+        exit_speed.value,
+        exit_speed.time_s,
+        exit.flight_margin.angle_of_attack_rad.to_degrees()
+    );
     let cal = |margin: Option<f64>| margin.map_or("none".to_owned(), |m| format!("{m:.2} cal"));
     println!(
         "At rail exit ({:.2} s): static margin {}, flight margin {} at Mach {:.3}",
@@ -126,8 +136,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     // The delay that would fire the charge at apogee, from a flight with the charge held.
     for best in optimum_delays(&simulation)?.unwrap_or_default() {
         println!(
-            "Optimum delay:        {:.1} s after burnout at {:.2} s (flown: 6.0 s)",
-            best.delay_s, best.burnout_s
+            "Optimum delay:        {:.1} s after burnout at {:.2} s (flown: 6.0 s), for an apogee \
+             of {:.1} m at {:.2} s",
+            best.delay_s, best.burnout_s, best.apogee_height_above_ground_m, best.apogee_s
         );
     }
     // Within 5 cm is none at all: the wind here is due east, and a digit's sign on a

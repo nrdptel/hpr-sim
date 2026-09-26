@@ -662,8 +662,8 @@
     the boost's acceleration apart from the opening shock), the apogee with its datum, the static
     and flight margins from rail exit to apogee (none where the slopes cancel), each motor's optimum
     delay and each landing's latitude and longitude, `None` for what didn't happen; each is
-    unit-tested against a hand value; L33, L34, L35, L94 live. *Result:* met (ADR-077): peak to
-    1.6e-7 of hand (100 Hz differencing 1.3% low); margins to Barrowman's 1e-9; delay 1 s = 20 s.
+    unit-tested against a hand value; L33, L34, L35, L94 live. *Result:* met (ADR-077): peak within
+    1e-6 of hand (100 Hz differencing 1.3% low); margins to Barrowman's 1e-9; delay 1 s = 20 s.
     - Loft lessons: L33, L34, L35, L94.
   - [ ] **M1.10b Fin flutter.** *Done when:* the parent's third bullet is met: flutter speed and
     margin from the cited source match its worked example, each shear modulus cited; L32 live.

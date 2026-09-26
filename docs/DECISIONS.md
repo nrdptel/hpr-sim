@@ -6904,12 +6904,15 @@ compute but not write files.
    parsing checks. The parent's three *done when* bullets are unchanged; a carries the first, b
    the third, c the second.
 2. **Peaks on the dense output.** The observer evaluates the equations of motion at each accepted
-   step's start, middle and end. When the middle is above both ends it runs a golden-section search
-   (Kiefer 1953) on the step's dense output, down to 1e-9 of the flight's clock (at least 1 s).
+   step's start, middle and end. When the parabola through the three bends down with its top inside
+   the step, it runs a golden-section search (Kiefer 1953) on the step's dense output, down to 1e-9
+   of the flight's clock (at least 1 s), and keeps the largest of that and the three samples. (A
+   first version searched only when the middle beat both ends, and missed peaks in a step's outer
+   quarter by up to 1e-4: Juno III's max q, 27205 Pa for 27208.)
    Thrust-curve knots and events already end steps (M1.6a), so a spike's peak is a step's end.
    Peaks start at liftoff; a rocket that never lifts off has none. Measured on Valetudo in a
-   vacuum: the peak acceleration matches the hand value from the motor and the masses to 1.6e-7,
-   where a 100 Hz finite difference reads it 1.3% low.
+   vacuum: the peak acceleration matches the hand value from the motor and the masses to 1.6e-7
+   (the test holds 1e-6), where a 100 Hz finite difference reads it 1.3% low.
 3. **Acceleration.** The nose tip's (the body origin's) acceleration relative to the launch frame,
    as `Sample::acceleration_enu_m_s2` gives it, including gravity. The boost's peak is kept in the
    rail and free phases, the opening shock's in the descent phase, apart (L34).
@@ -6918,19 +6921,27 @@ compute but not write files.
    "dynamic" margin is read as the margin in the flight's own air (its Mach number, total angle of
    attack and the crossing air's roll), which is what OpenRocket's in-flight stability shows and
    RocketPy's `stability_margin` at zero angle. A pitch damping ratio, the other reading, is not
-   built here. Both margins are kept at each step's end from the rail exit to apogee: on the rail
-   the rail holds the rocket, and a slow climb through the wind gives angles near 90°.
+   built here. Both margins are kept at each step's end from the rail exit to apogee or the first
+   deployment: on the rail the rail holds the rocket, and a slow climb through the wind gives
+   angles near 90°. For the same reason the least flight margin counts only entries where the
+   dynamic pressure is at least the rail exit's: near apogee the angle swings toward 90° again
+   (a first version reported a calm Valetudo's apogee, 1.28 calibres, as its least).
 5. **No margin where it would be noise (L33).** With `κ = Σ |C_Nα,i| / Σ C_Nα,i` over the
-   components (the table's own slope with a normal-force table), an error `ε` in one slope moves the
-   centre of pressure by up to `ε κ L`. The margin and the centre of pressure are `None` when the
-   net slope is not positive or `κ > 10`, where a 1% error can move the centre of pressure a tenth
-   of the rocket. The limit is a judgement, not a measurement: a finned rocket sits near 1 and a
-   rocket with a boattail a little above, so 10 leaves every ordinary design its margin. The
-   pitch-moment slope about the centre of mass, `C_mα = −Σ C_Nα,i (x_i − x_cg)/d`, is always given.
+   components (the table's own slope with a normal-force table), the centre of pressure lies within
+   `κ L` of every station, so an error `ε` in one slope moves it by up to `ε κ² L`. The margin and
+   the centre of pressure are `None` when the net slope is not positive or `κ > √10`, where a 1%
+   error can move the centre of pressure a tenth of the rocket. (A first draft took the bound as
+   `ε κ L` and the limit as 10; review showed the bound fails when the centre of pressure lies off
+   the rocket, which is when `κ` is large.) The limit is a chosen bound on that sensitivity, not a
+   measurement. Every bundled design stays below `κ = 1.35` from Mach 0 to 2 and to 20°, so it
+   leaves ordinary designs their margin. The pitch-moment slope about the centre of mass,
+   `C_mα = −(Σ C_Nα,i x_i − x_cg Σ C_Nα,i)/d`, is always given, from a new
+   `NormalForce::moment_slope_m` that keeps a component's pure couple.
 6. **The optimum delay (L94).** A crate-private copy of the simulation with every stack charge
    held flies to its apogee; each motor that burns out before it gets `apogee − burnout`. A
-   separation still happens, and a separated body's devices still act. No apogee (a separation
-   after the last burnout that comes first, say) gives `None`.
+   separation with nothing ahead of it left to burn is recovery and is held too; a powered one
+   still happens, and the motors of the body it drops get no optimum, since their charges fire in
+   that body. No apogee gives `None`.
 7. **Datum and absence (L35).** Heights are the centre of mass's ellipsoidal height above the
    site's; the summary adds the starting height, and the apogee's gain from it (OpenRocket's
    altitude). Every metric that may not happen is an `Option`, which is `null` in JSON.
@@ -6939,10 +6950,11 @@ compute but not write files.
    east and north metres and the ground-hit speed.
 9. **`FlightStep::stability`.** Each step gives the margins at a time from the model flying (the
    sustainer's after a powered split), so a new required trait method; hpr-validate's test stub
-   refuses it. `Evaluation` carries the crossing air's roll angle for it.
+   refuses it. `Evaluation` carries the crossing air's roll angle for it. A watcher keeps one
+   flight, and `summary` refuses a flight it didn't see end.
 
 **Consequences.** The site gains *Flight metrics*, with an example whose output CI checks. The
-margin limit of 10 is a choice that a later model of component uncertainties could replace with a
+margin limit of √10 is a choice that a later model of component uncertainties could replace with a
 measured one. The metrics watch only the main flight: a separated body gets a landing but no
 peaks.
 

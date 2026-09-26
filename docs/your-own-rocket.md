@@ -130,7 +130,9 @@ propellant is gone.
 - **Stability margin:** how far the CP lies behind the CG, in
   [calibres](glossary.md#calibre-caliber), that is, in body diameters. At liftoff it is
   (0.779 − 0.671) m ÷ 0.0563 m ≈ 1.9; the program works from the unrounded values and prints 1.92.
-  At burnout the CG has moved forward, so the margin has grown to 2.99.
+  At burnout the CG has moved forward, so the margin has grown to 2.99. This program works the
+  margin out by hand; hpr also gives it from the rail exit to apogee, with an optimum ejection
+  delay, as [Flight metrics](physics/metrics.md) shows.
 
 A positive margin means that when something tips the rocket, the air turns its nose back into the
 oncoming air. That oncoming air is the *relative wind*: the airflow the rocket feels, from its
@@ -651,8 +653,6 @@ The example leaves out several kinds of part and setting that a design can have:
 
 ## What it can't do yet
 
-- **This program computes its margin by hand.** hpr also gives the margin through the flight, and
-  an optimum ejection delay, as [Flight metrics](physics/metrics.md) shows.
 - **Only in Rust, or in JSON.** A simpler builder ([M4.1](decisions-and-roadmap.md#m4-1), the simpler library interface),
   a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
 - **No import from other programs.** [OpenRocket](glossary.md#openrocket) `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)

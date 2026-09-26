@@ -718,6 +718,8 @@ impl Simulation {
         let mut lifted = start_phase != Phase::Pad;
         let mut burnout_recorded = t0 >= burnout_s;
         let mut separated = false;
+        // An unpowered separation that a held flight skips.
+        let mut separation_held = false;
         let mut events: Vec<FlightEvent> = Vec::new();
         let mut run = Run::new(self.devices.len());
         let record = |events: &mut Vec<FlightEvent>, observer: &mut dyn Observer, kind, sample| {
@@ -869,6 +871,7 @@ impl Simulation {
             // otherwise the ascent ends and every body descends on its own.
             if let Some(separation) = self.separation
                 && !staged
+                && !separation_held
                 && matches!(phase, Phase::Free | Phase::Descent)
             {
                 let window = (t, next_stop(&stops, t, cap));
@@ -899,9 +902,6 @@ impl Simulation {
                         .vehicle
                         .assembly
                         .ignition_times_s(|stage| (stage == separation.after_stage).then_some(t));
-                    self.check_aft_body_spent(separation, &lit, t)?;
-                    let sample = self.sample(vehicle, phase, window, t, &y, area)?;
-                    record(&mut events, observer, EventKind::Separation, sample);
                     let powered =
                         self.vehicle
                             .assembly
@@ -914,6 +914,15 @@ impl Simulation {
                                         ignition + placed.mounted.motor.burnout_time_s() > t
                                     })
                             });
+                    if self.recovery_held && !powered {
+                        // With nothing ahead of it left to burn it is part of the recovery, so it
+                        // is held with the charges.
+                        separation_held = true;
+                        continue;
+                    }
+                    self.check_aft_body_spent(separation, &lit, t)?;
+                    let sample = self.sample(vehicle, phase, window, t, &y, area)?;
+                    record(&mut events, observer, EventKind::Separation, sample);
                     if !powered {
                         ignition_s = lit;
                         separated = true;
@@ -1957,6 +1966,7 @@ impl FlightStep for StepView<'_> {
             &self.vehicle.aero,
             t_s,
             e.height_above_ground_m,
+            e.dynamic_pressure_pa,
             -e.mass.cg_m.z,
             &Flow::new(e.mach, e.angle_of_attack_rad, e.flow_roll_rad),
         )

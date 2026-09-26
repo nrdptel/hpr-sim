@@ -36,19 +36,21 @@ use crate::flight::{EventKind, FlightEvent, FlightResult, Simulation, Terminatio
 use crate::recorder::{FlightStep, Observer, Sample};
 use crate::recovery::BodySample;
 
-/// The largest ratio `Σ |C_Nα,i| / C_Nα` at which a margin is given.
+/// The largest ratio `κ = Σ |C_Nα,i| / C_Nα` at which a margin is given: `√10`.
 ///
-/// The centre of pressure is `x_cp = Σ C_Nα,i x_i / Σ C_Nα,i`. An error `ε C_Nα,j` in one
-/// component's slope moves it by `ε C_Nα,j (x_j − x_cp) / C_Nα`, which is at most
-/// `ε κ L` for a rocket of length `L`, where `κ = Σ |C_Nα,i| / C_Nα`. A rocket whose slopes all
-/// push the same way has `κ = 1`; a boattail's negative slope raises it a little. As the net slope
-/// goes to zero, `κ` runs away: the loads become a pure couple with no line of action, and the
-/// quotient is noise (Loft published ±12 to 15 calibres so, [lesson L33][l33]). At `κ = 10` a 1%
-/// error in one component's slope can move the centre of pressure by a tenth of the rocket's
-/// length; past it hpr gives no margin, only the pitch-moment slope, which stays finite.
+/// The centre of pressure is `x_cp = Σ C_Nα,i x_i / C_Nα`, with each station `x_i` on the rocket,
+/// in `[0, L]`. Since `x_cp − x_j = Σ C_Nα,i (x_i − x_j) / C_Nα`, it lies within `κ L` of every
+/// station. An error `ε C_Nα,j` in one component's slope moves it by
+/// `ε C_Nα,j (x_j − x_cp) / C_Nα`, so by at most `ε κ² L`. A rocket whose slopes all push the same
+/// way has `κ = 1`, and a 1% error in one slope moves its centre of pressure by at most 1% of its
+/// length. As the net slope goes to zero, `κ` runs away: the loads become a pure couple with no
+/// line of action, and the quotient is noise (Loft published ±12 to 15 calibres so,
+/// [lesson L33][l33]). At `κ = √10` a 1% error in one slope can move the centre of pressure by a
+/// tenth of the rocket's length; past it hpr gives no margin, only the pitch-moment slope, which
+/// stays finite. The limit is a chosen bound on that sensitivity, not a measurement.
 ///
 /// [l33]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l33
-pub const MARGIN_CONDITION_LIMIT: f64 = 10.0;
+pub const MARGIN_CONDITION_LIMIT: f64 = 3.162_277_660_168_379_5;
 
 /// The Mach number of the static margin: the air at rest, as RocketPy's `static_margin` takes it.
 pub const STATIC_MARGIN_MACH: f64 = 0.0;
@@ -79,8 +81,9 @@ pub struct Margin {
     /// magnitude.
     pub slope_magnitude_sum_per_rad: f64,
     /// The pitch-moment slope about the centre of mass on the reference area and diameter, per
-    /// radian: `C_mα = −Σ C_Nα,i (x_i − x_cg) / d`, stations `x` aft of the nose tip. Negative
-    /// restores. It is finite when the margin is not.
+    /// radian: `C_mα = −(Σ C_Nα,i x_i − C_Nα x_cg) / d`, stations `x` aft of the nose tip, from
+    /// [`hpr_aero::NormalForce::moment_slope_m`]. Negative restores. It is finite when the margin
+    /// is not, and with a margin it is `−C_Nα · margin`.
     pub pitch_moment_slope_per_rad: f64,
     /// The centre of pressure, m aft of the nose tip; `None` when the margin is.
     pub cp_station_m: Option<f64>,
@@ -97,9 +100,12 @@ pub struct Stability {
     pub time_s: f64,
     /// The centre of mass's height above the launch site then, m.
     pub height_above_ground_m: f64,
+    /// The dynamic pressure then, Pa: how hard the air presses on the margin's moment.
+    pub dynamic_pressure_pa: f64,
     /// The centre of mass, m aft of the nose tip.
     pub cg_station_m: f64,
-    /// The reference diameter `d` the margins are counted in, m.
+    /// The reference diameter `d` the margins are counted in, m (the sustainer's after a powered
+    /// separation).
     pub reference_diameter_m: f64,
     /// The static margin: the air along the axis at [`STATIC_MARGIN_MACH`], with the centre of
     /// mass of this instant (RocketPy's `static_margin`).
@@ -120,27 +126,14 @@ pub fn margin(aero: &AeroModel, flow: &Flow, cg_station_m: f64) -> Result<Margin
     let normal = aero.normal_force(flow)?;
     let d = aero.reference_diameter_m();
     let slope = normal.slope_per_rad;
-    let (scale, moment_slope) = if aero.normal_force_table().is_some() {
+    let scale = if aero.normal_force_table().is_some() {
         // The table gives one force at one station.
-        let arm = normal.cp_station_m.map_or(0.0, |cp| cp - cg_station_m);
-        (slope.abs(), -slope * arm / d)
+        slope.abs()
     } else {
-        let components = aero.components(flow)?;
-        let scale = components
+        aero.components(flow)?
             .iter()
             .map(|c| c.normal_force.slope_per_rad.abs())
-            .sum();
-        // A component whose own slope is zero has no station and adds no moment.
-        let moment = components
-            .iter()
-            .map(|c| {
-                let force = c.normal_force;
-                force
-                    .cp_station_m
-                    .map_or(0.0, |cp| force.slope_per_rad * (cp - cg_station_m))
-            })
-            .sum::<f64>();
-        (scale, -moment / d)
+            .sum()
     };
     let conditioned = slope > 0.0 && slope * MARGIN_CONDITION_LIMIT >= scale;
     let cp_station_m = normal.cp_station_m.filter(|_| conditioned);
@@ -149,7 +142,7 @@ pub fn margin(aero: &AeroModel, flow: &Flow, cg_station_m: f64) -> Result<Margin
         angle_of_attack_rad: flow.alpha_rad,
         normal_force_slope_per_rad: slope,
         slope_magnitude_sum_per_rad: scale,
-        pitch_moment_slope_per_rad: moment_slope,
+        pitch_moment_slope_per_rad: -(normal.moment_slope_m - slope * cg_station_m) / d,
         cp_station_m,
         margin_cal: cp_station_m.map(|cp| (cp - cg_station_m) / d),
     })
@@ -157,7 +150,7 @@ pub fn margin(aero: &AeroModel, flow: &Flow, cg_station_m: f64) -> Result<Margin
 
 /// The static margin and the flight margin of `aero` at `time_s`, with the centre of mass
 /// `height_above_ground_m` above the launch site and at `cg_station_m` on the airframe, and the
-/// flight's air at `flow`.
+/// flight's air at `flow` pressing with `dynamic_pressure_pa`.
 ///
 /// # Errors
 ///
@@ -166,12 +159,14 @@ pub fn stability(
     aero: &AeroModel,
     time_s: f64,
     height_above_ground_m: f64,
+    dynamic_pressure_pa: f64,
     cg_station_m: f64,
     flow: &Flow,
 ) -> Result<Stability, SimError> {
     Ok(Stability {
         time_s,
         height_above_ground_m,
+        dynamic_pressure_pa,
         cg_station_m,
         reference_diameter_m: aero.reference_diameter_m(),
         static_margin: margin(aero, &Flow::axial(STATIC_MARGIN_MACH), cg_station_m)?,
@@ -186,9 +181,10 @@ pub struct Apogee {
     pub time_s: f64,
     /// The centre of mass's ellipsoidal height above the launch site, m.
     pub height_above_ground_m: f64,
-    /// The rise of the centre of mass from where it started, m: the height above the site less
-    /// [`FlightSummary::launch_height_m`]. OpenRocket's altitude counts so.
-    pub gain_m: f64,
+    /// The rise of the centre of mass from where it stood at launch, m: the height above the site
+    /// less [`FlightSummary::launch_height_m`], as OpenRocket's altitude counts. `None` for a
+    /// flight started in the air ([`Simulation::run_free`]).
+    pub gain_m: Option<f64>,
 }
 
 /// Where something landed: the centre of mass as it reached the launch site's ellipsoidal
@@ -251,7 +247,8 @@ impl Landing {
 pub struct FlightSummary {
     /// Why the flight ended.
     pub termination: Termination,
-    /// The centre of mass's height above the launch site where the flight started, m.
+    /// The centre of mass's height above the launch site as the rocket stood at launch, m. `None`
+    /// for a flight started in the air ([`Simulation::run_free`]).
     pub launch_height_m: Option<f64>,
     /// The speed as the last rail guide left the rail, m/s, with its time and height.
     pub rail_exit_speed_m_s: Option<Peak>,
@@ -270,9 +267,13 @@ pub struct FlightSummary {
     /// The largest acceleration under the recovery devices, m/s²: the opening shock, which
     /// follows the inflation model, kept apart from the boost's.
     pub max_descent_acceleration_m_s2: Option<Peak>,
-    /// The smallest static margin from the rail exit to apogee, calibres, where it is defined.
+    /// The smallest static margin over [`FlightMetrics::stability`], calibres, where it is
+    /// defined. After a powered separation the sustainer's margins count its own diameter.
     pub min_static_margin_cal: Option<Peak>,
-    /// The smallest flight margin from the rail exit to apogee, calibres, where it is defined.
+    /// The smallest flight margin over [`FlightMetrics::stability`] while the dynamic pressure is
+    /// at least the first entry's (the rail exit's), calibres, where it is defined. Near apogee the
+    /// air barely presses and the angle of attack swings toward 90°, where a margin says nothing
+    /// about stability; the entries are all kept in the series.
     pub min_flight_margin_cal: Option<Peak>,
     /// The stability as the last rail guide left the rail.
     pub rail_exit_stability: Option<Stability>,
@@ -292,9 +293,15 @@ impl FlightSummary {
 
 /// Watches a flight and keeps its peaks, and its stability from the rail exit to apogee.
 ///
-/// Each step is sampled at its start, middle and end; when the middle is above both ends a
-/// golden-section search on the dense output finds the peak inside. Thrust-curve knots and events
-/// end steps, so a thrust spike's peak is a step's end. Nothing is kept on the pad.
+/// Each step is sampled at its start, middle and end. When the parabola through the three has its
+/// top inside the step, a golden-section search on the dense output finds the peak there; the
+/// largest of what it finds and the three samples is kept. Thrust-curve knots and events end
+/// steps, so a thrust spike's peak is a step's end. Nothing is kept on the pad.
+///
+/// A watcher keeps one flight: [`FlightMetrics::clear`] it before watching another, and
+/// [`FlightMetrics::summary`] refuses a flight it didn't see end. Like
+/// [`crate::Recorder`], it serializes what it holds for inspection and is built with
+/// [`FlightMetrics::new`], not deserialized.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct FlightMetrics {
     launch_height_m: Option<f64>,
@@ -303,7 +310,13 @@ pub struct FlightMetrics {
     max_q: Option<Peak>,
     max_acceleration: Option<Peak>,
     max_descent_acceleration: Option<Peak>,
+    /// Whether any step was seen, and the last one's end.
+    last_end_s: Option<f64>,
+    /// Whether a step started before the one ahead of it ended: a second flight, not cleared.
+    rewound: bool,
+    on_rail: bool,
     past_apogee: bool,
+    rail_exit: Option<Stability>,
     stability: Vec<Stability>,
 }
 
@@ -346,7 +359,8 @@ impl FlightMetrics {
         *self = Self::default();
     }
 
-    /// The stability from the rail exit to apogee, at every step's end and at the rail exit, in
+    /// The stability from the rail exit (or the start of a flight begun in the air) to apogee or
+    /// the first deployment, whichever comes first: at the rail exit and at every step's end, in
     /// time order.
     #[must_use]
     pub fn stability(&self) -> &[Stability] {
@@ -357,24 +371,39 @@ impl FlightMetrics {
     ///
     /// # Errors
     ///
+    /// [`SimError::Domain`] if this watcher saw no flight, or its last step didn't end where
+    /// `result` did (it watched another flight, or wasn't cleared between two);
     /// [`SimError::Core`] if a landing has no geodetic coordinates.
     pub fn summary(
         &self,
         result: &FlightResult,
         environment: &Environment,
     ) -> Result<FlightSummary, SimError> {
+        let end_s = result.final_sample.time_s;
+        if self.rewound || self.last_end_s != Some(end_s) {
+            return Err(SimError::Domain {
+                what: "end of the flight this watcher saw, s (it must watch the flight it sums up, \
+                       and be cleared before another)",
+                value: self.last_end_s.unwrap_or(f64::NAN),
+            });
+        }
         let apogee = result.event(EventKind::Apogee).map(|event| {
             let height = event.sample.height_above_ground_m;
             Apogee {
                 time_s: event.sample.time_s,
                 height_above_ground_m: height,
-                gain_m: height - self.launch_height_m.unwrap_or(height),
+                gain_m: self.launch_height_m.map(|start| height - start),
             }
         });
         let rail_exit = result.event(EventKind::RailExit).map(|event| event.sample);
-        let minimum = |pick: fn(&Stability) -> &Margin| {
+        let floor_pa = self
+            .stability
+            .first()
+            .map_or(0.0, |s| s.dynamic_pressure_pa);
+        let minimum = |pick: fn(&Stability) -> &Margin, floor_pa: f64| {
             self.stability
                 .iter()
+                .filter(|s| s.dynamic_pressure_pa >= floor_pa)
                 .filter_map(|s| {
                     pick(s).margin_cal.map(|value| Peak {
                         value,
@@ -423,14 +452,9 @@ impl FlightMetrics {
             max_dynamic_pressure_pa: self.max_q,
             max_acceleration_m_s2: self.max_acceleration,
             max_descent_acceleration_m_s2: self.max_descent_acceleration,
-            min_static_margin_cal: minimum(|s| &s.static_margin),
-            min_flight_margin_cal: minimum(|s| &s.flight_margin),
-            rail_exit_stability: rail_exit.and_then(|exit| {
-                self.stability
-                    .iter()
-                    .find(|s| s.time_s == exit.time_s)
-                    .copied()
-            }),
+            min_static_margin_cal: minimum(|s| &s.static_margin, 0.0),
+            min_flight_margin_cal: minimum(|s| &s.flight_margin, floor_pa),
+            rail_exit_stability: self.rail_exit,
             landing,
             body_landings,
         })
@@ -452,41 +476,55 @@ impl Observer for FlightMetrics {
         let phase = step.phase();
         let (a, b) = (step.start_s(), step.end_s());
         let start = step.sample(a)?;
-        if self.launch_height_m.is_none() {
+        if self.last_end_s.is_none() && matches!(phase, Phase::Pad | Phase::Rail) {
             self.launch_height_m = Some(start.height_above_ground_m);
         }
+        if self.last_end_s.is_some_and(|end| a < end) {
+            self.rewound = true;
+        }
+        self.last_end_s = Some(b);
         if phase == Phase::Pad {
             return Ok(());
         }
         let middle = step.sample(0.5 * (a + b))?;
         let end = step.sample(b)?;
+        let peak_of = |value: f64, sample: &Sample| Peak {
+            value,
+            time_s: sample.time_s,
+            height_above_ground_m: sample.height_above_ground_m,
+        };
         for quantity in Quantity::ALL {
             let (va, vm, vb) = (quantity.of(&start), quantity.of(&middle), quantity.of(&end));
-            let best = if vm > va && vm > vb {
-                golden_peak(step, quantity, a, b)?
-            } else if va >= vb {
-                Peak {
-                    value: va,
-                    time_s: a,
-                    height_above_ground_m: start.height_above_ground_m,
+            let mut best = [peak_of(va, &start), peak_of(vm, &middle), peak_of(vb, &end)]
+                .into_iter()
+                .max_by(|x, y| x.value.total_cmp(&y.value))
+                .unwrap_or(peak_of(va, &start));
+            // The parabola through the three, on x = −1, 0, 1 across the step, has its top at
+            // x = (va − vb) / (2 (va − 2 vm + vb)) when it bends down.
+            let bend = va - 2.0 * vm + vb;
+            if bend < 0.0 && (va - vb).abs() < -2.0 * bend {
+                let found = golden_peak(step, quantity, a, b)?;
+                if found.value > best.value {
+                    best = found;
                 }
-            } else {
-                Peak {
-                    value: vb,
-                    time_s: b,
-                    height_above_ground_m: end.height_above_ground_m,
-                }
-            };
+            }
             let slot = self.slot(quantity, phase);
             if slot.is_none_or(|peak| best.value > peak.value) {
                 *slot = Some(best);
             }
         }
+        if phase == Phase::Rail {
+            self.on_rail = true;
+        }
         // On the rail the rail holds the rocket, and its slow climb through the wind makes angles
         // of attack near 90°, so stability starts at the rail exit.
         if !self.past_apogee && phase == Phase::Free {
             if self.stability.is_empty() {
-                self.stability.push(step.stability(a)?);
+                let first = step.stability(a)?;
+                if self.on_rail {
+                    self.rail_exit = Some(first);
+                }
+                self.stability.push(first);
             }
             self.stability.push(step.stability(b)?);
         }
@@ -507,9 +545,9 @@ const INVERSE_PHI: f64 = 0.618_033_988_749_894_9;
 /// value's error goes as the square of the time's, so it is far below the integration's.
 const PEAK_TIME_RESOLUTION: f64 = 1e-9;
 
-/// The largest value of `quantity` on the step `[a, b]`, whose middle is above both ends: a
-/// golden-section search (Kiefer 1953) on the step's dense output, each point one evaluation of
-/// the equations of motion.
+/// The largest value of `quantity` on the step `[a, b]`, where it has one top: a golden-section
+/// search (Kiefer 1953) on the step's dense output, each point one evaluation of the equations of
+/// motion.
 fn golden_peak(
     step: &dyn FlightStep,
     quantity: Quantity,
@@ -551,6 +589,8 @@ pub struct OptimumDelay {
     pub burnout_s: f64,
     /// When the rocket reached apogee with its charges held, s after launch.
     pub apogee_s: f64,
+    /// How high its centre of mass was then, m above the launch site.
+    pub apogee_height_above_ground_m: f64,
     /// The delay from its burnout to that apogee, s.
     pub delay_s: f64,
 }
@@ -558,10 +598,15 @@ pub struct OptimumDelay {
 /// The optimum ejection delay of each motor that burns out before apogee: the time from its
 /// burnout to the apogee of the same flight with every recovery charge held, so that the answer
 /// is a property of the rocket, its motors and its air, and not of the delay flown
-/// ([Loft lesson L94][l94]). A motor that burns out after that apogee, or never lights, has none.
+/// ([Loft lesson L94][l94]).
 ///
-/// It is `None` when the held flight has no apogee: it ended first (a separation after burnout
-/// ends the stack's flight), or never lifted off.
+/// - The held flight holds the stack's devices and any separation with nothing ahead of it left
+///   to burn, which is part of the recovery. A powered separation still happens.
+/// - A motor that burns out after that apogee, or never lights, has none. Nor does a motor in a
+///   body a powered separation drops: its charge fires in that body, which never reaches the
+///   stack's apogee.
+///
+/// It is `None` when the held flight has no apogee (it never lifted off, or hit its time cap).
 ///
 /// # Errors
 ///
@@ -571,20 +616,27 @@ pub struct OptimumDelay {
 pub fn optimum_delays(simulation: &Simulation) -> Result<Option<Vec<OptimumDelay>>, SimError> {
     let held = simulation.with_recovery_held();
     let result = held.run(&mut ())?;
-    let Some(apogee_s) = result
+    let Some((apogee_s, apogee_height_above_ground_m)) = result
         .event(EventKind::Apogee)
-        .map(|event| event.sample.time_s)
+        .map(|event| (event.sample.time_s, event.sample.height_above_ground_m))
     else {
         return Ok(None);
     };
     let assembly = simulation.assembly();
     // A motor lit by a separation has its time only from the flight's ignition event.
     let known = assembly.ignition_times_s(|_| None);
+    let dropped = |stage: usize| {
+        result
+            .bodies
+            .iter()
+            .any(|body| (body.stages.0..=body.stages.1).contains(&stage))
+    };
     Ok(Some(
         assembly
             .motors
             .iter()
             .enumerate()
+            .filter(|(_, placed)| !dropped(placed.stage))
             .filter_map(|(motor, placed)| {
                 let ignition_s = result
                     .event(EventKind::Ignition(motor))
@@ -595,6 +647,7 @@ pub fn optimum_delays(simulation: &Simulation) -> Result<Option<Vec<OptimumDelay
                     motor,
                     burnout_s,
                     apogee_s,
+                    apogee_height_above_ground_m,
                     delay_s: apogee_s - burnout_s,
                 })
             })
@@ -708,7 +761,7 @@ mod tests {
             "a margin of {} cal",
             (cp - cg_m) / 0.1
         );
-        let static_margin = stability(&aero, 0.0, 0.0, cg_m, &Flow::axial(0.3))
+        let static_margin = stability(&aero, 0.0, 0.0, 0.0, cg_m, &Flow::axial(0.3))
             .unwrap()
             .static_margin;
         assert_eq!(static_margin.margin_cal, None);
@@ -729,8 +782,13 @@ mod tests {
         assert!(moment > 0.0);
 
         // Both sides of the limit: κ = Σ|C_Nα,i| / C_Nα = 2/ρ² − 1 with ρ = r/R, so the margin
-        // is given from ρ = √(2/11) = 0.4264 up.
-        for (r_m, defined) in [(0.0215, true), (0.0210, false), (0.04, true)] {
+        // is given from κ = √10, ρ = √(2/(1 + √10)) = 0.6932, up.
+        for (r_m, defined) in [
+            (0.035, true),
+            (0.0345, false),
+            (0.04, true),
+            (0.0215, false),
+        ] {
             let (slope, sum, moment, cp) = nose_and_boattail_by_hand(r_m, cg_m);
             assert_eq!(sum / slope <= MARGIN_CONDITION_LIMIT, defined, "r = {r_m}");
             let m = margin(&nose_and_boattail(r_m), &Flow::axial(0.0), cg_m).unwrap();
@@ -748,6 +806,115 @@ mod tests {
                 assert_eq!(m.margin_cal, None, "r = {r_m}");
             }
         }
+    }
+
+    #[test]
+    fn ordinary_rockets_keep_their_margin() {
+        // The other side of the limit: every bundled design, from Mach 0 to 2 and at angles of
+        // attack to 20°, is far from it. Its slopes nearly all push one way.
+        let mut worst: f64 = 0.0;
+        for name in [
+            "synthetic-54mm-three-fin",
+            "rocketpy-valetudo",
+            "rocketpy-calisto-tests-motor-at-minus-1.373",
+            "rocketpy-ndrt-2020-nose-to-tail",
+            "rocketpy-prometheus-2022-generic-motor",
+            "rocketpy-juno-iii",
+            "synthetic-two-stage-75mm-54mm",
+        ] {
+            let aero = AeroModel::new(&design(name).layout().unwrap()).unwrap();
+            for mach in [0.0, 0.3, 0.8, 1.2, 2.0] {
+                for alpha_deg in [0.0, 5.0, 10.0, 20.0] {
+                    let flow = Flow::new(mach, f64::to_radians(alpha_deg), 0.0);
+                    let m = margin(&aero, &flow, 0.0).unwrap();
+                    assert!(m.margin_cal.is_some(), "{name} at {mach}, {alpha_deg}°");
+                    worst = worst.max(m.slope_magnitude_sum_per_rad / m.normal_force_slope_per_rad);
+                }
+            }
+        }
+        // 1.35 at worst.
+        assert!(worst < 1.5, "{worst}");
+    }
+
+    #[test]
+    fn a_pure_couple_keeps_its_moment() {
+        // A nose (slope 2 at 0.2 m), then a step down from R = 0.05 m to 0.03 m at 0.8 m and a
+        // conical flare back to 0.05 m over 0.2 m: the step's −2(1 − 0.36) = −1.28 at 0.8 m and
+        // the flare's +1.28 at 0.8 + (0.2/3)(1 + 1/1.6) m cancel, leaving that component a pure
+        // couple. It still turns the rocket.
+        let material = json!({"name": "test", "density": {"kind": "bulk", "kg_m3": 1000.0}});
+        let tube = |length_m: f64| {
+            json!({"body_tube": {"length_m": length_m, "outer_radius_m": 0.05,
+                "thickness_m": 0.005, "material": material}})
+        };
+        let rocket: Rocket = serde_json::from_value(json!({
+            "name": "",
+            "stages": [{"id": "stage", "name": "", "components": [
+                {"id": "nose", "name": "", "part": {"nose_cone": {
+                    "shape": {"kind": "conical"}, "length_m": 0.3, "base_radius_m": 0.05,
+                    "wall": {"kind": "filled"}, "shoulder": null, "material": material}}},
+                {"id": "tube", "name": "", "part": tube(0.5)},
+                {"id": "flare", "name": "", "part": {"transition": {
+                    "shape": {"kind": "conical"}, "length_m": 0.2, "fore_radius_m": 0.03,
+                    "aft_radius_m": 0.05, "wall": {"kind": "filled"}, "material": material}}},
+                {"id": "tail", "name": "", "part": tube(0.3)}
+            ]}],
+            "reference_diameter": {"kind": "maximum"},
+            "configurations": []
+        }))
+        .unwrap();
+        let aero = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+        let cg_m = 0.6;
+        let couple = -1.28 * 0.8 + 1.28 * (0.8 + 0.2 / 3.0 * (1.0 + 1.0 / 1.6));
+        let m = margin(&aero, &Flow::axial(0.0), cg_m).unwrap();
+        close(m.normal_force_slope_per_rad, 2.0, 1e-12, "net slope");
+        let cp = (2.0 * 0.2 + couple) / 2.0;
+        close(m.margin_cal.unwrap(), (cp - cg_m) / 0.1, 1e-9, "margin");
+        let moment = -(2.0 * 0.2 + couple - 2.0 * cg_m) / 0.1;
+        close(m.pitch_moment_slope_per_rad, moment, 1e-9, "C_mα");
+        close(
+            m.pitch_moment_slope_per_rad,
+            -2.0 * m.margin_cal.unwrap(),
+            1e-12,
+            "−C_Nα · margin",
+        );
+    }
+
+    #[test]
+    fn a_normal_force_table_gives_its_own_margin() {
+        // A table of one column: C_Nα = 10 on the rocket's reference area, at 1.2 m at every Mach
+        // number. The margin is the table's, and κ is 1.
+        use hpr_aero::{NormalForceColumn, NormalForceTable};
+        use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+        let constant = |y: f64| {
+            Table1D::new(
+                vec![0.0, 2.0],
+                vec![y, y],
+                Interpolation::Linear,
+                Extrapolation::Clamp,
+            )
+            .unwrap()
+        };
+        let table = NormalForceTable::new(vec![NormalForceColumn::new(
+            0.0,
+            constant(10.0),
+            constant(1.2),
+        )])
+        .unwrap();
+        let sim = valetudo(Environment::standard(site()).unwrap(), capped(60.0))
+            .with_normal_force_table(table)
+            .unwrap();
+        let d = sim.aero().reference_diameter_m();
+        let m = margin(sim.aero(), &Flow::axial(0.3), 0.8).unwrap();
+        close(m.normal_force_slope_per_rad, 10.0, 1e-12, "slope");
+        assert_eq!(m.slope_magnitude_sum_per_rad, m.normal_force_slope_per_rad);
+        close(m.margin_cal.unwrap(), (1.2 - 0.8) / d, 1e-12, "margin");
+        close(
+            m.pitch_moment_slope_per_rad,
+            -10.0 * (1.2 - 0.8) / d,
+            1e-12,
+            "C_mα",
+        );
     }
 
     #[test]
@@ -884,7 +1051,7 @@ mod tests {
             "start",
         );
         let apogee = summary.apogee.unwrap();
-        assert_eq!(apogee.gain_m, apogee.height_above_ground_m - start);
+        assert_eq!(apogee.gain_m, Some(apogee.height_above_ground_m - start));
         let landing = summary.landing.unwrap();
         assert_eq!(
             summary.ground_hit_speed_m_s(),
@@ -951,43 +1118,69 @@ mod tests {
 
     #[test]
     fn peaks_are_refined_inside_steps() {
-        // Max q, max speed and max Mach come between the integrator's steps; each peak is above
-        // every sample of a millisecond record and is a local maximum on the dense output.
-        let sim = valetudo(Environment::standard(site()).unwrap(), capped(60.0));
-        let mut recorder = Recorder::new(
-            vec![Channel::Time, Channel::DynamicPressure, Channel::Mach],
-            Some(1e-3),
-        )
-        .unwrap();
-        let result = sim.run(&mut recorder).unwrap();
-        let (_, metrics) = fly(&sim);
-        let summary = metrics.summary(&result, sim.environment()).unwrap();
-        let q = summary.max_dynamic_pressure_pa.unwrap();
-        let recorded_q = recorder.rows().iter().map(|r| r[1]).fold(0.0, f64::max);
-        let recorded_mach = recorder.rows().iter().map(|r| r[2]).fold(0.0, f64::max);
-        assert!(q.value >= recorded_q, "{} < {recorded_q}", q.value);
-        // The record's spacing bounds how far below the peak its best sample can be.
-        assert!(
-            q.value - recorded_q < 1e-4 * q.value,
-            "{} vs {recorded_q}",
-            q.value
-        );
-        let mach = summary.max_mach.unwrap();
-        assert!(mach.value >= recorded_mach);
-        assert!(mach.value - recorded_mach < 1e-4 * mach.value);
-        // Max q comes after burnout here, as the rocket coasts faster than the air thins.
-        // At the speed's peak the acceleration is zero, so q = ½ρv² falls there with the density
-        // (dq/dt = ½v² dρ/dt < 0) and peaked earlier; the Mach number still rises with the
-        // falling speed of sound, and peaks later.
-        let speed = summary.max_speed_m_s.unwrap();
-        assert!(q.time_s < speed.time_s, "{} vs {}", q.time_s, speed.time_s);
-        assert!(
-            speed.time_s < mach.time_s,
-            "{} vs {}",
-            speed.time_s,
-            mach.time_s
-        );
-        assert!(q.height_above_ground_m > 0.0);
+        // Max q and max Mach come between the integrator's steps, some in a step's outer quarter,
+        // where its middle sample is below an end. On each rocket every peak is at least every
+        // sample of a millisecond record, and within the record's spacing of the best.
+        for (name, configuration) in [
+            ("rocketpy-valetudo", "example"),
+            ("rocketpy-juno-iii", "example"),
+            ("rocketpy-calisto-tests-motor-at-minus-1.373", "example"),
+        ] {
+            let sim = Simulation::new(
+                &design(name),
+                configuration,
+                Environment::standard(site()).unwrap(),
+                Rail::vertical(5.0),
+                capped(20.0),
+            )
+            .unwrap();
+            let mut recorder = Recorder::new(
+                vec![Channel::Time, Channel::DynamicPressure, Channel::Mach],
+                Some(1e-3),
+            )
+            .unwrap();
+            sim.run(&mut recorder).unwrap();
+            let (result, metrics) = fly(&sim);
+            let summary = metrics.summary(&result, sim.environment()).unwrap();
+            for (column, peak) in [
+                (1, summary.max_dynamic_pressure_pa.unwrap()),
+                (2, summary.max_mach.unwrap()),
+            ] {
+                let recorded = recorder
+                    .rows()
+                    .iter()
+                    .map(|row| row[column])
+                    .fold(0.0, f64::max);
+                assert!(
+                    peak.value >= recorded,
+                    "{name}: {} < {recorded}",
+                    peak.value
+                );
+                assert!(
+                    peak.value - recorded < 1e-4 * peak.value,
+                    "{name}: {}",
+                    peak.value
+                );
+            }
+            if name == "rocketpy-valetudo" {
+                // At the speed's peak the acceleration is zero, so q = ½ρv² falls there with the
+                // density (dq/dt = ½v² dρ/dt < 0) and peaked earlier; the Mach number still rises
+                // with the falling speed of sound, and peaks later.
+                let (q, mach) = (
+                    summary.max_dynamic_pressure_pa.unwrap(),
+                    summary.max_mach.unwrap(),
+                );
+                let speed = summary.max_speed_m_s.unwrap();
+                assert!(q.time_s < speed.time_s, "{} vs {}", q.time_s, speed.time_s);
+                assert!(
+                    speed.time_s < mach.time_s,
+                    "{} vs {}",
+                    speed.time_s,
+                    mach.time_s
+                );
+                assert!(q.height_above_ground_m > 0.0);
+            }
+        }
     }
 
     #[test]
@@ -1067,14 +1260,89 @@ mod tests {
             1e-12,
             "static margin",
         );
-        let exit = summary.rail_exit_stability.unwrap();
-        assert_eq!(exit, first);
-        assert!(exit.flight_margin.mach > 0.0);
+        assert_eq!(summary.rail_exit_stability, Some(first));
         let min = summary.min_static_margin_cal.unwrap();
         assert!(
             series
                 .iter()
                 .all(|s| s.static_margin.margin_cal.unwrap() >= min.value)
         );
+        // In calm air the apogee's angle of attack swings toward 90° as the air stops pressing,
+        // and its flight margin with it; the least flight margin is taken while the air presses at
+        // least as hard as at the rail exit, so it is the climb's.
+        let at_apogee = series.last().unwrap();
+        assert!(at_apogee.dynamic_pressure_pa < first.dynamic_pressure_pa);
+        let least = summary.min_flight_margin_cal.unwrap();
+        assert!(least.time_s < apogee_s - 1.0, "{least:?}");
+        assert!(least.value > 3.0, "{least:?}");
+
+        // In a crosswind the rail exit's flight margin is the model's at the flight's own Mach
+        // number and angle of attack (Valetudo's four fins make it independent of the roll).
+        let windy = valetudo(
+            windy_environment(ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap()),
+            capped(600.0),
+        );
+        let (result, metrics) = fly(&windy);
+        let summary = metrics.summary(&result, windy.environment()).unwrap();
+        let exit = result.event(EventKind::RailExit).unwrap().sample;
+        assert!(
+            exit.angle_of_attack_rad > 0.2,
+            "{}",
+            exit.angle_of_attack_rad
+        );
+        let cg_m = -windy
+            .assembly()
+            .mass_properties_lit(exit.time_s, &lit)
+            .cg_m
+            .z;
+        let expected = margin(
+            windy.aero(),
+            &Flow::new(exit.mach, exit.angle_of_attack_rad, 0.0),
+            cg_m,
+        )
+        .unwrap();
+        let got = summary.rail_exit_stability.unwrap().flight_margin;
+        close(
+            got.margin_cal.unwrap(),
+            expected.margin_cal.unwrap(),
+            1e-9,
+            "flight margin",
+        );
+        close(
+            got.angle_of_attack_rad,
+            exit.angle_of_attack_rad,
+            1e-12,
+            "angle of attack",
+        );
+    }
+
+    #[test]
+    fn a_summary_needs_the_flight_it_watched() {
+        // A watcher that saw nothing, or saw another flight, refuses to sum one up; cleared, it
+        // sums up the next. A flight started in the air has no launch height, and no climb.
+        let sim = valetudo(Environment::standard(site()).unwrap(), capped(20.0));
+        let (result, mut metrics) = fly(&sim);
+        assert!(
+            FlightMetrics::new()
+                .summary(&result, sim.environment())
+                .is_err()
+        );
+        let other = valetudo(Environment::standard(site()).unwrap(), capped(15.0));
+        let other_result = other.run(&mut metrics).unwrap();
+        assert!(metrics.summary(&other_result, other.environment()).is_err());
+        metrics.clear();
+        let other_result = other.run(&mut metrics).unwrap();
+        let summary = metrics.summary(&other_result, other.environment()).unwrap();
+        assert!(summary.rail_exit_stability.is_some());
+
+        let burnout = result.event(EventKind::Burnout).unwrap().sample;
+        let mut aloft = FlightMetrics::new();
+        let free = sim
+            .run_free(burnout.time_s, burnout.state, &mut aloft)
+            .unwrap();
+        let summary = aloft.summary(&free, sim.environment()).unwrap();
+        assert_eq!(summary.launch_height_m, None);
+        assert_eq!(summary.apogee.unwrap().gain_m, None);
+        assert_eq!(summary.rail_exit_stability, None);
     }
 }

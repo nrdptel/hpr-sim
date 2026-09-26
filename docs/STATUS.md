@@ -18,7 +18,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   worked example) into `refs/papers/`; shear moduli need a cited source each (`Material` has none
   yet). Then M1.10c, exports built as text/bytes in the core (no I/O), GeoJSON by schema, KML by
   `roxmltree`. Metrics (ADR-077): `hpr_sim::metrics`, `FlightStep::stability`, margin `None` past
-  `κ = 10`; stability kept from rail exit (angles near 90° on the rail).
+  `κ = √10`; stability from rail exit; least flight margin above the exit's q.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
   Leads, not causes: #177, private flights above sea level reading low, `C03`, `C09` margins
   (#172). After any physics change run `cargo xtask ork-flights --check` and `--library --check`:
@@ -75,7 +75,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = 10; stability from rail exit.
+- ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = √10; held recovery.
 - ADR-076: a `.ork` flies its ignitions and one powered split; tolerance 5% in apogee and speed.
 - ADR-074, ADR-075: M1.9 split a to c; a powered split flies body 0 on; a cluster, a motor per tube.
 - ADR-073: a cause is sized by OR flying without it; within the bar if every such flight is within 5%.

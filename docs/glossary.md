@@ -842,9 +842,9 @@ How far the [centre of pressure](#centre-of-pressure-cp) lies behind the
 [centre of gravity](#centre-of-gravity-cg), usually in [calibres](#calibre-caliber). A positive
 margin turns the rocket's nose back into the oncoming air when it is disturbed, which in a
 crosswind is not quite its flight path ([weathercocking](#weathercocking)). It changes through a
-flight as propellant burns and speed changes. hpr gives it from the rail exit to apogee, in still
-air at Mach 0 (the static margin) and in the flight's own air, and gives none where the parts'
-normal forces all but cancel. See [Flight metrics](physics/metrics.md#stability-margins).
+flight as propellant burns and speed changes. hpr gives it from the rail exit to apogee, at zero
+angle of attack and Mach 0 (the static margin) and in the flight's own air, and gives none where
+the parts' normal forces all but cancel. See [Flight metrics](physics/metrics.md#stability-margins).
 
 
 ## Stage

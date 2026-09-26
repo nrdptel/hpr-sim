@@ -968,4 +968,75 @@ mod tests {
         let (full, _) = at_rest(&cluster_of_three(Vec::new()), t);
         assert!(full.length() < omega_dot.length() / 40.0, "{full:?}");
     }
+
+    #[test]
+    fn metrics_follow_a_powered_separation() {
+        // The serial plan: the booster drops under power and lands on its own. The summary gives
+        // the sustainer's landing and the booster's, and the margins switch to the sustainer's
+        // diameter at the split. Only the sustainer's motor has an optimum delay: the booster's
+        // charge would fire in the booster, which never reaches the sustainer's apogee.
+        let sim = serial_plan();
+        let mut metrics = crate::metrics::FlightMetrics::new();
+        let result = sim.run(&mut metrics).unwrap();
+        let summary = metrics.summary(&result, sim.environment()).unwrap();
+        assert!(summary.landing.is_some());
+        assert_eq!(summary.body_landings.len(), 1);
+        assert_eq!(summary.body_landings[0].body, Some(1));
+        let split_s = time_of(&result, EventKind::Separation);
+        let series = metrics.stability();
+        let before = series.iter().find(|s| s.time_s < split_s).unwrap();
+        let after = series.iter().rev().find(|s| s.time_s > split_s).unwrap();
+        assert!(after.reference_diameter_m < before.reference_diameter_m);
+
+        let best = crate::metrics::optimum_delays(&sim).unwrap().unwrap();
+        let sustainer = motor_index(&sim, SUSTAINER_MOUNT);
+        assert_eq!(best.len(), 1);
+        assert_eq!(best[0].motor, sustainer);
+        let lit_s = booster_burnout_s(&sim) + 1.0;
+        let burnout_s = lit_s
+            + sim.assembly().motors[sustainer]
+                .mounted
+                .motor
+                .burnout_time_s();
+        assert!((best[0].burnout_s - burnout_s).abs() < 1e-9);
+        assert!((best[0].delay_s - (best[0].apogee_s - burnout_s)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_held_flight_holds_a_separation_after_the_last_burnout() {
+        // The sustainer lights 1 s after the booster burns out, still attached, and the stack
+        // separates a delay after the sustainer burns out: part of the recovery. However long
+        // the delay, the held flight coasts through to the same apogee.
+        let rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        let with_delay = |delay_s: f64| {
+            staged(&rocket, |sim| {
+                Separation::new(
+                    Trigger::Burnout {
+                        motor: motor_index(sim, SUSTAINER_MOUNT),
+                        delay_s,
+                    },
+                    0,
+                )
+            })
+        };
+        let (short, long) = (with_delay(3.0), with_delay(30.0));
+        let flown = short.run(&mut ()).unwrap();
+        assert_eq!(flown.termination, Termination::Separated);
+        let a = crate::metrics::optimum_delays(&short).unwrap().unwrap();
+        let b = crate::metrics::optimum_delays(&long).unwrap().unwrap();
+        assert_eq!(a.len(), 2);
+        assert_eq!(b.len(), 2);
+        // Each flight still stops its steps at its own separation time, so the two agree to the
+        // integration's tolerance rather than bit for bit: the apogee is where the vertical speed
+        // crosses zero at g, so 3e-5 m/s of it is 3e-6 s.
+        for (a, b) in a.iter().zip(&b) {
+            assert_eq!((a.motor, a.burnout_s), (b.motor, b.burnout_s));
+            assert!((a.delay_s - b.delay_s).abs() < 1e-5, "{a:?} vs {b:?}");
+        }
+        // The short delay's separation came before that apogee.
+        assert!(time_of(&flown, EventKind::Separation) < a[0].apogee_s);
+    }
 }
