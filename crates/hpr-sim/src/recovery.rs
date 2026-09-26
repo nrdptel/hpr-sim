@@ -335,7 +335,7 @@ pub const TUMBLE_FIN_EFFICIENCY: [f64; 8] = [0.50, 1.00, 1.50, 1.41, 1.81, 1.73,
 
 /// A body component's side profile area `∫ d dx`, m²: a tube's diameter times its length, and a
 /// nose cone's or transition's own profile integrated ([`hpr_design::revolve`]'s planform area).
-/// Other parts are not on the outside of the body, and give zero.
+/// Other parts add no body profile (fins are counted apart).
 fn side_profile_m2(component: &hpr_design::PlacedComponent) -> Result<f64, SimError> {
     let profile = match &component.part {
         hpr_design::Part::BodyTube(tube) => {
@@ -372,7 +372,8 @@ impl DeviceDrag {
     ///
     /// # Errors
     ///
-    /// [`SimError::Design`] if a fin planform's area can't be computed, and [`SimError::Domain`]
+    /// [`SimError::Design`] if a fin planform's area or a nose cone's or transition's profile can't
+    /// be computed, and [`SimError::Domain`]
     /// if the airframe presents no area at all, carries tube fins, or has a fin set of more than
     /// the eight fins Table 3.4 covers.
     pub fn tumbling(assembly: &hpr_design::Assembly) -> Result<Self, SimError> {
@@ -1331,7 +1332,7 @@ pub struct BodyFlight {
     pub mass_kg: f64,
     /// Where it started flying on its own: at the airframe's first parting, its own centre of mass
     /// and that point's velocity; at a later one, on the way down, the point and velocity of the
-    /// body it left. Either way plus its ejection's push, if it has one
+    /// body it left. Either way plus the pushes of the pushed ejections on its sides
     /// ([`crate::Ejection::with_impulse`]).
     pub start_sample: BodySample,
     /// Why its descent ended.
@@ -3248,9 +3249,10 @@ mod tests {
         );
         let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
         let terminal_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, air.0.density_kg_m3, G);
-        // Tumbling is slower than a ballistic dive but far faster than a canopy: 36 m/s for this
-        // 8.3 kg rocket, well outside the 6.8 to 160 g the constants were fitted on.
-        assert!(terminal_m_s > 20.0 && terminal_m_s < 60.0, "{terminal_m_s}");
+        // Tumbling is slower than a ballistic dive but far faster than a canopy: 36.38 m/s for
+        // this 8.3 kg rocket, well outside the 6.8 to 160 g the constants were fitted on. Its
+        // nose's end diameters alone gave 36.77 m/s, before the side area was integrated.
+        assert!((terminal_m_s - 36.38).abs() < 0.005, "{terminal_m_s}");
         let result = sim
             .run_free(START_S, dropped(&sim, 4_000.0, DVec3::ZERO), &mut ())
             .unwrap();

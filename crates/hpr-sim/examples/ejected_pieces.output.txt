@@ -19,7 +19,7 @@ The payload leaves at 268.05 s: the airframe's body goes from 0.806 kg to 0.556 
 Again, with a 1 N·s push at each parting and the nose cone tumbling:
 body         mass (kg)   lands (s)   at (m/s)   terminal (m/s)   east (m)   north (m)   moved (m)
 0 nose cone      0.063      130.93      14.82            14.82      269.6         3.3      1765.7
-1 airframe       0.556      333.58       4.54             4.54     1116.3         2.8         0.7
-2 payload        0.250      332.94       4.57             4.57     1113.7         2.8         0.3
+1 airframe       0.556      333.42       4.54             4.54     1115.6         2.8         0.0
+2 payload        0.250      333.33       4.57             4.57     1115.3         2.8         1.3
 
-At 300 m the charge speeds the payload up by 4.00 m/s (1 N·s / 0.250 kg) and slows the airframe by 1.80 m/s (1 N·s / 0.556 kg).
+At 300 m the charge changes the payload's velocity by 4.00 m/s (1 N·s / 0.250 kg), up toward the airframe's parachute, and the airframe's by 1.80 m/s (1 N·s / 0.556 kg), down.

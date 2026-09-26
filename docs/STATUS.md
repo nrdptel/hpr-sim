@@ -85,7 +85,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 - ADR-081 to ADR-086 (M2.3, M2.4, M1.11): netCDF classic by hand; real flights read as a barometer;
   M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight, numbered by lead;
-  a push along the axis, or the airspeed on the way down; tumble side areas integrated.
+  a push along the axis, else by the airspeed (up it under a device); tumble side areas integrated.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
 - ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.

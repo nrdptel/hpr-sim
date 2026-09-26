@@ -56,6 +56,10 @@ use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Sepa
 use crate::staging::Sustainer;
 use crate::state::{STATE_LEN, State};
 
+/// The airspeed below which a body with no attitude of its own is taken to be still in the air, m/s:
+/// the way an ejection's push points is then up rather than along its drift (ADR-086).
+const STILL_AIR_M_S: f64 = 1e-3;
+
 /// How a flight is integrated and when it gives up.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -595,8 +599,10 @@ impl Simulation {
     /// ([`crate::Ejection`]), so piece `k` leads body `k`. Call it after [`Self::with_ejections`]
     /// and [`Self::with_separation`], which fix the pieces.
     ///
-    /// The model was fitted to whole model rockets tumbling, so a lone nose cone is outside its
-    /// fit: see `docs/physics/recovery.md`, *Tumble*.
+    /// It is the piece's own area only: a body that still carries another section, until that
+    /// section's own parting, tumbles with its lead piece's area. The model was fitted to whole
+    /// model rockets tumbling, so a lone nose cone is outside its fit: see the recovery page's
+    /// [tumble section](https://nrdptel.github.io/hpr-sim/physics/recovery.html#tumble).
     ///
     /// # Errors
     ///
@@ -860,6 +866,8 @@ impl Simulation {
         let exit_travel_m = self.guides.exit_travel_m(self.rail.length_m);
 
         let mut phase = start_phase;
+        // When a device froze the stack's attitude: from then on it hangs from the device.
+        let mut frozen_at_s = (start_phase == Phase::Descent).then_some(t0);
         let mut lifted = start_phase != Phase::Pad;
         let mut burnout_recorded = t0 >= burnout_s;
         let mut separated = false;
@@ -984,6 +992,7 @@ impl Simulation {
                         // Written this way it reads as what it is; the `ṙ_cg` terms cancel, so
                         // the net shift is `q(ω × r_cg)`.
                         phase = Phase::Descent;
+                        frozen_at_s = Some(t);
                         let mut frozen = State::from_array(&y);
                         frozen.velocity_enu_m_s = evaluation.cg_velocity_enu_m_s
                             - frozen.unit_attitude().mul_vec3(evaluation.mass.cg_rate_m_s);
@@ -1168,7 +1177,11 @@ impl Simulation {
                         &State::from_array(&y),
                         &mut run,
                         &lit,
-                        (&[true], true),
+                        (
+                            &[true],
+                            true,
+                            frozen_at_s.is_some_and(|frozen_s| frozen_s < t),
+                        ),
                     )?;
                     // The booster's descent has no airframe drag, and a powered separation comes
                     // near the top speed, so a coast to its device would climb as if in a vacuum
@@ -1373,7 +1386,11 @@ impl Simulation {
                 &State::from_array(&y),
                 &mut run,
                 &ignition_s,
-                (&opened, false),
+                (
+                    &opened,
+                    false,
+                    frozen_at_s.is_some_and(|frozen_s| frozen_s < t),
+                ),
             )?
         } else {
             booster
@@ -1389,7 +1406,9 @@ impl Simulation {
 
     /// Flies the bodies of a stack that came apart at `t` to their landings, with the stack's
     /// motors lit at `ignition_s`: `open[split]` says which splits happened (the separation, then
-    /// the ejections), and `skip_nose` leaves out body 0 when it flies on as a sustainer.
+    /// the ejections), `skip_nose` leaves out body 0 when it flies on as a sustainer, and
+    /// `hanging` says the stack was already descending under a device, its attitude frozen before
+    /// `t` (a device that opens as the stack parts leaves the axis it had then).
     ///
     /// Each body is a point mass with its own pieces' and motors' mass, starting where its own
     /// centre of mass was with the velocity that point already had, plus the push of each
@@ -1402,7 +1421,7 @@ impl Simulation {
         state: &State,
         run: &mut Run,
         ignition_s: &[Option<f64>],
-        (open, skip_nose): (&[bool], bool),
+        (open, skip_nose, hanging): (&[bool], bool, bool),
     ) -> Result<Vec<BodyFlight>, SimError> {
         if !self.parts() {
             return Ok(Vec::new());
@@ -1443,15 +1462,33 @@ impl Simulation {
                 mass_kg: checked_body_mass(mass.mass_kg)?,
             });
         }
-        // Each split that parts the stack here pushes its two sides apart along the airframe's
-        // axis, `+J` on the side forward of it and `−J` on the other, each on its own body.
-        let nose_ward = attitude.mul_vec3(DVec3::Z);
+        // Each split that parts the stack here pushes its two sides apart, `+J` on the side
+        // forward of it and `−J` on the other, each on its own body: along the airframe's axis in
+        // free flight, and, once a device has frozen its attitude, as a body hanging from it.
+        let nose_ward = if hanging {
+            let (mut kg, mut momentum, mut moment) = (0.0, DVec3::ZERO, DVec3::ZERO);
+            for start in &starts {
+                kg += start.mass_kg;
+                momentum += start.velocity_enu_m_s * start.mass_kg;
+                moment += start.cg_enu_m * start.mass_kg;
+            }
+            self.nose_ward_enu(moment / kg, momentum / kg, true)?
+        } else {
+            attitude.mul_vec3(DVec3::Z)
+        };
         for (split, _) in open.iter().enumerate().filter(|(_, opened)| **opened) {
+            let impulse_n_s = self.split_impulse_n_s(split);
+            if impulse_n_s == 0.0 {
+                continue;
+            }
             let (other, forward) = pieces.across(split + 1);
-            let push = nose_ward * self.split_impulse_n_s(split);
-            let push = if forward { push } else { -push };
+            let push = nose_ward * if forward { impulse_n_s } else { -impulse_n_s };
             for (body, push) in [(leaders[split + 1], push), (leaders[other], -push)] {
-                if let Some(start) = starts.iter_mut().find(|start| start.body == body) {
+                let start = starts.iter_mut().find(|start| start.body == body);
+                // Both sides of a split that fires here fly: only a sustainer's body is left out,
+                // and a powered separation is refused with ejections, whose splits alone push.
+                debug_assert!(start.is_some(), "a pushed body {body} doesn't fly");
+                if let Some(start) = start {
                     start.velocity_enu_m_s += push / start.mass_kg;
                 }
             }
@@ -1630,12 +1667,20 @@ impl Simulation {
                     }
                 }
             };
-            while !pending.is_empty() {
-                let sample = self.body_sample(body, mass_kg, t, &y, run)?;
-                let Some(index) = pending.iter().copied().find(|&index| fires(index, &sample))
+            // Which fire, and the way the pushes point, are decided on the body as the pass starts:
+            // a push that turns it upward doesn't put off a split that fired with the first.
+            let start = if pending.is_empty() {
+                None
+            } else {
+                Some(self.body_sample(body, mass_kg, t, &y, run)?)
+            };
+            let mut nose_ward = None;
+            while let Some(start) = start.filter(|_| !pending.is_empty()) {
+                let Some(index) = pending.iter().copied().find(|&index| fires(index, &start))
                 else {
                     break;
                 };
+                let sample = self.body_sample(body, mass_kg, t, &y, run)?;
                 // A separation still to come here lights no motor: an ejection ahead of one that
                 // would is refused in the ascent.
                 let kind = self.split(index).2;
@@ -1656,16 +1701,19 @@ impl Simulation {
                 };
                 let leaving_kg = checked_body_mass(mass_of(leaving))?;
                 mass_kg = checked_body_mass(mass_of(body))?;
-                // The impulse pushes the two sides apart. A point mass has no axis, so its nose is
-                // taken to point along its velocity through the air, as a stable airframe's does,
-                // or up when it has none (ADR-086).
+                // The impulse pushes the two sides apart, along the way the body's nose is taken to
+                // point (ADR-086).
                 let impulse_n_s = self.split_impulse_n_s(index);
                 let mut leaving_velocity_enu_m_s = sample.cg_velocity_enu_m_s;
                 if impulse_n_s > 0.0 {
-                    let (up_enu, wind_enu) = self.up_and_wind_enu(sample.cg_enu_m)?;
-                    let nose_ward = (sample.cg_velocity_enu_m_s - wind_enu)
-                        .try_normalize()
-                        .unwrap_or(up_enu);
+                    let nose_ward = match nose_ward {
+                        Some(nose_ward) => nose_ward,
+                        None => *nose_ward.insert(self.nose_ward_enu(
+                            start.cg_enu_m,
+                            start.cg_velocity_enu_m_s,
+                            start.recovery_drag_area_m2 > 0.0,
+                        )?),
+                    };
                     let forward = split.pieces.across(leaving).1;
                     let push = nose_ward * if forward { impulse_n_s } else { -impulse_n_s };
                     leaving_velocity_enu_m_s += push / leaving_kg;
@@ -1822,6 +1870,30 @@ impl Simulation {
             airspeed_m_s: (velocity_enu_m_s - wind_enu).length(),
             recovery_drag_area_m2: run.body_drag_area_m2(&self.devices, body, t),
             mass_kg,
+        })
+    }
+
+    /// The way the nose of a body with no attitude of its own is taken to point, as a unit vector
+    /// in the launch frame, for the push of an ejection (ADR-086): a body `hanging` from an open
+    /// device points its forward end up its velocity through the air, toward the device, which
+    /// left through that end; a body with nothing open points its nose along that velocity, as a
+    /// stable airframe does. Below [`STILL_AIR_M_S`] that velocity is drift or round-off rather
+    /// than a flight path, and the nose is taken to point up.
+    fn nose_ward_enu(
+        &self,
+        cg_enu_m: DVec3,
+        velocity_enu_m_s: DVec3,
+        hanging: bool,
+    ) -> Result<DVec3, SimError> {
+        let (up_enu, wind_enu) = self.up_and_wind_enu(cg_enu_m)?;
+        let through_air = velocity_enu_m_s - wind_enu;
+        let speed_m_s = through_air.length();
+        Ok(if speed_m_s < STILL_AIR_M_S {
+            up_enu
+        } else if hanging {
+            -through_air / speed_m_s
+        } else {
+            through_air / speed_m_s
         })
     }
 

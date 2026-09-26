@@ -242,7 +242,8 @@ is not reproducible. The table above is what hpr can demonstrate, so it is what 
 - So a real body that size would descend faster than hpr says.
 - hpr does not model that fall, and nothing in the pinned sources covers it.
 
-**A piece on its own.** `DeviceDrag::tumbling_stages` takes whole stages. For an ejected piece
+**A piece on its own.** `DeviceDrag::tumbling(&assembly)` covers the whole airframe, and
+`DeviceDrag::tumbling_stages(&assembly, (first, last))` a run of whole stages. For an ejected piece
 that is part of a stage, `Simulation::tumbling_piece(k)` sums the same model over piece `k`'s own
 body components and fins ([Ejected pieces](#ejected-pieces)). A payload is refused: it has no
 tube or fin of its own. A nose cone tumbling on its own is outside the fit, which was made on
@@ -482,8 +483,9 @@ This section describes the unpowered case, and the booster's descent after a pow
 
 **Limits:**
 
-- **No ejection charge, spring or [tip-off](../glossary.md#tip-off).** An ejection charge's
-  impulse, and the tumbling that follows, are not modelled.
+- **No push at a separation, and no [tip-off](../glossary.md#tip-off).** A separation's charge or
+  spring adds no impulse (an ejection's can: see [Ejected pieces](#ejected-pieces)), and the
+  tumbling a tip-off would start is not modelled.
 - **A body must start above the ground**, as a free flight must: the ground event is a falling
   crossing, so a body that started below the site would go on integrating underground until the
   flight's time limit.
@@ -576,8 +578,9 @@ whole rocket falling from apogee to 300 m with nothing open.
 - **When a body parts again on the way down**, it is already a point mass with no attitude, so
   there is nothing to place its pieces by. Both pieces start at the body's position and velocity,
   plus the push, and its mass steps down by the piece that left. Their true starting points could
-  be up to a rocket's length apart, which is small against a descent of hundreds of metres. The
-  body's own event for the parting keeps it just before (`sample`) and just after (`after`).
+  be up to a rocket's length apart, which is small against a descent of hundreds of metres. That
+  body's event for the parting records its state just before (`BodyEvent::sample`) and just after
+  (`BodyEvent::after`): its lower mass, and its pushed velocity.
 - **Each piece's mass is its own components'.** A stage that stays in one piece is counted by its
   own mass, overrides and all. A stage that parts is counted component by component. An override
   that doesn't say how its mass divides is refused rather than guessed. That means a stage's mass
@@ -591,32 +594,48 @@ whole rocket falling from apogee to 300 m with nothing open.
 **The push of the charge.** An ejection charge or spring pushes the two sides of the joint apart.
 Give it as an impulse `J`: the push summed over its short duration, in newton-seconds, as a
 motor's [total impulse](../glossary.md#total-impulse) is. For example,
-`Ejection::aft_of(Trigger::Apogee, "nose").with_impulse(1.0)`. Without one there is no push. The
-push is equal and opposite:
+`Ejection::aft_of(Trigger::Apogee, "nose").with_impulse(1.0)`. Without one there is no push. hpr
+doesn't work `J` out from a charge's size: as a rough guide, `J ≈ m v` for the speed `v` you
+expect a piece of mass `m` to leave at, so 1 N·s puts 15.9 m/s on the example's 63 g nose cone.
+The push is equal and opposite:
 
 - The side forward of the joint gets `+J` toward the nose, and the side aft of it `−J`. A payload
   leaves forward, out of its host, as it does when the nose cone comes off first.
 - Each side's velocity changes by `J/m`, for its own mass `m`, so the light side moves most. One
   newton-second is 4 m/s on a 250 g payload, and 1.8 m/s on the 556 g airframe it leaves.
 - The momenta still add up exactly, which is a test.
-- **Which way is "toward the nose"?** When the airframe first comes apart, it is its axis at that
-  instant. A body that parts again on the way down has no attitude, so hpr takes its nose to
-  point along its velocity through the air, as a stable rocket's does, or straight up if it isn't
-  moving through the air. That is an assumption, not a measurement ([ADR-086][adr-086]).
-- A separation has no push, and a payload can't be made to leave aft yet.
+- **Which way is "toward the nose"?** While the airframe flies whole with nothing open, it is
+  its axis at that instant. Otherwise it has no attitude to go by: a body flying on its own is a
+  point mass, and a whole airframe that has hung from a device since earlier has the attitude it
+  had when the device opened. So hpr goes by the body's velocity through the air:
+  - A body hanging from an open device points its forward end up that velocity, toward the
+    device, which left through that end. A payload let out under the airframe's parachute is
+    pushed up, toward it.
+  - A body with nothing open points its nose along that velocity, as a stable rocket does.
+  - A body moving through the air at under 1 mm/s, at its own apogee in still air say, points up.
 
-The push matters little to where a piece lands. The drag slows it within seconds, so in the
-example below 1 N·s at each parting moves the airframe's and the payload's landings by under a
-metre.
+  These are assumptions, not measurements ([ADR-086][adr-086]).
+- A separation has no push. A payload always leaves forward, so a push on a payload in the nose's
+  own section, which is closed at the nose, is refused.
 
-**A piece that tumbles.** A piece needs some drag of its own, or it falls as if in a vacuum. A
-nose cone with no parachute tumbles. `Simulation::tumbling_piece(0)` gives the drag area of the
-nose cone tumbling on its own, by the [tumble model](#tumble) over just its own parts. Use it as
-that body's device, `Device::new("nose cone tumble", tumble, Trigger::Apogee).on_body(0)`,
-triggered with its ejection, as the example below does. Piece `k` is the one that leads body `k`, numbered as in the table above. The pieces of an
-airframe cut into sections have drag areas that add up to the whole airframe's, which is a test.
-The model was fitted on whole model rockets, so for a lone nose cone the speed is the model's
-answer, not a measured one.
+In the example below, where every piece's device opens as it leaves, 1 N·s at each parting moves
+the airframe's and the payload's landings by a metre or less: the drag takes the push away within
+seconds. A piece that coasts with nothing open keeps its push longer.
+
+**A piece that tumbles.** A piece needs some drag of its own, or it falls as if in a vacuum. hpr
+can treat a nose cone with no parachute as tumbling; a real one may instead fall point first, and
+faster. `Simulation::tumbling_piece(0)` gives the drag area of the nose cone tumbling on its own,
+by the [tumble model](#tumble) over just its own parts. Use it as that body's device,
+`Device::new("nose cone tumble", tumble, Trigger::Apogee).on_body(0)`, triggered with its
+ejection, as the example below does.
+
+- Piece `k` is the piece nearest the nose in body `k`, numbered as in the table above.
+- It is that piece's own area. A body that still carries another section, until that section's
+  own parting, tumbles with its first piece's area only.
+- The pieces of an airframe cut into sections have drag areas that add up to the whole
+  airframe's, which is a test.
+- The model was fitted on whole model rockets, so for a lone nose cone the speed is the model's
+  answer, not a measured one.
 
 **A worked example.** The example
 [`ejected_pieces.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/ejected_pieces.rs)
@@ -643,20 +662,20 @@ canopy on the nose cone, which tumbles:
 | Body | Mass (kg) | Lands (s) | At (m/s) | `v_e` (m/s) | East of the pad (m) | Moved from the first flight (m) |
 |---|---|---|---|---|---|---|
 | 0, the nose cone, tumbling | 0.063 | 130.93 | 14.82 | 14.82 | 269.6 | 1,765.7 |
-| 1, the airframe | 0.556 | 333.58 | 4.54 | 4.54 | 1,116.3 | 0.7 |
-| 2, the payload | 0.250 | 332.94 | 4.57 | 4.57 | 1,113.7 | 0.3 |
+| 1, the airframe | 0.556 | 333.42 | 4.54 | 4.54 | 1,115.6 | 0.0 |
+| 2, the payload | 0.250 | 333.33 | 4.57 | 4.57 | 1,115.3 | 1.3 |
 
 Tumbling, the nose cone comes down nearly five times as fast as under its canopy, and lands 1.8 km
-nearer the pad. The push barely moves the other two. At 300 m it speeds the payload up by 4.00
-m/s and slows the airframe by 1.80 m/s, `J/m` for each, and within seconds the drag has taken
-that away.
+nearer the pad. The push barely moves the other two. At 300 m it changes the payload's velocity by
+4.00 m/s, up toward the airframe's parachute, and the airframe's by 1.80 m/s, down: `J/m` for
+each. Within seconds the drag has taken that away.
 
 **Limits:**
 
 - **A piece coasts with no drag until its device opens,** as every separated body does. Give it
   a parachute, or its tumble from the moment it leaves.
-- **The push's direction on the way down is assumed:** along the body's velocity through the
-  air, since a point mass has no axis. A payload always leaves forward.
+- **The push's direction is assumed** whenever the airframe isn't flying whole with nothing open:
+  it goes by the velocity through the air, as above. A payload always leaves forward.
 - **No powered separation with ejections.** A sustainer flies on a design cut at its stage
   boundary, whose components aren't the pieces the ejections were given for, so it is refused,
   and so is an ejection ahead of a separation that would light a motor.
@@ -714,11 +733,16 @@ The ejected pieces' tests are in `crates/hpr-sim/src/pieces.rs`, also analytic:
 | A powered separation with ejections, an ejection ahead of a separation that lights a motor, an ejection timed from a motor with no ignition | each refused with its own reason |
 | Partings the design can't make: an unknown id, a joint aft of an internal part or of the tail, a body component or an external part as a payload, a payload inside another, two at one joint, one payload twice, an overridden stage or covering override | each refused with its own reason, naming the component |
 | An ejection during the burn, a height below the ground, a body without a device, a device on a body nothing makes | refused, the last when the flight starts |
-| A 1 N·s push at both partings, with wind, a sideways velocity and a 0.6 rad/s body rate | each body's velocity changes by `J/m` along its direction to 1e-9: at the first parting ±`J/m` along the airframe's axis against the same flight unpushed (15.9 m/s on the nose cone), at the second 4 m/s on the 250 g payload along its velocity through the air; the momenta add up to 1e-9 at both; every piece still lands within 0.1% of its `v_e` |
+| A 1 N·s push at both partings, from a stack tilted 60° up toward 30° east of north, in wind, moving sideways and turning at 0.6 rad/s | each body's velocity changes by `J/m` to 1e-9 against the same flight unpushed. At the first parting that is along the hand-computed rail axis, 15.9 m/s on the nose cone. At the second, the airframe under its canopy, it is 4 m/s on the 250 g payload, up its velocity through the air. The momenta add up to 1e-9 at both, and every piece still lands within 0.1% of its `v_e` |
+| The same push at 300 m with the airframe's canopy not yet open | the payload is pushed down its velocity through the air, 4 m/s, and the airframe the other way, to 1e-9 |
+| A nose cone pushed off at 300 m from a stack that has hung from a drogue since apogee | pushed up its velocity through the air to 1e-9, not along the attitude frozen at apogee (found in review: it went along the frozen axis) |
+| A push at a body's own apogee, climbing straight up in still air | straight up, 4 m/s on the payload, to 1e-9 |
+| A separation and a pushed nose cone at apogee (the two-stage design) | the booster, the separation's body, gets no push; the nose cone and the sustainer's airframe get ±`J/m` along the axis to 1e-9; the momenta add up to 1e-9 |
+| Two pushed partings in one pass on the way down (the two-stage design) | the interstage, aft of its joint, takes `−J` on the nose's way; the three bodies carry the one body's momentum to 1e-9 |
 | A parting on the way down with no push | the body after it has the same point and velocity, and its mass without the piece; only partings record a body after |
-| A nose cone tumbling on its own after apogee | its drag area is 0.56 times its tangent ogive's closed-form side area, to 1e-12; it lands at 13.849 m/s, its model's `v_e` to 1e-6 |
+| A nose cone tumbling on its own after apogee, in uniform sea-level air | its drag area is 0.56 times its tangent ogive's closed-form side area, to 1e-12; it lands at 13.849 m/s, its model's `v_e` to 1e-6 (the example's 14.82 m/s is in its own, thinner air at 1,400 m) |
 | The tumbling drag areas of an airframe cut into a nose cone and the rest | add to the whole airframe's to 1e-12; a payload or a piece not made is refused |
-| A push that is negative, NaN or infinite | refused when the ejections are given |
+| A push that is negative, NaN or infinite, or on a payload in the nose's own section | refused when the ejections are given |
 
 ### Against RocketPy
 

@@ -205,8 +205,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let after = parting.after.ok_or("no body after the parting")?;
     println!();
     println!(
-        "At 300 m the charge speeds the payload up by {:.2} m/s (1 N·s / 0.250 kg) and slows the \
-         airframe by {:.2} m/s (1 N·s / {:.3} kg).",
+        "At 300 m the charge changes the payload's velocity by {:.2} m/s (1 N·s / 0.250 kg), up \
+         toward the airframe's parachute, and the airframe's by {:.2} m/s (1 N·s / {:.3} kg), down.",
         (payload.start_sample.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s).length(),
         (after.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s).length(),
         after.mass_kg,
