@@ -13,7 +13,8 @@ measured here: the heights of the levels, and a launch between two of the file's
 not measured yet: the pressure between levels, and the air above the file's top level. Seven
 real flights have been flown in ERA5 weather and compared with their logs
 ([real flights](../accuracy.md#real-flights), milestone
-[M2.3b](../decisions-and-roadmap.md#m2-3b)): their apogees miss by 6.04% on average. Humidity is
+[M2.3b](../decisions-and-roadmap.md#m2-3b)): their apogees miss by 6.04% on average, outside the
+5% target. Humidity is
 not read yet, so the air is taken as dry.
 
 Code: `hpr_io::era5` and `hpr_io::netcdf`

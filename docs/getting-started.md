@@ -11,8 +11,8 @@ some Rust, but no knowledge of this project.
 > table RocketPy's example ships (770 m against 700 m in the
 > [validation case](accuracy.md#whole-flights-with-each-codes-own-drag)); which drag is closer to
 > the truth is open. This rocket left no flight log, so it can't be checked against its real flight;
-> seven other rockets have been, and hpr's apogees missed theirs by 6.04% on average
-> ([real flights](accuracy.md#real-flights)).
+> seven other rockets have been, and hpr's apogees missed theirs by 6.04% on average, outside the
+> 5% target ([real flights](accuracy.md#real-flights)).
 > [How far to trust it](#how-far-to-trust-it) below says what that means for this one.
 
 ## What you need

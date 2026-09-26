@@ -81,9 +81,11 @@ ThrustCurve.org defines it. It is the number in a [motor designation](#motor-des
 A flight computer that finds its height from the air pressure it measures. It converts the
 pressure to an altitude with the [standard atmosphere](#standard-atmosphere) and subtracts the
 pad's. The air of the day is rarely standard: on a hot day a column of air is taller, pressure
-falls more slowly with height, and the altimeter reads less than the height climbed, several per
-cent at Spaceport America in June. hpr reads its own flight the same way when it compares with a
-log; see [Accuracy: real flights](accuracy.md#real-flights).
+falls more slowly with height, and the altimeter reads less than the height climbed, 6.9% on
+a day 20 K warmer than the standard
+([worked example](physics/atmosphere.md#pressure-altitude-what-a-barometric-altimeter-reads)). On
+a cold day it reads more. hpr reads its own flight the same way when it compares with a log; see
+[Accuracy: real flights](accuracy.md#real-flights).
 
 
 ## Barrowman's method

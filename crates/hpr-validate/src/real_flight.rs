@@ -19,12 +19,11 @@
 //! - **Heights:** a barometric altimeter reads the standard atmosphere's altitude of the pressure
 //!   it measures, less the pad's, not the height it climbed: on a warm day, less. So hpr's height
 //!   is read the same way, from the ERA5 pressure at its centre of mass, for a log whose
-//!   [`Altimeter`] is barometric ([`barometric_reading_m`]), and taken as it is otherwise. Each
+//!   [`Altimeter`] is barometric ([`Barometer`]), and taken as it is otherwise. Each
 //!   log's height column is used as recorded.
 //! - **Apogee:** the highest height in the log, read up to [`Log::until_s`] where the recovery's
 //!   pressure transients would otherwise set it, against hpr's apogee read the same way. The error
 //!   is hpr's less the log's, as a percentage of the log's.
-//! - **Rise:** the time from [`ALIGN_HEIGHT_M`] to [`RISE_HEIGHT_M`] in each, the boost's.
 //! - **Altitude-trace RMS:** the log's heights against hpr's over the ascent. The two clocks are
 //!   aligned where each trace first reaches [`ALIGN_HEIGHT_M`], since a log's zero is its own
 //!   (armed, launch detected, or power on) and not hpr's ignition. The RMS is over every log row from
@@ -79,13 +78,6 @@ pub const APOGEE_TARGET_PERCENT: f64 = 5.0;
 /// 12 m), low enough to be inside the first second of flight.
 pub const ALIGN_HEIGHT_M: f64 = 30.0;
 
-/// The height each trace's early climb is timed to from [`ALIGN_HEIGHT_M`], m above its start.
-///
-/// Below it every rocket here is under about 150 m/s, where its drag is a few per cent of its
-/// thrust, so the time is the boost's (thrust and mass), and a barometric log's is not yet
-/// disturbed by transonic flow over its static ports.
-pub const RISE_HEIGHT_M: f64 = 150.0;
-
 /// The spacing of hpr's heights the trace is compared against, s.
 pub const GRID_S: f64 = 0.01;
 
@@ -121,6 +113,9 @@ pub enum Altimeter {
     /// less than the height climbed. hpr's is read the same way, from the ERA5 pressure at its
     /// centre of mass.
     Barometric(&'static str),
+    /// Taken as barometric, read as [`Altimeter::Barometric`], without evidence of how its height
+    /// was made.
+    AssumedBarometric(&'static str),
     /// A height above the pad in metres, compared with hpr's as it is.
     Height(&'static str),
 }
@@ -131,6 +126,7 @@ impl Altimeter {
     pub fn kind(self) -> &'static str {
         match self {
             Self::Barometric(_) => "barometric",
+            Self::AssumedBarometric(_) => "barometric, assumed",
             Self::Height(_) => "height",
         }
     }
@@ -139,7 +135,7 @@ impl Altimeter {
     #[must_use]
     pub fn evidence(self) -> &'static str {
         match self {
-            Self::Barometric(text) | Self::Height(text) => text,
+            Self::Barometric(text) | Self::AssumedBarometric(text) | Self::Height(text) => text,
         }
     }
 }
@@ -178,11 +174,9 @@ pub enum Explanation {
     None,
     /// Consistent with hpr's drag: on the example's own drag the apogee is within the target.
     Drag(&'static str),
-    /// Made in the boost, where drag is a few per cent of thrust: hpr's climb from
-    /// [`ALIGN_HEIGHT_M`] to [`RISE_HEIGHT_M`] takes more than [`APOGEE_TARGET_PERCENT`] longer
-    /// than the log's when its apogee is low (shorter when high), and the example's own drag
-    /// doesn't bring the apogee within the target.
-    Boost(&'static str),
+    /// Consistent with the motor's impulse: on the thrust file as recorded, without the reshape
+    /// the example applies, the apogee is within the target.
+    Thrust(&'static str),
 }
 
 impl Explanation {
@@ -192,7 +186,7 @@ impl Explanation {
         match self {
             Self::None => "",
             Self::Drag(_) => "drag",
-            Self::Boost(_) => "boost",
+            Self::Thrust(_) => "thrust",
         }
     }
 
@@ -201,7 +195,7 @@ impl Explanation {
     pub fn text(self) -> &'static str {
         match self {
             Self::None => "",
-            Self::Drag(text) | Self::Boost(text) => text,
+            Self::Drag(text) | Self::Thrust(text) => text,
         }
     }
 }
@@ -262,7 +256,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             height_column: 3,
             metres_per_unit: 1.0,
             until_s: None,
-            altimeter: Altimeter::Barometric(
+            altimeter: Altimeter::AssumedBarometric(
                 "the team's own avionics, filtered by a method the example doesn't record: \
                  barometric assumed, as hobby altimeters are",
             ),
@@ -301,7 +295,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             until_s: None,
             altimeter: Altimeter::Barometric(
                 "a Featherweight Raven (RocketPy's tests/acceptance/test_ndrt_2020_rocket.py:190), \
-                 which reads pressure through the standard atmosphere, in feet above the pad",
+                 a barometric altimeter, in feet above the pad",
             ),
         },
         example_drag: ExampleDrag::Constant(0.44),
@@ -334,7 +328,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             until_s: Some(29.58),
             altimeter: Altimeter::Barometric(
                 "an Altus Metrum TeleMetrum: to the ascent's apogee its height column is the \
-                 standard atmosphere's altitude of its pressure column less the pad's, to 0.005 m",
+                 standard atmosphere's altitude of its pressure column less the pad's, to 0.01 m",
             ),
         },
         example_drag: ExampleDrag::Knots {
@@ -356,13 +350,14 @@ pub const FLIGHTS: [RealFlight; 7] = [
         example_drag_source: "prometheus_2022_flight_sim.ipynb:224-261 (`prometheus_cd_at_ma` from Mach 0.15, where it \
                               starts to change, and power on 1.02 times it)",
         note: "flown in the weather of 24 June 2023, a year after the flight, as RocketPy's example \
-               flies it: RocketPy has no ERA5 file of the day. The log is read to 29.58 s: the \
-               drogue's firing past apogee then drops one reading by 600 m",
+               flies it: RocketPy has no ERA5 file of the day. The log is read to 29.58 s: a \
+               pressure transient then drops the reading 600 m and returns it 8 m above the \
+               highest reading before",
         explanation: Explanation::Drag(
             "consistent with hpr's drag. On the example's own drag, the team's table from Mach \
-             0.15, the apogee is within the target. The boost does not explain it: the log climbs \
-             from 30 m to 150 m slower than hpr, not faster. The weather is a year off its day \
-             (the note), and a barometric reading moves with the day's temperature.",
+             0.15, the apogee is within the target. The barometric reading is built on the \
+             temperatures of a day a year after the flight (the note); read as a height, the \
+             apogee misses by less.",
         ),
     },
     RealFlight {
@@ -384,7 +379,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             altimeter: Altimeter::Barometric(
                 "a Missile Works RRC3 (juno3/README.txt:21): to the ascent's apogee its height \
                  column is the standard atmosphere's altitude of its pressure column less the \
-                 pad's, to 0.82 m",
+                 first row's, to 1.4 m",
             ),
         },
         example_drag: ExampleDrag::Files {
@@ -394,17 +389,17 @@ pub const FLIGHTS: [RealFlight; 7] = [
         },
         example_drag_source: "juno3_flight_sim.ipynb:244-251, :356-359 (`drag_curve.csv`, scaled to 0.38 at Mach 0.6 \
                               \"from CFD analysis\")",
-        note: "the log is read to 24.60 s: past apogee the drogue's firing dips the reading by 94 m, \
-               then lifts it 62 m above the apogee within 0.3 s (to the 3213.4 m the flight card \
-               gives), and the record's last two rows are corrupt. The thrust file's last five \
-               points are negative (-6.8 to -47.3 N); hpr, which refuses a negative thrust, reads \
-               them as zero, and RocketPy's flight holds its thrust at zero too",
-        explanation: Explanation::Boost(
-            "made in the boost. From 30 m to 150 m, where drag is a few per cent of thrust, hpr \
-             climbs a third slower than the log, and on the team's own drag the apogee misses by \
-             more. The thrust is the team's own motor's curve (`mandioca_thrust_curve.csv`), which \
-             the notebook stretches to 5.8 s and 8800 N s; the flight's early thrust was stronger \
-             than that curve's, or its mass lower.",
+        note: "the log is read to 24.60 s, as it levels off: a pressure transient there dips the \
+               reading by 94 m, then lifts it 62 m above the level within 0.3 s, to the 3213.4 m \
+               the flight card gives, and the record's last two rows are corrupt. The thrust \
+               file's last five points are negative (-6.8 to -47.3 N); hpr, which refuses a \
+               negative thrust, reads them as zero, and RocketPy's flight holds its thrust at \
+               zero too",
+        explanation: Explanation::Thrust(
+            "consistent with the motor's impulse. The notebook reshapes the team's own motor \
+             curve (`mandioca_thrust_curve.csv`) to 5.8 s and 8800 N s, 4.9% less than the file \
+             records; on the file as recorded the apogee is within the target, and on the team's \
+             drag the miss grows.",
         ),
     },
     RealFlight {
@@ -423,7 +418,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             height_column: 1,
             metres_per_unit: 1.0,
             until_s: None,
-            altimeter: Altimeter::Barometric(
+            altimeter: Altimeter::AssumedBarometric(
                 "the CATS Vega EuRoC 2023 required, sent by radio in whole metres: a Kalman \
                  filter's estimate from a barometer and an accelerometer, barometric assumed",
             ),
@@ -459,7 +454,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             height_column: 1,
             metres_per_unit: 1.0,
             until_s: None,
-            altimeter: Altimeter::Barometric(
+            altimeter: Altimeter::AssumedBarometric(
                 "a filtered estimate (`filtered_altitude_AGL`), probably the CATS Vega's \
                  barometer and accelerometer Kalman filter: barometric assumed",
             ),
@@ -493,7 +488,7 @@ pub const FLIGHTS: [RealFlight; 7] = [
             height_column: 1,
             metres_per_unit: 1.0,
             until_s: Some(26.80),
-            altimeter: Altimeter::Barometric(
+            altimeter: Altimeter::AssumedBarometric(
                 "a filtered estimate (`filtered_altitude_AGL`, as Genesis's) from a computer \
                  the example doesn't name: barometric assumed",
             ),
@@ -591,10 +586,6 @@ pub struct FlightRow {
     pub log_time_to_apogee_s: f64,
     /// The same in hpr, s.
     pub hpr_time_to_apogee_s: f64,
-    /// The log's time from the alignment height to [`RISE_HEIGHT_M`], s: the boost's.
-    pub log_rise_s: f64,
-    /// The same in hpr, s.
-    pub hpr_rise_s: f64,
     /// The RMS of hpr's heights less the log's over the ascent, m.
     pub trace_rms_m: f64,
     /// That RMS as a percentage of the log's apogee.
@@ -613,6 +604,16 @@ pub struct FlightRow {
     pub example_drag_apogee_error_percent: f64,
     /// Its trace RMS against the log's, m.
     pub example_drag_trace_rms_m: f64,
+    /// For an example that reshapes its thrust file: the file's own total impulse, N s, flown as
+    /// recorded as a second diagnostic.
+    pub recorded_thrust_impulse_ns: Option<f64>,
+    /// hpr's apogee on it, read as the log's altimeter reads, m.
+    pub recorded_thrust_apogee_m: Option<f64>,
+    /// Its error against the log's, per cent.
+    pub recorded_thrust_apogee_error_percent: Option<f64>,
+    /// The SHA-256 of the flight's entry in [`FLIGHTS`] as Rust's `Debug` prints it: every input
+    /// the code gives it, so CI sees a changed one.
+    pub inputs_sha256: String,
     /// What departs from the day, in words.
     pub note: String,
     /// What the explanation claims ([`Explanation::kind`]), empty when there is none.
@@ -637,6 +638,9 @@ pub struct Summary {
     /// The mean absolute apogee error were every log a height, not a barometric reading, per cent:
     /// how much the altimeters' readings matter.
     pub mean_absolute_height_apogee_error_percent: f64,
+    /// The mean absolute apogee error with only the logs known to be barometric read so and the
+    /// assumed ones as heights, per cent.
+    pub mean_absolute_known_barometric_apogee_error_percent: f64,
     /// The flights whose apogee misses by more than the target.
     pub outliers: Vec<String>,
     /// The largest trace RMS as a percentage of its log's apogee.
@@ -670,8 +674,7 @@ fn read_bytes(root: &Path, relative: &str, what: &'static str) -> Result<Vec<u8>
 }
 
 /// The SHA-256 of `bytes`, in lower-case hex.
-#[must_use]
-pub fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
         .fold(String::with_capacity(64), |mut out, byte| {
@@ -885,10 +888,6 @@ pub struct TraceComparison {
     pub log_time_to_apogee_s: f64,
     /// hpr's, s.
     pub hpr_time_to_apogee_s: f64,
-    /// The log's time from the alignment height to [`RISE_HEIGHT_M`], s.
-    pub log_rise_s: f64,
-    /// hpr's, s.
-    pub hpr_rise_s: f64,
     /// The RMS of hpr's heights less the log's, m.
     pub rms_m: f64,
     /// The log rows it is over.
@@ -913,13 +912,6 @@ pub fn compare_traces(
         .ok_or_else(|| format!("the log never rises through {ALIGN_HEIGHT_M} m"))?;
     let hpr_align = crossing(hpr, ALIGN_HEIGHT_M)
         .ok_or_else(|| format!("hpr never rises through {ALIGN_HEIGHT_M} m"))?;
-    let rise = |rows: &[(f64, f64)], align: f64, whose: &str| {
-        crossing(rows, RISE_HEIGHT_M)
-            .map(|t| t - align)
-            .ok_or_else(|| format!("{whose} never rises through {RISE_HEIGHT_M} m"))
-    };
-    let log_rise_s = rise(log, log_align, "the log")?;
-    let hpr_rise_s = rise(hpr, hpr_align, "hpr")?;
     let (log_apogee_s, _) = highest(log);
     let log_time = log_apogee_s - log_align;
     let hpr_time = hpr_apogee_s - hpr_align;
@@ -943,36 +935,58 @@ pub fn compare_traces(
     Ok(TraceComparison {
         log_time_to_apogee_s: log_time,
         hpr_time_to_apogee_s: hpr_time,
-        log_rise_s,
-        hpr_rise_s,
         rms_m: (sum / rows as f64).sqrt(),
         rows,
     })
 }
 
-/// What a barometric altimeter on the pad at `start_m` reads at `height_m`, both m above a site
-/// `site_msl_m` above sea level, in the atmosphere `day`: the standard atmosphere's altitude of
-/// the day's pressure there less that of the day's pressure at the start,
-/// `H(p(z)) − H(p(z₀))` ([`Ussa76::pressure_altitude_m`]).
+/// A barometric altimeter on a pad, in the air of a day: it reads the standard atmosphere's
+/// altitude of the day's pressure where it is, less that at the pad, `H(p(z)) − H(p(z₀))`
+/// ([`Ussa76::pressure_altitude_m`]).
 ///
-/// In the standard atmosphere itself it is the geopotential height climbed. On a warmer day the
-/// air is thinner, pressure falls more slowly with height, and it reads less than that, by
-/// roughly the ratio of the standard's temperature to the day's.
-///
-/// # Errors
-///
-/// [`hpr_atmos::AtmosError`] if the day has no air at either height.
-pub fn barometric_reading_m(
-    day: &dyn Atmosphere,
+/// In the standard atmosphere itself it reads the geopotential height climbed. On a warmer day
+/// the air is thinner, pressure falls more slowly with height, and it reads less than that: in
+/// the troposphere, with the sea-level pressure unchanged, by the ratio of the standard's
+/// sea-level temperature to the day's.
+#[derive(Debug)]
+pub struct Barometer<'a> {
+    day: &'a dyn Atmosphere,
     site_msl_m: f64,
-    height_m: f64,
-    start_m: f64,
-) -> Result<f64, hpr_atmos::AtmosError> {
-    let standard = Ussa76::standard();
-    let altitude = |height_m: f64| {
-        standard.pressure_altitude_m(day.air(site_msl_m + height_m)?.air.pressure_pa)
-    };
-    Ok(altitude(height_m)? - altitude(start_m)?)
+    standard: Ussa76,
+    pad_altitude_m: f64,
+}
+
+impl<'a> Barometer<'a> {
+    /// A barometer on a pad `pad_m` above a site `site_msl_m` above sea level, in `day`'s air.
+    ///
+    /// # Errors
+    ///
+    /// [`hpr_atmos::AtmosError`] if the day has no air at the pad.
+    pub fn on_pad(
+        day: &'a dyn Atmosphere,
+        site_msl_m: f64,
+        pad_m: f64,
+    ) -> Result<Self, hpr_atmos::AtmosError> {
+        let standard = Ussa76::standard();
+        let pad_altitude_m =
+            standard.pressure_altitude_m(day.air(site_msl_m + pad_m)?.air.pressure_pa)?;
+        Ok(Self {
+            day,
+            site_msl_m,
+            standard,
+            pad_altitude_m,
+        })
+    }
+
+    /// What it reads at `height_m` above the site, m.
+    ///
+    /// # Errors
+    ///
+    /// [`hpr_atmos::AtmosError`] if the day has no air there.
+    pub fn reading_m(&self, height_m: f64) -> Result<f64, hpr_atmos::AtmosError> {
+        let pressure_pa = self.day.air(self.site_msl_m + height_m)?.air.pressure_pa;
+        Ok(self.standard.pressure_altitude_m(pressure_pa)? - self.pad_altitude_m)
+    }
 }
 
 /// Keeps hpr's height above its start on a fixed grid of the dense output.
@@ -1137,30 +1151,48 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
     )?;
     let design_path = format!("validation/designs/{}.json", flight.design);
     let design_bytes = read(design_path.clone(), "reading a design")?;
-    let mut design: Value = serde_json::from_slice(&design_bytes)
+    let design: Value = serde_json::from_slice(&design_bytes)
         .map_err(|error| input(format!("{design_path}: {error}")))?;
-    let motor = design
-        .pointer_mut("/configurations/0/motors/0")
-        .and_then(Value::as_object_mut)
-        .ok_or_else(|| input(format!("{design_path} has no motor")))?;
-    let (times, thrusts): (Vec<f64>, Vec<f64>) = curve.iter().copied().unzip();
-    motor.insert(
-        "designation".to_owned(),
-        Value::String(format!(
-            "RocketPy's {}",
-            thrust_path.rsplit('/').next().unwrap_or("")
-        )),
-    );
-    motor
-        .get_mut("motor")
-        .and_then(Value::as_object_mut)
-        .ok_or_else(|| input(format!("{design_path}'s motor has no inputs")))?
-        .insert(
-            "curve".to_owned(),
-            serde_json::json!({ "times_s": times, "thrusts_n": thrusts }),
+    let with_thrust = |curve: &[(f64, f64)]| -> Result<Rocket, RealFlightError> {
+        let mut design = design.clone();
+        let motor = design
+            .pointer_mut("/configurations/0/motors/0")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| input(format!("{design_path} has no motor")))?;
+        let (times, thrusts): (Vec<f64>, Vec<f64>) = curve.iter().copied().unzip();
+        motor.insert(
+            "designation".to_owned(),
+            Value::String(format!(
+                "RocketPy's {}",
+                thrust_path.rsplit('/').next().unwrap_or("")
+            )),
         );
-    let rocket: Rocket = serde_json::from_value(design)
-        .map_err(|error| input(format!("{design_path} with the example's thrust: {error}")))?;
+        motor
+            .get_mut("motor")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| input(format!("{design_path}'s motor has no inputs")))?
+            .insert(
+                "curve".to_owned(),
+                serde_json::json!({ "times_s": times, "thrusts_n": thrusts }),
+            );
+        serde_json::from_value(design)
+            .map_err(|error| input(format!("{design_path} with the example's thrust: {error}")))
+    };
+    let rocket = with_thrust(&curve)?;
+    // Where the example reshapes its thrust file, the file as recorded, for the diagnostic.
+    let recorded = match reshape {
+        Some(_) => Some(with_thrust(
+            &parse_thrust(
+                flight.id,
+                &thrust_path,
+                &String::from_utf8_lossy(&thrust_bytes),
+                burn,
+                None,
+            )?
+            .0,
+        )?),
+        None => None,
+    };
 
     // The weather.
     let weather_path = format!("{ROCKETPY}/data/weather/{}", flight.weather);
@@ -1215,9 +1247,9 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
         });
     }
 
-    let fly_once = |table: Option<DragTable>| -> Result<Flown, RealFlightError> {
-        let simulation = Simulation::new(&rocket, "example", environment.clone(), rail, settings)
-            .map_err(sim)?;
+    let fly_once = |rocket: &Rocket, table: Option<DragTable>| -> Result<Flown, RealFlightError> {
+        let simulation =
+            Simulation::new(rocket, "example", environment.clone(), rail, settings).map_err(sim)?;
         let simulation = match table {
             Some(table) => simulation.with_drag_table(table),
             None => simulation,
@@ -1243,30 +1275,35 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
             .map(|row| row.1)
             .ok_or_else(|| input("hpr's flight has no steps".to_owned()))?;
         // What the log's altimeter would read at a height above the site, above its start.
-        let read = |height_m: f64| -> Result<f64, RealFlightError> {
+        let atmos = |error: hpr_atmos::AtmosError| input(format!("{weather_path}: {error}"));
+        let barometer = Barometer::on_pad(&weather, elevation_m, start_m).map_err(atmos)?;
+        let reading = |height_m: f64| -> Result<f64, RealFlightError> {
             match flight.log.altimeter {
                 Altimeter::Height(_) => Ok(height_m - start_m),
-                Altimeter::Barometric(_) => {
-                    barometric_reading_m(&weather, elevation_m, height_m, start_m)
-                        .map_err(|error| input(format!("{weather_path}: {error}")))
+                Altimeter::Barometric(_) | Altimeter::AssumedBarometric(_) => {
+                    barometer.reading_m(height_m).map_err(atmos)
                 }
             }
         };
         let hpr = heights
             .rows
             .iter()
-            .map(|&(t, h)| Ok((t, read(h)?)))
+            .map(|&(t, h)| Ok((t, reading(h)?)))
             .collect::<Result<Vec<(f64, f64)>, RealFlightError>>()?;
         let trace = compare_traces(&log, &hpr, apogee.time_s).map_err(input)?;
         Ok(Flown {
-            apogee_m: read(apogee.height_above_ground_m)?,
+            apogee_m: reading(apogee.height_above_ground_m)?,
             height_apogee_m: apogee.height_above_ground_m - start_m,
             trace,
             total_impulse_ns,
         })
     };
-    let own = fly_once(None)?;
-    let on_example_drag = fly_once(Some(table))?;
+    let own = fly_once(&rocket, None)?;
+    let on_example_drag = fly_once(&rocket, Some(table))?;
+    let on_recorded_thrust = recorded
+        .as_ref()
+        .map(|rocket| fly_once(rocket, None))
+        .transpose()?;
     let (hpr_apogee_m, trace, total_impulse_ns) = (own.apogee_m, own.trace, own.total_impulse_ns);
     let (drag_apogee_m, drag_trace) = (on_example_drag.apogee_m, on_example_drag.trace);
     let error = |apogee_m: f64| percent_of(apogee_m, log_apogee_m);
@@ -1288,8 +1325,6 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
         apogee_error_percent: error(hpr_apogee_m),
         log_time_to_apogee_s: trace.log_time_to_apogee_s,
         hpr_time_to_apogee_s: trace.hpr_time_to_apogee_s,
-        log_rise_s: trace.log_rise_s,
-        hpr_rise_s: trace.hpr_rise_s,
         trace_rms_m: trace.rms_m,
         trace_rms_percent: 100.0 * trace.rms_m / log_apogee_m,
         trace_rows: trace.rows,
@@ -1299,6 +1334,14 @@ pub fn fly(root: &Path, flight: &RealFlight) -> Result<FlightRow, RealFlightErro
         example_drag_apogee_m: drag_apogee_m,
         example_drag_apogee_error_percent: error(drag_apogee_m),
         example_drag_trace_rms_m: drag_trace.rms_m,
+        recorded_thrust_impulse_ns: on_recorded_thrust
+            .as_ref()
+            .map(|flown| flown.total_impulse_ns),
+        recorded_thrust_apogee_m: on_recorded_thrust.as_ref().map(|flown| flown.apogee_m),
+        recorded_thrust_apogee_error_percent: on_recorded_thrust
+            .as_ref()
+            .map(|flown| error(flown.apogee_m)),
+        inputs_sha256: sha256_hex(format!("{flight:?}").as_bytes()),
         note: flight.note.to_owned(),
         explanation_kind: flight.explanation.kind().to_owned(),
         explanation: flight.explanation.text().to_owned(),
@@ -1436,6 +1479,18 @@ pub fn summarise(rows: &[FlightRow]) -> Summary {
             .map(|row| percent_of(row.hpr_height_apogee_m, row.log_apogee_m).abs())
             .sum::<f64>()
             / n,
+        mean_absolute_known_barometric_apogee_error_percent: rows
+            .iter()
+            .map(|row| {
+                let apogee_m = if row.altimeter == Altimeter::AssumedBarometric("").kind() {
+                    row.hpr_height_apogee_m
+                } else {
+                    row.hpr_apogee_m
+                };
+                percent_of(apogee_m, row.log_apogee_m).abs()
+            })
+            .sum::<f64>()
+            / n,
         outliers: rows
             .iter()
             .filter(|row| row.apogee_error_percent.abs() > APOGEE_TARGET_PERCENT)
@@ -1504,6 +1559,12 @@ impl RealFlightReport {
                     row.trace_rms_percent,
                     100.0 * row.trace_rms_m / row.log_apogee_m,
                 ),
+                (
+                    "apogee error on the recorded thrust",
+                    row.recorded_thrust_apogee_error_percent.unwrap_or(0.0),
+                    row.recorded_thrust_apogee_m
+                        .map_or(0.0, |apogee_m| percent_of(apogee_m, row.log_apogee_m)),
+                ),
             ] {
                 if !same(kept, derived) {
                     return Err(format!(
@@ -1528,22 +1589,17 @@ impl RealFlightReport {
                 row.apogee_error_percent,
                 row.example_drag_apogee_error_percent,
             );
-            let rise = percent_of(row.hpr_rise_s, row.log_rise_s);
+            let recorded = row.recorded_thrust_apogee_error_percent;
             let holds = match row.explanation_kind.as_str() {
                 "" => !outside,
                 "drag" => example.abs() <= APOGEE_TARGET_PERCENT,
-                "boost" => {
-                    rise.abs() > APOGEE_TARGET_PERCENT
-                        && rise.signum() == -own.signum()
-                        && example.abs() > APOGEE_TARGET_PERCENT
-                }
+                "thrust" => recorded.is_some_and(|error| error.abs() <= APOGEE_TARGET_PERCENT),
                 kind => return Err(format!("{}: no explanation is called {kind:?}", row.id)),
             };
             if !holds {
                 return Err(format!(
                     "{}: the explanation {:?} doesn't hold: {own:+.3}% on hpr's drag, \
-                     {example:+.3}% on the example's, the climb to {RISE_HEIGHT_M} m {rise:+.3}% \
-                     longer",
+                     {example:+.3}% on the example's, {recorded:?}% on the recorded thrust",
                     row.id, row.explanation_kind
                 ));
             }
@@ -1595,6 +1651,11 @@ impl RealFlightReport {
                     "example drag's source",
                     a.example_drag_source != b.example_drag_source,
                 ),
+                ("inputs", a.inputs_sha256 != b.inputs_sha256),
+                (
+                    "recorded-thrust flight",
+                    a.recorded_thrust_apogee_m.is_some() != b.recorded_thrust_apogee_m.is_some(),
+                ),
             ];
             if let Some((what, _)) = differs.iter().find(|(_, differ)| *differ) {
                 return Err(format!("{}: the {what} differs", a.id));
@@ -1607,8 +1668,6 @@ impl RealFlightReport {
                     a.hpr_height_apogee_m,
                     b.hpr_height_apogee_m,
                 ),
-                ("log rise", a.log_rise_s, b.log_rise_s),
-                ("hpr rise", a.hpr_rise_s, b.hpr_rise_s),
                 (
                     "apogee error",
                     a.apogee_error_percent,
@@ -1647,6 +1706,21 @@ impl RealFlightReport {
                     a.example_drag_trace_rms_m,
                     b.example_drag_trace_rms_m,
                 ),
+                (
+                    "recorded thrust's impulse",
+                    a.recorded_thrust_impulse_ns.unwrap_or(0.0),
+                    b.recorded_thrust_impulse_ns.unwrap_or(0.0),
+                ),
+                (
+                    "apogee on the recorded thrust",
+                    a.recorded_thrust_apogee_m.unwrap_or(0.0),
+                    b.recorded_thrust_apogee_m.unwrap_or(0.0),
+                ),
+                (
+                    "error on the recorded thrust",
+                    a.recorded_thrust_apogee_error_percent.unwrap_or(0.0),
+                    b.recorded_thrust_apogee_error_percent.unwrap_or(0.0),
+                ),
             ] {
                 if !same(x, y) {
                     return Err(format!("{}: the {what} is {x} committed, {y} flown", a.id));
@@ -1675,19 +1749,17 @@ impl RealFlightReport {
              teams' altitude logs. hpr flies each with its own aerodynamics, on the example's \
              own thrust file, from the example's rail and site, in the ERA5 weather the example \
              reads. The log is the reference.\n\
-             - **Heights:** hpr's are read as the log's altimeter reads: a barometric one's is \
-             the standard atmosphere's altitude of the pressure, less the pad's, so hpr's is \
-             the same reading of the ERA5 pressure at its centre of mass, less the start's. \
-             Each log is read to its apogee, past the recovery's pressure transients.\n\
+             - **Heights:** a barometric altimeter reads the standard atmosphere's altitude of \
+             the pressure it measures, less the pad's. hpr's height is read the same way, from \
+             the ERA5 pressure at its centre of mass, less the start's. Each log is read up to \
+             its apogee, stopping before the recovery's pressure transients.\n\
              - **Trace RMS:** over the ascent, both clocks aligned where the trace first \
-             reaches {} m, until the first of the two apogees. The rise is the time from there \
-             to {} m, the boost's.\n\
+             reaches {} m, until the first of the two apogees.\n\
              - **Files:** the logs, thrust files and weather files are read from the pinned \
              RocketPy checkout and never committed; each one's SHA-256 is in the JSON.\n",
             self.generated_by,
             self.flights.len(),
-            fmt_number(self.align_height_m, 0),
-            fmt_number(RISE_HEIGHT_M, 0)
+            fmt_number(self.align_height_m, 0)
         );
         let _ = writeln!(
             out,
@@ -1700,9 +1772,10 @@ impl RealFlightReport {
             out,
             "- Flights: {}.\n- Mean absolute apogee error: {}% against a target of {}%: {}.\n\
              - Mean apogee error with its sign: {}%.\n- Were every log a height, not a \
-             barometric reading: mean absolute apogee error {}%.\n- Largest trace RMS: {}% of \
-             its log's apogee.\n- Outside the target: {}.\n- On each example's own drag, the \
-             diagnostic flight: mean absolute apogee error {}%.\n",
+             barometric reading: mean absolute apogee error {}%.\n- With only the logs known to \
+             be barometric read so, the assumed ones as heights: {}%.\n- Largest trace RMS: {}% \
+             of its log's apogee.\n- Outside the target: {}.\n- On each example's own drag, \
+             the diagnostic flight: mean absolute apogee error {}%.\n",
             s.flights,
             fmt_number(s.mean_absolute_apogee_error_percent, 2),
             fmt_number(s.target_percent, 0),
@@ -1713,6 +1786,7 @@ impl RealFlightReport {
             },
             fmt_signed(s.mean_apogee_error_percent, 2),
             fmt_number(s.mean_absolute_height_apogee_error_percent, 2),
+            fmt_number(s.mean_absolute_known_barometric_apogee_error_percent, 2),
             fmt_number(s.max_trace_rms_percent, 2),
             if s.outliers.is_empty() {
                 "none".to_owned()
@@ -1725,25 +1799,23 @@ impl RealFlightReport {
         let _ = writeln!(
             out,
             "| flight | altimeter | log apogee (m) | hpr apogee (m) | apogee error | hpr apogee \
-             as a height (m) | log rise (s) | hpr rise (s) | log time to apogee (s) | hpr time \
-             to apogee (s) | trace RMS (m) | trace RMS (% of apogee) | rows |"
+             as a height (m) | log time to apogee (s) | hpr time to apogee (s) | trace RMS (m) | \
+             trace RMS (% of apogee) | rows |"
         );
         let _ = writeln!(
             out,
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
         );
         for row in &self.flights {
             let _ = writeln!(
                 out,
-                "| {} | {} | {} | {} | {}% | {} | {} | {} | {} | {} | {} | {}% | {} |",
+                "| {} | {} | {} | {} | {}% | {} | {} | {} | {} | {}% | {} |",
                 row.title,
                 row.altimeter,
                 fmt_number(row.log_apogee_m, 1),
                 fmt_number(row.hpr_apogee_m, 1),
                 fmt_signed(row.apogee_error_percent, 2),
                 fmt_number(row.hpr_height_apogee_m, 1),
-                fmt_number(row.log_rise_s, 2),
-                fmt_number(row.hpr_rise_s, 2),
                 fmt_number(row.log_time_to_apogee_s, 2),
                 fmt_number(row.hpr_time_to_apogee_s, 2),
                 fmt_number(row.trace_rms_m, 1),
@@ -1777,6 +1849,36 @@ impl RealFlightReport {
                 fmt_signed(row.example_drag_apogee_error_percent, 2),
                 fmt_number(row.example_drag_trace_rms_m, 1)
             );
+        }
+        let _ = writeln!(out);
+        let _ = writeln!(out, "## On the thrust file as recorded\n");
+        let _ = writeln!(
+            out,
+            "A second diagnostic, where an example reshapes its thrust file to a burn time and a \
+             total impulse: the same flight on the file as recorded, on hpr's own drag. Where the \
+             error falls within the target, the miss is consistent with the motor's impulse.\n"
+        );
+        let _ = writeln!(
+            out,
+            "| flight | recorded impulse (N s) | impulse flown (N s) | apogee (m) | apogee error |"
+        );
+        let _ = writeln!(out, "|---|---:|---:|---:|---:|");
+        for row in &self.flights {
+            if let (Some(impulse_ns), Some(apogee_m), Some(error)) = (
+                row.recorded_thrust_impulse_ns,
+                row.recorded_thrust_apogee_m,
+                row.recorded_thrust_apogee_error_percent,
+            ) {
+                let _ = writeln!(
+                    out,
+                    "| {} | {} | {} | {} | {}% |",
+                    row.title,
+                    fmt_number(impulse_ns, 1),
+                    fmt_number(row.total_impulse_ns, 1),
+                    fmt_number(apogee_m, 1),
+                    fmt_signed(error, 2)
+                );
+            }
         }
         let _ = writeln!(out);
         let _ = writeln!(out, "## Each flight's inputs\n");
@@ -1833,31 +1935,29 @@ mod tests {
     const ENG: &str = "; a comment\nK1 54 579 6 1.4 2.2 AT\n 0.1 100 ; peak\n 0.5 50\n 1.0 0\n";
 
     /// In the standard atmosphere a barometric altimeter reads the geopotential height climbed.
-    /// On a day 20 K warmer it reads less: each layer of pressure is thicker by the ratio of the
-    /// day's temperature to the standard's at that pressure, a ratio between the standard's
-    /// temperature and 20 K more at the top, and the same at the bottom's standard temperature
-    /// over the top's plus 20 K.
+    /// On a day 20 K warmer at every height, with the same sea-level pressure, each pressure's
+    /// geopotential height in the troposphere is `(T₀ + ΔT) / T₀` times the standard's, so the
+    /// altimeter reads exactly `T₀ / (T₀ + ΔT)` = 288.15 / 308.15 of the height climbed.
     #[test]
-    fn a_barometric_altimeter_reads_the_standard_atmospheres_altitude() {
-        let standard = Ussa76::standard();
-        let reading = barometric_reading_m(&standard, 1400.0, 3000.0, 1.0).unwrap();
+    fn a_barometer_reads_the_standard_atmospheres_altitude() {
         let climbed = hpr_atmos::ussa76::geopotential_from_geometric_m(4400.0).unwrap()
             - hpr_atmos::ussa76::geopotential_from_geometric_m(1401.0).unwrap();
+        let standard = Ussa76::standard();
+        let barometer = Barometer::on_pad(&standard, 1400.0, 1.0).unwrap();
+        let reading = barometer.reading_m(3000.0).unwrap();
         assert!((reading - climbed).abs() < 1e-6, "{reading} vs {climbed}");
+        assert_eq!(barometer.reading_m(1.0).unwrap(), 0.0);
 
         let warm = Ussa76::with_offset(20.0, 101_325.0).unwrap();
-        let reading = barometric_reading_m(&warm, 1400.0, 3000.0, 1.0).unwrap();
-        let top = standard.sample(4400.0).unwrap().air.temperature_k;
-        let bottom = standard.sample(1401.0).unwrap().air.temperature_k;
-        let (least, most) = (
-            climbed * top / (top + 20.0),
-            climbed * bottom / (top + 20.0),
-        );
+        let reading = Barometer::on_pad(&warm, 1400.0, 1.0)
+            .unwrap()
+            .reading_m(3000.0)
+            .unwrap();
+        let expected = climbed * 288.15 / 308.15;
         assert!(
-            least < reading && reading < most,
-            "{reading} outside {least} to {most}"
+            (reading - expected).abs() < 1e-9 * climbed,
+            "{reading} vs {expected}"
         );
-        assert!(reading < climbed - 150.0, "{reading}");
     }
 
     #[test]

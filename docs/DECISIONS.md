@@ -7220,51 +7220,61 @@ designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing abo
    measures to the standard atmosphere's altitude and subtracts the pad's: on a day warmer than
    the standard the air column is thicker and it reads less than the height climbed, by several
    per cent at Spaceport America in June. Prometheus's TeleMetrum and Juno III's RRC3 log their
-   pressure, and their height columns are exactly that reading, to 0.005 m and 0.82 m over the
-   ascent. So hpr's height goes through the same conversion, of the ERA5 pressure at its centre
-   of mass (`Ussa76::pressure_altitude_m`, `hpr_validate::real_flight::barometric_reading_m`).
-   NDRT's Featherweight Raven is barometric by its manual. Cavour's CATS Vega, and Genesis's and
-   Lince's filtered estimates, fuse a barometer with an accelerometer, and Bella Lui's avionics
-   are unnamed: those are taken as barometric, with the evidence in each row. The report also
-   gives hpr's apogee as a height, and the mean were every log one.
+   pressure, and to apogee their height columns are that reading, to 0.01 m and 1.4 m. So hpr's
+   height goes through the same conversion, of the ERA5 pressure at its centre of mass
+   (`Ussa76::pressure_altitude_m`, `hpr_validate::real_flight::Barometer`). NDRT's Featherweight
+   Raven is a barometric altimeter by make. Cavour's CATS Vega, and Genesis's and Lince's filtered
+   estimates, fuse a barometer with an accelerometer, and Bella Lui's avionics are unnamed: those
+   four are marked *assumed* barometric, with the evidence in each row. The report gives hpr's
+   apogee as a height too, and the mean both ways. Two logs also carry satellite (GNSS) heights,
+   a cross-check measured once, outside the report: Juno III's GNSS rises 3369.3 m above its pad
+   and Prometheus's 4133 m, so their barometric readings are 0.935 and 0.943 of those, where hpr's
+   conversion gives 0.921 and 0.932. The conversion is the right size and direction, to about 1.5%
+   of an apogee.
 5. **Apogee** is the log's highest reading, read up to the recovery. Three logs have pressure
-   transients past apogee as a charge fires: Juno III's reading dips 94 m, then rises 62 m above
-   its apogee within 0.3 s (the flight card gives that spike, 3213 m); Prometheus's drops 600 m for
-   one sample and returns 8 m above its apogee; Lince's filtered height swings by hundreds of metres
-   up to 3668.5 m, where its apogee before, 3587.7 m, is its flight card's. No one threshold
-   separates these from the ascent's own dips (Lince's drops over 50 m at 8.5 s), so each log is
-   read to a time set by hand, before its transient, with the reason in its note (24.60 s,
-   29.58 s, 26.80 s; Juno III's cut also drops its two corrupt rows).
+   transients near apogee: Juno III's reading, as it levels off, dips 94 m, then rises 62 m above
+   the level within 0.3 s (the flight card gives that spike, 3213 m); Prometheus's drops 600 m and
+   returns 8 m above its highest reading before; Lince's filtered height swings by hundreds of
+   metres up to 3668.5 m, where its highest before, 3587.7 m, is its flight card's. No one
+   threshold separates these from the ascent's own dips (Lince's drops over 50 m at 8.5 s), so
+   each log is read to a time set by hand, before its transient, with the reason in its note
+   (24.60 s, 29.58 s, 26.80 s; Juno III's cut also drops its two corrupt rows). Juno III's reading
+   is still rising slowly at its cut, so its apogee may be a few metres low.
 6. **The trace RMS is over the ascent**: each clock is aligned where its trace first reaches 30 m,
    since a log's zero is its own (armed, launch detected, power on), not ignition; the RMS runs
    over every log row from there to the first of the two apogees, hpr's heights interpolated on
-   a 0.01 s grid of its dense output. The descent is left out: its events are the team's. **The
-   rise**, from 30 m to 150 m, times the boost, where drag is a few per cent of thrust. The peak
-   climb rate would not: Lince's log peaks 26% faster than hpr (over 1 s) though its apogee agrees
-   within 3.4%, as transonic flow disturbs a barometer's static ports.
-7. **A diagnostic flight on each example's own drag** (a constant, the notebook's knots, or its
-   CSV files, scaled as the notebook specifies, on the example's radius), beside the prediction.
-   It is not a second prediction: a team's drag is an estimate, from a table, RASAero II, CFD or
-   a constant the notebook doesn't source. RocketPy 1.13.0 itself doesn't fly two of them as
-   written: a `power_off_drag` assigned after the rocket is built, or scaled in place, never
-   reaches the function its flight evaluates, so it flies Bella Lui on 0.43 and Juno III on the
-   unscaled curve. hpr flies what the notebooks specify.
+   a 0.01 s grid of its dense output. The descent is left out: its events are the team's. The
+   early climb of a barometric log is not a measure of the boost: Prometheus's barometer reaches
+   150 m 0.87 s after its own speed column, integrated, puts it there, a lag of the pressure in
+   its bay, so no explanation rests on it.
+7. **Diagnostic flights.** Each flight is flown again on the example's own drag (a constant, the
+   notebook's knots, or its CSV files, scaled as the notebook specifies, on the example's radius),
+   and, where the example reshapes its thrust file to a burn time and an impulse, on the file as
+   recorded. Neither is a second prediction: a team's drag is an estimate, from a table, RASAero
+   II, CFD or a constant the notebook doesn't source, and may have been tuned to its flight.
+   RocketPy 1.13.0 itself doesn't fly two of the drags as written: a `power_off_drag` assigned
+   after the rocket is built, or scaled in place, never reaches the function its flight evaluates,
+   so it flies Bella Lui on 0.43 and Juno III on the unscaled curve. hpr flies what the notebooks
+   specify.
 8. **An explanation is a checked claim.** An outlier (outside the 5% target) must carry one, and a
-   flight inside it must not. `drag` claims the diagnostic flight is within the target: the miss
-   is consistent with hpr's drag. `boost` claims the miss is made in the boost: hpr's rise is off
-   by more than 5% on the side of the miss (longer when low), and the team's drag does not bring
-   the apogee within the target. CI checks each claim against the row, each row's percentages
-   against its metres, and the words against the code's, so a change that makes a claim false
-   fails with the words that argued it.
+   flight inside it must not. `drag` claims the flight on the team's drag is within the target:
+   the miss is consistent with hpr's drag. `thrust` claims the flight on the recorded thrust file
+   is within the target: the miss is consistent with the impulse the notebook sets. CI checks
+   each claim against the row, each row's percentages against its metres, and the words, the
+   digests of the committed files read and of each flight's inputs against the code's, so a
+   change that makes a claim false or the report stale fails.
 
 **Consequences.** Over seven flights, the mean absolute apogee error is 6.04%, outside the 5%
-target (−8.90% to +10.40%; mean −0.25%), and the trace RMS is at most 7.26% of an apogee. Were
-the logs heights, the mean would be 4.47%: reading hpr as a barometer moves its apogee by −7.9%
-(Juno III, in June's heat) to +1.7% (NDRT 2020, in February). Five flights are outliers. Four are consistent with hpr's drag: on their teams' drag
-NDRT 2020 (+10.40%) lands at +0.17%, Prometheus (−8.90%) at +0.45%, Cavour (+5.63%) at −2.29%
-and Genesis (−5.85%) at −0.08%. hpr's drag is not biased one way: it is low for two and high for
-two. Juno III (−7.24%) is its boost: hpr takes 32% longer than the log to climb from 30 m to
-150 m, on its team's own motor curve, and the team's drag misses by −9.05%. Read as barometers,
-the teams' drags meet five logs within 2.3%. A log is a single flight, with its own sensor and filter,
-and four of the altimeter kinds are assumed; the numbers are those seven flights', not a bound.
-The report is not reproduced in CI, only held to itself there.
+target (−8.90% to +10.40%; mean −0.25%), and the trace RMS is at most 7.26% of an apogee. The
+target is missed however the assumed altimeters are read: 6.63% with only the three known
+barometric logs read so, 4.47% only were every log a height, which two of them are known not to
+be. Reading hpr as a barometer moves its apogee by −7.9% (Juno III, in June's heat) to +1.7%
+(NDRT 2020, in February). Five flights are outliers. Four are consistent with hpr's drag: on
+their teams' drag NDRT 2020 (+10.40%) lands at +0.17%, Prometheus (−8.90%) at +0.45%, Cavour
+(+5.63%) at −2.29% and Genesis (−5.85%) at −0.08%; hpr's drag is low for two and high for two.
+Prometheus's reading also rests on weather a year off its day. Juno III (−7.24%) is consistent
+with its motor's impulse: the notebook reshapes its team's curve to 8800 N s, 4.9% below the
+file's own 9251.7 N s, and on the file as recorded hpr lands at +1.13%. These are consistent
+explanations, not proofs: the teams' drags and the reshape are estimates too. A log is a single
+flight, with its own sensor and filter; the numbers are those seven flights', not a bound. The
+report is not reproduced in CI, only held to itself there.

@@ -31,7 +31,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     for row in &report.flights {
         println!(
             "real-flights: {:<16} log {:>7.1} m in {:>5.2} s  hpr {:>7.1} m in {:>5.2} s  {:>+6.2}%  \
-             trace RMS {:>6.1} m ({:.2}%)  as heights {:>+6.2}%  on the example's drag {:>+6.2}%",
+             trace RMS {:>6.1} m ({:.2}%)  as heights {:>+6.2}%  on the example's drag {:>+6.2}%{}",
             row.id,
             row.log_apogee_m,
             row.log_time_to_apogee_s,
@@ -41,7 +41,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
             row.trace_rms_m,
             row.trace_rms_percent,
             100.0 * (row.hpr_height_apogee_m - row.log_apogee_m) / row.log_apogee_m,
-            row.example_drag_apogee_error_percent
+            row.example_drag_apogee_error_percent,
+            row.recorded_thrust_apogee_error_percent
+                .map_or(String::new(), |error| format!(
+                    "  on the recorded thrust {error:+.2}%"
+                ))
         );
     }
     let summary = &report.summary;

@@ -1308,13 +1308,7 @@ fn agree(a: f64, b: f64) -> bool {
     (a - b).abs() <= 1e-9 * a.abs().max(1.0)
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
-    use sha2::Digest as _;
-    sha2::Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
+use crate::real_flight::sha256_hex;
 
 /// The record moves only when its script runs (Loft lesson L76), on the pinned jar, and the
 /// scripts it names are the committed ones.
@@ -1747,7 +1741,6 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
     // itself; `cargo xtask real-flights --check` flies it again where they are.
     use crate::real_flight::{
         APOGEE_TARGET_PERCENT, FLIGHTS, MASS_FIXTURE, REPORT_JSON, REPORT_MD, RealFlightReport,
-        sha256_hex,
     };
     let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
     let report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
@@ -1797,6 +1790,13 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
                 flight.explanation.text(),
             ),
             "{}: rerun `cargo xtask real-flights`",
+            row.id
+        );
+        // So are its numbers: sites, rails, log columns, drags.
+        assert_eq!(
+            row.inputs_sha256,
+            sha256_hex(format!("{flight:?}").as_bytes()),
+            "{}: its inputs changed; rerun `cargo xtask real-flights`",
             row.id
         );
         // The committed files it read are the ones in the checkout: a regenerated design or
@@ -1868,17 +1868,24 @@ fn a_real_flight_explanation_that_stops_holding_fails() {
         },
         "doesn't hold",
     );
-    // "boost" says hpr's early climb is off on the side of the miss, and the example's drag
-    // doesn't mend it: an early climb that matches the log's fails.
+    // "thrust" says the flight on the thrust file as recorded is within the target.
     fails_with(
-        "boost",
-        &|row| row.hpr_rise_s = row.log_rise_s,
+        "thrust",
+        &|row| {
+            let apogee_m = 1.07 * row.log_apogee_m;
+            row.recorded_thrust_apogee_m = Some(apogee_m);
+            row.recorded_thrust_apogee_error_percent =
+                Some(100.0 * (apogee_m - row.log_apogee_m) / row.log_apogee_m);
+        },
         "doesn't hold",
     );
-    // One that is off on the other side fails too.
+    // And fails with no such flight.
     fails_with(
-        "boost",
-        &|row| row.hpr_rise_s = row.log_rise_s * 0.5,
+        "thrust",
+        &|row| {
+            row.recorded_thrust_apogee_m = None;
+            row.recorded_thrust_apogee_error_percent = None;
+        },
         "doesn't hold",
     );
     // A kind the check doesn't know fails rather than passing.

@@ -160,9 +160,10 @@ out.
   The larger gaps are where the two drags differ most: hpr's is well below the example's for two
   rockets, and above it at high speed for Prometheus 2022, which flies through Mach 1
   ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)).
-  Against the altitude logs of seven real flights, hpr's apogees miss by 6.04% on average,
-  outside the 5% target, and by −8.90% to +10.40% one by one; drift and speed are not compared
-  yet ([real flights](accuracy.md#real-flights),
+- **Against seven real flights, hpr's apogees miss by 6.04% on average,** outside the 5% target,
+  and by −8.90% to +10.40% one by one. hpr's height is read the way each log's barometric
+  altimeter reads the air; drift and speed are not compared yet
+  ([real flights](accuracy.md#real-flights),
   [report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
 - **The descent under a parachute matches RocketPy's.** The comparison flies the descents of five
   of RocketPy's [example rockets](glossary.md#example-rockets) in both codes:

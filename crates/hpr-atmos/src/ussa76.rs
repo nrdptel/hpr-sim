@@ -895,6 +895,19 @@ mod tests {
                 "{pressure_pa} Pa: {computed} vs {formula}"
             );
         }
+        // The worked example of `docs/physics/atmosphere.md`: a pad at 86000 Pa and a reading at
+        // 58000 Pa, then the same two pressures on a day 20 K warmer with P₀ unchanged.
+        let pad = model.pressure_altitude_m(86_000.0).unwrap();
+        let top = model.pressure_altitude_m(58_000.0).unwrap();
+        assert_eq!(
+            format!("{pad:.1} {top:.1} {:.1}", top - pad),
+            "1361.8 4464.4 3102.6"
+        );
+        let warm = Ussa76::with_offset(20.0, SEA_LEVEL_PRESSURE_PA).unwrap();
+        let climbed = warm.pressure_altitude_m(58_000.0).unwrap()
+            - warm.pressure_altitude_m(86_000.0).unwrap();
+        assert_eq!(format!("{climbed:.1}"), "3318.0");
+        assert!((climbed / (top - pad) - 308.15 / 288.15).abs() < 1e-12);
         for bad in [0.0, -1.0, f64::NAN, f64::INFINITY] {
             assert!(matches!(
                 model.pressure_altitude_m(bad),
