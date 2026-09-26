@@ -34,8 +34,8 @@ const CENSUS_MD: &str = "validation/reports/census.md";
 /// Its page on GitHub, which the tables link to: the README and the site read it at one address.
 const CENSUS_URL: &str =
     "https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/census.md";
-/// The badge.
-const BADGE: &str = "docs/images/census-badge.svg";
+/// Where the badges go.
+const BADGES: &str = "docs/images";
 /// The files that show the census table, between [`BEGIN`] and [`END`].
 const TABLES: [&str; 2] = ["README.md", "docs/accuracy.md"];
 const BEGIN: &str = "<!-- census: written by `cargo xtask census --accept` from \
@@ -168,38 +168,7 @@ fn print_changes(changes: &[Change]) {
 fn accept_census(root: &Path, reason: &str) -> Result<(), String> {
     let now = take(root)?;
     let previous = read_accepted(root)?;
-    let changed = previous
-        .as_ref()
-        .is_none_or(|previous| !census::compare(&previous.census, &now).is_empty());
-    let reason = if changed {
-        if reason.trim().is_empty() {
-            return Err(
-                "rows differ from the accepted census: say why with `--reason <why>`, in words \
-                 a reviewer can check"
-                    .to_owned(),
-            );
-        }
-        reason.to_owned()
-    } else {
-        // Nothing moved: the outputs are rewritten, and the last reason stands.
-        previous
-            .as_ref()
-            .map(|previous| previous.reason.clone())
-            .unwrap_or_default()
-    };
-    let accepted = if changed {
-        Accepted::new(
-            now,
-            previous.as_ref().map(|previous| &previous.census),
-            &reason,
-        )
-    } else {
-        // Keep the accepted rows as they were, so jitter below the slack doesn't churn the file.
-        match previous {
-            Some(previous) => previous,
-            None => return Err("no census to keep".to_owned()),
-        }
-    };
+    let accepted = acceptance(previous, now, reason)?;
     for (path, text) in outputs(root, &accepted)? {
         let full = root.join(&path);
         std::fs::write(&full, text)
@@ -212,15 +181,59 @@ fn accept_census(root: &Path, reason: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The census to write: `now` accepted for `reason` when it differs from `previous`, or
+/// `previous` kept as it was when nothing differs, so movement below the slack doesn't churn the
+/// file.
+///
+/// A changed census needs a reason. An unchanged one keeps its own, and a reason given for it is
+/// refused rather than dropped without a word.
+fn acceptance(previous: Option<Accepted>, now: Census, reason: &str) -> Result<Accepted, String> {
+    let changes = previous
+        .as_ref()
+        .map(|previous| census::compare(&previous.census, &now));
+    match (previous, changes) {
+        (Some(previous), Some(changes)) if changes.is_empty() => {
+            if reason.trim().is_empty() {
+                Ok(previous.refreshed())
+            } else {
+                Err(
+                    "nothing differs from the accepted census, so there is nothing to give a \
+                     reason for; run `cargo xtask census --accept` alone to rewrite its outputs"
+                        .to_owned(),
+                )
+            }
+        }
+        (previous, _) if reason.trim().is_empty() => Err(format!(
+            "{}: say why with `--reason <why>`, in words a reviewer can check",
+            if previous.is_some() {
+                "rows differ from the accepted census"
+            } else {
+                "there is no accepted census yet"
+            }
+        )),
+        (previous, _) => Ok(Accepted::new(
+            now,
+            previous.as_ref().map(|previous| &previous.census),
+            reason,
+        )),
+    }
+}
+
 /// Every file the accepted census writes, with its text.
+///
+/// Everything is rendered from the accepted rows, its summaries computed again, so a summary
+/// edited by hand, or one an older version of the code wrote, shows as a stale `census.json`.
 fn outputs(root: &Path, accepted: &Accepted) -> Result<Vec<(PathBuf, String)>, String> {
-    let json = serde_json::to_string_pretty(accepted)
+    let accepted = accepted.refreshed();
+    let json = serde_json::to_string_pretty(&accepted)
         .map_err(|error| format!("serialising the census: {error}"))?;
     let mut files = vec![
         (PathBuf::from(CENSUS_JSON), format!("{json}\n")),
         (PathBuf::from(CENSUS_MD), accepted.to_markdown()),
-        (PathBuf::from(BADGE), census::badge_svg(&accepted.summaries)),
     ];
+    for (name, svg) in census::badges(&accepted.summaries) {
+        files.push((Path::new(BADGES).join(name), svg));
+    }
     let block = format!(
         "{BEGIN}\n\n{}\n{END}",
         census::table(&accepted.summaries, Some(CENSUS_URL))
@@ -308,6 +321,40 @@ mod tests {
     fn the_committed_reports_hold_to_the_accepted_census() {
         let root = crate::designs::root().unwrap();
         check(&root).unwrap();
+    }
+
+    #[test]
+    fn a_change_is_accepted_only_with_a_reason() {
+        let root = crate::designs::root().unwrap();
+        let accepted = read_accepted(&root).unwrap().unwrap();
+        let now = take(&root).unwrap();
+        // Nothing moved: the census is kept, and a reason for nothing is refused.
+        let kept = acceptance(Some(accepted.clone()), now.clone(), "").unwrap();
+        assert_eq!(kept, accepted.refreshed());
+        assert!(
+            acceptance(Some(accepted.clone()), now.clone(), "why")
+                .unwrap_err()
+                .contains("nothing differs")
+        );
+        // A row moved: accepted only with a reason, which is kept with the changes.
+        let mut moved = now.clone();
+        moved.rows[0].difference += 1.0 + 2.0 * moved.rows[0].slack;
+        assert!(
+            acceptance(Some(accepted.clone()), moved.clone(), " ")
+                .unwrap_err()
+                .contains("--reason")
+        );
+        let written = acceptance(Some(accepted), moved.clone(), "a test").unwrap();
+        assert_eq!(written.reason, "a test");
+        assert_eq!(written.changes.len(), 1, "{:?}", written.changes);
+        assert_eq!(written.census, moved);
+        // The first census needs one too.
+        assert!(
+            acceptance(None, now.clone(), "")
+                .unwrap_err()
+                .contains("no accepted census")
+        );
+        assert!(acceptance(None, now, "first").is_ok());
     }
 
     #[test]

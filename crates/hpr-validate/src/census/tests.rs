@@ -127,7 +127,12 @@ fn counts_are_generated_and_each_case_counts_once() {
             .collect();
         let cases: BTreeSet<&str> = rows.iter().map(|row| row.case.as_str()).collect();
         assert_eq!(summary.rows, rows.len(), "{:?}", summary.group);
-        assert_eq!(summary.cases, cases.len(), "{:?}", summary.group);
+        assert_eq!(
+            summary.cases + summary.not_flown,
+            cases.len(),
+            "{:?}: each case is flown or not, once",
+            summary.group
+        );
         assert_eq!(
             summary.regimes.values().sum::<usize>(),
             summary.cases,
@@ -164,6 +169,20 @@ fn counts_are_generated_and_each_case_counts_once() {
         Some(flights(Group::OpenRocketLibrary) as u64),
         library["summary"]["flown"].as_u64()
     );
+    for (group, report) in [
+        (Group::OpenRocketExamples, &examples),
+        (Group::OpenRocketLibrary, &library),
+    ] {
+        let not_flown = summaries
+            .iter()
+            .find(|summary| summary.group == group)
+            .unwrap()
+            .not_flown;
+        assert_eq!(
+            Some(not_flown),
+            report["not_flown"].as_array().map(Vec::len)
+        );
+    }
     // The real flights' mean is recomputed from the rows, and matches the report's own.
     let logs = summaries
         .iter()
@@ -179,7 +198,7 @@ fn counts_are_generated_and_each_case_counts_once() {
         "{table}"
     );
     assert!(
-        table.contains("| 1 descent (1 under a parachute) | 1 of 1 gated metrics pass |"),
+        table.contains("| 1 descent | 1 of 1 gated metrics pass |"),
         "{table}"
     );
 
@@ -252,18 +271,20 @@ fn known_gap_that_starts_passing_fails_the_gate() {
     ))
     .unwrap();
     let changes = compare(&accepted, &flown);
-    let described: Vec<String> = changes.iter().map(Change::describe).collect();
     assert!(
-        described
-            .iter()
-            .any(|line| line.contains("flight-g") && line.contains("hpr flies it now")),
-        "{described:#?}"
+        matches!(&changes[..], [Change::Flown(row)] if row.case == "flight-g"),
+        "the gap is flown, and its new rows come with it: {changes:#?}"
     );
-    assert_eq!(
-        changes.len(),
-        3,
-        "the gap goes and two rows come: {described:#?}"
+    assert!(changes[0].describe().contains("hpr flies it now"));
+    assert!(!changes[0].is_worse());
+    // A gap whose case is simply gone is a loss, not a flight.
+    let gone = take(&harness(Vec::new(), Vec::new())).unwrap();
+    let changes = compare(&accepted, &gone);
+    assert!(
+        matches!(&changes[..], [Change::Removed(row)] if row.standing == Standing::Gap),
+        "{changes:#?}"
     );
+    assert!(changes[0].is_worse());
 
     // A predicted miss that starts meeting its target, by any margin: 3.01% to 2.99% of a 3%
     // target, well inside the band half the tolerance would have missed.
@@ -302,9 +323,19 @@ fn headline_names_oracle_kind_population_and_regime() {
         assert!(headline.contains(&summary.reference), "{headline}");
         assert!(headline.contains(summary.group.kind()), "{headline}");
         assert!(headline.contains(summary.group.bar()), "{headline}");
-        let population = format!("{} {} (", summary.cases, summary.group.noun(summary.cases));
+        let population = format!("{} {}", summary.cases, summary.group.noun(summary.cases));
         assert!(headline.contains(&population), "{headline}");
-        for (regime, count) in &summary.regimes {
+        if summary.not_flown > 0 {
+            assert!(
+                headline.contains(&format!("{} more not flown", summary.not_flown)),
+                "{headline}"
+            );
+        }
+        for (regime, count) in summary
+            .regimes
+            .iter()
+            .filter(|(regime, _)| **regime != Regime::Descent)
+        {
             assert!(
                 headline.contains(&format!("{count} {}", regime.name())),
                 "{headline}"
@@ -318,8 +349,8 @@ fn headline_names_oracle_kind_population_and_regime() {
     assert_eq!(
         predicted.headline(),
         "Whole flights, each code on its own drag against rocketpy 1.13.0 (code-to-code, each \
-         code's own drag; target: 3% on each metric): 1 flight (1 supersonic); 2 of 2 metrics \
-         within target; apogee +1.00% to +1.00%."
+         code's own drag; target: 3% on each metric, reported, not enforced): 1 flight (1 \
+         supersonic); 2 of 2 metrics within target; apogee +1.00% to +1.00%."
     );
     // The logs' version names the altimeters, and the census's own mean.
     let logs = summaries
@@ -328,7 +359,7 @@ fn headline_names_oracle_kind_population_and_regime() {
         .unwrap();
     assert!(
         logs.headline()
-            .contains("measured: the teams' altimeter logs")
+            .contains("against the teams' altimeter logs (measured;")
     );
     assert!(logs.headline().contains("mean absolute apogee error"));
 }
@@ -398,7 +429,7 @@ fn a_census_reads_back_as_it_was_written() {
 #[test]
 fn the_badge_counts_the_gated_rows_and_turns_red_on_a_failure() {
     let census = take(&harness(Vec::new(), Vec::new())).unwrap();
-    let badge = badge_svg(&census.summaries());
+    let badge = badges(&census.summaries())[0].1.clone();
     assert!(badge.contains("3 of 3 gated metrics pass"), "{badge}");
     assert!(badge.contains("#2e7d32"), "{badge}");
     let failing = take(&harness(
@@ -413,7 +444,7 @@ fn the_badge_counts_the_gated_rows_and_turns_red_on_a_failure() {
         Vec::new(),
     ))
     .unwrap();
-    let badge = badge_svg(&failing.summaries());
+    let badge = badges(&failing.summaries())[0].1.clone();
     assert!(badge.contains("3 of 4 gated metrics pass"), "{badge}");
     assert!(badge.contains("#c62828"), "{badge}");
     // An OpenRocket row with no bar is refused, not dropped.
@@ -425,4 +456,134 @@ fn the_badge_counts_the_gated_rows_and_turns_red_on_a_failure() {
         openrocket_example_rows(&examples, &mut rows, &mut references),
         Err(CensusError::Report { what, .. }) if what.contains("new_metric")
     ));
+}
+
+#[test]
+fn a_change_of_reference_rule_or_definition_is_a_change() {
+    let census = take(&harness(Vec::new(), Vec::new())).unwrap();
+    // Another version of the reference: the headline would name the wrong one (L86).
+    let mut examples: Value = committed("openrocket-flights.json");
+    examples["reference"]["version"] = json!("25.01");
+    let real: RealFlightReport = committed("real-flights.json");
+    let library: Value = committed("openrocket-library-flights.json");
+    let report = harness(Vec::new(), Vec::new());
+    let moved = Census::take(Reports {
+        harness: &report,
+        real_flights: &real,
+        openrocket_examples: &examples,
+        openrocket_library: &library,
+    })
+    .unwrap();
+    let changes = compare(&census, &moved);
+    assert!(
+        matches!(
+            &changes[..],
+            [Change::Reference { group: Group::OpenRocketExamples, now, .. }]
+                if now == "OpenRocket 25.01"
+        ),
+        "{changes:#?}"
+    );
+    // A wider slack, in the rule or on one row, is a change, the first for the worse.
+    let wider = Census {
+        slack_share: 2.0 * SLACK_SHARE,
+        ..census.clone()
+    };
+    let changes = compare(&census, &wider);
+    assert!(
+        matches!(&changes[..], [Change::Rule { .. }]) && changes[0].is_worse(),
+        "{changes:#?}"
+    );
+    let row = predicted_apogee(1.0);
+    let looser = Row {
+        slack: 2.0 * row.slack,
+        ..row.clone()
+    };
+    assert!(matches!(
+        &compare(&single(row.clone()), &single(looser))[..],
+        [Change::Redefined { .. }]
+    ));
+    let reclassed = Row {
+        regime: Regime::Subsonic,
+        ..row.clone()
+    };
+    assert!(matches!(
+        &compare(&single(row.clone()), &single(reclassed))[..],
+        [Change::Redefined { .. }]
+    ));
+    // A row that comes, and one that goes.
+    let other = Row {
+        metric: "apogee_time_s".to_owned(),
+        ..row.clone()
+    };
+    let both = Census {
+        rows: vec![row.clone(), other.clone()],
+        ..single(row.clone())
+    };
+    assert!(matches!(
+        &compare(&single(row.clone()), &both)[..],
+        [Change::Added(added)] if *added == other
+    ));
+    let changes = compare(&both, &single(row));
+    assert!(
+        matches!(&changes[..], [Change::Removed(removed)] if *removed == other)
+            && changes[0].is_worse(),
+        "{changes:#?}"
+    );
+}
+
+#[test]
+fn openrocket_reports_count_what_they_leave_unflown() {
+    let census = take(&harness(Vec::new(), Vec::new())).unwrap();
+    let examples: Value = committed("openrocket-flights.json");
+    let first = &examples["not_flown"][0];
+    let case = format!(
+        "{} / {}",
+        first["design"].as_str().unwrap(),
+        first["configuration"].as_str().unwrap()
+    );
+    let row = census
+        .rows
+        .iter()
+        .find(|row| row.group == Group::OpenRocketExamples && row.case == case)
+        .unwrap();
+    assert_eq!(row.standing, Standing::NotFlown);
+    assert!(row.metric.is_empty());
+    // Every flown configuration has its mass and centre of mass, within its bar or over it.
+    for metric in ["launch_mass", "rod_clearance_mass", "rod_clearance_cg"] {
+        let rows = census
+            .rows
+            .iter()
+            .filter(|row| row.group == Group::OpenRocketExamples && row.metric == metric)
+            .count();
+        assert_eq!(
+            Some(rows),
+            examples["flights"].as_array().map(Vec::len),
+            "{metric}"
+        );
+    }
+    // An unknown Mach class is a class, not a refusal; a missing one is refused.
+    let mut library: Value = committed("openrocket-library-flights.json");
+    library["flights"][0]["mach"] = json!("unknown");
+    let mut rows = Vec::new();
+    let mut references = BTreeMap::new();
+    openrocket_library_rows(&library, &mut rows, &mut references).unwrap();
+    assert_eq!(rows[0].regime, Regime::Unknown);
+    library["flights"][0]["mach"] = Value::Null;
+    assert!(openrocket_library_rows(&library, &mut Vec::new(), &mut references).is_err());
+    // A metric with no outcome is refused too, rather than read as withheld.
+    let mut examples = examples;
+    examples["flights"][0]["metrics"]["apogee_m"]["outcome"] = Value::Null;
+    assert!(matches!(
+        openrocket_example_rows(&examples, &mut Vec::new(), &mut references),
+        Err(CensusError::Report { what, .. }) if what.contains("no outcome")
+    ));
+}
+
+#[test]
+fn stored_summaries_are_recomputed_not_trusted() {
+    let census = take(&harness(Vec::new(), Vec::new())).unwrap();
+    let mut accepted = Accepted::new(census, None, "first");
+    accepted.summaries[0].rows += 1;
+    assert_ne!(accepted.refreshed(), accepted);
+    assert_eq!(accepted.refreshed().summaries, accepted.census.summaries());
 }
