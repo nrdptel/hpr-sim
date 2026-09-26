@@ -22,8 +22,9 @@
   the two drags differ most: hpr's is well below the example's for two rockets, and above it at
   high speed for Prometheus 2022, which flies through Mach 1 on hpr's drag since
   [M1.8b1](../decisions-and-roadmap.md#m1-8b1) (drag through Mach 1)
-  ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). No flight has been compared
-  with a real one.
+  ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). Seven flights have been
+  compared with their teams' altitude logs, apogee and climb only
+  ([Accuracy: real flights](../accuracy.md#real-flights)).
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
   rail), turbulence and thrust misalignment. Its
   small-angle aerodynamics are used at every angle of attack (the angle between the rocket's axis

@@ -1746,7 +1746,8 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
     // The logs are not in CI (they live under `refs/`), so this holds the committed report to
     // itself; `cargo xtask real-flights --check` flies it again where they are.
     use crate::real_flight::{
-        APOGEE_TARGET_PERCENT, FLIGHTS, REPORT_JSON, REPORT_MD, RealFlightReport,
+        APOGEE_TARGET_PERCENT, FLIGHTS, MASS_FIXTURE, REPORT_JSON, REPORT_MD, RealFlightReport,
+        sha256_hex,
     };
     let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
     let report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
@@ -1765,7 +1766,56 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
         ids, listed,
         "the report flies every listed flight, in order"
     );
-    for row in &report.flights {
+    for (row, flight) in report.flights.iter().zip(&FLIGHTS) {
+        // The words the report carries are the ones the code flies with now.
+        let (year, month, day, hour) = flight.utc;
+        assert_eq!(
+            (
+                row.title.as_str(),
+                row.design.as_str(),
+                row.source.as_str(),
+                row.weather_time_utc.clone(),
+                row.log_until_s,
+                row.altimeter.as_str(),
+                row.altimeter_evidence.as_str(),
+                row.example_drag_source.as_str(),
+                row.note.as_str(),
+                row.explanation_kind.as_str(),
+                row.explanation.as_str(),
+            ),
+            (
+                flight.title,
+                flight.design,
+                flight.source,
+                format!("{year:04}-{month:02}-{day:02}T{hour:02}:00Z"),
+                flight.log.until_s,
+                flight.log.altimeter.kind(),
+                flight.log.altimeter.evidence(),
+                flight.example_drag_source,
+                flight.note,
+                flight.explanation.kind(),
+                flight.explanation.text(),
+            ),
+            "{}: rerun `cargo xtask real-flights`",
+            row.id
+        );
+        // The committed files it read are the ones in the checkout: a regenerated design or
+        // fixture makes the report stale.
+        let design = format!("validation/designs/{}.json", flight.design);
+        for committed in [design.as_str(), MASS_FIXTURE] {
+            let file = row
+                .files
+                .iter()
+                .find(|file| file.path == committed)
+                .unwrap_or_else(|| panic!("{}: {committed} is not recorded", row.id));
+            let bytes = std::fs::read(root().join(committed)).expect("committed");
+            assert_eq!(
+                file.sha256,
+                sha256_hex(&bytes),
+                "{}: {committed} changed; rerun `cargo xtask real-flights`",
+                row.id
+            );
+        }
         assert!(
             row.log_apogee_m > 0.0 && row.hpr_apogee_m > 0.0,
             "{}",
@@ -1794,19 +1844,64 @@ fn real_flight_cases_report_apogee_and_trace_rms() {
 fn a_real_flight_explanation_that_stops_holding_fails() {
     // An explanation is a claim checked against the row's numbers: "drag" says the flight on the
     // example's own drag is within the target, so a row where it isn't fails the check.
-    use crate::real_flight::{REPORT_JSON, RealFlightReport};
+    use crate::real_flight::{FlightRow, REPORT_JSON, RealFlightReport, summarise};
     let text = std::fs::read_to_string(root().join(REPORT_JSON)).expect("the report is committed");
-    let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
-    let row = report
-        .flights
-        .iter_mut()
-        .find(|row| row.explanation_kind == "drag")
-        .expect("a flight explained by its drag");
-    row.example_drag_apogee_error_percent = 7.0;
-    report.summary = crate::real_flight::summarise(&report.flights);
-    let page = report.to_markdown();
-    let error = report.check_consistent(&page).unwrap_err();
-    assert!(error.contains("doesn't hold"), "{error}");
+    let fails_with = |kind: &str, change: &dyn Fn(&mut FlightRow), expected: &str| {
+        let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
+        let row = report
+            .flights
+            .iter_mut()
+            .find(|row| row.explanation_kind == kind)
+            .unwrap_or_else(|| panic!("a flight explained by {kind:?}"));
+        change(row);
+        report.summary = summarise(&report.flights);
+        let page = report.to_markdown();
+        let error = report.check_consistent(&page).unwrap_err();
+        assert!(error.contains(expected), "{kind}: {error}");
+    };
+    fails_with(
+        "drag",
+        &|row| {
+            row.example_drag_apogee_m = 1.07 * row.log_apogee_m;
+            row.example_drag_apogee_error_percent =
+                100.0 * (row.example_drag_apogee_m - row.log_apogee_m) / row.log_apogee_m;
+        },
+        "doesn't hold",
+    );
+    // "boost" says hpr's early climb is off on the side of the miss, and the example's drag
+    // doesn't mend it: an early climb that matches the log's fails.
+    fails_with(
+        "boost",
+        &|row| row.hpr_rise_s = row.log_rise_s,
+        "doesn't hold",
+    );
+    // One that is off on the other side fails too.
+    fails_with(
+        "boost",
+        &|row| row.hpr_rise_s = row.log_rise_s * 0.5,
+        "doesn't hold",
+    );
+    // A kind the check doesn't know fails rather than passing.
+    fails_with(
+        "drag",
+        &|row| row.explanation_kind = "weather".to_owned(),
+        "no explanation is called",
+    );
+    // A percentage that isn't its metres' fails, whatever the summary says.
+    fails_with(
+        "drag",
+        &|row| row.apogee_error_percent = 1.0,
+        "its metres give",
+    );
+    // And a flight within the target that carries an explanation fails.
+    fails_with(
+        "",
+        &|row| {
+            row.explanation = "no reason".to_owned();
+            row.explanation_kind = "drag".to_owned();
+        },
+        "within the target",
+    );
     // And a flight outside the target with no explanation fails too.
     let mut report: RealFlightReport = serde_json::from_str(&text).expect("the report reads");
     let row = report

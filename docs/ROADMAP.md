@@ -662,8 +662,9 @@
       older file of the same analysis.
     - A guide page explains getting, converting and reading an ERA5 file, with an example CI runs.
   - [x] **M2.3b RocketPy's logged flights.** Met (ADR-082): seven flights in their ERA5 weather,
-    apogee and ascent RMS each; mean absolute apogee error 4.23% against 5%; the three outliers
-    explained by claims the report checks. Astra and Andromeda (EuRoC 2022, netCDF-4) wait.
+    apogee and ascent RMS each, hpr read as the logs' barometers; mean absolute apogee error 6.04%
+    against 5%, outside it; the five outliers explained by claims the report checks. Astra and
+    Andromeda (EuRoC 2022, netCDF-4) wait.
   - [ ] **M2.3c Corpus flights with logs.** The private designs that have a flight log, in their
     day's weather; *done when* each is in a report as anonymised statistics beside M2.3b's.
 

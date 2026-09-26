@@ -415,6 +415,56 @@ impl Ussa76 {
         };
         Ok(AirSample { air, extrapolated })
     }
+
+    /// The geopotential altitude `H` (m′) at which this atmosphere's pressure is `pressure_pa`:
+    /// its **pressure altitude**. Of the standard itself, this is what a barometric altimeter
+    /// reads.
+    ///
+    /// It inverts eqs. 33a and 33b in the layer whose base pressures bracket `P`:
+    ///
+    /// ```text
+    /// H = H_b + (T_M,b / L_M,b) [(P / P_b)^(−R* L_M,b / (g₀′ M₀)) − 1]      L_M,b ≠ 0
+    /// H = H_b − (R* T_M,b / (g₀′ M₀)) ln(P / P_b)                         L_M,b = 0
+    /// ```
+    ///
+    /// Above sea-level pressure it extends the lowest layer, and below the 86 km top's it
+    /// continues isothermally, as [`Ussa76::sample`] does. In the troposphere of the standard it
+    /// is the altimeter formula `H = 44330.8 m [1 − (P / 101325 Pa)^0.190263]`.
+    ///
+    /// # Errors
+    ///
+    /// [`AtmosError::Domain`] if the pressure is not finite and positive.
+    pub fn pressure_altitude_m(&self, pressure_pa: f64) -> Result<f64, AtmosError> {
+        let p = positive("pressure (Pa)", pressure_pa)?;
+        let (base_h, lapse, base_t, base_p) = if p < self.top_pressure_pa {
+            (
+                self.top_geopotential_m,
+                0.0,
+                self.top_temperature_k,
+                self.top_pressure_pa,
+            )
+        } else {
+            // Base pressures fall with height, so the layer is the last whose base is at or
+            // above this pressure; above sea-level pressure it is the first.
+            let b = self
+                .base_pressures_pa
+                .iter()
+                .rposition(|&base| base >= p)
+                .unwrap_or(0);
+            let (base, lapse) = LAYERS[b];
+            (
+                base,
+                lapse,
+                self.base_temperatures_k[b],
+                self.base_pressures_pa[b],
+            )
+        };
+        Ok(if lapse == 0.0 {
+            base_h - base_t * (p / base_p).ln() / HYDROSTATIC_K_PER_M
+        } else {
+            base_h + base_t / lapse * ((p / base_p).powf(-lapse / HYDROSTATIC_K_PER_M) - 1.0)
+        })
+    }
 }
 
 impl Atmosphere for Ussa76 {
@@ -802,7 +852,75 @@ mod tests {
         }
     }
 
+    /// The pressure altitude of each printed pressure is the printed geopotential altitude, to
+    /// what the prints resolve: half a count of `H`, plus half a count of `P` carried through
+    /// `dH/dP = −T_M / (P g₀′ M₀ / R*)`.
+    #[test]
+    fn pressure_altitude_inverts_the_1976_tables() {
+        let model = Ussa76::standard();
+        for row in table().rows {
+            let p = &row.printed;
+            let (pressure_mb, pressure_count_mb) = parse_printed(&p.pressure_mb);
+            let (h, h_count) = parse_printed(&p.geopotential_altitude_m);
+            let (t_m, _) = parse_printed(&p.molecular_scale_temperature_k);
+            let pressure_pa = 100.0 * pressure_mb;
+            let resolved = 0.5 * h_count
+                + 0.5 * 100.0 * pressure_count_mb * t_m / (pressure_pa * HYDROSTATIC_K_PER_M);
+            let computed = model.pressure_altitude_m(pressure_pa).unwrap();
+            assert!(
+                (computed - h).abs() <= resolved,
+                "{} m: {computed} m′ against {h} m′ printed, {resolved} m′ resolved",
+                row.geometric_altitude_m
+            );
+        }
+    }
+
+    /// The altimeter formula: in the standard's troposphere the inversion is
+    /// `H = (T₀ / L)[1 − (P / P₀)^(R* L / (g₀′ M₀))]`, 44330.8 m and 0.190263 to six figures.
+    #[test]
+    fn pressure_altitude_is_the_altimeter_formula_in_the_troposphere() {
+        let model = Ussa76::standard();
+        assert_eq!(
+            model.pressure_altitude_m(SEA_LEVEL_PRESSURE_PA).unwrap(),
+            0.0
+        );
+        let exponent = 0.0065 / HYDROSTATIC_K_PER_M;
+        assert!((exponent - 0.190_263).abs() < 5e-7, "{exponent}");
+        assert!((SEA_LEVEL_TEMPERATURE_K / 0.0065 - 44_330.8).abs() < 0.05);
+        for pressure_pa in [100_000.0, 86_444.0, 60_000.0, 30_000.0] {
+            let formula = 44_330.769 * (1.0 - (pressure_pa / SEA_LEVEL_PRESSURE_PA).powf(exponent));
+            let computed = model.pressure_altitude_m(pressure_pa).unwrap();
+            assert!(
+                (computed - formula).abs() < 1e-3,
+                "{pressure_pa} Pa: {computed} vs {formula}"
+            );
+        }
+        for bad in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert!(matches!(
+                model.pressure_altitude_m(bad),
+                Err(AtmosError::Domain {
+                    what: "pressure (Pa)",
+                    ..
+                })
+            ));
+        }
+    }
+
     proptest! {
+        /// Pressure altitude inverts the pressure at every height, offset or not, extrapolated
+        /// layers included.
+        #[test]
+        fn pressure_altitude_inverts_the_pressure(
+            offset in -60.0..60.0_f64,
+            p0 in 60_000.0..120_000.0_f64,
+            z in -4_900.0..95_000.0_f64,
+        ) {
+            let model = Ussa76::with_offset(offset, p0).unwrap();
+            let h = geopotential_from_geometric_m(z).unwrap();
+            let back = model.pressure_altitude_m(model.pressure_pa(h)).unwrap();
+            prop_assert!((back - h).abs() < 1e-6 * (1.0 + h.abs() * 1e-3), "{h} m′ back as {back}");
+        }
+
         #[test]
         fn offset_atmospheres_are_hydrostatic_and_offset(
             offset in -60.0..60.0_f64,

@@ -100,8 +100,9 @@ parachute differs from RocketPy's by +2.865%, inside the 3% tolerance its case a
    `cargo xtask validate` writes them into the report.
 
 What this shows, and what it doesn't: the two codes agree on the physics of a descent. It says
-nothing about whether either matches a real parachute on a real day. Real flights are compared in
-[M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone.
+nothing about whether either matches a real parachute on a real day. The
+[real flights](accuracy.md#real-flights) compared so far stop at apogee, so no descent has been
+checked against one yet.
 
 ## Rules that keep the trail honest
 

@@ -76,6 +76,16 @@ ThrustCurve.org defines it. It is the number in a [motor designation](#motor-des
 [Solid motors](physics/motor.md#thrust-curve).
 
 
+## Barometric altimeter
+
+A flight computer that finds its height from the air pressure it measures. It converts the
+pressure to an altitude with the [standard atmosphere](#standard-atmosphere) and subtracts the
+pad's. The air of the day is rarely standard: on a hot day a column of air is taller, pressure
+falls more slowly with height, and the altimeter reads less than the height climbed, several per
+cent at Spaceport America in June. hpr reads its own flight the same way when it compares with a
+log; see [Accuracy: real flights](accuracy.md#real-flights).
+
+
 ## Barrowman's method
 
 J. S. Barrowman's 1966–67 method for the [normal-force slope](#normal-force-slope) and

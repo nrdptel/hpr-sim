@@ -7213,31 +7213,58 @@ designs of M1.4 fly a substitute bundled curve (ADR-007), which says nothing abo
    total impulse matches RocketPy's reading of all seven to 1e-15, but Juno III's),
    the example's rail, site and launch hour (local hours converted to UTC), hpr's WGS84 Earth,
    and the ERA5 profile of ADR-081. Juno III's thrust file ends in five negative points, which
-   hpr refuses; they are read as zero, adding 2.62 N s to its 8800 (reported). Prometheus flies
-   the weather of 24 June 2023 for a 2022 flight, as RocketPy's example does; RocketPy has no
-   file of the day, and the row says so.
-4. **Apogee** is the log's highest reading above its pad against hpr's above its centre of mass's
-   start. **The trace RMS is over the ascent**: each clock is aligned where its trace first
-   reaches 30 m, since a log's zero is its own (armed, launch detected, power on), not ignition;
-   the RMS runs over every log row from there to the first of the two apogees, hpr's heights
-   interpolated on a 0.01 s grid of its dense output. The descent is left out: its events are the
-   team's (Juno III's main never opened, Lince's opened at apogee), not a model's. The corrupted
-   end of Juno III's log (two rows at the drogue's firing, 10700.59 m and −2490.543 m) is cut.
-5. **A diagnostic flight on each example's own drag** (a constant, the notebook's knots, or its
-   CSV files, scaled as the notebook scales them, on the example's radius), beside the
-   prediction. It is not a second prediction: a team's drag is an estimate, from RASAero II, CFD
-   or a fit. It says whether a miss is hpr's drag.
-6. **An explanation is a checked claim.** An outlier (outside the 5% target) must carry one, and a
-   flight inside it must not. `drag` claims the diagnostic flight is within the target;
-   `drag between` claims the two flights miss on opposite sides of the log, so a drag between
-   hpr's and the team's meets it. The check runs in CI, so a change that makes a claim false
+   hpr refuses; they are read as zero, adding 2.62 N s to its 8800 (reported), as RocketPy's
+   flight holds its thrust at zero too. Prometheus flies the weather of 24 June 2023 for a 2022
+   flight, as RocketPy's example does; RocketPy has no file of the day, and the row says so.
+4. **hpr is read as the log's altimeter reads.** A barometric altimeter converts the pressure it
+   measures to the standard atmosphere's altitude and subtracts the pad's: on a day warmer than
+   the standard the air column is thicker and it reads less than the height climbed, by several
+   per cent at Spaceport America in June. Prometheus's TeleMetrum and Juno III's RRC3 log their
+   pressure, and their height columns are exactly that reading, to 0.005 m and 0.82 m over the
+   ascent. So hpr's height goes through the same conversion, of the ERA5 pressure at its centre
+   of mass (`Ussa76::pressure_altitude_m`, `hpr_validate::real_flight::barometric_reading_m`).
+   NDRT's Featherweight Raven is barometric by its manual. Cavour's CATS Vega, and Genesis's and
+   Lince's filtered estimates, fuse a barometer with an accelerometer, and Bella Lui's avionics
+   are unnamed: those are taken as barometric, with the evidence in each row. The report also
+   gives hpr's apogee as a height, and the mean were every log one.
+5. **Apogee** is the log's highest reading, read up to the recovery. Three logs have pressure
+   transients past apogee as a charge fires: Juno III's reading dips 94 m, then rises 62 m above
+   its apogee within 0.3 s (the flight card gives that spike, 3213 m); Prometheus's drops 600 m for
+   one sample and returns 8 m above its apogee; Lince's filtered height swings by hundreds of metres
+   up to 3668.5 m, where its apogee before, 3587.7 m, is its flight card's. No one threshold
+   separates these from the ascent's own dips (Lince's drops over 50 m at 8.5 s), so each log is
+   read to a time set by hand, before its transient, with the reason in its note (24.60 s,
+   29.58 s, 26.80 s; Juno III's cut also drops its two corrupt rows).
+6. **The trace RMS is over the ascent**: each clock is aligned where its trace first reaches 30 m,
+   since a log's zero is its own (armed, launch detected, power on), not ignition; the RMS runs
+   over every log row from there to the first of the two apogees, hpr's heights interpolated on
+   a 0.01 s grid of its dense output. The descent is left out: its events are the team's. **The
+   rise**, from 30 m to 150 m, times the boost, where drag is a few per cent of thrust. The peak
+   climb rate would not: Lince's log peaks 26% faster than hpr (over 1 s) though its apogee agrees
+   within 3.4%, as transonic flow disturbs a barometer's static ports.
+7. **A diagnostic flight on each example's own drag** (a constant, the notebook's knots, or its
+   CSV files, scaled as the notebook specifies, on the example's radius), beside the prediction.
+   It is not a second prediction: a team's drag is an estimate, from a table, RASAero II, CFD or
+   a constant the notebook doesn't source. RocketPy 1.13.0 itself doesn't fly two of them as
+   written: a `power_off_drag` assigned after the rocket is built, or scaled in place, never
+   reaches the function its flight evaluates, so it flies Bella Lui on 0.43 and Juno III on the
+   unscaled curve. hpr flies what the notebooks specify.
+8. **An explanation is a checked claim.** An outlier (outside the 5% target) must carry one, and a
+   flight inside it must not. `drag` claims the diagnostic flight is within the target: the miss
+   is consistent with hpr's drag. `boost` claims the miss is made in the boost: hpr's rise is off
+   by more than 5% on the side of the miss (longer when low), and the team's drag does not bring
+   the apogee within the target. CI checks each claim against the row, each row's percentages
+   against its metres, and the words against the code's, so a change that makes a claim false
    fails with the words that argued it.
 
-**Consequences.** The mean absolute apogee error is 4.23%, within the 5% target, over seven
-flights (+1.01% to +9.43%; mean +2.79%), and the trace RMS is at most 7.50% of an apogee. Three
-flights are outliers. NDRT 2020 (+8.52%) and Cavour (+9.43%) are hpr's drag: on their teams'
-drag they land at −1.61% and +1.29%. Lince (+5.61%) is bracketed: on its team's drag hpr flies
-−10.33%, as RocketPy's own simulation does, and its log reads 2.3% above its flight card. hpr's
-drag is not biased one way: on the teams' drag Prometheus and Genesis fly higher than on hpr's.
-A log is a single flight, with its own sensor and filter; the numbers are those seven flights',
-not a bound. The report is not reproduced in CI, only held to itself there.
+**Consequences.** Over seven flights, the mean absolute apogee error is 6.04%, outside the 5%
+target (−8.90% to +10.40%; mean −0.25%), and the trace RMS is at most 7.26% of an apogee. Were
+the logs heights, the mean would be 4.47%: reading hpr as a barometer moves its apogee by −7.9%
+(Juno III, in June's heat) to +1.7% (NDRT 2020, in February). Five flights are outliers. Four are consistent with hpr's drag: on their teams' drag
+NDRT 2020 (+10.40%) lands at +0.17%, Prometheus (−8.90%) at +0.45%, Cavour (+5.63%) at −2.29%
+and Genesis (−5.85%) at −0.08%. hpr's drag is not biased one way: it is low for two and high for
+two. Juno III (−7.24%) is its boost: hpr takes 32% longer than the log to climb from 30 m to
+150 m, on its team's own motor curve, and the team's drag misses by −9.05%. Read as barometers,
+the teams' drags meet five logs within 2.3%. A log is a single flight, with its own sensor and filter,
+and four of the altimeter kinds are assumed; the numbers are those seven flights', not a bound.
+The report is not reproduced in CI, only held to itself there.

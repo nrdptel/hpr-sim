@@ -59,7 +59,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-26: M2.3b Real flights (ADR-082): 7 logged flights, mean |apogee error| 4.23% (target 5%); 3 outliers checked.
+- 2026-09-26: M2.3b Real flights (ADR-082): 7 logged flights read as barometers, mean |apogee error| 6.04% (target 5%); 5 outliers checked.
 - 2026-09-26: M2.3a ERA5 weather (ADR-081; M2.3 split a to c): netCDF classic from the spec; RocketPy's levels to 1e-12.
 - 2026-09-26: M1.10c2 Parquet (ADR-080): in-house writer; Apache's reader agrees bit for bit; M1.10 done.
 - 2026-09-26: M1.10c1 Text exports (ADR-079): CSV, JSON, GeoJSON by the published schema, KML by parsing; exact.
@@ -82,8 +82,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-082: real flights read from `refs/`, only numbers committed; ascent RMS aligned at 30 m;
-  each outlier's explanation a checked claim, with a flight on the team's drag as evidence.
+- ADR-082: real flights read from `refs/`, only numbers committed; hpr read as a barometer; logs
+  cut before recovery transients; each outlier's explanation a checked claim (team's drag, rise).
 - ADR-081: M2.3 split a to c; netCDF classic by hand, netCDF-4 converted; time-weighted; WMO heights.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.

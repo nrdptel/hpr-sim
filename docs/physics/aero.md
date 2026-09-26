@@ -369,9 +369,10 @@ plotted from 5.5° to 21.7°, from Mach 1.5 to 4.63, hpr's normal force with it 
 (34 with Galejs's constant); where the air crosses the body faster than sound, it reads 1% to 16%
 high. Below Mach 1 the only check is that body's slope fitted from −4° to +4°, where body lift
 adds a little: at Mach 0.6 hpr's body reads 25% high (41% with Galejs's constant), against
-readings the tunnel determines poorly. No real flight checks it, so whether it is better than
-Galejs's constant for a slow rocket leaving the rail in wind, where it matters most, is open until
-[M2.3](../decisions-and-roadmap.md#m2-3).
+readings the tunnel determines poorly. No real flight checks it: the
+[real flights](../accuracy.md#real-flights) so far compare heights, not drift, so whether it is
+better than Galejs's constant for a slow rocket leaving the rail in wind, where it matters most,
+is open.
 
 At an angle of attack `α` the air meets the body partly from the side, at `V sin α`. Behind a
 long cylinder in a cross-wind the air separates, and the drag of that separated flow pushes the
@@ -3325,8 +3326,8 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   at that speed), and with a constant `K` across [G]'s range from 194.1 m at `K = 1.5` to
   240.2 m at 1.0 (231.1 m at 1.1, hpr's before [M1.8e6](../decisions-and-roadmap.md#m1-8e6)); it
   would be 328.0 m with no body lift. Calisto, off the rail at 28 m/s and 11°, changes its drift by
-  under 0.5% across that range. Which is nearer a real flight is open until
-  [M2.3](../decisions-and-roadmap.md#m2-3).
+  under 0.5% across that range. Which is nearer a real flight is open: the
+  [real flights](../accuracy.md#real-flights) so far compare heights, not drift.
 - **No airfoils.** Fins use the flat-plate lift slope (2π per radian in two dimensions). An airfoil
   lift curve, such as the one Juno III's example gives its fins, is not modelled; RocketPy uses
   it, and its fin slope there is 7.6% steeper ([ADR-026][adr-026]).

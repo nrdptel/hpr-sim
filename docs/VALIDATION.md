@@ -207,20 +207,25 @@ This section covers the [M2.3b real-flights milestone](decisions-and-roadmap.md#
 `cargo xtask real-flights [--check]` flies seven of RocketPy's documented rockets (Bella Lui,
 NDRT 2020, Prometheus, Juno III, Cavour, Genesis, Lince) with hpr's own aerodynamics, on each
 example's own thrust file, from its rail and site, in the ERA5 file and hour its notebook reads,
-and compares each with its team's altitude log: the apogee, and the RMS of the height over the
-ascent with both clocks aligned where each trace first reaches 30 m. The logs, thrust files and
+and compares each with its team's altitude log: the apogee, the RMS of the height over the
+ascent with both clocks aligned where each trace first reaches 30 m, and the rise from there to
+150 m. hpr's height is read as the log's barometric altimeter reads the air: the standard
+atmosphere's altitude of the ERA5 pressure, less the start's. Each log is read to its apogee,
+before the recovery's pressure transients. The logs, thrust files and
 weather files are read from the pinned `refs/rocketpy` checkout and never committed; the report,
 `validation/reports/real-flights.{json,md}`, commits only the numbers and each file's SHA-256.
 Each flight is flown again on its example's own drag as a diagnostic.
 
 The mean absolute apogee error is reported against the 5% target of the principles above, not
 gated. A flight outside 5% must carry an explanation that is a checked claim (`drag`: the flight
-on the example's drag is within the target; `drag between`: the two flights miss on opposite
-sides of the log), and one inside must not. CI has no `refs/`, so it holds the committed report
-to itself (`hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms`): the summary to
-the rows, the page to the data, and each explanation to its numbers; `--check` flies it again
-where the checkout is. Today: 4.23% over seven flights, three outside 5% (NDRT 2020 and Cavour,
-hpr's drag; Lince, between the two drags).
+on the example's drag is within the target; `boost`: hpr's rise is off by more than 5% on the
+side of the miss, and the example's drag doesn't mend it), and one inside must not. CI has no
+`refs/`, so it holds the committed report to itself
+(`hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms`): the summary to the rows,
+each percentage to its metres, the words to the code's, the committed files read to their
+digests, the page to the data, and each explanation to its numbers; `--check` flies it again
+where the checkout is. Today: 6.04% over seven flights, outside the target, five outside 5%
+(NDRT 2020, Prometheus, Cavour and Genesis consistent with hpr's drag; Juno III, the boost).
 
 ## Reference simulators (oracles)
 
@@ -308,7 +313,7 @@ Most of it lives in the RocketPy repo (MIT; its notebooks record each team's per
 | flight | files | notes |
 |---|---|---|
 | Bella Lui 2020 (EPFL) | `EPFL_Bella_Lui/bella_lui_flight_data_filtered.csv` | time, z, v |
-| NDRT 2020 (Notre Dame) | `NDRT_2020/ndrt_2020_flight_data.csv` | accel in g, altitude in ft AGL. RocketPy sim 1296.77 m vs measured 1316.75 m |
+| NDRT 2020 (Notre Dame) | `NDRT_2020/ndrt_2020_flight_data.csv` | accel in g, altitude in ft AGL. RocketPy sim 1296.77 m vs measured 1316.75 m (the log's highest reading is 1320.4 m) |
 | Prometheus 2022 (Western Engineering, SA Cup; not Cal Poly) | `prometheus/*TeleMetrum.csv`, `*TeleMega.csv` | raw AltOS CSV with GPS; also our AltOS importer test |
 | Juno III 2023 (Projeto Jupiter, SA Cup) | `juno3/{cots_altimeter,cots_GNSS,srad_telemetry}.csv` | RRC3 log |
 | Andromeda, Astra, Erebus (EuRoC 2022) | `andromeda/`, `astra/`, `erebus11/` | columns `ts, filtered_altitude_AGL, filtered_acceleration` |
