@@ -5,21 +5,21 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e5 on #173, #174,
-  M1.13, #133, M2.3c on Neer (no private design has a log); active work is M1.11, ejected pieces.
+  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.11b, ejection impulse.
 - **Order:** M1.8e16 waits on #108, M2.2e5 on its four, M2.3c on a design with its log.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4, M2.3a-b, M2.4.
+  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-10, M1.11a, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M2.4 census gate done (ADR-084); M1.11 next.
+- **Last updated:** 2026-09-26; M1.11a ejected pieces done (ADR-085); M1.11b next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.11** (ejected sections and payloads, V17) on `m1.11-<slug>`: separation at any joint
-  (ADR-014), pieces flown to their own landings; split it if it runs past a session.
+- **Start M1.11b** on `m1.11b-<slug>`: an ejection impulse, equal and opposite (its direction for a
+  point-mass body is open: no attitude after the first parting), and a tumble over a piece's own
+  components. Pieces: `hpr_sim::pieces` (ADR-085); builders check only every body has a device.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
-  M2.3c (ADR-083): once Neer adds a pair, fly the `.ork` with `hpr_validate::real_flight`
-  (`parse_log`, `Barometer`, `compare_traces`) under M2.2e3's ids; commit only statistics.
+  M2.3c (ADR-083): given a pair, fly it with `hpr_validate::real_flight`; commit only statistics.
   `cargo xtask real-flights --check` needs `refs/rocketpy`. Astra and Andromeda (EuRoC 2022
   netCDF-4, ADR-081's conversion) are M2.3b's leftovers.
   Flutter (ADR-078): moduli in `materials::SHEAR_MODULI`; metrics (ADR-077): margin `None` past `κ = √10`.
@@ -58,8 +58,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-26: M1.11a Ejected pieces (ADR-085; M1.11 split a, b): nose cone and payload land; 1e-12, 1e-9, `v_e` 0.1%.
 - 2026-09-26: M2.4 Census gate (ADR-084): 648 rows held to the accepted census; throwaway #199 red on 3 OSes.
-
 - 2026-09-26: M2.3b Real flights (ADR-082): 7 logged flights read as barometers, mean |apogee error| 6.04%, outside the 5% target; 5 outliers checked.
 - 2026-09-26: M2.3a ERA5 weather (ADR-081; M2.3 split a to c): netCDF classic from the spec; RocketPy's levels to 1e-12.
 - 2026-09-26: M1.10c2 Parquet (ADR-080): in-house writer; Apache's reader agrees bit for bit; M1.10 done.
@@ -84,8 +84,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-081 to ADR-084 (M2.3, M2.4): netCDF classic by hand; real flights from `refs/`, read as a
-  barometer; M2.3c blocked; the census a two-way ratchet at 0.1% of each bar, accepted in words.
+- ADR-081 to ADR-085 (M2.3, M2.4, M1.11a): netCDF classic by hand; real flights read as a barometer;
+  M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight, numbered by lead.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
 - ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.

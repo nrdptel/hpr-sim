@@ -370,6 +370,8 @@ impl DeviceDrag {
 
     /// The drag area of the stages `first..=last` of `assembly` tumbling on their own, which is
     /// what a separated body does ([`Separation`]). [`Self::tumbling`] is this over every stage.
+    /// It covers whole stages only: for an ejected piece that is part of a stage
+    /// ([`crate::Ejection`]) it is the whole stage's area, not the piece's.
     ///
     /// # Errors
     ///
@@ -646,8 +648,10 @@ pub struct Device {
     /// deploys.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub released_by: Option<usize>,
-    /// Which body it is attached to, after a separation ([`Separation`]): body 0 keeps the nose,
-    /// body 1 is the stages aft of the split. Without a separation there is only body 0.
+    /// Which body it is attached to, after a separation ([`Separation`]) or an ejection
+    /// ([`crate::Ejection`]): body 0 keeps the nose, body 1 is the separation's aft stages, and each
+    /// ejection's piece the next number, in the order given, so with no separation the first
+    /// ejection makes body 1. Without either there is only body 0.
     #[serde(default)]
     pub body: usize,
 }
@@ -692,7 +696,9 @@ impl Device {
         self
     }
 
-    /// The same device, carried by body `index` after a separation ([`Separation`]).
+    /// The same device, carried by body `index` after a separation ([`Separation`]) or an
+    /// ejection ([`crate::Ejection`]); [`Self::body`] has the numbering. It acts only once that
+    /// body flies on its own.
     #[must_use]
     pub fn on_body(mut self, index: usize) -> Self {
         self.body = index;
@@ -927,7 +933,9 @@ impl Separation {
 
 /// The mass properties of the stages `first..=last` of `assembly`, with their motors, at flight
 /// time `t_s`, each motor lit at its `ignition_s`. Summing over every stage gives
-/// [`hpr_design::Assembly::mass_properties_lit`].
+/// [`hpr_design::Assembly::mass_properties_lit`]. The flights sum pieces instead
+/// (`crate::pieces`); the tests keep this as a reference that sums stages.
+#[cfg(test)]
 pub(crate) fn body_mass_properties(
     assembly: &hpr_design::Assembly,
     (first, last): (usize, usize),
@@ -1272,22 +1280,32 @@ pub struct BodySample {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct BodyEvent {
     /// What happened: a device's [`crate::EventKind::Trigger`], [`crate::EventKind::Deployment`],
-    /// [`crate::EventKind::Release`] or the body's [`crate::EventKind::GroundHit`].
+    /// [`crate::EventKind::Release`], the body's [`crate::EventKind::Apogee`] or
+    /// [`crate::EventKind::GroundHit`], or a piece leaving it at a
+    /// [`crate::EventKind::Separation`] or [`crate::EventKind::Ejection`], whose sample has the
+    /// body's mass from before the piece left.
     pub kind: crate::EventKind,
     /// The body at that instant.
     pub sample: BodySample,
 }
 
-/// One separated body's descent, from the separation to its landing.
+/// One separated body's descent, from the moment it flies on its own to its landing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BodyFlight {
-    /// Which body: 0 keeps the nose.
+    /// Which body: 0 keeps the nose. A body is numbered by its lead piece ([`crate::Ejection`]).
     pub body: usize,
-    /// The stages it is made of, inclusive.
+    /// The first and last stage it has a component in when it lands.
     pub stages: (usize, usize),
-    /// Its mass, kg, constant through the descent.
+    /// The pieces it lands with: its own, and any joined to it whose split never fired. Piece 0
+    /// is the nose's, the separation makes piece 1, and each ejection the next.
+    #[serde(default)]
+    pub pieces: Vec<usize>,
+    /// Its mass when it lands, kg. It is constant between splits, and steps down when a piece
+    /// leaves it on the way down (an [`crate::EventKind::Ejection`] among its events).
     pub mass_kg: f64,
-    /// Where it started: the separation, with its own centre of mass and that point's velocity.
+    /// Where it started flying on its own: at the airframe's first parting, its own centre of mass
+    /// and that point's velocity; at a later one, on the way down, the point and velocity of the
+    /// body it left.
     pub start_sample: BodySample,
     /// Why its descent ended.
     pub termination: crate::Termination,
@@ -3721,17 +3739,30 @@ mod tests {
         )
         .expect_err("the booster has nothing");
         assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
-        // A device on a body the separation doesn't make.
-        let error = build(
-            vec![
-                Device::new("sustainer", canopy, Trigger::Apogee),
-                Device::new("booster", canopy, Trigger::Apogee).on_body(1),
-                Device::new("ghost", canopy, Trigger::Apogee).on_body(2),
-            ],
-            Separation::new(Trigger::Apogee, 0),
+        // A device on a body the separation doesn't make. An ejection given afterwards could
+        // make it, so it is refused when the flight starts rather than by the builders.
+        let error = Simulation::new(
+            &two_stage(),
+            "j760-i175",
+            environment(),
+            Rail::vertical(6.0),
+            FlightSettings::default(),
         )
+        .unwrap()
+        .with_recovery(vec![
+            Device::new("sustainer", canopy, Trigger::Apogee),
+            Device::new("booster", canopy, Trigger::Apogee).on_body(1),
+            Device::new("ghost", canopy, Trigger::Apogee).on_body(2),
+        ])
+        .and_then(|sim| sim.with_separation(Separation::new(Trigger::Apogee, 0)))
+        .and_then(|sim| sim.run(&mut ()))
         .expect_err("a third body");
-        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        assert!(
+            matches!(error, SimError::Domain { what, value }
+                if what == "body a device is attached to (the separation and ejections don't \
+                            make it)" && value == 2.0),
+            "{error:?}"
+        );
         // A release across the separation has no line to act through.
         let error = build(
             vec![

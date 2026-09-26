@@ -686,6 +686,15 @@ The example leaves out several kinds of part and setting that a design can have:
   flight with no parachute, since its parachute opened before apogee
   ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket;
   [results](format/ork.md#staged-clustered-and-air-start-flights)).
+- **Pieces that land on their own are yours to declare.** A nose cone on a shock cord comes down
+  with its rocket, and that is what hpr flies unless you say otherwise. To fly a nose cone, a
+  section or a payload that leaves and lands on its own, give the flight an `Ejection` for each,
+  and a recovery device on each piece. A `.ork` file's recovery settings don't make them for you.
+  A stage whose mass is overridden can't be parted inside: remove the override, or put it on the
+  components instead.
+  This is checked against exact answers only
+  ([Recovery: ejected pieces](physics/recovery.md#ejected-pieces), with the example
+  [`ejected_pieces.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/ejected_pieces.rs)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins

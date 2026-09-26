@@ -5,7 +5,8 @@
 - **What it models:** how a rocket comes down under a parachute, a
   [streamer](../glossary.md#streamer) or tumbling: when each device fires, how a canopy fills, the
   descent in the wind, and a stack that splits into parts
-  ([separation](../glossary.md#separation)) that each land.
+  ([separation](../glossary.md#separation)), or lets out a nose cone or a payload
+  ([ejection](../glossary.md#ejection)), that each land.
 - **Sources:** Knacke's *Parachute Recovery Systems Design Manual* (1991) for parachutes;
   Carruthers and Filippone's streamer tests (2005) and the OpenRocket technical documentation for
   streamers and tumbling.
@@ -22,6 +23,8 @@
     interpolation does to drift has not been measured.
   - Against measured drop tests, tumbling is −10 to +19% off, and the default streamer model
     predicts a descent +9% faster than Kidwell's one flat streamer.
+  - Ejected pieces (a nose cone or payload that lands on its own, [ejection](../glossary.md#ejection))
+    are checked against exact answers only: no simulator or flight has been compared with them yet.
 - **What it leaves out:**
   - Two effects on the [opening load](../glossary.md#opening-load): the drag overshoot as a canopy
     fills, and, when the canopy opens at once (the default), the way a light rocket slows while it
@@ -29,7 +32,8 @@
     from it: use a dedicated opening-load method and the hardware's own ratings.
   - Airframe drag: a separated body falls with no drag until its device opens, so its
     [deployment](../glossary.md#deployment) speed can read high, and the airframe's own drag under
-    a canopy is left out too.
+    a canopy is left out too. The same holds for an ejected piece.
+  - The push of an ejection charge or spring on the pieces it separates.
   - [Added mass](../glossary.md#added-mass) (air carried along), the swing (the attitude freezes at
     deployment), and streamer pleats (+58% fast on a pleated one).
   - [Tumbling](../glossary.md#tumble-recovery) is used far outside its fit: 37 m/s for Valetudo,
@@ -480,7 +484,9 @@ This section describes the unpowered case, and the booster's descent after a pow
   vacuum. A flight whose bodies are not all covered is refused when it is set up, and a body that
   reaches the ground without a single deployment — a timer set after that body lands, say — is a
   flight-time error rather than a landing at the speed of a fall with no drag (both found in
-  review). A device that opened on the stack before the separation counts as open.
+  review). A device on a body that nothing makes is refused when the flight starts, since an
+  ejection given later could still make it. A device that opened on the stack before the
+  separation counts as open.
 - **A body coasts with no drag at all until its first device opens**, which is the same omission
   as the descent phase's and hurts more here: a 0.55 kg forward body that separates at 2 km and waits
   for a 300 m main arrives at **168 m/s** where an airframe would have held it near 60 to 70, so
@@ -494,6 +500,119 @@ This section describes the unpowered case, and the booster's descent after a pow
   known and in flight otherwise, not a silent approximation. A release across the separation is
   refused too: a line cuts a device on its own body. A forward body with a motor still to burn
   flies on as a sustainer ([Staging](staging.md)).
+
+## Ejected pieces
+
+An ejection lets a piece of the airframe go at a joint of your choosing, not only at a stage
+boundary: a nose cone pushed off its airframe, a body section, or a payload carried inside. Each
+piece then comes down on its own, under its own parachute, and lands somewhere of its own. This
+is new with [M1.11a](../decisions-and-roadmap.md#m1-11a) and is checked against exact answers
+only: no other simulator or real flight has been compared with it yet.
+
+A few words first:
+
+- A **body component** is one of the parts the airframe is made of, nose to tail: the nose cone,
+  a body tube, a transition. An **internal component** sits inside one: a parachute, an
+  altimeter bay, a mass. Each has an `id` in the design file.
+- A **joint** is where two body components meet.
+- A **piece** is a part of the airframe that can come away: the part between two joints that can
+  part, or a payload.
+- A **body** is whatever flies as one: the pieces still joined together.
+
+**How you give one.** An `Ejection` is a trigger, the same kinds a parachute has (apogee, a
+height, a time, a motor's delay), and a place where the airframe parts:
+
+- `Ejection::aft_of(trigger, "nose")` parts the airframe at the joint just aft of the body
+  component with that id. The side toward the nose keeps its body number. The new piece is the
+  side aft of the joint, back to the next joint you have also given an ejection or a separation
+  for, or to the tail. So ejecting a nose cone is written as parting the joint aft of it: the
+  nose cone keeps body 0, and the airframe behind it becomes the new body.
+- `Ejection::payload(trigger, "payload")` lets an internal component, and everything inside it,
+  out of the piece that carries it. It must be inside the airframe, and not inside another
+  payload.
+
+Pieces tied together by a shock cord fly as one, so a nose cone on a shock cord is not an
+ejection at all: leave it out, and the rocket comes down in one piece.
+
+**Which body is which.** A body takes the number of the piece nearest the nose among those still
+joined, and a payload flying alone takes its own:
+
+| What makes the piece | Its body number |
+|---|---|
+| The nose's side of the airframe | 0 |
+| A separation, if the flight has one: the stages aft of it | 1 |
+| Each ejection, in the order you give them | 1, 2, … in order; after 1 if the flight has a separation (2, 3, …) |
+
+Each body needs a device that names it (`Device::on_body`). A flight whose bodies are not all
+covered is refused when you give the ejections. A device on a body that nothing makes is refused
+when the flight starts, since a separation given later could still make it: `run` returns an
+error naming that body.
+
+**When devices act.** Only body 0's devices act before the airframe first comes apart. After
+that, a device acts only once its own body flies on its own. So a parachute on the nose cone
+(body 0) triggered at apogee fires and opens in the same step as the nose cone leaves. It is
+logged in the flight's own events, as the example below shows, and its drag acts on the nose cone
+alone from then on. A device on a piece that
+hasn't left yet waits for it, even if its trigger has come. Give a piece a trigger that follows
+its ejection. A drogue on the airframe, with the nose cone only ejected at 300 m, would leave the
+whole rocket falling from apogee to 300 m with nothing open.
+
+**What happens at each parting:**
+
+- **When the airframe first comes apart**, each body starts at its own centre of mass with the
+  velocity that point had, `v_O + ω × r_cg` (defined under [Separation](#separation)), as at a
+  separation. The linear momenta add to the
+  stack's, which is a test.
+- **When a body parts again on the way down**, it is already a point mass with no attitude, so
+  there is nothing to place its pieces by. Both pieces start at the body's position and velocity,
+  and its mass steps down by the piece that left. Their true starting points could be up to a
+  rocket's length apart, which is small against a descent of hundreds of metres. Momentum then
+  adds up by construction: the pieces share one velocity, and their masses add up.
+- **Each piece's mass is its own components'.** A stage that stays in one piece is counted by its
+  own mass, overrides and all. A stage that parts is counted component by component. An override
+  that doesn't say how its mass divides is refused rather than guessed. That means a stage's mass
+  override, or a component's override that covers what it holds. OpenRocket designs often
+  override a stage's mass, and such a stage can't be parted. The pieces' masses add to the
+  rocket's to 1e-12, which is a test.
+- **Every motor must have burned out** by the time an ejection fires, because every body is a
+  point mass of constant mass from then on. An ejection known to come earlier is refused when it is
+  given, and one that fires early in flight is an error then.
+
+**A worked example.** The example
+[`ejected_pieces.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/ejected_pieces.rs)
+flies the 54 mm test rocket on an I175 with a 250 g payload in its airframe, in a 4 m/s wind from
+the west. The nose cone leaves at apogee (16.23 s, 1,747 m) under a 0.45 m canopy. The airframe
+comes down under a 0.9 m one, and lets the payload out at 300 m under a 0.6 m one. Each lands at
+its own terminal speed, `v_e` above, for its own mass and canopy in the air at the ground:
+
+| Body | Mass (kg) | Flies on its own from (s) | Lands (s) | At (m/s) | `v_e` (m/s) | East of the pad (m) |
+|---|---|---|---|---|---|---|
+| 0, the nose cone | 0.063 | 16.23 | 562.88 | 3.06 | 3.06 | 2,035.4 |
+| 1, the airframe | 0.556 | 16.23 | 333.54 | 4.54 | 4.54 | 1,115.6 |
+| 2, the payload | 0.250 | 268.05 | 333.14 | 4.57 | 4.57 | 1,114.0 |
+
+The nose cone is light for its canopy, so it stays up 229 s longer and drifts 920 m further
+downwind. The airframe's body weighs 0.806 kg until the payload leaves, then 0.556 kg. The
+flight's own event list ends at the first parting. What happens to each body after that,
+its canopy opening and the payload leaving the airframe, is in that body's own list
+(`FlightResult::bodies`).
+
+**Limits:**
+
+- **No ejection impulse and no tumbling piece yet.** The charge or spring that pushes the pieces
+  apart, and a tumbling model for a piece that isn't a whole stage, are
+  [M1.11b](../decisions-and-roadmap.md#m1-11b). Until then a piece needs a device that opens,
+  as every separated body does, and it coasts with no drag until the device opens.
+  `DeviceDrag::tumbling_stages` takes whole stages, so on a piece that is part of a stage it
+  gives the whole stage's area.
+- **No powered separation with ejections.** A sustainer flies on a design cut at its stage
+  boundary, whose components aren't the pieces the ejections were given for, so it is refused,
+  and so is an ejection ahead of a separation that would light a motor.
+- **A piece's spin and attitude are not tracked**, as for a separated body.
+- **A `.ork` file's recovery settings don't make ejections**, and hpr has no names for pieces:
+  you find the component ids in the design file.
+
+The decision record on ejected pieces, [ADR-085][adr-085], has the reasoning.
 
 ## Verification
 
@@ -526,6 +645,22 @@ name the [oracle](../glossary.md#oracle):
 | A body whose device never fires (a timer set after it lands) | refused in flight, naming the body, rather than landed at the speed of a fall with no drag |
 | A body whose canopy opened on the stack just before the separation (an apogee separation with an apogee parachute) | lands: the open canopy counts, though its deployment is in the flight's events, not the body's (found with [M1.9a](../decisions-and-roadmap.md#m1-9a)) |
 | A timed separation known to precede the booster's burnout | refused when the separation is given; a height one that a climbing rocket passes early is refused in flight |
+
+The ejected pieces' tests are in `crates/hpr-sim/src/pieces.rs`, also analytic:
+
+| What | Result |
+|---|---|
+| The nose cone at apogee and a 250 g payload at 300 m, from the pad in a 4 m/s wind, in uniform sea-level air (not the example's atmosphere, so its numbers differ) | all three land, each under its own canopy; the payload leaves at 300 m to 1e-6 m; landings pinned (the nose cone 911.6 m further downwind than the airframe, 4 m/s times its 227.5 s longer descent to 1%) |
+| The masses at each parting, with wind and a 0.6 rad/s body rate | the two bodies at the first parting, and the three pieces, add to the rocket's mass to 1e-12; the nose cone and the payload are their own components' masses to 1e-12 |
+| The linear momenta at each parting | at the first, from the rigid stack, they add to the stack's to 1e-9, and the nose cone starts at its own centre of mass to 1e-12; at the second, on the way down, they add up by construction (one shared velocity), so only the masses test anything there |
+| Each piece's landing in uniform air | within 0.1% of its own `v_e`, the airframe's at its mass after the payload left |
+| An ejection with a separation (the two-stage test design, both at apogee) | the booster is body 1 and the airframe body 2; the booster's mass is its stage's and motor's, and the three add to the stack's, to 1e-12 |
+| A payload whose trigger comes after the landing | never leaves: its airframe lands with both pieces, and the two bodies add to the rocket's mass |
+| Two partings firing in one pass on the way down (the two-stage design, three joints), given in either order | each piece counted once: the four bodies add to the stack's mass to 1e-12, and the nose cone and the interstage are their own components (found in review: the interstage was counted twice, 1.7651 kg landed from 1.6752 kg) |
+| An airframe whose own mass is overridden, but not what it holds | still divides: the payload is its own mass, and the pieces add to the rocket's, to 1e-12 |
+| A powered separation with ejections, an ejection ahead of a separation that lights a motor, an ejection timed from a motor with no ignition | each refused with its own reason |
+| Partings the design can't make: an unknown id, a joint aft of an internal part or of the tail, a body component or an external part as a payload, a payload inside another, two at one joint, one payload twice, an overridden stage or covering override | each refused with its own reason, naming the component |
+| An ejection during the burn, a height below the ground, a body without a device, a device on a body nothing makes | refused, the last when the flight starts |
 
 ### Against RocketPy
 
@@ -673,4 +808,5 @@ above.
 [adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
 [adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17
 [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
+[adr-085]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-085-ejected-pieces-an-airframe-that-parts-at-any-joint-2026-09-26
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md

@@ -693,6 +693,14 @@
   - The pieces' masses sum to the rocket's and momentum is conserved at each split, to M1.7c's
     tolerances; each descent rate matches the analytic terminal velocity for its device and mass.
 
+  - [x] **M1.11a Pieces at any joint** (ADR-085). *Done when:* the milestone's two bullets. *Result:*
+    met. Nose cone at apogee, 250 g payload at 300 m: all three land, each within 0.1% of its own
+    `v_e`; masses to 1e-12 and momenta to 1e-9 at both partings.
+  - [ ] **M1.11b Ejection impulse and tumbling pieces.** An optional impulse, equal and opposite on
+    the two pieces, and a tumble model over a piece's own components. *Done when:* an impulse gives
+    each piece the hand-computed change of velocity and conserves momentum to 1e-9, and a tumbling
+    nose cone lands at its tumble model's terminal speed.
+
 - [ ] **M1.12 Mass that moves or leaves in flight.** Added by Neer on 2026-09-18 (VISION V18).
   - Payload mass that moves along the airframe, or leaves it (released ballast or payload), on an
     event or a schedule, with the mass, centre of gravity and inertia updated through the flight.

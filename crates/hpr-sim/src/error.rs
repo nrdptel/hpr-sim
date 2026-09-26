@@ -26,6 +26,15 @@ pub enum SimError {
         /// What isn't covered.
         what: &'static str,
     },
+    /// A separation or ejection that the design can't make, with the component (or stage) id it
+    /// names or runs through.
+    #[error("{what}: `{component}`")]
+    Parting {
+        /// Why it can't be made.
+        what: &'static str,
+        /// The component or stage.
+        component: String,
+    },
     /// The design's checks found errors, and the settings don't accept them.
     #[error("the design has {} error finding(s); the first is {:?}", .0.len(), .0.first())]
     DesignChecks(Vec<Finding>),
