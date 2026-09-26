@@ -222,6 +222,17 @@ pub trait Observer {
 
 impl Observer for () {}
 
+/// An observer lent to a flight, so the caller keeps it.
+impl<T: Observer + ?Sized> Observer for &mut T {
+    fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
+        (**self).step(step)
+    }
+
+    fn event(&mut self, event: &FlightEvent) {
+        (**self).event(event);
+    }
+}
+
 /// Two observers watch one flight: each sees every step and event, the first before the second.
 impl<A: Observer, B: Observer> Observer for (A, B) {
     fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {

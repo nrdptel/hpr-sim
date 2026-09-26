@@ -33,16 +33,16 @@ landed at 32.99000° N, 106.96904° W, 90 m from the pad, at 58.9 s
 ```
 
 CI runs it on macOS, Windows and Linux and fails if it prints anything else. The files hold every
-number to its last digit, which can differ in the last place between operating systems, so the
+number to its last digit, which may differ in the last place between operating systems, so the
 program prints a rounded summary instead of the files.
 
 ## The four files
 
 | file | what it holds | opens in |
 |---|---|---|
-| `flight.csv` | a header naming each column with its unit (`time_s`, `cg_east_m`, ...), then one line per recorded moment | a spreadsheet, pandas, any plotting tool |
+| `flight.csv` | a header naming each column with its unit (`time_s`, `cg_east_m`, ...), then one line per recorded moment, lines ending in CRLF as RFC 4180 says | a spreadsheet, pandas, any plotting tool |
 | `flight.json` | the same table as `{"columns": [...], "rows": [[...], ...]}` | any programming language |
-| `flight.geojson` | the flight path as a line, and a point where it landed | QGIS, geojson.io, web maps |
+| `flight.geojson` | the flight path as a line, and a point for each landing: the rocket's and any separated body's | QGIS, geojson.io, web maps |
 | `flight.kml` | the same path and landing | Google Earth |
 
 The tables hold whatever [channels](recording-a-trajectory.md#record-something-else) the
@@ -68,16 +68,22 @@ A height needs something to count from, a datum. The two map formats use differe
 their standards say so:
 
 - **GeoJSON** heights are above the WGS 84 ellipsoid, the smooth shape GPS uses
-  ([ellipsoidal height](glossary.md#ellipsoidal-height); RFC 7946, section 4).
-- **KML** heights with `altitudeMode` `absolute` are above sea level
-  ([height above sea level](glossary.md#height-above-sea-level-msl); OGC KML 2.2, 07-147r2).
+  ([ellipsoidal height](glossary.md#ellipsoidal-height);
+  [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946#section-4), section 4).
+- **KML** heights with `altitudeMode` `absolute` are above sea level, which KML takes from the
+  EGM96 geoid ([height above sea level](glossary.md#height-above-sea-level-msl);
+  [OGC KML 2.2, 07-147r2](https://www.ogc.org/standard/kml/)).
 
-Sea level sits above or below the ellipsoid by the geoid undulation `N`, up to about 100 m. hpr
-has no model of it, so it uses the value the flight was given
-(`Environment::with_geoid_undulation_m`, zero unless set), the same for every point of the flight:
-it changes by centimetres over a rocket's few kilometres. For example, at a site where sea level
+Sea level sits above or below the ellipsoid by the
+[geoid undulation](glossary.md#height-above-sea-level-msl) `N`, up to about 100 m. hpr has no
+model of it, so it uses the value the flight was given (`Environment::with_geoid_undulation_m`,
+zero unless set), the same for every point of the flight. The geoid's slope, about 5 cm per
+kilometre and up to some 30 cm in mountains, moves it by centimetres to decimetres over a rocket's
+few kilometres. For example, at a site where sea level
 is 25 m below the ellipsoid (`N = −25` m), a point 1500 m above the ellipsoid is written as 1500 m
-in GeoJSON and as 1525 m in KML. The first flight leaves `N` at zero, so its two files agree.
+in GeoJSON and as 1525 m in KML. The first flight leaves `N` at zero, so its two files agree; at the real
+site sea level is some tens of metres below the ellipsoid, so give `N` for heights you mean to
+trust.
 
 ## How the files are checked
 
@@ -96,13 +102,14 @@ The tests are in
 
 ## What it leaves out
 
-- **Parquet**, a compact table format for large Monte Carlo runs, comes in
+- **Parquet**, a compact table format for large runs such as the planned Monte Carlo, comes in
   [M1.10c2](decisions-and-roadmap.md#m1-10c2).
 - **A path over the antimeridian** (±180° longitude) is not cut in two as RFC 7946 asks, so a map
   would draw it the long way round the globe.
 - **Landing heights:** a landing is a point on the ground, without a height.
-- **A summary file:** the flight's peaks and margins are not in these files. A `FlightSummary`
-  converts to JSON on its own with `serde_json::to_string`.
+- **A summary file:** the flight's peaks and margins ([Flight metrics](physics/metrics.md)) are
+  not in these files. A `FlightSummary` converts to JSON on its own with `serde_json::to_string`,
+  but that path writes a value that isn't finite as `null` rather than refusing it.
 
 The choices are recorded in
 [ADR-079: exports as text built in the core](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-079-exports-as-text-built-in-the-core-heights-on-each-formats-own-datum-2026-09-26).
@@ -222,6 +229,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // What was written, and where it landed, to five decimal places of a degree (about a metre).
+    // The site is west of Greenwich, so the longitude is printed as degrees west.
     println!(
         "wrote {} rows of {} columns, a path of {} points",
         recorder.rows().len(),

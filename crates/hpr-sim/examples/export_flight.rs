@@ -105,6 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // What was written, and where it landed, to five decimal places of a degree (about a metre).
+    // The site is west of Greenwich, so the longitude is printed as degrees west.
     println!(
         "wrote {} rows of {} columns, a path of {} points",
         recorder.rows().len(),

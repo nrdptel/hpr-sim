@@ -11,9 +11,10 @@
 //! - **GeoJSON** (RFC 7946, section 4): longitude, latitude and height in metres above the WGS 84
 //!   ellipsoid.
 //! - **KML** (OGC 07-147r2, `altitudeMode` `absolute`): longitude, latitude and height above mean
-//!   sea level, which is the ellipsoidal height less the site's geoid undulation
-//!   ([`Environment::geoid_undulation_m`]). The undulation is taken as constant over the flight;
-//!   it changes by centimetres over a rocket's few kilometres.
+//!   sea level (KML's geoid is EGM96), which is the ellipsoidal height less the site's geoid
+//!   undulation ([`Environment::geoid_undulation_m`]). The undulation is taken as constant over the
+//!   flight; the geoid's slope, about 5 cm/km and up to some 30 cm/km in mountains, moves it by
+//!   centimetres to decimetres over a rocket's few kilometres.
 //!
 //! Neither cuts a path that crosses the antimeridian (±180° longitude), which RFC 7946 section 3.1.9
 //! asks for; a flight there draws a line the long way round the globe.
@@ -189,7 +190,20 @@ pub fn geojson(track: &[TrackPoint], summary: &FlightSummary) -> Result<String, 
 }
 
 /// `text` with XML's five special characters escaped.
-fn escape(text: &str) -> String {
+///
+/// # Errors
+///
+/// [`SimError::Unsupported`] for a control character XML 1.0 forbids (all below U+0020 but tab,
+/// line feed and carriage return; U+FFFE and U+FFFF).
+fn escape(text: &str) -> Result<String, SimError> {
+    let forbidden = |c: char| {
+        (c < ' ' && !matches!(c, '\t' | '\n' | '\r')) || matches!(c, '\u{FFFE}' | '\u{FFFF}')
+    };
+    if text.chars().any(forbidden) {
+        return Err(SimError::Unsupported {
+            what: "a KML name with a control character XML 1.0 forbids",
+        });
+    }
     let mut out = String::with_capacity(text.len());
     for c in text.chars() {
         match c {
@@ -201,7 +215,7 @@ fn escape(text: &str) -> String {
             _ => out.push(c),
         }
     }
-    out
+    Ok(out)
 }
 
 /// The path and the landings as a KML 2.2 document (OGC 07-147r2) named `name`: a `LineString`
@@ -210,8 +224,8 @@ fn escape(text: &str) -> String {
 ///
 /// # Errors
 ///
-/// [`SimError::Unsupported`] for a track of fewer than two points; [`SimError::Domain`] for a
-/// coordinate that isn't finite.
+/// [`SimError::Unsupported`] for a track of fewer than two points or a name with a control
+/// character XML forbids; [`SimError::Domain`] for a coordinate that isn't finite.
 pub fn kml(track: &[TrackPoint], summary: &FlightSummary, name: &str) -> Result<String, SimError> {
     too_short(track)?;
     let mut path = Vec::with_capacity(track.len());
@@ -225,7 +239,7 @@ pub fn kml(track: &[TrackPoint], summary: &FlightSummary, name: &str) -> Result<
     }
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     out.push_str("<kml xmlns=\"http://www.opengis.net/kml/2.2\">\n<Document>\n");
-    out.push_str(&format!("<name>{}</name>\n", escape(name)));
+    out.push_str(&format!("<name>{}</name>\n", escape(name)?));
     out.push_str("<Placemark>\n<name>flight path</name>\n<LineString>\n");
     out.push_str("<altitudeMode>absolute</altitudeMode>\n<coordinates>\n");
     out.push_str(&path.join("\n"));
@@ -234,7 +248,7 @@ pub fn kml(track: &[TrackPoint], summary: &FlightSummary, name: &str) -> Result<
         out.push_str(&format!(
             "<Placemark>\n<name>{}</name>\n<description>t = {:?} s</description>\n<Point>\n\
              <coordinates>{:?},{:?}</coordinates>\n</Point>\n</Placemark>\n",
-            escape(&label),
+            escape(&label)?,
             finite("time", l.time_s)?,
             finite("longitude", l.longitude_deg)?,
             finite("latitude", l.latitude_deg)?,
@@ -336,10 +350,31 @@ mod tests {
                 Err(SimError::Domain { what: "longitude", value }) if value.is_nan()
             ));
         }
-        assert!(matches!(
+        for result in [
             geojson(&track[..1], &summary),
-            Err(SimError::Unsupported { what }) if what.contains("fewer than two")
+            kml(&track[..1], &summary, "x"),
+        ] {
+            assert!(matches!(
+                result,
+                Err(SimError::Unsupported { what }) if what.contains("fewer than two")
+            ));
+        }
+        let fine = [
+            TrackPoint {
+                longitude_deg: -106.97,
+                ..point
+            },
+            TrackPoint {
+                time_s: 1.0,
+                longitude_deg: -106.97,
+                ..point
+            },
+        ];
+        assert!(matches!(
+            kml(&fine, &summary, "a\u{1}b"),
+            Err(SimError::Unsupported { what }) if what.contains("control character")
         ));
+        assert!(kml(&fine, &summary, "tab\tok").is_ok());
     }
 
     #[test]
