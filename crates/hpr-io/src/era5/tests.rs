@@ -88,6 +88,16 @@ fn wmo_geometric(z: f64, latitude_rad: f64) -> f64 {
     radius * reduced / (radius - reduced)
 }
 
+/// The WGS 84 ellipsoid's distance from the Earth's centre at geodetic latitude `φ`,
+/// `√(((a² cos φ)² + (b² sin φ)²)/((a cos φ)² + (b sin φ)²))`, the radius RocketPy's
+/// `Environment` uses.
+fn geocentric_radius_m(latitude_rad: f64) -> f64 {
+    let (a, b) = (6_378_137.0_f64, 6_356_752.314_245);
+    let (sin, cos) = latitude_rad.sin_cos();
+    (((a * a * cos).powi(2) + (b * b * sin).powi(2)) / ((a * cos).powi(2) + (b * sin).powi(2)))
+        .sqrt()
+}
+
 fn latitude_rad(case: &Value) -> f64 {
     case["latitude_deg"].as_f64().unwrap().to_radians()
 }
@@ -171,7 +181,15 @@ fn each_height_reading_errs_as_the_module_documentation_says() {
     // A model ground at true height `h_s` with geopotential `g₀ h_s`, and gravity above it falling
     // off as WMO's eq. 12.15 takes it: a level at true height `h` has
     // `Z = h_s + (γ_s/g₀) R (h/(R + h) − h_s/(R + h_s))`. hpr reads `Z` by WMO, ECMWF by
-    // `R Z/(R − Z)`; the module documentation and the guide quote the errors and the crossing.
+    // `R_e Z/(R_e − Z)` with RocketPy's Earth radius, the WGS 84 ellipsoid's distance from the
+    // centre at the site's latitude; the module documentation and the guide quote the errors and
+    // the crossing.
+    let bella_lui = rocketpy();
+    let bella_lui = case(&bella_lui, "bella-lui");
+    let fixture_radius = bella_lui["readings"][0]["rocketpy"]["earth_radius_m"]
+        .as_f64()
+        .unwrap();
+    assert!((geocentric_radius_m(latitude_rad(bella_lui)) - fixture_radius).abs() < 1e-6);
     let errors = |latitude_deg: f64, ground_m: f64, above_m: f64| {
         let latitude = latitude_deg.to_radians();
         let (gamma_s, radius) = wmo_gravity_and_radius(latitude);
@@ -179,7 +197,8 @@ fn each_height_reading_errs_as_the_module_documentation_says() {
         let h = ground_m + above_m;
         let z = ground_m + wmo(h) - wmo(ground_m);
         let hpr = wmo_geometric(z, latitude) - h;
-        let ecmwf = radius * z / (radius - z) - h;
+        let r = geocentric_radius_m(latitude);
+        let ecmwf = r * z / (r - z) - h;
         (hpr, ecmwf)
     };
     let two = |x: f64| format!("{x:.2}");
@@ -188,13 +207,13 @@ fn each_height_reading_errs_as_the_module_documentation_says() {
         assert_eq!(two(errors(47.2, 407.0, above_m).0), "-0.04");
     }
     assert_eq!(two(errors(47.2, 407.0, 0.0).1), "0.03");
-    assert_eq!(two(errors(47.2, 407.0, 3000.0).1), "0.50");
+    assert_eq!(two(errors(47.2, 407.0, 3000.0).1), "0.49");
     // A pad 1400 m up at 33° N: hpr's is constant, ECMWF's grows with the height above the ground.
     for above_m in [0.0, 3000.0] {
         assert_eq!(two(errors(33.0, 1400.0, above_m).0), "1.88");
     }
     assert_eq!(two(errors(33.0, 1400.0, 0.0).1), "0.31");
-    assert_eq!(two(errors(33.0, 1400.0, 3000.0).1), "-3.05");
+    assert_eq!(two(errors(33.0, 1400.0, 3000.0).1), "-3.07");
     // ECMWF's is the smaller up to about 1.95 km above that ground, hpr's beyond.
     let (mut low, mut high) = (0.0, 3000.0);
     for _ in 0..60 {
@@ -504,6 +523,15 @@ fn coordinates_must_lie_along_their_own_dimension_and_be_present() {
         edit(&|v| v.values = crate::netcdf::Values::Float(vec![])),
         Err(Era5Error::EmptyAxis { ref axis }) if axis == "latitude"
     ));
+    // A long name on many axes: the error names the first eight and counts the rest.
+    let long: std::sync::Arc<str> = "x".repeat(1000).into();
+    let error = edit(&|v| v.dimensions = vec![long.clone(); 1000]).unwrap_err();
+    let Era5Error::Dimensions { ref found, .. } = error else {
+        panic!("{error:?}");
+    };
+    assert_eq!(found.len(), 9);
+    assert_eq!(found[8], "and 992 more");
+    assert!(error.to_string().len() < 10_000);
 }
 
 #[test]

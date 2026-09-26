@@ -167,13 +167,14 @@ level it is 9.780 m/s² at the equator and 9.832 m/s² at the poles.
 
 How far off each is depends on how ERA5's model builds the geopotential of its own ground, which
 ECMWF doesn't say. Taking it as `g₀` times the ground's height, hpr's reading is off by a fixed
-amount at every height and ECMWF's by an amount that grows with height above the ground. Neither
-is always the smaller:
+amount at every height and ECMWF's by an amount that grows with height above the ground. With
+RocketPy's Earth radius in ECMWF's formula (the WGS 84 ellipsoid's distance from the Earth's
+centre at the site), neither is always the smaller:
 
 | model ground | hpr's error | ECMWF's error, at the ground | ECMWF's, 3 km above it |
 |---|---|---|---|
-| 407 m at 47.2° N | −0.04 m | +0.03 m | +0.50 m |
-| 1400 m at 33° N (like Spaceport America's) | +1.88 m | +0.31 m | −3.05 m |
+| 407 m at 47.2° N | −0.04 m | +0.03 m | +0.49 m |
+| 1400 m at 33° N (like Spaceport America's) | +1.88 m | +0.31 m | −3.07 m |
 
 At the second site ECMWF's reading is the closer one up to 1.95 km above the ground, and hpr's
 above that. hpr keeps WMO's formula because it is the one it uses for every sounding. The

@@ -37,9 +37,11 @@
 //! not say how the model builds it, so this is an assumption), and gravity above it falls off as
 //! WMO's formula has it. To first order hpr's reading is then off by `h_s (g₀/γ_s − 1) + h_s²/R`,
 //! the same at every height, and ECMWF's by `h_s²/R − (h − h_s)(g₀/γ_s − 1)`, which grows with the
-//! height above the model's ground. Neither is always the smaller. For a model ground at 407 m at
-//! 47.2° N hpr's is −0.04 m. For one 1400 m up at 33° N hpr's is 1.88 m, and ECMWF's is 0.31 m at
-//! the ground and −3.05 m 3 km above it; ECMWF's is the smaller up to 1.95 km above that ground.
+//! height above the model's ground (plus `h²(1/R_e − 1/R)` when ECMWF's radius `R_e` is not WMO's
+//! `R`). Neither is always the smaller. Exactly, with RocketPy's `R_e` (the WGS 84 ellipsoid's
+//! distance from the centre at the site): for a model ground at 407 m at 47.2° N hpr's is −0.04 m.
+//! For one 1400 m up at 33° N hpr's is 1.88 m, and ECMWF's is 0.31 m at the ground and −3.07 m
+//! 3 km above it; ECMWF's is the smaller up to 1.95 km above that ground.
 //! hpr keeps WMO's because it is the rule [`SoundingProfile`] uses for every sounding, so a level's
 //! geopotential round-trips. The two readings differ by `g₀/γ_s(φ) − 1` of the height, −1.58e-4 at
 //! 47.21° N and +3.43e-4 at 41.78° N (−0.69 m at 4.4 km and +1.45 m at 4.2 km on the tests' files).
@@ -80,7 +82,7 @@ pub enum Era5Error {
     Dimensions {
         /// The variable.
         variable: String,
-        /// Its dimensions.
+        /// Its dimensions: the first eight, then how many more there are.
         found: Vec<String>,
         /// What was expected.
         expected: String,
@@ -350,9 +352,26 @@ fn check_units(variable: &Variable, accepted: &[&str]) -> Result<(), Era5Error> 
     }
 }
 
-/// A variable's dimension names, for an error.
+/// A variable's dimension names, for an error: the first few and a count of the rest, so a file
+/// that names one long dimension on many axes can't make its error text grow as the square of its
+/// size.
 fn names_of(variable: &Variable) -> Vec<String> {
-    variable.dimensions.iter().map(|d| d.to_string()).collect()
+    const SHOWN: usize = 8;
+    let mut names: Vec<String> = variable
+        .dimensions
+        .iter()
+        .take(SHOWN)
+        .map(|d| d.to_string())
+        .collect();
+    if let Some(rest) = variable
+        .dimensions
+        .len()
+        .checked_sub(SHOWN)
+        .filter(|&n| n > 0)
+    {
+        names.push(format!("and {rest} more"));
+    }
+    names
 }
 
 /// A one-dimensional coordinate variable's unpacked values.

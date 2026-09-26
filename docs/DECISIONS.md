@@ -7134,9 +7134,10 @@ the flights, then the corpus flights with logs.
    and string variables that the classic formats can't hold (`nccopy` can't drop them for you).
    Reading HDF5 would mean a large format or a C library, for files a three-line conversion turns
    into ones this reader reads. A header whose variables claim more bytes than the file holds is
-   refused before anything is allocated, and so is a header whose names, copied per axis, would
-   outgrow the file, so a hostile file costs no more memory than a small multiple of its own
-   size; name lookups are hashed, so no header costs quadratic time (fuzzed by proptest).
+   refused before anything is allocated. Each dimension's name is allocated once and shared by
+   every axis that names it, and duplicate names are found through ordered sets, so a hostile
+   file costs memory a small multiple of its size and time `n log n` in its names (fuzzed by
+   proptest).
 3. **The Users Guide's conventions over netCDF4-python's.** With no valid bounds, the fill value
    bounds the valid range on its own side (one step away for integers, two units in the last
    place for floats), and a byte with no explicit fill has every value valid (netCDF Users Guide,
@@ -7157,7 +7158,7 @@ the flights, then the corpus flights with logs.
    is off by about `h_s(g₀/γ_s − 1) + h_s²/R` at every height and ECMWF's by
    `h_s²/R − (h − h_s)(g₀/γ_s − 1)`, growing with height above the model's ground. Neither is
    always the smaller: for a ground 1400 m up at 33° N, WMO's is 1.88 m and ECMWF's is smaller up
-   to 1.95 km above the ground, −3.05 m at 3 km. hpr keeps WMO's because it is the rule
+   to 1.95 km above the ground, −3.07 m at 3 km (with RocketPy's Earth radius). hpr keeps WMO's because it is the rule
    `SoundingProfile` uses for every sounding, so a level's geopotential round-trips; a test pins
    these numbers. The readings differ by `g₀/γ_s(φ) − 1` of the height: −0.0158% at 47.21° N and
    +0.0343% at 41.78° N, pinned by a test. Humidity is not read yet (dry
