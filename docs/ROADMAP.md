@@ -658,18 +658,18 @@
   - Flutter matches the worked example in the cited source.
 
   Split into a to c (ADR-077).
-  - [x] **M1.10a Flight metrics.** Met (ADR-077), bars kept: a watcher reports the peaks (speed,
-    Mach, max q, the boost's acceleration apart from the opening shock), the apogee with its datum,
-    the static and flight margins from rail exit to apogee (none where the slopes cancel), each
-    motor's optimum delay and each landing's latitude and longitude, `None` for what didn't happen,
-    each unit-tested against a hand value; L33 to L35, L94 live. Peak 1e-6 of hand; margins 1e-9.
+  - [x] **M1.10a Flight metrics.** Met (ADR-077), bars kept: peaks (boost apart from the opening
+    shock), apogee with datum, margins rail exit to apogee (none where slopes cancel), optimum
+    delays, landings' lat/lon, `None` if absent; hand-tested (1e-6, margins 1e-9); L33-35, L94 live.
     - Loft lessons: L33, L34, L35, L94.
-  - [x] **M1.10b Fin flutter.** *Done when:* the parent's third bullet is met: flutter speed and
-    margin from the cited source match its worked example, each shear modulus cited; L32 live.
-    *Result:* met (ADR-078): TN 4197 eq. 18; Martin's examples at his printed resolution; 14 moduli.
+  - [x] **M1.10b Fin flutter.** Met (ADR-078), bars kept: TN 4197 eq. 18 matches Martin's worked
+    examples at his printed resolution; 14 shear moduli, each cited; L32 live.
     - Loft lessons: L32.
   - [ ] **M1.10c Exports.** *Done when:* the parent's second bullet is met: CSV, JSON, KML and
     GeoJSON (Parquet behind a feature) are written, GeoJSON checked by schema and KML by parsing.
+    - [x] **M1.10c1 Text exports.** Met (ADR-079, split c1, c2): CSV, JSON, GeoJSON, KML from a
+      recording and summary; GeoJSON by the published schema, KML parsed; numbers read back equal.
+    - [ ] **M1.10c2 Parquet.** *Done when:* written behind a feature, an independent reader agrees.
 
 - [ ] **M2.3 Real flights.**
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file

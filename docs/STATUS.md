@@ -5,17 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108), and M2.2e5 on
-  #173, #174, M1.13, #133 (13 of 20 designs); active work is M1.10c, exports.
-- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; so M1.10 (split a to c, ADR-077), now c.
-  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10a-b, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
+  #173, #174, M1.13, #133 (13 of 20 designs); active work is M1.10c2, Parquet.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its four; so M1.10 (a to c, ADR-077), now c2.
+  **Run:** M0.1-M0.4, M1.1-M1.7, M1.9, M1.10a-c1, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a-e4; site up.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M1.10b fin flutter (ADR-078) done, M1.10c next.
+- **Last updated:** 2026-09-26; M1.10c1 text exports (ADR-079) done, M1.10c2 Parquet next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.10c** (exports) on `m1.10c-<slug>`: text/bytes built in the core (no I/O), GeoJSON
-  by schema, KML by `roxmltree`. Flutter (ADR-078): `hpr_sim::flutter`, margin at max q; moduli in
+- **Start M1.10c2** (Parquet) on `m1.10c2-<slug>`: a cargo feature, bytes built without I/O,
+  read back by an independent reader; pick the crate by maturity and wasm32 fit. Text exports
+  (ADR-079): `hpr_sim::export`, exact round-trip numbers, GeoJSON on the ellipsoid, KML on MSL;
+  `(A, B)` is an `Observer`. Flutter (ADR-078): `hpr_sim::flutter`, margin at max q; moduli in
   `materials::SHEAR_MODULI`, sources cached in `refs/sources/shear-moduli/`; G10/FR-4 has none.
   Metrics (ADR-077): `FlightStep::stability`, margin `None` past `κ = √10`, least refined in steps.
   `.ork` since M1.9c (ADR-076): ignitions, clusters, one powered split fly; open: #183, #184, #185.
@@ -54,6 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
+- 2026-09-26: M1.10c1 Text exports (ADR-079): CSV, JSON, GeoJSON by the published schema, KML by parsing; exact.
 - 2026-09-26: M1.10b Fin flutter (ADR-078): TN 4197 eq. 18; Martin's examples at his resolution; 14 moduli; L32.
 - 2026-09-26: M1.10a Flight metrics (ADR-077; M1.10 split a to c): peaks on the dense output, margins, delay, landings; L33-35, L94.
 - 2026-09-25: M1.9c `.ork` staging and clusters (ADR-076): all within 5% of OR (3 vs no chute); M1.9 done; 13 of 20.
@@ -75,20 +78,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-079: M1.10c split c1, c2; exports as text in the core; GeoJSON on the ellipsoid, KML on MSL.
 - ADR-078: flutter by TN 4197 eq. 18; its figure 3 band measured (0.25-0.31); lower reading if two.
 - ADR-077: M1.10 split a to c; peaks on the dense output; no margin past κ = √10; held recovery.
-- ADR-076: a `.ork` flies its ignitions and one powered split; tolerance 5% in apogee and speed.
-- ADR-074, ADR-075: M1.9 split a to c; a powered split flies body 0 on; a cluster, a motor per tube.
+- ADR-074 to ADR-076: M1.9 split a to c; body 0 flies on; a motor per tube; `.ork` within 5% of OR.
 - ADR-073: a cause is sized by OR flying without it; within the bar if every such flight is within 5%.
-- ADR-072: private flights by id, differences only; public copies out; bar of 20 waits on M1.9.
-- ADR-071: M2.2e's corpus is the library's 27 `.ork` files; its `.CDX1`, `.rkt` wait (#168).
+- ADR-071, ADR-072: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
+  flights by id, differences only; public copies out.
 - ADR-069: hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
 - ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".
-- ADR-066: M2.2c split c1, c2; the oracle compares two integrations of one file; public curves only.
-- ADR-065: M2.2b5 split; stored-reference eligibility and hpr reproduction are separate screens.
-- ADR-063: M2.2b3 split; packed parts read and weighed as OpenRocket packs them, measured on probes.
-- ADR-064: M2.2b4 split; clusters and fillets measured departures; unread parts in `x-openrocket`.
-- ADR-062: M2.2b2 split; hpr keeps its exact fin roll inertia and fin sections, pinned as departures.
+- ADR-062 to ADR-066: M2.2b2-b5, c split; exact fin inertia and sections, clusters, fillets pinned
+  as departures; packed parts as OR packs them; screens apart; the oracle integrates one file twice.
 - ADR-061: what a `.ork` leaves unsaid is OpenRocket's reading; two override rules stay hpr's.
 - ADR-060: M2.2 split a to e, mass first; thresholds (1% mass, 1% of length) set before measuring.
 - ADR-059: "agrees on the key geometry" means no number of hpr's is apart from both RocketSerializer

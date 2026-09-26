@@ -48,6 +48,9 @@ Like the first flight's, this output is committed in
 [`trajectory.output.txt`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/trajectory.output.txt),
 and CI runs the program on macOS, Windows and Linux and fails if it prints anything else.
 
+This program rounds as it prints. To save a recording with every digit, as CSV or JSON, or the
+flight path as a map, see [Exporting a flight](exporting-a-flight.md).
+
 ## Reading the table
 
 | column | what it is | unit |
