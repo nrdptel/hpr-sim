@@ -81,6 +81,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-073 | Each named cause sized by OpenRocket's own flight without it | accepted |
 | ADR-074 | Ignition times and powered staging: the sustainer flies on as a rigid body | accepted |
 | ADR-075 | A cluster is one tube repeated, and a motor in it one motor per tube | accepted |
+| ADR-076 | A `.ork` file's ignitions and one powered separation flown against OpenRocket | accepted |
 
 ---
 
@@ -6775,3 +6776,22 @@ inner tube as the one tube it is written as, with a warning, leaving its configu
   survey file has one; a cluster on the axis, the common case, is not affected
   ([#181](https://github.com/nrdptel/hpr-sim/issues/181)). Real clusters' thrust misalignment and ignition spread, short of a motor that fails
   outright, are not modelled.
+
+## ADR-076: A `.ork` file's ignitions and one powered separation flown against OpenRocket (2026-09-25)
+
+**Context.** M1.9c carries M1.9's first bullet: a `.ork` two-stage design and a cluster design each
+within the per-case tolerance of OpenRocket's flight. hpr-io read every motor's ignition and every
+stage's separation (M3.1c2, ADR-056) but flew only what lights at launch (ADR-055), left clustered
+configurations out (ADR-075 §7) and flew no rocket of more than one stage. No tolerance for a
+flight of a `.ork` against OpenRocket's had been written down: ADR-069 holds each apogee more than
+5% off to a named cause, and holds nothing to a bound.
+
+**Decision.**
+
+1. **The tolerance, set before any staged or clustered flight was measured.** A design is within
+   when every configuration of it that hpr flies has its apogee within 5% of OpenRocket's and its
+   largest speed within 5% of OpenRocket's. Where OpenRocket's parachute opened before its apogee
+   (ADR-069 §4), the apogee is held to OpenRocket's flight of the same configuration with nothing
+   deployed, which the record holds (ADR-073). 5% is M2.2's bar for an apogee with no named cause;
+   the largest speed is held to the same.
+
