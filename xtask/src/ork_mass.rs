@@ -9,6 +9,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use hpr_core::DVec3;
+use hpr_design::MassProperties;
 use hpr_design::tree::{Component, Layout, Part, Rocket};
 use hpr_validate::openrocket::openrocket_fin_set_roll_kg_m2;
 use serde_json::{Value, json};
@@ -139,6 +141,41 @@ pub(crate) fn roll_under_openrocket_fins(
 /// before a design needs a cause: 1%, as for the mass (ADR-062).
 pub(crate) const ROLL_WITHIN: f64 = 0.01;
 
+/// How much of hpr's roll inertia is the spread of the clusters' own tubes about each cluster's
+/// axis, kg·m², or `None` for a design with no cluster: hpr's inertia less what it is with each
+/// clustered tube's copies stacked on the cluster's axis, the tubes alone. That is how OpenRocket
+/// 24.12 weighs a cluster: on probes of a 3-ring at scale 1 and at scale 1.5 its inertias are the
+/// same, three tubes' own inertias with no parallel-axis term for their spread, while an engine
+/// block inside each tube is weighed where it is, spread term and all
+/// (`validation/fixtures/ork/openrocket-clusters.json`). hpr places each tube, and what it holds,
+/// where it is (ADR-075). A tube whose mass is overridden is stacked at its overridden mass.
+pub(crate) fn cluster_spread_kg_m2(layout: &Layout) -> Option<f64> {
+    let about = layout.structure.cg_m;
+    let mut spread = None;
+    for placed in &layout.components {
+        let Part::InnerTube(tube) = &placed.part else {
+            continue;
+        };
+        if tube.cluster_m.is_empty() {
+            continue;
+        }
+        let mut stacked = tube.clone();
+        stacked.cluster_m = vec![[0.0, 0.0]; tube.cluster_m.len()];
+        let one = stacked.mass_properties().ok()?.translated(DVec3::new(
+            0.0,
+            0.0,
+            -placed.fore_station_m,
+        ));
+        let mut stacked = MassProperties::copied(one, &placed.copies_m);
+        if stacked.mass_kg > 0.0 {
+            stacked = stacked.scaled(placed.own.mass_kg / stacked.mass_kg);
+        }
+        let roll = |body: &MassProperties| body.inertia_about(about).z_axis.z;
+        *spread.get_or_insert(0.0) += roll(&placed.own) - roll(&stacked);
+    }
+    spread
+}
+
 /// Whether a stage, or a part with parts inside it, overrides the mass of what it covers: there hpr
 /// scales the inertia of everything covered and OpenRocket that of the overriding part alone, a
 /// departure ADR-061 keeps. On a lone part the two agree, so its own override is not counted.
@@ -192,9 +229,10 @@ fn spread(values: &[f64]) -> String {
 
 /// The causes a design outside a threshold is traced to, each by what hpr says when it reads the
 /// file, in the order they are printed. M2.2a's first two, a shoulder written with no wall and a
-/// part written with no material, are gone: hpr now reads both as OpenRocket does (ADR-061).
-pub(crate) const CAUSES: [&str; 4] = [
-    "a cluster of motor tubes, read as one tube",
+/// part written with no material, are gone: hpr now reads both as OpenRocket does (ADR-061). So is
+/// a cluster of motor tubes read as one tube: hpr reads every tube of a cluster since M1.9b
+/// (ADR-075).
+pub(crate) const CAUSES: [&str; 3] = [
     "fin fillets, left out",
     "parts hpr keeps unread (a reduced design)",
     "a stage OpenRocket's configuration switches off",
@@ -205,7 +243,7 @@ pub(crate) const CAUSES: [&str; 4] = [
 /// them to what it says.
 fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static str> {
     let said = |words: &str| warnings.iter().any(|warning| warning.contains(words));
-    let found = [said(CLUSTER), said(FILLETS), reduced, stages_apart];
+    let found = [said(FILLETS), reduced, stages_apart];
     CAUSES
         .iter()
         .zip(found)
@@ -216,20 +254,30 @@ fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static 
 /// The causes a roll inertia outside [`ROLL_WITHIN`] is traced to, once OpenRocket's fin rule is in
 /// hpr's place.
 ///
-/// A fourth, packed parts hpr weighed as point masses, went when hpr came to pack them as
-/// OpenRocket does (ADR-063).
-pub(crate) const ROLL_CAUSES: [&str; 3] = [
+/// A fifth, packed parts hpr weighed as point masses, went when hpr came to pack them as
+/// OpenRocket does (ADR-063). The cluster's is sized, not only present: it is named only when the
+/// roll inertia less its clusters' spread ([`cluster_spread_kg_m2`]), which OpenRocket leaves out,
+/// is within [`ROLL_WITHIN`] (ADR-075).
+pub(crate) const ROLL_CAUSES: [&str; 4] = [
     "a mass override covering parts inside (ADR-061)",
     "parts hpr keeps unread (a reduced design)",
     "fins the rule was not given OpenRocket's mass for (tube fins, or no id to pair)",
+    "a cluster's tubes, which OpenRocket weighs on the cluster's axis (ADR-075)",
 ];
 
-/// The causes of a roll inertia outside [`ROLL_WITHIN`] with OpenRocket's fin rule in hpr's place.
-fn roll_causes(rocket: &Rocket, reduced: bool, under_rule: &RollUnderRule) -> Vec<&'static str> {
+/// The causes of a roll inertia outside [`ROLL_WITHIN`] with OpenRocket's fin rule in hpr's place;
+/// `stacked` is the same with every cluster's tubes on its axis, for a design with a cluster.
+fn roll_causes(
+    rocket: &Rocket,
+    reduced: bool,
+    under_rule: &RollUnderRule,
+    stacked: Option<f64>,
+) -> Vec<&'static str> {
     let found = [
         covering_mass_override(rocket),
         reduced,
         under_rule.unpaired_fins,
+        stacked.is_some_and(|apart| apart.abs() <= ROLL_WITHIN),
     ];
     ROLL_CAUSES
         .iter()
@@ -244,11 +292,12 @@ struct RollOutside {
     label: String,
     hash: String,
     apart: f64,
+    /// The same with each cluster's tubes on its axis, for a design with a cluster.
+    stacked: Option<f64>,
     causes: Vec<&'static str>,
 }
 
 /// How `hpr_io::ork` words the warnings `causes` looks for.
-const CLUSTER: &str = "a cluster of motor tubes is read as the one tube";
 const FILLETS: &str = "the fillets along the fin roots were dropped";
 
 /// How a design is named in print: by its file when it is public (the jar's examples, Loft's own
@@ -418,11 +467,15 @@ impl MassTally {
             |difference: f64, within: f64| difference.is_nan() || difference.abs() > within;
         let parts = parts(rocket, layout, &design["parts"]);
         if beyond(under_rule.apart, ROLL_WITHIN) {
+            let stacked = cluster_spread_kg_m2(layout)
+                .zip(design["structure"]["ixx"].as_f64())
+                .map(|(spread, roll)| under_rule.apart - spread / roll);
             self.roll_outside.push(RollOutside {
                 label: named.clone(),
                 hash: digest.clone(),
                 apart: under_rule.apart,
-                causes: roll_causes(rocket, reduced, &under_rule),
+                stacked,
+                causes: roll_causes(rocket, reduced, &under_rule, stacked),
             });
         }
         if beyond(found[0], MASS_WITHIN) || beyond(found[1], CG_WITHIN) {
@@ -517,9 +570,13 @@ impl MassTally {
         );
         for outside in &self.roll_outside {
             println!(
-                "      {}: roll inertia {:+.2}%; causes: {}",
+                "      {}: roll inertia {:+.2}%{}; causes: {}",
                 outside.label,
                 100.0 * outside.apart,
+                outside.stacked.map_or(String::new(), |apart| format!(
+                    ", {:+.2}% with each cluster's tubes on its axis",
+                    100.0 * apart
+                )),
                 if outside.causes.is_empty() {
                     "NONE".to_owned()
                 } else {
@@ -970,6 +1027,15 @@ mod tests {
     /// OpenRocket's record.
     fn conventions_probe(question: &str) -> (Rocket, Layout, Value) {
         let text = include_str!("../../validation/fixtures/ork/openrocket-conventions.json");
+        probe_of(text, question)
+    }
+
+    fn clusters_probe(question: &str) -> (Rocket, Layout, Value) {
+        let text = include_str!("../../validation/fixtures/ork/openrocket-clusters.json");
+        probe_of(text, question)
+    }
+
+    fn probe_of(text: &str, question: &str) -> (Rocket, Layout, Value) {
         let record: Value = serde_json::from_str(text).unwrap();
         let probe = record["probes"][question].clone();
         let read = ork::read(probe["document"].as_str().unwrap().as_bytes()).unwrap();
@@ -1019,7 +1085,10 @@ mod tests {
             unpaired.unpaired_fins && unpaired.apart < -0.02,
             "{unpaired:?}"
         );
-        assert_eq!(roll_causes(&rocket, false, &unpaired), [ROLL_CAUSES[2]]);
+        assert_eq!(
+            roll_causes(&rocket, false, &unpaired, None),
+            [ROLL_CAUSES[2]]
+        );
 
         // A weightless packed part under an override is OpenRocket's packing now (ADR-063), so it
         // leaves no gap to need a cause.
@@ -1029,7 +1098,35 @@ mod tests {
             roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &probe["parts"])
                 .unwrap();
         assert!(under.apart.abs() < 1e-12, "{under:?}");
-        assert!(roll_causes(&rocket, false, &under).is_empty());
+        assert!(roll_causes(&rocket, false, &under, None).is_empty());
+
+        // A cluster's own tubes stacked on its axis are OpenRocket's inertia to rounding, with an
+        // engine block in each tube left where it is; spread where they are, hpr's is apart by
+        // their parallel-axis terms, and the cause is named only when that closes the gap
+        // (ADR-075).
+        for question in [
+            "3-ring at scale 1",
+            "a 3-ring at scale 1.5",
+            "a 3-ring with an engine block",
+            "a 3-ring with its engine block's mass overridden",
+            "a 3-ring with its mass overridden",
+        ] {
+            let (rocket, layout, probe) = clusters_probe(question);
+            let spread =
+                roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &probe["parts"])
+                    .unwrap();
+            assert!(spread.apart > 0.02, "{question}: {spread:?}");
+            let roll = probe["structure"]["ixx"].as_f64().unwrap();
+            let stacked = spread.apart - cluster_spread_kg_m2(&layout).expect("a cluster") / roll;
+            assert!(stacked.abs() < 1e-12, "{question}: {stacked:e}");
+            assert_eq!(
+                roll_causes(&rocket, false, &spread, Some(stacked)),
+                [ROLL_CAUSES[3]]
+            );
+            assert!(roll_causes(&rocket, false, &spread, Some(0.011)).is_empty());
+        }
+        let (_, layout, _) = conventions_probe("a tube and an inner tube");
+        assert!(cluster_spread_kg_m2(&layout).is_none());
 
         let tally = MassTally {
             record: Some(BTreeMap::new()),
@@ -1037,6 +1134,7 @@ mod tests {
                 label: "probe".to_owned(),
                 hash: "0".to_owned(),
                 apart: 0.02,
+                stacked: None,
                 causes: Vec::new(),
             }],
             ..MassTally::default()
@@ -1091,7 +1189,7 @@ mod tests {
         assert!(tally.failure().unwrap().contains("no cause hpr warned of"));
         assert_eq!(
             causes(
-                &["a cluster of motor tubes is read as the one tube, so its mass is too"],
+                &["the fillets along the fin roots were dropped, so their mass is too"],
                 false,
                 false
             ),

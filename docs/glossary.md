@@ -214,7 +214,7 @@ An answer written as an exact formula, such as the parabola a body follows in a 
 
 ## Cluster
 
-Several motors in one rocket, burning side by side, each in its own mount. hpr lights each motor at its own ignition (at launch unless told otherwise). It sums their thrusts along the rocket's axis, and adds the turning moment of any motor set off the axis. No test or comparison checks a cluster flight yet: that, and several motors in one mount, come with [M1.9b](decisions-and-roadmap.md#m1-9b). See [The design tree](physics/design.md#motors-and-configurations).
+Several motors in one rocket, burning side by side: in one mount of several like tubes (an OpenRocket `3-ring`, say), or each in its own mount. hpr lights each motor at its own ignition (at launch unless told otherwise). It sums their thrusts and masses, and adds the turning moment of any motor set off the axis, as when one motor of a cluster fails to light (a "motor out"). Tests check this against hand calculations; a cluster flight is compared with OpenRocket's in [M1.9c](decisions-and-roadmap.md#m1-9c). See [Clusters](physics/design.md#clusters).
 
 ## Code-to-code comparison
 

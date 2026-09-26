@@ -383,7 +383,11 @@ pub enum NotFlown {
     NoCurve,
     /// A motor has no case diameter or length.
     NoSize,
-    /// A motor sits in a cluster of tubes, which hpr reads as one tube.
+    /// A motor sits in a cluster of tubes. hpr reads the cluster and can fly it, a motor in every
+    /// tube; a `.ork` design's cluster is flown from [M1.9c][m1-9], which holds such a flight to
+    /// OpenRocket's.
+    ///
+    /// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
     Cluster,
     /// A motor ignites after launch: staging and air starts come with [M1.9][m1-9], the
     /// milestone for staging, clusters and air starts.
@@ -392,7 +396,7 @@ pub enum NotFlown {
     IgnitesInFlight,
     /// The airframe or a motor mount was not read exactly as written: reading it raised a
     /// warning. A part was left out (a pod, a parallel stage, a part hpr could not give a shape), a
-    /// value was dropped or simplified (a cluster read as one tube, a flipped nose cone read
+    /// value was dropped or simplified (fin fillets left off, a flipped nose cone read
     /// forward, a material that could not be read), or something was assumed (a shape hpr does
     /// not know read as a cone). Flying it would fly a
     /// rocket the design may not be.
@@ -525,7 +529,9 @@ pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) ->
     let cluster = element
         .child("clusterconfiguration")
         .map(|c| c.text().trim().to_owned())
-        .filter(|c| c != "single");
+        // A pattern of one tube, or a name OpenRocket doesn't know (read as one tube, with a
+        // warning), is no cluster.
+        .filter(|c| super::attached::cluster_pattern(c).is_some_and(|tubes| tubes.len() > 1));
     Some(MountRead {
         at: at.to_owned(),
         overhang_m,
@@ -1161,7 +1167,8 @@ fn left_out(
         return out(
             NotFlown::Cluster,
             format!(
-                "{} sits in a cluster of motor tubes (`{cluster}`), which hpr reads as one tube",
+                "{} sits in a cluster of motor tubes (`{cluster}`), which hpr reads but flies \
+                 from a `.ork` only once M1.9c holds a cluster's flight to OpenRocket's",
                 motor.designation
             ),
         );
@@ -1208,6 +1215,7 @@ fn flown(configuration: &MotorConfiguration) -> Configuration {
                     motor: motor.curve.motor()?.clone(),
                     delay: motor.delay,
                     ignition: hpr_design::Ignition::Launch,
+                    failed_tubes: Vec::new(),
                 })
             })
             .collect(),

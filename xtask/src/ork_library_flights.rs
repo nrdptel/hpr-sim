@@ -1044,6 +1044,7 @@ mod tests {
                 "part_outside_rocket",
                 "internal_part_past_parent_end",
                 "internal_part_wider_than_parent",
+                "cluster_tubes_overlap",
                 "ring_overlaps_inner_tube",
                 "centre_outside_rocket",
                 "radius_step",

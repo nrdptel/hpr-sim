@@ -142,6 +142,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             // No ejection delay is chosen: this flight carries no parachutes.
             delay: None,
             ignition: Ignition::Launch,
+            failed_tubes: Vec::new(),
         }],
     });
 

@@ -1484,6 +1484,36 @@ fn a_surface_finish_is_a_roughness_height() {
     assert_eq!(imported.count(WarningKind::Unusual), 1);
 }
 
+/// A part inside an inner tube set off the body's axis is read from the body's axis, where
+/// OpenRocket places it from the tube's (#181); the reader says so, and says nothing for a tube on
+/// the axis.
+#[test]
+fn a_part_inside_an_off_axis_tube_is_said_out_loud() {
+    let block = "<subcomponents><engineblock><name>Block</name><id>block</id>\
+        <axialoffset method=\"top\">0.0</axialoffset><length>0.01</length>\
+        <outerradius>auto</outerradius><thickness>0.002</thickness></engineblock>\
+        </subcomponents></innertube>";
+    let warned = |radial: &str| {
+        let xml = with_parts([0, 1, 2, 3, 4])
+            .replacen("</innertube>", block, 1)
+            .replacen(
+                "<radialposition>0.0</radialposition>",
+                &format!("<radialposition>{radial}</radialposition>"),
+                1,
+            );
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let imported = component::rocket(&read.value.document);
+        imported
+            .warnings
+            .iter()
+            .filter(|w| w.message.contains("#181"))
+            .map(|w| w.kind)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(warned("0.0"), []);
+    assert_eq!(warned("0.004"), [WarningKind::Unusual]);
+}
+
 /// A part this reader cannot give an honest shape to is left out with its reason, rather than
 /// guessed at or silently dropped. Each of these is a real shape in the reference corpus.
 #[test]
@@ -2514,9 +2544,10 @@ fn a_configuration_flies_only_as_written() {
             .collect()
     };
 
-    // The cluster tube is read as one tube, so this airframe is not the design's.
+    // The cluster tube is read with its three tubes (M1.9b), so the airframe is the design's, and
+    // it is the second stage that keeps `boost` out.
     let two = read_one(&two_stage);
-    assert_eq!(why(&two, "boost"), Some(NotFlown::AirframeNotAsWritten));
+    assert_eq!(why(&two, "boost"), Some(NotFlown::Staged));
     assert_eq!(why(&two, "two"), Some(NotFlown::IgnitesInFlight));
     assert_eq!(why(&two, "clu"), Some(NotFlown::Cluster));
     assert_eq!(why(&two, "off"), Some(NotFlown::InactiveStage));
@@ -2526,7 +2557,7 @@ fn a_configuration_flies_only_as_written() {
     let configurations = &two.value.motors.configurations;
     let off = configurations.iter().find(|c| c.id == "off").expect("off");
     assert_eq!(off.inactive_stages, [None]);
-    // Without the cluster, the airframe is whole, and it is the second stage that keeps `boost` out.
+    // So it is without the cluster.
     assert_eq!(
         why(&read_one(&plain_two_stage), "boost"),
         Some(NotFlown::Staged)

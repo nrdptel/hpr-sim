@@ -25,7 +25,8 @@
 //! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, a
 //! separation whose bodies each land, and staging: each motor lights at its own time, and a
 //! separation with the nose's body still to burn lets that body fly on as a sustainer while the
-//! booster descends ([`flight`]). Motor clusters and the `.ork` staging settings are not flown yet
+//! booster descends ([`flight`]). A cluster flies one motor in each of its tubes, and a tube can
+//! be set never to light. A `.ork` file's staging settings and clusters are not flown yet
 //! (milestone [M1.9][roadmap] of the roadmap).
 
 pub mod dynamics;

@@ -80,6 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             radial_offset_m: 0.0,
             angle_rad: 0.0,
             material: material("kraft_phenolic")?,
+            cluster_m: Vec::new(),
         }),
         Some(Position::Bottom { aft_offset_m: 0.0 }),
     );
@@ -139,6 +140,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         motor: entry.bundled_motor()?,
         delay: Some(Delay::Seconds(10.0)),
         ignition: Ignition::Launch,
+        failed_tubes: Vec::new(),
     };
 
     // The rocket: one stage, and one configuration, "h54", with that motor in the mount.

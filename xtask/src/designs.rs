@@ -754,6 +754,7 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
             radial_offset_m: 0.0,
             angle_rad: 0.0,
             material: glass.clone(),
+            cluster_m: Vec::new(),
         }),
         Some(Position::Bottom {
             aft_offset_m: offset,
@@ -821,6 +822,7 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
                 motor: solid,
                 delay: None,
                 ignition: hpr_design::Ignition::Launch,
+                failed_tubes: Vec::new(),
             }],
         }],
     })
@@ -1007,6 +1009,7 @@ fn catalog_motor(
         motor: entry.bundled_motor().map_err(|e| e.to_string())?,
         delay: Some(Delay::Seconds(delay_s)),
         ignition: hpr_design::Ignition::Launch,
+        failed_tubes: Vec::new(),
     })
 }
 
@@ -1047,6 +1050,7 @@ impl Section<'_> {
                 radial_offset_m: 0.0,
                 angle_rad: 0.0,
                 material: material("kraft_phenolic")?,
+                cluster_m: Vec::new(),
             }),
             Some(Position::Bottom { aft_offset_m: 0.0 }),
         );

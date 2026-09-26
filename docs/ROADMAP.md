@@ -96,12 +96,11 @@
 
 - [x] **M1.4 Design model and mass properties:** `hpr-design` components — nose cones (conical,
   tangent/secant ogive, elliptical, power series, parabolic series, Haack/LV-Haack, von Kármán),
-  body tubes, transitions, couplers, fin sets (trapezoidal, elliptical, freeform, tube fins),
-  launch lugs, rail buttons, inner tubes, motor mounts, centering rings, bulkheads, mass
-  components, parachutes, streamers, shock cords; cited clean-room materials; stages and
-  configurations; mass, CG and full inertia tensor from geometry, with overrides; structural checks
-  with typed warnings; a small public test-design set, `validation/designs/`, so tests never
-  snapshot the private corpus.
+  body tubes, transitions, couplers, fin sets (trapezoidal, elliptical, freeform, tube fins), launch
+  lugs, rail buttons, inner tubes, motor mounts, centering rings, bulkheads, mass components,
+  parachutes, streamers, shock cords; cited clean-room materials; stages and configurations; mass,
+  CG and full inertia tensor from geometry, with overrides; structural checks with typed warnings; a
+  small public test-design set, `validation/designs/`, so tests never snapshot the private corpus.
 
   *Done when:* analytic volume, area and CG tests pass for every shape; the inertia tensor of
   composite test bodies matches hand calculations; mass, CG and inertia match RocketPy's example
@@ -203,10 +202,9 @@
     Analytic descents to 2.1e-8; five RocketPy examples within 0.71% (time), 0.03% (rate), 0.27%
     (drift); worst drift component 2.87% (NDRT's added mass).
   - [x] **M1.7b Streamers and tumble,** each with a cited drag model. *Done when:* a streamer's and
-    a tumbling body's descent rates match the terminal velocity of their cited drag models
-    (analytic tests). *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of
-    Kidwell's flat streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own
-    drop tests.
+    a tumbling body's descent rates match the terminal velocity of their cited drag models (analytic
+    tests). *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's
+    flat streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
   - [x] **M1.7c Separated bodies:** separation, with every body flown to its own landing and its
     own mass properties and drag. *Done when:* a separation gives every body a landing, and the
     bodies' masses sum to the rocket's. *Result (ADR-014):* met. A `Separation` splits the stack at
@@ -654,8 +652,10 @@
     while the booster flies to its landing; tests pin the sustainer's ignition, the mass step and
     linear momentum at the split, the event order, and an unreachable trigger that never lights.
     - Loft lessons: L30, L93.
-  - [ ] **M1.9b Clusters.** *Done when:* several motors in one mount sum their thrust and mass, a
+  - [x] **M1.9b Clusters.** *Done when:* several motors in one mount sum their thrust and mass, a
     motor out gives the pitch moment the hand calculation predicts, and `.ork` clusters are read.
+    *Result:* met (ADR-075): a motor out's turn is the hand calculation's to 3.7e-7; every tube of
+    25 OpenRocket probes within 1e-15 m; `.ork` cluster flights wait for M1.9c.
     - Loft lessons: L31.
   - [ ] **M1.9c Against OpenRocket.** *Done when:* the parent's first bullet is met: a `.ork`
     two-stage design and a cluster design each within the per-case tolerance of OpenRocket's flight.

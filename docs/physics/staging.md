@@ -30,7 +30,9 @@
     come apart, and the booster's orientation as it falls.
   - A drag or normal-force table from another program (`Simulation::with_drag_table`): it
     describes the whole stack, so a powered separation under one is refused.
-  - Several motors in one mount wait for [M1.9b](../decisions-and-roadmap.md#m1-9b).
+  - A `.ork` file's staging settings and clusters, which are read but wait for
+    [M1.9c](../decisions-and-roadmap.md#m1-9c) to fly. A cluster built in hpr's own design (Rust
+    or JSON) flies ([Clusters](design.md#clusters)).
 
 ## Using it today
 

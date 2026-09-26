@@ -104,6 +104,16 @@ pub enum Finding {
         /// The room in the parent, m.
         room_m: f64,
     },
+    /// Two tubes of a cluster are closer than a tube's diameter, so they cross: the mass where they
+    /// cross is counted twice and their motors would not fit (warning).
+    ClusterTubesOverlap {
+        /// Inner tube id.
+        tube: String,
+        /// The distance between the closest two tubes' axes, m.
+        apart_m: f64,
+        /// The tube's outer diameter, m.
+        diameter_m: f64,
+    },
     /// A centering ring overlaps an inner tube beside it, so the mass where they cross is counted
     /// twice; an automatic inner radius only clears on-axis tubes (warning).
     RingOverlapsInnerTube {
@@ -152,6 +162,7 @@ impl Finding {
             Self::MotorPastMountTop { .. }
             | Self::AttachmentPastBodyEnd { .. }
             | Self::InternalPartPastParentEnd { .. }
+            | Self::ClusterTubesOverlap { .. }
             | Self::RingOverlapsInnerTube { .. }
             | Self::RadiusStep { .. }
             | Self::NoNoseCone { .. } => Severity::Warning,
@@ -344,6 +355,26 @@ fn attached_findings(
             room_m: room,
         });
     }
+    if let Part::InnerTube(inner) = &component.part {
+        let apart_m = inner
+            .cluster_m
+            .iter()
+            .enumerate()
+            .flat_map(|(i, &[x, y])| {
+                inner.cluster_m[i + 1..]
+                    .iter()
+                    .map(move |&[u, v]| (x - u).hypot(y - v))
+            })
+            .fold(f64::INFINITY, f64::min);
+        let diameter_m = 2.0 * inner.outer_radius_m;
+        if apart_m < diameter_m - LENGTH_TOLERANCE_M {
+            findings.push(Finding::ClusterTubesOverlap {
+                tube: component.id.clone(),
+                apart_m,
+                diameter_m,
+            });
+        }
+    }
     if let Part::CenteringRing(ring) = &component.part {
         for tube in layout
             .components
@@ -353,11 +384,22 @@ fn attached_findings(
             let Part::InnerTube(inner) = &tube.part else {
                 continue;
             };
-            // The tube covers radii [d − R, d + R] about the ring's (the body) axis.
+            // Each tube (every tube of a cluster) covers radii [d − R, d + R] about the ring's
+            // (the body) axis.
             let [x, y] = tube.part.axis_offset_m();
-            let d = x.hypot(y);
-            let radial = (d + inner.outer_radius_m).min(ring.outer_radius_m)
-                - (d - inner.outer_radius_m).max(ring.inner_radius_m);
+            let tubes = if inner.cluster_m.is_empty() {
+                &[[0.0, 0.0]][..]
+            } else {
+                inner.cluster_m.as_slice()
+            };
+            let radial = tubes
+                .iter()
+                .map(|&[u, v]| {
+                    let d = (x + u).hypot(y + v);
+                    (d + inner.outer_radius_m).min(ring.outer_radius_m)
+                        - (d - inner.outer_radius_m).max(ring.inner_radius_m)
+                })
+                .fold(f64::NEG_INFINITY, f64::max);
             if overlap(fore, aft, tube.fore_station_m, tube.aft_station_m()) > LENGTH_TOLERANCE_M
                 && radial > LENGTH_TOLERANCE_M
             {
@@ -381,7 +423,10 @@ pub fn check_configuration(
     configuration: &Configuration,
 ) -> Result<Vec<Finding>, DesignError> {
     let mut findings = Vec::new();
-    for motor in layout.place_motors(configuration)? {
+    // Every tube of a cluster holds the same motor the same way along the axis, so its first tube
+    // speaks for the mount and each finding is made once.
+    let placed = layout.place_motors(configuration)?;
+    for motor in placed.into_iter().filter(|motor| motor.tube == 0) {
         let Some((_, mount)) = layout.find(&motor.mount) else {
             continue;
         };
@@ -463,6 +508,16 @@ mod tests {
         );
         assert_eq!(findings[0].severity(), Severity::Error);
         assert!(has_errors(&findings));
+        // A cluster of three such tubes is still one finding: the motor is named once.
+        if let Part::InnerTube(tube) = &mut design.stages[0].components[1].children[0].part {
+            tube.cluster_m = vec![[0.0, 0.0], [0.04, 0.0], [-0.04, 0.0]];
+        }
+        let findings = check(&design).unwrap();
+        let wider = findings
+            .iter()
+            .filter(|f| matches!(f, Finding::MotorWiderThanMount { .. }))
+            .count();
+        assert_eq!(wider, 1, "{findings:?}");
 
         // The sample's 38 mm motor fills its 38 mm bore exactly: no finding.
         let exact = three_fin_rocket();
@@ -823,5 +878,39 @@ mod tests {
         let mut layout = three_fin_rocket().layout().unwrap();
         layout.components[2].parent = Some(999);
         let _ = check_layout(&layout);
+    }
+
+    /// A ring of three 40 mm tubes touches at `40 mm / √3` from the axis and crosses inside it.
+    #[test]
+    fn a_cluster_whose_tubes_cross_is_flagged() {
+        let at = |r: f64| {
+            let mut design = three_fin_rocket();
+            if let Part::InnerTube(tube) = &mut design.stages[0].components[1].children[0].part {
+                tube.cluster_m = [90.0_f64, 210.0, 330.0]
+                    .iter()
+                    .map(|a| [r * a.to_radians().cos(), r * a.to_radians().sin()])
+                    .collect();
+            }
+            check(&design)
+                .unwrap()
+                .into_iter()
+                .filter(|f| matches!(f, Finding::ClusterTubesOverlap { .. }))
+                .collect::<Vec<_>>()
+        };
+        assert!(at(0.04 / 3.0_f64.sqrt()).is_empty());
+        let [
+            Finding::ClusterTubesOverlap {
+                tube,
+                apart_m,
+                diameter_m,
+            },
+        ] = &at(0.02)[..]
+        else {
+            panic!("one finding");
+        };
+        assert_eq!(tube, "mmt");
+        assert!((apart_m - 0.02 * 3.0_f64.sqrt()).abs() < 1e-15, "{apart_m}");
+        assert_eq!(*diameter_m, 0.04);
+        assert_eq!(at(0.02)[0].severity(), Severity::Warning);
     }
 }

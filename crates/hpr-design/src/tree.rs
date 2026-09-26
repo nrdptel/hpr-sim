@@ -318,11 +318,19 @@ impl Part {
     }
 
     /// How far an internal part reaches from `axis` (`[x, y]` in body axes, m): the distance
-    /// between the two axes plus the part's outer radius.
+    /// between the two axes plus the part's outer radius, for the farthest tube of a cluster.
     pub fn reach_from_m(&self, axis: [f64; 2]) -> Option<f64> {
         let [x, y] = self.axis_offset_m();
-        self.outer_radius_about_axis_m()
-            .map(|r| (x - axis[0]).hypot(y - axis[1]) + r)
+        let tubes = match self {
+            Self::InnerTube(tube) if !tube.cluster_m.is_empty() => tube.cluster_m.as_slice(),
+            _ => &[[0.0, 0.0]],
+        };
+        self.outer_radius_about_axis_m().map(|r| {
+            tubes
+                .iter()
+                .map(|&[u, v]| (x + u - axis[0]).hypot(y + v - axis[1]) + r)
+                .fold(f64::NEG_INFINITY, f64::max)
+        })
     }
 
     /// Mass properties in the part's own frame. External attachments need the radius of the body
@@ -669,12 +677,43 @@ pub struct PlacedComponent {
     /// Whether its own overrides move its centre of mass along the axis (`cg_aft_m`).
     #[serde(default)]
     pub centre_overridden: bool,
+    /// Where the copies of it sit, each `[x, y]` in body axes from where it is written, m: one
+    /// `[0, 0]` for a part in no cluster, and one per tube for a part inside a clustered inner
+    /// tube ([`InnerTube::cluster_m`](crate::InnerTube::cluster_m)). [`Self::own`] and
+    /// [`Self::with_children`] count every copy. A clustered tube's own tubes are its part's. An
+    /// empty list is no copy: the part weighs nothing and a motor in it is not placed.
+    #[serde(default = "one_copy")]
+    pub copies_m: Vec<[f64; 2]>,
+}
+
+/// One copy, where it is written.
+fn one_copy() -> Vec<[f64; 2]> {
+    vec![[0.0, 0.0]]
 }
 
 impl PlacedComponent {
     /// Station of the aft end of its axial extent, m.
     pub fn aft_station_m(&self) -> f64 {
         self.fore_station_m + self.length_m
+    }
+
+    /// Where the copies of what it holds sit, each `[x, y]` in body axes from where that is
+    /// written, m: for a clustered inner tube, every tube of every copy of it; for any other part,
+    /// its own copies. A motor in a clustered mount is one motor per place.
+    ///
+    /// # Errors
+    ///
+    /// [`DesignError::Domain`] for a cluster offset that is not finite.
+    pub fn contents_copies_m(&self) -> Result<Vec<[f64; 2]>, DesignError> {
+        let Part::InnerTube(tube) = &self.part else {
+            return Ok(self.copies_m.clone());
+        };
+        let tubes = tube.tubes_m()?;
+        Ok(self
+            .copies_m
+            .iter()
+            .flat_map(|&[x, y]| tubes.iter().map(move |&[u, v]| [x + u, y + v]))
+            .collect())
     }
 }
 
@@ -808,6 +847,7 @@ impl Rocket {
                 own: placed,
                 with_children: placed,
                 centre_overridden: node.overrides.sets_axial_centre(),
+                copies_m: one_copy(),
             });
             let with_children = finish(&mut components, index, node)?;
             stage_masses[*stage].push(with_children);
@@ -1283,6 +1323,14 @@ fn packed_for_override(
 }
 
 /// Places a component's children, applies its overrides, and returns it with its children.
+///
+/// Masses are worked one copy at a time: a part inside a cluster is weighed, and its overrides
+/// applied, as one part in one tube, and only then repeated in every tube ([ADR-075][adr-075]).
+/// So an override on an engine block in a cluster is each block's, and an override on the cluster
+/// tube itself is the whole cluster's, since that part is all its tubes. What is stored in
+/// `components[index]` is every copy; what is returned is one copy of the part with its children.
+///
+/// [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 fn finish(
     components: &mut Vec<PlacedComponent>,
     index: usize,
@@ -1292,6 +1340,17 @@ fn finish(
     let (p_fore, p_length, stage) = (parent.fore_station_m, parent.length_m, parent.stage);
     let (p_kind, p_inner) = (parent.part.kind_name(), parent.part.inner_radius_m());
     let p_axis = parent.part.axis_offset_m();
+    // What this part holds is repeated in each of its tubes when it is a cluster: `p_tubes` for one
+    // copy of this part, `p_contents` for all of them.
+    let p_tubes = match &parent.part {
+        Part::InnerTube(tube) => tube.tubes_m(),
+        _ => Ok(one_copy()),
+    }
+    .map_err(|e| within(&node.id, e))?;
+    let p_copies = parent.copies_m.clone();
+    let p_contents = parent
+        .contents_copies_m()
+        .map_err(|e| within(&node.id, e))?;
     let p_tube_radius = match &parent.part {
         Part::BodyTube(tube) => Some(tube.outer_radius_m),
         _ => None,
@@ -1423,6 +1482,7 @@ fn finish(
         } else {
             None
         };
+        // One copy: `finish` applies the child's overrides to it and then repeats it.
         let placed = place(&part, body_radius_m, fore, &child.id)?;
         let child_index = components.len();
         components.push(PlacedComponent {
@@ -1438,8 +1498,12 @@ fn finish(
             own: placed,
             with_children: placed,
             centre_overridden: child.overrides.sets_axial_centre(),
+            copies_m: p_contents.clone(),
         });
-        parts.push(finish(components, child_index, child)?);
+        parts.push(MassProperties::copied(
+            finish(components, child_index, child)?,
+            &p_tubes,
+        ));
     }
 
     let mut with_children = MassProperties::combine(&parts);
@@ -1453,8 +1517,8 @@ fn finish(
         .and_then(|mass| node.overrides.apply(mass, p_fore))
         .map_err(|e| within(&node.id, e))?;
     }
-    components[index].own = own;
-    components[index].with_children = with_children;
+    components[index].own = MassProperties::copied(own, &p_copies);
+    components[index].with_children = MassProperties::copied(with_children, &p_copies);
     Ok(with_children)
 }
 
@@ -1806,6 +1870,132 @@ mod tests {
             panic!()
         };
         assert_eq!(r.inner_radius_m, 0.0);
+    }
+
+    /// What a clustered tube holds is in every tube: an engine block inside a 3-ring mount has
+    /// three copies, one on each tube's axis, and the structure gains two more tubes and two more
+    /// blocks than the unclustered mount with its block. A ring's automatic bore is the tube's own
+    /// radius, as OpenRocket 24.12 gives it (ADR-075), so the tubes run through the ring and the
+    /// checks say so, as they say the cluster reaches past the airframe's bore.
+    #[test]
+    fn a_cluster_repeats_what_it_holds_in_every_tube() {
+        let three: Vec<[f64; 2]> = [90.0_f64, 210.0, 330.0]
+            .iter()
+            .map(|a| [0.02 * a.to_radians().cos(), 0.02 * a.to_radians().sin()])
+            .collect();
+        let with_block = |cluster_m: Vec<[f64; 2]>| {
+            let mut design = crate::testing::three_fin_rocket();
+            let mount = &mut design.stages[0].components[1].children[0];
+            if let Part::InnerTube(tube) = &mut mount.part {
+                tube.cluster_m = cluster_m;
+            }
+            mount.children = vec![attached("block", inner_tube(0.01, 0.019, 0.005), top(0.0))];
+            design
+        };
+        let single = with_block(Vec::new()).layout().unwrap();
+        let clustered_design = with_block(three.clone());
+        let clustered = clustered_design.layout().unwrap();
+        let (_, one) = single.find("block").unwrap();
+        let (_, block) = clustered.find("block").unwrap();
+        assert_eq!(one.copies_m, [[0.0, 0.0]]);
+        assert_eq!(block.copies_m, three);
+        close(
+            block.own.mass_kg,
+            3.0 * one.own.mass_kg,
+            1e-15,
+            "three blocks",
+        );
+        assert!(block.own.cg_m.truncate().length() < 1e-17);
+        let (_, tube) = single.find("mmt").unwrap();
+        let extra = 2.0 * (tube.own.mass_kg + one.own.mass_kg);
+        close(
+            clustered.structure.mass_kg,
+            single.structure.mass_kg + extra,
+            1e-14,
+            "structure",
+        );
+        let (_, mount) = clustered.find("mmt").unwrap();
+        assert_eq!(mount.contents_copies_m().unwrap(), three);
+        let (_, ring) = clustered.find("ring-fore").unwrap();
+        let Part::CenteringRing(ring) = &ring.part else {
+            panic!("a ring");
+        };
+        assert_eq!(ring.inner_radius_m, 0.02);
+        let findings = crate::checks::check(&clustered_design).unwrap();
+        for id in ["ring-fore", "ring-aft"] {
+            assert!(
+                findings.contains(&crate::Finding::RingOverlapsInnerTube {
+                    ring: id.to_owned(),
+                    tube: "mmt".to_owned(),
+                }),
+                "{findings:?}"
+            );
+        }
+        // The tubes reach 0.04 m from the axis, past the airframe's 0.0255 m bore.
+        assert!(
+            findings.iter().any(|f| matches!(
+                f,
+                crate::Finding::InternalPartWiderThanParent { component, reach_m, .. }
+                    if component == "mmt" && (reach_m - 0.04).abs() < 1e-15
+            )),
+            "{findings:?}"
+        );
+        assert!(
+            !crate::checks::check(&with_block(Vec::new()))
+                .unwrap()
+                .iter()
+                .any(|f| matches!(f, crate::Finding::RingOverlapsInnerTube { .. }))
+        );
+    }
+
+    /// An override on a part inside a cluster is each copy's: set to the part's own mass it changes
+    /// nothing, and doubled it doubles every copy. Both a solid part (an engine block) and a packed
+    /// one (a mass component, rebuilt as its packing's cylinder) are worked one tube at a time.
+    #[test]
+    fn an_override_inside_a_cluster_is_each_copy_s() {
+        let three: Vec<[f64; 2]> = [90.0_f64, 210.0, 330.0]
+            .iter()
+            .map(|a| [0.02 * a.to_radians().cos(), 0.02 * a.to_radians().sin()])
+            .collect();
+        let with = |part: Part, mass_kg: Option<f64>| {
+            let mut design = crate::testing::three_fin_rocket();
+            let mount = &mut design.stages[0].components[1].children[0];
+            if let Part::InnerTube(tube) = &mut mount.part {
+                tube.cluster_m = three.clone();
+            }
+            let mut inside = attached("inside", part, top(0.0));
+            inside.overrides.mass_kg = mass_kg;
+            mount.children = vec![inside];
+            design.layout().unwrap()
+        };
+        for part in [
+            inner_tube(0.01, 0.019, 0.005),
+            mass_component(0.05, 0.04, 0.015),
+        ] {
+            let free = with(part.clone(), None);
+            let (_, one) = free.find("inside").unwrap();
+            let each_kg = one.own.mass_kg / 3.0;
+            let same = with(part.clone(), Some(each_kg));
+            let (a, b) = (&free.structure, &same.structure);
+            close(b.mass_kg, a.mass_kg, 1e-15, "structure mass");
+            assert!(
+                (b.cg_m - a.cg_m).length() < 1e-15,
+                "{:?} vs {:?}",
+                b.cg_m,
+                a.cg_m
+            );
+            for (x, y) in [
+                (a.inertia_kg_m2.x_axis, b.inertia_kg_m2.x_axis),
+                (a.inertia_kg_m2.y_axis, b.inertia_kg_m2.y_axis),
+                (a.inertia_kg_m2.z_axis, b.inertia_kg_m2.z_axis),
+            ] {
+                assert!((x - y).length() < 1e-15, "{x:?} vs {y:?}");
+            }
+            let doubled = with(part, Some(2.0 * each_kg));
+            let (_, inside) = doubled.find("inside").unwrap();
+            close(inside.own.mass_kg, 6.0 * each_kg, 1e-15, "doubled");
+            assert!(inside.own.cg_m.truncate().length() < 1e-17);
+        }
     }
 
     /// The tree's structure equals the parts placed by hand at their stations and combined.

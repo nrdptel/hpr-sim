@@ -259,11 +259,11 @@ departs from [F] but leaves the file readable is a warning that travels with the
 |---|---|---|
 | `Skipped` | a whole part was left out | a **component** this reader cannot give an honest shape ([below](#what-is-left-out-and-why)); an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
 | `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace; a tag whose text is not the number, count or flag it should be; two names for one value that disagree; a dimension the file does not give, read as zero; a fin's fillets or a rail button's screw head, whose mass hpr does not model |
-| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
+| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a part inside an inner tube set off the body's axis, placed from the body's axis ([below](#clusters)); a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 39 warnings over 73
-readable files: 8 dropped, 12 skipped and 19 unusual. Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 35 warnings over 73
+readable files: 4 dropped, 12 skipped and 19 unusual. Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -785,6 +785,65 @@ corpus writes any word but the five, so nothing here can settle it; the
 [OpenRocket oracle](../decisions-and-roadmap.md#m2-2) can. A word hpr has no sourced roughness for
 takes hpr's default and says so in a warning.
 
+### Clusters
+
+An inner tube can be a [cluster](../glossary.md#cluster): several like tubes side by side, each
+holding a motor. The file names a pattern in `clusterconfiguration`, spreads it with
+`clusterscale` (1 unless written) and turns it with `clusterrotation` (degrees, as every `.ork`
+angle). hpr reads every tube into the inner tube's list of places,
+[`cluster_m`](../api/hpr_design/parts/struct.InnerTube.html#structfield.cluster_m), and the
+motor in it becomes one motor per tube ([Clusters](../physics/design.md#clusters)).
+
+No published document gives the patterns, so OpenRocket 24.12 was asked, run as an outside program
+through its public interface (`validation/oracles/openrocket/clusters.py`, [ADR-075][adr-075]).
+Each pattern is a figure of points `pₖ`, one per tube, in units of `2 R s` (defined below):
+
+| pattern | tubes | figure |
+|---|---|---|
+| `single` | 1 | one tube |
+| `double`, `3-row`, `4-row` | 2 to 4 | a row, one apart |
+| `3-ring`, `4-ring`, `5-ring` | 3 to 5 | a triangle, a square, a pentagon, each of side one |
+| `6-ring` | 6 | a hexagon of side one |
+| `3-star`, `4-star`, `5-star`, `6-star` | 4 to 7 | a centre tube and a ring of radius one |
+| `9-grid` | 9 | a 3 × 3 grid, 1.4 apart |
+| `9-star` | 9 | a centre tube and eight on a ring of radius 1.4 |
+
+The unit is `2 R s`, for the tube's outer radius `R` and the scale `s`: at scale 1 neighbouring
+tubes touch, except in `9-grid`, whose rows and columns are 1.4 diameters apart, and `9-star`,
+whose ring is 1.4 diameters from its centre tube. The pattern is
+turned by the tube's roll angle `θ` less the rotation `ρ` (`Rot` turns a point by that angle):
+
+`[x, y]ₖ = 2 R s · Rot(θ − ρ) · pₖ`
+
+measured from the tube's own radial offset. For example, a `3-ring` of 40 mm tubes at scale 1 puts
+the three axes 23.09 mm from the centre (`40 mm / √3`). OpenRocket's `(y, z)` are read as hpr's
+`(x, y)`, the same assumption as for every roll angle ([above](#which-way-round)).
+On 25 probes (every pattern, a scale, a rotation, a radial offset, and all three at once) hpr puts
+every tube within 1e-15 m of where OpenRocket does (the test
+`every_tube_of_a_cluster_is_where_openrocket_puts_it` in `hpr-validate`). A pattern name OpenRocket
+doesn't know (`4-square`), it reads as one tube; so does hpr, with a warning.
+
+A cluster's mass and centre of mass agree with OpenRocket's. Its inertia does not: OpenRocket weighs
+the tubes as if stacked on the cluster's axis, and hpr weighs each where it sits
+([Mass properties](../physics/mass.md#clusters-and-fillets)). Two more readings differ from what
+a builder would expect:
+
+- A centering ring with an automatic bore beside a cluster takes one tube's radius as its bore, as
+  OpenRocket gives it, so the tubes run through the ring and that mass counts twice. For a 3-ring
+  of 40 mm tubes in a ring 98 mm across, the ring weighs about two thirds more than one with three
+  holes would. The design checks warn of it (`ring_overlaps_inner_tube`).
+- A part inside an inner tube set off the body's axis is read at its own offset from the body's
+  axis, with no parent's offset added. OpenRocket places it from the tube's axis: an engine block
+  in a tube 10 mm off the axis sits on that tube's axis in OpenRocket and on the body's axis in
+  hpr. hpr warns of it (`Unusual`), and no file in the survey has one
+  ([#181](https://github.com/nrdptel/hpr-sim/issues/181)). A cluster on the axis, the common case,
+  is not affected, and neither is a motor in a mount that sits in the body tube, whose nozzle takes
+  its mount's offset.
+
+A configuration with a motor in a cluster is read, but hpr's flights of `.ork` files leave it out until
+[M1.9c](../decisions-and-roadmap.md#m1-9c) compares a cluster's flight with OpenRocket's
+([below](#which-configurations-the-rocket-flies)).
+
 ### What is left out, and why
 
 A part hpr cannot give an honest shape is **left out with a `Skipped` warning** naming the part and
@@ -802,11 +861,11 @@ two fin sets:
 2 + 2 + 1 = 5, because the freeform outlines that leave the root are the same two fin sets the
 first row catches.
 
-Four more things are read as the simpler part hpr models, each with a warning so that what is
-missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw head** (2), a
-**cluster** of motor tubes read as the one tube it is written as (4), and a **row** of more than one
-ring read as one. These are measured departures, not silent compatibility claims
-([ADR-064][adr-064]); full cluster flight behavior is [M1.9b](../decisions-and-roadmap.md#m1-9b).
+Three more things are read as the simpler part hpr models, each with a warning so that what is
+missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw head** (2), and a
+**row** of more than one ring read as one. These are measured departures, not silent compatibility
+claims ([ADR-064][adr-064]). A **cluster** of motor tubes was a fourth (4) until
+[M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube ([above](#clusters)).
 
 **A tube of no wall thickness carries no mass** — among them couplers in two of OpenRocket's own
 example designs. Reading those as solid would invent the mass — a solid coupler filling a 50 mm
@@ -999,7 +1058,7 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 39: 8 dropped, 12 skipped, 19 unusual (below) |
+| warnings raised | 35: 4 dropped, 12 skipped, 19 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -1013,8 +1072,9 @@ so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 39 warnings are.** Every one is a reading this page explains, and none of them means a
-file is broken. Before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) there were 57: 5 more for a
+**What the 35 warnings are.** Every one is a reading this page explains, and none of them means a
+file is broken. Before [M1.9b](../decisions-and-roadmap.md#m1-9b) read clusters there were 39, and
+before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) 57: 5 more for a
 `packedradius` the file does not give, read as zero, which hpr now reads as OpenRocket's 12.5 mm
 ([packed parts](../physics/mass.md#packed-parts)).
 
@@ -1024,7 +1084,7 @@ file is broken. Before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) there were 5
 | `Unusual` | 1 | a part with no axial offset |
 | `Unusual` | 7 | automatic radii with nothing along their chains to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
-| `Dropped` | 8 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
+| `Dropped` | 4 | a fin's fillets, a rail button's screw head |
 | `Skipped` | 7 | a tally of the pods and parallel stages, kept in `x-openrocket` and modelled in [M1.13](../decisions-and-roadmap.md#m1-13), one per design that has any |
 | `Skipped` | 5 | the five parts left out above |
 
@@ -1150,13 +1210,15 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
   OpenRocket lists last), with no delay.
 - No motor sits in a part hpr doesn't read yet, such as a pod
   ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)), and none sits in a
-  [cluster](../glossary.md#cluster) of motor tubes, which hpr reads as one tube.
+  [cluster](../glossary.md#cluster) of motor tubes. hpr reads the cluster ([above](#clusters)) and
+  can fly it, but flies a `.ork` file's only once [M1.9c](../decisions-and-roadmap.md#m1-9c) has
+  compared one with OpenRocket's flight.
 - No stage is switched off in the configuration's own stage list
   (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
   and hpr flies every stage.
 - The rocket and its motor mounts were read without a single warning: nothing left out (a pod, a
-  parallel stage, a part hpr could not shape), nothing dropped or simplified (a cluster of tubes
-  read as one, a flipped nose cone read pointing forward, a material that could not be read), and
+  parallel stage, a part hpr could not shape), nothing dropped or simplified (fin fillets left
+  off, a flipped nose cone read pointing forward, a material that could not be read), and
   nothing assumed (a shape hpr does not know read as a cone).
   Otherwise hpr might fly a different rocket from the design, so no configuration of it is flown.
   One design in the library was held back only by its shoulders of no wall; since
@@ -2043,6 +2105,7 @@ How this was decided is in [ADR-058][adr-058].
 
 [adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
 [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
+[adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 
 ## What is not read yet
 

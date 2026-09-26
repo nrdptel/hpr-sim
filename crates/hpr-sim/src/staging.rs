@@ -16,7 +16,7 @@
 //! [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
 
 use hpr_aero::AeroModel;
-use hpr_design::{Assembly, Configuration, Ignition, Rocket};
+use hpr_design::{Assembly, Configuration, Ignition, MountedMotor, Rocket};
 
 use crate::error::SimError;
 use crate::recovery::Separation;
@@ -61,22 +61,36 @@ impl Sustainer {
         }
         let mut cut = rocket.clone();
         cut.stages.truncate(separation.after_stage + 1);
-        // One configuration with the nose body's motors, in the stack's order. Their ignition
-        // times come from the stack's (a burnout can name a booster's mount, which the cut has
-        // not), so each is written as lit at launch and given its time when the sustainer flies.
+        // One configuration with the nose body's motors, in the stack's order: each mount once,
+        // since a cluster's mount places its motor in every tube again, in the same order. Their
+        // ignition times come from the stack's (a burnout can name a booster's mount, which the
+        // cut has not), so each is written as lit at launch and given its time when the sustainer
+        // flies.
+        let mut mounts: Vec<MountedMotor> = Vec::new();
+        for &index in &motors {
+            let mounted = &stack.motors[index].mounted;
+            if mounts.iter().all(|m| m.mount != mounted.mount) {
+                let mut mounted = mounted.clone();
+                mounted.ignition = Ignition::Launch;
+                mounts.push(mounted);
+            }
+        }
         cut.configurations = vec![Configuration {
             id: configuration_id.to_owned(),
             name: String::new(),
-            motors: motors
-                .iter()
-                .map(|&index| {
-                    let mut mounted = stack.motors[index].mounted.clone();
-                    mounted.ignition = Ignition::Launch;
-                    mounted
-                })
-                .collect(),
+            motors: mounts,
         }];
         let assembly = cut.assemble(configuration_id)?;
+        // The cut places the same motors in the same order; a failure is kept with its tube.
+        debug_assert!(
+            assembly.motors.len() == motors.len()
+                && assembly.motors.iter().zip(&motors).all(|(cut, &index)| {
+                    let stacked = &stack.motors[index];
+                    cut.nozzle_m == stacked.nozzle_m
+                        && cut.tube == stacked.tube
+                        && cut.fails == stacked.fails
+                })
+        );
         let aero = AeroModel::new(&assembly.layout)?;
         Ok(Self {
             assembly,
@@ -96,7 +110,9 @@ mod tests {
     use crate::rail::Rail;
     use crate::recorder::{FlightStep, Observer, Sample};
     use crate::recovery::{CanopyType, Device, DeviceDrag, Separation, Trigger};
-    use crate::testing::{constant_drag, design, site};
+    use hpr_core::{DQuat, DVec3};
+
+    use crate::testing::{UniformAir, analytic_environment, constant_drag, design, site};
 
     /// The synthetic two-stage design's configuration: a J760 in the booster, an I175 in the
     /// sustainer.
@@ -300,6 +316,91 @@ mod tests {
             "{} against {}",
             result.final_sample.mass_kg,
             loaded.mass_kg
+        );
+    }
+
+    /// A sustainer whose mount is a cluster of two flies on after a powered separation with both
+    /// its motors: each lights at the booster's burnout plus its delay and burns out on its own
+    /// clock, and the sustainer lands with both spent. (Two I175s aft leave this sustainer
+    /// unstable: it is 0.165 rad off the flow when they light and tumbles, so its apogee is no
+    /// test of the thrust; `a_cluster_sums_its_motors_thrust_and_mass` is.)
+    #[test]
+    fn a_clustered_sustainer_flies_on_with_every_motor() {
+        clustered_sustainer(&[]);
+    }
+
+    /// A sustainer tube that fails to light stays out through the separation: its motor never
+    /// lights and lands loaded, while the other tube's flies as before.
+    #[test]
+    fn a_failed_sustainer_tube_stays_out_after_the_separation() {
+        clustered_sustainer(&[1]);
+    }
+
+    /// The two-stage rocket with its sustainer mount a pair of tubes (8 mm apart, so they cross:
+    /// a timing test, not a buildable rocket), each tube in `failed` never lighting.
+    fn clustered_sustainer(failed: &[usize]) {
+        let mut rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        rocket.configurations[0]
+            .motors
+            .iter_mut()
+            .find(|m| m.mount == SUSTAINER_MOUNT)
+            .unwrap()
+            .failed_tubes = failed.to_vec();
+        let mount = rocket.stages[0].components[1]
+            .children
+            .iter_mut()
+            .find(|c| c.id == SUSTAINER_MOUNT)
+            .unwrap();
+        let hpr_design::Part::InnerTube(tube) = &mut mount.part else {
+            panic!("an inner tube");
+        };
+        tube.cluster_m = vec![[-0.004, 0.0], [0.004, 0.0]];
+        let separation = |sim: &Simulation| {
+            Separation::new(
+                Trigger::Burnout {
+                    motor: motor_index(sim, BOOSTER_MOUNT),
+                    delay_s: 0.5,
+                },
+                0,
+            )
+        };
+        let sim = staged(&rocket, separation);
+        assert_eq!(sim.assembly().motors.len(), 3);
+        let result = sim.run(&mut ()).unwrap();
+        let burnout_s = booster_burnout_s(&sim);
+        let mut ignitions = [Some(0.0); 3];
+        for tube in 0..2 {
+            let motor = 1 + tube;
+            assert_eq!(sim.assembly().motors[motor].tube, tube);
+            if failed.contains(&tube) {
+                assert!(result.event(EventKind::Ignition(motor)).is_none());
+                ignitions[motor] = None;
+                continue;
+            }
+            let lit = time_of(&result, EventKind::Ignition(motor));
+            assert!((lit - (burnout_s + 1.0)).abs() < 1e-12, "{motor}: {lit}");
+        }
+        let i175 = &sim.assembly().motors[1].mounted.motor;
+        assert!(
+            (time_of(&result, EventKind::Burnout) - (burnout_s + 1.0 + i175.burnout_time_s()))
+                .abs()
+                < 1e-12
+        );
+        let spent = super::super::recovery::body_mass_properties(
+            sim.assembly(),
+            (0, 0),
+            f64::MAX,
+            &ignitions,
+        );
+        assert_eq!(result.termination, Termination::GroundHit);
+        assert!(
+            (result.final_sample.mass_kg - spent.mass_kg).abs() < 1e-12 * spent.mass_kg,
+            "{} against {}",
+            result.final_sample.mass_kg,
+            spent.mass_kg
         );
     }
 
@@ -730,5 +831,141 @@ mod tests {
         let spent = sim.assembly().dry_mass_properties().mass_kg;
         assert!((result.final_sample.mass_kg - spent).abs() < 1e-12 * spent);
         assert_eq!(result.termination, Termination::GroundHit);
+    }
+
+    /// The single-stage design with its motor mount a cluster of three tubes on a ring of radius
+    /// `A` (at 0°, 120° and 240°) holding its I175 in each, and `failed` the tubes whose motor
+    /// fails. The tubes would not fit its airframe; the equations don't ask.
+    fn cluster_of_three(failed: Vec<usize>) -> hpr_design::Assembly {
+        let mut rocket = design("synthetic-54mm-three-fin");
+        let mount = rocket.stages[0].components[1]
+            .children
+            .iter_mut()
+            .find(|c| c.id == SUSTAINER_MOUNT)
+            .unwrap();
+        let hpr_design::Part::InnerTube(tube) = &mut mount.part else {
+            panic!("an inner tube");
+        };
+        tube.cluster_m = [0.0_f64, 120.0, 240.0]
+            .iter()
+            .map(|a| [A * a.to_radians().cos(), A * a.to_radians().sin()])
+            .collect();
+        rocket.configurations[0].motors[0].failed_tubes = failed;
+        let id = rocket.configurations[0].id.clone();
+        rocket.assemble(&id).unwrap()
+    }
+
+    /// The cluster's ring radius, m.
+    const A: f64 = 0.02;
+
+    /// The angular acceleration of `assembly` at rest in a vacuum, `t` seconds into the burn, its
+    /// motors lit as it says, and the evaluation.
+    fn at_rest(assembly: &hpr_design::Assembly, t: f64) -> (DVec3, crate::dynamics::Evaluation) {
+        use crate::dynamics::{Conditions, Phase, Vehicle};
+        let ignition_s = assembly.ignition_times_s(|_| None);
+        let aero = hpr_aero::AeroModel::new(&assembly.layout).unwrap();
+        let vehicle = Vehicle::lit(assembly.clone(), aero, ignition_s).unwrap();
+        let environment = analytic_environment(UniformAir::vacuum(), 9.806_65);
+        let state = crate::state::State {
+            position_enu_m: DVec3::new(0.0, 0.0, 1000.0),
+            velocity_enu_m_s: DVec3::ZERO,
+            attitude: DQuat::IDENTITY,
+            body_rate_rad_s: DVec3::ZERO,
+        };
+        let evaluation = vehicle
+            .evaluate(
+                &environment,
+                0.0,
+                Conditions {
+                    phase: Phase::Free,
+                    window: (t - 0.1, t + 0.1),
+                    drag_area_m2: 0.0,
+                },
+                t,
+                &state.to_array(),
+            )
+            .unwrap();
+        (
+            DVec3::from_slice(&evaluation.derivative[10..13]),
+            evaluation,
+        )
+    }
+
+    /// The angular acceleration the lit motors' thrust gives `assembly` at rest, by hand: each
+    /// lit motor pushes `T ẑ` at its nozzle `pᵢ`, so about the centre of mass `c` the moment is
+    /// `M = Σ (pᵢ − c) × T ẑ = T (Σ (yᵢ − c_y), −Σ (xᵢ − c_x), 0)`, and `ω̇ = I_c⁻¹ M`.
+    fn by_hand(assembly: &hpr_design::Assembly, t: f64) -> DVec3 {
+        let lit = assembly.ignition_times_s(|_| None);
+        let mass = assembly.mass_properties_lit(t, &lit);
+        let c = mass.cg_m;
+        let mut moment = DVec3::ZERO;
+        for (placed, ignition) in assembly.motors.iter().zip(&lit) {
+            if ignition.is_some() {
+                let thrust = placed.mounted.motor.thrust_at_pressure_n(t, 0.0);
+                let (x, y) = (placed.nozzle_m.x - c.x, placed.nozzle_m.y - c.y);
+                moment += DVec3::new(thrust * y, -thrust * x, 0.0);
+            }
+        }
+        mass.inertia_kg_m2.inverse() * moment
+    }
+
+    /// Three motors in one mount sum their thrust and their mass: at rest, 1 s into the burn, the
+    /// cluster pushes three times the one motor's thrust and weighs the structure and three
+    /// motors. On the ring the thrusts balance, so it turns only as far as its centre of mass sits
+    /// off the axis (its rail buttons put it 0.033 mm aside at 1 s): as the hand calculation
+    /// says, to the mass-flow terms (below), 3.2e-6 of it here; the check allows 1e-5.
+    #[test]
+    fn a_cluster_sums_its_motors_thrust_and_mass() {
+        let assembly = cluster_of_three(Vec::new());
+        assert_eq!(assembly.motors.len(), 3);
+        let motor = &assembly.motors[0].mounted.motor;
+        let t = 1.0;
+        let (omega_dot, evaluation) = at_rest(&assembly, t);
+        // In a vacuum the thrust is the curve's plus the exit's full pressure term.
+        let one = motor.thrust_at_pressure_n(t, 0.0);
+        assert!((evaluation.thrust_n - 3.0 * one).abs() <= 1e-12 * one);
+        let want = assembly.layout.structure.mass_kg + 3.0 * motor.state(t).total.mass_kg;
+        assert!((evaluation.mass.mass_kg - want).abs() <= 1e-12 * want);
+        let want = by_hand(&assembly, t);
+        let error = (omega_dot - want).length() / want.length();
+        assert!(error <= 1e-5, "{omega_dot:?} vs {want:?}: {error:e}");
+    }
+
+    /// A motor out gives the pitch moment the hand calculation predicts (Loft lesson L31, whose
+    /// clusters were on the axis only). With the motor at 0° out, the two lit at 120° and 240°
+    /// push on the side away from it: `Σ xᵢ = −A`, `Σ yᵢ = 0`, so about the centre of mass `c`
+    /// (pulled toward the loaded motor) the moment is `T (−2 c_y, A + 2 c_x, 0)`, a pitch about
+    /// `+y` that leans the nose toward the motor out, 225 times the full cluster's; the rocket's
+    /// products of inertia (its fins and rail buttons) turn a little of it into roll and yaw
+    /// through `I_c⁻¹`. The rest of the equations add the mass-flow terms (the centre's own motion
+    /// as two motors burn and one doesn't, and the jets'), which here are 3.7e-7 of it; the check
+    /// allows 1e-6.
+    #[test]
+    fn cluster_motor_out_produces_pitch_moment() {
+        let assembly = cluster_of_three(vec![0]);
+        let fails: Vec<bool> = assembly.motors.iter().map(|m| m.fails).collect();
+        assert_eq!(fails, [true, false, false]);
+        let t = 1.0;
+        let (omega_dot, evaluation) = at_rest(&assembly, t);
+        let motor = &assembly.motors[1].mounted.motor;
+        let thrust = motor.thrust_at_pressure_n(t, 0.0);
+        assert!((evaluation.thrust_n - 2.0 * thrust).abs() <= 1e-12 * thrust);
+        let lit = assembly.ignition_times_s(|_| None);
+        let mass = assembly.mass_properties_lit(t, &lit);
+        let c = mass.cg_m;
+        assert!(c.x > 1e-3, "{c:?}");
+        let moment = DVec3::new(-2.0 * thrust * c.y, thrust * (A + 2.0 * c.x), 0.0);
+        let want = mass.inertia_kg_m2.inverse() * moment;
+        // The numbers the design page works through: 193.98 N, 1.33 mm, 4.396 N m, 41.80 rad/s².
+        assert!((thrust - 193.98).abs() < 5e-3 && (c.x - 1.33e-3).abs() < 5e-6);
+        assert!((moment.y - 4.396).abs() < 5e-4 && (want.y - 41.80).abs() < 5e-3);
+        assert!(((by_hand(&assembly, t) - want).length()) <= 1e-12 * want.length());
+        assert!(want.y > 0.0);
+        let error = (omega_dot - want).length() / want.length();
+        assert!(error <= 1e-6, "{omega_dot:?} vs {want:?}: {error:e}");
+        // Mostly a pitch; the full cluster's turn is under a fortieth of it (1/225 measured).
+        assert!(omega_dot.y > 50.0 * omega_dot.x.abs().max(omega_dot.z.abs()));
+        let (full, _) = at_rest(&cluster_of_three(Vec::new()), t);
+        assert!(full.length() < omega_dot.length() / 40.0, "{full:?}");
     }
 }

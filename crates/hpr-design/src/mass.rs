@@ -150,6 +150,24 @@ impl MassProperties {
         }
     }
 
+    /// Copies of `body`, one moved by each `[x, y]` of `offsets_m` across the axis, combined into
+    /// one rigid body: a cluster's tubes, or what each of them holds. One copy that is not moved
+    /// is `body` itself, bit for bit; no offsets at all is no body (zero mass).
+    #[must_use]
+    pub fn copied(body: Self, offsets_m: &[[f64; 2]]) -> Self {
+        if let [[x, y]] = offsets_m
+            && *x == 0.0
+            && *y == 0.0
+        {
+            return body;
+        }
+        let copies: Vec<Self> = offsets_m
+            .iter()
+            .map(|&[x, y]| body.translated(DVec3::new(x, y, 0.0)))
+            .collect();
+        Self::combine(&copies)
+    }
+
     /// The bodies combined into one rigid body.
     ///
     /// With zero total mass the centre is the plain average of the parts' centres (the origin with

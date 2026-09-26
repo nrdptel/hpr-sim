@@ -73,6 +73,7 @@ pub(crate) fn inner_tube(length_m: f64, outer_radius_m: f64, thickness_m: f64) -
         radial_offset_m: 0.0,
         angle_rad: 0.0,
         material: cardboard(),
+        cluster_m: Vec::new(),
     })
 }
 
@@ -146,6 +147,7 @@ pub(crate) fn motor(mount: &str, diameter_m: f64, length_m: f64) -> MountedMotor
         motor: SolidMotor::from_envelope(curve, diameter_m, length_m, 0.5, 1.0).unwrap(),
         delay: None,
         ignition: crate::config::Ignition::Launch,
+        failed_tubes: Vec::new(),
     }
 }
 
