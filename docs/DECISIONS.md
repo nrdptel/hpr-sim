@@ -91,6 +91,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-083 | M2.3c blocked: no private design is the rocket of a logged flight | accepted |
 | ADR-084 | The accuracy census: the reports' numbers held to the ones accepted | accepted |
 | ADR-085 | Ejected pieces: an airframe that parts at any joint | accepted |
+| ADR-086 | Ejection impulse and tumbling pieces | accepted |
 
 ---
 
@@ -7487,3 +7488,61 @@ has no notion of a joint below a stage, but its layout places every component wi
   two pieces), and a tumbling model over a piece's components (`tumbling_stages` covers whole
   stages only). Left for later: a sustainer's pieces; the attitude of a body after it parts; the
   `.ork` importer's reading of OpenRocket's own component-level recovery.
+
+## ADR-086: Ejection impulse and tumbling pieces (2026-09-26)
+
+**Context.** M1.11b, the rest of M1.11 after ADR-085: an optional impulse, equal and opposite on
+the two pieces, and a tumble model over a piece's own components. *Done when:* an impulse gives
+each piece the hand-computed change of velocity and conserves momentum to 1e-9, and a tumbling
+nose cone lands at its tumble model's terminal speed. Two things were open. A body that parts on
+the way down is a point mass with no attitude, so an impulse there has no axis to act along. And
+the tumble model (ADR-013, the OpenRocket technical documentation's §3.5) took each body
+component's side area from its end diameters, 25% low on Valetudo's tangent ogive nose: for a
+lone nose cone that is the whole area.
+
+**Decision.**
+
+1. **An impulse `J` per ejection, N·s,** `Ejection::with_impulse`, default zero and written only
+   when set. It is refused unless finite and zero or more. A separation keeps none: its type and
+   ADR-014's behaviour are unchanged.
+2. **Direction.** The side forward of the joint takes `+J` toward the nose and the side aft `−J`;
+   a payload leaves forward, out of its host, as one does when the nose cone comes off first.
+   Each body's velocity changes by its push over its own mass, so the momentum is unchanged by
+   construction. A payload that leaves aft is not given a way to say so yet.
+3. **At the first parting,** from the rigid stack, the push is along the airframe's axis in its
+   attitude at that instant, added to each body's `v_O + ω × r_cg`. When several splits part the
+   stack in one pass, each pushes the two bodies on its own two sides.
+4. **At a later parting,** of a body already flying as a point mass, the nose is taken to point
+   along the body's velocity through the air, as a statically stable airframe's does, and up when
+   that velocity is zero. Nothing in hand says how a body hangs under a drogue, so this is a
+   stated assumption. The push itself moves little: in the example, 1 N·s at 300 m and at apogee
+   moves the airframe's and the payload's landings by 0.7 m and 0.3 m.
+5. **The body after a parting is recorded.** `BodyEvent::after` holds the body just after a piece
+   leaves it on the way down (mass without the piece, velocity after the push), so the remaining
+   body's change of velocity can be checked. It is `None` for every other event, and not written.
+6. **A piece tumbles over its own components.** `Simulation::tumbling_piece(k)` applies the tumble
+   model to the body components and fin sets of piece `k`, which leads body `k`. A payload is
+   refused, since it has no body tube or fin of its own. So is a piece the airframe doesn't part
+   into. Cut into sections, the pieces' drag areas add to the whole airframe's.
+7. **The side profile is integrated.** `A_bt` is now `∫ d dx` over each nose cone's and
+   transition's own profile, by `hpr_design::revolve`'s planform area. Tubes and cones are
+   unchanged. It is a fix to merged physics, not a new model: the documentation defines `A_bt`
+   as the side profile area, and the end-diameter reading was a stated approximation. Valetudo
+   tumbling moves from 36.77 to 36.38 m/s, and the `.ork` two-stage example's tumbling
+   sustainer from 10.6 to 10.4 m/s. The drop-test replay and the two-stage booster are
+   unchanged, since they have no curved part.
+8. **A lone nose cone is outside the model's fit.** The constants were fitted to whole model
+   rockets. The milestone asks that the nose cone land at *its model's* terminal speed, which is
+   what the test shows. That the model is right for a nose cone on its own is not claimed.
+
+**Consequences.**
+
+- `pieces::tests` pins the impulse at both kinds of parting. With 1 N·s, in wind, with a
+  sideways velocity and a 0.6 rad/s body rate, each body's change of velocity is `J/m` along its
+  axis to 1e-9. That is 4 m/s on the 250 g payload, and 15.9 m/s on the 0.063 kg nose cone. The
+  momenta add up to 1e-9 at both partings.
+- The tumbling 0.25 m tangent-ogive nose cone of the 54 mm test design has 0.56 times its
+  closed-form side area, to 1e-12. It lands at 13.849 m/s, its model's `v_e` to 1e-6.
+- Left for later: a payload that leaves aft; the attitude of a body after it parts; an impulse
+  on a separation.
+

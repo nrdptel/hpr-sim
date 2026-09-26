@@ -847,7 +847,7 @@ rest.
   uses a different six-fin rule ([Aerodynamics](physics/aero.md#verification)).
 - **Tumbling** is −10 to +19% off its source's own drop tests, and is used far outside the fit
   behind it. That fit comes from small models falling at 5.0 to 6.6 m/s; if Valetudo came down
-  tumbling, with nothing deployed, hpr would bring it down at 37 m/s. The default streamer model
+  tumbling, with nothing deployed, hpr would bring it down at 36 m/s. The default streamer model
   reads +58% fast on a pleated streamer ([Recovery](physics/recovery.md)).
 - **Opening loads,** the force on the rocket as a canopy opens, are no safe bound either way. With
   a [filling time](glossary.md#inflation-and-filling-time), hpr leaves out the brief rise of drag

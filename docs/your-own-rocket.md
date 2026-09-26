@@ -689,7 +689,9 @@ The example leaves out several kinds of part and setting that a design can have:
 - **Pieces that land on their own are yours to declare.** A nose cone on a shock cord comes down
   with its rocket, and that is what hpr flies unless you say otherwise. To fly a nose cone, a
   section or a payload that leaves and lands on its own, give the flight an `Ejection` for each,
-  and a recovery device on each piece. A `.ork` file's recovery settings don't make them for you.
+  and a recovery device on each piece: a parachute, or its own tumble
+  (`Simulation::tumbling_piece`). An ejection can push the pieces apart with the charge's impulse
+  (`Ejection::with_impulse`). A `.ork` file's recovery settings don't make them for you.
   A stage whose mass is overridden can't be parted inside: remove the override, or put it on the
   components instead.
   This is checked against exact answers only

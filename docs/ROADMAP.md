@@ -680,26 +680,26 @@
   *Result (ADR-084):* 648 rows; 2% more skin friction on #199 failed validate on all three OSes
   (74 rows, 17 worse; run 36267483063); #199 closed. Linux's reproduction miss there is #200.
 
-- [ ] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17).
+- [x] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17).
   - A separation at any joint, not only a stage boundary (ADR-014): an ejected nose cone, a body
     section, or a payload carried inside, each flown to its own landing under its own recovery
     device, or tumbling. Pieces joined by a shock cord fly as one.
   - Ejection triggers as for recovery devices (apogee, altitude, timer, motor delay), and an
     optional ejection impulse.
 
-  *Done when:*
-  - A design that ejects its nose cone and a payload, each under its own parachute, lands every
-    piece and reports each landing point.
-  - The pieces' masses sum to the rocket's and momentum is conserved at each split, to M1.7c's
-    tolerances; each descent rate matches the analytic terminal velocity for its device and mass.
+  *Done when (met by M1.11a):* a design that ejects its nose cone and a payload, each under its own
+  parachute, lands every piece and reports each landing point; the pieces' masses sum to the
+  rocket's and momentum is conserved at each split, to M1.7c's tolerances; each descent rate
+  matches the analytic terminal velocity for its device and mass.
 
-  - [x] **M1.11a Pieces at any joint** (ADR-085). *Done when:* the milestone's two bullets. *Result:*
-    met. Nose cone at apogee, 250 g payload at 300 m: all three land, each within 0.1% of its own
-    `v_e`; masses to 1e-12 and momenta to 1e-9 at both partings.
-  - [ ] **M1.11b Ejection impulse and tumbling pieces.** An optional impulse, equal and opposite on
-    the two pieces, and a tumble model over a piece's own components. *Done when:* an impulse gives
-    each piece the hand-computed change of velocity and conserves momentum to 1e-9, and a tumbling
-    nose cone lands at its tumble model's terminal speed.
+  - [x] **M1.11a Pieces at any joint** (ADR-085), done when the milestone's bullets. *Result:* met:
+    nose cone at apogee, 250 g payload at 300 m, each lands within 0.1% of `v_e`; 1e-12, 1e-9.
+  - [x] **M1.11b Ejection impulse and tumbling pieces** (ADR-086). An optional impulse, equal and
+    opposite on the two pieces, and a tumble model over a piece's own components. *Done when:* an
+    impulse gives each piece the hand-computed change of velocity and conserves momentum to 1e-9,
+    and a tumbling nose cone lands at its tumble model's terminal speed. *Result:* met. 1 N·s:
+    `J/m` to 1e-9 at both partings (4 m/s on the 250 g payload), momenta to 1e-9; the nose cone
+    tumbles down at 13.849 m/s, its `v_e` to 1e-6. Tumble side areas now integrate curved noses.
 
 - [ ] **M1.12 Mass that moves or leaves in flight.** Added by Neer on 2026-09-18 (VISION V18).
   - Payload mass that moves along the airframe, or leaves it (released ballast or payload), on an

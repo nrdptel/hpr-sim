@@ -333,15 +333,29 @@ pub const TUMBLE_FIN_DRAG_COEFFICIENT: f64 = 1.42;
 /// is not `n` times one fin, and it is not monotonic.
 pub const TUMBLE_FIN_EFFICIENCY: [f64; 8] = [0.50, 1.00, 1.50, 1.41, 1.81, 1.73, 1.90, 1.85];
 
+/// A body component's side profile area `∫ d dx`, m²: a tube's diameter times its length, and a
+/// nose cone's or transition's own profile integrated ([`hpr_design::revolve`]'s planform area).
+/// Other parts are not on the outside of the body, and give zero.
+fn side_profile_m2(component: &hpr_design::PlacedComponent) -> Result<f64, SimError> {
+    let profile = match &component.part {
+        hpr_design::Part::BodyTube(tube) => {
+            return Ok(2.0 * tube.outer_radius_m * component.length_m);
+        }
+        hpr_design::Part::NoseCone(nose) => nose.profile()?,
+        hpr_design::Part::Transition(transition) => transition.profile()?,
+        _ => return Ok(0.0),
+    };
+    Ok(hpr_design::revolve(&profile, hpr_design::Wall::Filled {})?.planform_area_m2)
+}
+
 impl DeviceDrag {
     /// The drag area of `assembly` tumbling: `C_D,f A_f + C_D,bt A_bt` (the OpenRocket technical
     /// documentation v13.05, §3.5, eq. 3.98 and 3.99, printed pages 53 to 55).
     ///
     /// - `A_bt` is the body's side profile area, the integral of its outer diameter along the
-    ///   axis. hpr takes each body component's **end** diameters, `(d_fore + d_aft)/2 · length`,
-    ///   which is exact for tubes and cones and low for a curved nose: for Valetudo's tangent
-    ///   ogive it is 0.0111 m² against the true 0.0148 m², 25% low on the nose and 2.2% on the
-    ///   whole body.
+    ///   axis, `∫ d dx`, taken over each body component's own profile (a curved nose's or
+    ///   transition's by quadrature, [`hpr_design::revolve`]). Shoulders are inside the airframe
+    ///   and add nothing.
     /// - `A_f` is, for each fin set, one fin's planform area times the efficiency factor for its
     ///   fin count ([`TUMBLE_FIN_EFFICIENCY`]). Launch lugs and rail buttons add nothing, and an
     ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
@@ -371,7 +385,8 @@ impl DeviceDrag {
     /// The drag area of the stages `first..=last` of `assembly` tumbling on their own, which is
     /// what a separated body does ([`Separation`]). [`Self::tumbling`] is this over every stage.
     /// It covers whole stages only: for an ejected piece that is part of a stage
-    /// ([`crate::Ejection`]) it is the whole stage's area, not the piece's.
+    /// ([`crate::Ejection`]) use [`crate::Simulation::tumbling_piece`], which sums the piece's
+    /// own components.
     ///
     /// # Errors
     ///
@@ -388,18 +403,24 @@ impl DeviceDrag {
                 value: last as f64,
             });
         }
+        Self::tumbling_where(assembly, |_, component| {
+            (first..=last).contains(&component.stage)
+        })
+    }
+
+    /// The drag area of the components of `assembly` for which `member` (given each one's index
+    /// in the layout) is true, tumbling: the sum [`Self::tumbling`] describes, over them alone.
+    pub(crate) fn tumbling_where(
+        assembly: &hpr_design::Assembly,
+        member: impl Fn(usize, &hpr_design::PlacedComponent) -> bool,
+    ) -> Result<Self, SimError> {
         let mut body_profile_m2 = 0.0;
         let mut fin_area_m2 = 0.0;
-        for component in &assembly.layout.components {
-            if !(first..=last).contains(&component.stage) {
+        for (index, component) in assembly.layout.components.iter().enumerate() {
+            if !member(index, component) {
                 continue;
             }
-            if let (Some(fore_m), Some(aft_m)) = (
-                component.part.fore_radius_m(),
-                component.part.aft_radius_m(),
-            ) {
-                body_profile_m2 += (fore_m + aft_m) * component.length_m;
-            }
+            body_profile_m2 += side_profile_m2(component)?;
             if matches!(component.part, hpr_design::Part::TubeFinSet(_)) {
                 // Tube fins are a large part of such a rocket's broadside area and the model has
                 // no factor for them, so hpr refuses rather than crediting a bare tube's drag.
@@ -1287,6 +1308,11 @@ pub struct BodyEvent {
     pub kind: crate::EventKind,
     /// The body at that instant.
     pub sample: BodySample,
+    /// For a piece leaving it, the body just after: its mass without the piece, and its velocity
+    /// once the ejection's impulse has pushed it ([`crate::Ejection::with_impulse`]). `None` for
+    /// every other event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after: Option<BodySample>,
 }
 
 /// One separated body's descent, from the moment it flies on its own to its landing.
@@ -1305,7 +1331,8 @@ pub struct BodyFlight {
     pub mass_kg: f64,
     /// Where it started flying on its own: at the airframe's first parting, its own centre of mass
     /// and that point's velocity; at a later one, on the way down, the point and velocity of the
-    /// body it left.
+    /// body it left. Either way plus its ejection's push, if it has one
+    /// ([`crate::Ejection::with_impulse`]).
     pub start_sample: BodySample,
     /// Why its descent ended.
     pub termination: crate::Termination,
@@ -3177,9 +3204,12 @@ mod tests {
         else {
             panic!("tumbling should build a Tumble: {drag:?}");
         };
-        // Valetudo: a 0.274 m tangent nose and 1.884 m of 80.9 mm tube, so a side profile of
-        // 0.04045·0.274 + 0.0809·1.884 = 0.1635 m², and three fins of 0.058 m root, 0.018 m tip
-        // and 0.077 m span, so one fin is 2.93e-3 m² and the three-fin factor is 1.50.
+        // Valetudo: a 0.274 m tangent ogive nose of 40.45 mm base radius and 1.884 m of 80.9 mm
+        // tube. The ogive's arc has radius `ρ = (R² + L²)/(2R)`, so its side area in closed form
+        // is `L√(ρ² − L²) + ρ² asin(L/ρ) + 2(R − ρ)L` = 0.014842 m², a third more than the
+        // triangle through its ends; the side profile is that plus 0.0809·1.884 = 0.1673 m².
+        // Three fins of 0.058 m root, 0.018 m tip and 0.077 m span, so one fin is 2.93e-3 m² and
+        // the three-fin factor is 1.50.
         let expected_fin_m2 = 1.5
             * match &assembly
                 .layout
@@ -3200,8 +3230,14 @@ mod tests {
             (drag_area_m2 - (1.42 * fin_area_m2 + 0.56 * body_profile_m2)).abs() < 1e-15,
             "{drag_area_m2}"
         );
+        let (nose_m, base_m) = (0.274_f64, 0.040_45_f64);
+        let arc_m = (base_m * base_m + nose_m * nose_m) / (2.0 * base_m);
+        let ogive_m2 = nose_m * (arc_m * arc_m - nose_m * nose_m).sqrt()
+            + arc_m * arc_m * (nose_m / arc_m).asin()
+            + 2.0 * (base_m - arc_m) * nose_m;
+        assert!((ogive_m2 - 0.014_842).abs() < 5e-7, "{ogive_m2}");
         assert!(
-            (body_profile_m2 - (0.040_45 * 0.274 + 0.080_9 * 1.884)).abs() < 1e-12,
+            (body_profile_m2 - (ogive_m2 + 0.080_9 * 1.884)).abs() < 1e-12,
             "{body_profile_m2}"
         );
 
@@ -3212,7 +3248,7 @@ mod tests {
         );
         let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
         let terminal_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, air.0.density_kg_m3, G);
-        // Tumbling is slower than a ballistic dive but far faster than a canopy: 37 m/s for this
+        // Tumbling is slower than a ballistic dive but far faster than a canopy: 36 m/s for this
         // 8.3 kg rocket, well outside the 6.8 to 160 g the constants were fitted on.
         assert!(terminal_m_s > 20.0 && terminal_m_s < 60.0, "{terminal_m_s}");
         let result = sim

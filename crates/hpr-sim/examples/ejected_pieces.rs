@@ -1,6 +1,7 @@
 //! A rocket that comes apart into three pieces: its nose cone is pushed off at apogee, and a
 //! payload leaves the airframe at 300 m. Each piece comes down under its own parachute and lands
-//! somewhere of its own.
+//! somewhere of its own. Then the same flight again, with each ejection charge pushing its two
+//! sides apart and the nose cone left to tumble.
 //!
 //! Run it from anywhere in the repository:
 //!
@@ -149,6 +150,66 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "The payload leaves at {:.2} s: the airframe's body goes from {:.3} kg to {:.3} kg.",
         parting.time_s, parting.mass_kg, airframe.mass_kg
+    );
+
+    // The same flight with a 1 N·s push at each parting, and no parachute on the nose cone: it
+    // tumbles, with the drag area of its own side profile (the tumble model over one piece).
+    let pushed = Simulation::new(
+        &rocket,
+        "i175",
+        Environment::standard(site)?.with_wind(wind),
+        Rail::vertical(3.0),
+        FlightSettings::default(),
+    )?
+    .with_ejections(vec![
+        Ejection::aft_of(Trigger::Apogee, "nose").with_impulse(1.0),
+        Ejection::payload(at_300_m, "payload").with_impulse(1.0),
+    ])?;
+    let tumble = pushed.tumbling_piece(0)?;
+    let pushed = pushed.with_recovery(vec![
+        Device::new("nose cone tumble", tumble, Trigger::Apogee).on_body(0),
+        canopy("airframe chute", 0.9, Trigger::Apogee, 1),
+        canopy("payload chute", 0.6, at_300_m, 2),
+    ])?;
+    let pushed_flight = pushed.run(&mut ())?;
+
+    println!();
+    println!("Again, with a 1 N·s push at each parting and the nose cone tumbling:");
+    println!(
+        "body         mass (kg)   lands (s)   at (m/s)   terminal (m/s)   east (m)   north (m)   moved (m)"
+    );
+    for ((body, before), name) in pushed_flight.bodies.iter().zip(&flight.bodies).zip(names) {
+        let landing = body.final_sample;
+        let drag_area_m2 = pushed.recovery()[body.body].drag.drag_area_m2();
+        let gravity_m_s2 = environment
+            .earth
+            .gravity_enu_mps2(landing.cg_enu_m)?
+            .length();
+        println!(
+            "{} {name:<10} {:>9.3} {:>11.2} {:>10.2} {:>16.2} {:>10.1} {:>11.1} {:>11.1}",
+            body.body,
+            body.mass_kg,
+            landing.time_s,
+            -landing.vertical_speed_m_s,
+            terminal_speed_m_s(body.mass_kg, drag_area_m2, density_kg_m3, gravity_m_s2),
+            landing.cg_enu_m.x,
+            landing.cg_enu_m.y,
+            (landing.cg_enu_m - before.final_sample.cg_enu_m).length(),
+        );
+    }
+    let airframe = pushed_flight.bodies.get(1).ok_or("no airframe")?;
+    let payload = pushed_flight.bodies.get(2).ok_or("no payload")?;
+    let parting = airframe
+        .event(EventKind::Ejection(1))
+        .ok_or("the payload never left")?;
+    let after = parting.after.ok_or("no body after the parting")?;
+    println!();
+    println!(
+        "At 300 m the charge speeds the payload up by {:.2} m/s (1 N·s / 0.250 kg) and slows the \
+         airframe by {:.2} m/s (1 N·s / {:.3} kg).",
+        (payload.start_sample.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s).length(),
+        (after.cg_velocity_enu_m_s - parting.sample.cg_velocity_enu_m_s).length(),
+        after.mass_kg,
     );
     Ok(())
 }

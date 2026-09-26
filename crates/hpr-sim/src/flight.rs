@@ -523,11 +523,11 @@ impl Simulation {
     /// # Errors
     ///
     /// [`SimError::Parting`] for a parting the design can't make; [`SimError::Domain`] if a body
-    /// carries no device, if a trigger is out of its domain, if its time is known and a motor burns
-    /// past it, or if it is timed from a motor with no ignition known before the flight. A device
-    /// on a body that nothing makes is refused when the flight starts. In flight, an ejection that
-    /// fires while a motor burns, or ahead of a separation that would light one, is an error, and
-    /// so is a powered separation in a flight with ejections.
+    /// carries no device, if a trigger or impulse is out of its domain, if its time is known and a
+    /// motor burns past it, or if it is timed from a motor with no ignition known before the
+    /// flight. A device on a body that nothing makes is refused when the flight starts. In flight,
+    /// an ejection that fires while a motor burns, or ahead of a separation that would light one,
+    /// is an error, and so is a powered separation in a flight with ejections.
     pub fn with_ejections(mut self, ejections: Vec<Ejection>) -> Result<Self, SimError> {
         Pieces::new(
             &self.rocket,
@@ -549,6 +549,13 @@ impl Simulation {
                 return Err(SimError::Domain {
                     what: "height above the launch site at which a piece is ejected, m",
                     value: height_above_ground_m,
+                });
+            }
+            if !(ejection.impulse_n_s.is_finite() && ejection.impulse_n_s >= 0.0) {
+                return Err(SimError::Domain {
+                    what: "impulse of an ejection, N·s (zero or more: it pushes the two sides \
+                           apart)",
+                    value: ejection.impulse_n_s,
                 });
             }
             let time_s = recovery::trigger_time_s(
@@ -580,6 +587,29 @@ impl Simulation {
     #[must_use]
     pub fn ejections(&self) -> &[Ejection] {
         &self.ejections
+    }
+
+    /// The drag area of piece `piece` tumbling on its own, for a device on the body it leads:
+    /// [`crate::recovery::DeviceDrag::tumbling`]'s model over the piece's own body components and
+    /// fin sets. Piece 0 is the nose's, the separation makes piece 1, and each ejection the next
+    /// ([`crate::Ejection`]), so piece `k` leads body `k`. Call it after [`Self::with_ejections`]
+    /// and [`Self::with_separation`], which fix the pieces.
+    ///
+    /// The model was fitted to whole model rockets tumbling, so a lone nose cone is outside its
+    /// fit: see `docs/physics/recovery.md`, *Tumble*.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Domain`] for a piece the airframe doesn't part into, a payload (it has no
+    /// body tube or fin of its own), and as [`crate::recovery::DeviceDrag::tumbling`].
+    pub fn tumbling_piece(&self, piece: usize) -> Result<recovery::DeviceDrag, SimError> {
+        Pieces::new(
+            &self.rocket,
+            &self.vehicle.assembly,
+            self.separation,
+            &self.ejections,
+        )?
+        .tumbling(piece, &self.vehicle.assembly)
     }
 
     /// Refuses an ejection at `t_s` while any motor lit at `ignition_s` burns: once the airframe
@@ -1362,10 +1392,10 @@ impl Simulation {
     /// the ejections), and `skip_nose` leaves out body 0 when it flies on as a sustainer.
     ///
     /// Each body is a point mass with its own pieces' and motors' mass, starting where its own
-    /// centre of mass was and with the velocity that point already had, so the parting adds no
-    /// impulse. The bodies share the flight's devices and their progress: a device that had
-    /// already opened stays open on whichever body carries it. A body that parts again on the way
-    /// down hands the piece that leaves to a body of its own, flown after it.
+    /// centre of mass was with the velocity that point already had, plus the push of each
+    /// ejection's impulse on its side. The bodies share the flight's devices and their progress: a
+    /// device that had already opened stays open on whichever body carries it. A body that parts
+    /// again on the way down hands the piece that leaves to a body of its own, flown after it.
     fn fly_bodies(
         &self,
         t: f64,
@@ -1390,7 +1420,7 @@ impl Simulation {
         let trigger_times_s =
             recovery::plan(&self.devices, &self.vehicle.assembly.motors, ignition_s)?;
         let leaders = pieces.leaders(&open);
-        let mut queue = std::collections::VecDeque::new();
+        let mut starts = Vec::new();
         for body in 0..pieces.count() {
             if leaders[body] != body || (skip_nose && body == 0) {
                 continue;
@@ -1405,7 +1435,7 @@ impl Simulation {
             let cg_enu_m = state.point_enu_m(mass.cg_m);
             let velocity_enu_m_s =
                 state.velocity_enu_m_s + attitude.mul_vec3(state.body_rate_rad_s.cross(mass.cg_m));
-            queue.push_back(Start {
+            starts.push(Start {
                 body,
                 t_s: t,
                 cg_enu_m,
@@ -1413,6 +1443,20 @@ impl Simulation {
                 mass_kg: checked_body_mass(mass.mass_kg)?,
             });
         }
+        // Each split that parts the stack here pushes its two sides apart along the airframe's
+        // axis, `+J` on the side forward of it and `−J` on the other, each on its own body.
+        let nose_ward = attitude.mul_vec3(DVec3::Z);
+        for (split, _) in open.iter().enumerate().filter(|(_, opened)| **opened) {
+            let (other, forward) = pieces.across(split + 1);
+            let push = nose_ward * self.split_impulse_n_s(split);
+            let push = if forward { push } else { -push };
+            for (body, push) in [(leaders[split + 1], push), (leaders[other], -push)] {
+                if let Some(start) = starts.iter_mut().find(|start| start.body == body) {
+                    start.velocity_enu_m_s += push / start.mass_kg;
+                }
+            }
+        }
+        let mut queue: std::collections::VecDeque<Start> = starts.into();
         let mut bodies = Vec::new();
         while let Some(start) = queue.pop_front() {
             let mut split = Split {
@@ -1491,7 +1535,7 @@ impl Simulation {
 
         let termination = loop {
             let t = integrator.time_s();
-            let y = *integrator.state();
+            let mut y = *integrator.state();
             if t >= cap {
                 break Termination::TimeCap;
             }
@@ -1525,6 +1569,7 @@ impl Simulation {
                         events.push(BodyEvent {
                             kind: EventKind::Trigger(index),
                             sample,
+                            after: None,
                         });
                         again = true;
                     }
@@ -1543,6 +1588,7 @@ impl Simulation {
                     events.push(BodyEvent {
                         kind: EventKind::Deployment(index),
                         sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                        after: None,
                     });
                     again = true;
                 }
@@ -1552,6 +1598,7 @@ impl Simulation {
                         events.push(BodyEvent {
                             kind: EventKind::Release(index),
                             sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                            after: None,
                         });
                         again = true;
                     }
@@ -1592,7 +1639,6 @@ impl Simulation {
                 // A separation still to come here lights no motor: an ejection ahead of one that
                 // would is refused in the ascent.
                 let kind = self.split(index).2;
-                events.push(BodyEvent { kind, sample });
                 split.open[index] = true;
                 leaders = split.pieces.leaders(split.open);
                 // The piece a split makes leads the body that leaves.
@@ -1610,18 +1656,42 @@ impl Simulation {
                 };
                 let leaving_kg = checked_body_mass(mass_of(leaving))?;
                 mass_kg = checked_body_mass(mass_of(body))?;
+                // The impulse pushes the two sides apart. A point mass has no axis, so its nose is
+                // taken to point along its velocity through the air, as a stable airframe's does,
+                // or up when it has none (ADR-086).
+                let impulse_n_s = self.split_impulse_n_s(index);
+                let mut leaving_velocity_enu_m_s = sample.cg_velocity_enu_m_s;
+                if impulse_n_s > 0.0 {
+                    let (up_enu, wind_enu) = self.up_and_wind_enu(sample.cg_enu_m)?;
+                    let nose_ward = (sample.cg_velocity_enu_m_s - wind_enu)
+                        .try_normalize()
+                        .unwrap_or(up_enu);
+                    let forward = split.pieces.across(leaving).1;
+                    let push = nose_ward * if forward { impulse_n_s } else { -impulse_n_s };
+                    leaving_velocity_enu_m_s += push / leaving_kg;
+                    let velocity_enu_m_s = sample.cg_velocity_enu_m_s - push / mass_kg;
+                    y[3] = velocity_enu_m_s.x;
+                    y[4] = velocity_enu_m_s.y;
+                    y[5] = velocity_enu_m_s.z;
+                }
+                events.push(BodyEvent {
+                    kind,
+                    sample,
+                    after: Some(self.body_sample(body, mass_kg, t, &y, run)?),
+                });
                 split.queue.push_back(Start {
                     body: leaving,
                     t_s: t,
-                    cg_enu_m: DVec3::new(y[0], y[1], y[2]),
-                    velocity_enu_m_s: DVec3::new(y[3], y[4], y[5]),
+                    cg_enu_m: sample.cg_enu_m,
+                    velocity_enu_m_s: leaving_velocity_enu_m_s,
                     mass_kg: leaving_kg,
                 });
                 pending = split.pending(&leaders, body);
                 parted = true;
             }
             if parted {
-                // The mass steps here, so the integrator starts afresh from the same state.
+                // The mass steps here, and an impulse steps the velocity, so the integrator starts
+                // afresh from the new state.
                 integrator.reset(t, y)?;
                 continue;
             }
@@ -1679,12 +1749,14 @@ impl Simulation {
                     events.push(BodyEvent {
                         kind: EventKind::Apogee,
                         sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                        after: None,
                     });
                 }
                 if fired.contains(&0) {
                     events.push(BodyEvent {
                         kind: EventKind::GroundHit,
                         sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                        after: None,
                     });
                     break Termination::GroundHit;
                 }
@@ -1738,16 +1810,9 @@ impl Simulation {
         let cg_enu_m = DVec3::new(y[0], y[1], y[2]);
         let velocity_enu_m_s = DVec3::new(y[3], y[4], y[5]);
         let frame = self.environment.earth.frame();
-        let geodetic = frame.geodetic_from_enu(cg_enu_m)?;
-        let height_above_ground_m = geodetic.height_m - frame.origin().height_m;
-        let up_ecef = DVec3::new(
-            geodetic.latitude_rad.cos() * geodetic.longitude_rad.cos(),
-            geodetic.latitude_rad.cos() * geodetic.longitude_rad.sin(),
-            geodetic.latitude_rad.sin(),
-        );
-        let up_enu = frame.ecef_from_enu_rotation().transpose() * up_ecef;
-        let height_msl_m = geodetic.height_m - self.environment.geoid_undulation_m;
-        let wind_enu = self.environment.wind.wind(height_msl_m)?.velocity_enu_m_s;
+        let height_above_ground_m =
+            frame.geodetic_from_enu(cg_enu_m)?.height_m - frame.origin().height_m;
+        let (up_enu, wind_enu) = self.up_and_wind_enu(cg_enu_m)?;
         Ok(BodySample {
             time_s: t,
             cg_enu_m,
@@ -1760,6 +1825,21 @@ impl Simulation {
         })
     }
 
+    /// The local vertical and the wind at the point `cg_enu_m` of the launch frame.
+    fn up_and_wind_enu(&self, cg_enu_m: DVec3) -> Result<(DVec3, DVec3), SimError> {
+        let frame = self.environment.earth.frame();
+        let geodetic = frame.geodetic_from_enu(cg_enu_m)?;
+        let up_ecef = DVec3::new(
+            geodetic.latitude_rad.cos() * geodetic.longitude_rad.cos(),
+            geodetic.latitude_rad.cos() * geodetic.longitude_rad.sin(),
+            geodetic.latitude_rad.sin(),
+        );
+        let up_enu = frame.ecef_from_enu_rotation().transpose() * up_ecef;
+        let height_msl_m = geodetic.height_m - self.environment.geoid_undulation_m;
+        let wind_enu = self.environment.wind.wind(height_msl_m)?.velocity_enu_m_s;
+        Ok((up_enu, wind_enu))
+    }
+
     /// Whether the airframe can come apart: it has a separation or an ejection.
     fn parts(&self) -> bool {
         self.separation.is_some() || !self.ejections.is_empty()
@@ -1768,6 +1848,15 @@ impl Simulation {
     /// How many bodies the airframe can come apart into: one per piece.
     fn body_count(&self) -> usize {
         1 + usize::from(self.separation.is_some()) + self.ejections.len()
+    }
+
+    /// The impulse of split `split`, in piece order, N·s: an ejection's own, and none for the
+    /// separation.
+    fn split_impulse_n_s(&self, split: usize) -> f64 {
+        match split.checked_sub(usize::from(self.separation.is_some())) {
+            Some(ejection) => self.ejections[ejection].impulse_n_s,
+            None => 0.0,
+        }
     }
 
     /// Split `split` of the flight, in piece order (the separation first, then the ejections):

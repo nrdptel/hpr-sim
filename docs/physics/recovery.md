@@ -33,11 +33,12 @@
   - Airframe drag: a separated body falls with no drag until its device opens, so its
     [deployment](../glossary.md#deployment) speed can read high, and the airframe's own drag under
     a canopy is left out too. The same holds for an ejected piece.
-  - The push of an ejection charge or spring on the pieces it separates.
+  - The push of a separation's charge on the two stages (an ejection's is modelled, a
+    separation's is not).
   - [Added mass](../glossary.md#added-mass) (air carried along), the swing (the attitude freezes at
     deployment), and streamer pleats (+58% fast on a pleated one).
-  - [Tumbling](../glossary.md#tumble-recovery) is used far outside its fit: 37 m/s for Valetudo,
-    against 5.0 to 6.6 m/s.
+  - [Tumbling](../glossary.md#tumble-recovery) is used far outside its fit: 36 m/s for Valetudo,
+    against 5.0 to 6.6 m/s, and a nose cone tumbling on its own is outside it too.
 
 ## Code and sources
 
@@ -193,9 +194,9 @@ computes its drag area from the airframe by the OpenRocket technical documentati
 C_D S = 1.42 A_f + 0.56 A_bt
 ```
 
-- `A_bt` is the body's side profile area. hpr integrates the outer diameter along the axis, taking
-  each body component's mean diameter times its length: exact for tubes and cones, approximate for
-  a curved nose.
+- `A_bt` is the body's side profile area, the outer diameter integrated along the axis, `∫d dx`.
+  hpr takes a tube's diameter times its length, and integrates each nose cone's and transition's
+  own curve.
 - `A_f` is, for each fin set, **one** fin's planform area times an efficiency factor by fin count:
   0.50, 1.00, 1.50, 1.41, 1.81, 1.73, 1.90, 1.85 for 1 to 8 fins (Table 3.4). It is a fit, not a
   model: four fins are 1.41 of one fin, not 2, and it is not monotonic. More than eight fins is
@@ -205,10 +206,11 @@ C_D S = 1.42 A_f + 0.56 A_bt
   that of a flat plate 1.17 or an open hemispherical cup 1.42". Those come from Hoerner's
   *Fluid-Dynamic Drag* (1965), which is copyrighted with no legal free copy; NASA TN D-540 and TR
   R-474 carry the same numbers and are free (`docs/research/streamer-and-tumble-drag.md`).
-- The body's profile uses each component's **end** diameters, so a curved nose is under-counted:
-  for Valetudo's tangent ogive the true side area (the diameter integrated along the length,
-  `∫d dx`) is 0.0148 m² against the 0.0111 m² hpr takes, 25% low on the nose and 2.2% low on the
-  whole body (1.1% high in terminal speed).
+- Until [M1.11b](../decisions-and-roadmap.md#m1-11b) hpr took each component's **end**
+  diameters, which under-counts a curved nose. For Valetudo's tangent ogive that was 0.0111 m²
+  against the true 0.0148 m², 25% low on the nose. Integrating the curve brought Valetudo's
+  tumbling speed from 36.77 to 36.38 m/s ([ADR-086][adr-086], ejection impulse and tumbling
+  pieces).
 
 **How well it does.** The documentation says its fit predicts its own five drop-test models within
 3 to 14%. hpr does not reproduce that. Replaying Table 3.3 (printed page 54: five models, 22 m,
@@ -231,14 +233,20 @@ measure). So either hpr reads the areas differently from whoever fitted the cons
 is not reproducible. The table above is what hpr can demonstrate, so it is what hpr states.
 
 **Where it stops being true.** The fit covers 44 to 103 mm bodies of 6.8 to 160 g descending at
-5.0 to 6.6 m/s. A high-power booster is far outside it: Valetudo tumbling comes out at 37 m/s.
+5.0 to 6.6 m/s. A high-power booster is far outside it: Valetudo tumbling comes out at 36 m/s.
 
 - A cylinder's crossflow drag falls by roughly half above a
   [Reynolds number](../glossary.md#reynolds-number) near 2e5, its
   [drag crisis](../glossary.md#drag-crisis). A 100 mm body reaches that at about 30 m/s, and
-  Valetudo's 80 mm at 37 m/s is right at it.
+  Valetudo's 80 mm at 36 m/s is right at it.
 - So a real body that size would descend faster than hpr says.
 - hpr does not model that fall, and nothing in the pinned sources covers it.
+
+**A piece on its own.** `DeviceDrag::tumbling_stages` takes whole stages. For an ejected piece
+that is part of a stage, `Simulation::tumbling_piece(k)` sums the same model over piece `k`'s own
+body components and fins ([Ejected pieces](#ejected-pieces)). A payload is refused: it has no
+tube or fin of its own. A nose cone tumbling on its own is outside the fit, which was made on
+whole rockets, so its speed is the model's, not a measured one.
 
 A tumbling body is a device like any other: give it a trigger, and it starts at that moment.
 hpr does not decide by itself when a rocket tumbles — nothing citable says when a stage becomes
@@ -505,9 +513,11 @@ This section describes the unpowered case, and the booster's descent after a pow
 
 An ejection lets a piece of the airframe go at a joint of your choosing, not only at a stage
 boundary: a nose cone pushed off its airframe, a body section, or a payload carried inside. Each
-piece then comes down on its own, under its own parachute, and lands somewhere of its own. This
-is new with [M1.11a](../decisions-and-roadmap.md#m1-11a) and is checked against exact answers
-only: no other simulator or real flight has been compared with it yet.
+piece then comes down on its own, under its own parachute or tumbling, and lands somewhere of its
+own. The charge can push the pieces apart. This is new with
+[M1.11a](../decisions-and-roadmap.md#m1-11a) and [M1.11b](../decisions-and-roadmap.md#m1-11b),
+and is checked against exact answers only: no other simulator or real flight has been compared
+with it yet.
 
 A few words first:
 
@@ -561,13 +571,13 @@ whole rocket falling from apogee to 300 m with nothing open.
 
 - **When the airframe first comes apart**, each body starts at its own centre of mass with the
   velocity that point had, `v_O + ω × r_cg` (defined under [Separation](#separation)), as at a
-  separation. The linear momenta add to the
-  stack's, which is a test.
+  separation, plus the charge's push below. The linear momenta add to the stack's, which is a
+  test.
 - **When a body parts again on the way down**, it is already a point mass with no attitude, so
   there is nothing to place its pieces by. Both pieces start at the body's position and velocity,
-  and its mass steps down by the piece that left. Their true starting points could be up to a
-  rocket's length apart, which is small against a descent of hundreds of metres. Momentum then
-  adds up by construction: the pieces share one velocity, and their masses add up.
+  plus the push, and its mass steps down by the piece that left. Their true starting points could
+  be up to a rocket's length apart, which is small against a descent of hundreds of metres. The
+  body's own event for the parting keeps it just before (`sample`) and just after (`after`).
 - **Each piece's mass is its own components'.** A stage that stays in one piece is counted by its
   own mass, overrides and all. A stage that parts is counted component by component. An override
   that doesn't say how its mass divides is refused rather than guessed. That means a stage's mass
@@ -577,6 +587,36 @@ whole rocket falling from apogee to 300 m with nothing open.
 - **Every motor must have burned out** by the time an ejection fires, because every body is a
   point mass of constant mass from then on. An ejection known to come earlier is refused when it is
   given, and one that fires early in flight is an error then.
+
+**The push of the charge.** An ejection charge or spring pushes the two sides of the joint apart.
+Give it as an impulse `J`: the push summed over its short duration, in newton-seconds, as a
+motor's [total impulse](../glossary.md#total-impulse) is. For example,
+`Ejection::aft_of(Trigger::Apogee, "nose").with_impulse(1.0)`. Without one there is no push. The
+push is equal and opposite:
+
+- The side forward of the joint gets `+J` toward the nose, and the side aft of it `−J`. A payload
+  leaves forward, out of its host, as it does when the nose cone comes off first.
+- Each side's velocity changes by `J/m`, for its own mass `m`, so the light side moves most. One
+  newton-second is 4 m/s on a 250 g payload, and 1.8 m/s on the 556 g airframe it leaves.
+- The momenta still add up exactly, which is a test.
+- **Which way is "toward the nose"?** When the airframe first comes apart, it is its axis at that
+  instant. A body that parts again on the way down has no attitude, so hpr takes its nose to
+  point along its velocity through the air, as a stable rocket's does, or straight up if it isn't
+  moving through the air. That is an assumption, not a measurement ([ADR-086][adr-086]).
+- A separation has no push, and a payload can't be made to leave aft yet.
+
+The push matters little to where a piece lands. The drag slows it within seconds, so in the
+example below 1 N·s at each parting moves the airframe's and the payload's landings by under a
+metre.
+
+**A piece that tumbles.** A piece needs some drag of its own, or it falls as if in a vacuum. A
+nose cone with no parachute tumbles. `Simulation::tumbling_piece(0)` gives the drag area of the
+nose cone tumbling on its own, by the [tumble model](#tumble) over just its own parts. Use it as
+that body's device, `Device::new("nose cone tumble", tumble, Trigger::Apogee).on_body(0)`,
+triggered with its ejection, as the example below does. Piece `k` is the one that leads body `k`, numbered as in the table above. The pieces of an
+airframe cut into sections have drag areas that add up to the whole airframe's, which is a test.
+The model was fitted on whole model rockets, so for a lone nose cone the speed is the model's
+answer, not a measured one.
 
 **A worked example.** The example
 [`ejected_pieces.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/ejected_pieces.rs)
@@ -597,14 +637,26 @@ flight's own event list ends at the first parting. What happens to each body aft
 its canopy opening and the payload leaving the airframe, is in that body's own list
 (`FlightResult::bodies`).
 
+The example then flies the same rocket again with a 1 N·s push at each parting, and with no
+canopy on the nose cone, which tumbles:
+
+| Body | Mass (kg) | Lands (s) | At (m/s) | `v_e` (m/s) | East of the pad (m) | Moved from the first flight (m) |
+|---|---|---|---|---|---|---|
+| 0, the nose cone, tumbling | 0.063 | 130.93 | 14.82 | 14.82 | 269.6 | 1,765.7 |
+| 1, the airframe | 0.556 | 333.58 | 4.54 | 4.54 | 1,116.3 | 0.7 |
+| 2, the payload | 0.250 | 332.94 | 4.57 | 4.57 | 1,113.7 | 0.3 |
+
+Tumbling, the nose cone comes down nearly five times as fast as under its canopy, and lands 1.8 km
+nearer the pad. The push barely moves the other two. At 300 m it speeds the payload up by 4.00
+m/s and slows the airframe by 1.80 m/s, `J/m` for each, and within seconds the drag has taken
+that away.
+
 **Limits:**
 
-- **No ejection impulse and no tumbling piece yet.** The charge or spring that pushes the pieces
-  apart, and a tumbling model for a piece that isn't a whole stage, are
-  [M1.11b](../decisions-and-roadmap.md#m1-11b). Until then a piece needs a device that opens,
-  as every separated body does, and it coasts with no drag until the device opens.
-  `DeviceDrag::tumbling_stages` takes whole stages, so on a piece that is part of a stage it
-  gives the whole stage's area.
+- **A piece coasts with no drag until its device opens,** as every separated body does. Give it
+  a parachute, or its tumble from the moment it leaves.
+- **The push's direction on the way down is assumed:** along the body's velocity through the
+  air, since a point mass has no axis. A payload always leaves forward.
 - **No powered separation with ejections.** A sustainer flies on a design cut at its stage
   boundary, whose components aren't the pieces the ejections were given for, so it is refused,
   and so is an ejection ahead of a separation that would light a motor.
@@ -612,7 +664,8 @@ its canopy opening and the payload leaving the airframe, is in that body's own l
 - **A `.ork` file's recovery settings don't make ejections**, and hpr has no names for pieces:
   you find the component ids in the design file.
 
-The decision record on ejected pieces, [ADR-085][adr-085], has the reasoning.
+The decision records on ejected pieces, [ADR-085][adr-085], and on the push and tumbling pieces,
+[ADR-086][adr-086], have the reasoning.
 
 ## Verification
 
@@ -661,6 +714,11 @@ The ejected pieces' tests are in `crates/hpr-sim/src/pieces.rs`, also analytic:
 | A powered separation with ejections, an ejection ahead of a separation that lights a motor, an ejection timed from a motor with no ignition | each refused with its own reason |
 | Partings the design can't make: an unknown id, a joint aft of an internal part or of the tail, a body component or an external part as a payload, a payload inside another, two at one joint, one payload twice, an overridden stage or covering override | each refused with its own reason, naming the component |
 | An ejection during the burn, a height below the ground, a body without a device, a device on a body nothing makes | refused, the last when the flight starts |
+| A 1 N·s push at both partings, with wind, a sideways velocity and a 0.6 rad/s body rate | each body's velocity changes by `J/m` along its direction to 1e-9: at the first parting ±`J/m` along the airframe's axis against the same flight unpushed (15.9 m/s on the nose cone), at the second 4 m/s on the 250 g payload along its velocity through the air; the momenta add up to 1e-9 at both; every piece still lands within 0.1% of its `v_e` |
+| A parting on the way down with no push | the body after it has the same point and velocity, and its mass without the piece; only partings record a body after |
+| A nose cone tumbling on its own after apogee | its drag area is 0.56 times its tangent ogive's closed-form side area, to 1e-12; it lands at 13.849 m/s, its model's `v_e` to 1e-6 |
+| The tumbling drag areas of an airframe cut into a nose cone and the rest | add to the whole airframe's to 1e-12; a payload or a piece not made is refused |
+| A push that is negative, NaN or infinite | refused when the ejections are given |
 
 ### Against RocketPy
 
@@ -809,4 +867,5 @@ above.
 [adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17
 [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
 [adr-085]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-085-ejected-pieces-an-airframe-that-parts-at-any-joint-2026-09-26
+[adr-086]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-086-ejection-impulse-and-tumbling-pieces-2026-09-26
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
