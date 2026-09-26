@@ -650,7 +650,7 @@
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
   - Mean absolute apogee error is reported against the 5% target.
   - Each outlier has an explanation.
-  - [ ] **M2.3a ERA5 weather.** netCDF classic read from the specification; ERA5 levels at a site.
+  - [x] **M2.3a ERA5 weather.** netCDF classic read from the specification; ERA5 levels at a site.
     *Done when:*
     - Classic and 64-bit offset files read value for value as the Unidata library reads them
       (every type, records, the lone-record padding, packing), the Users Guide's departures from

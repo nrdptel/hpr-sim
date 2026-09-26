@@ -7158,10 +7158,10 @@ the flights, then the corpus flights with logs.
    is off by about `h_s(g₀/γ_s − 1) + h_s²/R` at every height and ECMWF's by
    `h_s²/R − (h − h_s)(g₀/γ_s − 1)`, growing with height above the model's ground. Neither is
    always the smaller: for a ground 1400 m up at 33° N, WMO's is 1.88 m and ECMWF's is smaller up
-   to 1.95 km above the ground, −3.07 m at 3 km (with RocketPy's Earth radius). hpr keeps WMO's because it is the rule
-   `SoundingProfile` uses for every sounding, so a level's geopotential round-trips; a test pins
-   these numbers. The readings differ by `g₀/γ_s(φ) − 1` of the height: −0.0158% at 47.21° N and
-   +0.0343% at 41.78° N, pinned by a test. Humidity is not read yet (dry
+   to 1.95 km above the ground, −3.07 m at 3 km (with RocketPy's Earth radius). hpr keeps WMO's
+   because it is the rule `SoundingProfile` uses for every sounding, so a level's geopotential
+   round-trips; a test pins these numbers. The readings differ by `g₀/γ_s(φ) − 1` of the height:
+   −0.0158% at 47.21° N and +0.0343% at 41.78° N, pinned by a test. Humidity is not read yet (dry
    air). Beyond the levels the profile is `SoundingProfile`'s: hydrostatic between levels and the
    offset standard atmosphere above them, where RocketPy holds the end level's values.
 5. **Fixtures.** `validation/oracles/netcdf/write_cases.py` writes the reader's test files with
