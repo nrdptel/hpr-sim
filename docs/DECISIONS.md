@@ -6636,9 +6636,10 @@ ignition time, the mass step and a trigger that never lights (L93). That is more
    example's booster, its tumble set to its own apogee, left at 341 m/s and coasted drag-free: it
    landed at 350.18 s, against 47.21 s with the tumble open at the split, having climbed far above
    the sustainer. A body-1 device with `Time { time_s: 0.0 }` opens there, since a body's
-   devices act only once it flies. The tumbling model (ADR-012) comes from slow drop tests, so from
-   near Mach 1 it stops the booster almost at once (the example's peaks 102 m above the split).
-   That is likely low, and #179 holds a model of the booster's own drag.
+   devices act only once it flies. hpr tumbles the booster side-on (ADR-012) from the instant it
+   separates, while a real finned booster flies nose-first for a while, so from near Mach 1 it
+   stops almost at once (the example's peaks 102 m above the split). That is likely low, and #179
+   holds a model of the booster's own drag.
 4. **An unpowered separation is ADR-014's, unchanged.** If body 0 has no thrust to come, both
    bodies descend as point masses. So a sustainer that separates after its own burnout, in free
    flight, still falls without airframe drag until its device opens. That is ADR-014's limit, not

@@ -60,7 +60,7 @@ use crate::state::{STATE_LEN, State};
 pub struct FlightSettings {
     /// The integration method and tolerances.
     pub method: Method,
-    /// The flight stops with [`Termination::TimeCap`] at this time after ignition, s.
+    /// The flight stops with [`Termination::TimeCap`] at this time after launch, s.
     pub max_time_s: f64,
     /// The flight stops with [`Termination::StepLimit`] after this many attempted steps.
     pub step_limit: u64,
@@ -247,7 +247,7 @@ pub struct Simulation {
     settings: FlightSettings,
     user_events: Vec<UserEvent>,
     devices: Vec<Device>,
-    /// The trigger times known before the flight, one per device: a time after ignition or a
+    /// The trigger times known before the flight, one per device: a time after launch or a
     /// motor's delay after its burnout, and `None` for the triggers the flight watches for.
     trigger_times_s: Vec<Option<f64>>,
     separation: Option<Separation>,
@@ -431,10 +431,9 @@ impl Simulation {
     /// [`SimError::Domain`] if the design has no stage aft of the split, if a device names a body
     /// that the separation doesn't make, if a body carries no device (the descent has no airframe
     /// drag, so it would fall as if in a vacuum), if the trigger is out of its domain, or if its
-    /// time is known and an aft body's motor burns past it. The same checks run again if
+    /// time is known and an aft body's motor burns past it, or if it is timed from a motor with no
+    /// ignition known before the flight, so that it could never fire. The same checks run again if
     /// [`Self::with_recovery`] is called afterwards, so the builders can be given in either order.
-    /// A trigger timed from a motor with no ignition known before the flight, which could never
-    /// fire.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
@@ -468,22 +467,16 @@ impl Simulation {
             // known now, say so now rather than in the middle of a flight.
             self.check_aft_body_spent(separation, self.vehicle.ignition_s(), time_s)?;
         }
-        if time_s.is_none()
-            && matches!(
-                separation.trigger,
-                Trigger::Time { .. } | Trigger::MotorDelay { .. } | Trigger::Burnout { .. }
-            )
+        if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
+            (time_s, separation.trigger)
         {
             // Timed from a motor with no ignition known before the flight: one lit by this very
             // separation, or one that never lights. It would never fire, and the stack would
-            // land whole.
+            // land whole. (A `Time` always has its time.)
             return Err(SimError::Domain {
                 what: "index of the motor a separation is timed from (it has no ignition time \
                        before the separation, so the separation could never fire)",
-                value: match separation.trigger {
-                    Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. } => motor as f64,
-                    _ => f64::NAN,
-                },
+                value: motor as f64,
             });
         }
         self.separation_time_s = time_s;
@@ -581,7 +574,7 @@ impl Simulation {
         self.fly(0.0, self.initial_state(), Phase::Pad, observer)
     }
 
-    /// Flies freely from `state` at `t0_s` seconds after ignition, as after a rail exit or from a
+    /// Flies freely from `state` at `t0_s` seconds after launch, as after a rail exit or from a
     /// restart: the motors burn as their curves say at that time.
     ///
     /// # Errors

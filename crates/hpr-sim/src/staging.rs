@@ -464,15 +464,7 @@ mod tests {
             .iter()
             .find(|s| s.time_s == stack.time_s && s.mass_kg < stack.mass_kg)
             .expect("the sustainer's first step");
-        let rate = sim
-            .run(&mut ())
-            .unwrap()
-            .event(EventKind::Separation)
-            .unwrap()
-            .sample
-            .state
-            .body_rate_rad_s
-            .length();
+        let rate = stack.state.body_rate_rad_s.length();
         assert!(rate > 1e-3, "{rate}");
         let before = stack.cg_velocity_enu_m_s * stack.mass_kg;
         let after = sustainer.cg_velocity_enu_m_s * sustainer.mass_kg
@@ -512,7 +504,7 @@ mod tests {
                     DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
                     Trigger::Apogee,
                 ),
-                Device::new("booster tumble", tumble, Trigger::Apogee).on_body(1),
+                Device::new("booster tumble", tumble, BOOSTER_AT_SEPARATION).on_body(1),
             ])
             .unwrap();
         let error = sim
@@ -526,7 +518,10 @@ mod tests {
             .unwrap()
             .run(&mut ())
             .expect_err("a table flown past a powered separation");
-        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        assert!(
+            matches!(error, SimError::Domain { what, .. } if what.contains("table")),
+            "{error:?}"
+        );
 
         // A separation timed before the booster burns out, and a delay out of its domain.
         for (motor_delay_s, what) in [(-0.5, "negative delay"), (f64::NAN, "delay NaN")] {
@@ -547,7 +542,7 @@ mod tests {
             ))
             .expect_err(what);
             assert!(
-                matches!(error, SimError::Domain { .. }),
+                matches!(error, SimError::Domain { what, .. } if what.contains("after a motor's burnout")),
                 "{what}: {error:?}"
             );
         }
@@ -582,10 +577,44 @@ mod tests {
         })
         .unwrap();
         let error = sim.run(&mut ()).expect_err("a booster with nothing open");
-        assert!(
-            matches!(error, SimError::Domain { value, .. } if (value - (burnout_s + 0.5)).abs() < 1e-12),
-            "{error:?}"
-        );
+        let nothing_open = |error: &SimError| {
+            matches!(error, SimError::Domain { what, value }
+                if what.contains("booster falls") && (value - (burnout_s + 0.5)).abs() < 1e-12)
+        };
+        assert!(nothing_open(&error), "{error:?}");
+        // Nor one that opens after the split: any lag leaves a coast with nothing open.
+        let rocket_sim = Simulation::new(
+            &rocket,
+            CONFIGURATION,
+            Environment::standard(site()).unwrap(),
+            Rail::vertical(6.0),
+            FlightSettings::default(),
+        )
+        .unwrap();
+        let tumble = DeviceDrag::tumbling_stages(rocket_sim.assembly(), (1, 1)).unwrap();
+        let error = rocket_sim
+            .with_recovery(vec![
+                Device::new(
+                    "sustainer main",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
+                    Trigger::Apogee,
+                ),
+                Device::new("booster tumble", tumble, BOOSTER_AT_SEPARATION)
+                    .with_lag_s(0.1)
+                    .on_body(1),
+            ])
+            .unwrap()
+            .with_separation(Separation::new(
+                Trigger::Burnout {
+                    motor: booster,
+                    delay_s: 0.5,
+                },
+                0,
+            ))
+            .unwrap()
+            .run(&mut ())
+            .expect_err("a booster whose device opens after the split");
+        assert!(nothing_open(&error), "{error:?}");
 
         // A separation timed from the sustainer it lights could never fire.
         let lit_by_it = two_stage(Ignition::Separation { delay_s: 0.0 });
@@ -604,7 +633,18 @@ mod tests {
             },
         )
         .expect_err("a separation that could never fire");
-        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        let sustainer = rocket
+            .assemble(CONFIGURATION)
+            .unwrap()
+            .motors
+            .iter()
+            .position(|m| m.mount == SUSTAINER_MOUNT)
+            .unwrap();
+        assert!(
+            matches!(error, SimError::Domain { what, value }
+                if what.contains("could never fire") && value == sustainer as f64),
+            "{error:?}"
+        );
 
         // A sustainer with a canopy already open is in the point-mass descent, which can't fly
         // it under thrust.
@@ -637,7 +677,10 @@ mod tests {
             .unwrap()
             .run(&mut ())
             .expect_err("a powered separation in the descent");
-        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        assert!(
+            matches!(error, SimError::Domain { what, .. } if what.contains("still has a motor to burn")),
+            "{error:?}"
+        );
     }
 
     #[test]
@@ -663,9 +706,9 @@ mod tests {
         let lit = result.event(EventKind::Ignition(sustainer)).unwrap().sample;
         assert_eq!(lit.time_s, 3.0);
         // Lit, it is still loaded: the booster spent, the sustainer full.
-        let expected = sim
-            .assembly()
-            .mass_properties_lit(3.0, &[Some(0.0), Some(3.0)]);
+        let mut ignition_s = vec![Some(0.0); sim.assembly().motors.len()];
+        ignition_s[sustainer] = Some(3.0);
+        let expected = sim.assembly().mass_properties_lit(3.0, &ignition_s);
         assert!((lit.mass_kg - expected.mass_kg).abs() < 1e-12 * expected.mass_kg);
         let full = sim.assembly().motors[sustainer]
             .mass_properties(0.0)

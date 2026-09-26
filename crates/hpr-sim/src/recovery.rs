@@ -837,7 +837,7 @@ impl Device {
             Trigger::Time { time_s } => {
                 if !(time_s.is_finite() && time_s >= 0.0) {
                     return Err(SimError::Domain {
-                        what: "deployment time after ignition, s",
+                        what: "deployment time after launch, s",
                         value: time_s,
                     });
                 }
@@ -975,7 +975,7 @@ pub(crate) fn trigger_time_s(
         Trigger::Time { time_s } => {
             if !(time_s.is_finite() && time_s >= 0.0) {
                 return Err(SimError::Domain {
-                    what: "deployment time after ignition, s",
+                    what: "deployment time after launch, s",
                     value: time_s,
                 });
             }
@@ -1078,7 +1078,7 @@ pub(crate) fn plan(
 /// One device's progress through a flight.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct DeviceRun {
-    /// When its charge fired, s after ignition.
+    /// When its charge fired, s after launch.
     pub(crate) triggered_s: Option<f64>,
     /// When it will deploy (line stretch), s: the trigger plus the lag.
     pub(crate) deploy_s: Option<f64>,
@@ -1249,7 +1249,7 @@ impl Run {
 /// One separated body at an instant of its descent.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct BodySample {
-    /// Time since the first ignition, s.
+    /// Time since launch, s.
     pub time_s: f64,
     /// Its centre of mass in the launch frame, m.
     pub cg_enu_m: DVec3,

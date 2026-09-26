@@ -21,10 +21,10 @@
 - **What it leaves out:**
   - **The booster's own airframe drag.** After the split the booster is a point: a mass with only
     its recovery device's drag. So hpr requires a device on it that opens at the separation,
-    usually [tumbling](../glossary.md#tumble-recovery), and refuses the flight otherwise. The
-    tumbling model comes from slow drop tests; from near the speed of sound it stops the booster
-    almost at once, so treat the booster's peak and landing point as rough, likely too low and too
-    close ([#179](https://github.com/nrdptel/hpr-sim/issues/179), a model of the booster's own
+    usually [tumbling](../glossary.md#tumble-recovery), and refuses the flight otherwise. hpr
+    tumbles the booster side-on from the instant it separates, while a real finned booster flies
+    nose-first for a while first, so it slows far faster than a real one would. Treat the
+    booster's peak and landing point as rough, likely too low and too close to the pad ([#179](https://github.com/nrdptel/hpr-sim/issues/179), a model of the booster's own
     drag).
   - Any push from the separation (no charge or spring), the air flowing between the parts as they
     come apart, and the booster's orientation as it falls.
@@ -60,10 +60,11 @@ Before a motor lights it is **loaded**: its full propellant mass sits in the roc
 no thrust. A motor that never lights, because its separation never comes, is carried loaded to the
 ground. Every ignition time known before the flight, and every point of each shifted thrust curve,
 is a [stop time](../glossary.md#stop-time): the integrator ends a step there, so no step starts a
-burn half way through ([Time integration](integration.md)). The design refuses:
+burn half way through ([Time integration](integration.md)). An ignition that waits on a
+separation becomes a stop time when the separation fires. The design refuses:
 
 - a burnout of a mount with no motor, or a chain of burnouts that comes back to the motor itself;
-- a separation ignition in the last stage, which has nothing aft of it to separate;
+- a separation ignition in the aft-most stage, which has nothing aft of it to separate;
 - a time or delay that is negative or not a number.
 
 ## Powered separation
@@ -87,7 +88,8 @@ What hpr refuses:
   before the flight, building the `Simulation` returns the error; otherwise `run` returns it when
   the separation fires, with no flight result.
 - **A booster with nothing open at the split** (see *What it leaves out*, above). A device on the
-  booster with `Trigger::Time { time_s: 0.0 }` and no lag opens there, because a booster's devices
+  booster with `Trigger::Time { time_s: 0.0 }` and no
+  [lag](recovery.md#triggers-lag-and-release) opens there, because a booster's devices
   act only once it flies on its own.
 - **A separation that could never fire**, such as one timed from the burnout of the sustainer it
   lights.
@@ -191,7 +193,7 @@ The booster (1.125 kg) leaves at 2.23 s and 642.7 m, tumbling. It peaks at 745.0
 
 How to read it:
 
-- **The split.** At 2.23 s the stack weighs 1.904 kg. The booster, its stage and a spent J760,
+- **The split.** At 2.23 s the stack weighs 1.904 kg. The booster (its stage and a spent J760)
   takes 1.125 kg of that, so the sustainer flies on at 1.904 − 1.125 = 0.779 kg, which is the mass
   shown when it lights. The booster starts at 642.7 m rather than 643.0 m because its own centre of
   mass sits 0.3 m below the stack's.
@@ -201,8 +203,9 @@ How to read it:
 - **The burn.** The I175 burns for 2.5 s and the mass falls to 0.550 kg: the sustainer's
   structure and a spent motor.
 - **Two landings.** The sustainer lands under its parachute at 3.4 m/s. The booster tumbles from
-  the split, climbs only 102.3 m more (to 745.0 m), and lands at 17.9 m/s. That short climb is the
-  tumbling model applied from near Mach 1, and is likely too short (see *What it leaves out*).
+  the split, climbs only 102.3 m more (to 745.0 m), and lands at 17.9 m/s. That short climb comes
+  from tumbling side-on from near Mach 1 at once, and is likely too short (see *What it leaves
+  out*).
 
 These numbers are not validated: see the note at the top of this page.
 

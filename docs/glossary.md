@@ -130,8 +130,9 @@ used Galejs's constant. RocketPy leaves it out. See [Aerodynamics](physics/aero.
 ## Booster
 
 The aft part of a staged rocket: the stages behind the separation, whose motor lights first and
-which are dropped when the stack separates. In hpr it descends as a point mass under its own recovery device, which must open at the
-separation, and its motors must have burned out by then. See [Staging](physics/staging.md).
+which are dropped when the stack separates. After a powered separation hpr flies it as a point
+mass under its own recovery device, which must open at the separation. Its motors must have burned
+out by then. See [Staging](physics/staging.md).
 
 ## Boundary layer
 
