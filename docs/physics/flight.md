@@ -101,7 +101,10 @@ be matched against it:
 - `T20` gathers every force: `T04`, the weight `W`, the air force `A`, and two terms from the
   rotation, `ω×T03` and `−ω×(ω×m r)`, the second because the centre of mass is not at `O`.
 - `T21` gathers every moment about `O`: from the rotation itself, from the jet and the changing
-  inertia (`Σ ṁ_k S_k − I_O′`), and from the weight, the air and the thrust.
+  inertia (`Σ ṁ_k S_k − I_O′`), and from the weight, the air and the thrust. Its last term,
+  `ω×h + h′`, is for parts that move along the airframe, with `h` their angular momentum about `O`
+  relative to it: zero for a part on the axis, and zero when nothing moves
+  ([Moving mass](moving-mass.md)).
 - The last three lines give the angular acceleration `ω̇`, the nose tip's acceleration `a_O`, and
   the rate at which the attitude `q` changes.
 
@@ -109,7 +112,7 @@ be matched against it:
 T03 = 2 Σ ṁ_k (n_k − r) − 2 m r′
 T04 = T − m r″ − 2 ṁ r′ + Σ m̈_k (n_k − r)
 T20 = −ω×(ω×m r) + ω×T03 + T04 + W + A
-T21 = −ω×(I_O ω) + (Σ ṁ_k S_k − I_O′) ω + r×W + M_A + M_T
+T21 = −ω×(I_O ω) + (Σ ṁ_k S_k − I_O′) ω + r×W + M_A + M_T − ω×h − h′
 ω̇   = I_c⁻¹ (T21 − r × T20)
 a_O = T20/m − ω̇ × r            (then a_L = q a_O q*)
 q̇   = ½ q ⊗ (0, ω)
@@ -151,6 +154,8 @@ q̇   = ½ q ⊗ (0, ω)
   - `m̈_k` differences each motor's mass flow the same way.
   - After burnout (an interval starting past every burnout) the rates are zero, and so are they over
     intervals shorter than 2e-5 s, where differences would be rounding noise.
+  - A part that moves along the airframe adds its own rates in closed form, not by differences
+    ([Moving mass](moving-mass.md)).
 - **Motors at the ends of an interval.** A motor that burns through an interval is evaluated at
   its one-sided limit inside the burn, `t` clamped to `(0, t_end)`. The last stage of the step
   ending at burnout (or the first after ignition) then sees the burning motor, including the

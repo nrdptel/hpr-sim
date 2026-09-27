@@ -13,7 +13,7 @@
 //!
 //! ```text
 //! T20 = −ω×(ω×m r) + ω×(2 Σ ṁ_k (n_k − r) − 2 m r′) + T − m r″ − 2 ṁ r′ + Σ m̈_k (n_k − r) + W + A
-//! T21 = −ω×(I ω) + (Σ ṁ_k S_k − I′) ω + r×W + M_A + M_T
+//! T21 = −ω×(I ω) + (Σ ṁ_k S_k − I′) ω + r×W + M_A + M_T − ω×h − h′
 //! ω̇   = I_c⁻¹ (T21 − r × T20)
 //! a_O = T20/m − ω̇ × r
 //! ```
@@ -24,7 +24,9 @@
 //! `k`'s exit disc of radius `r_e` about `O`. `a_O` is `O`'s acceleration relative to the launch
 //! frame, whose rotation enters only through the Coriolis force (normal gravity already holds the
 //! centrifugal term) and not through the rotational equations (at most 7.3e-5 rad/s; the decision
-//! record on rigid-body flight, [ADR-011][adr-011]).
+//! record on rigid-body flight, [ADR-011][adr-011]). `h = Σ_j m_j ρ_j × ρ_j′` is the angular
+//! momentum about `O`, relative to the airframe, of the parts moving along it ([`crate::shifts`]),
+//! at their centres `ρ_j`: zero for a part on the axis, and zero with no part moving.
 //!
 //! [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 
@@ -35,6 +37,7 @@ use hpr_design::Assembly;
 
 use crate::environment::Environment;
 use crate::error::SimError;
+use crate::shifts::Shifts;
 use crate::state::{STATE_LEN, State};
 
 /// The half-width of the central differences for the mass properties' time derivatives, s.
@@ -101,6 +104,10 @@ pub(crate) struct MassState {
     pub(crate) inertia_cg: DMat3,
     pub(crate) inertia_o: DMat3,
     pub(crate) inertia_o_rate: DMat3,
+    /// The moving parts' angular momentum about `O` relative to the airframe, `h`, kg·m²/s.
+    pub(crate) relative_momentum: DVec3,
+    /// Its body-frame rate, `h′`, N·m.
+    pub(crate) relative_momentum_rate: DVec3,
 }
 
 /// Everything the equations need from a flight at one instant, besides the derivative.
@@ -138,6 +145,8 @@ pub(crate) struct Vehicle {
     /// Each motor's ignition time on the flight's clock, `None` while it has no known time.
     ignition_s: Vec<Option<f64>>,
     reference_area_m2: f64,
+    /// The parts that move along the airframe.
+    pub(crate) shifts: Shifts,
 }
 
 impl Vehicle {
@@ -188,6 +197,7 @@ impl Vehicle {
             motors,
             ignition_s,
             reference_area_m2,
+            shifts: Shifts::default(),
         })
     }
 
@@ -234,7 +244,9 @@ impl Vehicle {
 
     /// The mass properties at `t` and their derivatives, from central differences of
     /// `Assembly::mass_properties` kept inside `window` (the current integration interval), so
-    /// that no difference straddles a thrust-curve knot or a burnout.
+    /// that no difference straddles a thrust-curve knot or a burnout. The parts that move along
+    /// the airframe are then put where they are, with their own rates in closed form
+    /// ([`Shifts::shift_state`]).
     pub(crate) fn mass_state(&self, t: f64, window: (f64, f64)) -> MassState {
         let props = |t: f64| {
             let mp = self.assembly.mass_properties_lit(t, &self.ignition_s);
@@ -260,27 +272,33 @@ impl Vehicle {
             inertia_cg,
             inertia_o,
             inertia_o_rate: DMat3::ZERO,
+            relative_momentum: DVec3::ZERO,
+            relative_momentum_rate: DVec3::ZERO,
         };
-        if !burning || b - a < MIN_DERIVATIVE_INTERVAL_S {
-            return state;
+        let mut mass_second_kg_s2 = 0.0;
+        if burning && b - a >= MIN_DERIVATIVE_INTERVAL_S {
+            let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
+            let c = t.max(a + h).min(b - h);
+            let (m_minus, r_minus, _, i_minus) = props(c - h);
+            let (m_plus, r_plus, _, i_plus) = props(c + h);
+            let (m_mid, r_mid) = if c == t {
+                (mass_kg, cg_m)
+            } else {
+                let (m, r, _, _) = props(c);
+                (m, r)
+            };
+            let offset = t - c;
+            let m_second = (m_plus - 2.0 * m_mid + m_minus) / (h * h);
+            state.mass_rate_kg_s = (m_plus - m_minus) / (2.0 * h) + offset * m_second;
+            let r_second = (r_plus - 2.0 * r_mid + r_minus) / (h * h);
+            state.cg_rate_m_s = (r_plus - r_minus) / (2.0 * h) + offset * r_second;
+            state.cg_accel_m_s2 = r_second;
+            state.inertia_o_rate = (i_plus - i_minus) * (0.5 / h);
+            mass_second_kg_s2 = m_second;
         }
-        let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
-        let c = t.max(a + h).min(b - h);
-        let (m_minus, r_minus, _, i_minus) = props(c - h);
-        let (m_plus, r_plus, _, i_plus) = props(c + h);
-        let (m_mid, r_mid) = if c == t {
-            (mass_kg, cg_m)
-        } else {
-            let (m, r, _, _) = props(c);
-            (m, r)
-        };
-        let offset = t - c;
-        let m_second = (m_plus - 2.0 * m_mid + m_minus) / (h * h);
-        state.mass_rate_kg_s = (m_plus - m_minus) / (2.0 * h) + offset * m_second;
-        let r_second = (r_plus - 2.0 * r_mid + r_minus) / (h * h);
-        state.cg_rate_m_s = (r_plus - r_minus) / (2.0 * h) + offset * r_second;
-        state.cg_accel_m_s2 = r_second;
-        state.inertia_o_rate = (i_plus - i_minus) * (0.5 / h);
+        if !self.shifts.is_empty() {
+            self.shifts.shift_state(&mut state, mass_second_kg_s2, t);
+        }
         state
     }
 
@@ -416,21 +434,13 @@ impl Vehicle {
         let mut rail_force_n = 0.0;
         match phase {
             Phase::Free => {
-                let t20 = -omega.cross(omega.cross(r * m)) + omega.cross(t03) + t04 + forces;
-                let t21 = -omega.cross(mass.inertia_o * omega)
-                    + (jet_gyration - mass.inertia_o_rate) * omega
-                    + r.cross(weight)
-                    + aero.moment
-                    + thrust_moment;
-                let determinant = mass.inertia_cg.determinant();
-                if !(determinant.is_finite() && determinant > 0.0) {
-                    return Err(SimError::Domain {
-                        what: "determinant of the inertia about the centre of mass",
-                        value: determinant,
-                    });
-                }
-                let omega_dot = mass.inertia_cg.inverse() * (t21 - r.cross(t20));
-                let a_body = t20 / m - omega_dot.cross(r);
+                let (a_body, omega_dot) = free_motion(
+                    &mass,
+                    omega,
+                    [t03, t04, forces],
+                    jet_gyration,
+                    [r.cross(weight), aero.moment, thrust_moment],
+                )?;
                 acceleration_enu_m_s2 = q.mul_vec3(a_body);
                 let q_dot = quaternion_derivative(state.attitude, omega);
                 derivative = [
@@ -637,6 +647,38 @@ struct Aerodynamics {
     angle_of_attack_rad: f64,
     dynamic_pressure_pa: f64,
     axial_coefficient: f64,
+}
+
+/// The free-flight equations solved for the nose tip's acceleration `a_O` and the angular
+/// acceleration `ω̇`, both in body axes: `T20` from `[T03, T04, F]` (the Coriolis-like term's
+/// vector, the terms along the axis, and the external force), and `T21` from the jets' gyration
+/// and the moments about `O`, less the moving parts' `ω × h + h′`.
+fn free_motion(
+    mass: &MassState,
+    omega: DVec3,
+    [t03, t04, forces]: [DVec3; 3],
+    jet_gyration: DMat3,
+    [weight_moment, aero_moment, thrust_moment]: [DVec3; 3],
+) -> Result<(DVec3, DVec3), SimError> {
+    let (m, r) = (mass.mass_kg, mass.cg_m);
+    let t20 = -omega.cross(omega.cross(r * m)) + omega.cross(t03) + t04 + forces;
+    let mut t21 = -omega.cross(mass.inertia_o * omega)
+        + (jet_gyration - mass.inertia_o_rate) * omega
+        + weight_moment
+        + aero_moment
+        + thrust_moment;
+    if mass.relative_momentum != DVec3::ZERO || mass.relative_momentum_rate != DVec3::ZERO {
+        t21 -= omega.cross(mass.relative_momentum) + mass.relative_momentum_rate;
+    }
+    let determinant = mass.inertia_cg.determinant();
+    if !(determinant.is_finite() && determinant > 0.0) {
+        return Err(SimError::Domain {
+            what: "determinant of the inertia about the centre of mass",
+            value: determinant,
+        });
+    }
+    let omega_dot = mass.inertia_cg.inverse() * (t21 - r.cross(t20));
+    Ok((t20 / m - omega_dot.cross(r), omega_dot))
 }
 
 /// The drag of the open recovery devices: `D = −½ ρ (C_D S) |v| v` on the centre of mass's air

@@ -162,12 +162,7 @@
   geometry; powered and coast phases with jet damping; adaptive Dormand–Prince 5(4) with dense
   output and event root-finding (liftoff, rail exit, burnout, apogee, ground hit, user events), a
   fixed-step RK4 option; a recorder with a configurable channel set, an observer trait and a
-  `criterion` benchmark.
-
-  *Done when:* analytic tests pass (vacuum ballistic, terminal velocity, torque-free precession,
-  and pitch oscillation frequency vs linear theory); step-halving convergence shows the expected
-  order; events are located to ≤1e-6 s; and a single typical L2 flight simulates in ≤5 ms
-  release-mode (number recorded in `docs/perf.md`).
+  `criterion` benchmark. *Done when:* its four bullets, which M1.6a and M1.6b carry word for word.
 
   - [x] **M1.6a Integrator and events:** adaptive Dormand–Prince 5(4) with dense output, event
     root-finding and stop times that put discontinuities on step boundaries; the fixed-step RK4
@@ -183,10 +178,8 @@
 
 - [x] **M1.7 Recovery.** Parachutes (Cd·S, inflation time or area growth), streamers and tumble;
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
-  independently, landing detection. *Done when:* analytic tests for terminal velocity, descent
-  time and drift pass, and descent rate and drift match RocketPy's for 3 example rockets within
-  3%. *Result:* met by M1.7a; M1.7b and M1.7c add the streamers, tumble and separation the entry
-  lists (ADR-012, ADR-013, ADR-014).
+  independently, landing detection. *Done when:* M1.7a's, word for word. *Result:* met by M1.7a;
+  M1.7b and M1.7c add the streamers, tumble and separation (ADR-012, ADR-013, ADR-014).
 
   - [x] **M1.7a Parachutes and descent:** parachutes (Cd·S, inflation time or area-growth model),
     drogue and main with deployment triggers (apogee, altitude, timer, motor delay), drogue
@@ -221,10 +214,9 @@
     *Done when:* `cargo xtask validate` runs every case in the lock against its stored reference
     and writes `validation/reports/latest.md`; and a case whose metric has no tolerance, a
     reference value with no provenance, and a run with fewer cases than the lock expects each fail.
-    *Result (ADR-015):* met. Five descent cases, 30 metrics, all within 3% with no floor (largest
-    NDRT's northward drift, +2.86%); the command refuses every malformed case the done-when names
-    and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
-    RocketPy's: hpr's gravity had a horizontal part RocketPy's lacks (issue #27).
+    *Result (ADR-015):* met. Five descent cases, 30 metrics, all within 3% (largest NDRT's northward
+    drift, +2.86%); twelve tests refuse each malformed case, four of them L76–L79. Valetudo's
+    northward drift first read 28x RocketPy's: hpr's gravity had a horizontal part (#27).
   - [x] **M2.1b Whole flights against RocketPy, same-drag.** Met in two parts.
     - Loft lessons: L75.
     - [x] **M2.1b1 The whole-flight oracle.** Met: `validation/oracles/rocketpy/flight.py` writes
@@ -234,9 +226,8 @@
       - Loft lessons: L75.
   - [x] **M2.1c Predicted mode, CI and regeneration:** the same cases flown with hpr's own aero,
     reported beside the same-drag ones; a CI job that runs `cargo xtask validate` against the
-    stored references, and a separate, manually triggered workflow that regenerates them.
-    *Done when:* split below into M2.1c1 and M2.1c2, which carry M2.1c's three bullets between
-    them (the first in M2.1c2, the other two in M2.1c1).
+    stored references, and a separate, manually triggered workflow that regenerates them. *Done
+    when:* its three bullets, which M2.1c2 (the first) and M2.1c1 (the other two) carry.
     - [x] **M2.1c1 The CI job and the regeneration workflow.** *Done when:* the CI job is green on
       macOS, Windows and Linux, and the regeneration workflow runs only when a human triggers it,
       its output a diff to review rather than a commit. *Result (ADR-022):* met. `cargo xtask
@@ -711,6 +702,15 @@
   - Mass properties before, during and after a change match hand-computed values, and a release
     conserves mass and momentum.
   - A test shows a moving mass shifting the stability margin as the hand calculation predicts.
+
+  - [x] **M1.12a A mass that moves along the airframe** (ADR-087). *Done when:* the mass properties
+    before, during and after a shift match hand-computed values, the static margin moves as the
+    hand calculation predicts, and a part moving off the axis keeps both momenta in free flight
+    (the relative-motion terms). *Result:* met: 1e-15 m and kg·m², 1e-12 cal (4.30 to 3.00 cal
+    for 200 g moved 0.3 m), momenta to 6.9e-12 against a 1.8% relative angular momentum.
+  - [ ] **M1.12b Mass released in flight.** Ballast or a payload that leaves while the rest flies
+    on in six degrees of freedom. *Done when:* the mass properties after a release match
+    hand-computed values, and a release conserves mass and momentum.
 
 - [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19).
   - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.

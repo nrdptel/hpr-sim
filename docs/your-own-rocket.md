@@ -697,6 +697,16 @@ The example leaves out several kinds of part and setting that a design can have:
   This is checked against exact answers only
   ([Recovery: ejected pieces](physics/recovery.md#ejected-pieces), with the example
   [`ejected_pieces.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/ejected_pieces.rs)).
+- **Mass that moves in flight is yours to declare too.** To slide ballast or a payload along the
+  airframe during the flight, give the flight a `MassShift` for it with `Simulation::with_shifts`:
+  the part's `id`, how far it moves (positive toward the tail), how long it takes, and a trigger,
+  the same kinds a parachute has. The centre of mass, the inertia and the stability margin follow
+  it, and `Simulation::mass_properties` tells you what they were at any time. A shift must start
+  after the rocket leaves the rail. A flight that separates or ejects pieces can't have one yet,
+  and a mass released in flight comes later
+  ([M1.12b](decisions-and-roadmap.md#m1-12b)). This is checked against exact answers only
+  ([Moving mass](physics/moving-mass.md), with the example
+  [`moving_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/moving_ballast.rs)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins

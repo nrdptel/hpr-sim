@@ -162,6 +162,9 @@ flight:
   compared yet, and neither is one that ejects a nose cone or a payload to land on its own: those
   pieces are checked against exact answers only
   ([Recovery: ejected pieces](physics/recovery.md#ejected-pieces)).
+- **Moving mass is checked against exact answers only.** Ballast or a payload that slides along
+  the airframe in flight is compared with hand calculations and conservation laws, not with
+  another simulator or a real flight ([Moving mass](physics/moving-mass.md)).
 - [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
   axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
   modelled, and checked against measurements only from Mach 1.5 up

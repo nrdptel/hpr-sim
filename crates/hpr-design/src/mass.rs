@@ -122,6 +122,31 @@ impl MassProperties {
         }
     }
 
+    /// This body with one of its parts, `part`, moved by `offset_m` inside it: a ballast weight
+    /// slid along the airframe, say. The mass is unchanged; with `M` the whole's mass, `m` the
+    /// part's, `c` its centre before the move and `δ` the offset,
+    ///
+    /// ```text
+    /// cg' = cg + m δ / M
+    /// I'  = I_{cg'} + m [(|c + δ − cg'|² E − (c + δ − cg')(c + δ − cg')ᵀ) − (|c − cg'|² E − (c − cg')(c − cg')ᵀ)]
+    /// ```
+    ///
+    /// where `I_{cg'}` is this body's inertia about the new centre (parallel axis): the part's
+    /// point contribution about the new centre is taken out where it was and put back where it is.
+    /// Its own inertia about its centre moves with it unchanged, so it cancels. `part` must be a
+    /// part of this body; nothing checks that it is.
+    #[must_use]
+    pub fn with_part_moved(&self, part: &MassProperties, offset_m: DVec3) -> Self {
+        let cg = self.cg_m + offset_m * (part.mass_kg / self.mass_kg);
+        let before = offset_tensor(part.cg_m - cg);
+        let after = offset_tensor(part.cg_m + offset_m - cg);
+        Self {
+            mass_kg: self.mass_kg,
+            cg_m: cg,
+            inertia_kg_m2: self.inertia_about(cg) + (after - before) * part.mass_kg,
+        }
+    }
+
     /// The same body turned by `rotation` about the frame origin: `cg' = R cg`, `I' = R I Rᵀ`.
     #[must_use]
     pub fn rotated(&self, rotation: DQuat) -> Self {
@@ -385,6 +410,40 @@ mod tests {
             DMat3::from_diagonal(DVec3::new(4.0, 4.0, 0.0)),
             1e-15,
         );
+    }
+
+    #[test]
+    fn a_part_moved_inside_a_body_gives_the_hand_computed_whole() {
+        // A 4 kg unit cube at the origin (2/3 kg·m² about each axis) holding a 1 kg point at
+        // (0.1, 0, 0), which slides by (0, 0, −0.5). By hand, with M = 5: cg' = (0.02, 0, −0.1),
+        // so the cube sits at d = (−0.02, 0, 0.1) from it and the point at (0.08, 0, −0.4), and
+        // I_xx = 2/3 + 4·0.01 + 0.16, I_yy = 2/3 + 4·0.0104 + 0.1664, I_zz = 2/3 + 4·0.0004 + 0.0064,
+        // I_xz = −(4·(−0.02)·0.1 + 0.08·(−0.4)) = 0.04.
+        let cube = box_body(4.0, DVec3::ONE, DVec3::ZERO);
+        let part = MassProperties::point(1.0, DVec3::new(0.1, 0.0, 0.0));
+        let whole = MassProperties::combine([&cube, &part]);
+        let moved = whole.with_part_moved(&part, DVec3::new(0.0, 0.0, -0.5));
+        assert_eq!(moved.mass_kg, 5.0);
+        assert!((moved.cg_m - DVec3::new(0.02, 0.0, -0.1)).length() < 1e-16);
+        let third = 2.0 / 3.0;
+        let expected = DMat3::from_cols(
+            DVec3::new(third + 0.2, 0.0, 0.04),
+            DVec3::new(0.0, third + 0.208, 0.0),
+            DVec3::new(0.04, 0.0, third + 0.008),
+        );
+        assert_mat_close(moved.inertia_kg_m2, expected, 1e-15);
+        // The same as building the whole again with the part where it now is, and moving it back
+        // gives the whole it started as.
+        let rebuilt =
+            MassProperties::combine([&cube, &part.translated(DVec3::new(0.0, 0.0, -0.5))]);
+        assert!((moved.cg_m - rebuilt.cg_m).length() < 1e-16);
+        assert_mat_close(moved.inertia_kg_m2, rebuilt.inertia_kg_m2, 1e-15);
+        let back = moved.with_part_moved(
+            &part.translated(DVec3::new(0.0, 0.0, -0.5)),
+            DVec3::new(0.0, 0.0, 0.5),
+        );
+        assert!((back.cg_m - whole.cg_m).length() < 1e-16);
+        assert_mat_close(back.inertia_kg_m2, whole.inertia_kg_m2, 1e-15);
     }
 
     #[test]
