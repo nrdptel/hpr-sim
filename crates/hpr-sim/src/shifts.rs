@@ -37,7 +37,8 @@ pub const MIN_SHIFT_DURATION_S: f64 = 0.01;
 
 /// How many equal intervals a shift's time is cut into by stop times, so that an integrator takes
 /// at least this many steps across it: a fixed step as long as the move would take it in one, and
-/// the part's Coriolis-like term would be weighed at a single midpoint.
+/// the part's Coriolis-like term would be weighed at a single midpoint. A numerical detail, which
+/// may change.
 pub const SHIFT_STOPS: usize = 16;
 
 /// A part carried inside the airframe moving along its axis: `travel_m` aft (forward when
@@ -1052,6 +1053,32 @@ mod tests {
             what.starts_with("a mass shift that can take the part out"),
             "{what}"
         );
+        // And one that reaches 2 cm forward of its holder's forward end: aft, not forward.
+        let ballast = past.stages[0].components[1]
+            .children
+            .iter_mut()
+            .find(|child| child.id == "ballast")
+            .unwrap();
+        ballast.position = Some(Position::Top {
+            aft_offset_m: -0.02,
+        });
+        lenient(&past)
+            .with_shifts(vec![move_by("ballast", 0.1)])
+            .unwrap();
+        let (what, _) = shift_refusal(lenient(&past), vec![move_by("ballast", -0.01)]);
+        assert!(
+            what.starts_with("a mass shift that can take the part out"),
+            "{what}"
+        );
+
+        // A stage override of the centre of mass alone is an override too.
+        let mut overridden = with_ballast(0.0);
+        overridden.stages[0].overrides.cg_aft_m = Some(0.5);
+        let (what, _) = shift_refusal(lenient(&overridden), vec![move_by("ballast", 0.1)]);
+        assert!(
+            what.starts_with("a mass shift in a stage whose mass is overridden"),
+            "{what}"
+        );
     }
 
     #[test]
@@ -1071,12 +1098,20 @@ mod tests {
             delay_s: -1.0,
         })]));
         assert!(
-            what.starts_with("the motor, or the delay after its burnout, that starts a mass"),
+            what.starts_with("delay after a motor's burnout, s"),
             "{what}"
         );
         let what = domain(sim().with_shifts(vec![shift(Trigger::MotorDelay { motor: 3 })]));
         assert!(
-            what.starts_with("the motor whose ejection delay starts a mass shift"),
+            what.starts_with("index of the motor whose delay starts a mass shift"),
+            "{what}"
+        );
+        let mut plugged = with_ballast(0.0);
+        plugged.configurations[0].motors[0].delay = None;
+        let what =
+            domain(lenient(&plugged).with_shifts(vec![shift(Trigger::MotorDelay { motor: 0 })]));
+        assert!(
+            what.starts_with("the motor whose delay starts a mass shift has no ejection"),
             "{what}"
         );
         // A motor that never lights has no burnout to count from.
@@ -1099,6 +1134,22 @@ mod tests {
             matches!(&result, Err(SimError::Unsupported { what }) if what.starts_with("a mass shift in a flight with")),
             "{result:?}"
         );
+        // Shifts given after a separation, on the two-stage test design.
+        let two_stage = Simulation::new(
+            &design("synthetic-two-stage-75mm-54mm"),
+            "j760-i175",
+            analytic_environment(UniformAir::sea_level(), G),
+            Rail::vertical(3.0),
+            FlightSettings::default(),
+        )
+        .unwrap()
+        .with_separation(crate::recovery::Separation::new(Trigger::Apogee, 0))
+        .unwrap()
+        .with_shifts(vec![shift(Trigger::Time { time_s: START_S })]);
+        assert!(
+            matches!(&two_stage, Err(SimError::Unsupported { what }) if what.starts_with("a mass shift in a flight with")),
+            "{two_stage:?}"
+        );
         // A shift that would start on the rail is refused when it comes.
         for time_s in [0.0, 0.1] {
             let error = sim()
@@ -1117,27 +1168,37 @@ mod tests {
 
     #[test]
     fn a_canopy_that_opens_while_the_ballast_moves_keeps_the_centre_s_velocity() {
-        // The ballast starts to move at apogee and a drogue opens 0.5 s into the move: the descent
-        // takes the centre's velocity as it was, and once the move is over the descent rate is
-        // the one the rocket has with the ballast held still.
-        let drogue = || {
-            crate::recovery::Device::new(
-                "drogue",
-                crate::recovery::DeviceDrag::canopy(crate::recovery::CanopyType::FlatCircular, 0.6),
-                Trigger::Apogee,
-            )
-            .with_lag_s(0.5)
-        };
-        let moving = simulation(&with_ballast(0.0), FlightSettings::default())
-            .with_recovery(vec![drogue()])
-            .unwrap()
-            .with_shifts(vec![shift(Trigger::Apogee)])
-            .unwrap();
-        let still = simulation(&with_ballast(0.0), FlightSettings::default())
-            .with_recovery(vec![drogue()])
-            .unwrap();
+        // In a vacuum, so the canopy has no air to drag on: the ballast starts to move at apogee
+        // and a drogue opens 0.5 s into the move. The descent takes the centre's velocity as it
+        // was, and from then on only gravity changes it, while the ballast finishes its move and
+        // the nose tip reacts.
+        let drogue = crate::recovery::Device::new(
+            "drogue",
+            crate::recovery::DeviceDrag::canopy(crate::recovery::CanopyType::FlatCircular, 0.6),
+            Trigger::Apogee,
+        )
+        .with_lag_s(0.5);
+        let sim = Simulation::new(
+            &with_ballast(0.0),
+            "i175",
+            analytic_environment(UniformAir::vacuum(), G),
+            Rail::vertical(3.0),
+            FlightSettings {
+                method: Method::DormandPrince54(Adaptive {
+                    relative_tolerance: 1e-12,
+                    absolute_tolerance: 1e-12,
+                    ..Adaptive::default()
+                }),
+                ..FlightSettings::default()
+            },
+        )
+        .unwrap()
+        .with_recovery(vec![drogue])
+        .unwrap()
+        .with_shifts(vec![shift(Trigger::Apogee)])
+        .unwrap();
         let mut ends = Ends::default();
-        let result = moving.run(&mut ends).unwrap();
+        let result = sim.run(&mut ends).unwrap();
         let started = result.event(EventKind::Shift(0)).unwrap().sample.time_s;
         let opened = result.event(EventKind::Deployment(0)).unwrap().sample;
         close(
@@ -1154,14 +1215,51 @@ mod tests {
             .unwrap();
         let jump = (opened.cg_velocity_enu_m_s - before.cg_velocity_enu_m_s).length();
         assert!(jump < 1e-12, "the centre's velocity jumps by {jump:e} m/s");
-        let rate = |result: &FlightResult| result.final_sample.vertical_speed_m_s;
-        let still_result = still.run(&mut ()).unwrap();
-        close(
-            rate(&result),
-            rate(&still_result),
-            1e-6,
-            "the descent rate at landing",
-        );
+        // The ballast is moving then, so the nose tip's velocity differs from the centre's.
+        let relative = (before.state.velocity_enu_m_s - before.cg_velocity_enu_m_s).length();
+        assert!(relative > 0.01, "{relative} m/s");
+        // Through the rest of the move and after it, the centre falls freely.
+        let mut checked = 0;
+        for sample in ends.0.iter().filter(|sample| {
+            sample.phase == crate::Phase::Descent && sample.time_s <= started + 2.0 * DURATION_S
+        }) {
+            let fallen =
+                opened.cg_velocity_enu_m_s - DVec3::Z * (G * (sample.time_s - opened.time_s));
+            let error = (sample.cg_velocity_enu_m_s - fallen).length();
+            assert!(error < 1e-9, "at {} s: {error:e} m/s", sample.time_s);
+            checked += 1;
+        }
+        assert!(checked >= 5, "{checked} samples");
+    }
+
+    #[test]
+    fn a_shift_the_flight_starts_gets_its_stops_too() {
+        // RK4 at 50 ms steps and a 10 ms move from apogee: the stops are inserted when it starts.
+        let sim = simulation(
+            &with_ballast(0.0),
+            FlightSettings {
+                method: Method::Rk4 { step_s: 0.05 },
+                ..FlightSettings::default()
+            },
+        )
+        .with_shifts(vec![MassShift::new(
+            Trigger::Apogee,
+            "ballast",
+            TRAVEL_M,
+            MIN_SHIFT_DURATION_S,
+        )])
+        .unwrap();
+        let mut ends = Ends::default();
+        let result = sim.run(&mut ends).unwrap();
+        let started = result.event(EventKind::Shift(0)).unwrap().sample.time_s;
+        let during = ends
+            .0
+            .iter()
+            .filter(|sample| {
+                sample.time_s > started && sample.time_s <= started + MIN_SHIFT_DURATION_S
+            })
+            .count();
+        assert_eq!(during, SHIFT_STOPS);
     }
 
     #[test]

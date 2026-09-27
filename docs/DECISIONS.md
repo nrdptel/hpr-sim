@@ -7644,9 +7644,9 @@ burns.
   1.8% of the whole, so without `ω × h + h′` the error would be of that order.
 - The closed-form rates match differences of the mass properties during the burn and after it:
   `r′` to 2e-11 m/s, `r″` to 3e-8 of itself (the difference's own error), `I_O′` to 1e-9.
-- A drogue that opens halfway through a move keeps the centre's velocity to 1e-12 m/s, and the
-  rocket lands at the rate it has with the ballast still. Every refusal has a test that checks
-  which rule fired.
+- In a vacuum, a drogue that opens halfway through a move keeps the centre's velocity to
+  1e-12 m/s, and the centre then falls freely to 1e-9 m/s while the ballast finishes. Every
+  refusal has a test that checks which rule fired.
 - A flight with no shift runs the same arithmetic as before: the validation report, the corpus
   flights and the real flights reproduce.
 - Left for later: M1.12b's release; a shift with a separation or ejections; a mass that moves

@@ -614,8 +614,8 @@ impl Simulation {
     ///
     /// [`SimError::Shift`] for a part that can't move ([`MassShift`] says which);
     /// [`SimError::Domain`] for a travel, duration or trigger outside its domain, or a trigger on
-    /// a motor with no ignition known before the flight, which could never fire (and, in flight,
-    /// for a shift that starts before the rocket leaves the rail);
+    /// a motor with no ignition known before the flight, which could never fire (a shift that
+    /// starts before the rocket leaves the rail is refused by [`Self::run`] when it comes);
     /// [`SimError::Unsupported`] with a separation or ejections, whose pieces are fixed before the
     /// flight with every part where the design puts it.
     pub fn with_shifts(mut self, shifts: Vec<MassShift>) -> Result<Self, SimError> {
@@ -634,28 +634,31 @@ impl Simulation {
                     value: height_above_ground_m,
                 });
             }
-            // The check is a device's; its errors are put in a shift's words.
+            // The check is a device's; the errors that name a device are put in a shift's words.
             let start_s = recovery::trigger_time_s(
                 shift.trigger,
                 &self.vehicle.assembly.motors,
                 self.vehicle.ignition_s(),
             )
-            .map_err(|error| match (error, shift.trigger) {
-                (SimError::Domain { value, .. }, Trigger::Time { .. }) => SimError::Domain {
-                    what: "start time of a mass shift after launch, s",
+            .map_err(|error| match error {
+                SimError::Domain { what, value } => SimError::Domain {
+                    what: match what {
+                        "deployment time after launch, s" => {
+                            "start time of a mass shift after launch, s"
+                        }
+                        "index of the motor whose delay fires a device" => {
+                            "index of the motor whose delay starts a mass shift"
+                        }
+                        "the motor firing a device has no ejection delay in seconds (it is \
+                         plugged, or its delay is unset)" => {
+                            "the motor whose delay starts a mass shift has no ejection delay in \
+                             seconds (it is plugged, or its delay is unset)"
+                        }
+                        other => other,
+                    },
                     value,
                 },
-                (SimError::Domain { value, .. }, Trigger::MotorDelay { .. }) => SimError::Domain {
-                    what: "the motor whose ejection delay starts a mass shift (it isn't there, \
-                           or has no delay in seconds that is zero or more)",
-                    value,
-                },
-                (SimError::Domain { value, .. }, Trigger::Burnout { .. }) => SimError::Domain {
-                    what: "the motor, or the delay after its burnout, that starts a mass shift \
-                           (the motor isn't there, or the delay isn't zero or more, s)",
-                    value,
-                },
-                (error, _) => error,
+                other => other,
             })?;
             if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
                 (start_s, shift.trigger)
@@ -877,7 +880,8 @@ impl Simulation {
     /// [`SimError`] from the models or the integrator (other than the step limit, which is a
     /// [`Termination`]), or from the observer. The checks that wait for every builder run here
     /// too: a device on a body nothing makes, and a pushed payload in the nose's piece
-    /// ([`Self::with_ejections`]).
+    /// ([`Self::with_ejections`]). A mass shift that starts before the rocket leaves the rail is
+    /// [`SimError::Domain`] ([`Self::with_shifts`]).
     pub fn run(&self, observer: &mut dyn Observer) -> Result<FlightResult, SimError> {
         self.fly(0.0, self.initial_state(), Phase::Pad, observer)
     }

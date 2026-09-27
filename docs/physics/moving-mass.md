@@ -38,12 +38,13 @@ In code, for a part with the id `ballast` that slides 0.3 m toward the tail over
 after launch:
 
 ```rust,ignore
-let flight = simulation.with_shifts(vec![MassShift::new(
+let simulation = simulation.with_shifts(vec![MassShift::new(
     Trigger::Time { time_s: 5.0 },
     "ballast",
     0.3,
     1.0,
 )])?;
+let flight = simulation.run(&mut ())?;
 ```
 
 The part is any internal component of your design, such as a mass component. Each shift that
@@ -69,7 +70,8 @@ Some parts can't move, and hpr says which rule a refused one breaks:
 A flight with a separation or ejections can't have shifts yet. A shift can't start before the
 rocket leaves the rail either: the rail has no stop at its foot, so a part thrown toward the tail
 on the pad could push the rocket up the rail and leave it hanging there. hpr stops the flight
-with an error if one would.
+with an error if one would. A shift timed close to the rail exit can therefore fly in one flight
+and stop another that leaves the rail later; time it from the burnout or the apogee instead.
 
 **The motion.** A part doesn't jump from one place to the next. It follows a cycloid, the curve a
 cam designer calls cycloidal motion. It starts at rest, speeds up, and slows to rest again. Its
@@ -106,12 +108,12 @@ design puts it, `δ` for the move, `cg_new` for the rocket's new centre, `I_new`
 about that centre, and `J(v) = |v|² E − v vᵀ` (with `E` the unit matrix):
 
 ```text
-I_new = (the rocket's inertia before the move, about cg_new)
+I_new = (the rocket's inertia with the part where it was, taken about cg_new)
         + m [ J(c₀ + δ − cg_new) − J(c₀ − cg_new) ]
 ```
 
 As a check by hand, think of the rocket as two bodies: the part and everything else. About the
-centre of mass, their inertia is each one's own plus `μ J(L)`. Here `μ = m (M − m) / M` is the
+centre of mass, the rocket's inertia is the sum of the two bodies' own inertias plus `μ J(L)`. Here `μ = m (M − m) / M` is the
 reduced mass and `L` is the line from the rest's centre to the part's. Moving the part changes
 only `L`. The tests check hpr's inertia against this formula.
 
@@ -150,8 +152,10 @@ nothing more. In the moment equation it gives `I′ ω`, and also this term:
 `h` is the moving parts' angular momentum about the nose tip, relative to the airframe. `ρ` is a
 part's centre and `ρ′` its velocity inside the airframe. A part only slides, so every point of it
 moves at the same `ρ′`. When the part is on the axis, `ρ` and `ρ′` both lie along the axis and `h`
-is zero. When it is off the axis, `h` is not zero, and hpr carries it: `T21`, the sum of the
-moments about the nose tip in the equations, subtracts `ω × h + h′`.
+is zero. When it is off the axis, `h` is not zero, and hpr carries it. The sum is over the parts
+that move, each with its own `m`, `ρ` and `ρ′`. On the Rigid-body flight page, `T21` is the name
+the equations (from RocketPy's documentation) give the sum of the moments about the nose tip;
+it subtracts `ω × h + h′`.
 
 hpr works out how fast the centre of mass and the inertia change exactly, from the cycloid. For a
 burning motor it still estimates them from points 0.1 ms apart. The two add, so a part can move
@@ -163,7 +167,8 @@ r″ = r_a″ + Σ m (δ″/M − 2 δ′ M′/M² + δ (2 M′²/M³ − M″/M
 I′ = I_a′ + Σ m (2 (c · δ′) E − δ′ cᵀ − c δ′ᵀ)
 ```
 
-Here `r_a` and `I_a` are the rocket's with every part where the design puts it, `M′` and `M″`
+The sums are over the parts that move, each with its own `m`, `δ` and `c`. Here `r_a` and `I_a`
+are the rocket's with every part where the design puts it, `M′` and `M″`
 are how fast its mass changes and how fast that changes (both zero once the motor is out), `δ′`
 and `δ″` are the part's velocity and acceleration along its move, and `c = c₀ + δ` is the
 part's centre now.
@@ -205,7 +210,7 @@ values. By hand it is `−0.0733 / 0.0563 = −1.302`, with `d = 0.0563` m. The 
 ## How it is checked
 
 The tests are in `hpr_sim::shifts` and `hpr_design::mass`. The last column is what each test
-measured, and the bound it holds the code to.
+measured, where it records it, and in brackets the bound it holds the code to.
 
 | test | what it shows | measured (bound) |
 |---|---|---|
@@ -215,17 +220,18 @@ measured, and the bound it holds the code to.
 | `a_part_moving_off_the_axis_keeps_both_momenta_in_free_space` | no air or gravity, the rocket turning about all three axes, the ballast 1 cm off the axis: the angular momentum about the centre and the centre's velocity stay constant | 6.9e-12 of the angular momentum (1e-10), 2.6e-12 m/s (1e-10) |
 | `a_shift_s_rates_are_the_derivatives_of_its_mass_properties` | the exact rates against differences of the mass properties, during the burn and after it | `r′` 2e-11 m/s (1e-9), `r″` 3e-8 of itself (1e-7) |
 | `a_fixed_step_follows_a_short_shift_in_its_stops` | the free-flight case with RK4 at 10 ms steps and a 10 ms move: 16 steps across it | 1.2e-4 m/s (3e-4) |
-| `a_canopy_that_opens_while_the_ballast_moves_keeps_the_centre_s_velocity` | a drogue opening halfway through a move keeps the centre's velocity, and the rocket lands at the rate it has with the ballast still | (1e-12 m/s, 1e-6 m/s) |
+| `a_canopy_that_opens_while_the_ballast_moves_keeps_the_centre_s_velocity` | in a vacuum, a drogue opening halfway through a move keeps the centre's velocity, and from then on the centre falls freely while the ballast finishes its move | (1e-12 m/s at the opening, 1e-9 m/s after) |
+| `a_shift_the_flight_starts_gets_its_stops_too` | a move started at apogee gets its 16 stop times when it starts | exactly 16 steps |
 | `a_shift_starts_at_apogee_or_at_its_height_on_the_way_down` | the triggers the flight watches for start the move at the apogee, and at 200 m on the way down | (1e-6 m) |
 
 The free-flight test is the one that checks the new term. Without `ω × h + h′`, its error would be
 the size of the ballast's own angular momentum relative to the airframe, which peaks at 1.8% of
-the whole. It measures 6.9e-12.
+the rocket's angular momentum. It measures 6.9e-12.
 
 A first version took the part's rates from differences 0.1 ms apart, as the motor's are. In free
 flight it kept the centre's velocity only to 1e-8 m/s, the error of the difference itself, so the
-rates were made exact. With RK4 taking a 10 ms move in a single step, review measured the
-centre's velocity off by 0.071 m/s; the 16 stop times across each move bring it to 1.2e-4.
+rates were made exact. A check with RK4 taking a 10 ms move in a single step found the centre's
+velocity off by 0.071 m/s; the 16 stop times across each move bring it to 1.2e-4.
 
 Every refusal has a test that checks which rule fired, in `shifts_that_cannot_be_made_are_refused`,
 `refusals_that_need_a_design_of_their_own` and
