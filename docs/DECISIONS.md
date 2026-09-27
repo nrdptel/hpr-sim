@@ -93,6 +93,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-085 | Ejected pieces: an airframe that parts at any joint | accepted |
 | ADR-086 | Ejection impulse and tumbling pieces | accepted |
 | ADR-087 | Mass that moves along the airframe | accepted |
+| ADR-088 | Mass released in flight | accepted |
 
 ---
 
@@ -7651,3 +7652,59 @@ burns.
   flights and the real flights reproduce.
 - Left for later: M1.12b's release; a shift with a separation or ejections; a mass that moves
   across the axis or turns.
+
+## ADR-088: Mass released in flight (2026-09-26)
+
+**Context.** M1.12b (ADR-087's split of VISION V18) asks for ballast or a payload that leaves the
+rocket while the rest flies on in six degrees of freedom, with the mass properties after a release
+matching hand-computed values and the release conserving mass and momentum. A separation or an
+ejection already parts the airframe, but once it does every body is a point mass (ADR-085); only
+a powered separation flies a sustainer on in six degrees of freedom, by swapping the vehicle
+under a state that carries across, the nose tip's.
+
+**Decision.**
+
+1. **A `MassRelease` lets one internal part go** (by component id, with everything inside it) on
+   the triggers a recovery device has, as a shift is started (ADR-087): one with a trigger known
+   before the flight comes then, and the flight watches for the apogee and for a height on the
+   way down. The parts a release refuses are a shift's: a body component or an external one, one
+   copy of a cluster's, a part that holds a motor, a part in a stage, or inside a component, whose
+   overridden mass covers it; and a part released twice or inside another that is released. It is
+   refused on the pad or the rail, where the part has nowhere to go.
+2. **The rest flies on by a vehicle swap**, as at a powered separation: the stack's structure
+   loses the part (`MassProperties::without_part`, the parallel-axis theorem run backwards), the
+   state carries straight across, and the integrator restarts at the same instant. The
+   aerodynamics are unchanged: the part was inside the airframe.
+3. **The part leaves at the velocity its centre had in the airframe**, `v_O + ω × c`, from where
+   it was. Every point of a rigid body moves so, so the rest's centre and the part together carry
+   the rocket's mass and momentum exactly; nothing pushes them apart. A spring or a charge that
+   does is left for later, as the ejection impulse was added to ejections in ADR-086.
+4. **The part then falls as a point mass** under a drag area the user gives (`drag_area_m2`,
+   positive): a separated body's equations (ADR-085) with a fixed `C_D S`, to the ground or the
+   time cap, in `FlightResult::released`. A point mass drops the part's own spin, `I_p ω`; its
+   share of the angular momentum is stated with the test. hpr has no model of a small part's
+   tumbling drag, so the area is the user's, and a zero one (a fall as if in a vacuum) is
+   refused.
+5. **No release with a separation, ejections or mass shifts**, in either order: their pieces and
+   parts are fixed before the flight with every part where the design puts it.
+6. **`Simulation::mass_properties(flight, t)`** leaves out a part released at or before `t`.
+
+**Consequences.**
+
+- `releases::tests` holds the milestone's bullets. The 54 mm test design dropping its 200 g of
+  ballast at 5 s: its mass, centre and inertia after the release match the two-body hand
+  calculation to 1e-15 (the rest's inertia is the whole's less the part's own and its reduced
+  mass times `|L|² E − L Lᵀ`), and every step after it flies the rest's mass and centre.
+- In free flight, with no air and no gravity, the rocket turning about all three axes and the
+  ballast 1 cm off the axis, the rest and the part keep the rocket's momentum to 1.5e-13 of
+  itself and its angular momentum about a fixed point to 3.9e-13, over 213 steps. The part
+  leaves at 0.146 m/s relative to the rocket's centre, so leaving out `ω × c` would miss by
+  about 3e-3 of the momentum; its own spin is 2.7e-8 of the angular momentum.
+- Under a drogue in uniform air, a release on the way down leaves the rest landing at the
+  lighter rocket's terminal speed and the part at its own, both to 1e-6 m/s.
+- A flight with no release runs the same arithmetic as before: the separated bodies' equations
+  moved into `Simulation::point_mass_derivative` unchanged, and the validation report, the corpus
+  flights and the real flights reproduce.
+- Left for later: a push at the release; a release in a flight with a separation, ejections or
+  shifts; recovery devices on a released part.
+

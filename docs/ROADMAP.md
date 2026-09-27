@@ -692,25 +692,25 @@
     `J/m` to 1e-9 at both partings (4 m/s on the 250 g payload), momenta to 1e-9; the nose cone
     tumbles down at 13.849 m/s, its `v_e` to 1e-6. Tumble side areas now integrate curved noses.
 
-- [ ] **M1.12 Mass that moves or leaves in flight.** Added by Neer on 2026-09-18 (VISION V18).
+- [x] **M1.12 Mass that moves or leaves in flight.** Added by Neer on 2026-09-18 (VISION V18).
   - Payload mass that moves along the airframe, or leaves it (released ballast or payload), on an
     event or a schedule, with the mass, centre of gravity and inertia updated through the flight.
   - The equations of motion carry the moving mass's relative-motion terms, or an ADR shows, with
     numbers, that they are negligible.
 
-  *Done when:*
-  - Mass properties before, during and after a change match hand-computed values, and a release
-    conserves mass and momentum.
-  - A test shows a moving mass shifting the stability margin as the hand calculation predicts.
+  *Done when (met by M1.12a and b):* mass properties before, during and after a change match
+  hand-computed values, and a release conserves mass and momentum; a test shows a moving mass
+  shifting the stability margin as the hand calculation predicts.
 
   - [x] **M1.12a A mass that moves along the airframe** (ADR-087). *Done when:* the mass properties
     before, during and after a shift match hand-computed values, the static margin moves as the
     hand calculation predicts, and a part moving off the axis keeps both momenta in free flight
     (the relative-motion terms). *Result:* met: 1e-15 m and kg·m², 1e-12 cal (4.30 to 3.00 cal
     for 200 g moved 0.3 m), momenta to 6.9e-12 against a 1.8% relative angular momentum.
-  - [ ] **M1.12b Mass released in flight.** Ballast or a payload that leaves while the rest flies
-    on in six degrees of freedom. *Done when:* the mass properties after a release match
-    hand-computed values, and a release conserves mass and momentum.
+  - [x] **M1.12b Mass released in flight** (ADR-088). Ballast or a payload that leaves while the
+    rest flies on in six degrees of freedom. *Done when:* the mass properties after a release match
+    hand-computed values, and a release conserves mass and momentum. *Result:* met: 1e-15 m, kg,
+    kg·m²; momentum to 1.5e-13, angular momentum 3.9e-13, the part leaving at 0.146 m/s across.
 
 - [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19).
   - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.

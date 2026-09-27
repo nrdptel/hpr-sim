@@ -19,6 +19,7 @@
 //!   separation into bodies that each fly to their own landing.
 //! - [`shifts`]: mass that moves along the airframe in flight, and what it does to the mass
 //!   properties.
+//! - [`releases`]: mass released in flight, the rest flying on and the part falling on its own.
 //! - [`recorder`]: the [`Observer`] trait, flight [`Sample`]s and the channel [`Recorder`].
 //! - [`integrator`]: adaptive Dormand–Prince 5(4) with dense output, and fixed-step RK4, advancing
 //!   to stop times and events.
@@ -48,6 +49,7 @@ pub mod pieces;
 pub mod rail;
 pub mod recorder;
 pub mod recovery;
+pub mod releases;
 pub mod shifts;
 mod staging;
 pub mod state;
@@ -73,6 +75,7 @@ pub use recovery::{
     BodyEvent, BodyFlight, BodySample, CanopyType, Device, DeviceDrag, Inflation, Separation,
     StreamerModel, Trigger, terminal_speed_m_s,
 };
+pub use releases::{MassRelease, ReleasedFlight};
 pub use shifts::{MIN_SHIFT_DURATION_S, MassShift};
 pub use state::{STATE_LEN, State};
 

@@ -53,6 +53,7 @@ use crate::pieces::{Ejection, Pieces};
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
 use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Separation, Trigger};
+use crate::releases::{MassRelease, ReleasedFlight, Releases};
 use crate::shifts::{MassShift, Shifts};
 use crate::staging::Sustainer;
 use crate::state::{STATE_LEN, State};
@@ -60,6 +61,43 @@ use crate::state::{STATE_LEN, State};
 /// The airspeed below which a body with no attitude of its own is taken to be still in the air, m/s:
 /// the way an ejection's push points is then up rather than along its drift (ADR-086).
 const STILL_AIR_M_S: f64 = 1e-3;
+
+/// How the refusals of a trigger read for a mass shift or a mass release, where a device's would
+/// name a device.
+struct TriggerWords {
+    /// A height that is not positive and finite.
+    height: &'static str,
+    /// A time before launch.
+    time: &'static str,
+    /// A motor that isn't there, for a delay.
+    delay_motor: &'static str,
+    /// A motor with no ejection delay in seconds.
+    no_delay: &'static str,
+    /// A motor with no ignition known before the flight.
+    never: &'static str,
+}
+
+/// A mass shift's words.
+const SHIFT_WORDS: TriggerWords = TriggerWords {
+    height: "height above the launch site at which a part starts to move, m",
+    time: "start time of a mass shift after launch, s",
+    delay_motor: "index of the motor whose delay starts a mass shift",
+    no_delay: "the motor whose delay starts a mass shift has no ejection delay in seconds (it is \
+               plugged, or its delay is unset)",
+    never: "index of the motor a mass shift is timed from (it has no ignition time before the \
+            flight, so the shift could never start)",
+};
+
+/// A mass release's words.
+const RELEASE_WORDS: TriggerWords = TriggerWords {
+    height: "height above the launch site at which a part is released, m",
+    time: "time of a mass release after launch, s",
+    delay_motor: "index of the motor whose delay releases a part",
+    no_delay: "the motor whose delay releases a part has no ejection delay in seconds (it is \
+               plugged, or its delay is unset)",
+    never: "index of the motor a mass release is timed from (it has no ignition time before the \
+            flight, so the part could never be released)",
+};
 
 /// How a flight is integrated and when it gives up.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -124,6 +162,10 @@ pub enum EventKind {
     /// A part started to move along the airframe, by its index in the flight's mass shifts
     /// ([`crate::MassShift`]).
     Shift(usize),
+    /// A part left the airframe, by its index in the flight's mass releases
+    /// ([`crate::MassRelease`]); its own flight is in [`FlightResult::released`], and the event's
+    /// sample is the rocket just before it left.
+    MassRelease(usize),
     /// A user event, by its index in the order added.
     User(usize),
     /// A motor lit after launch, by its index in [`hpr_design::Assembly::motors`].
@@ -180,6 +222,10 @@ pub struct FlightResult {
     /// flight is the rest of this result), and none otherwise.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bodies: Vec<BodyFlight>,
+    /// The flights of the parts released in flight ([`crate::MassRelease`]), in the order they
+    /// left; none without releases. They are not among [`Self::bodies`] or [`Self::landings`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub released: Vec<ReleasedFlight>,
 }
 
 impl FlightResult {
@@ -273,6 +319,12 @@ pub struct Simulation {
     ejection_times_s: Vec<Option<f64>>,
     /// The parts that move along the airframe, in the order given.
     shifts: Vec<MassShift>,
+    /// The parts released in flight, in the order given.
+    releases: Vec<MassRelease>,
+    /// Each released part as the design places it.
+    release_parts: Releases,
+    /// Each release's trigger time, when it is one that is known before the flight.
+    release_times_s: Vec<Option<f64>>,
     /// The design, kept to build a sustainer's models from at a powered separation.
     rocket: Rocket,
     /// The configuration flown.
@@ -338,6 +390,9 @@ impl Simulation {
             ejections: Vec::new(),
             ejection_times_s: Vec::new(),
             shifts: Vec::new(),
+            releases: Vec::new(),
+            release_parts: Releases::default(),
+            release_times_s: Vec::new(),
             rocket: rocket.clone(),
             configuration_id: configuration_id.to_owned(),
             aero_overridden: false,
@@ -622,54 +677,12 @@ impl Simulation {
         if !shifts.is_empty() && self.parts() {
             return Err(Self::shifts_and_partings());
         }
+        if !shifts.is_empty() && !self.releases.is_empty() {
+            return Err(Self::releases_and_shifts());
+        }
         let mut starts_s = Vec::with_capacity(shifts.len());
         for shift in &shifts {
-            if let Trigger::Altitude {
-                height_above_ground_m,
-            } = shift.trigger
-                && !(height_above_ground_m.is_finite() && height_above_ground_m > 0.0)
-            {
-                return Err(SimError::Domain {
-                    what: "height above the launch site at which a part starts to move, m",
-                    value: height_above_ground_m,
-                });
-            }
-            // The check is a device's; the errors that name a device are put in a shift's words.
-            let start_s = recovery::trigger_time_s(
-                shift.trigger,
-                &self.vehicle.assembly.motors,
-                self.vehicle.ignition_s(),
-            )
-            .map_err(|error| match error {
-                SimError::Domain { what, value } => SimError::Domain {
-                    what: match what {
-                        "deployment time after launch, s" => {
-                            "start time of a mass shift after launch, s"
-                        }
-                        "index of the motor whose delay fires a device" => {
-                            "index of the motor whose delay starts a mass shift"
-                        }
-                        "the motor firing a device has no ejection delay in seconds (it is \
-                         plugged, or its delay is unset)" => {
-                            "the motor whose delay starts a mass shift has no ejection delay in \
-                             seconds (it is plugged, or its delay is unset)"
-                        }
-                        other => other,
-                    },
-                    value,
-                },
-                other => other,
-            })?;
-            if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
-                (start_s, shift.trigger)
-            {
-                return Err(SimError::Domain {
-                    what: "index of the motor a mass shift is timed from (it has no ignition \
-                           time before the flight, so the shift could never start)",
-                    value: motor as f64,
-                });
-            }
-            starts_s.push(start_s);
+            starts_s.push(self.planned_s(shift.trigger, &SHIFT_WORDS)?);
         }
         self.vehicle.shifts =
             Shifts::new(&self.rocket, &self.vehicle.assembly, &shifts, &starts_s)?;
@@ -683,13 +696,92 @@ impl Simulation {
         &self.shifts
     }
 
+    /// Flies with parts released in flight ([`MassRelease`]), in the order given: a release's
+    /// index in this list names it in [`EventKind::MassRelease`] and in
+    /// [`FlightResult::released`]. A release with a trigger known before the flight (a time, or a
+    /// motor's burnout or delay) comes then; the flight watches for the apogee and for a height,
+    /// descending, as it does for a recovery device's.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Release`] for a part that can't be released ([`MassRelease`] says which);
+    /// [`SimError::Domain`] for a drag area or trigger outside its domain, or a trigger on a
+    /// motor with no ignition known before the flight, which could never fire (a release that
+    /// comes before the rocket leaves the rail is refused by [`Self::run`] when it comes);
+    /// [`SimError::Unsupported`] with a separation, ejections or mass shifts, whose parts are
+    /// fixed before the flight with every part where the design puts it.
+    pub fn with_releases(mut self, releases: Vec<MassRelease>) -> Result<Self, SimError> {
+        if !releases.is_empty() && (self.parts() || !self.shifts.is_empty()) {
+            return Err(Self::releases_and_shifts());
+        }
+        let mut times_s = Vec::with_capacity(releases.len());
+        for release in &releases {
+            times_s.push(self.planned_s(release.trigger, &RELEASE_WORDS)?);
+        }
+        self.release_parts = Releases::new(&self.rocket, &self.vehicle.assembly, &releases)?;
+        self.release_times_s = times_s;
+        self.releases = releases;
+        Ok(self)
+    }
+
+    /// The releases, in the order given.
+    #[must_use]
+    pub fn releases(&self) -> &[MassRelease] {
+        &self.releases
+    }
+
+    /// The time a shift's or a release's `trigger` gives before the flight, if it gives one,
+    /// refusing a trigger outside its domain in `words`. The checks are a device's; the errors
+    /// that name a device are put in `words`.
+    fn planned_s(&self, trigger: Trigger, words: &TriggerWords) -> Result<Option<f64>, SimError> {
+        if let Trigger::Altitude {
+            height_above_ground_m,
+        } = trigger
+            && !(height_above_ground_m.is_finite() && height_above_ground_m > 0.0)
+        {
+            return Err(SimError::Domain {
+                what: words.height,
+                value: height_above_ground_m,
+            });
+        }
+        let time_s = recovery::trigger_time_s(
+            trigger,
+            &self.vehicle.assembly.motors,
+            self.vehicle.ignition_s(),
+        )
+        .map_err(|error| match error {
+            SimError::Domain { what, value } => SimError::Domain {
+                what: match what {
+                    "deployment time after launch, s" => words.time,
+                    "index of the motor whose delay fires a device" => words.delay_motor,
+                    "the motor firing a device has no ejection delay in seconds (it is plugged, \
+                     or its delay is unset)" => words.no_delay,
+                    other => other,
+                },
+                value,
+            },
+            other => other,
+        })?;
+        if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
+            (time_s, trigger)
+        {
+            return Err(SimError::Domain {
+                what: words.never,
+                value: motor as f64,
+            });
+        }
+        Ok(time_s)
+    }
+
     /// The stack's mass properties at `t_s` as `flight` flew it: the design's, its motors burned
     /// to `t_s`, with each part that moves where it was then. `flight` must be a flight of this
     /// simulation; nothing checks that it is. A shift whose trigger is known before the flight (a
     /// time, or a motor's burnout or delay) starts then, whether or not `flight` got that far; one
     /// the flight watched for starts where `flight` records it ([`EventKind::Shift`]), and hasn't
-    /// started if it doesn't. They are the whole stack's, in body axes about its centre of mass,
-    /// before any separation (and a flight with a separation has no shifts).
+    /// started if it doesn't. A part released at or before `t_s` is gone: its release came when
+    /// its trigger's time is known before the flight, and otherwise where `flight` records it
+    /// ([`EventKind::MassRelease`]). They are the whole stack's, in body axes about its centre of
+    /// mass, before any separation (and a flight with a separation has no shifts or releases).
     #[must_use]
     pub fn mass_properties(&self, flight: &FlightResult, t_s: f64) -> hpr_design::MassProperties {
         let mut shifts = self.vehicle.shifts.clone();
@@ -698,19 +790,47 @@ impl Simulation {
                 shifts.start(index, event.sample.time_s);
             }
         }
-        let whole = self
-            .vehicle
-            .assembly
-            .mass_properties_lit(t_s, self.vehicle.ignition_s());
+        let gone: Vec<usize> = (0..self.releases.len())
+            .filter(|&index| {
+                self.release_times_s[index]
+                    .or_else(|| {
+                        flight
+                            .event(EventKind::MassRelease(index))
+                            .map(|event| event.sample.time_s)
+                    })
+                    .is_some_and(|time_s| time_s <= t_s)
+            })
+            .collect();
+        let whole = if gone.is_empty() {
+            self.vehicle
+                .assembly
+                .mass_properties_lit(t_s, self.vehicle.ignition_s())
+        } else {
+            let mut assembly = self.vehicle.assembly.clone();
+            for index in gone {
+                lighten(&mut assembly, self.release_parts.part(index));
+            }
+            assembly.mass_properties_lit(t_s, self.vehicle.ignition_s())
+        };
         shifts.apply(whole, t_s)
     }
 
-    /// Refuses a separation or ejections in a flight with mass shifts.
+    /// Refuses a separation or ejections in a flight with mass shifts or releases.
     fn check_no_shifts(&self) -> Result<(), SimError> {
-        if self.shifts.is_empty() {
+        if !self.releases.is_empty() {
+            Err(Self::releases_and_shifts())
+        } else if self.shifts.is_empty() {
             Ok(())
         } else {
             Err(Self::shifts_and_partings())
+        }
+    }
+
+    /// The refusal of mass releases with a separation, ejections or mass shifts.
+    fn releases_and_shifts() -> SimError {
+        SimError::Unsupported {
+            what: "a mass release in a flight with a separation, ejections or mass shifts (the \
+                   parts are fixed before the flight, with every part where the design puts it)",
         }
     }
 
@@ -866,6 +986,9 @@ impl Simulation {
             ejections: self.ejections.clone(),
             ejection_times_s: self.ejection_times_s.clone(),
             shifts: self.shifts.clone(),
+            releases: self.releases.clone(),
+            release_parts: self.release_parts.clone(),
+            release_times_s: self.release_times_s.clone(),
             rocket: self.rocket.clone(),
             configuration_id: self.configuration_id.clone(),
             aero_overridden: self.aero_overridden,
@@ -1008,6 +1131,22 @@ impl Simulation {
                     .is_some_and(|start_s| start_s < t0)
             })
             .collect();
+        // Which parts have left; one that left before the flight's start isn't recorded, and the
+        // stack starts without it.
+        let mut released: Vec<bool> = self
+            .release_times_s
+            .iter()
+            .map(|time| time.is_some_and(|time_s| time_s < t0))
+            .collect();
+        // The stack once a part has left it.
+        let mut lightened: Option<Vehicle> = released.contains(&true).then(|| {
+            let mut stack = self.vehicle.clone();
+            for index in (0..released.len()).filter(|&index| released[index]) {
+                lighten(&mut stack.assembly, self.release_parts.part(index));
+            }
+            stack
+        });
+        let mut released_flights: Vec<ReleasedFlight> = Vec::new();
         let mut staged = false;
         let mut booster: Vec<BodyFlight> = Vec::new();
         let mut stops = self.vehicle.thrust_knots_s();
@@ -1016,6 +1155,7 @@ impl Simulation {
         stops.extend(self.separation_time_s);
         stops.extend(self.ejection_times_s.iter().flatten().copied());
         stops.extend(self.vehicle.shifts.knots_s());
+        stops.extend(self.release_times_s.iter().flatten().copied());
         stops.retain(|t| *t <= cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
@@ -1111,9 +1251,91 @@ impl Simulation {
                 let sample = self.sample(stack, phase, window, t, &y, area)?;
                 record(&mut events, observer, EventKind::Shift(index), sample);
             }
+
+            // Mass releases: one whose time is known comes at that stop time; the flight watches
+            // for the apogee and the heights of the rest, as it does for a device's. The part
+            // leaves with the velocity its centre had in the airframe, the stack flies on from
+            // the same state without it, and the part falls on its own.
+            let mut lost = false;
+            for (index, gone) in released.iter_mut().enumerate() {
+                if *gone {
+                    continue;
+                }
+                let stack = lightened.as_ref().unwrap_or(&self.vehicle);
+                let window = (t, next_stop(&stops, t, cap));
+                let area = self.ascent_drag_area_m2(&run, t);
+                let leaves = match self.release_times_s[index] {
+                    Some(time_s) => t >= time_s,
+                    None if matches!(phase, Phase::Free | Phase::Descent) => {
+                        match self.releases[index].trigger {
+                            // At or past the apogee, as a device's apogee trigger is.
+                            Trigger::Apogee => {
+                                self.evaluate(stack, phase, window, t, &y, area)?
+                                    .vertical_speed_m_s
+                                    <= 0.0
+                            }
+                            Trigger::Altitude {
+                                height_above_ground_m,
+                            } => {
+                                let e = self.evaluate(stack, phase, window, t, &y, area)?;
+                                e.vertical_speed_m_s < 0.0
+                                    && e.height_above_ground_m <= height_above_ground_m
+                            }
+                            Trigger::Time { .. }
+                            | Trigger::MotorDelay { .. }
+                            | Trigger::Burnout { .. } => false,
+                        }
+                    }
+                    None => false,
+                };
+                if !leaves {
+                    continue;
+                }
+                if matches!(phase, Phase::Pad | Phase::Rail) {
+                    // On the pad or the rail the part has nowhere to go.
+                    return Err(SimError::Domain {
+                        what: "time of a mass release, s (it must come once the rocket has left \
+                               the rail)",
+                        value: t,
+                    });
+                }
+                let sample = self.sample(stack, phase, window, t, &y, area)?;
+                record(&mut events, observer, EventKind::MassRelease(index), sample);
+                // Its centre, and the velocity that point had: `v_O + ω × c` in `L` (the body
+                // rates are zero in the descent, whose attitude is frozen).
+                let part = self.release_parts.part(index);
+                let state = State::from_array(&y);
+                let omega = if phase == Phase::Free {
+                    state.body_rate_rad_s
+                } else {
+                    DVec3::ZERO
+                };
+                let velocity_enu_m_s =
+                    state.velocity_enu_m_s + state.unit_attitude().mul_vec3(omega.cross(part.cg_m));
+                released_flights.push(self.fly_released(
+                    index,
+                    t,
+                    (state.point_enu_m(part.cg_m), velocity_enu_m_s),
+                    part.mass_kg,
+                )?);
+                lighten(
+                    &mut lightened
+                        .get_or_insert_with(|| self.vehicle.clone())
+                        .assembly,
+                    part,
+                );
+                *gone = true;
+                lost = true;
+            }
+            if lost {
+                // The mass steps here, so the integrator starts afresh from the same state: the
+                // nose tip's, which the stack keeps.
+                integrator.reset(t, y)?;
+            }
             let vehicle = sustainer
                 .as_ref()
                 .or(shifted.as_ref())
+                .or(lightened.as_ref())
                 .unwrap_or(&self.vehicle);
 
             // Motors lit after launch: their ignitions are stop times, so each is found here at
@@ -1472,7 +1694,12 @@ impl Simulation {
                     };
                 }
             }
-            let watches = self.watches(phase, &run, !staged && !separation_held, &shift_started);
+            let watches = self.watches(
+                phase,
+                &run,
+                !staged && !separation_held,
+                (&shift_started, &released),
+            );
             let mut system = PhaseSystem {
                 simulation: self,
                 vehicle,
@@ -1576,10 +1803,12 @@ impl Simulation {
                             }
                             Watch::SeparationHeight
                             | Watch::EjectionHeight(_)
-                            | Watch::ShiftHeight(_) => {
-                                // The separation, ejection or shift itself fires at the top of
-                                // the next pass, which is where its burnout check and its bodies
-                                // live, and where a shift's start is set.
+                            | Watch::ShiftHeight(_)
+                            | Watch::ReleaseHeight(_) => {
+                                // The separation, ejection, shift or release itself fires at the
+                                // top of the next pass, which is where its burnout check and its
+                                // bodies live, where a shift's start is set, and where a part
+                                // leaves.
                             }
                             Watch::User(user) => {
                                 let sample = self.sample(vehicle, phase, window, t, &y, area)?;
@@ -1607,6 +1836,7 @@ impl Simulation {
         let vehicle = sustainer
             .as_ref()
             .or(shifted.as_ref())
+            .or(lightened.as_ref())
             .unwrap_or(&self.vehicle);
         let next = next_stop(&stops, t, f64::INFINITY);
         let area = self.ascent_drag_area_m2(&run, t);
@@ -1632,6 +1862,7 @@ impl Simulation {
             final_sample,
             stats: integrator.stats(),
             bodies,
+            released: released_flights,
         })
     }
 
@@ -2089,6 +2320,18 @@ impl Simulation {
         y: &[f64; 6],
         run: &Run,
     ) -> Result<BodySample, SimError> {
+        self.point_sample(t, y, mass_kg, run.body_drag_area_m2(&self.devices, body, t))
+    }
+
+    /// A point mass of `mass_kg` under drag area `drag_area_m2` at `(t, y)`, where `y` is its
+    /// position and velocity in the launch frame: a separated body, or a released part.
+    pub(crate) fn point_sample(
+        &self,
+        t: f64,
+        y: &[f64; 6],
+        mass_kg: f64,
+        drag_area_m2: f64,
+    ) -> Result<BodySample, SimError> {
         let cg_enu_m = DVec3::new(y[0], y[1], y[2]);
         let velocity_enu_m_s = DVec3::new(y[3], y[4], y[5]);
         let frame = self.environment.earth.frame();
@@ -2102,9 +2345,49 @@ impl Simulation {
             height_above_ground_m,
             vertical_speed_m_s: up_enu.dot(velocity_enu_m_s),
             airspeed_m_s: (velocity_enu_m_s - wind_enu).length(),
-            recovery_drag_area_m2: run.body_drag_area_m2(&self.devices, body, t),
+            recovery_drag_area_m2: drag_area_m2,
             mass_kg,
         })
+    }
+
+    /// The rates of a point mass of `mass_kg` under drag area `drag_area_m2`, whose position and
+    /// velocity in the launch frame are `y`: a separated body, or a released part. The equations
+    /// are the descent phase's (`docs/physics/recovery.md`) with no thrust and no airframe:
+    /// `m a = −½ ρ (C_D S) |v − w| (v − w) + m (g + a_Coriolis)`.
+    pub(crate) fn point_mass_derivative(
+        &self,
+        y: &[f64; 6],
+        mass_kg: f64,
+        drag_area_m2: f64,
+    ) -> Result<[f64; 6], SimError> {
+        let cg_enu_m = DVec3::new(y[0], y[1], y[2]);
+        let velocity_enu_m_s = DVec3::new(y[3], y[4], y[5]);
+        let environment = &self.environment;
+        let frame = environment.earth.frame();
+        let geodetic = frame.geodetic_from_enu(cg_enu_m)?;
+        let height_msl_m = geodetic.height_m - environment.geoid_undulation_m;
+        let air = environment.atmosphere.air(height_msl_m)?.air;
+        let wind_enu = environment.wind.wind(height_msl_m)?.velocity_enu_m_s;
+        let gravity_enu = environment.earth.gravity_enu_mps2(cg_enu_m)?;
+        let coriolis_enu = environment
+            .earth
+            .rotation_acceleration_enu_mps2(velocity_enu_m_s);
+        let air_velocity = velocity_enu_m_s - wind_enu;
+        let speed = air_velocity.length();
+        let drag_enu = if air.density_kg_m3 > 0.0 && speed > 0.0 && drag_area_m2 > 0.0 {
+            air_velocity * (-0.5 * air.density_kg_m3 * drag_area_m2 * speed / mass_kg)
+        } else {
+            DVec3::ZERO
+        };
+        let acceleration = drag_enu + gravity_enu + coriolis_enu;
+        Ok([
+            velocity_enu_m_s.x,
+            velocity_enu_m_s.y,
+            velocity_enu_m_s.z,
+            acceleration.x,
+            acceleration.y,
+            acceleration.z,
+        ])
     }
 
     /// The way the nose of a body with no attitude of its own is taken to point, as a unit vector
@@ -2253,7 +2536,7 @@ impl Simulation {
         phase: Phase,
         run: &Run,
         separation_pending: bool,
-        shift_started: &[bool],
+        (shift_started, released): (&[bool], &[bool]),
     ) -> Vec<Watch> {
         match phase {
             Phase::Pad => vec![Watch::RailForce],
@@ -2289,6 +2572,13 @@ impl Simulation {
                         && !shift_started.get(index).copied().unwrap_or(true)
                     {
                         watches.push(Watch::ShiftHeight(index));
+                    }
+                }
+                for (index, release) in self.releases.iter().enumerate() {
+                    if matches!(release.trigger, Trigger::Altitude { .. })
+                        && !released.get(index).copied().unwrap_or(true)
+                    {
+                        watches.push(Watch::ReleaseHeight(index));
                     }
                 }
                 watches.extend((0..self.user_events.len()).map(Watch::User));
@@ -2385,6 +2675,8 @@ enum Watch {
     EjectionHeight(usize),
     /// A mass shift's height, descending, by its index.
     ShiftHeight(usize),
+    /// A mass release's height, descending, by its index.
+    ReleaseHeight(usize),
     /// A user event.
     User(usize),
 }
@@ -2417,6 +2709,11 @@ impl Split<'_> {
             .filter(|&index| !self.open[index] && leaders[index + 1] == body)
             .collect()
     }
+}
+
+/// Takes `part` out of `assembly`'s structure: a part released in flight.
+fn lighten(assembly: &mut hpr_design::Assembly, part: &hpr_design::MassProperties) {
+    assembly.layout.structure = assembly.layout.structure.without_part(part);
 }
 
 /// A body's mass, refused unless it is finite and positive.
@@ -2461,37 +2758,11 @@ impl OdeSystem<6> for BodySystem<'_> {
     type Error = SimError;
 
     fn derivative(&mut self, t_s: f64, y: &[f64; 6]) -> Result<[f64; 6], SimError> {
-        let cg_enu_m = DVec3::new(y[0], y[1], y[2]);
-        let velocity_enu_m_s = DVec3::new(y[3], y[4], y[5]);
-        let environment = &self.simulation.environment;
-        let frame = environment.earth.frame();
-        let geodetic = frame.geodetic_from_enu(cg_enu_m)?;
-        let height_msl_m = geodetic.height_m - environment.geoid_undulation_m;
-        let air = environment.atmosphere.air(height_msl_m)?.air;
-        let wind_enu = environment.wind.wind(height_msl_m)?.velocity_enu_m_s;
-        let gravity_enu = environment.earth.gravity_enu_mps2(cg_enu_m)?;
-        let coriolis_enu = environment
-            .earth
-            .rotation_acceleration_enu_mps2(velocity_enu_m_s);
         let drag_area_m2 = self
             .run
             .body_drag_area_m2(&self.simulation.devices, self.body, t_s);
-        let air_velocity = velocity_enu_m_s - wind_enu;
-        let speed = air_velocity.length();
-        let drag_enu = if air.density_kg_m3 > 0.0 && speed > 0.0 && drag_area_m2 > 0.0 {
-            air_velocity * (-0.5 * air.density_kg_m3 * drag_area_m2 * speed / self.mass_kg)
-        } else {
-            DVec3::ZERO
-        };
-        let acceleration = drag_enu + gravity_enu + coriolis_enu;
-        Ok([
-            velocity_enu_m_s.x,
-            velocity_enu_m_s.y,
-            velocity_enu_m_s.z,
-            acceleration.x,
-            acceleration.y,
-            acceleration.z,
-        ])
+        self.simulation
+            .point_mass_derivative(y, self.mass_kg, drag_area_m2)
     }
 
     fn event_count(&self) -> usize {
@@ -2640,7 +2911,8 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                 | Watch::Altitude(_)
                 | Watch::SeparationHeight
                 | Watch::EjectionHeight(_)
-                | Watch::ShiftHeight(_),
+                | Watch::ShiftHeight(_)
+                | Watch::ReleaseHeight(_),
             ) => Direction::Falling,
             Some(Watch::User(user)) => self
                 .simulation
@@ -2684,13 +2956,19 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                     .map(|e| e.height_above_ground_m - height_m);
                 self.or_fail(value)
             }
-            Watch::SeparationHeight | Watch::EjectionHeight(_) | Watch::ShiftHeight(_) => {
+            Watch::SeparationHeight
+            | Watch::EjectionHeight(_)
+            | Watch::ShiftHeight(_)
+            | Watch::ReleaseHeight(_) => {
                 let trigger = match watch {
                     Watch::EjectionHeight(index) => {
                         self.simulation.ejections.get(index).map(|e| e.trigger)
                     }
                     Watch::ShiftHeight(index) => {
                         self.simulation.shifts.get(index).map(|s| s.trigger)
+                    }
+                    Watch::ReleaseHeight(index) => {
+                        self.simulation.releases.get(index).map(|r| r.trigger)
                     }
                     _ => self.simulation.separation.map(|s| s.trigger),
                 };
