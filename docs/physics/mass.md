@@ -14,13 +14,13 @@
   cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
   their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Against
   [OpenRocket](../glossary.md#openrocket) 24.12, on the structure (the rocket without motors) of
-  71 compared designs: the mass is within 1% on 62 and the centre of mass within 1% of the rocket's
-  length on 63. Every file outside either shows a difference hpr names in a warning. The roll
+  71 compared designs: the mass is within 1% on 65 and the centre of mass within 1% of the rocket's
+  length on 66. Every file outside either shows a difference hpr names in a warning. The roll
   inertia is a median 1.686% apart, and that is explained: OpenRocket takes a shortcut for fins that
   hpr does not, and hpr's figure is the exact one for the fin as drawn
   ([below](#fins-rail-buttons-and-roll-inertia)); on the four files with a cluster (two designs by content), OpenRocket
   also stacks the tubes on the cluster's axis ([below](#clusters-and-fillets)). The pitch inertia
-  is within 1% on 54, and the rest have no named cause yet. Not compared with weighed parts or a real flight
+  is within 1% on 55, and the rest have no named cause yet. Not compared with weighed parts or a real flight
   ([checked against OpenRocket](#checked-against-openrocket)).
 - **What it leaves out:** fin fillets, the sliver between a flat fin root and the round tube, and
   the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Where a `.ork`
@@ -32,7 +32,7 @@
   recovery gear and mass components are OpenRocket's too, down to the size one takes when its file
   writes none ([below](#packed-parts)). A cluster's inertia differs from OpenRocket's on purpose, since OpenRocket stacks the tubes
   on the axis and hpr weighs each where it sits, and fin fillets remain a measured, visible
-  departure ([below](#clusters-and-fillets)); designs with parts hpr does not read (pods, parallel stages and
+  departure ([below](#clusters-and-fillets)); designs with parts hpr does not read (parallel stages and
   five skipped parts across three kinds) are retained as reduced designs ([the format guide](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)).
 
 ## Code and sources
@@ -229,37 +229,39 @@ numbers match to 15 digits, and so does hpr's layout of the same file (the test
 The thresholds, 1% of the mass and 1% of the length, were set before any design was measured. A
 design outside either needs a written reason, not a pass.
 
-**The results.**
+**The results**, as `cargo xtask ork` printed them on 2026-09-27, after
+[M1.13b](../decisions-and-roadmap.md#m1-13b) read every pod set.
 
 | | within 0.1% | within 1% | median |
 |---|---|---|---|
-| mass | 55 of 71 | 62 of 71 | 0.001% |
-| centre of mass (share of length) | 58 of 71 | 63 of 71 | 0.000% |
-| pitch inertia | 39 of 71 | 54 of 71 | 0.065% |
+| mass | 57 of 71 | 65 of 71 | 0.001% |
+| centre of mass (share of length) | 62 of 71 | 66 of 71 | 0.000% |
+| pitch inertia | 41 of 71 | 55 of 71 | 0.065% |
 | roll inertia | 10 of 71 | 29 of 71 | 1.686% |
-| roll inertia, OpenRocket's fin shortcut in hpr's place | 52 of 71 | 52 of 71 | 0.001% |
+| roll inertia, OpenRocket's fin shortcut in hpr's place | 56 of 71 | 56 of 71 | 0.001% |
 
-Counting each file's content once, 45 of 51 are within 1% in mass and 46 of 51 in centre of mass.
+Counting each file's content once, 47 of 51 are within 1% in mass and 48 of 51 in centre of mass.
 Before [M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a
 [cluster](../glossary.md#cluster), 58 and 59 of 71 were.
 Before [M2.2b1](../decisions-and-roadmap.md#m2-2b1) (reading what a `.ork` leaves unsaid), 57 of
 74 files were within 1% in mass and 58 in centre of mass (median mass 0.020%). Those are the earlier
 74-file measurement; the current default survey is the 71-file table above.
 
-**The 9 files outside a threshold** are 6 different files by content, each a different design.
+**The 6 files outside a threshold** are 4 different files by content, each a different design.
 Each has one or two of two causes, and
 hpr already warns of every one when it reads the file. `cargo xtask ork` works the causes out from
 those warnings, counts them by content as below, and fails if a file outside has none. One file has
-two causes, so the last column adds to 7:
+two causes, so the last column adds to 5:
 
 | cause | what hpr does | what OpenRocket does | files by content |
 |---|---|---|---|
 | fin fillets (the rounded glue joint along a fin's root) | leaves them out, with a warning | counts them | 2 |
-| pods, parallel stages, tube fins and parts left out | keeps them unread (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 5 |
+| parallel stages, tube fins and parts left out | keeps them unread (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 3 |
 
 A third cause, a cluster read as one tube, went when
 [M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files by content are now within both
-thresholds. `cargo xtask ork` prints each of the 9 with the parts that differ most, by id, or by name in an
+thresholds, and pods went when [M1.13b](../decisions-and-roadmap.md#m1-13b) read them.
+`cargo xtask ork` prints each of the 6 with the parts that differ most, by id, or by name in an
 older file that writes no ids. A private design is named only by the start of its file's hash.
 
 **A worked example, now settled.** In the first comparison
@@ -289,24 +291,24 @@ to 3.8% apart, though their mass, centre of mass and pitch inertia agree within 
 of each is within 0.3 g of OpenRocket's. Across all 71 compared designs the median is 1.686%. It is the fins:
 OpenRocket takes a shortcut for a fin set's roll inertia, and hpr integrates the fin exactly
 ([below](#fins-rail-buttons-and-roll-inertia)). With OpenRocket's shortcut in hpr's place, the
-median is 0.001% and 52 files are within 1%. The shortcut takes OpenRocket's own mass for each fin
+median is 0.001% and 56 files are within 1%. The shortcut takes OpenRocket's own mass for each fin
 set, paired by id, or in an older file by name, so the way OpenRocket weighs a section (below) is
 set aside too. Five of the six Loft demos come within 0.0005%. The sixth, whose fins are
 elliptical, is 0.093% apart in that row, and within 0.0002% once OpenRocket's ellipse is drawn as
-OpenRocket draws it, a 30-sided polygon (a test). For each of the 19 files still outside 1% (13 by
+OpenRocket draws it, a 30-sided polygon (a test). For each of the 15 files still outside 1% (10 by
 content), `cargo xtask ork` names a cause, and it fails if it can't. Each has exactly one:
 
 | cause | files by content |
 |---|---|
 | a mass override covering the parts inside (a departure, [below](#what-a-ork-leaves-unsaid-and-overrides)) | 5 |
-| parts hpr keeps unread (a reduced design) | 6 |
+| parts hpr keeps unread (a reduced design) | 3 |
 | a cluster's tubes, which OpenRocket weighs stacked on the cluster's axis ([below](#clusters-and-fillets)) | 2 |
 
 The cluster cause is sized, not only present: the survey names it only when hpr's roll inertia,
 less the spread of the clusters' own tubes, is within 1% of OpenRocket's. The two are +1.01% and
 +2.08% apart, and +0.04% and +0.00% without the spread.
 
-The pitch inertia is within 1% on 54 of 71. The 17 outside have no named cause yet, and no bound
+The pitch inertia is within 1% on 55 of 71. The 16 outside have no named cause yet, and no bound
 is known; on the fin probes below, pitch differs by up to 0.41% where the fins weigh the same.
 
 **What it leaves out.** Motors: this is the structure alone, and a motor's mass is

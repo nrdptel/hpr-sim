@@ -19,13 +19,14 @@
   (relative) at the times RocketPy computed, and within 1.3e-5 in mass and 2.6e-5 in inertia
   between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand; the whole structure against
-  OpenRocket on 71 compared designs, within 1% in mass on 62 and in centre of mass on 63
+  OpenRocket on 71 compared designs, within 1% in mass on 65 and in centre of mass on 66
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). A
   [cluster](../glossary.md#cluster)'s tubes sit where OpenRocket puts them, to 1e-15 m, and a motor
   out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). A
   [pod](../glossary.md#pod)'s mass, centre and inertia match the hand-worked parallel-axis sum to
-  1e-15 ([Pods](#pods)); pods are not yet compared with OpenRocket
+  1e-15 ([Pods](#pods)), and OpenRocket's on eighteen probe designs
+  ([`.ork`: Pods](../format/ork.md#pods)); not yet on whole flights
   ([M1.13c](../decisions-and-roadmap.md#m1-13c)). OpenRocket's
   cluster example flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees
   are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee
@@ -38,7 +39,7 @@
   cluster's motors light together, or not at all: no spread in ignition and no thrust misalignment.
   Fins on a nose cone or transition are refused. Pods are weighed but can't fly yet: no cited
   model gives their normal force and drag, so the aerodynamics refuse a design with pods
-  ([Pods](#pods)).
+  (an empty pod set flies; [Pods](#pods)).
   [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and
   overrides; the OpenRocket comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) is mapping them,
   and the mass conventions it has found are on the [mass page](mass.md#checked-against-openrocket).
@@ -328,6 +329,22 @@ decision record is [ADR-089][adr-089].
 - **Mass.** Each copy is weighed where it sits, with its own
   [parallel-axis](../glossary.md#parallel-axis-theorem) term, and everything the pod holds is
   repeated with it. The pod set itself weighs nothing.
+- **A pod of no length.** A pod's body tube may have length 0, and then it weighs nothing.
+  OpenRocket draws winglets this way: a pod of one such tube, with no radius, which it calls a
+  "phantom body" ([`.ork`: Pods](../format/ork.md#pods)). Parts on the tube sit at its radius,
+  as on any tube. That radius is usually 0, so the parts sit on the pod's own axis: fin roots
+  there, and a lug's axis its own radius out from it.
+  - A worked example: two pods 50 mm from the body's axis, each holding a launch lug 4 mm in
+    radius turned 180°, inward. Each lug's axis is 46 mm from the body's. The test
+    `a_pod_of_no_length_holds_its_parts_at_the_pod_s_axis` works the pair's inertia out by hand.
+  - Three or more fins whose roots meet on the axis overlap there. Each fin is weighed as a whole
+    plate, so the overlap counts more than once, as it does in OpenRocket. The overlap is about a
+    fin's thickness across, so it grows with thickness over span. For three fins 3 mm thick and
+    20 mm tall it is a few per cent of their mass: an estimate, not a measurement.
+  - A body tube of no length is allowed only in a pod; a stage refuses one. A pod refuses a nose
+    cone or a transition of no length. A pod mixing a tube of no length with other parts lays out,
+    but no probe has checked it against OpenRocket.
+- **An empty pod set** holds nothing, lays out, and weighs nothing.
 - **Overrides.** A mass override on the pod set is the total for all its pods, and must be set with
   `overrides_include_children` (an override on the pod set alone is refused, since it has nothing
   of its own). An override on a part inside a pod is that part's in each pod. A centre override
@@ -338,11 +355,12 @@ decision record is [ADR-089][adr-089].
   tube, and a mounted motor's `failed_tubes` counts the pods, in order from the first.
 - **Checks.** A pod may run past the end of the tube it hangs from, or past the rocket's end,
   without a warning: a pod is held by a pylon, and an outboard booster often extends past the tube
-  it hangs from. A pod set that doesn't touch its tube at all is still an error. A pod set in a pod,
-  an empty one, and one of more than 64 pods are refused.
+  it hangs from. A pod set that doesn't touch its tube at all is still an error. A pod set in a pod
+  and one of more than 64 pods are refused.
 - **What it can't do yet.**
   - Fly: the aerodynamics refuse pods, as does the tumble model, which gives a falling airframe's
-    drag area from its body tubes and fins.
+    drag area from its body tubes and fins. An empty pod set flies: it adds no force and no drag
+    area.
   - Move or release a part inside several pods: a [moving](moving-mass.md) or
     [released](released-mass.md) part must be one part, so it can be inside a pod only when there
     is one pod.
@@ -350,8 +368,6 @@ decision record is [ADR-089][adr-089].
     the tube its pod set hangs from.
   - Check a pod's geometry: nothing warns when pods overlap the airframe or each other, or when a
     pod's radius steps ([#206](https://github.com/nrdptel/hpr-sim/issues/206)).
-  - Read a `.ork` pod of no length, drawn to hang fins off the axis: it is left out with a warning
-    ([`.ork`: Pods](../format/ork.md#pods), [M1.13b2](../decisions-and-roadmap.md#m1-13b2)).
 
   The refusals are pinned by tests in `hpr-aero` (`unsupported_inputs_are_refused`) and `hpr-sim`
   (`tumbling_refuses_an_airframe_the_model_cannot_represent`,

@@ -61,7 +61,9 @@ pub enum Finding {
         excess_m: f64,
     },
     /// An external part (fin root, tube fins, lug, rail button or pod set) doesn't overlap the body
-    /// tube it is attached to at all (error).
+    /// tube it is attached to at all (error). A pod set of no length touches its tube when it sits
+    /// between the tube's ends, and a part on a pod's tube of no length when it spans the tube's
+    /// station.
     AttachmentOffBody {
         /// Component id.
         component: String,
@@ -69,7 +71,8 @@ pub enum Finding {
         body: String,
     },
     /// An external part runs past an end of its body tube (warning). Pods are exempt: a pod hangs
-    /// from a pylon and often runs past its tube.
+    /// from a pylon and often runs past its tube. So is a part on a pod's tube of no length, which
+    /// has no length to run past.
     AttachmentPastBodyEnd {
         /// Component id.
         component: String,
@@ -317,7 +320,28 @@ fn attached_findings(
         return;
     }
     let (fore, aft) = (component.fore_station_m, component.aft_station_m());
-    let span = excess(fore, aft, parent.fore_station_m, parent.aft_station_m());
+    // Whether `[a0, a1]` holds the station `x`, to round-off.
+    let holds =
+        |a0: f64, a1: f64, x: f64| a0 - LENGTH_TOLERANCE_M <= x && x <= a1 + LENGTH_TOLERANCE_M;
+    // Fins or a lug on a pod's body tube of no length hang off the airframe on that pod, as
+    // OpenRocket draws winglets: they touch the tube if they span its station, and there is no
+    // length for them to run past.
+    if component.part.is_external() && parent.part.is_body() && parent.length_m == 0.0 {
+        if !holds(fore, aft, parent.fore_station_m) {
+            findings.push(Finding::AttachmentOffBody {
+                component: component.id.clone(),
+                body: parent.id.clone(),
+            });
+        }
+        return;
+    }
+    let span = if component.length_m == 0.0 && matches!(component.part, Part::PodSet(_)) {
+        // A pod set of no length (empty, or a pod of no length) is a point on its tube: it
+        // touches the tube if it sits within the tube's ends.
+        holds(parent.fore_station_m, parent.aft_station_m(), fore).then_some(0.0)
+    } else {
+        excess(fore, aft, parent.fore_station_m, parent.aft_station_m())
+    };
     if component.part.is_external() {
         match span {
             None => findings.push(Finding::AttachmentOffBody {
@@ -549,6 +573,69 @@ mod tests {
         };
         assert!((excess_m - 0.04).abs() < 1e-12);
         assert!(!has_errors(&findings));
+    }
+
+    /// A pod of no length (fins or a lug on a pod's tube of length 0, as OpenRocket draws
+    /// winglets) and an empty pod set raise no finding where they sit on their tube, though they
+    /// have no length to overlap it with; a pod set of no length beyond the tube's end is still
+    /// off it (M1.13b2).
+    #[test]
+    fn a_pod_set_of_no_length_touches_its_tube_where_it_sits() {
+        let podded = |children: Vec<crate::Component>, position: Position| {
+            let mut design = three_fin_rocket();
+            let mut pods = attached(
+                "pods",
+                Part::PodSet(crate::parts::PodSet {
+                    count: 2,
+                    radial_offset_m: 0.06,
+                    angle_rad: 0.0,
+                }),
+                position,
+            );
+            pods.children = children;
+            design.stages[0].components[1].children.push(pods);
+            check(&design).unwrap()
+        };
+        let mut phantom = body("phantom", tube(0.0, 0.0, 0.0));
+        phantom.children = vec![attached(
+            "wings",
+            crate::testing::fins(0.05, 0.03),
+            bottom(0.0),
+        )];
+        let base = check(&three_fin_rocket()).unwrap();
+        assert_eq!(podded(vec![phantom.clone()], top(0.1)), base);
+        assert_eq!(podded(Vec::new(), top(0.1)), base);
+        // At the tube's aft end, and just past it.
+        assert_eq!(podded(Vec::new(), bottom(0.0)), base);
+        let off = podded(vec![phantom], bottom(0.01));
+        assert!(
+            off.contains(&Finding::AttachmentOffBody {
+                component: "pods".to_owned(),
+                body: "airframe".to_owned(),
+            }),
+            "{off:?}"
+        );
+        assert_eq!(off.len(), base.len() + 1, "{off:?}");
+
+        // Fins that don't reach their tube of no length are off it, as any fins are.
+        let mut far = body("phantom", tube(0.0, 0.0, 0.0));
+        far.children = vec![attached(
+            "wings",
+            crate::testing::fins(0.05, 0.03),
+            top(0.01),
+        )];
+        let off = podded(vec![far], top(0.1));
+        assert_eq!(
+            off.iter()
+                .filter(
+                    |f| matches!(f, Finding::AttachmentOffBody { component, body }
+                    if component == "wings" && body == "phantom")
+                )
+                .count(),
+            1,
+            "{off:?}"
+        );
+        assert_eq!(off.len(), base.len() + 1, "{off:?}");
     }
 
     /// Loft lesson L50: fins could sit off the airframe. A fin root that touches none of its body

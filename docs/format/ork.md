@@ -45,8 +45,9 @@ is no command-line tool yet.
   OpenRocket's apogee and largest speed. Three cluster apogees are compared with OpenRocket's
   flight with no parachute, since its parachute opened before apogee
   ([hpr's flights against OpenRocket's](#hprs-flights-against-openrockets)).
-- **Pods and parallel stages are kept, not modelled.** A design with them is marked *reduced*, and
-  none of its configurations flies ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
+- **Pods are read and weighed, but can't fly yet** ([Pods](#pods)). **Parallel stages are kept, not
+  modelled.** A design with them is marked *reduced*, and none of its configurations flies
+  ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
 - **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone
   or tube fins OpenRocket sizes from the body, is left out. Each one is named in a warning rather
   than guessed at ([what is left out, and why](#what-is-left-out-and-why)).
@@ -269,8 +270,8 @@ departs from [F] but leaves the file readable is a warning that travels with the
 | `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a part inside an inner tube set off the body's axis, placed from the body's axis ([below](#clusters)); a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 35 warnings over 73
-readable files: 4 dropped, 12 skipped and 19 unusual. Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 31 warnings over 73
+readable files: 4 dropped, 8 skipped and 19 unusual ([below](#measured-on-the-reference-library)). Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -523,8 +524,10 @@ numbers:
 **What it leaves out.**
 - RocketSerializer reports no body tube, no inner part, no mass, no fin thickness, and no freeform
   or tube fins, so none of those is compared here.
-- 6 parts inside pods or parallel stages are not compared, because hpr keeps those parts unread
-  ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
+- 6 parts inside pods or parallel stages are not compared. hpr keeps parts in parallel stages
+  unread ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)). It reads pods since
+  [M1.13b](../decisions-and-roadmap.md#m1-13b), but the cross-check still leaves their parts out
+  ([issue #211](https://github.com/nrdptel/hpr-sim/issues/211)).
 - 3 values RocketSerializer gives nothing for are not compared: 1 body radius, in a file that
   writes every radius as `auto`, and 2 fin cross-sections, in a file that writes none.
 - 4 files are not compared, because OpenRocket 24.12 does not open them. One is Loft's
@@ -864,12 +867,12 @@ cones, body tubes and transitions written inside the `podset`, with everything o
 [`PodSet`][p-podset] ([M1.13b](../decisions-and-roadmap.md#m1-13b)). The first pod's roll angle is
 `angleoffset`, read as every angle is ([which way round](#which-way-round)). Pods cannot fly yet:
 the aerodynamics refuse a design with pods, with an error naming the pod set, until
-[M1.13c](../decisions-and-roadmap.md#m1-13c).
+[M1.13c](../decisions-and-roadmap.md#m1-13c) (an empty pod set adds nothing, and flies).
 
 **How far from the axis** depends on the `method` written on `radiusoffset`, and no document says
-how. OpenRocket 24.12 was asked, as an outside oracle, on eight probe designs
-(`validation/oracles/openrocket/pods.py`). It puts each pod's axis at this distance from the
-body's (OpenRocket's own names for the methods in brackets):
+how. OpenRocket 24.12 was asked, as an outside oracle, on probe designs
+(`validation/oracles/openrocket/pods.py`, eighteen of them). It puts each pod's axis at this
+distance from the body's (OpenRocket's own names for the methods in brackets):
 
 | `radiusoffset` method | distance | tube 50 mm in radius, pods 10 mm in radius, number 20 mm |
 | --- | --- | --- |
@@ -889,12 +892,66 @@ radius later. When the tube's radius is automatic, hpr uses the number OpenRocke
 warns that it did. With nothing cached, the pod set is left out. A method hpr does not know is
 read as `relative`, and a missing `radiusoffset` as touching the tube, each with a warning.
 
-**What it weighs.** On the probes (`pods_weigh_as_openrocket_s`), mass is within 1.2 parts in 10⁷
-of OpenRocket's, the centre of mass within 1.1 parts in 10⁷ and the roll inertia within 2 parts in
-10⁹. OpenRocket gives one pitch inertia for both pitch axes. It matches hpr's inertia about `x_B`
-(OpenRocket's `y`) to 6.1 parts in 10⁷. With one or two pods the rocket is not the same both ways,
-so hpr's inertia about `y_B` differs from that one number, by 0.3% to 1.0% on the probes; hpr's is
-the true inertia about that axis. With three pods the two agree.
+**A pod of no length.** OpenRocket's own example *Pods--airframes and winglets* hangs its
+winglets from a pod whose only part is a tube of no length, no wall and, usually, no radius.
+OpenRocket names that tube "(phantom body)". hpr reads such a pod as written:
+
+- The tube weighs nothing.
+- The pod's radius is the tube's, usually 0, and the distance table above applies with it: for
+  `relative`, the pod's axis is the body tube's radius plus the number out.
+- Fins and a launch lug on the tube sit on its surface, as on any tube. With a radius of 0 that is
+  the pod's own axis: the fins' roots meet there, and a lug's axis is the lug's own radius out
+  from it, at the lug's angle. A lug 3 mm in radius on a pod 62 mm from the axis, turned to 180°,
+  has its axis 59 mm from the body's.
+- Everything turns with its pod, as in any pod.
+- A tube of no length has no room inside and no wall. A pod set whose tube of no length holds a
+  part inside it is left out, with a warning. A fin tab deeper than the tube's radius is dropped,
+  also with a warning, and the fins are read without it.
+
+OpenRocket 24.12 agrees on six probes:
+
+- two fins at 90° on a tube of no radius;
+- three fins on each of two pods, on a tube of no radius;
+- two fins on a tube 10 mm in radius;
+- two pods at 30° on a tube 10 mm in radius, three fins each at 20°, which shows each fin turned
+  with its pod;
+- a lug turned to 180°, and two at 0°.
+
+Each fin's root and each lug's axis is where OpenRocket puts it, to 10⁻¹⁵ m (the test
+`every_pod_is_where_openrocket_puts_it`, in `hpr-validate`).
+
+**A pod set that holds nothing** is read too, and weighs nothing, in OpenRocket as in hpr. A mass
+override on one is dropped, with a warning. OpenRocket 24.12 puts that mass at the rocket's tip, on
+its axis, where no design means it to be.
+
+**What it weighs.** The test `pods_weigh_as_openrocket_s`, in `hpr-validate`, compares hpr with
+OpenRocket on every probe:
+
+| quantity | how close to OpenRocket |
+| --- | --- |
+| each tube, fin set and lug in a pod: mass and centre | 2 parts in 10¹⁵ |
+| a pod's nose cone: mass, centre | 8.3 parts in 10⁸, 4.0 parts in 10⁹ |
+| the whole rocket: mass | 1.2 parts in 10⁷ |
+| the whole rocket: centre of mass | 1.10 parts in 10⁷ with pods that have a length, 1.13 parts in 10⁷ with pods of no length |
+| roll inertia, with OpenRocket's fin shortcut in place of hpr's | 2 parts in 10⁹ |
+| pitch inertia about `x_B`, with no fins in the pods | 6.1 parts in 10⁷ |
+
+OpenRocket weighs a nose cone a little differently from hpr. The probes' own nose, on the
+airframe, is 5.1 parts in 10⁷ apart in mass, and that alone puts the bare airframe 1.17 parts in
+10⁷ from OpenRocket's. No probe with pods is further from OpenRocket than that.
+
+hpr works out a fin's roll inertia exactly, and OpenRocket takes a shortcut: the two differ by up to
+5% on a fin set ([mass: fins](../physics/mass.md#fins-rail-buttons-and-roll-inertia)).
+The 2 parts in 10⁹ holds only once OpenRocket's shortcut is swapped in for hpr's
+([ADR-062][adr-062]: why fin roll inertia differs). OpenRocket's rule for a fin's pitch inertia is
+not known, so where the pods hold fins the pitch gap is only pinned: 2.6 parts in 10⁷ to 3.4 parts
+in 10⁵.
+
+OpenRocket gives one pitch inertia for both pitch axes. With one or two pods the rocket is not the
+same both ways, so hpr's inertia about `y_B` differs from that one number, by 0.3% to 1.1% on the
+probes of pods that have a length ([M1.13b1](../decisions-and-roadmap.md#m1-13b1)). hpr's is the
+true inertia about that axis.
+With three pods the two agree.
 
 **A flipped nose cone**, anywhere in a design, is a tail cone, and hpr reads it as one: a
 transition from the nose's base radius to a point. Its base is forward, so an automatic radius
@@ -902,28 +959,37 @@ takes the part ahead of it. With one end a point, a clipped and an unclipped tra
 same whole nose shape ([shapes](../physics/shapes.md)). The only one in the corpus closes a pod.
 
 **Left out, with a reason.** A pod set is left out with a `Skipped` warning when hpr cannot lay it
-out: it holds no nose cone, body tube or transition; a pod holds a part of no length; its pods'
-radii are all automatic; the tube's radius is automatic with nothing cached; or the distance comes
-out negative. OpenRocket users draw a tube of no length to hang fins off the axis, as winglets;
-hpr sits fins on a tube's surface, along its length. A pod set on anything but a body tube, and one
-inside a pod, are left out too; the corpus has neither. A part directly inside a pod set that is
-not a nose cone, body tube or transition is left out on its own. An override on a pod set is its
-pods' total, since a pod set weighs nothing of its own. Reading the pods of no length and the
-empty pod set is [M1.13b2](../decisions-and-roadmap.md#m1-13b2).
+out, in any of these cases:
+
+- a pod holds a nose cone or transition of no length, or a part of negative length;
+- a pod's tube of no length holds a part inside it;
+- its pods' radii are all automatic;
+- the tube's radius is automatic with nothing cached;
+- the distance comes out negative;
+- it hangs from anything but a body tube;
+- it sits inside a pod.
+
+The corpus has none of these. A part directly inside a pod set that is not a nose cone, body tube
+or transition is left out on its own. An override on a pod set is its pods' total, since a pod set
+weighs nothing of its own.
 
 `cargo xtask ork` counts them. On the corpus, 2026-09-27:
 
 | pod sets | count |
 | --- | --- |
 | written | 9 |
-| read into `PodSet` | 5, holding 8 pods |
-| left out: a pod with a part of no length | 3 |
-| left out: no nose cone, body tube or transition in it | 1 |
+| read into `PodSet` | 9, holding 12 pods |
+| left out | 0 |
 
-`cargo xtask ork` on 2026-09-27 also weighs each design against OpenRocket 24.12. The public example *Pods--powered with recovery
-deployment*'s mass is now within 1% of OpenRocket's; it was 12.5% light with its pods left out.
-*Pods--airframes and winglets* still leaves its winglet pod out, and its roll inertia is 1.78%
-below OpenRocket's.
+`cargo xtask ork` on 2026-09-27 also weighs each design against OpenRocket 24.12:
+
+- *Pods--powered with recovery deployment* (a public example): its mass is now within 1% of
+  OpenRocket's. It was 12.5% light with its pods left out
+  ([M1.13b1](../decisions-and-roadmap.md#m1-13b1)).
+- *Pods--airframes and winglets*: with its winglet pod left out, its roll inertia was 1.78% below
+  OpenRocket's, even with OpenRocket's fin shortcut. With the pod read, it is no longer among the
+  designs `cargo xtask ork` lists outside 1% with that shortcut. It still leaves one freeform fin
+  out.
 
 ### What is left out, and why
 
@@ -1139,8 +1205,8 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 35: 4 dropped, 12 skipped, 19 unusual (below) |
-| tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
+| warnings raised | 31: 4 dropped, 8 skipped, 19 unusual (below); 35, with 12 skipped, before pods were read ([Pods](#pods)) |
+| tags no milestone reads yet | 9 `podset`, 3 `parallelstage`; since pods are read ([Pods](#pods)), 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
 silent by nature — the design lays out, the report is written, and the mass is simply missing. All
@@ -1153,8 +1219,9 @@ so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 35 warnings are.** Every one is a reading this page explains, and none of them means a
-file is broken. Before [M1.9b](../decisions-and-roadmap.md#m1-9b) read clusters there were 39, and
+**What the 31 warnings are.** Every one is a reading this page explains, and none of them means a
+file is broken. Before [M1.13b](../decisions-and-roadmap.md#m1-13b) read pods there were 35, before
+[M1.9b](../decisions-and-roadmap.md#m1-9b) read clusters 39, and
 before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) 57: 5 more for a
 `packedradius` the file does not give, read as zero, which hpr now reads as OpenRocket's 12.5 mm
 ([packed parts](../physics/mass.md#packed-parts)).
@@ -1166,7 +1233,7 @@ before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) 57: 5 more for a
 | `Unusual` | 7 | automatic radii with nothing along their chains to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
 | `Dropped` | 4 | a fin's fillets, a rail button's screw head |
-| `Skipped` | 7 | a tally of the pods and parallel stages, kept in `x-openrocket` and modelled in [M1.13](../decisions-and-roadmap.md#m1-13), one per design that has any |
+| `Skipped` | 3 | a tally of the parallel stages, kept in `x-openrocket`, one per design that has any; 7 before pods were read |
 | `Skipped` | 5 | the five parts left out above |
 
 Every design that holds a design lays out. The one readable document that doesn't is Debrief's demonstration file, which holds
@@ -1475,9 +1542,10 @@ and none behind it is. It drops the booster and flies the sustainer on. A separa
 on the way down is part of the descent: it is left out, and the configuration flies whole, even
 when a sustainer sits ahead of it. That assumes every motor is spent by apogee, which the report's
 tool checks of every flight. Any other separation, such as one after a sustainer has already burnt
-out, is not flown ([which configurations the rocket flies](#which-configurations-the-rocket-flies)). Every device and stage in the reference library is read, apart from 2 parachutes inside
-pods and the separations of 2 parallel stages, which hpr does not read yet
-([M3.1c4](../decisions-and-roadmap.md#m3-1c4)).
+out, is not flown ([which configurations the rocket flies](#which-configurations-the-rocket-flies)). Every device and stage in the reference library is read, apart from the separations of 2
+parallel stages, which hpr does not read yet
+([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). The 2 parachutes inside pods are read since
+[Pods](#pods) are.
 
 A **deployment** is an event, a height for the event that needs one, and a delay after it. A
 parachute or streamer states its own, and a configuration may change any of the three:
@@ -2214,7 +2282,7 @@ is in [ADR-057][adr-057].
 
 ## What hpr keeps for writing the file back
 
-**In short.** Some of what a `.ork` holds, hpr's design does not model: pods, parallel stages,
+**In short.** Some of what a `.ork` holds, hpr's design does not model: parallel stages,
 OpenRocket's 3D-view settings, a simulation's plug-ins, a part's colour, a material's group. hpr keeps
 each whole, beside
 the design, in an *extension* (a named slot for data another program wrote) called `x-openrocket`,
@@ -2225,8 +2293,8 @@ using the rocket on its own.
 
 Four kinds of thing are kept:
 
-- **Parts** hpr does not read: a pod set or a parallel stage, which hpr does not model until
-  [M1.13](../decisions-and-roadmap.md#m1-13) ([L66](../decisions-and-roadmap.md#l66)), a part hpr
+- **Parts** hpr does not read: a parallel stage, which hpr does not model yet
+  ([L66](../decisions-and-roadmap.md#l66)), a pod set it cannot lay out ([Pods](#pods)), a part hpr
   cannot give an honest shape ([above](#what-is-left-out-and-why)), or a tag it has never seen.
 - **Sections** of the document hpr does not read: `<photostudio>` (the 3D view), `<docprefs>` (the
   design's own materials), anything else beside `<rocket>` and `<simulations>`, and the parts of a
@@ -2237,7 +2305,8 @@ Four kinds of thing are kept:
   it reads a file, so a tag is kept exactly when nothing asked for it.
 - **Attributes** no reader asks for, on an element hpr does read: a material's `group`, an event's
   `id`, or the reference an angle or radius offset is measured from, which hpr does not read yet
-  ([issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
+  but for a pod set's `radiusoffset` ([Pods](#pods);
+  [issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
 
 Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
 podset that is the first part inside the second part of the first stage. A tag's last step starts
@@ -2270,7 +2339,7 @@ hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
 
 | quantity | count |
 |---|---|
-| parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler |
+| parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler; since pods are read ([Pods](#pods)), 8 in 8, no pod set among them |
 | sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
 | tags kept | 1,888, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
 | attributes kept | 3,128, most often an event's `id` (1,623), a material's `group` (552), an active stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
@@ -2285,8 +2354,8 @@ How this was decided is in [ADR-058][adr-058].
 
 ## What is not read yet
 
-Pods and parallel stages are kept, not modelled: hpr's design has no pods until
-[M1.13](../decisions-and-roadmap.md#m1-13) ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
+Parallel stages are kept, not modelled ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
+Pods are read ([Pods](#pods)), but don't fly until [M1.13c](../decisions-and-roadmap.md#m1-13c).
 Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 

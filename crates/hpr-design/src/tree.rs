@@ -127,7 +127,11 @@ impl Component {
     /// sum of its body components' lengths, which stack along the pod.
     pub fn length_m(&self) -> f64 {
         match self.part {
-            Part::PodSet(_) => self.children.iter().map(|c| c.part.length_m()).sum(),
+            // A fold from +0: an empty sum of floats is −0.
+            Part::PodSet(_) => self
+                .children
+                .iter()
+                .fold(0.0, |length, c| length + c.part.length_m()),
             _ => self.part.length_m(),
         }
     }
@@ -829,11 +833,11 @@ impl Rocket {
     ///   place (an attached part in a stage's list, a body component attached anywhere but in a pod
     ///   set, anything else in a pod set, fins or pods on anything but a body tube, a pod set in a
     ///   pod, children under anything but a body component, inner tube or pod set), a pod set with
-    ///   no body component or with an override that doesn't cover its pods, a missing or
+    ///   an override that doesn't cover its pods, a missing or
     ///   unexpected position, an automatic dimension that doesn't apply or can't be resolved, or a
     ///   motor mount on anything but a body tube or inner tube.
-    /// - [`DesignError::Domain`] for a pod set of no pods or more than [`PodSet::MAX_COUNT`], or a
-    ///   radial offset or angle out of range.
+    /// - [`DesignError::Domain`] for a pod set of no pods or more than [`PodSet::MAX_COUNT`], a
+    ///   radial offset or angle out of range, or a body component of no length in a stage.
     /// - Any part's geometry, material or numerical error, a custom finish's negative or
     ///   non-finite roughness, and override errors.
     pub fn layout(&self) -> Result<Layout, DesignError> {
@@ -1144,12 +1148,6 @@ fn check_node(
     if matches!(node.part, Part::PodSet(_)) {
         if in_pod {
             return Err(tree(&node.id, "a pod set can't hang from a pod"));
-        }
-        if node.children.is_empty() {
-            return Err(tree(
-                &node.id,
-                "a pod set needs at least one body component",
-            ));
         }
         if !node.overrides.is_empty() && !node.overrides_include_children {
             return Err(tree(
@@ -2342,10 +2340,6 @@ mod tests {
             "pod count (1 to 64)",
         );
         refused(
-            &|pods| pods.children.clear(),
-            "a pod set needs at least one body component",
-        );
-        refused(
             &|pods| pods.overrides.mass_kg = Some(0.2),
             "an override on it must cover its pods",
         );
@@ -2364,6 +2358,108 @@ mod tests {
         on_nose.stages[0].components[0].children.push(pods);
         let error = on_nose.layout().unwrap_err().to_string();
         assert!(error.contains("attaches to a body tube"), "{error}");
+    }
+
+    /// A pod of no length (OpenRocket's "phantom body": a tube of no length, radius or wall) weighs
+    /// nothing and holds what hangs from it at the pod's axis. A launch lug on it, turned to π, is
+    /// the textbook hollow cylinder with its axis its own radius inward of the pod's, `d − R`, on
+    /// both pods, since it turns with its pod; the pair's inertia is worked by hand. An empty pod
+    /// set lays out and weighs nothing (M1.13b2).
+    #[test]
+    fn a_pod_of_no_length_holds_its_parts_at_the_pod_s_axis() {
+        use std::f64::consts::PI;
+        let (rho, length, ro, ri, d) = (790.0, 0.05, 0.004, 0.0035, 0.05);
+        let lug = LaunchLug {
+            length_m: length,
+            outer_radius_m: ro,
+            thickness_m: ro - ri,
+            angle_rad: PI,
+            count: 1,
+            spacing_m: 0.0,
+            material: crate::testing::cardboard(),
+        };
+        let mut phantom = body("phantom", tube(0.0, 0.0, 0.0));
+        phantom.children = vec![attached(
+            "pod-lug",
+            Part::LaunchLug(lug),
+            Position::Middle { aft_offset_m: 0.0 },
+        )];
+        let mut pods = attached(
+            "pods",
+            Part::PodSet(PodSet {
+                count: 2,
+                radial_offset_m: d,
+                angle_rad: 0.0,
+            }),
+            top(0.1),
+        );
+        pods.children = vec![phantom];
+        let mut design = three_fin_rocket();
+        design.stages[0].components[1].children.push(pods);
+        let base = three_fin_rocket().layout().unwrap();
+        let layout = design.layout().unwrap();
+
+        let (_, set) = layout.find("pods").unwrap();
+        assert_eq!(set.length_m, 0.0);
+        let (_, phantom) = layout.find("phantom").unwrap();
+        assert_eq!(phantom.own.mass_kg, 0.0);
+        close(phantom.fore_station_m, 0.3, 1e-15, "the phantom's station");
+        // Centred on a tube of no length at 0.3 m: from 0.275 m to 0.325 m.
+        close(
+            station(&layout, "pod-lug"),
+            0.3 - 0.5 * length,
+            1e-15,
+            "lug station",
+        );
+        let m = rho * PI * (ro * ro - ri * ri) * length;
+        let axial = m * (ro * ro + ri * ri) / 2.0;
+        let transverse = m * (3.0 * (ro * ro + ri * ri) + length * length) / 12.0;
+        let r = d - ro;
+        let mass = set.with_children;
+        close(mass.mass_kg, 2.0 * m, 1e-18, "two lugs' mass");
+        close(mass.cg_m.x, 0.0, 1e-16, "centre x");
+        close(mass.cg_m.y, 0.0, 1e-16, "centre y");
+        close(-mass.cg_m.z, 0.3, 1e-15, "centre station");
+        let i = mass.inertia_kg_m2;
+        close(i.col(0).x, 2.0 * transverse, 1e-18, "I_xx");
+        close(i.col(1).y, 2.0 * (transverse + m * r * r), 1e-18, "I_yy");
+        close(i.col(2).z, 2.0 * (axial + m * r * r), 1e-18, "I_zz");
+        // Alone, the first pod's lug sits at `x = d − R`.
+        let (_, lug) = layout.find("pod-lug").unwrap();
+        close(lug.own.cg_m.x, 0.0, 1e-16, "the pair's centre");
+        let Part::LaunchLug(one) = &lug.part else {
+            unreachable!("the lug")
+        };
+        let one = MassProperties::placed(one.mass_properties(0.0).unwrap(), &lug.copies[..1]);
+        close(one.cg_m.x, r, 1e-16, "the first lug across the axis");
+
+        let mut empty = design.clone();
+        let pods = empty.stages[0].components[1].children.last_mut();
+        pods.expect("the pod set").children.clear();
+        let layout = empty.layout().unwrap();
+        let (_, set) = layout.find("pods").unwrap();
+        assert!(set.length_m.is_sign_positive());
+        assert_eq!(set.with_children.mass_kg, 0.0);
+        assert_eq!(set.with_children.inertia_kg_m2, DMat3::ZERO);
+        assert_eq!(layout.structure, base.structure);
+
+        // Only a pod may hold a body component of no length: a stage refuses one.
+        let mut flat = three_fin_rocket();
+        flat.stages[0]
+            .components
+            .push(body("flat", tube(0.0, 0.0, 0.0)));
+        let error = flat.layout().unwrap_err();
+        assert!(
+            matches!(
+                error,
+                DesignError::InComponent { ref id, ref source }
+                    if id == "flat" && matches!(**source, DesignError::Domain {
+                        what: "body component length",
+                        ..
+                    })
+            ),
+            "{error:?}"
+        );
     }
 
     /// An override on a part inside a cluster is each copy's: set to the part's own mass it changes

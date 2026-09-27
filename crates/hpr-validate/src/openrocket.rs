@@ -1113,65 +1113,288 @@ mod tests {
     /// each copy across the axis to 1e-15 m, with OpenRocket's `(y, z)` read as hpr's `(x, y)`,
     /// and along it to 1e-15 m. That holds the reader's distance from the axis for each
     /// `radiusoffset` method (`relative`, `surface`, `free`), a pod whose widest part is in its
-    /// middle, one, two and three pods, a negative angle, and every angle method (M1.13b).
+    /// middle, one, two and three pods, a negative angle, every angle method, and a pod set placed
+    /// from its tube's bottom (M1.13b). A pod of no length holds its fins and its lug on a tube of
+    /// its own radius, most often none, turned with the pod: each fin's root and the lug's axis are
+    /// where OpenRocket puts them, matched as sets, since OpenRocket lists a fin set's fins across
+    /// its pods in an order of its own. On a tube 10 mm in radius, two pods at 30° with three fins
+    /// each at 20° show every fin turned with its pod (M1.13b2).
     #[test]
     fn every_pod_is_where_openrocket_puts_it() {
         let record = pods();
         let probes = record["probes"].as_object().expect("probes");
-        assert_eq!(probes.len(), 9);
+        assert_eq!(probes.len(), 18);
         for (question, probe) in probes {
             let (layout, warnings) = hpr(probe);
-            assert!(warnings.is_empty(), "{question}: {warnings:?}");
+            if question.ends_with("its mass overridden to 0.1 kg") {
+                assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
+                assert!(warnings[0].contains("at the rocket's tip"), "{warnings:?}");
+            } else {
+                assert!(warnings.is_empty(), "{question}: {warnings:?}");
+            }
             let mut inside = 0;
             for (id, theirs) in probe["components"].as_object().expect("components") {
                 let Some((_, placed)) = layout.find(id) else {
                     continue;
                 };
-                let parent = placed_parent(&layout, id);
-                if !matches!(layout.find(&parent), Some((_, p)) if matches!(p.part, Part::PodSet(_)))
-                {
+                if !in_a_pod(&layout, id) {
                     continue;
                 }
                 inside += 1;
-                let locations = theirs["locations_m"].as_array().expect("locations");
-                assert_eq!(placed.copies.len(), locations.len(), "{question}: {id}");
-                for (copy, location) in placed.copies.iter().zip(locations) {
-                    let at = |k: usize| location[k].as_f64().expect("a number");
-                    let across = (copy.offset_m[0] - at(1)).hypot(copy.offset_m[1] - at(2));
-                    assert!(across <= 1e-15, "{question}: {id} {copy:?} vs {location:?}");
-                    let along = (placed.fore_station_m - at(0)).abs();
-                    assert!(along <= 1e-15, "{question}: {id} {along:e}");
+                let theirs: Vec<[f64; 3]> = theirs["locations_m"]
+                    .as_array()
+                    .expect("locations")
+                    .iter()
+                    .map(|l| {
+                        let at = |k: usize| l[k].as_f64().expect("a number");
+                        [at(1), at(2), at(0)]
+                    })
+                    .collect();
+                let ours = where_hpr_puts(placed);
+                assert_eq!(ours.len(), theirs.len(), "{question}: {id}");
+                let near = |a: &[f64; 3], b: &[f64; 3]| {
+                    (a[0] - b[0]).hypot(a[1] - b[1]) <= 1e-15 && (a[2] - b[2]).abs() <= 1e-15
+                };
+                if matches!(placed.part, Part::FinSet(_)) {
+                    let mut left = ours.clone();
+                    for place in &theirs {
+                        let k = left.iter().position(|o| near(o, place));
+                        let k = k.unwrap_or_else(|| panic!("{question}: {id} {place:?} {ours:?}"));
+                        left.swap_remove(k);
+                    }
+                } else {
+                    for (o, t) in ours.iter().zip(&theirs) {
+                        assert!(near(o, t), "{question}: {id} {o:?} vs {t:?}");
+                    }
                 }
             }
-            assert!(inside >= 2, "{question}: {inside} parts in the pod");
+            let least = if question.starts_with("an empty") {
+                0
+            } else {
+                2
+            };
+            assert!(inside >= least, "{question}: {inside} parts in the pod");
         }
     }
 
-    /// The id of the part `id` hangs from.
-    fn placed_parent(layout: &Layout, id: &str) -> String {
-        let (_, placed) = layout.find(id).expect("the part");
-        placed
-            .parent
-            .map(|index| layout.components[index].id.clone())
-            .unwrap_or_default()
+    /// Whether the part `id` hangs, at any depth, from a pod set.
+    fn in_a_pod(layout: &Layout, id: &str) -> bool {
+        let mut at = layout.find(id).expect("the part").1.parent;
+        while let Some(index) = at {
+            let parent = &layout.components[index];
+            if matches!(parent.part, Part::PodSet(_)) {
+                return true;
+            }
+            at = parent.parent;
+        }
+        false
     }
 
-    /// A design with pods weighs what OpenRocket 24.12 says, on every probe: mass within 1.2e-7,
-    /// the centre within 1.1e-7 and the roll inertia within 2e-9, relative, which holds each pod
-    /// weighed where it sits (ADR-089). OpenRocket gives one pitch inertia, the same number as
-    /// `iyy` and `izz`; it is hpr's inertia about `x_B` (OpenRocket's `y`) within 6.1e-7 on every
-    /// probe, and so the mean across the axis only where the pods leave the two equal (three
-    /// pods): with one pod or two, OpenRocket's `izz` is not the inertia about its `z` axis, and
-    /// hpr's is, 0.3% to 1.0% apart on these probes.
+    /// Where hpr puts a part in a pod, as OpenRocket's component locations name it: `[x, y]`
+    /// across the axis and the station along it, for every copy. A body component is its fore
+    /// end on its pod's axis; a fin is its root's leading edge, on its tube's surface at its own
+    /// angle; a lug is its axis's fore end, its own radius out from its tube's surface. What a pod
+    /// holds turns with its pod.
+    fn where_hpr_puts(placed: &hpr_design::tree::PlacedComponent) -> Vec<[f64; 3]> {
+        let fore = placed.fore_station_m;
+        let out = |offset: [f64; 2], radius: f64, angle: f64| {
+            [
+                offset[0] + radius * angle.cos(),
+                offset[1] + radius * angle.sin(),
+                fore,
+            ]
+        };
+        let body = placed.body_radius_m.unwrap_or_default();
+        let mut places = Vec::new();
+        for copy in &placed.copies {
+            match &placed.part {
+                Part::FinSet(set) => {
+                    let step = std::f64::consts::TAU / f64::from(set.count);
+                    for k in 0..set.count {
+                        let angle = copy.roll_rad + set.base_angle_rad + step * f64::from(k);
+                        places.push(out(copy.offset_m, body, angle));
+                    }
+                }
+                Part::LaunchLug(lug) => {
+                    let angle = copy.roll_rad + lug.angle_rad;
+                    places.push(out(copy.offset_m, body + lug.outer_radius_m, angle));
+                }
+                _ => places.push(out(copy.offset_m, 0.0, 0.0)),
+            }
+        }
+        places
+    }
+
+    /// A design with pods weighs what OpenRocket 24.12 says, on every probe.
+    ///
+    /// - **Part by part.** Every part OpenRocket weighs in a pod, and the pod set itself, is found
+    ///   in hpr with OpenRocket's mass, all its copies together, and its centre along the axis: a
+    ///   tube, a fin set or a lug within 2e-15, relative (9.5e-16 at worst), so each pod is
+    ///   weighed where it sits (ADR-089), a pod of no length and an empty pod set weigh nothing,
+    ///   and a pod's fins and lug weigh what OpenRocket's do. A pod's nose cone is 8.3e-8 from
+    ///   OpenRocket's in mass and 4.0e-9 in its centre, held within 1e-7 and 5e-9. OpenRocket
+    ///   weighs a nose cone differently from hpr: the probes' own nose, on the airframe, is
+    ///   5.10e-7 apart in mass and −4.64e-7 in its centre, pinned here to 0.5%, and the
+    ///   airframe's tube agrees to 2e-15.
+    /// - **The whole.** The empty pod set's probe is the bare airframe: 1.17e-7 from OpenRocket's
+    ///   in mass and −1.125e-7 in the centre, relative, pinned. No probe's mass
+    ///   or centre is further from OpenRocket's than that, so no pod here adds a gap of its own.
+    ///   The mass is within 1.2e-7 on every probe; the centre within 1.1e-7 where the pods have
+    ///   a length (M1.13b1's), and within 1.13e-7 where they have none and weigh little.
+    /// - **Roll**, within 2e-9, with each fin set in a pod given OpenRocket's own roll inertia
+    ///   about its pod's axis ([`super::openrocket_fin_set_roll_kg_m2`], ADR-062) in place of hpr's.
+    /// - **Pitch.** OpenRocket gives one pitch inertia, the same number as `iyy` and `izz`. Where
+    ///   the pods hold no fins it is hpr's inertia about `x_B` (OpenRocket's `y`) within 6.1e-7,
+    ///   and so the mean across the axis only where the pods leave the two equal (three pods):
+    ///   with one or two of M1.13b1's pods, OpenRocket's `izz` is not the inertia about its `z`
+    ///   axis, and hpr's is, 0.3% to 1.1% apart. Where they hold fins, the gap about `x_B` is
+    ///   pinned to 0.5% of itself, as on the airframe: OpenRocket's pitch rule for fins is not
+    ///   measured.
+    /// - **An override on an empty pod set.** OpenRocket adds its mass at the rocket's tip, on the
+    ///   axis: its structure is the bare airframe's but 0.1 kg heavier, with the same first
+    ///   moment and roll inertia. hpr's reader drops the override, with a warning, so hpr's is the
+    ///   bare airframe exactly.
     #[test]
     fn pods_weigh_as_openrocket_s() {
-        for (question, probe) in pods()["probes"].as_object().expect("probes") {
+        // Mass and centre, relative: every tube, fin set and lug in a pod; a pod's nose cone.
+        const PART: (f64, f64) = (2e-15, 2e-15);
+        const NOSE: (f64, f64) = (1e-7, 5e-9);
+        // hpr's pitch about `x_B` less OpenRocket's, relative, where the pods hold fins.
+        const FIN_PITCH: [(&str, f64); 4] = [
+            (
+                "one pod of no length 0.01 in radius, relative 0.02, two fins at 90",
+                3.35e-5,
+            ),
+            (
+                "one pod of no length, relative 0.03, bottom 0.0, two fins at 90",
+                9.35e-6,
+            ),
+            (
+                "two pods of no length 0.01 in radius, relative 0.02, at 30, three fins at 20",
+                2.58e-7,
+            ),
+            (
+                "two pods of no length, relative 0.02, at 45, three fins",
+                -9.05e-7,
+            ),
+        ];
+        let pinned = |got: f64, want: f64| (got - want).abs() <= 0.005 * want.abs();
+        let record = pods();
+        let probes = record["probes"].as_object().expect("probes");
+        let empty = &probes["an empty pod set, relative 0.004"];
+        let (ours, theirs, _) = both(empty);
+        let bare = [relative(ours[0], theirs[0]), relative(ours[1], theirs[1])];
+        assert!(pinned(bare[0], 1.17e-7), "{bare:?}");
+        assert!(pinned(bare[1], -1.125e-7), "{bare:?}");
+        let (layout, _) = hpr(empty);
+        let nose = &empty["parts"][0];
+        assert_eq!(nose["class"], "NoseCone");
+        let (_, placed) = layout.find(conventions_id(1)).expect("the nose");
+        let apart = relative(
+            placed.own.mass_kg,
+            nose["mass_kg"].as_f64().expect("a mass"),
+        );
+        assert!(pinned(apart, 5.10e-7), "{apart:e}");
+        let apart = relative(
+            -placed.own.cg_m.z,
+            nose["cm_x_m"].as_f64().expect("a station"),
+        );
+        assert!(pinned(apart, -4.64e-7), "{apart:e}");
+        // The tube is OpenRocket's, so the nose is all of the bare airframe's gap.
+        let tube = &empty["parts"][1];
+        assert_eq!(tube["class"], "BodyTube");
+        let (_, placed) = layout.find(conventions_id(2)).expect("the tube");
+        let apart = relative(
+            placed.own.mass_kg,
+            tube["mass_kg"].as_f64().expect("a mass"),
+        );
+        assert!(apart.abs() < PART.0, "{apart:e}");
+
+        for (question, probe) in probes {
             let (ours, theirs, _) = both(probe);
-            for (k, bound) in [(0, 1.2e-7), (1, 1.1e-7), (2, 2e-9)] {
+            let (layout, _) = hpr(probe);
+            if question.ends_with("its mass overridden to 0.1 kg") {
+                let (bare_ours, bare_theirs, _) = both(empty);
+                assert_eq!(ours, bare_ours, "{question}");
+                let mass = theirs[0] - bare_theirs[0];
+                assert!((mass - 0.1).abs() < 1e-15, "{question}: {mass:e}");
+                let moment = theirs[0] * theirs[1] - bare_theirs[0] * bare_theirs[1];
+                assert!(moment.abs() < 1e-15, "{question}: {moment:e}");
+                assert_eq!(theirs[2], bare_theirs[2], "{question}");
+                continue;
+            }
+            let airframe = [conventions_id(1), conventions_id(2)];
+            let mut weighed = 0;
+            let mut in_pods = 0;
+            for part in probe["parts"].as_array().expect("parts") {
+                let id = part["id"].as_str().expect("an id");
+                let class = part["class"].as_str().expect("a class");
+                if matches!(class, "Rocket" | "AxialStage") || airframe.contains(&id) {
+                    continue;
+                }
+                in_pods += 1;
+                let (_, placed) = layout
+                    .find(id)
+                    .unwrap_or_else(|| panic!("{question}: no part {id} in hpr"));
+                assert!(
+                    in_a_pod(&layout, id) || matches!(placed.part, Part::PodSet(_)),
+                    "{question}: {id}"
+                );
+                weighed += 1;
+                let mass = part["mass_kg"].as_f64().expect("a mass");
+                let own = placed.own;
+                if mass == 0.0 {
+                    assert_eq!(own.mass_kg, 0.0, "{question}: {id}");
+                    continue;
+                }
+                let (mass_bound, centre_bound) = if matches!(placed.part, Part::NoseCone(_)) {
+                    NOSE
+                } else {
+                    PART
+                };
+                let apart = relative(own.mass_kg, mass);
+                assert!(apart.abs() < mass_bound, "{question}: {id} mass {apart:e}");
+                let station = part["cm_x_m"].as_f64().expect("a station");
+                let apart = relative(-own.cg_m.z, station);
+                assert!(
+                    apart.abs() < centre_bound,
+                    "{question}: {id} centre {apart:e}"
+                );
+            }
+            assert_eq!(weighed, in_pods, "{question}");
+            let holds_nothing = question.starts_with("an empty");
+            let least = if holds_nothing { 1 } else { 3 };
+            assert!(in_pods >= least, "{question}: {in_pods}");
+
+            let of_length = !(holds_nothing || question.contains("of no length"));
+            let centre_bound = if of_length { 1.1e-7 } else { 1.13e-7 };
+            for (k, bound) in [(0, 1.2e-7), (1, centre_bound)] {
                 let apart = relative(ours[k], theirs[k]);
                 assert!(apart.abs() < bound, "{question}: quantity {k}, {apart:e}");
+                assert!(
+                    apart.abs() <= bare[k].abs(),
+                    "{question}: quantity {k}, {apart:e}"
+                );
             }
-            let (layout, _) = hpr(probe);
+
+            let mut roll = ours[2];
+            for placed in &layout.components {
+                let Part::FinSet(set) = &placed.part else {
+                    continue;
+                };
+                let radius = placed.body_radius_m.expect("fins sit on a tube");
+                let one = placed
+                    .part
+                    .mass_properties(Some(radius))
+                    .expect("a fin set");
+                let copies = f64::from(u32::try_from(placed.copies.len()).expect("a few pods"));
+                let rule = super::openrocket_fin_set_roll_kg_m2(set, radius, one.mass_kg)
+                    .expect("two or more fins");
+                roll += copies * (rule - one.inertia_kg_m2.z_axis.z);
+            }
+            let apart = relative(roll, theirs[2]);
+            assert!(apart.abs() < 2e-9, "{question}: roll {apart:e}");
+
             let i = layout.structure.inertia_kg_m2;
             let pitch = probe["structure"]["iyy"].as_f64().expect("a number");
             assert_eq!(
@@ -1180,13 +1403,33 @@ mod tests {
                 "{question}"
             );
             let about_x = relative(i.x_axis.x, pitch);
+            if let Some((_, want)) = FIN_PITCH.iter().find(|(q, _)| q == question) {
+                assert!(pinned(about_x, *want), "{question}: {about_x:e}");
+                continue;
+            }
+            assert!(
+                !layout
+                    .components
+                    .iter()
+                    .any(|c| matches!(c.part, Part::FinSet(_))),
+                "{question}: fins not pinned"
+            );
             assert!(about_x.abs() < 6.1e-7, "{question}: {about_x:e}");
             let about_y = relative(i.y_axis.y, pitch);
             if question.starts_with("three") {
                 assert!(about_y.abs() < 6.1e-7, "{question}: {about_y:e}");
-            } else {
+            } else if of_length {
                 assert!((0.002..0.011).contains(&about_y), "{question}: {about_y:e}");
             }
+        }
+    }
+
+    /// The probes' fixed ids, as `conventions.py` writes them.
+    fn conventions_id(n: u32) -> &'static str {
+        match n {
+            1 => "00000000-0000-4000-8000-000000000001",
+            2 => "00000000-0000-4000-8000-000000000002",
+            _ => unreachable!("only the probes' nose and tube are asked for"),
         }
     }
 

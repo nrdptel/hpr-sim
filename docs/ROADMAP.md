@@ -715,15 +715,16 @@
   - [x] **M1.13a Pod mass** (ADR-089). *Done when:* the first bullet is met, and what a pod holds
     (a motor too) is repeated in every pod. *Result:* met: two pods, and one off the axis with its
     `I_yz = −m y z`, to 1e-15 kg, m and kg·m²; a motor in a 3-pod set is three motors.
-  - [ ] **M1.13b `.ork` pods**, read into `PodSet`. *Done when:* `cargo xtask ork` reads and counts
+  - [x] **M1.13b `.ork` pods**, read into `PodSet`. *Done when:* `cargo xtask ork` reads and counts
     every corpus pod set, and their parts' cached numbers are held as the airframe's are. Split
-    b1, b2 (ADR-090).
+    b1, b2 (ADR-090). *Result:* met: 9 of 9 read (12 pods), cached numbers 71 of 75 agree.
     - [x] **M1.13b1 Pods of body components.** *Done when:* every corpus pod set is counted; those
       whose pods are body components with a length are read, each part placed as OpenRocket 24.12
       places it; and their parts' cached numbers are held. *Result:* met: 5 of 9 read (8 pods),
       placed to 1e-15 m on 9 probes; cached numbers 71 of 75 agree, the pods' 4 among them.
-    - [ ] **M1.13b2 Pods of no length**, which hang fins off the axis, and an empty pod set.
-      *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read.
+    - [x] **M1.13b2 Pods of no length**, which hang fins off the axis, and an empty pod set.
+      *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read. *Result:* met
+      (ADR-091): all 4 read; fin roots and lug axes in pods where OpenRocket puts them to 1e-15 m.
   - [ ] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
 ## Phase 2: Library surfaces and interop
 
