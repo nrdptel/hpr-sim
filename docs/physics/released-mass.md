@@ -104,12 +104,16 @@ the reported centre does.
 that turns, it can rise for a moment after the rocket's apogee, or already be falling when a part
 leaves just before it. The flight records one [apogee](../glossary.md#apogee): the rocket's, or
 the release itself when it leaves the rest already falling. A part let go at apogee leaves at
-that one, even when another part leaving first sets the rest rising again. A flight started part
-way (`Simulation::run_free`) after the rocket's apogee records the first apogee it sees.
+that one, even when another part leaving first sets the rest rising again, and whatever order
+the parts are listed in. A flight started part way (`Simulation::run_free`) already falling lets
+a part waiting for the apogee go at its start; it records an apogee only if the rest later rises
+and falls again.
 
 **The rest can land at the release.** A part let go just above the ground, forward of the centre
 of mass of a rocket falling nose up, steps the rest's centre down, to the ground or below it. The
-rocket has then landed, at the release.
+rocket has then landed, at the release. A recorded trajectory's last row is at that time, but of
+the rocket as it was before the part left. A release that steps the rest below the ground while it is still climbing is an
+error instead.
 
 ## The part's fall
 
@@ -203,9 +207,9 @@ test measured, where its comments record one, and in brackets the bound it holds
 | `a_payload_let_go_under_the_drogue_lands_slower_and_falls_at_its_own_speed` | in uniform air, under a drogue, a release at 150 m on the way down: the rest lands at the lighter rocket's terminal speed, the part at its own | (1e-6 m/s) |
 | `a_release_comes_at_apogee_and_a_part_let_go_climbing_has_its_own` | a release at apogee comes at the rocket's apogee; a part let go climbing records its own apogee, then its landing | (1e-6 m/s at its apogee) |
 | `a_release_at_apogee_on_a_tilted_rail_leaves_one_apogee` | off a rail 5° from vertical, in wind, with and without a drogue, the flight records one apogee | exactly one |
-| `a_part_let_go_just_before_apogee_can_make_the_apogee_there` | a release that leaves the rest already falling makes the apogee, and fires the drogue, at the release; a part waiting for the apogee leaves there too | exactly one, at the release |
+| `a_part_let_go_just_before_apogee_can_make_the_apogee_there` | a release that leaves the rest already falling makes the apogee, and fires the drogue, at the release; a part waiting for the apogee, listed before or after, leaves there too | exactly one, at the release |
 | `parts_waiting_for_the_apogee_all_leave_at_it` | two parts let go at apogee off the tilted rail, listed either way round, both leave at the flight's one apogee | exactly one |
-| `a_release_that_puts_the_rest_on_the_ground_lands_it` | under a drogue, a release 5 cm above the ground steps the rest's centre below it: the rocket lands at the release | at the release |
+| `a_release_that_puts_the_rest_on_the_ground_lands_it` | under a drogue, a release 5 cm above the ground steps the rest's centre 9.5 cm down, below it: the rocket lands at the release; climbing, the release is refused | 1e-8 m, 1e-15 kg |
 | `the_optimum_delay_holds_a_release_on_the_motor_s_charge` | a release or a mass shift fired by the motor's ejection charge is held with the charge when hpr works out the [optimum delay](metrics.md#optimum-ejection-delay) (the delay that fires the charge at apogee), so the answer doesn't depend on the delay flown | equal |
 | `a_release_and_its_flight_read_back_as_written` | a release, and a flight with a released part, write to JSON and read back unchanged | equal |
 | `a_part_let_go_at_the_ground_has_landed` | a part let go as the rocket hits the ground, already at or below it, has landed | — |

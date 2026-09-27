@@ -1309,7 +1309,22 @@ impl Simulation {
             // no part leaves, since a release can make the apogee another release waits for.
             let mut landed: Option<Sample> = None;
             loop {
-                let apogee_passed = events.iter().any(|event| event.kind == EventKind::Apogee);
+                // Whether the stack is at or past its apogee as the pass begins: the flight's
+                // recorded one, or with none (a flight started falling) its own vertical speed.
+                // Judged once, so that the parts listed before one waiting for it don't decide.
+                let at_apogee = matches!(phase, Phase::Free | Phase::Descent)
+                    && released
+                        .iter()
+                        .zip(&self.releases)
+                        .any(|(gone, release)| !gone && release.trigger == Trigger::Apogee)
+                    && (events.iter().any(|event| event.kind == EventKind::Apogee) || {
+                        let stack = lightened.as_ref().unwrap_or(&self.vehicle);
+                        let window = (t, next_stop(&stops, t, cap));
+                        let area = self.ascent_drag_area_m2(&run, t);
+                        self.evaluate(stack, phase, window, t, &y, area)?
+                            .vertical_speed_m_s
+                            <= 0.0
+                    });
                 // The rocket's vertical speed just before the first part left in this pass.
                 let mut rising: Option<f64> = None;
                 for (index, gone) in released.iter_mut().enumerate() {
@@ -1325,13 +1340,7 @@ impl Simulation {
                             match self.releases[index].trigger {
                                 // At the flight's apogee, as a device's apogee trigger is, or
                                 // past one it didn't see (a flight started falling).
-                                Trigger::Apogee => {
-                                    apogee_passed
-                                        || self
-                                            .evaluate(stack, phase, window, t, &y, area)?
-                                            .vertical_speed_m_s
-                                            <= 0.0
-                                }
+                                Trigger::Apogee => at_apogee,
                                 Trigger::Altitude {
                                     height_above_ground_m,
                                 } => {
@@ -1395,6 +1404,14 @@ impl Simulation {
                 let area = self.ascent_drag_area_m2(&run, t);
                 let sample = self.sample(stack, phase, window, t, &y, area)?;
                 if sample.height_above_ground_m <= 0.0 {
+                    if sample.vertical_speed_m_s > 0.0 {
+                        // Below the ground and climbing: not a landing.
+                        return Err(SimError::Domain {
+                            what: "height of the rest's centre of mass above the ground after a \
+                                   mass release, m (it steps below the ground while climbing)",
+                            value: sample.height_above_ground_m,
+                        });
+                    }
                     // The rest's centre stepped to the ground or below it, which the ground
                     // event, a crossing from above, would never see: it has landed.
                     landed = Some(sample);

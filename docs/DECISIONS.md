@@ -7697,12 +7697,16 @@ under a state that carries across, the nose tip's.
    it, there. A release on the apogee fires on the recorded one, as a device does, and the
    releases are scanned again until no part leaves, so a part waiting for the apogee leaves at
    it however the others move the rest's centre (re-review found a second one riding to the
-   ground).
+   ground). Whether the rest is at or past its apogee is judged once per scan, on the stack as
+   the scan began, so the parts listed before one waiting for the apogee don't decide it (a third
+   review found the list order changing the apogee's mass by 0.23 kg).
 6. **A release can land the rest.** A part let go just above the ground, forward of the centre
    of a rocket falling nose up, can step the rest's centre to or below the ground, which a
    crossing from above never sees (re-review found the flight running underground to the time
-   cap); the rocket has then landed at the release. A part let go at or below the ground has
-   landed too.
+   cap); the rocket has then landed at the release (a `Recorder`'s last row is the whole rocket
+   there, before the part left).
+   A rest stepped below the ground while climbing has not landed; that flight is refused. A part
+   let go at or below the ground has landed too.
 7. **The optimum-delay flight holds a release, or a shift, fired by a motor's delay**, with the
    charge that fires it (review found the optimum delay moving from 13.53 s to 12.62 s with the
    delay flown). Releases and shifts on other triggers still happen in it.

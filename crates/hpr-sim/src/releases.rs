@@ -1074,7 +1074,8 @@ mod tests {
         // rising at half the speed the release adds to the rest's centre downward (ω × Δ, Δ the
         // centre's step aft). Before the ballast leaves the rocket is still rising; after, the
         // rest is already falling, so the apogee, and the drogue it fires, are at the release.
-        // With a second part waiting for the apogee, listed first, it leaves there too.
+        // With a second part waiting for the apogee, listed either side of the first, it leaves
+        // there too, after the apogee is recorded on the rest without the first.
         let t0 = 10.0;
         let tilted = Rail {
             elevation_rad: 45f64.to_radians(),
@@ -1082,9 +1083,17 @@ mod tests {
         };
         let timed = release(Trigger::Time { time_s: t0 });
         let waiting = MassRelease::new(Trigger::Apogee, "sleeve", PART_DRAG_AREA_M2);
-        for (rocket, releases) in [
-            (with_ballast(0.0), vec![timed.clone()]),
-            (with_sleeve(), vec![waiting, timed]),
+        // Each case: the design, its releases, the timed one's index, and a bound on the setup's
+        // downward jump of the rest's centre, m/s, which the rocket's rise is half of.
+        for (rocket, releases, timed_index, bound) in [
+            (with_ballast(0.0), vec![timed.clone()], 0, -0.05),
+            (
+                with_sleeve(),
+                vec![waiting.clone(), timed.clone()],
+                1,
+                -0.04,
+            ),
+            (with_sleeve(), vec![timed, waiting], 0, -0.04),
         ] {
             let drogue = Device::new(
                 "drogue",
@@ -1117,7 +1126,7 @@ mod tests {
                 -DVec3::X
             };
             let jump = up(omega);
-            assert!(jump < -0.02, "{jump}");
+            assert!(jump < bound, "{jump}");
             let cg_velocity = DVec3::new(2.0, 0.0, -0.5 * jump);
             let state = State {
                 position_enu_m: DVec3::new(0.0, 0.0, 1000.0) - attitude.mul_vec3(whole.cg_m),
@@ -1126,7 +1135,6 @@ mod tests {
                 body_rate_rad_s: omega,
             };
             let result = sim.run_free(t0, state, &mut ()).unwrap();
-            let timed_index = count - 1;
             let left = result
                 .event(EventKind::MassRelease(timed_index))
                 .unwrap()
@@ -1195,7 +1203,8 @@ mod tests {
     fn a_release_that_puts_the_rest_on_the_ground_lands_it() {
         // Straight down under a drogue with its attitude frozen nose up, the rocket lets its
         // ballast go 5 cm above the ground. The ballast sat forward of the centre, so the rest's
-        // centre steps 9.5 cm down, below the ground: the rocket has landed there.
+        // centre steps 9.5 cm down, below the ground: the rocket has landed there. Climbing
+        // instead, it has not, and the flight is refused.
         let sim = simulation(
             &with_ballast(0.0),
             UniformAir::sea_level(),
@@ -1218,8 +1227,50 @@ mod tests {
         close(left.height_above_ground_m, 0.05, 1e-6, "the release height");
         let landed = result.event(EventKind::GroundHit).unwrap().sample;
         assert_eq!(landed.time_s, left.time_s);
-        assert!(landed.height_above_ground_m <= 0.0, "{landed:?}");
+        // The rest's centre is lower by the step of its station, turned by the attitude.
+        let whole = sim.assembly().mass_properties(left.time_s);
+        let rest = whole.without_part(&ballast(&sim));
+        let step_m = left
+            .state
+            .unit_attitude()
+            .mul_vec3(rest.cg_m - whole.cg_m)
+            .z;
+        assert!(step_m < -0.09, "{step_m}");
+        // Heights come through geodetic coordinates some 6.4e6 m from the Earth's centre, where
+        // an f64 resolves about 1e-9 m.
+        close(
+            landed.height_above_ground_m,
+            left.height_above_ground_m + step_m,
+            1e-8,
+            "the rest's height",
+        );
+        close(landed.mass_kg, rest.mass_kg, 1e-15, "the rest's mass");
+        assert_eq!(result.final_sample, landed);
         assert_eq!(result.released[0].termination, Termination::GroundHit);
+
+        // Climbing 5 cm up, in a vacuum, the same release is refused.
+        let t0 = 10.0;
+        let sim = simulation(
+            &with_ballast(0.0),
+            UniformAir::vacuum(),
+            G,
+            FlightSettings::default(),
+        )
+        .with_releases(vec![release(Trigger::Time { time_s: t0 })])
+        .unwrap();
+        let attitude = Rail::vertical(3.0).attitude();
+        let state = State {
+            position_enu_m: DVec3::new(0.0, 0.0, 0.05) - attitude.mul_vec3(whole.cg_m),
+            velocity_enu_m_s: DVec3::new(0.0, 0.0, 1.0),
+            attitude,
+            body_rate_rad_s: DVec3::ZERO,
+        };
+        let refused = sim.run_free(t0, state, &mut ());
+        assert!(
+            matches!(&refused, Err(SimError::Domain { what, value })
+                if what.contains("while climbing") && *value < 0.0),
+            "{refused:?}"
+        );
     }
 
     #[test]
