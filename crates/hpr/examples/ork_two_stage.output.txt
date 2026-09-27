@@ -8,5 +8,5 @@ the booster drops away from stage 0 at 3.450 s
 sustainer lights    3.45 s   213.5 m  111.5 m/s
 separation          3.45 s   213.5 m  111.5 m/s
 apogee             15.30 s  1357.1 m    0.1 m/s
-sustainer lands   140.51 s     0.0 m   10.6 m/s
+sustainer lands   142.29 s     0.0 m   10.4 m/s
 the booster leaves at 3.45 s and lands at 30.14 s
