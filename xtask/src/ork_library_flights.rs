@@ -184,9 +184,9 @@ pub(crate) struct Candidate {
 }
 
 /// OpenRocket's id for a configuration whose own id was not a UUID: derived from that id, so two
-/// designs can share it. Seen, not documented: 7 of the public record's 63 configuration ids
+/// designs can share it. Seen, not documented: 7 of the public record's 69 configuration ids
 /// start so, among them the examples' shared ones, and every other id in both records is a
-/// version-4 UUID.
+/// version-4 UUID: the pod probes' (M1.13c2) is a fixed one written in that form.
 const DERIVED_ID: &str = "00000000-0000-0000-";
 
 /// Whether an id is a random (version-4) UUID, as OpenRocket makes for a new configuration.

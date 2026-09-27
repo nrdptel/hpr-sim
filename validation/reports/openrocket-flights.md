@@ -166,3 +166,18 @@ Configurations OpenRocket flew that hpr does not fly yet:
 | Three stage low power rocket | [C6-5; B6-0; B6-0] | stages hpr can't separate as written |
 | Three stage low power rocket | [C6-7; C6-0; C6-0] | stages hpr can't separate as written |
 | Tube fin rocket | [D12-7] | an airframe not read exactly as written |
+
+## Pod probes
+
+Small designs written to test pods ([M1.13c2][m1-13c2]), not counted among the designs above: one airframe on an AeroTech H128W, carrying pods of bodies, fins, a tail cone, winglets or motors, and once with none (`pods-none`, first). *Pods' change* is the apogee's and the margin's change from `pods-none` in each code. `pods-motors-2` flies an H128W in each of its two pods and none in the airframe, with 0.35 kg of nose ballast, not 0.15, so its change is not its pods' alone.
+
+[m1-13c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-13c2
+
+| probe | apogee OR (m) | hpr (m) | Δ | pods' change OR | hpr | max speed OR (m/s) | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | pods' change OR (cal) | hpr (cal) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| pods-none | 776.1 | 782.4 | +0.81% | +0.00% | +0.00% | 254.00 | 256.78 | +1.09% | 0.747 | 2.757 | 2.759 | +0.0000 | +0.0000 |
+| pods-bodies-3 | 663.3 | 666.5 | +0.48% | -14.53% | -14.81% | 226.17 | 227.91 | +0.77% | 0.665 | 2.360 | 2.362 | -0.3970 | -0.3971 |
+| pods-fins-2 | 613.7 | 616.7 | +0.49% | -20.93% | -21.18% | 220.78 | 222.39 | +0.73% | 0.650 | 2.653 | 2.654 | -0.1040 | -0.1042 |
+| pods-fins-tail-4 | 533.3 | 535.5 | +0.41% | -31.28% | -31.56% | 202.24 | 203.43 | +0.59% | 0.595 | 2.470 | 2.471 | -0.2872 | -0.2875 |
+| pods-motors-2 | 876.9 | 881.5 | +0.53% | +12.98% | +12.66% | 274.13 | 277.52 | +1.24% | 0.807 | 2.990 | 2.991 | +0.2326 | +0.2322 |
+| pods-winglets-2 | 699.8 | 704.8 | +0.71% | -9.84% | -9.92% | 242.07 | 244.37 | +0.95% | 0.712 | 2.622 | 2.623 | -0.1357 | -0.1359 |

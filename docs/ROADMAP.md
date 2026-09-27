@@ -590,9 +590,9 @@
       a test holding its words and sums. *Result:* met: 17 flights, 4 of 12 private designs, 9 in all.
     - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
       *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
-    - [ ] [blocked] **M2.2e5 Twenty designs** (on #173, #174, M1.13, #133). *Done when:*
+    - [ ] [blocked] **M2.2e5 Twenty designs** (on #173, #174, #133; M1.13 done). *Done when:*
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
-      bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the four above.
+      bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the three above.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts
@@ -693,7 +693,7 @@
     hand-computed values, and a release conserves mass and momentum. *Result:* met: 1e-15 m, kg,
     kg·m²; momentum to 1.5e-13, angular momentum 7.3e-12, the part leaving at 0.146 m/s across.
 
-- [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19). Split a to c (ADR-089).
+- [x] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19). Split a to c (ADR-089).
   - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.
     Mass properties off the axis; each pod's normal force and drag, and its interference with the
     body, from a cited source.
@@ -716,14 +716,15 @@
     - [x] **M1.13b2 Pods of no length**, which hang fins off the axis, and an empty pod set.
       *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read. *Result:* met
       (ADR-091): all 4 read; fin roots and lug axes in pods where OpenRocket puts them to 1e-15 m.
-  - [ ] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
-    Split c1, c2 (ADR-092).
+  - [x] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
+    Split c1, c2 (ADR-092). *Result:* met by c2.
     - [x] **M1.13c1 Pods fly**, each pod's parts on Barrowman's rules, once per pod. *Done when:*
       a pod's normal force, centre of pressure, drag and roll damping match hand-worked values from
       the cited equations, and a design with pods flies. *Result:* met: 1e-11 and 1e-12, fins'
       damping to hand-summed strips 1e-7; a private lug-pod design within 2.2% of OpenRocket.
-    - [ ] **M1.13c2 A pod design against OpenRocket.** *Done when:* the second bullet is met by a
-      pod design with bodies and fins, as probes flown in OpenRocket.
+    - [x] **M1.13c2 A pod design against OpenRocket.** *Done when:* the second bullet is met by a
+      pod design with bodies and fins, as probes flown in OpenRocket. *Result:* met (ADR-093): six
+      probes, apogee +0.41% to +0.81%, speed to +1.24%, the pods' change within 0.32 points.
 ## Phase 2: Library surfaces and interop
 
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
