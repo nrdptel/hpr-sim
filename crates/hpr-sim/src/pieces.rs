@@ -63,10 +63,11 @@ pub enum Parting {
 /// velocity by `J/m` for its own mass `m` and the momentum is unchanged. The axis is the
 /// airframe's while it flies with nothing open. A body with no attitude of its own (a point mass,
 /// or a stack whose attitude froze when a device opened earlier) is taken to point its forward end
-/// against its velocity through the air if it hangs from a canopy or streamer opened before that
-/// instant, and along it, as a stable airframe does, if nothing is open or it only tumbles; below
-/// 1 mm/s through the air, up ([ADR-086][adr-086]). Partings at one instant part a body together.
-/// A separation adds no impulse, and a pushed payload in the nose's piece is refused.
+/// against its velocity through the air if it hangs from a device, any but a tumble, open just
+/// before that instant, and along it, as a stable airframe does, if nothing is open or it only
+/// tumbles; below 1 mm/s through the air, up ([ADR-086][adr-086]). Partings at one instant part a
+/// body together. A separation adds no impulse, and a pushed payload in the nose's piece is
+/// refused.
 ///
 /// [adr-085]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-085-ejected-pieces-an-airframe-that-parts-at-any-joint-2026-09-26
 /// [adr-086]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-086-ejection-impulse-and-tumbling-pieces-2026-09-26
@@ -116,7 +117,9 @@ impl Ejection {
     /// The same ejection, pushing its two sides apart with the impulse `impulse_n_s`, N·s: the
     /// side forward of the joint, or the payload, gets it toward the nose, and the other side its
     /// opposite. [`crate::Simulation::with_ejections`] refuses one that is negative or not
-    /// finite.
+    /// finite. A pushed payload needs a way out forward: one in the nose's piece is refused when
+    /// the flight starts, and one whose section's forward joint hasn't parted when it leaves is
+    /// an error in flight.
     #[must_use]
     pub fn with_impulse(mut self, impulse_n_s: f64) -> Self {
         self.impulse_n_s = impulse_n_s;
@@ -153,8 +156,8 @@ impl Pieces {
     /// [`SimError::Parting`] for an ejection that names a component the design doesn't have, a
     /// joint aft of an internal component or of the last body component, a payload that is a body
     /// component, an external part, one of several copies in a cluster or inside another payload,
-    /// two partings at one joint or of one payload, a pushed payload in the nose's piece, or a split
-    /// through a stage or component whose overridden mass doesn't say how it divides; [`SimError::Domain`] for a separation with no
+    /// two partings at one joint or of one payload, or a split through a stage or component whose
+    /// overridden mass doesn't say how it divides; [`SimError::Domain`] for a separation with no
     /// stage aft of it.
     pub(crate) fn new(
         rocket: &Rocket,
@@ -299,21 +302,6 @@ impl Pieces {
                 }
                 None => carried,
             };
-        }
-
-        // A pushed payload leaves forward, and the nose's piece has no forward end to leave by.
-        let first_ejection = 1 + usize::from(separation.is_some());
-        for (index, ejection) in ejections.iter().enumerate() {
-            if let Parting::Payload { component } = &ejection.parting
-                && ejection.impulse_n_s > 0.0
-                && host[first_ejection + index] == Some(0)
-            {
-                return Err(refuse(
-                    "a pushed payload leaves forward, and this one is in the nose's piece, which \
-                     is closed at the nose (part a joint forward of it, or give it no impulse)",
-                    component,
-                ));
-            }
         }
 
         // Whether a component's subtree spans more than one piece.
@@ -478,6 +466,34 @@ impl Pieces {
             }
         }
         MassProperties::combine(parts.iter())
+    }
+
+    /// Refuses a pushed payload in the nose's piece: it leaves forward, and that piece is closed at
+    /// the nose. It needs the flight's separation as well as its `ejections`, so it runs when the
+    /// flight starts, whatever order the builders came in.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Parting`], naming the payload.
+    pub(crate) fn check_pushed_payloads(
+        &self,
+        ejections: &[Ejection],
+        first_ejection: usize,
+    ) -> Result<(), SimError> {
+        for (index, ejection) in ejections.iter().enumerate() {
+            if let Parting::Payload { component } = &ejection.parting
+                && ejection.impulse_n_s > 0.0
+                && self.host[first_ejection + index] == Some(0)
+            {
+                return Err(SimError::Parting {
+                    what: "a pushed payload leaves forward, and this one is in the nose's piece, \
+                           which is closed at the nose (part a joint forward of it, or give it no \
+                           impulse)",
+                    component: component.clone(),
+                });
+            }
+        }
+        Ok(())
     }
 
     /// The piece that carries `piece`, when it is a payload.
@@ -1480,6 +1496,255 @@ mod tests {
         );
     }
 
+    /// The milestone's design with `devices` and the nose cone pushed off at 300 m with
+    /// `impulse_n_s`, dropped from a stack tilted 60° in a 4 m/s wind.
+    fn nose_off_at_300_m(devices: Vec<Device>, impulse_n_s: f64) -> (Simulation, FlightResult) {
+        let at_300_m = Trigger::Altitude {
+            height_above_ground_m: 300.0,
+        };
+        let sim = Simulation::new(
+            &with_payload(),
+            "i175",
+            analytic_wind_environment(
+                UniformAir::sea_level(),
+                G,
+                ConstantWind::new(4.0, 2.0).unwrap(),
+            ),
+            Rail::vertical(3.0),
+            FlightSettings {
+                max_time_s: 3600.0,
+                ..FlightSettings::default()
+            },
+        )
+        .unwrap()
+        .with_recovery(devices)
+        .unwrap()
+        .with_ejections(vec![
+            Ejection::aft_of(at_300_m, "nose").with_impulse(impulse_n_s),
+        ])
+        .unwrap();
+        let start = dropped_at(
+            &sim,
+            (60.0, 30.0),
+            1_500.0,
+            DVec3::new(3.0, 0.0, -2.0),
+            DVec3::ZERO,
+        );
+        let result = sim.run_free(START_S, start, &mut ()).unwrap();
+        (sim, result)
+    }
+
+    /// The nose cone's change of velocity at its parting from [`nose_off_at_300_m`] with 1 N·s,
+    /// against the same flight unpushed, over the unit velocity through the air there and the
+    /// push's size `J/m`.
+    fn nose_push_through_air(devices: impl Fn() -> Vec<Device>) -> f64 {
+        let (sim, pushed) = nose_off_at_300_m(devices(), 1.0);
+        let (_, unpushed) = nose_off_at_300_m(devices(), 0.0);
+        let first = pushed.event(EventKind::Ejection(0)).unwrap().sample;
+        let wind_enu = ConstantWind::new(4.0, 2.0)
+            .unwrap()
+            .wind(0.0)
+            .unwrap()
+            .velocity_enu_m_s;
+        let through_air = (first.cg_velocity_enu_m_s - wind_enu).normalize();
+        let push = start_change(&pushed, &unpushed, 0);
+        let size_m_s = 1.0 / component_kg(&sim, "nose");
+        // Along the velocity through the air, one way or the other, and nowhere else.
+        let along = push.dot(through_air) / size_m_s;
+        close_vec(
+            push,
+            through_air * along * size_m_s,
+            1e-9,
+            "the push's line",
+        );
+        along
+    }
+
+    #[test]
+    fn a_stack_tumbling_since_apogee_is_pushed_along_its_flight() {
+        // Only a tumble on the stack since apogee: its attitude froze then, so the push goes by
+        // its velocity through the air, but it hangs from nothing, so the nose cone is pushed
+        // along it, as a stable airframe's nose would point.
+        let along = nose_push_through_air(|| {
+            let tumble = DeviceDrag::tumbling(&with_payload().assemble("i175").unwrap()).unwrap();
+            vec![
+                Device::new("tumble", tumble, Trigger::Apogee),
+                canopy(
+                    1,
+                    0.9,
+                    Trigger::Altitude {
+                        height_above_ground_m: 300.0,
+                    },
+                ),
+            ]
+        });
+        close(along, 1.0, 1e-9, "along the flight");
+    }
+
+    #[test]
+    fn a_drogue_released_as_the_body_parts_is_still_hung_from() {
+        // A drogue on the stack since apogee, cut away by a main that opens at 300 m, as the nose
+        // cone leaves. Up to that instant the stack hung from the drogue, so the nose cone goes
+        // up its velocity through the air whether the main opens at once, releasing the drogue at
+        // that instant, or fills over a second (found in review: the push flipped with the law).
+        for inflation in [
+            Inflation::Instant,
+            Inflation::FillingTime {
+                time_s: 1.0,
+                exponent: 2.0,
+            },
+        ] {
+            let along = nose_push_through_air(|| {
+                vec![
+                    canopy(0, 0.3, Trigger::Apogee).with_release_by(1),
+                    canopy(
+                        0,
+                        0.9,
+                        Trigger::Altitude {
+                            height_above_ground_m: 300.0,
+                        },
+                    )
+                    .with_inflation(inflation),
+                    canopy(
+                        1,
+                        0.9,
+                        Trigger::Altitude {
+                            height_above_ground_m: 300.0,
+                        },
+                    ),
+                ]
+            });
+            close(along, -1.0, 1e-9, &format!("{inflation:?}"));
+        }
+    }
+
+    #[test]
+    fn one_charge_can_push_off_the_nose_cone_and_let_the_payload_out() {
+        // Both at apogee from the stack in free flight, 1 N·s each: by hand, along the axis, the
+        // nose cone `+1 N·s`, the payload, leaving forward through the joint that opens with it,
+        // `+1 N·s`, and the airframe between them `−2 N·s`, each over its own mass.
+        let fly = |impulse_n_s: f64| {
+            let sim = Simulation::new(
+                &with_payload(),
+                "i175",
+                analytic_environment(UniformAir::sea_level(), G),
+                Rail::vertical(3.0),
+                FlightSettings {
+                    max_time_s: 3600.0,
+                    ..FlightSettings::default()
+                },
+            )
+            .unwrap()
+            .with_recovery(vec![
+                canopy(0, 0.45, Trigger::Apogee),
+                canopy(1, 0.9, Trigger::Apogee),
+                canopy(2, 0.6, Trigger::Apogee),
+            ])
+            .unwrap()
+            .with_ejections(vec![
+                Ejection::aft_of(Trigger::Apogee, "nose").with_impulse(impulse_n_s),
+                Ejection::payload(Trigger::Apogee, "payload").with_impulse(impulse_n_s),
+            ])
+            .unwrap();
+            let start = dropped_at(
+                &sim,
+                (70.0, 120.0),
+                1_500.0,
+                DVec3::new(0.0, 0.0, -0.5),
+                DVec3::ZERO,
+            );
+            sim.run_free(START_S, start, &mut ()).unwrap()
+        };
+        let (pushed, unpushed) = (fly(1.0), fly(0.0));
+        assert!(pushed.bodies_landed());
+        let axis = pushed.final_sample.state.attitude.mul_vec3(DVec3::Z);
+        for (body, impulse_n_s) in [(0, 1.0), (1, -2.0), (2, 1.0)] {
+            let kg = pushed.bodies[body].start_sample.mass_kg;
+            close_vec(
+                start_change(&pushed, &unpushed, body),
+                axis * (impulse_n_s / kg),
+                1e-9,
+                &format!("body {body}"),
+            );
+        }
+        close(
+            pushed.bodies[2].start_sample.mass_kg,
+            PAYLOAD_KG,
+            1e-12,
+            "the payload",
+        );
+    }
+
+    #[test]
+    fn a_pushed_payload_behind_a_separation_is_accepted_in_either_builder_order() {
+        // The two-stage design's booster electronics, pushed out at apogee, are in the booster's
+        // piece, forward of which the separation parts: a way out, whichever builder comes first.
+        // Without the separation they would be in the nose's piece, and refused at the start.
+        let rocket = design("synthetic-two-stage-75mm-54mm");
+        let tumble =
+            DeviceDrag::tumbling_stages(&rocket.assemble("j760-i175").unwrap(), (1, 1)).unwrap();
+        let devices = || {
+            vec![
+                canopy(0, 1.2, Trigger::Apogee),
+                Device::new("booster", tumble, Trigger::Apogee).on_body(1),
+                canopy(2, 0.3, Trigger::Apogee),
+            ]
+        };
+        let ejections =
+            || vec![Ejection::payload(Trigger::Apogee, "booster-electronics").with_impulse(1.0)];
+        let base = || {
+            Simulation::new(
+                &rocket,
+                "j760-i175",
+                analytic_environment(UniformAir::sea_level(), G),
+                Rail::vertical(6.0),
+                FlightSettings {
+                    max_time_s: 3600.0,
+                    ..FlightSettings::default()
+                },
+            )
+            .unwrap()
+        };
+        let separation = Separation::new(Trigger::Apogee, 0);
+        let orders = [
+            base()
+                .with_separation(separation)
+                .unwrap()
+                .with_ejections(ejections())
+                .unwrap()
+                .with_recovery(devices())
+                .unwrap(),
+            base()
+                .with_ejections(ejections())
+                .unwrap()
+                .with_separation(separation)
+                .unwrap()
+                .with_recovery(devices())
+                .unwrap(),
+        ];
+        for sim in orders {
+            let start = dropped(&sim, 1_500.0, DVec3::new(0.0, 0.0, -0.5), DVec3::ZERO);
+            let result = sim.run_free(START_S, start, &mut ()).unwrap();
+            assert!(result.bodies_landed());
+        }
+        let error = base()
+            .with_ejections(ejections())
+            .unwrap()
+            .with_recovery(vec![
+                canopy(0, 1.2, Trigger::Apogee),
+                canopy(1, 0.3, Trigger::Apogee),
+            ])
+            .unwrap()
+            .run(&mut ())
+            .unwrap_err();
+        assert!(
+            matches!(&error, SimError::Parting { what, component }
+                if what.starts_with("a pushed payload leaves forward")
+                    && component == "booster-electronics"),
+            "{error:?}"
+        );
+    }
+
     #[test]
     fn a_parting_without_an_impulse_records_the_body_after_it_unpushed() {
         // With no impulse the body after a parting on the way down has the same point and
@@ -1772,10 +2037,10 @@ mod tests {
     #[test]
     fn partings_that_fire_together_on_the_way_down_count_each_piece_once() {
         // The booster section leaves at apogee. At 300 m two more partings fire in the same pass
-        // on the body left: aft of the nose and aft of the sustainer's airframe. Whichever is
-        // handled first, the piece the other makes has moved to the body that left, so it must
-        // part there, not on the body it was listed against (found in review: the interstage was
-        // counted twice, 1.7651 kg landed from a 1.6752 kg rocket).
+        // on the body left: aft of the nose and aft of the sustainer's airframe. They part it
+        // together, whichever is listed first, and each piece is counted once (found in review:
+        // taken one at a time, the interstage was counted twice, 1.7651 kg landed from a
+        // 1.6752 kg rocket). Both are the parting body's events.
         let at_300_m = Trigger::Altitude {
             height_above_ground_m: 300.0,
         };
@@ -1826,6 +2091,16 @@ mod tests {
                 1e-12,
                 &format!("order {order}: the interstage"),
             );
+            for kind in [EventKind::Ejection(1), EventKind::Ejection(2)] {
+                assert!(
+                    result.bodies[0].event(kind).is_some(),
+                    "order {order}: {kind:?}"
+                );
+                assert!(
+                    result.bodies[2].event(kind).is_none(),
+                    "order {order}: {kind:?}"
+                );
+            }
         }
     }
 
@@ -2016,26 +2291,36 @@ mod tests {
             what(error).0,
             "height above the launch site at which a piece is ejected, m"
         );
-        // A pushed payload leaves forward, and with no joint forward of it that is the nose tip;
-        // without a push it may still leave.
-        let (what_, component) = what(refused(vec![
-            Ejection::payload(Trigger::Apogee, "payload").with_impulse(1.0),
-        ]));
+        // A pushed payload leaves forward, and with no joint forward of it that is the nose tip:
+        // refused when the flight starts, since a separation given later could open one. Without
+        // a push it may still leave.
+        let payload_only = |impulse_n_s: f64| {
+            Simulation::new(
+                &with_payload(),
+                "i175",
+                analytic_environment(UniformAir::sea_level(), G),
+                Rail::vertical(3.0),
+                FlightSettings::default(),
+            )
+            .unwrap()
+            .with_recovery(vec![
+                canopy(0, 0.5, Trigger::Apogee),
+                canopy(1, 0.5, Trigger::Apogee),
+            ])
+            .unwrap()
+            .with_ejections(vec![
+                Ejection::payload(Trigger::Apogee, "payload").with_impulse(impulse_n_s),
+            ])
+            .unwrap()
+            .run(&mut ())
+        };
+        let (what_, component) = what(payload_only(1.0).unwrap_err());
         assert!(
             what_.starts_with("a pushed payload leaves forward, and this one is in the nose's")
                 && component == "payload",
             "{what_}"
         );
-        let unpushed = Simulation::new(
-            &with_payload(),
-            "i175",
-            analytic_environment(UniformAir::sea_level(), G),
-            Rail::vertical(3.0),
-            FlightSettings::default(),
-        )
-        .unwrap()
-        .with_ejections(vec![Ejection::payload(Trigger::Apogee, "payload")]);
-        assert!(unpushed.is_ok(), "{unpushed:?}");
+        assert!(payload_only(0.0).is_ok());
         for impulse_n_s in [-1.0, f64::NAN, f64::INFINITY] {
             let error = refused(vec![
                 Ejection::aft_of(Trigger::Apogee, "nose").with_impulse(impulse_n_s),

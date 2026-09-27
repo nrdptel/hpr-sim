@@ -7509,7 +7509,9 @@ lone nose cone that is the whole area.
    a payload leaves forward, out of its host, as one does when the nose cone comes off first.
    Each body's velocity changes by its push over its own mass, so the momentum is unchanged by
    construction. A payload that leaves aft is not given a way to say so yet, so a push on a
-   payload in the nose's own piece, which is closed at the nose, is refused.
+   payload in the nose's own piece, which is closed at the nose, is refused when the flight
+   starts (a separation given later can put it in a piece of its own; review found the first
+   draft refusing it by builder order).
 3. **The axis while the airframe flies whole with nothing open** is its attitude at that instant,
    and the push is added to each body's `v_O + ω × r_cg`. A device that opens in the same pass
    as the parting freezes that same attitude, so it counts. When several splits part the stack
@@ -7518,11 +7520,13 @@ lone nose cone that is the whole area.
    stack whose attitude froze when a device opened at an earlier time (review found the first
    draft pushing such a stack along its apogee attitude, nearly sideways, after minutes under a
    drogue). hpr then goes by the velocity through the air `v − w`:
-   - a body hanging from a canopy or streamer deployed before that instant, and not released,
-     points its forward end against `v − w`, toward the device, assumed to have left through that
-     end, as a main does once the nose cone is off (review found the first draft pushing a payload
-     down, away from the canopy it leaves toward). A device deploying at the parting's own instant
-     doesn't count yet, whatever its inflation law (review found the push flipping with it);
+   - a body hanging from a device, any but a tumble, open just before that instant (deployed
+     before it and not released before it) points its forward end against `v − w`, toward the
+     device, assumed to have left through that end, as a main does once the nose cone is off
+     (review found the first draft pushing a payload down, away from the canopy it leaves toward).
+     What happens at the parting's own instant, a deployment or a release, doesn't count yet, so
+     the answer doesn't depend on the inflation law (review found the push flipping with it, at
+     a deployment and then at a release);
    - a body with nothing open, or only a tumble, points its nose along `v − w`, as a statically
      stable airframe does;
    - below 1 mm/s through the air (a body's own apogee in still air), up. That speed is drift or

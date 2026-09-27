@@ -609,8 +609,9 @@ The push is equal and opposite:
   as open yet. Otherwise the body has no attitude to go by: a body flying on its own is a point
   mass, and a whole airframe that has hung from a device since earlier has only the attitude it
   had when the device opened. So hpr goes by the body's velocity through the air:
-  - A body hanging from a parachute or streamer opened before that instant points its forward
-    end against that velocity (upward, as it falls), toward the device. hpr assumes the device
+  - A body hanging from a device (any but a tumble) that was open just before that instant,
+    deployed before it and not yet released, points its forward end against that velocity
+    (upward, as it falls), toward the device. hpr assumes the device
     left through that end, as a main does once the nose cone is off: a payload let out under the
     airframe's parachute is pushed up, toward it. For a drogue that left between the booster and
     the avionics bay, the airframe more likely hangs near level, and this direction is a guess.
@@ -622,8 +623,8 @@ The push is equal and opposite:
   body at one instant part it together, each final body taking the pushes of the joints on its
   sides, so the order you list them in doesn't matter.
 - A separation has no push. A payload always leaves forward, so a push on a payload in the nose's
-  own section, which is closed at the nose, is refused when you give it. A pushed payload whose
-  section's forward joint hasn't parted by the time it leaves is an error in flight.
+  own section, which is closed at the nose, is refused when the flight starts. A pushed payload
+  whose section's forward joint hasn't parted by the time it leaves is an error in flight.
 
 In the example below, where every piece's device opens as it leaves, 1 N·s at each parting moves
 the airframe's landing by 0.0 m and the payload's by 1.3 m: the drag takes the push away within
@@ -749,10 +750,14 @@ The ejected pieces' tests are in `crates/hpr-sim/src/pieces.rs`, also analytic:
 | Two pushed partings at one instant on the way down (the two-stage design), given in either order | by hand, the nose cone `+J/m`, the airframe between the joints 0, the interstage `−J/m`, each to 1e-9; the momenta add up to 1e-9, and the landings agree between the orders to 1e-6 m (found in review: taken one at a time, the order moved the nose cone's push from 15.85 to 17.66 m/s) |
 | The airframe's canopy opening at the same instant as the payload leaves | not yet hung from: the payload is pushed down its flight, 4 m/s, whether the canopy opens at once or fills over a second (found in review: the push flipped with the inflation law) |
 | A pushed payload let out at apogee while its section's forward joint waits for 300 m | an error in flight, at the ejection's time |
+| A stack with only a tumble since apogee, the nose cone pushed off at 300 m | along its velocity through the air, to 1e-9: a tumble is nothing to hang from |
+| A drogue since apogee released by a main that opens at 300 m as the nose cone leaves | still hung from: up the velocity through the air, to 1e-9, whether the main opens at once or fills over a second (found in review: the push flipped with the law) |
+| One charge pushing off the nose cone and letting the payload out, both at apogee | by hand, along the axis: nose cone `+1 N·s`, payload `+1 N·s`, airframe between them `−2 N·s`, each over its own mass to 1e-9 |
+| A pushed payload in the booster, behind a separation, with the builders in either order | accepted both ways, and every piece lands; without the separation it is in the nose's piece and refused at the start |
 | A parting on the way down with no push | the body after it has the same point and velocity, and its mass without the piece; only partings record a body after |
 | A nose cone tumbling on its own after apogee, in uniform sea-level air | its drag area is 0.56 times its tangent ogive's closed-form side area, to 1e-12; it lands at 13.849 m/s, its model's `v_e` to 1e-6 (the example's 14.82 m/s is in its own, thinner air at 1,400 m) |
 | The tumbling drag areas of an airframe cut into a nose cone and the rest | add to the whole airframe's to 1e-12; a payload or a piece not made is refused |
-| A push that is negative, NaN or infinite, or on a payload in the nose's own section | refused when the ejections are given |
+| A push that is negative, NaN or infinite | refused when the ejections are given; one on a payload in the nose's own section when the flight starts |
 
 ### Against RocketPy
 

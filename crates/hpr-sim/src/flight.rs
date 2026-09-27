@@ -529,9 +529,10 @@ impl Simulation {
     /// [`SimError::Parting`] for a parting the design can't make; [`SimError::Domain`] if a body
     /// carries no device, if a trigger or impulse is out of its domain, if its time is known and a
     /// motor burns past it, or if it is timed from a motor with no ignition known before the
-    /// flight. A device on a body that nothing makes is refused when the flight starts. In flight,
-    /// an ejection that fires while a motor burns, or ahead of a separation that would light one,
-    /// is an error, and so is a powered separation in a flight with ejections.
+    /// flight. A device on a body that nothing makes, and a pushed payload in the nose's piece, are
+    /// refused when the flight starts. In flight, an ejection that fires while a motor burns, or
+    /// ahead of a separation that would light one, is an error, and so are a powered separation in
+    /// a flight with ejections and a pushed payload whose section's forward joint hasn't parted.
     pub fn with_ejections(mut self, ejections: Vec<Ejection>) -> Result<Self, SimError> {
         Pieces::new(
             &self.rocket,
@@ -821,6 +822,19 @@ impl Simulation {
         // The builders can be given in either order, and the last one wins, so the devices and
         // the bodies are checked against each other here as well.
         check_bodies(&self.devices, self.body_count(), true)?;
+        if self
+            .ejections
+            .iter()
+            .any(|ejection| ejection.impulse_n_s > 0.0)
+        {
+            Pieces::new(
+                &self.rocket,
+                &self.vehicle.assembly,
+                self.separation,
+                &self.ejections,
+            )?
+            .check_pushed_payloads(&self.ejections, 1 + usize::from(self.separation.is_some()))?;
+        }
         if start_phase == Phase::Free {
             let height = self
                 .evaluate(
@@ -1646,9 +1660,9 @@ impl Simulation {
             // parting: each piece they make starts here, at this body's point and velocity plus
             // the pushes on its sides, and is flown after it. Which fire, and the way the pushes
             // point, are decided on the body as the pass starts, so neither depends on the order
-            // the splits were given in, nor on a push turning the body upward (found in review:
-            // taking them one at a time let a push delay a split, or share one charge's push
-            // with pieces another then parted).
+            // the splits were given in (found in review: taking them one at a time let a push
+            // delay a split, or share one charge's push with pieces another then parted). A split
+            // that hasn't fired is asked again at the same instant, on the pushed body.
             let pending = split.pending(&leaders, body);
             let fires = |index: usize, sample: &BodySample| {
                 let (trigger, time_s, _) = self.split(index);
@@ -1877,10 +1891,10 @@ impl Simulation {
     }
 
     /// The way the nose of a body with no attitude of its own is taken to point, as a unit vector
-    /// in the launch frame, for the push of an ejection (ADR-086): a body `hanging` from a canopy
-    /// or streamer points its forward end against its velocity through the air, toward the
-    /// device, assumed to have left through that end; any other points its nose along that
-    /// velocity, as a stable airframe does. Below [`STILL_AIR_M_S`] that velocity is drift or round-off rather
+    /// in the launch frame, for the push of an ejection (ADR-086): a body `hanging` from a device
+    /// points its forward end against its velocity through the air, toward the device, assumed to
+    /// have left through that end; any other points its nose along that velocity, as a stable
+    /// airframe does. Below [`STILL_AIR_M_S`] that velocity is drift or round-off rather
     /// than a flight path, and the nose is taken to point up.
     fn nose_ward_enu(
         &self,

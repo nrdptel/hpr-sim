@@ -1195,9 +1195,10 @@ impl Run {
         self.devices[index].released_s
     }
 
-    /// Whether a canopy or streamer among the devices for which `member` is true had deployed
-    /// before `t` and is not released by then: something a body hangs from as it falls. A tumble
-    /// is not, and a device that deploys at `t` itself is not yet.
+    /// Whether a device among those for which `member` is true was open just before `t`: deployed
+    /// before `t` and not released before it. That is something a body hangs from as it falls,
+    /// any device but a tumble. So what happens at `t` itself, a deployment or a release, doesn't
+    /// count yet, and the answer doesn't depend on how fast a device opening at `t` fills.
     pub(crate) fn hung_before(
         &self,
         devices: &[Device],
@@ -1212,7 +1213,7 @@ impl Run {
                     .is_some_and(|deployed_s| deployed_s < t)
                 && !self.devices[index]
                     .released_s
-                    .is_some_and(|released_s| released_s <= t)
+                    .is_some_and(|released_s| released_s < t)
         })
     }
 
