@@ -436,6 +436,10 @@ fn hpr_drag(
 ) -> Result<f64, String> {
     let layout = rocket.layout().map_err(|e| e.to_string())?;
     let model = AeroModel::new(&layout).map_err(|e| e.to_string())?;
+    // Every motor's area comes off the airframe's base below, which a motor in a pod would not.
+    if !model.pod_sets().is_empty() {
+        return Err("a design with pods: its motors' areas would need splitting".into());
+    }
     let motor_area: f64 = if thrusting {
         rocket
             .configurations

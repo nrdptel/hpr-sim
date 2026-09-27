@@ -87,6 +87,8 @@ struct MotorTerms {
     exit_radius_m: f64,
     /// The motor's cross-section, for power-on base drag, m².
     area_m2: f64,
+    /// Whether its mount is in a pod: its area then comes off its pod's base, not the airframe's.
+    in_pod: bool,
     /// When it lights on the flight's clock, s: infinite for a motor that hasn't a known time.
     ignition_s: f64,
     /// The end of its thrust curve on the flight's clock, s: infinite for a motor unlit.
@@ -182,6 +184,11 @@ impl Vehicle {
                     .nozzle()
                     .map_or(0.0, |nozzle| nozzle.exit_radius_m),
                 area_m2: std::f64::consts::PI * (0.5 * placed.mounted.diameter_m).powi(2),
+                // The assembly places a motor only in a mount it found, so `find` succeeds.
+                in_pod: assembly
+                    .layout
+                    .find(&placed.mount)
+                    .is_some_and(|(index, _)| assembly.layout.pod_set_of(index).is_some()),
                 ignition_s: ignition.unwrap_or(f64::INFINITY),
                 burnout_s: ignition.map_or(f64::INFINITY, |ignition_s| {
                     ignition_s + placed.mounted.motor.burnout_time_s()
@@ -189,7 +196,7 @@ impl Vehicle {
             })
             .collect();
         let reference_area_m2 = aero.reference_area_m2();
-        let first_fin_index = aero.bodies().len();
+        let first_fin_index = aero.fin_set_start();
         Ok(Self {
             assembly,
             aero,
@@ -370,7 +377,8 @@ impl Vehicle {
         let mut t03_jet = DVec3::ZERO;
         let mut t04_jet = DVec3::ZERO;
         let mut jet_gyration = DMat3::ZERO;
-        let mut burning_area_m2 = 0.0;
+        // The burning motors' cross-section in the airframe's base, and in the pods' bases.
+        let mut burning_area_m2 = [0.0, 0.0];
         for (terms, placed) in self.motors.iter().zip(&self.assembly.motors) {
             if a >= terms.burnout_s || b <= terms.ignition_s {
                 continue;
@@ -387,7 +395,7 @@ impl Vehicle {
             let force = DVec3::Z * motor.thrust_at_pressure_n(t, pressure_pa);
             thrust += force;
             thrust_moment += terms.nozzle_m.cross(force);
-            burning_area_m2 += terms.area_m2;
+            burning_area_m2[usize::from(terms.in_pod)] += terms.area_m2;
             let mdot = -motor.state(t).mass_flow_kg_s;
             let mddot = if b - a < MIN_DERIVATIVE_INTERVAL_S {
                 0.0
@@ -529,7 +537,7 @@ impl Vehicle {
         air_velocity_o_body: DVec3,
         omega: DVec3,
         cg_m: DVec3,
-        burning_area_m2: f64,
+        [burning_area_m2, burning_pod_area_m2]: [f64; 2],
     ) -> Result<Aerodynamics, SimError> {
         let rho = air.density_kg_m3;
         let sound = air.speed_of_sound_m_s;
@@ -549,8 +557,9 @@ impl Vehicle {
         let q = 0.5 * rho * speed * speed;
         out.dynamic_pressure_pa = q;
         let reynolds_per_m = speed / air.kinematic_viscosity_m2_s();
-        let conditions = if burning_area_m2 > 0.0 {
+        let conditions = if burning_area_m2 > 0.0 || burning_pod_area_m2 > 0.0 {
             DragConditions::thrusting(reynolds_per_m, burning_area_m2)
+                .with_pod_motors(burning_pod_area_m2)
         } else {
             DragConditions::coasting(reynolds_per_m)
         };
@@ -739,6 +748,67 @@ mod tests {
         Vehicle::new(assembly, aero).unwrap()
     }
 
+    /// A motor in a pod burns into its pod's base, not the airframe's (ADR-092): Valetudo with
+    /// two pods, each its own motor tube, takes the pods' two motors apart from its own.
+    #[test]
+    fn a_pod_s_motors_burn_into_the_pod_s_base() {
+        let mut rocket = serde_json::to_value(design("rocketpy-valetudo")).unwrap();
+        let material =
+            serde_json::json!({ "name": "test", "density": { "kind": "bulk", "kg_m3": 1000.0 } });
+        let pods = serde_json::json!({
+            "id": "pods",
+            "part": { "pod_set": { "count": 2, "radial_offset_m": 0.1, "angle_rad": 0.0 } },
+            "position": { "from": "top", "aft_offset_m": 0.8 },
+            "children": [{
+                "id": "pod-tube",
+                "part": { "body_tube": {
+                    "length_m": 0.9, "outer_radius_m": 0.02, "thickness_m": 0.002,
+                    "material": material } },
+                "motor_mount": { "overhang_m": 0.0 }
+            }]
+        });
+        rocket["stages"][0]["components"][1]["children"]
+            .as_array_mut()
+            .unwrap()
+            .push(pods);
+        let mut pod_motor = rocket["configurations"][0]["motors"][0].clone();
+        pod_motor["mount"] = serde_json::json!("pod-tube");
+        rocket["configurations"][0]["motors"]
+            .as_array_mut()
+            .unwrap()
+            .push(pod_motor);
+        let rocket: hpr_design::Rocket = serde_json::from_value(rocket).unwrap();
+        let assembly = rocket.assemble("example").unwrap();
+        let aero = AeroModel::new(&assembly.layout).unwrap();
+        let vehicle = Vehicle::new(assembly, aero).unwrap();
+        let in_pods: Vec<bool> = vehicle.motors.iter().map(|m| m.in_pod).collect();
+        assert_eq!(in_pods, [false, true, true]);
+        let area = vehicle.motors[1].area_m2;
+        assert!(area > 0.0 && vehicle.motors[2].area_m2 == area);
+
+        // The engine hands the pods' area to the pods' bases: its axial coefficient is the drag
+        // model's with the two pod motors, and not with them on the airframe's base. A base's drag
+        // is linear in its area until the base runs out, so the pods are narrower than their
+        // motors here, for the two to differ.
+        let air = UniformAir::sea_level().0;
+        let speed = 50.0;
+        let v = DVec3::new(0.0, 0.0, speed);
+        let cg = vehicle.assembly.mass_properties(0.0).cg_m;
+        let axial = |areas: [f64; 2]| {
+            vehicle
+                .aerodynamics(&air, v, DVec3::ZERO, cg, areas)
+                .unwrap()
+                .axial_coefficient
+        };
+        let flow = Flow::new(speed / air.speed_of_sound_m_s, 0.0, 0.0);
+        let reynolds_per_m = speed / air.kinematic_viscosity_m2_s();
+        let pods = DragConditions::thrusting(reynolds_per_m, 0.0).with_pod_motors(2.0 * area);
+        let expected = vehicle.aero.drag(&flow, &pods).unwrap().axial_coefficient;
+        assert_eq!(axial([0.0, 2.0 * area]), expected);
+        assert!(std::f64::consts::PI * 0.02_f64.powi(2) < area);
+        assert!((axial([2.0 * area, 0.0]) - expected).abs() > 1e-3);
+    }
+
     #[test]
     fn a_supersonic_flow_takes_the_body_s_terms_at_its_mach_number() {
         // Faster than sound the nose and the cylinder behind it take the shock-expansion shares at
@@ -757,7 +827,9 @@ mod tests {
         let normal = |mach: f64| {
             let speed = mach * air.speed_of_sound_m_s;
             let v = DVec3::new(alpha.sin(), 0.0, alpha.cos()) * speed;
-            let out = vehicle.aerodynamics(&air, v, DVec3::ZERO, cg, 0.0).unwrap();
+            let out = vehicle
+                .aerodynamics(&air, v, DVec3::ZERO, cg, [0.0, 0.0])
+                .unwrap();
             let q_area = 0.5 * air.density_kg_m3 * speed * speed * vehicle.reference_area_m2;
             let (a, roll) = flow_angles(v, speed);
             let flow = Flow::new(mach, a, roll);

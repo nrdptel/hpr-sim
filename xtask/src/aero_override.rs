@@ -296,7 +296,7 @@ fn own_table(root: &Path, alphas_deg: &[f64], machs: &[f64]) -> Result<NormalFor
                 .components(&Flow::new(mach, alpha, 0.0))
                 .map_err(|e| e.to_string())?;
             for (index, component) in components.iter().enumerate() {
-                let scale = if index >= aero.bodies().len() {
+                let scale = if index >= aero.fin_set_start() {
                     alpha.sin() / alpha
                 } else {
                     1.0

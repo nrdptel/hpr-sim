@@ -609,28 +609,19 @@
   - [x] **M1.9c Against OpenRocket.** Met (ADR-076), bars kept: a `.ork` two-stage and a cluster
     design within 5% of OpenRocket in apogee (3 vs OR without its early chute) and largest speed.
 
-- [x] **M1.10 Outputs and derived metrics.** Met (ADR-077 to ADR-080). Scope: static and dynamic
-  stability margin over the flight; optimum ejection delay; max q; flutter velocity and margin
-  (primary source cited); landing point in lat/lon; exports: CSV, JSON, Parquet (feature), KML and
-  GeoJSON. *Done when* (met): metrics are unit-tested; exported files are validated (GeoJSON by
-  schema, KML by parsing); flutter matches the worked example in the cited source.
+- [x] **M1.10 Outputs and derived metrics.** Met in a to c (ADR-077 to ADR-080): stability
+  margins over the flight, optimum ejection delay, max q, flutter velocity and margin (primary
+  source cited), landing lat/lon; CSV, JSON, Parquet (feature), KML, GeoJSON. *Done when* (met):
+  metrics are unit-tested; exported files are validated (GeoJSON by schema, KML by parsing);
+  flutter matches the worked example in the cited source.
   - Loft lessons: L32, L33, L34, L35, L94.
-
-  Split into a to c (ADR-077).
-  - [x] **M1.10a Flight metrics.** Met (ADR-077), bars kept: peaks (boost apart from the opening
-    shock), apogee with datum, margins rail exit to apogee (none where slopes cancel), optimum
-    delays, landings' lat/lon, `None` if absent; hand-tested (1e-6, margins 1e-9); L33-35, L94 live.
+  - [x] **M1.10a Flight metrics.** Met (ADR-077): hand-tested to 1e-6, margins to 1e-9.
     - Loft lessons: L33, L34, L35, L94.
-  - [x] **M1.10b Fin flutter.** Met (ADR-078), bars kept: TN 4197 eq. 18 matches Martin's worked
-    examples at his printed resolution; 14 shear moduli, each cited; L32 live.
+  - [x] **M1.10b Fin flutter.** Met (ADR-078): TN 4197 eq. 18 at Martin's printed resolution.
     - Loft lessons: L32.
-  - [x] **M1.10c Exports.** Met (ADR-079, ADR-080): the parent's second bullet is met: CSV, JSON,
-    KML and GeoJSON (Parquet behind a feature) are written, GeoJSON checked by schema and KML by
-    parsing.
-    - [x] **M1.10c1 Text exports.** Met (ADR-079, split c1, c2): CSV, JSON, GeoJSON, KML from a
-      recording and summary; GeoJSON by the published schema, KML parsed; numbers read back equal.
-    - [x] **M1.10c2 Parquet.** Met (ADR-080): written in-house behind the `parquet` feature;
-      Apache's `parquet` crate reads every value back bit for bit, over several pages.
+  - [x] **M1.10c Exports.** Met (ADR-079, ADR-080), the parent's second bullet.
+    - [x] **M1.10c1 Text exports.** Met (ADR-079): CSV, JSON, GeoJSON by schema, KML parsed.
+    - [x] **M1.10c2 Parquet.** Met (ADR-080): Apache's `parquet` reads every value back.
 
 - [ ] **M2.3 Real flights.** Split a to c (ADR-081); its bullets met by M2.3b, open for
   M2.3c (ADR-083).
@@ -726,6 +717,13 @@
       *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read. *Result:* met
       (ADR-091): all 4 read; fin roots and lug axes in pods where OpenRocket puts them to 1e-15 m.
   - [ ] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
+    Split c1, c2 (ADR-092).
+    - [x] **M1.13c1 Pods fly**, each pod's parts on Barrowman's rules, once per pod. *Done when:*
+      a pod's normal force, centre of pressure, drag and roll damping match hand-worked values from
+      the cited equations, and a design with pods flies. *Result:* met: 1e-11 and 1e-12, fins'
+      damping to hand-summed strips 1e-7; a private lug-pod design within 2.2% of OpenRocket.
+    - [ ] **M1.13c2 A pod design against OpenRocket.** *Done when:* the second bullet is met by a
+      pod design with bodies and fins, as probes flown in OpenRocket.
 ## Phase 2: Library surfaces and interop
 
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,

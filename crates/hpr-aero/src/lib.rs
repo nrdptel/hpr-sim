@@ -79,7 +79,7 @@ pub use fins::{
 };
 pub use model::{
     AeroModel, BodyAero, BodyModel, ComponentNormalForce, FinSetAero, Flow, MAX_CANT_RAD,
-    NORMAL_FORCE_MACH_LIMIT, NormalForce, Roll, SUPERSONIC_JOIN_START_MACH,
+    NORMAL_FORCE_MACH_LIMIT, NormalForce, PodFins, PodSetAero, Roll, SUPERSONIC_JOIN_START_MACH,
     SUPERSONIC_JOIN_WIDTH_MACH, SupersonicBoattail, SupersonicBody, SupersonicFlare,
 };
 pub use nose_drag::{PressureDragCurve, StoneyNose};
@@ -527,6 +527,8 @@ mod tests {
         for case in &fixture.cases {
             let rocket = committed_design(&case.design);
             let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+            // Every motor's area comes off the airframe's base, as no fixture design has pods.
+            assert!(model.pod_sets().is_empty(), "{}", case.design);
             let motor_area: f64 = if case.thrusting {
                 rocket.configurations[0]
                     .motors

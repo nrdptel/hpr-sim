@@ -201,8 +201,10 @@ C_D S = 1.42 A_f + 0.56 A_bt
   0.50, 1.00, 1.50, 1.41, 1.81, 1.73, 1.90, 1.85 for 1 to 8 fins (Table 3.4). It is a fit, not a
   model: four fins are 1.41 of one fin, not 2, and it is not monotonic. More than eight fins is
   refused.
-- Tube fins and [pods](../glossary.md#pod) are refused: the model has no factor for either, and
-  a pod's tubes are not the airframe's side profile.
+- Tube fins are refused: the model has no factor for them.
+- A [pod](../glossary.md#pod)'s tubes and fins count as the airframe's do, once per pod. The
+  documentation's model has no term for pods, nor for one part shading another from the air, so a
+  rocket with pods tumbles at a drag area the fit was never checked on.
 - The documentation notes 0.56 is half a circular cylinder's 1.12 in crossflow (air flowing across
   it, side-on), as expected of a cylinder falling at a random angle, and that 1.42 is "similar to
   that of a flat plate 1.17 or an open hemispherical cup 1.42". Those come from Hoerner's

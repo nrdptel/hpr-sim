@@ -5,17 +5,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e5 on #173, #174,
-  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.13c, pod aerodynamics.
+  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.13c2, pods against OR.
 - **Order:** M1.8e16 waits on #108, M2.2e5 on its four, M2.3c on a design with its log.
-  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-12, M1.13a, b, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
+  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-12, M1.13a-c1, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-27; M1.13b2 pods of no length done (ADR-091); M1.13c next.
+- **Last updated:** 2026-09-27; M1.13c1 pods fly (ADR-092); M1.13c2 next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.13c** (`m1.13c-<slug>`): pod normal force and drag from a cited source (research it
-  first), then a pod design against OpenRocket; the aero and tumble refusals of `Part::PodSet` go.
+- **Start M1.13c2** (`m1.13c2-<slug>`): probes with pods of bodies and fins (as `pods.py` builds
+  them), flown in OpenRocket 24.12 by a new oracle; hpr within 5% (ADR-076); state both codes'
+  limits on the aero page's *Pods*. OR's own pod examples don't fly for other reasons (ADR-092).
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
   M2.3c (ADR-083): fly a pair with `hpr_validate::real_flight`, commit only statistics; `xtask
@@ -56,6 +57,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-27: M1.13c1 Pods fly (ADR-092; M1.13c split c1, c2): hand values to 1e-11; lug-pod C02 within 2.2% of OR.
 - 2026-09-27: M1.13b `.ork` pods (ADR-090, ADR-091; b1, b2): 9 of 9 read, placed as OpenRocket to 1e-15 m.
 - 2026-09-27: M1.13a Pod mass (ADR-089; M1.13 split a to c): two pods and one off the axis to 1e-15 by hand.
 - 2026-09-26: M1.12b Released mass (ADR-088): hand values to 1e-15; momentum 1.5e-13, angular 7.3e-12; M1.12 done.
@@ -80,31 +82,32 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-081 to ADR-091 (M2.3, M2.4, M1.11 to M1.13b): netCDF classic by hand; real flights read as
+- ADR-081 to ADR-092 (M2.3, M2.4, M1.11 to M1.13c1): netCDF classic by hand; real flights read as
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; a push
   along the axis, else by the airspeed; tumble areas integrated; a shift's cycloid, `ω×h + h′`;
   a released part leaves at `v_O + ω×c`, falls under a drag area the user gives; a pod is one
-  stack of body components repeated around the axis, refused by the aero until M1.13c; `.ork`
-  pods at OpenRocket's measured distance, a tail cone a transition, a tube of no length weightless.
+  stack of body components repeated around the axis; `.ork` pods at OpenRocket's measured
+  distance, a tail cone a transition, a tube of no length weightless; a pod's parts Barrowman's,
+  once per pod, on the axis, interference left out and sized; single-pod moments #213.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
-- ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.
-- ADR-071, ADR-072: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
-  flights by id, differences only; public copies out.
-- ADR-069: hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
-- ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".
+- ADR-071 to ADR-076: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
+  flights by id, differences only; public copies out; a cause sized by OR flying without it; M1.9's
+  body 0 flies on, a motor per tube.
+- ADR-068, ADR-069: M2.2d split d1, d2; OR flies public designs in calm air, its speed point
+  "unstated"; hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
 - ADR-062 to ADR-066: M2.2b2-b5, c split; exact fin inertia and sections, clusters, fillets pinned
   as departures; packed parts as OR packs them; screens apart; the oracle integrates one file twice.
-- ADR-060, ADR-061: M2.2 split a to e, mass first, thresholds set first; a `.ork`'s unsaid is OR's.
-- ADR-059: key geometry agrees unless apart from both RocketSerializer and OR; `orhelper` never installed.
+- ADR-059 to ADR-061: key geometry agrees unless apart from RocketSerializer and OR; no `orhelper`;
+  M2.2 split a to e, mass first, thresholds set first; a `.ork`'s unsaid is OR's.
 - ADR-055 to ADR-058: a motor's curve is its file's own first; only what lights at launch flies;
   recovery and stored simulations read as written, not flown; the unread kept in `x-openrocket`.
 - ADR-051 to ADR-054: M3.1 split a to d; a `.ork` document kept whole; an automatic dimension
   keeps both halves; angles are degrees; a radius with nothing to take is OpenRocket's 25 mm.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
   own; a cylinder's and a boattail's keep the refusal (#123). Edges from the corner.
-- ADR-048, ADR-049: model 2 closed on the base; a step in radius keeps its model (#87, #120, #121).
-- ADR-047: a flare attaches by NACA 1135's wedge limit under the cone tables' 30°.
+- ADR-047 to ADR-049: a flare attaches by NACA 1135's wedge limit under the cone tables' 30°;
+  model 2 closed on the base; a step in radius keeps its model (#87, #120, #121).
 - ADR-046: Debrief folded in; `hpr-flightdata` off `hpr-sim`, `hpr-forensics` added, Phase 5
   re-cut, `hpr analyze` in M4.2. Its `.ork` parser is clean room, `COMPETITION.md` is not.
 - ADR-038 to ADR-040: the march behind a blunt tip starts from the tangent cone, not TN D-4865's
@@ -129,16 +132,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   normal force misses the tunnel between Mach 0.8 and 1.2; fins off, the body reads 14–38% high from
   Mach 1.5 to 2.96 (M1.8e9's bullet). A blunt tip's cap (M1.8e7) is checked only on a sphere-cone
   (#101); a boattail past 16° is worth 0.67 to 1.35 calibres of doubt. A marched flare (M1.8e18)
-  reads +51.5% and +50.4% at Mach 3.95 and 4.63 on the one measured flare; a near-flat flare leaves
-  the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in
-  radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m up at a boattail —
-  −8.65% to −11.34% (#87).
-- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but hpr alone flies 4 of 170
-  configurations (93 with OpenRocket's database supplied, ADR-067), one powered split at most (#183),
-  and recovery is read, not flown. Pods are kept, not read (M1.13b). 5 parts are left out with a
-  reason, among them the corpus's only tube fins (#133); fin fillets and a rail button's screw head
-  are read as the simpler part, with a warning; OR stacks a cluster's tubes in its inertia. `polished` is 2 µm here and may be
-  0.5 µm in a newer OpenRocket; a zero-wall part weighs nothing, as in OpenRocket (ADR-061).
+  reads +51.5% and +50.4% at Mach 3.95 and 4.63; a near-flat flare leaves the crossing's pole —
+  +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in radius takes the body
+  off the method past 2.7e-11 m tube to tube or 1.3e-13 m at a boattail — −8.65% to −11.34% (#87).
+- `.ork` (M3.1): hpr alone flies 4 of 170 configurations (93 with OR's database, ADR-067), one
+  powered split at most (#183); recovery read, not flown; 5 parts left out (tube fins #133); fillets
+  and screw heads read simpler, warned; `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).
+  Pods (ADR-092) fly without pod–body interference, a single pod's moments dropped (#213); two motor pod sets refused (#214).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against
   the Arcas Robin it reads high at every row (#70, #72, #73); a cylinder's base drag is unmeasured

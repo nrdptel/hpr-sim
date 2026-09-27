@@ -418,11 +418,10 @@ impl InnerTube {
 /// way, calling the tube a "phantom body". A pod set may also hold nothing at all, and then weighs
 /// nothing.
 ///
-/// **Not flown yet.** The aerodynamic model and the tumble model refuse a design with pods (but
-/// for an empty pod set, which adds nothing), since no cited method for a pod's normal force and
-/// drag is in yet
-/// ([M1.13c](https://github.com/nrdptel/hpr-sim/blob/main/docs/decisions-and-roadmap.md#m1-13c),
-/// pod aerodynamics).
+/// **Flown** since
+/// [M1.13c1](https://github.com/nrdptel/hpr-sim/blob/main/docs/decisions-and-roadmap.md#m1-13c1):
+/// each pod's parts take their own normal force and drag, once per pod
+/// ([aerodynamics: Pods](https://nrdptel.github.io/hpr-sim/physics/aero.html#pods)).
 ///
 /// [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
