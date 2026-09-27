@@ -213,10 +213,21 @@ impl Assembly {
     /// A motor past the end of `ignition_s` is taken as lit at launch, as
     /// [`Self::mass_properties`] lights them all.
     pub fn mass_properties_lit(&self, t_s: f64, ignition_s: &[Option<f64>]) -> MassProperties {
+        self.mass_properties_lit_on(self.layout.structure, t_s, ignition_s)
+    }
+
+    /// As [`Self::mass_properties_lit`], with `structure` in place of the layout's: the
+    /// structure with a part taken out, say ([`MassProperties::without_part`]).
+    pub fn mass_properties_lit_on(
+        &self,
+        structure: MassProperties,
+        t_s: f64,
+        ignition_s: &[Option<f64>],
+    ) -> MassProperties {
         self.motors
             .iter()
             .enumerate()
-            .fold(self.layout.structure, |sum, (index, motor)| {
+            .fold(structure, |sum, (index, motor)| {
                 let ignition = ignition_s.get(index).copied().unwrap_or(Some(0.0));
                 MassProperties::combine([&sum, &motor.mass_properties_lit(t_s, ignition)])
             })

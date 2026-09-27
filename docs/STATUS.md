@@ -5,18 +5,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e5 on #173, #174,
-  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.12b, released mass.
+  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.13, pods.
 - **Order:** M1.8e16 waits on #108, M2.2e5 on its four, M2.3c on a design with its log.
-  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-11, M1.12a, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
+  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-12, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-26; M1.12a moving mass done (ADR-087); M1.12b, a released mass, next.
+- **Last updated:** 2026-09-26; M1.12b released mass done (ADR-088), so M1.12; M1.13, pods, next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.12b** (a released mass; the rest flies on in 6-DOF) on `m1.12b-<slug>`: swap the
-  vehicle as a powered separation does (`flight.rs`), not ADR-085's point masses. Shifts (ADR-087,
-  `hpr_sim::shifts`) refuse partings; the rates are closed form in `Shifts::shift_state`.
+- **Start M1.13** (pods; split it, mass first) on `m1.13a-<slug>`: parallel-axis mass off the
+  axis, then a cited pod aero model and an OR comparison; `.ork` pods are kept, not read (M3.1).
+  Releases (ADR-088, `hpr_sim::releases`) and shifts refuse partings and each other.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
   M2.3c (ADR-083): fly a pair with `hpr_validate::real_flight`, commit only statistics; `xtask
@@ -57,14 +57,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-26: M1.12b Released mass (ADR-088): hand values to 1e-15; momentum 1.5e-13, angular 7.3e-12; M1.12 done.
 - 2026-09-26: M1.12a Moving mass (ADR-087; M1.12 split a, b): hand values to 1e-15, margin 1e-12 cal, momenta 6.9e-12.
 - 2026-09-26: M1.11b Ejection impulse, tumbling pieces (ADR-086): `J/m` and momenta to 1e-9; nose cone tumbles at its `v_e`; M1.11 done.
 - 2026-09-26: M1.11a Ejected pieces (ADR-085; M1.11 split a, b): nose cone and payload land; 1e-12, 1e-9, `v_e` 0.1%.
 - 2026-09-26: M2.4 Census gate (ADR-084): 648 rows held to the accepted census; throwaway #199 red on 3 OSes.
 - 2026-09-26: M2.3b Real flights (ADR-082): 7 logged flights read as barometers, mean |apogee error| 6.04%, outside the 5% target; 5 outliers checked.
 - 2026-09-26: M2.3a ERA5 weather (ADR-081; M2.3 split a to c): netCDF classic from the spec; RocketPy's levels to 1e-12.
-- 2026-09-26: M1.10c2 Parquet (ADR-080): in-house writer; Apache's reader agrees bit for bit; M1.10 done.
-- 2026-09-26: M1.10c1 Text exports (ADR-079): CSV, JSON, GeoJSON by the published schema, KML by parsing; exact.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **M2.3c needs a design with its flight's log** (ADR-083): no `loft-fixtures` design is the rocket
   of a `debrief-fixtures` log. Add one pair (design file as flown, plus log, date, site, motor) to
@@ -83,9 +82,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-081 to ADR-087 (M2.3, M2.4, M1.11, M1.12a): netCDF classic by hand; real flights read as a
+- ADR-081 to ADR-088 (M2.3, M2.4, M1.11, M1.12): netCDF classic by hand; real flights read as a
   barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; a push
-  along the axis, else by the airspeed; tumble areas integrated; a shift's cycloid, `ω×h + h′`.
+  along the axis, else by the airspeed; tumble areas integrated; a shift's cycloid, `ω×h + h′`;
+  a released part leaves at `v_O + ω×c`, falls under a drag area the user gives.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
 - ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.

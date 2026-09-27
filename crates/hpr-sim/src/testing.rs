@@ -9,11 +9,13 @@ use hpr_core::earth::{Earth, EarthRotation, GravityModel};
 use hpr_core::geodesy::Geodetic;
 use hpr_core::gravity::NormalGravity;
 use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
-use hpr_design::Rocket;
+use hpr_design::{Component, Part, Position, Rocket};
 
 use crate::environment::Environment;
+use crate::error::SimError;
 use crate::events::Direction;
 use crate::integrator::{OdeSystem, Step};
+use crate::recorder::{FlightStep, Observer, Sample};
 
 /// Vertical flight under constant gravity with quadratic drag: `h' = v`, `v' = −g − k v|v|`.
 #[derive(Debug, Clone)]
@@ -363,4 +365,68 @@ pub(crate) fn constant_drag(cd: f64) -> DragTable {
         .unwrap(),
         None,
     )
+}
+
+/// The ballast's mass in [`with_ballast`], kg.
+pub(crate) const BALLAST_KG: f64 = 0.2;
+
+/// The 54 mm single-stage test design with 0.2 kg of ballast, a cylinder 50 mm long and 15 mm
+/// in radius, carried in its airframe 0.1 m aft of the airframe's forward end, `offset_m` off
+/// the axis.
+pub(crate) fn with_ballast(offset_m: f64) -> Rocket {
+    let mut rocket = design("synthetic-54mm-three-fin");
+    let airframe = &mut rocket.stages[0].components[1];
+    assert_eq!(airframe.id, "sustainer-airframe");
+    let mut ballast: Component = airframe
+        .children
+        .iter()
+        .find(|child| child.id == "altimeter")
+        .cloned()
+        .unwrap();
+    ballast.id = "ballast".to_owned();
+    let Part::MassComponent(mass) = &mut ballast.part else {
+        panic!("the altimeter is a mass component");
+    };
+    mass.mass_kg = BALLAST_KG;
+    mass.packing.length_m = 0.05;
+    mass.packing.radius_m = 0.015;
+    mass.packing.radial_offset_m = offset_m;
+    ballast.position = Some(Position::Top { aft_offset_m: 0.1 });
+    airframe.children.push(ballast);
+    rocket
+}
+
+/// The ballast design with an empty inner tube, `sleeve`, 0.3 m aft of the airframe's forward
+/// end, holding a copy of the ballast, `held`.
+pub(crate) fn with_sleeve() -> Rocket {
+    let mut rocket = with_ballast(0.0);
+    let airframe = &mut rocket.stages[0].components[1];
+    let find = |id: &str| {
+        airframe
+            .children
+            .iter()
+            .find(|child| child.id == id)
+            .cloned()
+    };
+    let mut sleeve = find("sustainer-motor-mount").unwrap();
+    sleeve.id = "sleeve".to_owned();
+    sleeve.children.clear();
+    sleeve.position = Some(Position::Top { aft_offset_m: 0.3 });
+    let mut held = find("ballast").unwrap();
+    held.id = "held".to_owned();
+    held.position = Some(Position::Top { aft_offset_m: 0.0 });
+    sleeve.children.push(held);
+    airframe.children.push(sleeve);
+    rocket
+}
+
+/// The samples at the end of every step.
+#[derive(Default)]
+pub(crate) struct Ends(pub(crate) Vec<Sample>);
+
+impl Observer for Ends {
+    fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
+        self.0.push(step.sample(step.end_s())?);
+        Ok(())
+    }
 }

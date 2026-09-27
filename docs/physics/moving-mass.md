@@ -17,11 +17,11 @@
   margin to 1e-12 [calibres](../glossary.md#calibre-caliber). In free flight with nothing acting
   on the rocket, its angular momentum is kept to 6.9e-12 of itself and its centre's velocity to
   2.6e-12 m/s.
-- **What it leaves out:** a mass that leaves the rocket (the next increment,
-  [M1.12b](../decisions-and-roadmap.md#m1-12b)); a shift in a flight that also separates or ejects
-  pieces; a shift before the rocket leaves the rail; a part that moves across the axis or turns;
-  and the shock of a part hitting a stop. The motion's shape is a choice made here, not something
-  a source gives for rockets.
+- **What it leaves out:** a mass that leaves the rocket, which is
+  [Released mass](released-mass.md); a shift in a flight that also separates, ejects pieces or
+  releases a mass; a shift before the rocket leaves the rail; a part that moves across the axis
+  or turns; and the shock of a part hitting a stop. The motion's shape is a choice made here, not
+  something a source gives for rockets.
 
 ## Describing a shift
 
@@ -240,9 +240,9 @@ Every refusal has a test that checks which rule fired, in `shifts_that_cannot_be
 ## What it leaves out
 
 - **Releasing a mass.** Ballast or a payload that leaves the rocket while the rest flies on is
-  [M1.12b](../decisions-and-roadmap.md#m1-12b).
-- **Shifts with a separation or ejections.** Their pieces are fixed before the flight, with every
-  part where the design puts it.
+  [Released mass](released-mass.md), added with [M1.12b](../decisions-and-roadmap.md#m1-12b).
+- **Shifts with a separation, ejections or a release.** Their pieces and parts are fixed before
+  the flight, with every part where the design puts it.
 - **Shifts on the pad or the rail**, as above.
 - **Other motions.** A part can only slide along the axis, at whatever distance from the axis the
   design puts it. It can't move across the axis or turn.

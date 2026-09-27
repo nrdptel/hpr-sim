@@ -271,7 +271,10 @@ A device's charge fires at its `Trigger`:
   or below that height above the launch site. This is an altimeter's main setting. A rocket whose
   apogee is already below the setting fires at apogee, because no crossing follows. That is
   RocketPy's numeric trigger: vertical velocity negative and height below the setting
-  (`parachute.py:354-364`).
+  (`parachute.py:354-364`). After the flight's recorded apogee the rocket counts as descending
+  even if its centre of mass rises for a moment, as it can when a part is let go there
+  ([Released mass](released-mass.md#what-happens-at-the-release)); without a release that is
+  the same rule.
 - `Time { time_s }`: a time after launch.
 - `MotorDelay { motor }`: that motor's [ejection delay](../glossary.md#ejection-delay) after its
   own burnout. The motor must have a delay in seconds; a plugged motor or one with no delay set is

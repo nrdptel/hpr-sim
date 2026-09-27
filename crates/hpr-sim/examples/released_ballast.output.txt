@@ -1,0 +1,19 @@
+A 54 mm rocket on an I175 that drops its 200 g of ballast 5 s after launch
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+time (s)   mass (kg)   centre of mass (m aft of tip)   transverse inertia (kg m²)
+    4.00      0.8188                          0.6681                      0.09556
+    6.00      0.6188                          0.7628                      0.07277
+by hand                0.6188   (M cg − m c)/(M − m) = (0.8188 × 0.6681 − 0.2 × 0.3750) / 0.6188 = 0.7628
+
+static margin          4.297 cal before, 2.615 after, a change of -1.683
+                       by hand −Δ/d = −0.09474 / 0.05630 = -1.683 cal
+
+momentum at 5 s        131.5839 kg m/s up: the rest carries 99.4433, the ballast 32.1406
+
+apogee                 1670.0 m with the ballast dropped, 1749.9 m kept
+the ballast's apogee   1496.5 m at 13.33 s
+
+the rocket             lands at 276.3 s, at 6.15 m/s
+the ballast            lands at 40.0 s, at 66.74 m/s
+the rocket, kept       lands at 253.5 s, at 7.07 m/s

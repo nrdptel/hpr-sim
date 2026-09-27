@@ -43,6 +43,14 @@ pub enum SimError {
         /// The component.
         component: String,
     },
+    /// A mass release that the design can't make, with the component id it names.
+    #[error("{what}: `{component}`")]
+    MassRelease {
+        /// Why it can't be made.
+        what: &'static str,
+        /// The component.
+        component: String,
+    },
     /// The design's checks found errors, and the settings don't accept them.
     #[error("the design has {} error finding(s); the first is {:?}", .0.len(), .0.first())]
     DesignChecks(Vec<Finding>),

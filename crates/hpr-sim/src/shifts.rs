@@ -18,7 +18,7 @@
 use std::f64::consts::TAU;
 
 use hpr_core::{DMat3, DVec3};
-use hpr_design::{Assembly, MassProperties, Rocket};
+use hpr_design::{Assembly, MassProperties, PlacedComponent, Rocket};
 use serde::{Deserialize, Serialize};
 
 use crate::dynamics::MassState;
@@ -99,6 +99,97 @@ impl MassShift {
             duration_s,
         }
     }
+}
+
+/// Why an id doesn't name one part carried inside the airframe: a check a [`MassShift`] and a
+/// [`crate::MassRelease`] share, each put in its own words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NotAPart {
+    /// The design has no component with the id.
+    Missing,
+    /// It is a body component, not a part carried inside one.
+    BodyComponent,
+    /// It is outside the airframe.
+    Outside,
+    /// It isn't exactly one part: one of several copies in a cluster of tubes, or none.
+    NotOnePart,
+}
+
+/// Why a part carried inside the airframe can't be moved or released: a check a [`MassShift`] and
+/// a [`crate::MassRelease`] share, each put in its own words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NotCarried {
+    /// It holds a motor, which would stay behind.
+    HoldsMotor,
+    /// Its stage's mass is overridden, and the override doesn't say how much of it is the part's.
+    StageOverride,
+    /// A component around it has an overridden mass that covers what it holds.
+    CoveredOverride,
+}
+
+/// The index in `assembly`'s components of the internal part with id `id`, one part carried inside
+/// the airframe.
+pub(crate) fn locate_part(assembly: &Assembly, id: &str) -> Result<usize, NotAPart> {
+    let (index, placed) = assembly.layout.find(id).ok_or(NotAPart::Missing)?;
+    if placed.parent.is_none() {
+        Err(NotAPart::BodyComponent)
+    } else if placed.body_radius_m.is_some() {
+        Err(NotAPart::Outside)
+    } else if placed.copies_m.len() != 1 {
+        Err(NotAPart::NotOnePart)
+    } else {
+        Ok(index)
+    }
+}
+
+/// Whether component `index` is inside component `ancestor`, at any depth.
+pub(crate) fn inside(components: &[PlacedComponent], index: usize, ancestor: usize) -> bool {
+    let mut at = components[index].parent;
+    while let Some(parent) = at {
+        if parent == ancestor {
+            return true;
+        }
+        at = components[parent].parent;
+    }
+    false
+}
+
+/// Refuses part `index` of `assembly` (of `rocket`) if it holds a motor or if an override covers
+/// its mass: its stage's, or one on a component around it that covers what that component holds.
+pub(crate) fn check_carried(
+    rocket: &Rocket,
+    assembly: &Assembly,
+    index: usize,
+) -> Result<(), NotCarried> {
+    let components = &assembly.layout.components;
+    let holds_motor = assembly.motors.iter().any(|motor| {
+        components
+            .iter()
+            .position(|component| component.id == motor.mount)
+            .is_some_and(|mount| mount == index || inside(components, mount, index))
+    });
+    if holds_motor {
+        return Err(NotCarried::HoldsMotor);
+    }
+    let stage = &assembly.layout.stages[components[index].stage];
+    if rocket
+        .stages
+        .iter()
+        .find(|written| written.id == stage.id)
+        .is_some_and(|written| !written.overrides.is_empty())
+    {
+        return Err(NotCarried::StageOverride);
+    }
+    let mut at = components[index].parent;
+    while let Some(parent) = at {
+        if node(rocket, &components[parent].id)
+            .is_some_and(|holder| holder.overrides_include_children && !holder.overrides.is_empty())
+        {
+            return Err(NotCarried::CoveredOverride);
+        }
+        at = components[parent].parent;
+    }
+    Ok(())
 }
 
 /// The cycloid `s(τ) = τ − sin(2πτ)/2π` and its first two derivatives in `τ`, held at its ends
@@ -186,34 +277,28 @@ impl Shifts {
                     value: shift.duration_s,
                 });
             }
-            let index = components
-                .iter()
-                .position(|component| component.id == id)
-                .ok_or_else(|| {
-                    refuse("a mass shift names a component the design doesn't have", id)
-                })?;
-            let placed = &components[index];
-            if placed.parent.is_none() {
-                return Err(refuse(
-                    "a mass shift moves a part carried inside the airframe, and this is a body \
-                     component",
+            let index = locate_part(assembly, id).map_err(|refusal| {
+                refuse(
+                    match refusal {
+                        NotAPart::Missing => {
+                            "a mass shift names a component the design doesn't have"
+                        }
+                        NotAPart::BodyComponent => {
+                            "a mass shift moves a part carried inside the airframe, and this is a \
+                             body component"
+                        }
+                        NotAPart::Outside => {
+                            "a mass shift moves a part carried inside the airframe, and this part \
+                             is outside it"
+                        }
+                        NotAPart::NotOnePart => {
+                            "a mass shift of a part that isn't exactly one part (one of several \
+                             copies in a cluster of tubes, or none)"
+                        }
+                    },
                     id,
-                ));
-            }
-            if placed.body_radius_m.is_some() {
-                return Err(refuse(
-                    "a mass shift moves a part carried inside the airframe, and this part is \
-                     outside it",
-                    id,
-                ));
-            }
-            if placed.copies_m.len() != 1 {
-                return Err(refuse(
-                    "a mass shift of a part that isn't exactly one part (one of several copies in \
-                     a cluster of tubes, or none)",
-                    id,
-                ));
-            }
+                )
+            })?;
             if !moved.contains(&index) {
                 moved.push(index);
             }
@@ -225,66 +310,36 @@ impl Shifts {
             });
         }
 
-        // What each moving part holds, and what holds it.
-        let inside = |index: usize, ancestor: usize| {
-            let mut at = components[index].parent;
-            while let Some(parent) = at {
-                if parent == ancestor {
-                    return true;
-                }
-                at = components[parent].parent;
-            }
-            false
-        };
         for &index in &moved {
             let id = components[index].id.as_str();
             if moved
                 .iter()
-                .any(|&other| other != index && inside(index, other))
+                .any(|&other| other != index && inside(components, index, other))
             {
                 return Err(refuse(
                     "a mass shift of a part inside another that moves",
                     id,
                 ));
             }
-            let holds_motor = assembly.motors.iter().any(|motor| {
-                components
-                    .iter()
-                    .position(|component| component.id == motor.mount)
-                    .is_some_and(|mount| mount == index || inside(mount, index))
-            });
-            if holds_motor {
-                return Err(refuse(
-                    "a mass shift of a part that holds a motor (the motor would stay where it is)",
+            check_carried(rocket, assembly, index).map_err(|refusal| {
+                refuse(
+                    match refusal {
+                        NotCarried::HoldsMotor => {
+                            "a mass shift of a part that holds a motor (the motor would stay where \
+                             it is)"
+                        }
+                        NotCarried::StageOverride => {
+                            "a mass shift in a stage whose mass is overridden (the override \
+                             doesn't say how much of it is the part's)"
+                        }
+                        NotCarried::CoveredOverride => {
+                            "a mass shift inside a component whose overridden mass covers what it \
+                             holds (the override doesn't say how much of it is the part's)"
+                        }
+                    },
                     id,
-                ));
-            }
-            let stage = &assembly.layout.stages[components[index].stage];
-            if rocket
-                .stages
-                .iter()
-                .find(|written| written.id == stage.id)
-                .is_some_and(|written| !written.overrides.is_empty())
-            {
-                return Err(refuse(
-                    "a mass shift in a stage whose mass is overridden (the override doesn't say \
-                     how much of it is the part's)",
-                    id,
-                ));
-            }
-            let mut at = components[index].parent;
-            while let Some(parent) = at {
-                if node(rocket, &components[parent].id).is_some_and(|holder| {
-                    holder.overrides_include_children && !holder.overrides.is_empty()
-                }) {
-                    return Err(refuse(
-                        "a mass shift inside a component whose overridden mass covers what it \
-                         holds (the override doesn't say how much of it is the part's)",
-                        id,
-                    ));
-                }
-                at = components[parent].parent;
-            }
+                )
+            })?;
             // Every shift forward together, and every one aft, keep it inside its holder.
             let (mut forward_m, mut aft_m) = (0.0, 0.0);
             for (shift, term) in shifts.iter().zip(&terms) {
@@ -332,6 +387,11 @@ impl Shifts {
         if let Some(term) = self.terms.get_mut(index) {
             term.start_s = t_s;
         }
+    }
+
+    /// Holds shift `index`: it doesn't start unless [`Self::start`] starts it.
+    pub(crate) fn hold(&mut self, index: usize) {
+        self.start(index, f64::INFINITY);
     }
 
     /// When shift `index` starts, s: `None` while not known.
@@ -446,7 +506,7 @@ fn outer(u: DVec3, v: DVec3) -> DMat3 {
 
 #[cfg(test)]
 mod tests {
-    use hpr_design::{Component, Part, Position};
+    use hpr_design::{Part, Position};
 
     use super::*;
     use crate::flight::{EventKind, FlightResult, FlightSettings, Simulation, Termination};
@@ -454,42 +514,17 @@ mod tests {
     use crate::metrics::FlightMetrics;
     use crate::pieces::Ejection;
     use crate::rail::Rail;
-    use crate::recorder::{FlightStep, Observer, Sample};
+    use crate::recorder::Sample;
     use crate::state::State;
-    use crate::testing::{UniformAir, analytic_environment, design};
+    use crate::testing::{
+        Ends, UniformAir, analytic_environment, design, with_ballast, with_sleeve,
+    };
 
     const G: f64 = 9.806_65;
-    const BALLAST_KG: f64 = 0.2;
     /// The shift: 0.3 m aft over 1 s from 5 s, well after the I175's burnout at 2.5 s.
     const TRAVEL_M: f64 = 0.3;
     const START_S: f64 = 5.0;
     const DURATION_S: f64 = 1.0;
-
-    /// The 54 mm single-stage test design with 0.2 kg of ballast, a cylinder 50 mm long and 15 mm
-    /// in radius, carried in its airframe 0.1 m aft of the airframe's forward end, `offset_m` off
-    /// the axis.
-    fn with_ballast(offset_m: f64) -> Rocket {
-        let mut rocket = design("synthetic-54mm-three-fin");
-        let airframe = &mut rocket.stages[0].components[1];
-        assert_eq!(airframe.id, "sustainer-airframe");
-        let mut ballast: Component = airframe
-            .children
-            .iter()
-            .find(|child| child.id == "altimeter")
-            .cloned()
-            .unwrap();
-        ballast.id = "ballast".to_owned();
-        let Part::MassComponent(mass) = &mut ballast.part else {
-            panic!("the altimeter is a mass component");
-        };
-        mass.mass_kg = BALLAST_KG;
-        mass.packing.length_m = 0.05;
-        mass.packing.radius_m = 0.015;
-        mass.packing.radial_offset_m = offset_m;
-        ballast.position = Some(Position::Top { aft_offset_m: 0.1 });
-        airframe.children.push(ballast);
-        rocket
-    }
 
     fn simulation(rocket: &Rocket, settings: FlightSettings) -> Simulation {
         Simulation::new(
@@ -706,17 +741,6 @@ mod tests {
         }
     }
 
-    /// The samples at the end of every step.
-    #[derive(Default)]
-    struct Ends(Vec<Sample>);
-
-    impl Observer for Ends {
-        fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
-            self.0.push(step.sample(step.end_s())?);
-            Ok(())
-        }
-    }
-
     #[test]
     fn a_part_moving_off_the_axis_keeps_both_momenta_in_free_space() {
         // No air and no gravity, the motor spent, the rocket turning about all three axes: nothing
@@ -926,30 +950,6 @@ mod tests {
         assert!(
             matches!(error, SimError::Unsupported { what } if what.starts_with("a mass shift in a flight with"))
         );
-    }
-
-    /// The ballast design with an empty inner tube, `sleeve`, 0.3 m aft of the airframe's forward
-    /// end, holding a copy of the ballast, `held`.
-    fn with_sleeve() -> Rocket {
-        let mut rocket = with_ballast(0.0);
-        let airframe = &mut rocket.stages[0].components[1];
-        let find = |id: &str| {
-            airframe
-                .children
-                .iter()
-                .find(|child| child.id == id)
-                .cloned()
-        };
-        let mut sleeve = find("sustainer-motor-mount").unwrap();
-        sleeve.id = "sleeve".to_owned();
-        sleeve.children.clear();
-        sleeve.position = Some(Position::Top { aft_offset_m: 0.3 });
-        let mut held = find("ballast").unwrap();
-        held.id = "held".to_owned();
-        held.position = Some(Position::Top { aft_offset_m: 0.0 });
-        sleeve.children.push(held);
-        airframe.children.push(sleeve);
-        rocket
     }
 
     /// Flies `rocket` with its design checks' errors accepted: these tests are of the shifts.

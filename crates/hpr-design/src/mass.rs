@@ -147,6 +147,30 @@ impl MassProperties {
         }
     }
 
+    /// This body with one of its parts, `part`, taken out: a ballast weight or a payload released
+    /// in flight. With `M` the whole's mass and `cg` its centre, `m` the part's mass, `c` its
+    /// centre and `I_p` its own inertia about `c`,
+    ///
+    /// ```text
+    /// M'  = M − m
+    /// cg' = (M cg − m c) / M'
+    /// I'  = I_{cg'} − (I_p + m (|c − cg'|² E − (c − cg')(c − cg')ᵀ))
+    /// ```
+    ///
+    /// where `I_{cg'}` is this body's inertia about the new centre (parallel axis), and the
+    /// bracket is the part's about it: [`Self::combine`] run backwards. `part` must be a part of
+    /// this body, lighter than it; nothing checks that it is.
+    #[must_use]
+    pub fn without_part(&self, part: &MassProperties) -> Self {
+        let mass_kg = self.mass_kg - part.mass_kg;
+        let cg = (self.cg_m * self.mass_kg - part.cg_m * part.mass_kg) / mass_kg;
+        Self {
+            mass_kg,
+            cg_m: cg,
+            inertia_kg_m2: self.inertia_about(cg) - part.inertia_about(cg),
+        }
+    }
+
     /// The same body turned by `rotation` about the frame origin: `cg' = R cg`, `I' = R I Rᵀ`.
     #[must_use]
     pub fn rotated(&self, rotation: DQuat) -> Self {
@@ -444,6 +468,28 @@ mod tests {
         );
         assert!((back.cg_m - whole.cg_m).length() < 1e-16);
         assert_mat_close(back.inertia_kg_m2, whole.inertia_kg_m2, 1e-15);
+    }
+
+    #[test]
+    fn a_part_taken_out_of_a_body_leaves_the_hand_computed_rest() {
+        // A 4 kg unit cube at the origin (2/3 kg·m² about each axis) holding a 1 kg box
+        // 0.1 × 0.2 × 0.3 m at (0.1, 0, −0.5). Taking the box out must leave the cube as it was.
+        let cube = box_body(4.0, DVec3::ONE, DVec3::ZERO);
+        let part = box_body(1.0, DVec3::new(0.1, 0.2, 0.3), DVec3::new(0.1, 0.0, -0.5));
+        let whole = MassProperties::combine([&cube, &part]);
+        assert!((whole.cg_m - DVec3::new(0.02, 0.0, -0.1)).length() < 1e-16);
+        let rest = whole.without_part(&part);
+        assert!((rest.mass_kg - 4.0).abs() < 1e-15);
+        assert!(rest.cg_m.length() < 1e-16, "{:?}", rest.cg_m);
+        assert_mat_close(
+            rest.inertia_kg_m2,
+            DMat3::from_diagonal(DVec3::splat(2.0 / 3.0)),
+            1e-15,
+        );
+        // Putting it back gives the whole again.
+        let again = MassProperties::combine([&rest, &part]);
+        assert!((again.cg_m - whole.cg_m).length() < 1e-16);
+        assert_mat_close(again.inertia_kg_m2, whole.inertia_kg_m2, 1e-15);
     }
 
     #[test]

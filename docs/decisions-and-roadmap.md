@@ -104,6 +104,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-085: Ejected pieces: an airframe that parts at any joint][adr-085] | [M1.11a](#m1-11a) lets the airframe part anywhere: at the joint aft of any body component, as a nose cone pushed off does, or around a payload carried inside. Each piece flies on to its own landing under its own parachute. The pieces are fixed before the flight, so a body's number never depends on which trigger fires first, and the nose's body is always body 0. Each parting adds no impulse, so masses and momenta add up. An override that doesn't say how its mass divides between pieces is refused rather than guessed. The push of an ejection charge, and a tumbling piece, are [M1.11b](#m1-11b) ([ADR-086][adr-086]). | [Recovery: ejected pieces](physics/recovery.md#ejected-pieces) |
 | [ADR-086: Ejection impulse and tumbling pieces][adr-086] | [M1.11b](#m1-11b) lets an ejection push its two sides apart with an impulse, equal and opposite, so each changes velocity by the impulse over its own mass and the momentum is unchanged. While the airframe flies whole with nothing open the push is along its axis. A body with no attitude to go by is assumed to point against its velocity through the air when it hangs from an open parachute, and along it when nothing is open. A piece can tumble by the tumble model over its own parts, and that model now integrates a curved nose's side area rather than taking its end diameters. | [Recovery: ejected pieces](physics/recovery.md#ejected-pieces) |
 | [ADR-087: Mass that moves along the airframe][adr-087] | [M1.12a](#m1-12a) lets ballast or a payload slide along the airframe during the flight, on the triggers a parachute has, along a smooth curve that starts and ends at rest. The rocket's centre of mass and inertia follow it exactly. The equations of motion gain one term, the moving part's angular momentum relative to the airframe, which is zero for a part on the axis; its rates are exact rather than differenced. A mass released in flight is [M1.12b](#m1-12b). | [Moving mass](physics/moving-mass.md) |
+| [ADR-088: Mass released in flight][adr-088] | [M1.12b](#m1-12b) lets ballast or a payload go during the flight, on the triggers a parachute has. The rest of the rocket flies on in six degrees of freedom from the same state with its mass, centre of mass and inertia stepped to the rest's; the part leaves with the velocity it had in the airframe, so mass and momentum are kept, and falls to the ground as a point mass under a drag area the user gives. | [Released mass](physics/released-mass.md) |
 
 ## The roadmap
 
@@ -266,9 +267,9 @@ missing or its status disagrees.
 | <a id="m1-11"></a>[M1.11][phase-1] | Ejected nose cones, body sections and payloads, each flown to its own landing | done |
 | <a id="m1-11a"></a>[M1.11a][phase-1] | The airframe parting at any joint or around a payload, every piece landed under its own parachute ([ADR-085][adr-085], [Recovery: ejected pieces](physics/recovery.md#ejected-pieces)) | done |
 | <a id="m1-11b"></a>[M1.11b][phase-1] | The push of an ejection charge on the pieces, and a tumbling piece ([ADR-086][adr-086], [Recovery: ejected pieces](physics/recovery.md#ejected-pieces)) | done |
-| <a id="m1-12"></a>[M1.12][phase-1] | Payload mass that moves, or is released, during the flight | not yet done |
+| <a id="m1-12"></a>[M1.12][phase-1] | Payload mass that moves, or is released, during the flight | done |
 | <a id="m1-12a"></a>[M1.12a][phase-1] | Ballast or a payload that slides along the airframe in flight, with the mass properties, the margin and the equations of motion following it ([ADR-087][adr-087], [Moving mass](physics/moving-mass.md)) | done |
-| <a id="m1-12b"></a>[M1.12b][phase-1] | Ballast or a payload released in flight, the rest flying on | not yet done |
+| <a id="m1-12b"></a>[M1.12b][phase-1] | Ballast or a payload released in flight, the rest flying on and the part falling on its own ([ADR-088][adr-088], [Released mass](physics/released-mass.md)) | done |
 | <a id="m1-13"></a>[M1.13][phase-1] | Pods: bodies mounted beside the airframe, with or without motors | not yet done |
 | <a id="m4-1"></a>[M4.1][phase-2] | A simpler interface, with a builder for environments, motors, rockets and flights | not yet done |
 | <a id="m4-2"></a>[M4.2][phase-2] | A command-line tool | not yet done |
@@ -479,6 +480,7 @@ is the milestone that added or will add that test.
 [adr-085]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-085-ejected-pieces-an-airframe-that-parts-at-any-joint-2026-09-26
 [adr-086]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-086-ejection-impulse-and-tumbling-pieces-2026-09-26
 [adr-087]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-087-mass-that-moves-along-the-airframe-2026-09-26
+[adr-088]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-088-mass-released-in-flight-2026-09-26
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
