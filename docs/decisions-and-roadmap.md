@@ -109,6 +109,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-090: `.ork` pods placed as OpenRocket places them; pods of no length left out][adr-090] | [M1.13b1](#m1-13b1) reads a pod set's pods and puts them where OpenRocket 24.12 does, measured on probes: a `relative` offset is from the tube's surface to the pod's widest part. A flipped nose cone is read as the tail cone it is. Pods of no length, drawn to hang fins off the axis, were left out with a warning until [M1.13b2](#m1-13b2) read them ([ADR-091][adr-091]). | [`.ork`: Pods](format/ork.md#pods) |
 | [ADR-091: A pod of no length weighs nothing and holds its parts on its axis][adr-091] | [M1.13b2](#m1-13b2) reads the pods OpenRocket draws to hang winglets or a lug off the axis: a pod whose only part is a tube of no length, no wall and usually no radius. That tube weighs nothing, and fins or a lug on it sit on the pod's own axis, as OpenRocket 24.12 places them on probes. A pod set that holds nothing is read, and weighs nothing. | [`.ork`: Pods](format/ork.md#pods), [Pods](physics/design.md#pods) |
 | [ADR-092: A pod's parts are Barrowman's, once per pod, on the axis][adr-092] | [M1.13c1](#m1-13c1) flies pods: each pod's nose cones, transitions and tubes get the normal force and drag they would have on the airframe, at the pod's own fineness, and each pod's fins are its own, turned with it; every pod adds its share. The forces act on the rocket's axis, exact for two pods or more to first order, and the roll damping the pods' offsets give is added. How the pods and the body disturb each other's flow is left out, with its size stated, and a single pod's off-axis moments are left to [issue #213](https://github.com/nrdptel/hpr-sim/issues/213). | [Pods](physics/aero.md#pods) |
+| [ADR-093: Pod probes flown as the public designs are, and listed apart][adr-093] | [M1.13c2](#m1-13c2) checks pods against OpenRocket on six probe designs, one airframe carrying pods of bodies, fins, tail cones, winglets or motors, or none, flown as the public designs are and listed apart from them. Each is within 5% of OpenRocket's apogee and largest speed, and what the pods change is held too, since a straight-up flight tests drag more than normal force. The close agreement shows the two codes apply the same rules; it cannot size the interference both leave out. | [Pods](physics/aero.md#pods) |
 
 ## The roadmap
 
@@ -274,14 +275,14 @@ missing or its status disagrees.
 | <a id="m1-12"></a>[M1.12][phase-1] | Payload mass that moves, or is released, during the flight | done |
 | <a id="m1-12a"></a>[M1.12a][phase-1] | Ballast or a payload that slides along the airframe in flight, with the mass properties, the margin and the equations of motion following it ([ADR-087][adr-087], [Moving mass](physics/moving-mass.md)) | done |
 | <a id="m1-12b"></a>[M1.12b][phase-1] | Ballast or a payload released in flight, the rest flying on and the part falling on its own ([ADR-088][adr-088], [Released mass](physics/released-mass.md)) | done |
-| <a id="m1-13"></a>[M1.13][phase-1] | Pods: bodies mounted beside the airframe, with or without motors | not yet done |
+| <a id="m1-13"></a>[M1.13][phase-1] | Pods: bodies mounted beside the airframe, with or without motors | done |
 | <a id="m1-13a"></a>[M1.13a][phase-1] | A pod's mass: one pod repeated around the axis, each copy with its parallel-axis term, a motor in a pod one per pod ([ADR-089][adr-089], [Pods](physics/design.md#pods)) | done |
 | <a id="m1-13b"></a>[M1.13b][phase-1] | Pods read from a `.ork` file | done |
 | <a id="m1-13b1"></a>[M1.13b1][phase-1] | Pods of body components read from a `.ork` file, placed as OpenRocket 24.12 places them ([ADR-090][adr-090], [`.ork`: Pods](format/ork.md#pods)) | done |
 | <a id="m1-13b2"></a>[M1.13b2][phase-1] | Pods of no length, which hang fins or a lug off the axis, and an empty pod set, read from a `.ork` file ([ADR-091][adr-091], [`.ork`: Pods](format/ork.md#pods)) | done |
-| <a id="m1-13c"></a>[M1.13c][phase-1] | Pod aerodynamics from a cited source, and a pod design against OpenRocket | not yet done |
+| <a id="m1-13c"></a>[M1.13c][phase-1] | Pod aerodynamics from a cited source, and a pod design against OpenRocket | done |
 | <a id="m1-13c1"></a>[M1.13c1][phase-1] | Pods fly: each pod's parts with Barrowman's normal force and their own drag, once per pod ([ADR-092][adr-092], [aerodynamics: Pods](physics/aero.md#pods)) | done |
-| <a id="m1-13c2"></a>[M1.13c2][phase-1] | A pod design with bodies and fins against OpenRocket, the limits of both codes' pod models stated | not yet done |
+| <a id="m1-13c2"></a>[M1.13c2][phase-1] | A pod design with bodies and fins against OpenRocket, the limits of both codes' pod models stated ([ADR-093][adr-093], [aerodynamics: Pods](physics/aero.md#pods)) | done |
 | <a id="m4-1"></a>[M4.1][phase-2] | A simpler interface, with a builder for environments, motors, rockets and flights | not yet done |
 | <a id="m4-2"></a>[M4.2][phase-2] | A command-line tool | not yet done |
 | <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | not yet done |
@@ -496,6 +497,7 @@ is the milestone that added or will add that test.
 [adr-090]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-090-ork-pods-placed-as-openrocket-places-them-pods-of-no-length-left-out-2026-09-27
 [adr-091]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-091-a-pod-of-no-length-weighs-nothing-and-holds-its-parts-on-its-axis-2026-09-27
 [adr-092]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-092-a-pods-parts-are-barrowmans-once-per-pod-on-the-axis-2026-09-27
+[adr-093]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-093-pod-probes-flown-as-the-public-designs-are-and-listed-apart-2026-09-27
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

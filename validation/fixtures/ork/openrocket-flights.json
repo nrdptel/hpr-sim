@@ -1,5 +1,5 @@
 {
- "command": "flights.py validation/fixtures/ork/openrocket-flights.json validation/fixtures/ork/loft-demo --jar",
+ "command": "flights.py validation/fixtures/ork/openrocket-flights.json validation/fixtures/ork/loft-demo validation/fixtures/ork/pod-flights --jar",
  "designs": [
   {
    "conditions_from": "first stored simulation",
@@ -320,6 +320,1302 @@
     }
    ],
    "sha256": "199f71f9fc774d5f7f29df70ecac94d8ad46e682a001ef7e67b144970934a234"
+  },
+  {
+   "conditions_from": "defaults",
+   "file": "validation/fixtures/ork/pod-flights/pods-bodies-3.ork",
+   "flights": [
+    {
+     "aborted": false,
+     "active_stages": 1,
+     "branches": 1,
+     "conditions": {
+      "geodetic": "SPHERICAL",
+      "isa_atmosphere": true,
+      "launch_altitude_m": 0.0,
+      "launch_latitude_deg": 28.61,
+      "launch_longitude_deg": -80.6,
+      "launch_pressure_pa": 101325.0,
+      "launch_temperature_k": 288.15,
+      "rod_angle_rad": 0.0,
+      "rod_direction_rad": 1.5707963267948966,
+      "rod_length_m": 1.0,
+      "time_step_s": 0.05,
+      "wind_average_m_s": 0.0,
+      "wind_model": "AVERAGE",
+      "wind_turbulence": 0.0
+     },
+     "configuration": "00000000-0000-4000-8000-000000000097",
+     "events": [
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "SIM_WARN"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "LAUNCH"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "IGNITION"
+      },
+      {
+       "after": {
+        "altitude_m": 0.02629447376950346,
+        "time_s": 0.03,
+        "total_velocity_m_s": 2.680387189745756
+       },
+       "before": {
+        "altitude_m": 0.013119684308562307,
+        "time_s": 0.024,
+        "total_velocity_m_s": 1.7251390576352257
+       },
+       "time_s": 0.03,
+       "type": "LIFTOFF"
+      },
+      {
+       "after": {
+        "altitude_m": 1.0633559948942568,
+        "time_s": 0.11477968101363052,
+        "total_velocity_m_s": 23.382486483415022
+       },
+       "before": {
+        "altitude_m": 0.9605301592843012,
+        "time_s": 0.11026113292053673,
+        "total_velocity_m_s": 22.13100268930218
+       },
+       "time_s": 0.11477968101363052,
+       "type": "LAUNCHROD"
+      },
+      {
+       "after": {
+        "altitude_m": 186.41084667690868,
+        "time_s": 1.293,
+        "total_velocity_m_s": 200.4009152808496
+       },
+       "before": {
+        "altitude_m": 180.2694022094137,
+        "time_s": 1.2626336412047463,
+        "total_velocity_m_s": 204.10373184738202
+       },
+       "time_s": 1.293,
+       "type": "BURNOUT"
+      },
+      {
+       "after": {
+        "altitude_m": 186.41084667690868,
+        "time_s": 1.293,
+        "total_velocity_m_s": 200.4009152808496
+       },
+       "before": {
+        "altitude_m": 180.2694022094137,
+        "time_s": 1.2626336412047463,
+        "total_velocity_m_s": 204.10373184738202
+       },
+       "time_s": 1.293,
+       "type": "EJECTION_CHARGE"
+      },
+      {
+       "after": {
+        "altitude_m": 663.2983154535622,
+        "time_s": 9.38854953819288,
+        "total_velocity_m_s": 0.12172979735452444
+       },
+       "before": {
+        "altitude_m": 663.2917965558422,
+        "time_s": 9.33854953819288,
+        "total_velocity_m_s": 0.3774476846964548
+       },
+       "time_s": 9.38854953819288,
+       "type": "APOGEE"
+      },
+      {
+       "after": {
+        "altitude_m": -0.1768047377264419,
+        "time_s": 24.942713235184566,
+        "total_velocity_m_s": 60.95956285086846
+       },
+       "before": {
+        "altitude_m": 2.870873649440361,
+        "time_s": 24.892713235184566,
+        "total_velocity_m_s": 60.94856586658203
+       },
+       "time_s": 24.942713235184566,
+       "type": "GROUND_HIT"
+      },
+      {
+       "after": {
+        "altitude_m": -0.1768047377264419,
+        "time_s": 24.942713235184566,
+        "total_velocity_m_s": 60.95956285086846
+       },
+       "before": {
+        "altitude_m": 2.870873649440361,
+        "time_s": 24.892713235184566,
+        "total_velocity_m_s": 60.94856586658203
+       },
+       "time_s": 24.942713235184566,
+       "type": "SIMULATION_END"
+      }
+     ],
+     "has_motors": true,
+     "name": "[H128W-0]",
+     "reference_type": "MAXIMUM",
+     "rod_clearance": {
+      "cg_from_nose_m": 0.4891954301962522,
+      "cp_from_nose_m": 0.6309152451524175,
+      "mach": 0.06869429118730004,
+      "mass_kg": 0.624544629664849,
+      "reference_length_m": 0.06,
+      "stability_cal": 2.361996915936088,
+      "time_s": 0.11477968101363052
+     },
+     "series": {
+      "last_time_s": 24.942713235184566,
+      "last_total_velocity_m_s": 60.95956285086846,
+      "launch_mass_kg": 0.6327159551618897,
+      "max_altitude_m": 663.2983154535622,
+      "max_mach": 0.6656858147807233,
+      "max_total_acceleration_before_deployment_m_s2": 289.56410821939147,
+      "max_total_acceleration_m_s2": 289.56410821939147,
+      "max_total_velocity_m_s": 226.24678904786515,
+      "max_vertical_velocity_m_s": 226.24678757076788,
+      "rows": 709,
+      "time_of_max_altitude_s": 9.38854953819288
+     },
+     "summary": {
+      "deployment_velocity_m_s": null,
+      "flight_time_s": 24.942713235184566,
+      "ground_hit_velocity_m_s": 60.95956285086846,
+      "launch_rod_velocity_m_s": 23.382486483415022,
+      "max_acceleration_m_s2": 289.56410821939147,
+      "max_altitude_m": 663.2983154535622,
+      "max_mach": 0.6656858147807233,
+      "max_velocity_m_s": 226.24678904786515,
+      "optimum_delay_s": 8.09554953819288,
+      "time_to_apogee_s": 9.38854953819288
+     },
+     "undeployed": {
+      "aborted": false,
+      "apogee_time_s": 9.38854953819288,
+      "last_burnout_time_s": 1.293,
+      "max_altitude_m": 663.2983154535622,
+      "optimum_delay_s": 8.09554953819288,
+      "refused": null
+     }
+    }
+   ],
+   "sha256": "bb8091daada116dcf22f87c836c02327cb6f749937ac1fb590c525e13d8b426d"
+  },
+  {
+   "conditions_from": "defaults",
+   "file": "validation/fixtures/ork/pod-flights/pods-fins-2.ork",
+   "flights": [
+    {
+     "aborted": false,
+     "active_stages": 1,
+     "branches": 1,
+     "conditions": {
+      "geodetic": "SPHERICAL",
+      "isa_atmosphere": true,
+      "launch_altitude_m": 0.0,
+      "launch_latitude_deg": 28.61,
+      "launch_longitude_deg": -80.6,
+      "launch_pressure_pa": 101325.0,
+      "launch_temperature_k": 288.15,
+      "rod_angle_rad": 0.0,
+      "rod_direction_rad": 1.5707963267948966,
+      "rod_length_m": 1.0,
+      "time_step_s": 0.05,
+      "wind_average_m_s": 0.0,
+      "wind_model": "AVERAGE",
+      "wind_turbulence": 0.0
+     },
+     "configuration": "00000000-0000-4000-8000-000000000097",
+     "events": [
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "SIM_WARN"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "LAUNCH"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "IGNITION"
+      },
+      {
+       "after": {
+        "altitude_m": 0.026291095931345064,
+        "time_s": 0.03,
+        "total_velocity_m_s": 2.6800504255040103
+       },
+       "before": {
+        "altitude_m": 0.01311796082190575,
+        "time_s": 0.024,
+        "total_velocity_m_s": 1.7249216934598859
+       },
+       "time_s": 0.03,
+       "type": "LIFTOFF"
+      },
+      {
+       "after": {
+        "altitude_m": 1.0632862846756246,
+        "time_s": 0.11478625857298667,
+        "total_velocity_m_s": 23.377176203197898
+       },
+       "before": {
+        "altitude_m": 0.9604609880774787,
+        "time_s": 0.11026673243222125,
+        "total_velocity_m_s": 22.126213431539984
+       },
+       "time_s": 0.11478625857298667,
+       "type": "LAUNCHROD"
+      },
+      {
+       "after": {
+        "altitude_m": 183.1590984098204,
+        "time_s": 1.293,
+        "total_velocity_m_s": 193.1577540577937
+       },
+       "before": {
+        "altitude_m": 178.00368114651553,
+        "time_s": 1.2665384162698632,
+        "total_velocity_m_s": 196.50832610216267
+       },
+       "time_s": 1.293,
+       "type": "BURNOUT"
+      },
+      {
+       "after": {
+        "altitude_m": 183.1590984098204,
+        "time_s": 1.293,
+        "total_velocity_m_s": 193.1577540577937
+       },
+       "before": {
+        "altitude_m": 178.00368114651553,
+        "time_s": 1.2665384162698632,
+        "total_velocity_m_s": 196.50832610216267
+       },
+       "time_s": 1.293,
+       "type": "EJECTION_CHARGE"
+      },
+      {
+       "after": {
+        "altitude_m": 613.6445554940923,
+        "time_s": 8.94239984487067,
+        "total_velocity_m_s": 0.040877154954615275
+       },
+       "before": {
+        "altitude_m": 613.6315548531375,
+        "time_s": 8.892399844870669,
+        "total_velocity_m_s": 0.5062102983499567
+       },
+       "time_s": 8.94239984487067,
+       "type": "APOGEE"
+      },
+      {
+       "after": {
+        "altitude_m": -0.7204657446934895,
+        "time_s": 24.04109824827335,
+        "total_velocity_m_s": 57.550433268626286
+       },
+       "before": {
+        "altitude_m": 2.1568117130543483,
+        "time_s": 23.99109824827335,
+        "total_velocity_m_s": 57.54126764276658
+       },
+       "time_s": 24.04109824827335,
+       "type": "GROUND_HIT"
+      },
+      {
+       "after": {
+        "altitude_m": -0.7204657446934895,
+        "time_s": 24.04109824827335,
+        "total_velocity_m_s": 57.550433268626286
+       },
+       "before": {
+        "altitude_m": 2.1568117130543483,
+        "time_s": 23.99109824827335,
+        "total_velocity_m_s": 57.54126764276658
+       },
+       "time_s": 24.04109824827335,
+       "type": "SIMULATION_END"
+      }
+     ],
+     "has_motors": true,
+     "name": "[H128W-0]",
+     "reference_type": "MAXIMUM",
+     "rod_clearance": {
+      "cg_from_nose_m": 0.4930500134814359,
+      "cp_from_nose_m": 0.6523463683318538,
+      "mach": 0.06867869031306267,
+      "mass_kg": 0.6246135913691967,
+      "reference_length_m": 0.06,
+      "stability_cal": 2.654939247506965,
+      "time_s": 0.11478625857298667
+     },
+     "series": {
+      "last_time_s": 24.04109824827335,
+      "last_total_velocity_m_s": 57.550433268626286,
+      "launch_mass_kg": 0.6327855374906178,
+      "max_altitude_m": 613.6445554940923,
+      "max_mach": 0.6497925217471829,
+      "max_total_acceleration_before_deployment_m_s2": 287.56846488003487,
+      "max_total_acceleration_m_s2": 287.56846488003487,
+      "max_total_velocity_m_s": 220.84926867000888,
+      "max_vertical_velocity_m_s": 220.84926718268665,
+      "rows": 703,
+      "time_of_max_altitude_s": 8.94239984487067
+     },
+     "summary": {
+      "deployment_velocity_m_s": null,
+      "flight_time_s": 24.04109824827335,
+      "ground_hit_velocity_m_s": 57.550433268626286,
+      "launch_rod_velocity_m_s": 23.377176203197898,
+      "max_acceleration_m_s2": 287.56846488003487,
+      "max_altitude_m": 613.6445554940923,
+      "max_mach": 0.6497925217471829,
+      "max_velocity_m_s": 220.84926867000888,
+      "optimum_delay_s": 7.649399844870669,
+      "time_to_apogee_s": 8.94239984487067
+     },
+     "undeployed": {
+      "aborted": false,
+      "apogee_time_s": 8.94239984487067,
+      "last_burnout_time_s": 1.293,
+      "max_altitude_m": 613.6445554940923,
+      "optimum_delay_s": 7.649399844870669,
+      "refused": null
+     }
+    }
+   ],
+   "sha256": "8924a3279b56b4d6f9e18b106ad5796edb19e626a2af9d15409b70612f2d1c2b"
+  },
+  {
+   "conditions_from": "defaults",
+   "file": "validation/fixtures/ork/pod-flights/pods-fins-tail-4.ork",
+   "flights": [
+    {
+     "aborted": false,
+     "active_stages": 1,
+     "branches": 1,
+     "conditions": {
+      "geodetic": "SPHERICAL",
+      "isa_atmosphere": true,
+      "launch_altitude_m": 0.0,
+      "launch_latitude_deg": 28.61,
+      "launch_longitude_deg": -80.6,
+      "launch_pressure_pa": 101325.0,
+      "launch_temperature_k": 288.15,
+      "rod_angle_rad": 0.0,
+      "rod_direction_rad": 1.5707963267948966,
+      "rod_length_m": 1.0,
+      "time_step_s": 0.05,
+      "wind_average_m_s": 0.0,
+      "wind_model": "AVERAGE",
+      "wind_turbulence": 0.0
+     },
+     "configuration": "00000000-0000-4000-8000-000000000097",
+     "events": [
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "SIM_WARN"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "LAUNCH"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "IGNITION"
+      },
+      {
+       "after": {
+        "altitude_m": 0.024393457685769053,
+        "time_s": 0.03,
+        "total_velocity_m_s": 2.4942106436571323
+       },
+       "before": {
+        "altitude_m": 0.012141490658310921,
+        "time_s": 0.024,
+        "total_velocity_m_s": 1.6028220137519578
+       },
+       "time_s": 0.03,
+       "type": "LIFTOFF"
+      },
+      {
+       "after": {
+        "altitude_m": 1.0350437977562048,
+        "time_s": 0.11672547517277689,
+        "total_velocity_m_s": 22.3291908403475
+       },
+       "before": {
+        "altitude_m": 0.9321396315466952,
+        "time_s": 0.11198676155422727,
+        "total_velocity_m_s": 21.10277346336177
+       },
+       "time_s": 0.11672547517277689,
+       "type": "LAUNCHROD"
+      },
+      {
+       "after": {
+        "altitude_m": 168.60090916038519,
+        "time_s": 1.293,
+        "total_velocity_m_s": 175.6026870265954
+       },
+       "before": {
+        "altitude_m": 166.82218988655558,
+        "time_s": 1.2829054142623846,
+        "total_velocity_m_s": 176.80971991876999
+       },
+       "time_s": 1.293,
+       "type": "BURNOUT"
+      },
+      {
+       "after": {
+        "altitude_m": 168.60090916038519,
+        "time_s": 1.293,
+        "total_velocity_m_s": 175.6026870265954
+       },
+       "before": {
+        "altitude_m": 166.82218988655558,
+        "time_s": 1.2829054142623846,
+        "total_velocity_m_s": 176.80971991876999
+       },
+       "time_s": 1.293,
+       "type": "EJECTION_CHARGE"
+      },
+      {
+       "after": {
+        "altitude_m": 533.2953645622929,
+        "time_s": 8.364923923380495,
+        "total_velocity_m_s": 0.18406897031140126
+       },
+       "before": {
+        "altitude_m": 533.2921879414139,
+        "time_s": 8.314923923380494,
+        "total_velocity_m_s": 0.3099802469281343
+       },
+       "time_s": 8.364923923380495,
+       "type": "APOGEE"
+      },
+      {
+       "after": {
+        "altitude_m": -2.1510986813953332,
+        "time_s": 22.539700520875012,
+        "total_velocity_m_s": 53.281296755876156
+       },
+       "before": {
+        "altitude_m": 0.5127174532035865,
+        "time_s": 22.48970052087501,
+        "total_velocity_m_s": 53.272036150049544
+       },
+       "time_s": 22.539700520875012,
+       "type": "GROUND_HIT"
+      },
+      {
+       "after": {
+        "altitude_m": -2.1510986813953332,
+        "time_s": 22.539700520875012,
+        "total_velocity_m_s": 53.281296755876156
+       },
+       "before": {
+        "altitude_m": 0.5127174532035865,
+        "time_s": 22.48970052087501,
+        "total_velocity_m_s": 53.272036150049544
+       },
+       "time_s": 22.539700520875012,
+       "type": "SIMULATION_END"
+      }
+     ],
+     "has_motors": true,
+     "name": "[H128W-0]",
+     "reference_type": "MAXIMUM",
+     "rod_clearance": {
+      "cg_from_nose_m": 0.5025770187582582,
+      "cp_from_nose_m": 0.6508689787344881,
+      "mach": 0.06559984268983922,
+      "mass_kg": 0.6668172047655393,
+      "reference_length_m": 0.06,
+      "stability_cal": 2.4715326662704986,
+      "time_s": 0.11672547517277689
+     },
+     "series": {
+      "last_time_s": 22.539700520875012,
+      "last_total_velocity_m_s": 53.281296755876156,
+      "launch_mass_kg": 0.6751721253058354,
+      "max_altitude_m": 533.2953645622929,
+      "max_mach": 0.5951356990866696,
+      "max_total_acceleration_before_deployment_m_s2": 266.55105738036264,
+      "max_total_acceleration_m_s2": 266.55105738036264,
+      "max_total_velocity_m_s": 202.29595580475225,
+      "max_vertical_velocity_m_s": 202.29595438364422,
+      "rows": 670,
+      "time_of_max_altitude_s": 8.364923923380495
+     },
+     "summary": {
+      "deployment_velocity_m_s": null,
+      "flight_time_s": 22.539700520875012,
+      "ground_hit_velocity_m_s": 53.281296755876156,
+      "launch_rod_velocity_m_s": 22.3291908403475,
+      "max_acceleration_m_s2": 266.55105738036264,
+      "max_altitude_m": 533.2953645622929,
+      "max_mach": 0.5951356990866696,
+      "max_velocity_m_s": 202.29595580475225,
+      "optimum_delay_s": 7.071923923380495,
+      "time_to_apogee_s": 8.364923923380495
+     },
+     "undeployed": {
+      "aborted": false,
+      "apogee_time_s": 8.364923923380495,
+      "last_burnout_time_s": 1.293,
+      "max_altitude_m": 533.2953645622929,
+      "optimum_delay_s": 7.071923923380495,
+      "refused": null
+     }
+    }
+   ],
+   "sha256": "2803cea2ba0e35dfc0824ff3637da0897d93521e591ccbe433e86a44910d3b22"
+  },
+  {
+   "conditions_from": "defaults",
+   "file": "validation/fixtures/ork/pod-flights/pods-motors-2.ork",
+   "flights": [
+    {
+     "aborted": false,
+     "active_stages": 1,
+     "branches": 1,
+     "conditions": {
+      "geodetic": "SPHERICAL",
+      "isa_atmosphere": true,
+      "launch_altitude_m": 0.0,
+      "launch_latitude_deg": 28.61,
+      "launch_longitude_deg": -80.6,
+      "launch_pressure_pa": 101325.0,
+      "launch_temperature_k": 288.15,
+      "rod_angle_rad": 0.0,
+      "rod_direction_rad": 1.5707963267948966,
+      "rod_length_m": 1.0,
+      "time_step_s": 0.05,
+      "wind_average_m_s": 0.0,
+      "wind_model": "AVERAGE",
+      "wind_turbulence": 0.0
+     },
+     "configuration": "00000000-0000-4000-8000-000000000097",
+     "events": [
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "SIM_WARN"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "LAUNCH"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "IGNITION"
+      },
+      {
+       "after": {
+        "altitude_m": 0.031577771862219224,
+        "time_s": 0.03,
+        "total_velocity_m_s": 3.1978213069720574
+       },
+       "before": {
+        "altitude_m": 0.01583823505581808,
+        "time_s": 0.024,
+        "total_velocity_m_s": 2.0650848069429424
+       },
+       "time_s": 0.03,
+       "type": "LIFTOFF"
+      },
+      {
+       "after": {
+        "altitude_m": 1.0300160862503291,
+        "time_s": 0.1059736233160172,
+        "total_velocity_m_s": 24.817071855402876
+       },
+       "before": {
+        "altitude_m": 0.9270502293639542,
+        "time_s": 0.10170498481312194,
+        "total_velocity_m_s": 23.42667338360317
+       },
+       "time_s": 0.1059736233160172,
+       "type": "LAUNCHROD"
+      },
+      {
+       "after": {
+        "altitude_m": 224.7418175651546,
+        "time_s": 1.293,
+        "total_velocity_m_s": 243.95428436093326
+       },
+       "before": {
+        "altitude_m": 217.44690192134195,
+        "time_s": 1.2633534138572469,
+        "total_velocity_m_s": 248.1881835881624
+       },
+       "time_s": 1.293,
+       "type": "BURNOUT"
+      },
+      {
+       "after": {
+        "altitude_m": 224.7418175651546,
+        "time_s": 1.293,
+        "total_velocity_m_s": 243.95428436093326
+       },
+       "before": {
+        "altitude_m": 217.44690192134195,
+        "time_s": 1.2633534138572469,
+        "total_velocity_m_s": 248.1881835881624
+       },
+       "time_s": 1.293,
+       "type": "EJECTION_CHARGE"
+      },
+      {
+       "after": {
+        "altitude_m": 876.7595587587119,
+        "time_s": 10.717746814150901,
+        "total_velocity_m_s": 0.2908672017228044
+       },
+       "before": {
+        "altitude_m": 876.7616003866641,
+        "time_s": 10.6677468141509,
+        "total_velocity_m_s": 0.21126921558480954
+       },
+       "time_s": 10.717746814150901,
+       "type": "APOGEE"
+      },
+      {
+       "after": {
+        "altitude_m": -2.8129454187095106,
+        "time_s": 28.469235795559122,
+        "total_velocity_m_s": 70.03501384741797
+       },
+       "before": {
+        "altitude_m": 0.6885341285316837,
+        "time_s": 28.41923579555912,
+        "total_velocity_m_s": 70.02674084049056
+       },
+       "time_s": 28.469235795559122,
+       "type": "GROUND_HIT"
+      },
+      {
+       "after": {
+        "altitude_m": -2.8129454187095106,
+        "time_s": 28.469235795559122,
+        "total_velocity_m_s": 70.03501384741797
+       },
+       "before": {
+        "altitude_m": 0.6885341285316837,
+        "time_s": 28.41923579555912,
+        "total_velocity_m_s": 70.02674084049056
+       },
+       "time_s": 28.469235795559122,
+       "type": "SIMULATION_END"
+      }
+     ],
+     "has_motors": true,
+     "name": "[2\u00d7 H128W-0]",
+     "reference_type": "MAXIMUM",
+     "rod_clearance": {
+      "cg_from_nose_m": 0.5054655523154763,
+      "cp_from_nose_m": 0.68501576319625,
+      "mach": 0.07290886296137798,
+      "mass_kg": 1.0625210942737588,
+      "reference_length_m": 0.06,
+      "stability_cal": 2.992503514679562,
+      "time_s": 0.1059736233160172
+     },
+     "series": {
+      "last_time_s": 28.469235795559122,
+      "last_total_velocity_m_s": 70.03501384741797,
+      "launch_mass_kg": 1.0772019574201352,
+      "max_altitude_m": 876.7616003866641,
+      "max_mach": 0.807127788877112,
+      "max_total_acceleration_before_deployment_m_s2": 346.8759944576288,
+      "max_total_acceleration_m_s2": 346.8759944576288,
+      "max_total_velocity_m_s": 274.23413357981667,
+      "max_vertical_velocity_m_s": 274.23413185430275,
+      "rows": 894,
+      "time_of_max_altitude_s": 10.6677468141509
+     },
+     "summary": {
+      "deployment_velocity_m_s": null,
+      "flight_time_s": 28.469235795559122,
+      "ground_hit_velocity_m_s": 70.03501384741797,
+      "launch_rod_velocity_m_s": 24.817071855402876,
+      "max_acceleration_m_s2": 346.8759944576288,
+      "max_altitude_m": 876.7616003866641,
+      "max_mach": 0.807127788877112,
+      "max_velocity_m_s": 274.23413357981667,
+      "optimum_delay_s": 9.424746814150902,
+      "time_to_apogee_s": 10.6677468141509
+     },
+     "undeployed": {
+      "aborted": false,
+      "apogee_time_s": 10.717746814150901,
+      "last_burnout_time_s": 1.293,
+      "max_altitude_m": 876.7616003866641,
+      "optimum_delay_s": 9.424746814150902,
+      "refused": null
+     }
+    }
+   ],
+   "sha256": "595d89d9bf6bb5c9cd8fd63a263e3eabd2fc3fc7c28cdfefb67a4e9bf4fe8cc3"
+  },
+  {
+   "conditions_from": "defaults",
+   "file": "validation/fixtures/ork/pod-flights/pods-none.ork",
+   "flights": [
+    {
+     "aborted": false,
+     "active_stages": 1,
+     "branches": 1,
+     "conditions": {
+      "geodetic": "SPHERICAL",
+      "isa_atmosphere": true,
+      "launch_altitude_m": 0.0,
+      "launch_latitude_deg": 28.61,
+      "launch_longitude_deg": -80.6,
+      "launch_pressure_pa": 101325.0,
+      "launch_temperature_k": 288.15,
+      "rod_angle_rad": 0.0,
+      "rod_direction_rad": 1.5707963267948966,
+      "rod_length_m": 1.0,
+      "time_step_s": 0.05,
+      "wind_average_m_s": 0.0,
+      "wind_model": "AVERAGE",
+      "wind_turbulence": 0.0
+     },
+     "configuration": "00000000-0000-4000-8000-000000000097",
+     "events": [
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "SIM_WARN"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "LAUNCH"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "IGNITION"
+      },
+      {
+       "after": {
+        "altitude_m": 0.029493463612622044,
+        "time_s": 0.03,
+        "total_velocity_m_s": 2.9936807054229484
+       },
+       "before": {
+        "altitude_m": 0.014765764786154609,
+        "time_s": 0.024,
+        "total_velocity_m_s": 1.930972656927741
+       },
+       "time_s": 0.03,
+       "type": "LIFTOFF"
+      },
+      {
+       "after": {
+        "altitude_m": 1.0061067671898103,
+        "time_s": 0.10767117532066672,
+        "total_velocity_m_s": 23.808949204417964
+       },
+       "before": {
+        "altitude_m": 0.9030705430436641,
+        "time_s": 0.10321587609400547,
+        "total_velocity_m_s": 22.445181549554125
+       },
+       "time_s": 0.10767117532066672,
+       "type": "LAUNCHROD"
+      },
+      {
+       "after": {
+        "altitude_m": 208.8551189816849,
+        "time_s": 1.293,
+        "total_velocity_m_s": 225.31762100950314
+       },
+       "before": {
+        "altitude_m": 201.97199745077563,
+        "time_s": 1.2627261831300678,
+        "total_velocity_m_s": 229.423522521159
+       },
+       "time_s": 1.293,
+       "type": "BURNOUT"
+      },
+      {
+       "after": {
+        "altitude_m": 208.8551189816849,
+        "time_s": 1.293,
+        "total_velocity_m_s": 225.31762100950314
+       },
+       "before": {
+        "altitude_m": 201.97199745077563,
+        "time_s": 1.2627261831300678,
+        "total_velocity_m_s": 229.423522521159
+       },
+       "time_s": 1.293,
+       "type": "EJECTION_CHARGE"
+      },
+      {
+       "after": {
+        "altitude_m": 776.0513458370168,
+        "time_s": 10.10055644710509,
+        "total_velocity_m_s": 0.4010046148286226
+       },
+       "before": {
+        "altitude_m": 776.0590111518593,
+        "time_s": 10.05055644710509,
+        "total_velocity_m_s": 0.1035886102702051
+       },
+       "time_s": 10.10055644710509,
+       "type": "APOGEE"
+      },
+      {
+       "after": {
+        "altitude_m": -0.4416742099949049,
+        "time_s": 26.85156352061223,
+        "total_velocity_m_s": 65.51015367059571
+       },
+       "before": {
+        "altitude_m": 2.833571616787605,
+        "time_s": 26.80156352061223,
+        "total_velocity_m_s": 65.50134986577746
+       },
+       "time_s": 26.85156352061223,
+       "type": "GROUND_HIT"
+      },
+      {
+       "after": {
+        "altitude_m": -0.4416742099949049,
+        "time_s": 26.85156352061223,
+        "total_velocity_m_s": 65.51015367059571
+       },
+       "before": {
+        "altitude_m": 2.833571616787605,
+        "time_s": 26.80156352061223,
+        "total_velocity_m_s": 65.50134986577746
+       },
+       "time_s": 26.85156352061223,
+       "type": "SIMULATION_END"
+      }
+     ],
+     "has_motors": true,
+     "name": "[H128W-0]",
+     "reference_type": "MAXIMUM",
+     "rod_clearance": {
+      "cg_from_nose_m": 0.47543802417276937,
+      "cp_from_nose_m": 0.6409965906208761,
+      "mach": 0.06994712932386311,
+      "mass_kg": 0.5646740983735988,
+      "reference_length_m": 0.06,
+      "stability_cal": 2.759309440801779,
+      "time_s": 0.10767117532066672
+     },
+     "series": {
+      "last_time_s": 26.85156352061223,
+      "last_total_velocity_m_s": 65.51015367059571,
+      "launch_mass_kg": 0.572174702148074,
+      "max_altitude_m": 776.0590111518593,
+      "max_mach": 0.7477511758486275,
+      "max_total_acceleration_before_deployment_m_s2": 323.63807301729213,
+      "max_total_acceleration_m_s2": 323.63807301729213,
+      "max_total_velocity_m_s": 254.0921803621646,
+      "max_vertical_velocity_m_s": 254.0921784643793,
+      "rows": 871,
+      "time_of_max_altitude_s": 10.05055644710509
+     },
+     "summary": {
+      "deployment_velocity_m_s": null,
+      "flight_time_s": 26.85156352061223,
+      "ground_hit_velocity_m_s": 65.51015367059571,
+      "launch_rod_velocity_m_s": 23.808949204417964,
+      "max_acceleration_m_s2": 323.63807301729213,
+      "max_altitude_m": 776.0590111518593,
+      "max_mach": 0.7477511758486275,
+      "max_velocity_m_s": 254.0921803621646,
+      "optimum_delay_s": 8.80755644710509,
+      "time_to_apogee_s": 10.05055644710509
+     },
+     "undeployed": {
+      "aborted": false,
+      "apogee_time_s": 10.10055644710509,
+      "last_burnout_time_s": 1.293,
+      "max_altitude_m": 776.0590111518593,
+      "optimum_delay_s": 8.80755644710509,
+      "refused": null
+     }
+    }
+   ],
+   "sha256": "8344a86cd610e508e3e43a540689c409d7b71038b57b81f41a490800ffde8654"
+  },
+  {
+   "conditions_from": "defaults",
+   "file": "validation/fixtures/ork/pod-flights/pods-winglets-2.ork",
+   "flights": [
+    {
+     "aborted": false,
+     "active_stages": 1,
+     "branches": 1,
+     "conditions": {
+      "geodetic": "SPHERICAL",
+      "isa_atmosphere": true,
+      "launch_altitude_m": 0.0,
+      "launch_latitude_deg": 28.61,
+      "launch_longitude_deg": -80.6,
+      "launch_pressure_pa": 101325.0,
+      "launch_temperature_k": 288.15,
+      "rod_angle_rad": 0.0,
+      "rod_direction_rad": 1.5707963267948966,
+      "rod_length_m": 1.0,
+      "time_step_s": 0.05,
+      "wind_average_m_s": 0.0,
+      "wind_model": "AVERAGE",
+      "wind_turbulence": 0.0
+     },
+     "configuration": "00000000-0000-4000-8000-000000000097",
+     "events": [
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "SIM_WARN"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "LAUNCH"
+      },
+      {
+       "after": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "before": {
+        "altitude_m": 0.0,
+        "time_s": 0.0,
+        "total_velocity_m_s": 0.0
+       },
+       "time_s": 0.0,
+       "type": "IGNITION"
+      },
+      {
+       "after": {
+        "altitude_m": 0.028672626505259445,
+        "time_s": 0.03,
+        "total_velocity_m_s": 2.9132849821808766
+       },
+       "before": {
+        "altitude_m": 0.014343410268728492,
+        "time_s": 0.024,
+        "total_velocity_m_s": 1.8781571227672964
+       },
+       "time_s": 0.03,
+       "type": "LIFTOFF"
+      },
+      {
+       "after": {
+        "altitude_m": 1.0989009696472691,
+        "time_s": 0.11264399612406972,
+        "total_velocity_m_s": 24.67959558358373
+       },
+       "before": {
+        "altitude_m": 0.9961696182122483,
+        "time_s": 0.1083706005528788,
+        "total_velocity_m_s": 23.400595225527308
+       },
+       "time_s": 0.11264399612406972,
+       "type": "LAUNCHROD"
+      },
+      {
+       "after": {
+        "altitude_m": 200.21676203014553,
+        "time_s": 1.293,
+        "total_velocity_m_s": 212.49034248948664
+       },
+       "before": {
+        "altitude_m": 196.30705858576928,
+        "time_s": 1.2747071988259404,
+        "total_velocity_m_s": 214.97443960803415
+       },
+       "time_s": 1.293,
+       "type": "BURNOUT"
+      },
+      {
+       "after": {
+        "altitude_m": 200.21676203014553,
+        "time_s": 1.293,
+        "total_velocity_m_s": 212.49034248948664
+       },
+       "before": {
+        "altitude_m": 196.30705858576928,
+        "time_s": 1.2747071988259404,
+        "total_velocity_m_s": 214.97443960803415
+       },
+       "time_s": 1.293,
+       "type": "EJECTION_CHARGE"
+      },
+      {
+       "after": {
+        "altitude_m": 699.7083340972313,
+        "time_s": 9.541618503454448,
+        "total_velocity_m_s": 0.3762440682950208
+       },
+       "before": {
+        "altitude_m": 699.7147888992597,
+        "time_s": 9.491618503454447,
+        "total_velocity_m_s": 0.12321490448349752
+       },
+       "time_s": 9.541618503454448,
+       "type": "APOGEE"
+      },
+      {
+       "after": {
+        "altitude_m": -0.5533788191104763,
+        "time_s": 25.597986466501705,
+        "total_velocity_m_s": 61.34458056642299
+       },
+       "before": {
+        "altitude_m": 2.5136138470402867,
+        "time_s": 25.547986466501705,
+        "total_velocity_m_s": 61.33647167462096
+       },
+       "time_s": 25.597986466501705,
+       "type": "GROUND_HIT"
+      },
+      {
+       "after": {
+        "altitude_m": -0.5533788191104763,
+        "time_s": 25.597986466501705,
+        "total_velocity_m_s": 61.34458056642299
+       },
+       "before": {
+        "altitude_m": 2.5136138470402867,
+        "time_s": 25.547986466501705,
+        "total_velocity_m_s": 61.33647167462096
+       },
+       "time_s": 25.597986466501705,
+       "type": "SIMULATION_END"
+      }
+     ],
+     "has_motors": true,
+     "name": "[H128W-0]",
+     "reference_type": "MAXIMUM",
+     "rod_clearance": {
+      "cg_from_nose_m": 0.4790897703554354,
+      "cp_from_nose_m": 0.6410003869943643,
+      "mach": 0.07250503593617123,
+      "mass_kg": 0.5786048887985724,
+      "reference_length_m": 0.06,
+      "stability_cal": 2.6985102773154828,
+      "time_s": 0.11264399612406972
+     },
+     "series": {
+      "last_time_s": 25.597986466501705,
+      "last_total_velocity_m_s": 61.34458056642299,
+      "launch_mass_kg": 0.586574702148074,
+      "max_altitude_m": 699.7147888992597,
+      "max_mach": 0.7125683144971047,
+      "max_total_acceleration_before_deployment_m_s2": 313.162444475488,
+      "max_total_acceleration_m_s2": 313.162444475488,
+      "max_total_velocity_m_s": 242.15204412108935,
+      "max_vertical_velocity_m_s": 242.15204278867068,
+      "rows": 828,
+      "time_of_max_altitude_s": 9.491618503454447
+     },
+     "summary": {
+      "deployment_velocity_m_s": null,
+      "flight_time_s": 25.597986466501705,
+      "ground_hit_velocity_m_s": 61.34458056642299,
+      "launch_rod_velocity_m_s": 24.67959558358373,
+      "max_acceleration_m_s2": 313.162444475488,
+      "max_altitude_m": 699.7147888992597,
+      "max_mach": 0.7125683144971047,
+      "max_velocity_m_s": 242.15204412108935,
+      "optimum_delay_s": 8.248618503454448,
+      "time_to_apogee_s": 9.491618503454447
+     },
+     "undeployed": {
+      "aborted": false,
+      "apogee_time_s": 9.541618503454448,
+      "last_burnout_time_s": 1.293,
+      "max_altitude_m": 699.7147888992597,
+      "optimum_delay_s": 8.248618503454448,
+      "refused": null
+     }
+    }
+   ],
+   "sha256": "790a71e93a159f82d7bc76b8f038318f8c65746cde0548490d7e9b6374931eae"
   },
   {
    "conditions_from": "first stored simulation",
@@ -13401,7 +14697,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "events.py": "313b72db4daae061e476be01cd429db7c2f34432ae45d314f1bbb1586e1f585d",
-  "flights.py": "5482bffa948b08cdf1d4194fbd96ef0c3329d4dbe427da52ad1df9efa3edee85",
+  "flights.py": "25c7849335ad1d30e51f19d22fc0e505e2a77da0daef9bef475a33d18f215932",
   "geometry.py": "d410d9327f1fec89911cf3f597d7cde62559ccc2936106a48f1fc3c4184cc072"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",

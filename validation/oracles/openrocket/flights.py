@@ -34,7 +34,8 @@ It also records the stability margin at launch rod clearance with the centres of
 and the reference length it is taken from, so hpr's margin can be compared on the same instant.
 
 The public designs are the example designs inside the OpenRocket jar and the seven Loft demos in
-`validation/fixtures/ork/loft-demo/`. Each configuration is flown in a new simulation that takes
+`validation/fixtures/ork/loft-demo/`; the pod probes `pod_probes.py` writes to
+`validation/fixtures/ork/pod-flights/` (M1.13c2) are flown the same way. Each configuration is flown in a new simulation that takes
 the launch conditions of the design's first stored simulation (OpenRocket's defaults when there is
 none), in calm air: no wind and no turbulence, so the flight is repeatable and hpr can fly the same
 one. The conditions used are recorded with each flight. Simulation extensions are not carried over.
@@ -45,7 +46,8 @@ designs' public file names are recorded. OpenRocket 24.12 needs Java 17 exactly;
 `automatic_radius.py`. Run from the repository root:
 
     refs/venv/bin/python validation/oracles/openrocket/flights.py \\
-        validation/fixtures/ork/openrocket-flights.json validation/fixtures/ork/loft-demo --jar
+        validation/fixtures/ork/openrocket-flights.json validation/fixtures/ork/loft-demo \\
+        validation/fixtures/ork/pod-flights --jar
 
 The record is written to the path given, not to standard output, which OpenRocket logs to.
 """

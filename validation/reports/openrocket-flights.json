@@ -3281,6 +3281,531 @@
       "why": "an airframe not read exactly as written"
     }
   ],
+  "probes": [
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.48919999585498397,
+          "cp_from_nose_m": 0.6309997626964157,
+          "mass_kg": 0.6245579928103999,
+          "reference_length_m": 0.06
+        },
+        "mach": 0.06869429118730004,
+        "openrocket": {
+          "cg_from_nose_m": 0.4891954301962522,
+          "cp_from_nose_m": 0.6309152451524175,
+          "mass_kg": 0.624544629664849,
+          "reference_length_m": 0.06
+        },
+        "time_s": 0.11477968101363052
+      },
+      "configuration": "00000000-0000-4000-8000-000000000097",
+      "deployed_before_apogee_s": null,
+      "design": "pods-bodies-3",
+      "design_errors_accepted": [
+        {
+          "configuration": "00000000-0000-4000-8000-000000000097",
+          "kind": "motor_wider_than_mount",
+          "motor_diameter_m": 0.029,
+          "mount": "00000000-0000-4000-8000-000000000003",
+          "mount_inner_diameter_m": 0.028
+        }
+      ],
+      "file": "validation/fixtures/ork/pod-flights/pods-bodies-3.ork",
+      "launch_mass_kg": {
+        "hpr": 0.6327159631188163,
+        "openrocket": 0.6327159551618897
+      },
+      "max_mach_openrocket": 0.6656858147807233,
+      "metrics": {
+        "apogee_m": {
+          "difference": 3.1655923104574413,
+          "hpr": 666.4639077640196,
+          "openrocket": 663.2983154535622,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 666.4639077640196,
+            "outcome": "scored",
+            "reference": 663.2983154535622
+          },
+          "relative_percent": 0.47725016583116375
+        },
+        "max_speed_m_s": {
+          "difference": 1.7440976188556192,
+          "hpr": 227.99088666672077,
+          "openrocket": 226.24678904786515,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 227.99088666672077,
+            "outcome": "scored",
+            "reference": 226.24678904786515
+          },
+          "relative_percent": 0.770882816147563
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0013325314211072303,
+          "hpr": 2.363329447357195,
+          "openrocket": 2.361996915936088,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.363329447357195,
+            "outcome": "scored",
+            "reference": 2.361996915936088
+          },
+          "relative_percent": 0.0564154598220181
+        }
+      },
+      "motors": "[H128W-0]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.49305449401552875,
+          "cp_from_nose_m": 0.65242240676937,
+          "mass_kg": 0.624626948015939,
+          "reference_length_m": 0.06
+        },
+        "mach": 0.06867869031306267,
+        "openrocket": {
+          "cg_from_nose_m": 0.4930500134814359,
+          "cp_from_nose_m": 0.6523463683318538,
+          "mass_kg": 0.6246135913691967,
+          "reference_length_m": 0.06
+        },
+        "time_s": 0.11478625857298667
+      },
+      "configuration": "00000000-0000-4000-8000-000000000097",
+      "deployed_before_apogee_s": null,
+      "design": "pods-fins-2",
+      "design_errors_accepted": [
+        {
+          "configuration": "00000000-0000-4000-8000-000000000097",
+          "kind": "motor_wider_than_mount",
+          "motor_diameter_m": 0.029,
+          "mount": "00000000-0000-4000-8000-000000000003",
+          "mount_inner_diameter_m": 0.028
+        }
+      ],
+      "file": "validation/fixtures/ork/pod-flights/pods-fins-2.ork",
+      "launch_mass_kg": {
+        "hpr": 0.6327855453910852,
+        "openrocket": 0.6327855374906178
+      },
+      "max_mach_openrocket": 0.6497925217471829,
+      "metrics": {
+        "apogee_m": {
+          "difference": 3.032254579539881,
+          "hpr": 616.6768100736322,
+          "openrocket": 613.6445554940923,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 616.6768100736322,
+            "outcome": "scored",
+            "reference": 613.6445554940923
+          },
+          "relative_percent": 0.4941385941407694
+        },
+        "max_speed_m_s": {
+          "difference": 1.6093982555054538,
+          "hpr": 222.45866692551434,
+          "openrocket": 220.84926867000888,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 222.45866692551434,
+            "outcome": "scored",
+            "reference": 220.84926867000888
+          },
+          "relative_percent": 0.7287315304223185
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.001192631723723192,
+          "hpr": 2.656131879230688,
+          "openrocket": 2.654939247506965,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.656131879230688,
+            "outcome": "scored",
+            "reference": 2.654939247506965
+          },
+          "relative_percent": 0.044921243483936384
+        }
+      },
+      "motors": "[H128W-0]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.5025804093600156,
+          "cp_from_nose_m": 0.6509373250109369,
+          "mass_kg": 0.6668285202264292,
+          "reference_length_m": 0.06
+        },
+        "mach": 0.06559984268983922,
+        "openrocket": {
+          "cg_from_nose_m": 0.5025770187582582,
+          "cp_from_nose_m": 0.6508689787344881,
+          "mass_kg": 0.6668172047655393,
+          "reference_length_m": 0.06
+        },
+        "time_s": 0.11672547517277689
+      },
+      "configuration": "00000000-0000-4000-8000-000000000097",
+      "deployed_before_apogee_s": null,
+      "design": "pods-fins-tail-4",
+      "design_errors_accepted": [
+        {
+          "configuration": "00000000-0000-4000-8000-000000000097",
+          "kind": "motor_wider_than_mount",
+          "motor_diameter_m": 0.029,
+          "mount": "00000000-0000-4000-8000-000000000003",
+          "mount_inner_diameter_m": 0.028
+        }
+      ],
+      "file": "validation/fixtures/ork/pod-flights/pods-fins-tail-4.ork",
+      "launch_mass_kg": {
+        "hpr": 0.6751721122848032,
+        "openrocket": 0.6751721253058354
+      },
+      "max_mach_openrocket": 0.5951356990866696,
+      "metrics": {
+        "apogee_m": {
+          "difference": 2.1815475675856533,
+          "hpr": 535.4769121298785,
+          "openrocket": 533.2953645622929,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 535.4769121298785,
+            "outcome": "scored",
+            "reference": 533.2953645622929
+          },
+          "relative_percent": 0.4090692911565392
+        },
+        "max_speed_m_s": {
+          "difference": 1.1946702616215248,
+          "hpr": 203.49062606637378,
+          "openrocket": 202.29595580475225,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 203.49062606637378,
+            "outcome": "scored",
+            "reference": 202.29595580475225
+          },
+          "relative_percent": 0.5905556820792658
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0010825945781904878,
+          "hpr": 2.472615260848689,
+          "openrocket": 2.4715326662704986,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.472615260848689,
+            "outcome": "scored",
+            "reference": 2.4715326662704986
+          },
+          "relative_percent": 0.04380255996470825
+        }
+      },
+      "motors": "[H128W-0]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.5054757316369496,
+          "cp_from_nose_m": 0.6850889878892077,
+          "mass_kg": 1.0625600913449382,
+          "reference_length_m": 0.06
+        },
+        "mach": 0.07290886296137798,
+        "openrocket": {
+          "cg_from_nose_m": 0.5054655523154763,
+          "cp_from_nose_m": 0.68501576319625,
+          "mass_kg": 1.0625210942737588,
+          "reference_length_m": 0.06
+        },
+        "time_s": 0.1059736233160172
+      },
+      "clustered_motors": 2,
+      "configuration": "00000000-0000-4000-8000-000000000097",
+      "deployed_before_apogee_s": null,
+      "design": "pods-motors-2",
+      "design_errors_accepted": [
+        {
+          "configuration": "00000000-0000-4000-8000-000000000097",
+          "kind": "motor_wider_than_mount",
+          "motor_diameter_m": 0.029,
+          "mount": "00000000-0000-4000-8000-000000000023",
+          "mount_inner_diameter_m": 0.028
+        }
+      ],
+      "file": "validation/fixtures/ork/pod-flights/pods-motors-2.ork",
+      "launch_mass_kg": {
+        "hpr": 1.077201967502663,
+        "openrocket": 1.0772019574201352
+      },
+      "max_mach_openrocket": 0.807127788877112,
+      "metrics": {
+        "apogee_m": {
+          "difference": 4.622853579541811,
+          "hpr": 881.3844539662059,
+          "openrocket": 876.7616003866641,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 881.3844539662059,
+            "outcome": "scored",
+            "reference": 876.7616003866641
+          },
+          "relative_percent": 0.5272646039132038
+        },
+        "max_speed_m_s": {
+          "difference": 3.3933871929976362,
+          "hpr": 277.6275207728143,
+          "openrocket": 274.23413357981667,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 277.6275207728143,
+            "outcome": "scored",
+            "reference": 274.23413357981667
+          },
+          "relative_percent": 1.2374051139078865
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0010507561914061547,
+          "hpr": 2.9935542708709684,
+          "openrocket": 2.992503514679562,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.9935542708709684,
+            "outcome": "scored",
+            "reference": 2.992503514679562
+          },
+          "relative_percent": 0.03511294761231617
+        }
+      },
+      "motors": "[2× H128W-0]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.4754455520542811,
+          "cp_from_nose_m": 0.6410871582027535,
+          "mass_kg": 0.5646928030409071,
+          "reference_length_m": 0.06
+        },
+        "mach": 0.06994712932386311,
+        "openrocket": {
+          "cg_from_nose_m": 0.47543802417276937,
+          "cp_from_nose_m": 0.6409965906208761,
+          "mass_kg": 0.5646740983735988,
+          "reference_length_m": 0.06
+        },
+        "time_s": 0.10767117532066672
+      },
+      "configuration": "00000000-0000-4000-8000-000000000097",
+      "deployed_before_apogee_s": null,
+      "design": "pods-none",
+      "design_errors_accepted": [
+        {
+          "configuration": "00000000-0000-4000-8000-000000000097",
+          "kind": "motor_wider_than_mount",
+          "motor_diameter_m": 0.029,
+          "mount": "00000000-0000-4000-8000-000000000003",
+          "mount_inner_diameter_m": 0.028
+        }
+      ],
+      "file": "validation/fixtures/ork/pod-flights/pods-none.ork",
+      "launch_mass_kg": {
+        "hpr": 0.5721747099356232,
+        "openrocket": 0.572174702148074
+      },
+      "max_mach_openrocket": 0.7477511758486275,
+      "metrics": {
+        "apogee_m": {
+          "difference": 6.285297765818086,
+          "hpr": 782.3443089176774,
+          "openrocket": 776.0590111518593,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 782.3443089176774,
+            "outcome": "scored",
+            "reference": 776.0590111518593
+          },
+          "relative_percent": 0.8098994632494743
+        },
+        "max_speed_m_s": {
+          "difference": 2.7802977898835763,
+          "hpr": 256.8724781520482,
+          "openrocket": 254.0921803621646,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 256.8724781520482,
+            "outcome": "scored",
+            "reference": 254.0921803621646
+          },
+          "relative_percent": 1.0942083246799414
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0013839950060954287,
+          "hpr": 2.7606934358078745,
+          "openrocket": 2.759309440801779,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.7606934358078745,
+            "outcome": "scored",
+            "reference": 2.759309440801779
+          },
+          "relative_percent": 0.05015729608395345
+        }
+      },
+      "motors": "[H128W-0]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    },
+    {
+      "aborted": false,
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.47909568463501695,
+          "cp_from_nose_m": 0.6410909529297057,
+          "mass_kg": 0.5786201969520224,
+          "reference_length_m": 0.06
+        },
+        "mach": 0.07250503593617123,
+        "openrocket": {
+          "cg_from_nose_m": 0.4790897703554354,
+          "cp_from_nose_m": 0.6410003869943643,
+          "mass_kg": 0.5786048887985724,
+          "reference_length_m": 0.06
+        },
+        "time_s": 0.11264399612406972
+      },
+      "configuration": "00000000-0000-4000-8000-000000000097",
+      "deployed_before_apogee_s": null,
+      "design": "pods-winglets-2",
+      "design_errors_accepted": [
+        {
+          "configuration": "00000000-0000-4000-8000-000000000097",
+          "kind": "motor_wider_than_mount",
+          "motor_diameter_m": 0.029,
+          "mount": "00000000-0000-4000-8000-000000000003",
+          "mount_inner_diameter_m": 0.028
+        }
+      ],
+      "file": "validation/fixtures/ork/pod-flights/pods-winglets-2.ork",
+      "launch_mass_kg": {
+        "hpr": 0.5865747099356232,
+        "openrocket": 0.586574702148074
+      },
+      "max_mach_openrocket": 0.7125683144971047,
+      "metrics": {
+        "apogee_m": {
+          "difference": 4.997918570037655,
+          "hpr": 704.7127074692974,
+          "openrocket": 699.7147888992597,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 704.7127074692974,
+            "outcome": "scored",
+            "reference": 699.7147888992597
+          },
+          "relative_percent": 0.7142793963094615
+        },
+        "max_speed_m_s": {
+          "difference": 2.304955184112373,
+          "hpr": 244.45699930520172,
+          "openrocket": 242.15204412108935,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 244.45699930520172,
+            "outcome": "scored",
+            "reference": 242.15204412108935
+          },
+          "relative_percent": 0.9518627821121215
+        },
+        "rod_clearance_margin_cal": {
+          "difference": 0.0014108609293308483,
+          "hpr": 2.6999211382448136,
+          "openrocket": 2.6985102773154828,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 2.6999211382448136,
+            "outcome": "scored",
+            "reference": 2.6985102773154828
+          },
+          "relative_percent": 0.05228295556963353
+        }
+      },
+      "motors": "[H128W-0]",
+      "rod_length_m": 1.0,
+      "termination": "ground_hit"
+    }
+  ],
   "record": "validation/fixtures/ork/openrocket-flights.json",
   "reference": {
     "tool": "OpenRocket",

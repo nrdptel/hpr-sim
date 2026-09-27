@@ -868,12 +868,14 @@ cones, body tubes and transitions written inside the `podset`, with everything o
 [`PodSet`][p-podset] ([M1.13b](../decisions-and-roadmap.md#m1-13b)). The first pod's roll angle is
 `angleoffset`, read as every angle is ([which way round](#which-way-round)). Pods fly from
 [M1.13c1](../decisions-and-roadmap.md#m1-13c1), each pod's parts with their own normal force and
-drag ([aerodynamics: Pods](../physics/aero.md#pods)). No pod with bodies or fins has been flown
-against OpenRocket yet: that is [M1.13c2](../decisions-and-roadmap.md#m1-13c2). The one private
-design with pods, `C02`, has only a launch lug on each, so its flights, within 2.2% of OpenRocket's
-apogee ([hpr's flights of the private designs](#hprs-flights-of-the-private-designs)), check the
-pods' placement and weight, not their aerodynamics. OpenRocket's own two pod examples don't fly
-yet, for reasons outside the pods.
+drag ([aerodynamics: Pods](../physics/aero.md#pods)). Six probe designs with pods of bodies, fins,
+a tail cone, winglets and motors fly within 0.81% of OpenRocket's apogee
+([M1.13c2](../decisions-and-roadmap.md#m1-13c2)); they are listed apart from the designs, at the
+end of [the report](#hprs-flights-against-openrockets). The one private design with pods, `C02`,
+has only a launch lug on each, so its flights, within 2.2% of OpenRocket's apogee
+([hpr's flights of the private designs](#hprs-flights-of-the-private-designs)), check the pods'
+placement and weight, not their aerodynamics. OpenRocket's own two pod examples don't fly yet, for
+reasons outside the pods.
 
 **How far from the axis** depends on the `method` written on `radiusoffset`, and no document says
 how. OpenRocket 24.12 was asked, as an outside oracle, on probe designs
@@ -1850,6 +1852,9 @@ OpenRocket's on ordinary hobby rockets.
   apogees are compared with OpenRocket's flight with no parachute, since its parachute opened
   early ([staged, clustered and air-start flights](#staged-clustered-and-air-start-flights),
   below).
+- Six probe designs with pods, written for [M1.13c2](../decisions-and-roadmap.md#m1-13c2) and
+  not counted among the 33, fly within 0.81% of OpenRocket's apogee and 1.24% of its largest
+  speed, their margins within 0.002 calibres ([aerodynamics: Pods](../physics/aero.md#pods)).
 - The bar, set for the whole corpus ([M2.2](../decisions-and-roadmap.md#m2-2), OpenRocket
   comparisons), is that every apogee more than 5% off has a written cause. Six apogees are
   more than 5% off, and each has a named cause, sized
