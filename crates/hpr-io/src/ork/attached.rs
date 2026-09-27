@@ -447,7 +447,19 @@ fn pod_set(
         );
         "surface".to_owned()
     });
-    let number = number.unwrap_or_default();
+    // `relative` and `surface` with no number are the pods touching the tube; `free` with none is
+    // no place at all.
+    let Some(number) = number.or((method != "free").then_some(0.0)) else {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "a `free` `radiusoffset` with no number, so where the pods sit is not known; the \
+                 pod set was left out{}",
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
+    };
     let radial_offset_m = match method.as_str() {
         "relative" => tube_radius_m + pod_radius_m + number,
         "surface" => tube_radius_m + pod_radius_m,

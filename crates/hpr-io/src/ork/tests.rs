@@ -4210,7 +4210,8 @@ fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
 
 /// A pod set whose distance from the axis is not known when the file is read, or is no distance,
 /// is left out with a `Skipped` warning, and the rest lays out: a pod whose radii are all
-/// automatic, a tube whose automatic radius cached nothing, and a negative `free` offset. An
+/// automatic, a tube whose automatic radius cached nothing, and a `free` offset that is negative
+/// or not a number. An
 /// override on a pod set is its pods' total even when the file does not say it covers them, with a
 /// `Dropped` warning, since a pod set weighs nothing of its own. A tube radius OpenRocket cached is
 /// taken, and said.
@@ -4232,6 +4233,13 @@ fn a_pod_set_with_no_known_distance_is_left_out_and_its_override_covers_its_pods
             "free",
             "-0.02",
             &pod_tube("negative-pod", "0.1"),
+            "",
+        ),
+        pod_set(
+            "unreadable",
+            "free",
+            "NaN",
+            &pod_tube("unreadable-pod", "0.1"),
             "",
         ),
         pod_set(
@@ -4263,7 +4271,12 @@ fn a_pod_set_with_no_known_distance_is_left_out_and_its_override_covers_its_pods
         spine.warnings
     );
     assert!(
-        said(WarningKind::Dropped, "podset[2]", "read as covering them"),
+        said(WarningKind::Skipped, "podset[2]", "with no number"),
+        "{:?}",
+        spine.warnings
+    );
+    assert!(
+        said(WarningKind::Dropped, "podset[3]", "read as covering them"),
         "{:?}",
         spine.warnings
     );
