@@ -753,7 +753,8 @@ The ejected pieces' tests are in `crates/hpr-sim/src/pieces.rs`, also analytic:
 | A stack with only a tumble since apogee, the nose cone pushed off at 300 m | along its velocity through the air, to 1e-9: a tumble is nothing to hang from |
 | A drogue since apogee released by a main that opens at 300 m as the nose cone leaves | still hung from: up the velocity through the air, to 1e-9, whether the main opens at once or fills over a second (found in review: the push flipped with the law) |
 | One charge pushing off the nose cone and letting the payload out, both at apogee | by hand, along the axis: nose cone `+1 N·s`, payload `+1 N·s`, airframe between them `−2 N·s`, each over its own mass to 1e-9 |
-| A pushed payload in the booster, behind a separation, with the builders in either order | accepted both ways, and every piece lands; without the separation it is in the nose's piece and refused at the start |
+| A pushed payload in the booster, behind a separation, with the builders in either order | accepted both ways, and every piece lands; without the separation it is in the nose's piece and refused at the start, and so is one in the sustainer's airframe with it |
+| A drogue since apogee cut away at 600 m by a tumble, the nose cone pushed off at 300 m | hung from nothing by then: along the velocity through the air, to 1e-9 |
 | A parting on the way down with no push | the body after it has the same point and velocity, and its mass without the piece; only partings record a body after |
 | A nose cone tumbling on its own after apogee, in uniform sea-level air | its drag area is 0.56 times its tangent ogive's closed-form side area, to 1e-12; it lands at 13.849 m/s, its model's `v_e` to 1e-6 (the example's 14.82 m/s is in its own, thinner air at 1,400 m) |
 | The tumbling drag areas of an airframe cut into a nose cone and the rest | add to the whole airframe's to 1e-12; a payload or a piece not made is refused |

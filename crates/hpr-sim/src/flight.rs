@@ -749,7 +749,9 @@ impl Simulation {
     /// # Errors
     ///
     /// [`SimError`] from the models or the integrator (other than the step limit, which is a
-    /// [`Termination`]), or from the observer.
+    /// [`Termination`]), or from the observer. The checks that wait for every builder run here
+    /// too: a device on a body nothing makes, and a pushed payload in the nose's piece
+    /// ([`Self::with_ejections`]).
     pub fn run(&self, observer: &mut dyn Observer) -> Result<FlightResult, SimError> {
         self.fly(0.0, self.initial_state(), Phase::Pad, observer)
     }
@@ -833,7 +835,7 @@ impl Simulation {
                 self.separation,
                 &self.ejections,
             )?
-            .check_pushed_payloads(&self.ejections, 1 + usize::from(self.separation.is_some()))?;
+            .check_pushed_payloads(&self.ejections)?;
         }
         if start_phase == Phase::Free {
             let height = self

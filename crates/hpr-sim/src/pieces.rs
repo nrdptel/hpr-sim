@@ -469,17 +469,16 @@ impl Pieces {
     }
 
     /// Refuses a pushed payload in the nose's piece: it leaves forward, and that piece is closed at
-    /// the nose. It needs the flight's separation as well as its `ejections`, so it runs when the
-    /// flight starts, whatever order the builders came in.
+    /// the nose. It needs the flight's separation as well as its `ejections`, the ones these
+    /// pieces were made with, so it runs when the flight starts, whatever order the builders came
+    /// in.
     ///
     /// # Errors
     ///
     /// [`SimError::Parting`], naming the payload.
-    pub(crate) fn check_pushed_payloads(
-        &self,
-        ejections: &[Ejection],
-        first_ejection: usize,
-    ) -> Result<(), SimError> {
+    pub(crate) fn check_pushed_payloads(&self, ejections: &[Ejection]) -> Result<(), SimError> {
+        // The ejections make the last pieces, in order.
+        let first_ejection = self.count() - ejections.len();
         for (index, ejection) in ejections.iter().enumerate() {
             if let Parting::Payload { component } = &ejection.parting
                 && ejection.impulse_n_s > 0.0
@@ -1743,6 +1742,52 @@ mod tests {
                     && component == "booster-electronics"),
             "{error:?}"
         );
+        // With the separation, one in the sustainer's airframe is still in the nose's piece.
+        let error = base()
+            .with_separation(separation)
+            .unwrap()
+            .with_ejections(vec![
+                Ejection::payload(Trigger::Apogee, "sustainer-parachute").with_impulse(1.0),
+            ])
+            .unwrap()
+            .with_recovery(devices())
+            .unwrap()
+            .run(&mut ())
+            .unwrap_err();
+        assert!(
+            matches!(&error, SimError::Parting { what, component }
+                if what.starts_with("a pushed payload leaves forward")
+                    && component == "sustainer-parachute"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn a_drogue_cut_away_before_the_parting_is_not_hung_from() {
+        // A drogue on the stack since apogee, released at 600 m by a tumble: by 300 m, where the
+        // nose cone is pushed off, the stack hangs from nothing, so the push goes along its
+        // velocity through the air.
+        let along = nose_push_through_air(|| {
+            let tumble = DeviceDrag::tumbling(&with_payload().assemble("i175").unwrap()).unwrap();
+            vec![
+                canopy(0, 0.3, Trigger::Apogee).with_release_by(1),
+                Device::new(
+                    "tumble",
+                    tumble,
+                    Trigger::Altitude {
+                        height_above_ground_m: 600.0,
+                    },
+                ),
+                canopy(
+                    1,
+                    0.9,
+                    Trigger::Altitude {
+                        height_above_ground_m: 300.0,
+                    },
+                ),
+            ]
+        });
+        close(along, 1.0, 1e-9, "along the flight");
     }
 
     #[test]
