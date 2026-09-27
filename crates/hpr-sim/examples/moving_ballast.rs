@@ -105,8 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         metrics
             .stability()
             .iter()
-            .filter(|sample| sample.time_s <= t_s)
-            .last()
+            .rfind(|sample| sample.time_s <= t_s)
             .and_then(|sample| {
                 sample
                     .static_margin
