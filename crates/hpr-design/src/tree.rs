@@ -801,6 +801,22 @@ impl Layout {
         self.components.iter().filter(|c| c.parent.is_none())
     }
 
+    /// The index of the pod set that component `index` is in, if any: the nearest pod set among
+    /// its parents, never the component itself. The walk takes at most one step per component,
+    /// so a layout whose parents loop, which [`Layout`]'s own builder never makes, ends it.
+    pub fn pod_set_of(&self, index: usize) -> Option<usize> {
+        let mut parent = self.components.get(index)?.parent;
+        for _ in 0..self.components.len() {
+            let at = parent?;
+            let component = self.components.get(at)?;
+            if matches!(component.part, Part::PodSet(_)) {
+                return Some(at);
+            }
+            parent = component.parent;
+        }
+        None
+    }
+
     /// Reference area `π d²/4`, m².
     pub fn reference_area_m2(&self) -> f64 {
         0.25 * std::f64::consts::PI * self.reference_diameter_m * self.reference_diameter_m

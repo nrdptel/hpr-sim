@@ -45,7 +45,8 @@ is no command-line tool yet.
   OpenRocket's apogee and largest speed. Three cluster apogees are compared with OpenRocket's
   flight with no parachute, since its parachute opened before apogee
   ([hpr's flights against OpenRocket's](#hprs-flights-against-openrockets)).
-- **Pods are read, weighed and flown** ([Pods](#pods)). **Parallel stages are kept, not
+- **Pods are read, weighed and flown** ([Pods](#pods)), but no pod with bodies or fins has been
+  compared with OpenRocket yet. **Parallel stages are kept, not
   modelled.** A design with them is marked *reduced*, and none of its configurations flies
   ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
 - **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone
@@ -867,9 +868,12 @@ cones, body tubes and transitions written inside the `podset`, with everything o
 [`PodSet`][p-podset] ([M1.13b](../decisions-and-roadmap.md#m1-13b)). The first pod's roll angle is
 `angleoffset`, read as every angle is ([which way round](#which-way-round)). Pods fly from
 [M1.13c1](../decisions-and-roadmap.md#m1-13c1), each pod's parts with their own normal force and
-drag ([aerodynamics: Pods](../physics/aero.md#pods)). The private design whose pods hold a launch
-lug flies within 2.2% of OpenRocket's apogee; OpenRocket's own two pod examples don't fly yet, for
-reasons outside the pods.
+drag ([aerodynamics: Pods](../physics/aero.md#pods)). No pod with bodies or fins has been flown
+against OpenRocket yet: that is [M1.13c2](../decisions-and-roadmap.md#m1-13c2). The one private
+design with pods, `C02`, has only a launch lug on each, so its flights, within 2.2% of OpenRocket's
+apogee ([hpr's flights of the private designs](#hprs-flights-of-the-private-designs)), check the
+pods' placement and weight, not their aerodynamics. OpenRocket's own two pod examples don't fly
+yet, for reasons outside the pods.
 
 **How far from the axis** depends on the `method` written on `radiusoffset`, and no document says
 how. OpenRocket 24.12 was asked, as an outside oracle, on probe designs
@@ -2169,13 +2173,19 @@ of mass. With the public report's 8, these make 14. Staging and clusters
 ones. The three public designs whose stages hpr can't separate yet
 ([#183](https://github.com/nrdptel/hpr-sim/issues/183),
 [#184](https://github.com/nrdptel/hpr-sim/issues/184)) and the private one with a motor hpr can't
-light as written could add four more, 18 at most. The last two can come from a tilted launch rod
-([#173](https://github.com/nrdptel/hpr-sim/issues/173), one design), the airframes hpr reads
-simpler than written ([#174](https://github.com/nrdptel/hpr-sim/issues/174), four designs, the old
-override flag alone two), or the four public designs held by parallel stages, by the freeform fin
-and rail buttons' screw heads of OpenRocket's two pod examples (pods themselves fly since
-[M1.13c1](../decisions-and-roadmap.md#m1-13c1)), or by tube fins
-([#133](https://github.com/nrdptel/hpr-sim/issues/133)). That bar is now [M2.2e5](../decisions-and-roadmap.md#m2-2e5).
+light as written could add four more, 18 at most. The last two designs can come from three
+places:
+
+- a tilted launch rod ([#173](https://github.com/nrdptel/hpr-sim/issues/173), one design);
+- the airframes hpr reads simpler than written
+  ([#174](https://github.com/nrdptel/hpr-sim/issues/174), four designs, two of them by the old
+  override flag alone);
+- the four public designs held back by parts hpr leaves out: parallel stages, tube fins
+  ([#133](https://github.com/nrdptel/hpr-sim/issues/133)), and the freeform fin and the rail
+  buttons' screw heads of OpenRocket's two pod examples. The pods themselves fly since
+  [M1.13c1](../decisions-and-roadmap.md#m1-13c1).
+
+That bar is now [M2.2e5](../decisions-and-roadmap.md#m2-2e5).
 
 **What is published.** The designs are other people's, so the
 [report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-library-flights.md)
@@ -2215,7 +2225,8 @@ and part on the coast, where drag matters most.
 - No apogee is more than 5% from OpenRocket's, and no flight has a part with a drag override.
 - An early parachute lowers OpenRocket's apogee, so it can make hpr read high but not low. It
   cannot explain `C03/3` and `C03/4`, which read low. It could explain `C07/1`, which reads +0.68%
-  with the parachute 0.55 s early; how much of that it explains is not measured.
+  with the parachute 0.55 s early, and `C02/2`, which reads +2.15% with the parachute 1.45 s
+  early, the longest of the six; how much of either it explains is not measured.
 - The 14 flights launched above sea level (designs `C03` and `C09`) all read low in apogee. Of
   the 9 at sea level, the 4 of `C07`, `C08` and `C11` read high, and `C02`, flown since pods fly,
   reads high once and low four times. Most of the public report's flights with no
@@ -2360,7 +2371,7 @@ How this was decided is in [ADR-058][adr-058].
 ## What is not read yet
 
 Parallel stages are kept, not modelled ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
-Pods are read ([Pods](#pods)), but don't fly until [M1.13c](../decisions-and-roadmap.md#m1-13c).
+Pods are read and flown ([Pods](#pods)).
 Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 

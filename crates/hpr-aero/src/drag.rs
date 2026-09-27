@@ -461,8 +461,12 @@ pub struct DragConditions {
     /// Whether a motor is thrusting. It selects an override table's power-on curve.
     pub thrusting: bool,
     /// Total cross-section area of the motors thrusting into the aft base, m², subtracted from
-    /// the base area (Niskanen 2009 p. 50). Zero while coasting.
+    /// the base area (Niskanen 2009 p. 50). Zero while coasting. It leaves out motors in pods.
     pub thrusting_motor_area_m2: f64,
+    /// Total cross-section area of the thrusting motors in pods, m², over every pod: each pod's
+    /// share, this over the number of pods, comes off its own base. Zero while none thrusts.
+    #[serde(default)]
+    pub thrusting_pod_motor_area_m2: f64,
 }
 
 impl DragConditions {
@@ -472,6 +476,7 @@ impl DragConditions {
             reynolds_per_m,
             thrusting: false,
             thrusting_motor_area_m2: 0.0,
+            thrusting_pod_motor_area_m2: 0.0,
         }
     }
 
@@ -482,7 +487,17 @@ impl DragConditions {
             reynolds_per_m,
             thrusting: true,
             thrusting_motor_area_m2: motor_area_m2,
+            thrusting_pod_motor_area_m2: 0.0,
         }
+    }
+
+    /// These conditions with thrusting motors in pods of total cross-section `pod_motor_area_m2`,
+    /// each pod's share off its own base ([`Self::thrusting_pod_motor_area_m2`]). The area in the
+    /// aft base ([`Self::thrusting`]) is the airframe's motors' alone.
+    #[must_use]
+    pub fn with_pod_motors(mut self, pod_motor_area_m2: f64) -> Self {
+        self.thrusting_pod_motor_area_m2 = pod_motor_area_m2;
+        self
     }
 
     /// Checks that the Reynolds number and the area are finite and non-negative, and that a
@@ -494,11 +509,21 @@ impl DragConditions {
     pub fn validate(&self) -> Result<(), AeroError> {
         check_dimension("Reynolds number per metre", self.reynolds_per_m, true)?;
         check_dimension("thrusting motor area", self.thrusting_motor_area_m2, true)?;
-        if !self.thrusting && self.thrusting_motor_area_m2 > 0.0 {
-            return Err(AeroError::Domain {
-                what: "thrusting motor area while coasting",
-                value: self.thrusting_motor_area_m2,
-            });
+        check_dimension(
+            "thrusting pod motor area",
+            self.thrusting_pod_motor_area_m2,
+            true,
+        )?;
+        for area in [
+            self.thrusting_motor_area_m2,
+            self.thrusting_pod_motor_area_m2,
+        ] {
+            if !self.thrusting && area > 0.0 {
+                return Err(AeroError::Domain {
+                    what: "thrusting motor area while coasting",
+                    value: area,
+                });
+            }
         }
         Ok(())
     }
@@ -1007,9 +1032,13 @@ pub struct ComponentDragTerms {
     /// ([`hpr_design::PlacedComponent::copies`]), 1 for any other. Every term is one copy's, and
     /// the component's drag is their sum.
     pub copies: u32,
-    /// Whether the component is in a pod. A pod's base keeps its whole area while a motor thrusts:
-    /// the thrusting motors' area is taken from the airframe's base ([`DragConditions`]).
+    /// Whether the component is in a pod: its base takes no part of the airframe's thrusting
+    /// motors' area ([`DragConditions::thrusting_motor_area_m2`]).
     pub in_pod: bool,
+    /// Whether it is in the pod set that holds motor mounts: each copy's base then takes its
+    /// share of the pods' thrusting motors' area
+    /// ([`DragConditions::thrusting_pod_motor_area_m2`]).
+    pub pod_holds_motors: bool,
 }
 
 impl ComponentDragTerms {
@@ -1030,6 +1059,7 @@ impl ComponentDragTerms {
             base_area_m2: 0.0,
             copies: 1,
             in_pod: false,
+            pod_holds_motors: false,
         })
     }
 
@@ -1178,7 +1208,7 @@ impl ComponentDragTerms {
         &self,
         reynolds: f64,
         mach: f64,
-        thrusting_motor_area_m2: f64,
+        conditions: &DragConditions,
         reference_area_m2: f64,
     ) -> Result<Drag, AeroError> {
         if let Some(why) = &self.unsupported {
@@ -1247,10 +1277,13 @@ impl ComponentDragTerms {
         if relief < 0.0 {
             relief = 0.0;
         }
-        let motor_area_m2 = if self.in_pod {
-            0.0
-        } else {
-            thrusting_motor_area_m2
+        // The airframe's base takes its motors' area; a pod's, its share of the pods' motors'.
+        let motor_area_m2 = match (self.in_pod, self.pod_holds_motors) {
+            (false, _) => conditions.thrusting_motor_area_m2,
+            (true, true) if self.copies > 0 => {
+                conditions.thrusting_pod_motor_area_m2 / f64::from(self.copies)
+            }
+            (true, _) => 0.0,
         };
         let base = base_coefficient * relief * (self.base_area_m2 - motor_area_m2).max(0.0)
             / reference_area_m2;
@@ -2035,6 +2068,8 @@ mod tests {
                 thrusting_motor_area_m2: 1e-3,
                 ..DragConditions::coasting(RE_PER_M)
             },
+            DragConditions::coasting(RE_PER_M).with_pod_motors(1e-3),
+            DragConditions::thrusting(RE_PER_M, 0.0).with_pod_motors(-1e-3),
         ] {
             assert!(m.drag(&flow, &conditions).is_err(), "{conditions:?}");
         }

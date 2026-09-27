@@ -360,8 +360,8 @@ impl DeviceDrag {
     ///   fin count ([`TUMBLE_FIN_EFFICIENCY`]). Launch lugs and rail buttons add nothing, and an
     ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
     ///   the model has no factor for them.
-    /// - A **pod**'s tubes and fins count as the airframe's do, once per pod: the documentation's
-    ///   model has no term for them, and none for one part shading another.
+    /// - A **pod**'s body components and fins count as the airframe's do, once per pod: the
+    ///   documentation's model has no term for them, and none for one part shading another.
     ///
     /// It sums **every** stage, so it is the whole stack tumbling. For a spent booster on its
     /// own, which is what the documentation's model was written for, use
@@ -422,8 +422,8 @@ impl DeviceDrag {
             if !member(index, component) {
                 continue;
             }
-            // A part in a pod counts once per pod: each pod's tubes and fins are broadside to
-            // the air as the airframe's are.
+            // A part in a pod counts once per pod: each pod's body components and fins are
+            // broadside to the air as the airframe's are.
             let copies = component.copies.len() as f64;
             body_profile_m2 += copies * side_profile_m2(component)?;
             if matches!(component.part, hpr_design::Part::TubeFinSet(_)) {

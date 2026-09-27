@@ -863,7 +863,11 @@ pub struct PodFins {
     /// the pod's tube radius. A fin's roll damping is quadratic in `ρ`
     /// ([`FinAero::roll_terms`], `∫(ρ + y)² …`), so the sum over the fins is `N/2` times the
     /// damping at `μ + σ` plus that at `μ − σ`, with `μ` and `σ` the mean and the standard
-    /// deviation of the `ρ_i`: these two terms, exactly.
+    /// deviation of the `ρ_i`: these two terms, exactly. Their `body_radius_m` is that offset,
+    /// which may be negative, and only their damping means anything: a pod's fins are never
+    /// canted. [`FinSetAero::roll`] is not used for a pod's fins. The whole sum takes the pod
+    /// tube's roll-damping interference `k_R(B)`, exact for fins on a pod of no radius, where it
+    /// is 1 (`docs/physics/aero.md`, *Pods*).
     pub axis_roll: [FinRollTerms; 2],
     /// `N`, the fins over all the copies.
     pub fins: u32,
@@ -893,7 +897,8 @@ pub struct PodSetAero {
     /// Fig. 4's `η` at that fineness.
     crossflow_eta_low: f64,
     /// One pod's body components, fore to aft, each one copy's terms, at stations along the
-    /// rocket's axis: the pod's first body steps up from nothing, as the airframe's first does.
+    /// rocket's axis. The pod's first body has no step in its normal force, as the airframe's
+    /// first has none; its drag counts its bare front face.
     pub bodies: Vec<BodyAero>,
 }
 
@@ -960,14 +965,19 @@ impl AeroModel {
     ///
     /// - [`AeroError::Domain`] for a non-positive reference diameter, rocket length or body radius.
     /// - [`AeroError::InComponent`] naming the component, around:
-    ///   - [`AeroError::Unsupported`] for tube fins, pods, or a part kind or fin cross-section this
-    ///     model doesn't know (a nose shape the drag buildup has no data for builds, and the
-    ///     buildup refuses it when asked: [`AeroModel::drag`]);
-    ///   - [`AeroError::Domain`] for a fin set of more than eight fins, a non-finite station, or a
-    ///     drag input out of range (a negative fin thickness, a launch lug's wall thicker than its
-    ///     radius, a rail button's base and flange taller than the button, a negative roughness);
-    ///   - [`AeroError::Layout`] for a fin set without the radius of its body tube;
-    ///   - design errors from a profile, a planform or a volume integral.
+    ///   - [`AeroError::Unsupported`] for tube fins, canted fins on a pod, a pod's tube of no
+    ///     length with a radius (a flat disc), or a part kind or fin cross-section this model
+    ///     doesn't know (a nose shape the drag buildup has no data for builds, and the buildup
+    ///     refuses it when asked: [`AeroModel::drag`]);
+    ///   - [`AeroError::Domain`] for a fin set of more than eight fins, a non-finite station, a
+    ///     pod's body with no fineness, or a drag input out of range (a negative fin thickness, a
+    ///     launch lug's wall thicker than its radius, a rail button's base and flange taller than
+    ///     the button, a negative roughness);
+    ///   - [`AeroError::Layout`] for a fin set without the radius of its body tube, or a pod's
+    ///     body component listed before its pod set;
+    ///   - design errors from a profile, a planform, a volume integral or a pod set's placements.
+    /// - [`AeroError::Unsupported`] for motor mounts in more than one pod set, whose thrusting
+    ///   areas [`DragConditions`] can't tell apart.
     /// - [`AeroError::Domain`] for a body-lift `K` that isn't finite and non-negative.
     pub fn with_body_model(layout: &Layout, body_model: BodyModel) -> Result<Self, AeroError> {
         body_model.body_lift.validate()?;
@@ -1004,6 +1014,9 @@ impl AeroModel {
         // The pod sets being built, and where each pod set of the layout is among them.
         let mut pods: Vec<PodBuild> = Vec::new();
         let mut pod_at: Vec<Option<usize>> = vec![None; layout.components.len()];
+        // The one pod set that may hold motor mounts: its bases take the thrusting pod motors'
+        // area ([`DragConditions::thrusting_pod_motor_area_m2`]).
+        let motor_pod_set = motor_pod_set(layout)?;
         for (index, component) in layout.components.iter().enumerate() {
             let in_component = |e: AeroError| AeroError::InComponent {
                 id: component.id.clone(),
@@ -1016,7 +1029,7 @@ impl AeroModel {
                 }));
             }
             // A pod's parts: its body components build the pod's own terms, never the airframe's.
-            let pod = pod_set_of(layout, index).map(|set| pod_at[set]);
+            let pod = layout.pod_set_of(index).map(|set| pod_at[set]);
             let first_new_drag_term = drag_terms.len();
             if let Some(at) = pod
                 && matches!(
@@ -1128,7 +1141,10 @@ impl AeroModel {
                 }
                 Part::PodSet(_) => {
                     pod_at[index] = Some(pods.len());
-                    pods.push(PodBuild::new(layout, index, component).map_err(in_component)?);
+                    let mut build =
+                        PodBuild::new(layout, index, component).map_err(in_component)?;
+                    build.holds_motors = motor_pod_set == Some(index);
+                    pods.push(build);
                     None
                 }
                 // Drag only.
@@ -1170,7 +1186,7 @@ impl AeroModel {
                     ))));
                 }
             };
-            // A pod's fins, lugs and buttons drag once per pod, and its base keeps its area.
+            // A pod's fins, lugs and buttons drag once per pod.
             if pod.is_some() {
                 let copies = copy_count(component).map_err(in_component)?;
                 for terms in &mut drag_terms[first_new_drag_term..] {
@@ -1518,12 +1534,7 @@ impl AeroModel {
             let reynolds = conditions.reynolds_per_m * self.length_m;
             let mut sum = Drag::default();
             for terms in &self.drag_terms {
-                let d = terms.evaluate(
-                    reynolds,
-                    flow.mach,
-                    conditions.thrusting_motor_area_m2,
-                    self.reference_area_m2,
-                )?;
+                let d = terms.evaluate(reynolds, flow.mach, conditions, self.reference_area_m2)?;
                 sum.friction += d.friction;
                 sum.pressure += d.pressure;
                 sum.base += d.base;
@@ -1563,12 +1574,8 @@ impl AeroModel {
         self.drag_terms
             .iter()
             .map(|terms| {
-                let mut drag = terms.evaluate(
-                    reynolds,
-                    flow.mach,
-                    conditions.thrusting_motor_area_m2,
-                    self.reference_area_m2,
-                )?;
+                let mut drag =
+                    terms.evaluate(reynolds, flow.mach, conditions, self.reference_area_m2)?;
                 drag.axial_coefficient *= factor;
                 Ok(ComponentDrag {
                     id: terms.id.clone(),
@@ -1593,8 +1600,10 @@ impl AeroModel {
     /// airspeed. Each fin set adds `C_l0 = −N C_lδ k_T(B) δ` and `N C_lp k_R(B)` ([`FinAero::roll`],
     /// [`roll_forcing_interference`], [`roll_damping_interference`]); a positive cant `δ` turns
     /// each fin's leading edge toward `−y_B` at fin 0, so its lift rolls the rocket toward `−z_B`.
-    /// Fin–fin interference is not applied to roll, as in Niskanen 2009 eq. 3.66. The bodies of
-    /// revolution add nothing.
+    /// Fin–fin interference is not applied to roll, as in Niskanen 2009 eq. 3.66. The airframe's
+    /// bodies of revolution add nothing. A pod's body parts damp the roll by
+    /// `C_lp = −2 C_Nα ρ²/d²` per pod, `ρ` its distance from the axis, and a pod's fins damp it by
+    /// the strips' distance from the rocket's axis ([`PodFins`]); a pod adds no forcing.
     ///
     /// # Errors
     ///
@@ -1644,7 +1653,7 @@ impl AeroModel {
         })
     }
 
-    /// The body components' terms.
+    /// The airframe's body components' terms; a pod's are in [`Self::pod_sets`].
     pub fn bodies(&self) -> &[BodyAero] {
         &self.bodies
     }
@@ -1956,7 +1965,8 @@ impl AeroModel {
         Ok(NormalForce::new(total, flow.alpha_rad))
     }
 
-    /// Each component's normal force at `flow`, bodies first, then fin sets, in layout order. A
+    /// Each component's normal force at `flow`: the airframe's bodies, then the pods' bodies (each
+    /// over all its pods), then fin sets, each in layout order. A
     /// step in radius is part of the component aft of it.
     ///
     /// These are always hpr's own terms. With a normal-force table, [`AeroModel::normal_force`]
@@ -2044,18 +2054,33 @@ fn alpha_factors(alpha_rad: f64) -> (f64, f64, f64) {
     (s, sin * s, sin)
 }
 
-/// The pod set that `index` is in, if any: the nearest pod set among its parents.
-fn pod_set_of(layout: &Layout, index: usize) -> Option<usize> {
-    let mut parent = layout.components.get(index)?.parent;
-    // Each step goes to a parent, which the layout lists before its children, so this ends.
-    while let Some(at) = parent {
-        let component = layout.components.get(at)?;
-        if matches!(component.part, Part::PodSet(_)) {
-            return Some(at);
+/// The one pod set of `layout` that holds motor mounts, if any.
+///
+/// # Errors
+///
+/// [`AeroError::Unsupported`] for motor mounts in more than one pod set: the thrusting motors'
+/// area in pods is one total ([`DragConditions::thrusting_pod_motor_area_m2`]), which can't be
+/// shared between two sets of bases.
+fn motor_pod_set(layout: &Layout) -> Result<Option<usize>, AeroError> {
+    let mut found: Option<usize> = None;
+    for (index, component) in layout.components.iter().enumerate() {
+        if component.motor_mount.is_none() {
+            continue;
         }
-        parent = component.parent;
+        if let Some(set) = layout.pod_set_of(index) {
+            match found {
+                Some(other) if other != set => {
+                    return Err(AeroError::Unsupported(
+                        "motor mounts in more than one pod set, whose bases' thrusting motor \
+                         areas aren't told apart"
+                            .to_owned(),
+                    ));
+                }
+                _ => found = Some(set),
+            }
+        }
     }
-    None
+    Ok(found)
 }
 
 /// How many copies of `component` fly: one per pod for a part in a pod set.
@@ -2071,6 +2096,8 @@ struct PodBuild {
     aero: PodSetAero,
     /// The friction form factor at the pod's fineness; `None` for a pod with no body of any size.
     form_factor: Option<f64>,
+    /// Whether the pod holds motor mounts: its base then takes the thrusting pod motors' area.
+    holds_motors: bool,
     previous_aft_area: Option<f64>,
     /// Each body component's index in the drag terms, and its geometry, fore to aft.
     terms_at: Vec<(usize, BodyGeometry)>,
@@ -2118,6 +2145,7 @@ impl PodBuild {
                 bodies: Vec::new(),
             },
             form_factor,
+            holds_motors: false,
             previous_aft_area: None,
             terms_at: Vec::new(),
         })
@@ -2177,6 +2205,7 @@ impl PodBuild {
         )?;
         terms.copies = self.aero.copies;
         terms.in_pod = true;
+        terms.pod_holds_motors = self.holds_motors;
         drag_terms.push(terms);
         self.terms_at.push((drag_terms.len() - 1, geometry));
         self.previous_aft_area = Some(geometry.aft_area_m2);
@@ -2500,6 +2529,231 @@ mod tests {
                 close(total.zero_lift_coefficient, sum, 1e-14, "total");
             }
         }
+    }
+
+    /// A pod that holds a motor mount takes its share of the thrusting pod motors' area off its own
+    /// base; the airframe's base takes only the airframe's motors, and a pod set without mounts
+    /// keeps its whole base. Motor mounts in two pod sets are refused.
+    #[test]
+    fn a_pod_s_base_takes_its_own_motors_area() {
+        let (mach, reynolds_per_m) = (0.4, 5e6);
+        let mut rocket = podded_rocket(2);
+        let pods = rocket.stages[0].components[1].children.last_mut().unwrap();
+        pods.children[1].motor_mount = Some(hpr_design::MotorMount::default());
+        let m = model(&rocket);
+        let a_ref = m.reference_area_m2();
+        let base = |conditions: &DragConditions, id: &str| {
+            m.buildup_components(&Flow::axial(mach), conditions)
+                .unwrap()
+                .into_iter()
+                .find(|c| c.id == id)
+                .unwrap()
+                .drag
+                .base
+        };
+        let pod_area = PI * 0.01 * 0.01;
+        let c_b = base_drag_coefficient(mach).unwrap();
+        let coasting = DragConditions::coasting(reynolds_per_m);
+        close(
+            base(&coasting, "pod-tube"),
+            2.0 * c_b * pod_area / a_ref,
+            1e-14,
+            "coasting",
+        );
+        // Two pod motors of 16 mm burning: each pod's base loses one motor's area.
+        let motor = PI * 0.008 * 0.008;
+        let thrusting = DragConditions::thrusting(reynolds_per_m, 0.0).with_pod_motors(2.0 * motor);
+        close(
+            base(&thrusting, "pod-tube"),
+            2.0 * c_b * (pod_area - motor) / a_ref,
+            1e-14,
+            "pod motors",
+        );
+        assert_eq!(base(&thrusting, "tail"), base(&coasting, "tail"));
+        // The airframe's motor leaves the pods' bases whole.
+        let core = DragConditions::thrusting(reynolds_per_m, 1e-4);
+        assert_eq!(base(&core, "pod-tube"), base(&coasting, "pod-tube"));
+        assert!(base(&core, "tail") < base(&coasting, "tail"));
+        // A second pod set with a mount: the pods' one area can't be shared between them.
+        let mut second = component(
+            "more-pods",
+            Part::PodSet(PodSet {
+                count: 2,
+                radial_offset_m: 0.04,
+                angle_rad: 1.8,
+            }),
+            Some(Position::Top { aft_offset_m: 0.4 }),
+        );
+        let mut tube = component("more-pod-tube", body_part(0.1, 0.01, 0.01), None);
+        tube.motor_mount = Some(hpr_design::MotorMount::default());
+        second.children = vec![tube];
+        rocket.stages[0].components[1].children.push(second);
+        let err = AeroModel::new(&rocket.layout().unwrap()).unwrap_err();
+        assert!(
+            matches!(&err, AeroError::Unsupported(what) if what.starts_with("motor mounts in more than one pod set")),
+            "{err}"
+        );
+    }
+
+    /// A pod's fins turn with it: two pods at π/4 and 5π/4, each holding one fin pointing out,
+    /// take no angle in a flow rolled to π/4, along their span, and the full angle in one rolled
+    /// to −π/4, across it. Fins that didn't turn would stand at 0 and π and take half in each.
+    #[test]
+    fn a_pod_s_fins_turn_with_their_pod() {
+        let bare = model(&finned_rocket(4));
+        let mut rocket = winglet_rocket(1, 0.0);
+        if let Part::PodSet(pods) = &mut rocket.stages[0].components[1]
+            .children
+            .last_mut()
+            .unwrap()
+            .part
+        {
+            pods.angle_rad = FRAC_PI_4;
+        }
+        let m = model(&rocket);
+        let mach = 0.3;
+        let slope = FinAero::new(&pod_fin_planform(), m.reference_area_m2())
+            .unwrap()
+            .loading(mach)
+            .unwrap()
+            .slope_per_rad;
+        for (roll, share) in [(FRAC_PI_4, 0.0), (-FRAC_PI_4, 2.0)] {
+            let with = m.normal_force(&flow(mach, 0.0, roll)).unwrap();
+            let without = bare.normal_force(&flow(mach, 0.0, roll)).unwrap();
+            close(
+                with.slope_per_rad - without.slope_per_rad,
+                share * slope,
+                1e-12,
+                &format!("roll {roll}"),
+            );
+        }
+    }
+
+    /// Each component, by index, is the one [`AeroModel::components`] lists at that place, with
+    /// the station a flight takes: the airframe's bodies, two pod sets' bodies in turn, then the
+    /// fin sets, a pod's among them.
+    #[test]
+    fn every_component_index_maps_to_its_own_terms_with_pods() {
+        let mut rocket = podded_rocket(3);
+        let winglets = winglet_rocket(2, 0.3);
+        let mut pods = winglets.stages[0].components[1]
+            .children
+            .last()
+            .unwrap()
+            .clone();
+        pods.id = "winglet-pods".to_owned();
+        rocket.stages[0].components[1].children.push(pods);
+        let mut second = component(
+            "aft-pods",
+            Part::PodSet(PodSet {
+                count: 2,
+                radial_offset_m: 0.05,
+                angle_rad: 1.0,
+            }),
+            Some(Position::Top { aft_offset_m: 0.45 }),
+        );
+        second.children = vec![
+            component(
+                "aft-pod-nose",
+                nose(NoseShape::Conical {}, 0.04, 0.012),
+                None,
+            ),
+            component("aft-pod-tube", body_part(0.1, 0.012, 0.012), None),
+            component("aft-pod-tail", body_part(0.03, 0.012, 0.008), None),
+        ];
+        rocket.stages[0].components[1].children.push(second);
+        let m = model(&rocket);
+        assert_eq!(m.pod_sets().len(), 2);
+        assert_eq!(m.fin_set_start(), m.bodies().len() + 5);
+        assert_eq!(m.component_count(), m.fin_set_start() + 2);
+        for mach in [0.3, 2.0] {
+            let f = flow(mach, 0.1, 0.4);
+            let parts = m.components(&f).unwrap();
+            assert_eq!(parts.len(), m.component_count());
+            for (index, part) in parts.iter().enumerate() {
+                let one = m.component_normal_force(index, &f).unwrap();
+                assert_eq!(one, part.normal_force, "{} at {index}", part.id);
+                let station = m.component_station_m(index, mach).unwrap();
+                if let Some(cp) = m.components(&flow(mach, 0.0, 0.4)).unwrap()[index]
+                    .normal_force
+                    .cp_station_m
+                    && index >= m.bodies().len()
+                {
+                    close(station, cp, 1e-12, &part.id);
+                }
+            }
+            let ids: Vec<&str> = parts.iter().map(|p| p.id.as_str()).collect();
+            let at = |id: &str| ids.iter().position(|i| *i == id).unwrap();
+            assert!(at("pod-tube") < at("aft-pod-nose") && at("aft-pod-tail") < at("winglets"));
+            assert!(m.component_normal_force(m.component_count(), &f).is_err());
+        }
+    }
+
+    /// The aero page's worked example (`docs/physics/aero.md`, *Pods*): three pods on the tests'
+    /// rocket at Mach 0.3 and 5e6 per metre, to the digits the page prints.
+    #[test]
+    fn the_aero_page_s_pod_example() {
+        let (bare, pods) = (model(&finned_rocket(4)), model(&podded_rocket(3)));
+        let at = |m: &AeroModel| {
+            let n = m.normal_force(&Flow::axial(0.3)).unwrap();
+            let c = DragConditions::coasting(5e6);
+            let d = m.drag(&Flow::axial(0.3), &c).unwrap();
+            (
+                n.slope_per_rad,
+                n.cp_station_m.unwrap(),
+                d.zero_lift_coefficient,
+                m.roll(0.3).unwrap().damping,
+            )
+        };
+        let round = |x: f64, digits: i32| (x * 10_f64.powi(digits)).round() / 10_f64.powi(digits);
+        let (slope, cp, drag, damping) = at(&bare);
+        assert_eq!(
+            [
+                round(slope, 3),
+                round(cp, 4),
+                round(drag, 4),
+                round(damping, 3)
+            ],
+            [12.374, 1.0662, 0.5051, -35.215]
+        );
+        let (slope, cp, drag, damping) = at(&pods);
+        assert_eq!(
+            [
+                round(slope, 3),
+                round(cp, 4),
+                round(drag, 4),
+                round(damping, 3)
+            ],
+            [13.197, 1.0237, 0.6386, -36.118]
+        );
+        let parts = pods
+            .buildup_components(&Flow::axial(0.3), &DragConditions::coasting(5e6))
+            .unwrap();
+        let find = |id: &str| parts.iter().find(|c| c.id == id).unwrap().drag;
+        let (cone, tube) = (find("pod-nose"), find("pod-tube"));
+        assert_eq!(
+            [
+                round(cone.friction, 4),
+                round(cone.pressure, 4),
+                round(tube.friction, 4),
+                round(tube.base, 4)
+            ],
+            [0.0074, 0.0127, 0.0592, 0.0542]
+        );
+        let single = model(&podded_rocket(1))
+            .buildup_components(&Flow::axial(0.3), &DragConditions::coasting(5e6))
+            .unwrap();
+        let one_pod: f64 = single
+            .iter()
+            .filter(|c| c.id.starts_with("pod"))
+            .map(|c| c.drag.zero_lift_coefficient)
+            .sum();
+        assert_eq!(round(one_pod, 4), 0.0445);
+        let one_slope = model(&podded_rocket(1))
+            .normal_force(&Flow::axial(0.3))
+            .unwrap()
+            .slope_per_rad;
+        assert_eq!(round(one_slope, 2), 12.65);
     }
 
     /// A pod's body under the roll rate `p` crosses the air at `p ρ`: its normal force about the

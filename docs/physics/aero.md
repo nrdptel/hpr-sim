@@ -93,6 +93,10 @@
     export comes back from hpr's table, and a flight on a table swings in pitch as the equations
     predict; no real export has flown faster than Mach 0.75
     ([The normal force from RASAero II](#the-normal-force-from-rasaero-ii)).
+  - *[Pods](../glossary.md#pod)* take each pod's parts on Barrowman's rules, once per pod, checked
+    only against hand-worked numbers: no measurement, and no OpenRocket comparison of a pod with
+    bodies or fins yet. The pods' and the body's effect on each other's flow is left out, and so
+    are a single pod's off-axis moments ([Pods](#pods)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
   ([transonic and supersonic](../glossary.md#transonic-and-supersonic)), a steep boattail's drag
@@ -2633,11 +2637,12 @@ What it leaves out:
 
 A [pod](../glossary.md#pod) is a body beside the airframe: a side pod, or an outboard motor pod
 ([the design page's *Pods*](design.md#pods)). hpr gives each pod the forces its parts would have on
-the airframe, once per pod, and adds them to the airframe's. Nothing measured checks this yet: the
-formulas are checked against hand-worked numbers, and one private design whose pods hold a launch
-lug matches OpenRocket's flights of it (below). How the pods and the body disturb each other's flow
-is left out, and its size is given below. The comparison of a pod design with bodies and fins
-against OpenRocket is [M1.13c2](../decisions-and-roadmap.md#m1-13c2).
+the airframe, once per pod, and adds them to the airframe's. **Nothing measured checks this yet**,
+nor has OpenRocket flown a pod with bodies or fins against it: the formulas are checked against
+hand-worked numbers only. Faster than sound a pod keeps slender-body theory's slope, which nothing
+checks either. How the pods and the body disturb each other's flow is left out, and its size is
+given below. The comparison of a pod design with bodies and fins against OpenRocket is
+[M1.13c2](../decisions-and-roadmap.md#m1-13c2), the milestone after this one.
 
 **The rule.** A pod's nose cones, transitions and tubes are
 [Barrowman's](../glossary.md#barrowmans-method) bodies, as on the airframe ([B67] eq. 3-65, [N09]
@@ -2648,35 +2653,46 @@ gives it, on the rocket's reference area `A_ref`. Each pod adds that once:
 - **Normal force.** `N` pods add `N` times one pod's slope and moment, at the part's station along
   the rocket. The pod's first part steps up from nothing, as the airframe's nose does, so a pod
   that starts with a tube gets no slope from its flat front. Faster than sound, a pod keeps
-  slender-body theory's slope: the shock-expansion method covers the airframe alone.
-- **Body lift.** Each pod's [body lift](#body-lift) is Jorgensen's crossflow on the pod's own
-  planform, at the pod's own [fineness](../glossary.md#fineness-ratio) (its length over its
-  largest diameter), not the airframe's.
-- **Fins on a pod.** A pod's fin set is turned with its pod: pod `k` at roll `φ_k` holds fin `j`
-  at `θ_j + φ_k`, and each fin takes its share of the flow as an airframe fin does
-  ([Fins](#fins)). The fin–fin factor counts one pod's fins. The body interference `K_T(B)` is
-  the pod tube's: 1 for the tube of no radius a pod of winglets hangs from.
+  [slender-body theory](../glossary.md#slender-body-theory)'s slope: the shock-expansion method
+  ([Bodies faster than sound](#bodies-faster-than-sound)) covers the airframe alone.
+- **Body lift.** Each pod's [body lift](#body-lift), Jorgensen's crossflow term, is taken on the
+  pod's own planform and at the pod's own [fineness](../glossary.md#fineness-ratio) (its length
+  over its largest diameter), not the airframe's.
+- **Fins on a pod.** A pod's fin set is turned with its pod: pod `k` at roll angle `φ_k` holds fin
+  `j` at `θ_j + φ_k`, and each fin takes its share of the flow as an airframe fin does
+  ([Fins](#fins)). The fin–fin factor (how a set's fins shade each other) counts one pod's fins.
+  The body's interference with the fins, `K_T(B)`, is the pod tube's: 1 for the tube of no radius
+  a pod of winglets hangs from.
 - **Drag.** Each pod adds its own drag buildup ([Drag](#drag)): friction on its surface, with the
   body form factor at its own fineness; its nose's or shoulder's pressure drag; its steps; its
   boattails; and its own base, the last part's aft area. A pod's fins, lugs and buttons drag once
-  per pod too. The Reynolds number stays the rocket's, as for every part ([N09] §3.4).
-- **Roll.** A pod does not roll the rocket, but it damps a roll. Rolling at `p`, a part at
-  distance `ρ` from the axis crosses the air at `p ρ`, so it meets it at the angle `p ρ/V`, and its
-  normal force acts about the axis with the arm `ρ`. That gives, for each pod's body part,
-  `C_lp = −2 C_Nα ρ²/d²`, on the reference diameter `d`. A pod's fins damp as the airframe's fins
-  do ([Roll: forcing and damping](#roll-forcing-and-damping)), with each strip's distance taken
-  from the rocket's axis: a fin whose root is `ρ_0` out along its span has the strips at
+  per pod too. The [Reynolds number](../glossary.md#reynolds-number) stays the rocket's, as for
+  every part ([N09] §3.4).
+- **Motors in pods.** A burning motor's cross-section comes off the base of the body it sits in:
+  the airframe's motors off the airframe's base, and a pod's off its own pod's
+  ([N09] p. 50 for the base). Motor mounts in two different pod sets are refused.
+- **Roll.** In hpr a pod adds no rolling moment of its own (but see *A single pod's moments*
+  below); it damps a roll. Rolling at `p`, a part at distance `ρ` from the axis crosses the air
+  at `p ρ`, so it meets it at the angle `p ρ/V`, and its normal force acts about the axis with the
+  arm `ρ`. That gives, for each pod's body part, a roll damping
+  ([Roll: forcing and damping](#roll-forcing-and-damping)) of `C_lp = −2 C_Nα ρ²/d²`, on the
+  reference diameter `d`. A pod's fins damp as the airframe's fins do, with each strip's distance
+  taken from the rocket's axis: a fin whose root is `ρ_0` out along its span has its strips at
   `ρ_0 + y`.
 
 **Where the forces act.** The flight engine applies each pod part's force on the rocket's axis at
 its station. For two pods or more, spaced evenly, the pods' offsets add to zero, so the forces on
-the axis turn the rocket as they would at the pods. The roll damping they give is the one term an
-offset adds, and hpr adds it as above.
+the axis turn the rocket in pitch and yaw as they would at the pods. What an offset adds, to first
+order, is roll damping, which hpr adds as above, and a pitch damping from the pods' drag,
+`C_mq = −2 C_D,pod Σρ²/d²`, which hpr leaves out: about −0.15 on the worked example below, some
+10⁻⁴ of the airframe's.
 
-**Worked example.** The tests' 54 mm rocket (the `finned_rocket` of `hpr-aero`'s tests: a 0.25 m
-ogive nose, 0.7 m of 27 mm tube, a boattail and four fins) carries three pods 40 mm from its axis,
-starting 0.35 m aft of the nose tip. Each is a cone 0.05 m long on a tube 0.2 m long, both 10 mm in
-radius, so each pod's fineness is `0.25/0.02 = 12.5`. At Mach 0.3, Reynolds number 5×10⁶ per metre:
+**Worked example.** The tests' rocket (the `finned_rocket` of `hpr-aero`'s tests: a 0.25 m ogive
+nose, 0.7 m of tube 27 mm in radius, a 0.05 m boattail to a 22 mm tail tube 0.3 m long, and four
+fins of 0.12 m root chord, 0.05 m tip chord, 0.06 m span and 0.07 m sweep) carries three pods
+40 mm from its axis, starting 0.35 m aft of the nose tip. Each is a cone 0.05 m long on a tube
+0.2 m long, both 10 mm in radius, so each pod's fineness is `0.25/0.02 = 12.5`. At Mach 0.3,
+Reynolds number 5×10⁶ per metre:
 
 | quantity | without pods | with three pods |
 |---|---:|---:|
@@ -2688,43 +2704,53 @@ radius, so each pod's fineness is `0.25/0.02 = 12.5`. At Mach 0.3, Reynolds numb
 | the pods' share: cones' friction and pressure, tubes' friction and base | | 0.0074, 0.0127, 0.0592, 0.0542 |
 | roll damping `C_lp`, the pods' share `−2 · 0.2743 · 3 · 0.04²/0.054²` | −35.215 | −36.118 (−0.903) |
 
-The pods move the centre of pressure 42 mm, 0.79 calibres, forward, and add 26% to the drag. The
-tests `a_pod_adds_its_bodies_slopes_once_per_pod`, `a_pod_s_body_lift_takes_its_own_fineness`,
-`a_pod_drags_once_per_pod`, `a_pod_s_bodies_damp_the_roll` and
-`a_pod_s_fins_are_the_pod_s_turned_with_it` hold these rules to hand-worked values, the fins'
-damping to Barrowman's strips summed by hand over two pods with a fin pointing each way. In
-`hpr-sim`, `pods_damp_the_spin_of_canted_fins_by_their_cones` flies Valetudo with three pods and
-canted fins: it spins to the balance the pods' damping predicts, to 1e-6, and the pods push it
-neither in pitch nor yaw.
+The pods move the centre of pressure about 43 mm, 0.79 [calibres](../glossary.md#calibre-caliber),
+forward, and add 26% to the drag. The test `the_aero_page_s_pod_example` holds this table to the
+digits printed. The tests `a_pod_adds_its_bodies_slopes_once_per_pod`,
+`a_pod_s_body_lift_takes_its_own_fineness`, `a_pod_drags_once_per_pod`,
+`a_pod_s_base_takes_its_own_motors_area`, `a_pod_s_bodies_damp_the_roll`,
+`a_pod_s_fins_turn_with_their_pod` and `a_pod_s_fins_are_the_pod_s_turned_with_it` hold the rules
+to hand-worked values, the fins' damping to Barrowman's strips summed by hand over two pods with a
+fin pointing each way. In `hpr-sim`, `pods_damp_the_spin_of_canted_fins_by_their_cones` flies
+[Valetudo](../glossary.md#example-rockets) with three pods and canted fins: it spins to the
+balance the pods' damping predicts, to 1e-6.
 
-**Against OpenRocket.** The private design whose pods hold a launch lug (C02 in
-[the library's report](../format/ork.md#hprs-flights-against-openrockets)) flies from this
-milestone. Over its 5 configurations hpr's apogee is −0.94% to +2.15% from OpenRocket's and its
-margin at rod clearance +0.0041 to +0.0048 calibres; its pods add only the lug's drag. Neither of
-OpenRocket's own pod examples flies yet, for reasons outside the pods: one has a freeform fin hpr
-leaves out, and the other reads its rail buttons without the screw heads, which counts as not read
-as written.
+**Against OpenRocket, so far.** One private design flies since pods do: `C02`, an anonymised design
+of the library ([hpr's flights of the private designs](../format/ork.md#hprs-flights-of-the-private-designs)).
+Its pods hold only a launch lug each, on a tube of no length, so they add the lugs' drag and
+nothing else: it checks the pods' placement and weight, not these rules. Over its 5 configurations
+hpr's apogee is −0.94% to +2.15% from OpenRocket's; 3 of them are compared with an OpenRocket
+flight whose parachute opened before apogee, and the +2.15% is one of those. Neither of
+OpenRocket's own pod examples flies yet, for reasons outside the pods: hpr leaves out one's
+freeform fin, and reads the other's rail buttons without their screw heads, so neither design is
+read exactly as written and neither is flown.
 
 **Left out, and how large it may be.**
 
 - **The body's flow around the pods, and theirs around it.** The airframe turns the crossflow
   around itself, so a pod beside it meets the air at a different angle. In potential flow past a
   cylinder of radius `a`, a point at distance `r`, at the angle `θ` from the crossflow's
-  direction, meets it at `α (1 − (a²/r²) cos 2θ)` (at `θ = 90°`, NACA Report 1307's upwash
-  `α (1 + a²/y²)`, [PNK57] p. 4 eq. 15). For three pods or more, spaced evenly, `cos 2θ` averages
-  to zero and the first-order change cancels. For one or two it does not: on the worked example's
-  pods, `a²/r² = 0.46`, so a pair's cones lift up to 46% more or less, by roll angle. hpr leaves
-  this out, as OpenRocket's developers say theirs does. Interference drag is left out too, as
+  direction, meets it at `α (1 − (a²/r²) cos 2θ)` along the crossflow and `−α (a²/r²) sin 2θ`
+  across it (at `θ = 90°`, NACA Report 1307's upwash `α (1 + a²/y²)`, [PNK57] p. 4 eq. 15). For
+  three pods or more, spaced evenly, both average to zero, and the first-order change cancels.
+  For one or two they do not: on the worked example's pods, `a²/r² = 0.46`, so a pair's cones
+  lift up to 46% more or less, by roll angle, and push sideways by up to as much. hpr leaves this
+  out; OpenRocket's developers say theirs does too. Interference drag is left out as well, as
   Barrowman leaves it out for fins ([B67] p. 62, "No interference drag effects are considered")
   and Niskanen for the whole rocket ([N09] §3.4).
 - **A single pod's moments.** One pod's drag acts off the axis and pitches the rocket; its normal
-  force acts off the axis and rolls it. hpr applies both on the axis, so it drops those moments
-  ([issue #213](https://github.com/nrdptel/hpr-sim/issues/213)). On the worked example with one
-  pod (drag coefficient 0.0445 at 40 mm) and a one-calibre margin, the pitch moment would trim the
-  rocket at about `0.0445 · 0.04/(12.65 · 0.054)` = 0.0026 rad, 0.15°.
-- **A pod's base while its motor burns.** The thrusting motors' area comes off the airframe's base,
-  and a pod keeps its whole base. The total base drag is the same unless the airframe's base is
-  smaller than the motors, or sits behind a boattail.
+  force, and its fins', act off the axis and roll it. hpr applies them on the axis, so it drops
+  those moments ([issue #213](https://github.com/nrdptel/hpr-sim/issues/213)). On the worked
+  example with one pod (drag coefficient 0.0445 at 40 mm) and a one-calibre margin, the pitch
+  moment would trim the rocket at about `0.0445 · 0.04/(12.65 · 0.054)` = 0.0026 rad, 0.15°.
+- **The interference on a pod's fins' roll damping.** hpr takes the pod tube's roll-damping
+  factor `k_R(B)` on the whole sum. The part that comes from the pod's offset is the pod moving
+  sideways, whose factor is closer to the normal force's `K_T(B)`: the two differ by about 9% for
+  a span twice the tube's radius and a taper of 0.5. On a pod of no radius, winglets' usual pod,
+  both are 1 and nothing is lost.
+- **A pod inside the airframe.** Nothing checks that a pod clears the airframe
+  ([#206](https://github.com/nrdptel/hpr-sim/issues/206)); a pod sunk into it still gets its
+  whole slope, friction and base.
 - **Canted fins on a pod** are refused: their roll forcing about the rocket's axis is not
   modelled. So is a pod's tube of no length with a radius, a flat disc the drag buildup has no
   term for.

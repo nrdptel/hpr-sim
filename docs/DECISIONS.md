@@ -7935,20 +7935,26 @@ examples (one with a single pod) and one private design with a lug on each of it
 4. **Drag once per pod.** Each pod gets its own buildup: friction at its own fineness's form
    factor, its nose, steps, boattails and base, coupled among its own parts only; its fins, lugs
    and buttons once per pod. The Reynolds number and the roughness scale stay the rocket's length,
-   as for every part. A pod's base keeps its whole area while motors thrust: the thrusting area is
-   one total, taken from the airframe's base. A pod's tube of no length with a radius (a flat
-   disc) is refused; one with no radius, the phantom body, adds nothing.
+   as for every part. A burning motor's area comes off the base of the body it sits in: the
+   airframe's motors off the airframe's base, a pod's off its own pod's (each pod its share of the
+   pods' total). Motor mounts in two different pod sets are refused. A pod's tube of no length with
+   a radius (a flat disc) is refused; one with no radius, the phantom body, adds nothing.
 5. **Forces act on the axis; roll damping is added.** For two pods or more, spaced evenly, the
    pods' offsets add to zero, so their forces summed on the axis have the moments they would have
    at the pods, to first order. What an offset adds at first order is roll damping: a body part
    `ρ` from the axis gives `C_lp = −2 C_Nα ρ²/d²`, and a pod's fin damps by Barrowman's strips taken
    about the rocket's axis, each strip `ρ_0 + y` out, `ρ_0` the root's distance along the span.
    Summed over the fins, that is quadratic in `ρ_0`, so two strip evaluations at the offsets' mean
-   plus and minus their standard deviation give the sum exactly.
+   plus and minus their standard deviation give the sum exactly. The whole sum takes the pod
+   tube's roll-damping factor `k_R(B)`: exact on a tube of no radius, about 9% off on the offset
+   part at a span twice the tube's radius. The pods' drag also damps pitch,
+   `C_mq ≈ −2 C_D,pod Σρ²/d²`, about −0.15 on the worked example, some 10⁻⁴ of the airframe's: left
+   out.
 6. **Left out, sized in the docs.** The body's and pods' effect on each other's flow: in potential
    flow past the body the pods meet the air at `α (1 − (a²/r²) cos 2θ)` (NACA Report 1307 eq. 15
-   for `θ = 90°`), which averages out for three pods or more and not for one or two (±46% on the
-   worked example's pair). Interference drag, as Barrowman and Niskanen leave it out. A single
+   for `θ = 90°`), with a side component `−α (a²/r²) sin 2θ`; both average out for three pods or
+   more and not for one or two (up to ±46% on the worked example's pair). A pod sunk into the
+   airframe is not refused (#206). Interference drag, as Barrowman and Niskanen leave it out. A single
    pod's off-axis drag and normal-force moments (issue #213; about 0.15° of trim on the worked
    example with a one-calibre margin).
 7. **The tumble model** counts each pod's tubes and fins as the airframe's, once per pod: the
@@ -7958,12 +7964,15 @@ examples (one with a single pod) and one private design with a lug on each of it
 
 - `hpr_aero::AeroModel` gains `pod_sets()` (`PodSetAero`), `fin_set_start()` and
   `FinSetAero::pods` (`PodFins`); components run airframe bodies, pod bodies, fin sets.
-  `ComponentDragTerms` gains `copies` and `in_pod`. The flight engine's first fin index is
-  `fin_set_start()`.
+  `ComponentDragTerms` gains `copies`, `in_pod` and `pod_holds_motors`, and `DragConditions` gains
+  `thrusting_pod_motor_area_m2` (`with_pod_motors`). `hpr_design::Layout` gains `pod_set_of`. The
+  flight engine's first fin index is `fin_set_start()`, and it splits the burning motors' area
+  between the airframe and the pods.
 - Tests hold the rules to hand-worked values: slopes and centres to 1e-11, body lift and drag
   shares to 1e-12, roll damping to 1e-12 and to Barrowman's strips summed by hand over pods with
   fins pointing each way to 1e-7. Valetudo with three pods and canted fins spins to the balance
-  the pods' damping predicts, to 1e-6, with no pitch or yaw above 1e-9 rad/s.
+  the pods' damping predicts, to 1e-6.
 - The private design whose pods hold a lug now flies: over its 5 configurations, apogee −0.94% to
-  +2.15% from OpenRocket's, margin +0.0041 to +0.0048 calibres (census accepted). Its pods add
-  only the lug's drag, so it does not test a pod's normal force: M1.13c2 does.
+  +2.15% from OpenRocket's, margin +0.0041 to +0.0048 calibres (census accepted); 3 of the 5 are
+  compared with an OpenRocket flight whose parachute opened early. Its pods add only the lug's
+  drag, so it checks the pods' placement and weight, not these rules: M1.13c2 does.

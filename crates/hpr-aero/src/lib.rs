@@ -79,7 +79,7 @@ pub use fins::{
 };
 pub use model::{
     AeroModel, BodyAero, BodyModel, ComponentNormalForce, FinSetAero, Flow, MAX_CANT_RAD,
-    NORMAL_FORCE_MACH_LIMIT, NormalForce, Roll, SUPERSONIC_JOIN_START_MACH,
+    NORMAL_FORCE_MACH_LIMIT, NormalForce, PodFins, PodSetAero, Roll, SUPERSONIC_JOIN_START_MACH,
     SUPERSONIC_JOIN_WIDTH_MACH, SupersonicBoattail, SupersonicBody, SupersonicFlare,
 };
 pub use nose_drag::{PressureDragCurve, StoneyNose};

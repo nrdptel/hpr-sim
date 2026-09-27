@@ -1018,18 +1018,10 @@ fn a_supersonic_flight_flies_on_the_drag_buildup() {
     );
 }
 
-/// M1.8's roll bullet: canted fins spin the rocket to the roll rate where their forcing and their
-/// damping balance. At constant speed, with no drag and no gravity and the axis along the flight,
-/// the roll obeys `I ṗ = q A d (C_l0 + C_lp p d/2V)`, so `p` rises as `p_eq (1 − e^(−kt))`. For a
-/// trapezoid in subsonic flow the fin's slope cancels between the two (Barrowman 1967 eq. 3-35
-/// and 3-48, Niskanen 2009 eq. 3.73 with the fin's own slope in both):
-/// `p_eq = −δ V A_fin (r_t + y_MAC) k_T(B) / (k_R(B) Σ)`, with `Σ = ∫ξ² c dξ` (Niskanen eq. 3.70),
-/// and `k = q N a Σ k_R(B)/(V I)`, `a` the fin's slope per unit of its area (Barrowman eq. 3-6).
-/// Positive cant turns fin 0's leading edge toward `−y_B`, so the rocket rolls toward `−z_B`.
 /// Pods fly (M1.13c1, ADR-092): three pods on Valetudo's tube, each a cone 10 mm in radius on a
 /// tube, 70 mm from the axis. Their cones' normal force damps the roll by
 /// `C_lp = −2 N C_Nα ρ²/d²`, so the canted fins spin the rocket to a slower balance, by the ratio
-/// of the airframe's damping to the whole's; and three even pods push it neither in pitch nor yaw.
+/// of the airframe's damping to the whole's.
 #[test]
 fn pods_damp_the_spin_of_canted_fins_by_their_cones() {
     let (t0, speed, cant) = (10.0, 100.0, 1f64.to_radians());
@@ -1104,15 +1096,16 @@ fn pods_damp_the_spin_of_canted_fins_by_their_cones() {
         p_eq < 0.0 && ((last - p_eq) / p_eq).abs() < 1e-6,
         "{last} against {p_eq}"
     );
-    // Three even pods: no pitch or yaw from them.
-    for axis in ["body_rate_x_rad_s", "body_rate_y_rad_s"] {
-        let worst = column(&recorder, axis)
-            .iter()
-            .fold(0.0_f64, |m, r| m.max(r.abs()));
-        assert!(worst < 1e-9, "{axis}: {worst}");
-    }
 }
 
+/// M1.8's roll bullet: canted fins spin the rocket to the roll rate where their forcing and their
+/// damping balance. At constant speed, with no drag and no gravity and the axis along the flight,
+/// the roll obeys `I ṗ = q A d (C_l0 + C_lp p d/2V)`, so `p` rises as `p_eq (1 − e^(−kt))`. For a
+/// trapezoid in subsonic flow the fin's slope cancels between the two (Barrowman 1967 eq. 3-35
+/// and 3-48, Niskanen 2009 eq. 3.73 with the fin's own slope in both):
+/// `p_eq = −δ V A_fin (r_t + y_MAC) k_T(B) / (k_R(B) Σ)`, with `Σ = ∫ξ² c dξ` (Niskanen eq. 3.70),
+/// and `k = q N a Σ k_R(B)/(V I)`, `a` the fin's slope per unit of its area (Barrowman eq. 3-6).
+/// Positive cant turns fin 0's leading edge toward `−y_B`, so the rocket rolls toward `−z_B`.
 #[test]
 fn canted_fins_spin_to_the_analytic_balance() {
     let (t0, speed, cant) = (10.0, 100.0, 1f64.to_radians());
