@@ -7699,7 +7699,10 @@ under a state that carries across, the nose tip's.
    it however the others move the rest's centre (re-review found a second one riding to the
    ground). Whether the rest is at or past its apogee is judged once per scan, on the stack as
    the scan began, so the parts listed before one waiting for the apogee don't decide it (a third
-   review found the list order changing the apogee's mass by 0.23 kg).
+   review found the list order changing the apogee's mass by 0.23 kg); a height trigger is judged
+   there too. Past the recorded apogee the stack counts as descending for a height trigger, a
+   device's included: the third review found a main set above the apogee never opening when a
+   part let go there set the rest's centre rising, landing at 98 m/s instead of 6.
 6. **A release can land the rest.** A part let go just above the ground, forward of the centre
    of a rocket falling nose up, can step the rest's centre to or below the ground, which a
    crossing from above never sees (re-review found the flight running underground to the time

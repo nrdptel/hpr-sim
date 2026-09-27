@@ -1047,8 +1047,10 @@ impl Simulation {
     /// [`SimError`] from the models or the integrator (other than the step limit, which is a
     /// [`Termination`]), or from the observer. The checks that wait for every builder run here
     /// too: a device on a body nothing makes, and a pushed payload in the nose's piece
-    /// ([`Self::with_ejections`]). A mass shift that starts before the rocket leaves the rail is
-    /// [`SimError::Domain`] ([`Self::with_shifts`]).
+    /// ([`Self::with_ejections`]). A mass shift that starts, or a mass release that comes, before
+    /// the rocket leaves the rail is [`SimError::Domain`] ([`Self::with_shifts`],
+    /// [`Self::with_releases`]), as is a release that steps the rest's centre of mass below the
+    /// ground while it climbs.
     pub fn run(&self, observer: &mut dyn Observer) -> Result<FlightResult, SimError> {
         self.fly(0.0, self.initial_state(), Phase::Pad, observer)
     }
@@ -1309,22 +1311,29 @@ impl Simulation {
             // no part leaves, since a release can make the apogee another release waits for.
             let mut landed: Option<Sample> = None;
             loop {
-                // Whether the stack is at or past its apogee as the pass begins: the flight's
-                // recorded one, or with none (a flight started falling) its own vertical speed.
-                // Judged once, so that the parts listed before one waiting for it don't decide.
-                let at_apogee = matches!(phase, Phase::Free | Phase::Descent)
-                    && released
-                        .iter()
-                        .zip(&self.releases)
-                        .any(|(gone, release)| !gone && release.trigger == Trigger::Apogee)
-                    && (events.iter().any(|event| event.kind == EventKind::Apogee) || {
-                        let stack = lightened.as_ref().unwrap_or(&self.vehicle);
-                        let window = (t, next_stop(&stops, t, cap));
-                        let area = self.ascent_drag_area_m2(&run, t);
-                        self.evaluate(stack, phase, window, t, &y, area)?
-                            .vertical_speed_m_s
-                            <= 0.0
-                    });
+                // The stack as the pass begins, which the apogee and height triggers are judged
+                // on, so that the parts listed before one don't decide whether it leaves. Past
+                // the recorded apogee the stack is coming down, whatever a release did to its
+                // centre's speed; with none (a flight started falling) its own speed says.
+                let apogee_recorded = events.iter().any(|event| event.kind == EventKind::Apogee);
+                let start = if matches!(phase, Phase::Free | Phase::Descent)
+                    && released.iter().zip(&self.releases).any(|(gone, release)| {
+                        !gone
+                            && matches!(release.trigger, Trigger::Apogee | Trigger::Altitude { .. })
+                    }) {
+                    let stack = lightened.as_ref().unwrap_or(&self.vehicle);
+                    let window = (t, next_stop(&stops, t, cap));
+                    let area = self.ascent_drag_area_m2(&run, t);
+                    Some(self.evaluate(stack, phase, window, t, &y, area)?)
+                } else {
+                    None
+                };
+                let at_apogee = start
+                    .as_ref()
+                    .is_some_and(|e| apogee_recorded || e.vertical_speed_m_s <= 0.0);
+                let descending = start
+                    .as_ref()
+                    .is_some_and(|e| apogee_recorded || e.vertical_speed_m_s < 0.0);
                 // The rocket's vertical speed just before the first part left in this pass.
                 let mut rising: Option<f64> = None;
                 for (index, gone) in released.iter_mut().enumerate() {
@@ -1344,9 +1353,10 @@ impl Simulation {
                                 Trigger::Altitude {
                                     height_above_ground_m,
                                 } => {
-                                    let e = self.evaluate(stack, phase, window, t, &y, area)?;
-                                    e.vertical_speed_m_s < 0.0
-                                        && e.height_above_ground_m <= height_above_ground_m
+                                    descending
+                                        && start.as_ref().is_some_and(|e| {
+                                            e.height_above_ground_m <= height_above_ground_m
+                                        })
                                 }
                                 Trigger::Time { .. }
                                 | Trigger::MotorDelay { .. }
@@ -1495,11 +1505,14 @@ impl Simulation {
                         } => {
                             // An altimeter's main setting: descending, at or below the height.
                             // A rocket already below it at apogee fires there, as the event on
-                            // the height never crosses it (RocketPy's numeric trigger).
+                            // the height never crosses it (RocketPy's numeric trigger). Past the
+                            // recorded apogee the rocket is descending, even while a part let go
+                            // there has the rest's centre rising for a moment.
                             let e = cached(&mut here, || {
                                 self.evaluate(vehicle, phase, window, t, &y, area)
                             })?;
-                            e.vertical_speed_m_s < 0.0
+                            (e.vertical_speed_m_s < 0.0
+                                || events.iter().any(|event| event.kind == EventKind::Apogee))
                                 && e.height_above_ground_m <= height_above_ground_m
                         }
                     };

@@ -1200,6 +1200,72 @@ mod tests {
     }
 
     #[test]
+    fn a_main_set_above_the_apogee_opens_there_whatever_leaves() {
+        // Off a rail 5° from vertical, in wind, the rocket peaks near 1533 m, below its main's
+        // 1600 m setting, so the main opens at apogee. A part let go there can set the rest's
+        // centre rising for a moment; the main still opens, and a part set to leave below
+        // 1600 m leaves there too, whichever part is listed first.
+        let rail = Rail {
+            elevation_rad: 85f64.to_radians(),
+            ..Rail::vertical(3.0)
+        };
+        let high = Trigger::Altitude {
+            height_above_ground_m: 1600.0,
+        };
+        let part = |trigger: Trigger, id: &str| MassRelease::new(trigger, id, PART_DRAG_AREA_M2);
+        let cases = [
+            vec![],
+            vec![part(Trigger::Apogee, "ballast")],
+            vec![part(Trigger::Apogee, "sleeve")],
+            vec![part(high, "sleeve")],
+            vec![part(Trigger::Apogee, "ballast"), part(high, "sleeve")],
+            vec![part(high, "sleeve"), part(Trigger::Apogee, "ballast")],
+        ];
+        for releases in cases {
+            let count = releases.len();
+            let result = Simulation::new(
+                &with_sleeve(),
+                "i175",
+                crate::testing::analytic_wind_environment(
+                    UniformAir::sea_level(),
+                    G,
+                    hpr_atmos::ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap(),
+                ),
+                rail,
+                FlightSettings {
+                    accept_design_errors: true,
+                    ..FlightSettings::default()
+                },
+            )
+            .unwrap()
+            .with_recovery(vec![Device::new(
+                "main",
+                DeviceDrag::DragArea { cd_s_m2: 0.5 },
+                high,
+            )])
+            .unwrap()
+            .with_releases(releases)
+            .unwrap()
+            .run(&mut ())
+            .unwrap();
+            let apogee = result.event(EventKind::Apogee).unwrap().sample;
+            assert!(apogee.height_above_ground_m < 1600.0, "{apogee:?}");
+            let opened = result.event(EventKind::Trigger(0)).map(|e| e.sample.time_s);
+            assert_eq!(opened, Some(apogee.time_s), "{count} {:?}", result.events);
+            assert_eq!(result.released.len(), count, "{:?}", result.events);
+            for flown in &result.released {
+                assert_eq!(flown.start_sample.time_s, apogee.time_s);
+            }
+            // Under the main, not ballistic.
+            assert!(
+                result.final_sample.cg_velocity_enu_m_s.length() < 10.0,
+                "{:?}",
+                result.final_sample
+            );
+        }
+    }
+
+    #[test]
     fn a_release_that_puts_the_rest_on_the_ground_lands_it() {
         // Straight down under a drogue with its attitude frozen nose up, the rocket lets its
         // ballast go 5 cm above the ground. The ballast sat forward of the centre, so the rest's
