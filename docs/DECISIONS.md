@@ -7594,9 +7594,11 @@ burns.
    relative-motion terms. M1.12b keeps the release half of the first bullet.
 2. **A `MassShift` moves one internal part** (by component id, with everything inside it) a set
    travel along the axis, positive aft, over a set time, on the triggers a recovery device has.
-   One with a trigger known before the flight starts then, and its start and end are stop times.
-   The flight watches for the apogee and for a height on the way down, as it does for a device,
-   and makes the end a stop time once the shift starts.
+   One with a trigger known before the flight starts then. The flight watches for the apogee and
+   for a height on the way down, as it does for a device. Once a shift's start is known, its
+   start, its end and 16 equal intervals between are stop times, so even a fixed step takes 16
+   steps across it: review measured RK4 at 10 ms taking a 10 ms move in one step off by 0.071 m/s
+   in the centre's velocity, and 1.2e-4 m/s with the stops.
 3. **The motion is a cycloid**, `s(τ) = τ − sin(2πτ)/2π` of the travel over `τ = (t − t₀)/T`, the
    cam designer's cycloidal motion (R. L. Norton, *Design of Machinery*, the chapter on cam
    design): at rest at both ends with zero acceleration there, so neither the part's speed nor its
@@ -7618,11 +7620,16 @@ burns.
    that holds a motor (the motor would stay put); a part inside another that moves; a part in a
    stage, or inside a component, whose overridden mass covers it; a travel that can take the part
    out of the component that holds it, forward moves added together and aft moves added
-   together; a move shorter than 10 ms, nearer an impact than a motion (63 km/s² per metre of
-   travel at that bound); and a shift in a flight with a separation or ejections, whose pieces are
-   fixed with every part where the design puts it (M1.12b's to lift).
+   together, or past where the design already puts it (review found a weight in a nose cone's
+   shoulder refused at any travel); a move shorter than 10 ms, nearer an impact than a motion
+   (63 km/s² per metre of travel at that bound); a shift in a flight with a separation or
+   ejections, whose pieces are fixed with every part where the design puts it (M1.12b's to lift);
+   and, in flight, a shift that starts on the pad or the rail. The rail has no stop at its foot,
+   and review found an aft shift at launch lifting the rocket at 4 µs, where it could stall and
+   hang above the pad.
 8. **`Simulation::mass_properties(flight, t)`** gives the stack's mass properties as a flight flew
-   them, the shifts started where the flight's `EventKind::Shift` events say.
+   them: a shift with a trigger known before the flight started then, and one the flight watched
+   for started where the flight's `EventKind::Shift` event says.
 
 **Consequences.**
 
@@ -7637,6 +7644,9 @@ burns.
   1.8% of the whole, so without `ω × h + h′` the error would be of that order.
 - The closed-form rates match differences of the mass properties during the burn and after it:
   `r′` to 2e-11 m/s, `r″` to 3e-8 of itself (the difference's own error), `I_O′` to 1e-9.
+- A drogue that opens halfway through a move keeps the centre's velocity to 1e-12 m/s, and the
+  rocket lands at the rate it has with the ballast still. Every refusal has a test that checks
+  which rule fired.
 - A flight with no shift runs the same arithmetic as before: the validation report, the corpus
   flights and the real flights reproduce.
 - Left for later: M1.12b's release; a shift with a separation or ejections; a mass that moves

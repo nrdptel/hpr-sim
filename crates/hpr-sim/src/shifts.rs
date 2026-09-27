@@ -10,8 +10,9 @@
 //! and add the part's angular momentum relative to the airframe, which is not zero when it moves
 //! off the axis (the decision record on moving mass, [ADR-087][adr-087]).
 //!
-//! Method: `docs/physics/moving-mass.md`.
+//! Method: the documentation site's [Moving mass][page] page.
 //!
+//! [page]: https://github.com/nrdptel/hpr-sim/blob/main/docs/physics/moving-mass.md
 //! [adr-087]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-087-mass-that-moves-along-the-airframe-2026-09-26
 
 use std::f64::consts::TAU;
@@ -30,22 +31,42 @@ use crate::recovery::Trigger;
 /// A shorter move is nearer an impact than a motion: the cycloid's peak acceleration is
 /// `2π travel/T²`, 63 km/s² for each metre of travel at this bound, and the part's stop at the end
 /// would be a shock the rigid airframe here doesn't have. The equations take the shift's rates in
-/// closed form, so they hold at any duration; the integrator follows the move in its own steps.
+/// closed form, so they hold at any duration, and [`SHIFT_STOPS`] stop times across each move
+/// make even a fixed-step integrator follow it.
 pub const MIN_SHIFT_DURATION_S: f64 = 0.01;
+
+/// How many equal intervals a shift's time is cut into by stop times, so that an integrator takes
+/// at least this many steps across it: a fixed step as long as the move would take it in one, and
+/// the part's Coriolis-like term would be weighed at a single midpoint.
+pub const SHIFT_STOPS: usize = 16;
 
 /// A part carried inside the airframe moving along its axis: `travel_m` aft (forward when
 /// negative) over `duration_s`, starting on `trigger`.
 ///
 /// The part is an internal component named by its id, and it moves with everything inside it. It
 /// can't be a body component or an external one, one copy of a cluster's, or hold a motor (the
-/// motor would stay where it is). It can't sit in a stage, or inside a component, whose
-/// overridden mass covers it, since the override doesn't say how much of that mass is the part's.
-/// Shifts of one part add; a part can't move inside another part that moves. Every shift of a
-/// part, forward ones together and aft ones together, must keep it inside the component that
-/// holds it.
+/// motor would stay where it is). Its mass can't be under an override: not its stage's, and not
+/// one on a component around it that covers what that component holds, since the override doesn't
+/// say how much of the mass is the part's. Shifts of one part add; a part can't move inside
+/// another part that moves. Every shift of a part, forward ones together and aft ones together,
+/// must keep it inside the component that holds it, or no further out than the design already
+/// puts it.
 ///
 /// The position along the travel is the cycloid `s(τ) = τ − sin(2πτ)/2π` of the fraction of the
 /// time gone, `τ = (t − t₀)/T`: at rest at both ends, fastest at the middle at `2 travel/T`.
+///
+/// A shift can't start before the rocket leaves the rail: the rail has no stop at its foot, so a
+/// part thrown aft on the pad could push the rocket up the rail and leave it there.
+///
+/// ```
+/// use hpr_sim::{MassShift, Trigger};
+///
+/// // The part with id "ballast" slides 0.3 m toward the tail over 1 s, starting 5 s after launch.
+/// let shift = MassShift::new(Trigger::Time { time_s: 5.0 }, "ballast", 0.3, 1.0);
+/// assert_eq!(shift.travel_m, 0.3);
+/// ```
+///
+/// Give it to a flight with [`crate::Simulation::with_shifts`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
@@ -274,11 +295,15 @@ impl Shifts {
                     }
                 }
             }
+            // The holder's extent, or the part's where the design already puts it past the
+            // holder's (a weight in a nose cone's shoulder, say).
             let part = &components[index];
             if let Some(holder) = part.parent.map(|parent| &components[parent])
-                && (part.fore_station_m - forward_m < holder.fore_station_m
+                && (part.fore_station_m - forward_m
+                    < holder.fore_station_m.min(part.fore_station_m)
                     || part.fore_station_m + part.length_m + aft_m
-                        > holder.fore_station_m + holder.length_m)
+                        > (holder.fore_station_m + holder.length_m)
+                            .max(part.fore_station_m + part.length_m))
             {
                 return Err(refuse(
                     "a mass shift that can take the part out of the component that holds it",
@@ -316,19 +341,23 @@ impl Shifts {
             .filter(|t| t.is_finite())
     }
 
-    /// The known starts and ends, s.
+    /// The stop times of every shift whose start is known: its start, its end, and
+    /// [`SHIFT_STOPS`] equal intervals between, s.
     pub(crate) fn knots_s(&self) -> Vec<f64> {
-        self.terms
-            .iter()
-            .filter(|term| term.start_s.is_finite())
-            .flat_map(|term| [term.start_s, term.start_s + term.duration_s])
+        (0..self.terms.len())
+            .flat_map(|index| self.stops_s(index))
             .collect()
     }
 
-    /// When shift `index` ends, once its start is known, s.
-    pub(crate) fn end_s(&self, index: usize) -> Option<f64> {
-        self.start_s(index)
-            .map(|start| start + self.terms[index].duration_s)
+    /// Shift `index`'s stop times, once its start is known: its start, its end, and
+    /// [`SHIFT_STOPS`] equal intervals between, s.
+    pub(crate) fn stops_s(&self, index: usize) -> Vec<f64> {
+        match (self.start_s(index), self.terms.get(index)) {
+            (Some(start_s), Some(term)) => (0..=SHIFT_STOPS)
+                .map(|k| start_s + term.duration_s * (k as f64 / SHIFT_STOPS as f64))
+                .collect(),
+            _ => Vec::new(),
+        }
     }
 
     /// Each moving part's offset along body `z` at `t`, and its first two time derivatives.
@@ -345,12 +374,17 @@ impl Shifts {
     /// `whole` (the design's mass properties at `t`, every part where the design puts it) with
     /// each moving part where it is at `t`.
     pub(crate) fn apply(&self, whole: MassProperties, t: f64) -> MassProperties {
+        self.moved(whole, &self.offsets(t))
+    }
+
+    /// `whole` with each moving part moved by its offset in `offsets`.
+    fn moved(&self, whole: MassProperties, offsets: &[(f64, f64, f64)]) -> MassProperties {
         self.parts
             .iter()
-            .zip(self.offsets(t))
+            .zip(offsets)
             .filter(|(_, (offset, _, _))| *offset != 0.0)
             .fold(whole, |whole, (part, (offset, _, _))| {
-                whole.with_part_moved(part, DVec3::new(0.0, 0.0, offset))
+                whole.with_part_moved(part, DVec3::new(0.0, 0.0, *offset))
             })
     }
 
@@ -378,7 +412,7 @@ impl Shifts {
             cg_m: state.cg_m,
             inertia_kg_m2: state.inertia_cg,
         };
-        let moved = self.apply(whole, t);
+        let moved = self.moved(whole, &offsets);
         state.cg_m = moved.cg_m;
         state.inertia_cg = moved.inertia_kg_m2;
         state.inertia_o = moved.inertia_about(DVec3::ZERO);
@@ -893,44 +927,293 @@ mod tests {
         );
     }
 
-    #[test]
-    fn a_part_inside_another_that_moves_is_refused() {
+    /// The ballast design with an empty inner tube, `sleeve`, 0.3 m aft of the airframe's forward
+    /// end, holding a copy of the ballast, `held`.
+    fn with_sleeve() -> Rocket {
         let mut rocket = with_ballast(0.0);
         let airframe = &mut rocket.stages[0].components[1];
-        let mount = airframe
-            .children
-            .iter_mut()
-            .find(|child| child.id == "sustainer-motor-mount")
-            .unwrap();
-        let mut held = mount.clone();
-        held.children.clear();
-        let mut weight = rocket.stages[0].components[1]
-            .children
-            .iter()
-            .find(|child| child.id == "ballast")
-            .cloned()
-            .unwrap();
-        weight.id = "held".to_owned();
-        weight.position = Some(Position::Top { aft_offset_m: 0.0 });
-        let _ = held;
-        rocket.stages[0].components[1]
-            .children
-            .iter_mut()
-            .find(|child| child.id == "sustainer-motor-mount")
-            .unwrap()
-            .children
-            .push(weight);
+        let find = |id: &str| {
+            airframe
+                .children
+                .iter()
+                .find(|child| child.id == id)
+                .cloned()
+        };
+        let mut sleeve = find("sustainer-motor-mount").unwrap();
+        sleeve.id = "sleeve".to_owned();
+        sleeve.children.clear();
+        sleeve.position = Some(Position::Top { aft_offset_m: 0.3 });
+        let mut held = find("ballast").unwrap();
+        held.id = "held".to_owned();
+        held.position = Some(Position::Top { aft_offset_m: 0.0 });
+        sleeve.children.push(held);
+        airframe.children.push(sleeve);
+        rocket
+    }
+
+    /// Flies `rocket` with its design checks' errors accepted: these tests are of the shifts.
+    fn lenient(rocket: &Rocket) -> Simulation {
+        simulation(
+            rocket,
+            FlightSettings {
+                accept_design_errors: true,
+                ..FlightSettings::default()
+            },
+        )
+    }
+
+    /// The `what` and the component of a refused shift, or the error when it is another kind.
+    fn shift_refusal(sim: Simulation, shifts: Vec<MassShift>) -> (&'static str, String) {
+        match sim.with_shifts(shifts) {
+            Err(SimError::Shift { what, component }) => (what, component),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn refusals_that_need_a_design_of_their_own() {
         let time = Trigger::Time { time_s: START_S };
-        let error = simulation(&rocket, FlightSettings::default())
-            .with_shifts(vec![
-                MassShift::new(time, "held", 0.01, 1.0),
-                MassShift::new(time, "sustainer-motor-mount", 0.01, 1.0),
-            ])
-            .unwrap_err();
-        assert!(
-            matches!(&error, SimError::Shift { what, component } if what.starts_with("a mass shift of a part inside another") && component == "held"),
-            "{error:?}"
+        let move_by = |id: &str, travel_m: f64| MassShift::new(time, id, travel_m, 1.0);
+
+        // A part inside another that moves. The sleeve holds no motor and could move on its own.
+        lenient(&with_sleeve())
+            .with_shifts(vec![move_by("sleeve", 0.01)])
+            .unwrap();
+        let (what, id) = shift_refusal(
+            lenient(&with_sleeve()),
+            vec![move_by("sleeve", 0.01), move_by("held", 0.01)],
         );
+        assert!(
+            what.starts_with("a mass shift of a part inside another"),
+            "{what}"
+        );
+        assert_eq!(id, "held");
+
+        // One of a cluster's copies.
+        let mut clustered = with_sleeve();
+        let sleeve = clustered.stages[0].components[1]
+            .children
+            .iter_mut()
+            .find(|child| child.id == "sleeve")
+            .unwrap();
+        let Part::InnerTube(tube) = &mut sleeve.part else {
+            panic!("the motor mount is an inner tube");
+        };
+        tube.cluster_m = vec![[0.004, 0.0], [-0.004, 0.0]];
+        let (what, id) = shift_refusal(lenient(&clustered), vec![move_by("held", 0.01)]);
+        assert!(
+            what.starts_with("a mass shift of a part that isn't exactly one"),
+            "{what}"
+        );
+        assert_eq!(id, "held");
+
+        // A stage whose mass is overridden.
+        let mut overridden = with_ballast(0.0);
+        overridden.stages[0].overrides.mass_kg = Some(1.0);
+        let (what, id) = shift_refusal(lenient(&overridden), vec![move_by("ballast", 0.1)]);
+        assert!(
+            what.starts_with("a mass shift in a stage whose mass is overridden"),
+            "{what}"
+        );
+        assert_eq!(id, "ballast");
+
+        // A holder whose overridden mass covers what it holds; one covering itself alone is fine.
+        for covers_children in [false, true] {
+            let mut overridden = with_ballast(0.0);
+            let airframe = &mut overridden.stages[0].components[1];
+            airframe.overrides.mass_kg = Some(0.5);
+            airframe.overrides_include_children = covers_children;
+            let result = lenient(&overridden).with_shifts(vec![move_by("ballast", 0.1)]);
+            if covers_children {
+                assert!(
+                    matches!(&result, Err(SimError::Shift { what, component })
+                        if what.starts_with("a mass shift inside a component whose overridden")
+                            && component == "ballast"),
+                    "{result:?}"
+                );
+            } else {
+                result.unwrap();
+            }
+        }
+
+        // A part the design already puts past its holder's aft end: it may move back in, not out.
+        let mut past = with_ballast(0.0);
+        let ballast = past.stages[0].components[1]
+            .children
+            .iter_mut()
+            .find(|child| child.id == "ballast")
+            .unwrap();
+        ballast.position = Some(Position::Top { aft_offset_m: 0.87 });
+        lenient(&past)
+            .with_shifts(vec![move_by("ballast", -0.1)])
+            .unwrap();
+        let (what, _) = shift_refusal(lenient(&past), vec![move_by("ballast", 0.01)]);
+        assert!(
+            what.starts_with("a mass shift that can take the part out"),
+            "{what}"
+        );
+    }
+
+    #[test]
+    fn triggers_a_shift_cannot_have_are_refused_in_its_own_words() {
+        let domain = |result: Result<Simulation, SimError>| match result {
+            Err(SimError::Domain { what, .. }) => what,
+            other => panic!("{other:?}"),
+        };
+        let sim = || lenient(&with_ballast(0.0));
+        let what = domain(sim().with_shifts(vec![shift(Trigger::Time { time_s: -1.0 })]));
+        assert!(
+            what.starts_with("start time of a mass shift after launch"),
+            "{what}"
+        );
+        let what = domain(sim().with_shifts(vec![shift(Trigger::Burnout {
+            motor: 0,
+            delay_s: -1.0,
+        })]));
+        assert!(
+            what.starts_with("the motor, or the delay after its burnout, that starts a mass"),
+            "{what}"
+        );
+        let what = domain(sim().with_shifts(vec![shift(Trigger::MotorDelay { motor: 3 })]));
+        assert!(
+            what.starts_with("the motor whose ejection delay starts a mass shift"),
+            "{what}"
+        );
+        // A motor that never lights has no burnout to count from.
+        let mut failed = with_ballast(0.0);
+        failed.configurations[0].motors[0].failed_tubes = vec![0];
+        let what = domain(lenient(&failed).with_shifts(vec![shift(Trigger::Burnout {
+            motor: 0,
+            delay_s: 1.0,
+        })]));
+        assert!(
+            what.starts_with("index of the motor a mass shift is timed from"),
+            "{what}"
+        );
+        // A separation after the shifts, as after ejections.
+        let result = sim()
+            .with_shifts(vec![shift(Trigger::Time { time_s: START_S })])
+            .unwrap()
+            .with_separation(crate::recovery::Separation::new(Trigger::Apogee, 0));
+        assert!(
+            matches!(&result, Err(SimError::Unsupported { what }) if what.starts_with("a mass shift in a flight with")),
+            "{result:?}"
+        );
+        // A shift that would start on the rail is refused when it comes.
+        for time_s in [0.0, 0.1] {
+            let error = sim()
+                .with_shifts(vec![shift(Trigger::Time { time_s })])
+                .unwrap()
+                .run(&mut ())
+                .unwrap_err();
+            assert!(
+                matches!(&error, SimError::Domain { what, value }
+                    if what.starts_with("start time of a mass shift, s (it must start once")
+                        && *value == time_s),
+                "{error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_canopy_that_opens_while_the_ballast_moves_keeps_the_centre_s_velocity() {
+        // The ballast starts to move at apogee and a drogue opens 0.5 s into the move: the descent
+        // takes the centre's velocity as it was, and once the move is over the descent rate is
+        // the one the rocket has with the ballast held still.
+        let drogue = || {
+            crate::recovery::Device::new(
+                "drogue",
+                crate::recovery::DeviceDrag::canopy(crate::recovery::CanopyType::FlatCircular, 0.6),
+                Trigger::Apogee,
+            )
+            .with_lag_s(0.5)
+        };
+        let moving = simulation(&with_ballast(0.0), FlightSettings::default())
+            .with_recovery(vec![drogue()])
+            .unwrap()
+            .with_shifts(vec![shift(Trigger::Apogee)])
+            .unwrap();
+        let still = simulation(&with_ballast(0.0), FlightSettings::default())
+            .with_recovery(vec![drogue()])
+            .unwrap();
+        let mut ends = Ends::default();
+        let result = moving.run(&mut ends).unwrap();
+        let started = result.event(EventKind::Shift(0)).unwrap().sample.time_s;
+        let opened = result.event(EventKind::Deployment(0)).unwrap().sample;
+        close(
+            opened.time_s - started,
+            0.5,
+            1e-9,
+            "the drogue opens halfway",
+        );
+        // The step that ends at the deployment, in free flight, and the descent's first sample.
+        let before = ends
+            .0
+            .iter()
+            .rfind(|sample| sample.time_s == opened.time_s && sample.phase == crate::Phase::Free)
+            .unwrap();
+        let jump = (opened.cg_velocity_enu_m_s - before.cg_velocity_enu_m_s).length();
+        assert!(jump < 1e-12, "the centre's velocity jumps by {jump:e} m/s");
+        let rate = |result: &FlightResult| result.final_sample.vertical_speed_m_s;
+        let still_result = still.run(&mut ()).unwrap();
+        close(
+            rate(&result),
+            rate(&still_result),
+            1e-6,
+            "the descent rate at landing",
+        );
+    }
+
+    #[test]
+    fn a_fixed_step_follows_a_short_shift_in_its_stops() {
+        // The free-space case with RK4 at 10 ms steps and a 10 ms move: without the stops across
+        // it the step would take the whole move at once.
+        let t0 = 10.0;
+        let settings = FlightSettings {
+            method: Method::Rk4 { step_s: 0.01 },
+            max_time_s: t0 + 1.0,
+            ..FlightSettings::default()
+        };
+        let sim = Simulation::new(
+            &with_ballast(0.01),
+            "i175",
+            analytic_environment(UniformAir::vacuum(), 0.0),
+            Rail::vertical(3.0),
+            settings,
+        )
+        .unwrap()
+        .with_shifts(vec![MassShift::new(
+            Trigger::Time { time_s: t0 + 0.5 },
+            "ballast",
+            TRAVEL_M,
+            MIN_SHIFT_DURATION_S,
+        )])
+        .unwrap();
+        let attitude = Rail::vertical(3.0).attitude();
+        let cg_m = sim.assembly().mass_properties(t0).cg_m;
+        let state = State {
+            position_enu_m: DVec3::new(0.0, 0.0, 1000.0) - attitude.mul_vec3(cg_m),
+            velocity_enu_m_s: DVec3::new(3.0, -2.0, 10.0),
+            attitude,
+            body_rate_rad_s: DVec3::new(0.5, 0.2, 3.0),
+        };
+        let mut ends = Ends::default();
+        sim.run_free(t0, state, &mut ends).unwrap();
+        let v0 = ends.0[0].cg_velocity_enu_m_s;
+        let error = ends
+            .0
+            .iter()
+            .map(|sample| (sample.cg_velocity_enu_m_s - v0).length())
+            .fold(0.0_f64, f64::max);
+        let during = ends
+            .0
+            .iter()
+            .filter(|sample| sample.time_s > t0 + 0.5 && sample.time_s <= t0 + 0.51)
+            .count();
+        // Measured: 1.2e-4 m/s over the flight, in 16 steps across the move. Taking the move in
+        // one 10 ms step, review measured 0.071 m/s.
+        assert_eq!(during, SHIFT_STOPS);
+        assert!(error < 3e-4, "centre's velocity: {error:e} m/s");
     }
 
     #[test]

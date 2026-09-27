@@ -701,8 +701,9 @@ The example leaves out several kinds of part and setting that a design can have:
   airframe during the flight, give the flight a `MassShift` for it with `Simulation::with_shifts`:
   the part's `id`, how far it moves (positive toward the tail), how long it takes, and a trigger,
   the same kinds a parachute has. The centre of mass, the inertia and the stability margin follow
-  it, and `Simulation::mass_properties` tells you what they were at any time. A flight that
-  separates or ejects pieces can't have one yet, and a mass released in flight comes later
+  it, and `Simulation::mass_properties` tells you what they were at any time. A shift must start
+  after the rocket leaves the rail. A flight that separates or ejects pieces can't have one yet,
+  and a mass released in flight comes later
   ([M1.12b](decisions-and-roadmap.md#m1-12b)). This is checked against exact answers only
   ([Moving mass](physics/moving-mass.md), with the example
   [`moving_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/moving_ballast.rs)).

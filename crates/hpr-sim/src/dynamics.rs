@@ -649,12 +649,6 @@ struct Aerodynamics {
     axial_coefficient: f64,
 }
 
-/// The drag of the open recovery devices: `D = −½ ρ (C_D S) |v| v` on the centre of mass's air
-/// velocity `air_velocity_cg_body` (body axes), with no moment about it.
-///
-/// Source: Knacke's steady drag on the drag area `C_D S` (`docs/physics/recovery.md`), the same
-/// form RocketPy's parachute phase uses (`flight.py:2770-2774`, MIT). The airframe's own drag is
-/// left out, as RocketPy leaves it out: the rocket's attitude under a canopy is not modelled.
 /// The free-flight equations solved for the nose tip's acceleration `a_O` and the angular
 /// acceleration `ω̇`, both in body axes: `T20` from `[T03, T04, F]` (the Coriolis-like term's
 /// vector, the terms along the axis, and the external force), and `T21` from the jets' gyration
@@ -687,6 +681,12 @@ fn free_motion(
     Ok((t20 / m - omega_dot.cross(r), omega_dot))
 }
 
+/// The drag of the open recovery devices: `D = −½ ρ (C_D S) |v| v` on the centre of mass's air
+/// velocity `air_velocity_cg_body` (body axes), with no moment about it.
+///
+/// Source: Knacke's steady drag on the drag area `C_D S` (`docs/physics/recovery.md`), the same
+/// form RocketPy's parachute phase uses (`flight.py:2770-2774`, MIT). The airframe's own drag is
+/// left out, as RocketPy leaves it out: the rocket's attitude under a canopy is not modelled.
 fn canopy_drag(
     air: &hpr_atmos::AirState,
     air_velocity_cg_body: DVec3,

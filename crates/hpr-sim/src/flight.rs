@@ -614,7 +614,8 @@ impl Simulation {
     ///
     /// [`SimError::Shift`] for a part that can't move ([`MassShift`] says which);
     /// [`SimError::Domain`] for a travel, duration or trigger outside its domain, or a trigger on
-    /// a motor with no ignition known before the flight, which could never fire;
+    /// a motor with no ignition known before the flight, which could never fire (and, in flight,
+    /// for a shift that starts before the rocket leaves the rail);
     /// [`SimError::Unsupported`] with a separation or ejections, whose pieces are fixed before the
     /// flight with every part where the design puts it.
     pub fn with_shifts(mut self, shifts: Vec<MassShift>) -> Result<Self, SimError> {
@@ -633,11 +634,29 @@ impl Simulation {
                     value: height_above_ground_m,
                 });
             }
+            // The check is a device's; its errors are put in a shift's words.
             let start_s = recovery::trigger_time_s(
                 shift.trigger,
                 &self.vehicle.assembly.motors,
                 self.vehicle.ignition_s(),
-            )?;
+            )
+            .map_err(|error| match (error, shift.trigger) {
+                (SimError::Domain { value, .. }, Trigger::Time { .. }) => SimError::Domain {
+                    what: "start time of a mass shift after launch, s",
+                    value,
+                },
+                (SimError::Domain { value, .. }, Trigger::MotorDelay { .. }) => SimError::Domain {
+                    what: "the motor whose ejection delay starts a mass shift (it isn't there, \
+                           or has no delay in seconds that is zero or more)",
+                    value,
+                },
+                (SimError::Domain { value, .. }, Trigger::Burnout { .. }) => SimError::Domain {
+                    what: "the motor, or the delay after its burnout, that starts a mass shift \
+                           (the motor isn't there, or the delay isn't zero or more, s)",
+                    value,
+                },
+                (error, _) => error,
+            })?;
             if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
                 (start_s, shift.trigger)
             {
@@ -661,11 +680,13 @@ impl Simulation {
         &self.shifts
     }
 
-    /// The stack's mass properties at `t_s` as `flight` flew it (a flight of this simulation):
-    /// the design's, its motors burned to `t_s`, with each part that moves where it was then. A
-    /// shift starts where `flight` records it ([`EventKind::Shift`]); one it doesn't record hasn't
-    /// started. They are the whole stack's, in body axes about its centre of mass, before any
-    /// separation (and a flight with a powered separation has none that move).
+    /// The stack's mass properties at `t_s` as `flight` flew it: the design's, its motors burned
+    /// to `t_s`, with each part that moves where it was then. `flight` must be a flight of this
+    /// simulation; nothing checks that it is. A shift whose trigger is known before the flight (a
+    /// time, or a motor's burnout or delay) starts then, whether or not `flight` got that far; one
+    /// the flight watched for starts where `flight` records it ([`EventKind::Shift`]), and hasn't
+    /// started if it doesn't. They are the whole stack's, in body axes about its centre of mass,
+    /// before any separation (and a flight with a separation has no shifts).
     #[must_use]
     pub fn mass_properties(&self, flight: &FlightResult, t_s: f64) -> hpr_design::MassProperties {
         let mut shifts = self.vehicle.shifts.clone();
@@ -1060,6 +1081,15 @@ impl Simulation {
                 if !starts {
                     continue;
                 }
+                if matches!(phase, Phase::Pad | Phase::Rail) {
+                    // The rail has no stop at its foot: a part thrown aft on the pad could push
+                    // the rocket up the rail and leave it there.
+                    return Err(SimError::Domain {
+                        what: "start time of a mass shift, s (it must start once the rocket has \
+                               left the rail)",
+                        value: t,
+                    });
+                }
                 if stack.shifts.start_s(index).is_none() {
                     shifted
                         .get_or_insert_with(|| self.vehicle.clone())
@@ -1067,8 +1097,10 @@ impl Simulation {
                         .start(index, t);
                 }
                 let stack = shifted.as_ref().unwrap_or(&self.vehicle);
-                if let Some(end_s) = stack.shifts.end_s(index) {
-                    insert_stop(&mut stops, end_s, cap);
+                for stop_s in stack.shifts.stops_s(index) {
+                    if stop_s > t {
+                        insert_stop(&mut stops, stop_s, cap);
+                    }
                 }
                 *started = true;
                 let window = (t, next_stop(&stops, t, cap));
