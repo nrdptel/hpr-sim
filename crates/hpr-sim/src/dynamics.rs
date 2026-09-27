@@ -184,6 +184,7 @@ impl Vehicle {
                     .nozzle()
                     .map_or(0.0, |nozzle| nozzle.exit_radius_m),
                 area_m2: std::f64::consts::PI * (0.5 * placed.mounted.diameter_m).powi(2),
+                // The assembly places a motor only in a mount it found, so `find` succeeds.
                 in_pod: assembly
                     .layout
                     .find(&placed.mount)
@@ -761,7 +762,7 @@ mod tests {
             "children": [{
                 "id": "pod-tube",
                 "part": { "body_tube": {
-                    "length_m": 0.9, "outer_radius_m": 0.03, "thickness_m": 0.002,
+                    "length_m": 0.9, "outer_radius_m": 0.02, "thickness_m": 0.002,
                     "material": material } },
                 "motor_mount": { "overhang_m": 0.0 }
             }]
@@ -784,6 +785,28 @@ mod tests {
         assert_eq!(in_pods, [false, true, true]);
         let area = vehicle.motors[1].area_m2;
         assert!(area > 0.0 && vehicle.motors[2].area_m2 == area);
+
+        // The engine hands the pods' area to the pods' bases: its axial coefficient is the drag
+        // model's with the two pod motors, and not with them on the airframe's base. A base's drag
+        // is linear in its area until the base runs out, so the pods are narrower than their
+        // motors here, for the two to differ.
+        let air = UniformAir::sea_level().0;
+        let speed = 50.0;
+        let v = DVec3::new(0.0, 0.0, speed);
+        let cg = vehicle.assembly.mass_properties(0.0).cg_m;
+        let axial = |areas: [f64; 2]| {
+            vehicle
+                .aerodynamics(&air, v, DVec3::ZERO, cg, areas)
+                .unwrap()
+                .axial_coefficient
+        };
+        let flow = Flow::new(speed / air.speed_of_sound_m_s, 0.0, 0.0);
+        let reynolds_per_m = speed / air.kinematic_viscosity_m2_s();
+        let pods = DragConditions::thrusting(reynolds_per_m, 0.0).with_pod_motors(2.0 * area);
+        let expected = vehicle.aero.drag(&flow, &pods).unwrap().axial_coefficient;
+        assert_eq!(axial([0.0, 2.0 * area]), expected);
+        assert!(std::f64::consts::PI * 0.02_f64.powi(2) < area);
+        assert!((axial([2.0 * area, 0.0]) - expected).abs() > 1e-3);
     }
 
     #[test]

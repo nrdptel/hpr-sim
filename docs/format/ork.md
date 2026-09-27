@@ -1382,8 +1382,8 @@ lighting a sustainer on the pad.
 - Every motor has a thrust curve, and a case diameter and length.
 - Every motor lights at a moment hpr can fly: at launch, at a time after launch, or after the
   stage below burns out or fires its charge ([above](#delays-and-ignition)).
-- No motor sits in a part hpr doesn't read yet, such as a pod
-  ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). A motor in a
+- No motor sits in a part hpr doesn't read yet, such as a parallel stage or a pod set hpr could
+  not lay out ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). A motor in a
   [cluster](../glossary.md#cluster) of motor tubes flies with one motor in every tube
   ([above](#clusters)).
 - No stage is switched off in the configuration's own stage list
@@ -1889,9 +1889,10 @@ hpr doesn't fly them yet:
   ([#183](https://github.com/nrdptel/hpr-sim/issues/183)), and two payload designs whose
   separation has no motor ahead of it and could come before apogee
   ([#184](https://github.com/nrdptel/hpr-sim/issues/184));
-- an airframe hpr can't read exactly as written (9);
-- a motor inside a part hpr doesn't read, such as a pod (3), among them OpenRocket's one aborted
-  run;
+- an airframe hpr can't read exactly as written (10), among them four of OpenRocket's pod
+  examples' configurations;
+- a motor inside a part hpr doesn't read, a parallel stage (1);
+- a motor hpr can't light as written (1): OpenRocket's one aborted run, a pod example;
 - a motor with no thrust curve (3), among them the one powered Loft demo.
 
 Of the other six Loft demos, five have no motor OpenRocket finds, and OpenRocket does not open
@@ -2224,7 +2225,7 @@ and part on the coast, where drag matters most.
 
 - No apogee is more than 5% from OpenRocket's, and no flight has a part with a drag override.
 - An early parachute lowers OpenRocket's apogee, so it can make hpr read high but not low. It
-  cannot explain `C03/3` and `C03/4`, which read low. It could explain `C07/1`, which reads +0.68%
+  cannot explain the four that read low (`C03/3`, `C03/4`, `C02/4`, `C02/5`). It could explain `C07/1`, which reads +0.68%
   with the parachute 0.55 s early, and `C02/2`, which reads +2.15% with the parachute 1.45 s
   early, the longest of the six; how much of either it explains is not measured.
 - The 14 flights launched above sea level (designs `C03` and `C09`) all read low in apogee. Of

@@ -7946,9 +7946,10 @@ examples (one with a single pod) and one private design with a lug on each of it
    about the rocket's axis, each strip `ρ_0 + y` out, `ρ_0` the root's distance along the span.
    Summed over the fins, that is quadratic in `ρ_0`, so two strip evaluations at the offsets' mean
    plus and minus their standard deviation give the sum exactly. The whole sum takes the pod
-   tube's roll-damping factor `k_R(B)`: exact on a tube of no radius, about 9% off on the offset
-   part at a span twice the tube's radius. The pods' drag also damps pitch,
-   `C_mq ≈ −2 C_D,pod Σρ²/d²`, about −0.15 on the worked example, some 10⁻⁴ of the airframe's: left
+   tube's roll-damping factor `k_R(B)`: exact on a tube of no radius; on the offset part, whose
+   factor is nearer `K_T(B)`, some 10% small at `τ = 2` (1.33 against 1.5), not sized by a test.
+   The pods' drag also damps pitch, `C_mq ≈ −2 C_D,pod Σρ²/d²`, about −0.15 on the worked example,
+   against the fins' order of −10³: left
    out.
 6. **Left out, sized in the docs.** The body's and pods' effect on each other's flow: in potential
    flow past the body the pods meet the air at `α (1 − (a²/r²) cos 2θ)` (NACA Report 1307 eq. 15

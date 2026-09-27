@@ -527,6 +527,8 @@ mod tests {
         for case in &fixture.cases {
             let rocket = committed_design(&case.design);
             let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+            // Every motor's area comes off the airframe's base, as no fixture design has pods.
+            assert!(model.pod_sets().is_empty(), "{}", case.design);
             let motor_area: f64 = if case.thrusting {
                 rocket.configurations[0]
                     .motors

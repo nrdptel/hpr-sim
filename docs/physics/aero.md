@@ -2653,8 +2653,8 @@ gives it, on the rocket's reference area `A_ref`. Each pod adds that once:
 - **Normal force.** `N` pods add `N` times one pod's slope and moment, at the part's station along
   the rocket. The pod's first part steps up from nothing, as the airframe's nose does, so a pod
   that starts with a tube gets no slope from its flat front. Faster than sound, a pod keeps
-  [slender-body theory](../glossary.md#slender-body-theory)'s slope: the shock-expansion method
-  ([Bodies faster than sound](#bodies-faster-than-sound)) covers the airframe alone.
+  [slender-body theory](../glossary.md#slender-body-theory)'s slope, since the shock-expansion
+  method ([Bodies faster than sound](#bodies-faster-than-sound)) covers the airframe alone.
 - **Body lift.** Each pod's [body lift](#body-lift), Jorgensen's crossflow term, is taken on the
   pod's own planform and at the pod's own [fineness](../glossary.md#fineness-ratio) (its length
   over its largest diameter), not the airframe's.
@@ -2670,7 +2670,9 @@ gives it, on the rocket's reference area `A_ref`. Each pod adds that once:
   every part ([N09] §3.4).
 - **Motors in pods.** A burning motor's cross-section comes off the base of the body it sits in:
   the airframe's motors off the airframe's base, and a pod's off its own pod's
-  ([N09] p. 50 for the base). Motor mounts in two different pod sets are refused.
+  ([N09] p. 50 for the base). Each pod takes an even share of the pods' motors, and a base smaller
+  than its motors has no base drag left, never less. Motor mounts in two different pod sets are
+  refused.
 - **Roll.** In hpr a pod adds no rolling moment of its own (but see *A single pod's moments*
   below); it damps a roll. Rolling at `p`, a part at distance `ρ` from the axis crosses the air
   at `p ρ`, so it meets it at the angle `p ρ/V`, and its normal force acts about the axis with the
@@ -2683,9 +2685,13 @@ gives it, on the rocket's reference area `A_ref`. Each pod adds that once:
 **Where the forces act.** The flight engine applies each pod part's force on the rocket's axis at
 its station. For two pods or more, spaced evenly, the pods' offsets add to zero, so the forces on
 the axis turn the rocket in pitch and yaw as they would at the pods. What an offset adds, to first
-order, is roll damping, which hpr adds as above, and a pitch damping from the pods' drag,
-`C_mq = −2 C_D,pod Σρ²/d²`, which hpr leaves out: about −0.15 on the worked example below, some
-10⁻⁴ of the airframe's.
+order, is roll damping, which hpr adds as above, and a pitch damping from the pods' drag: pitching
+at `q`, a pod `ρ` off the pitch plane meets the air `q ρ` faster or slower on either side, so its
+drag changes by as much and pitches back. That is `C_mq ≈ −2 C_D,pod Σρ²/d²` (the pitch moment per
+unit pitch rate, `C_D,pod` one pod's drag coefficient, the sum over the pods), about −0.15 on the
+worked example below. hpr leaves it out: the airframe's own pitch damping from its fins,
+`−2 C_Nα,fins ℓ²/d²` with `ℓ` the fins' distance from the centre of gravity, is of the order of
+−10³ on such a rocket.
 
 **Worked example.** The tests' rocket (the `finned_rocket` of `hpr-aero`'s tests: a 0.25 m ogive
 nose, 0.7 m of tube 27 mm in radius, a 0.05 m boattail to a 22 mm tail tube 0.3 m long, and four
@@ -2745,9 +2751,11 @@ read exactly as written and neither is flown.
   moment would trim the rocket at about `0.0445 · 0.04/(12.65 · 0.054)` = 0.0026 rad, 0.15°.
 - **The interference on a pod's fins' roll damping.** hpr takes the pod tube's roll-damping
   factor `k_R(B)` on the whole sum. The part that comes from the pod's offset is the pod moving
-  sideways, whose factor is closer to the normal force's `K_T(B)`: the two differ by about 9% for
-  a span twice the tube's radius and a taper of 0.5. On a pod of no radius, winglets' usual pod,
-  both are 1 and nothing is lost.
+  sideways, whose factor is closer to the normal force's `K_T(B)`. For a fin whose span equals
+  the tube's radius (`τ = 2`), `K_T(B)` is 1.5 and a rectangular fin's `k_R(B)` 1.33
+  ([Fins](#fins), [Roll: forcing and damping](#roll-forcing-and-damping)), so that part may be
+  some 10% too small; no test sizes it. On a pod of no radius, winglets' usual pod, both are 1
+  and nothing is lost.
 - **A pod inside the airframe.** Nothing checks that a pod clears the airframe
   ([#206](https://github.com/nrdptel/hpr-sim/issues/206)); a pod sunk into it still gets its
   whole slope, friction and base.
