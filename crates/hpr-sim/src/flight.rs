@@ -1507,7 +1507,8 @@ impl Simulation {
                             // A rocket already below it at apogee fires there, as the event on
                             // the height never crosses it (RocketPy's numeric trigger). Past the
                             // recorded apogee the rocket is descending, even while a part let go
-                            // there has the rest's centre rising for a moment.
+                            // there has the rest's centre rising for a moment (beyond RocketPy,
+                            // which has no releases; without one the rule is the same).
                             let e = cached(&mut here, || {
                                 self.evaluate(vehicle, phase, window, t, &y, area)
                             })?;

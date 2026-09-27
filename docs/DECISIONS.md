@@ -7702,7 +7702,7 @@ under a state that carries across, the nose tip's.
    review found the list order changing the apogee's mass by 0.23 kg); a height trigger is judged
    there too. Past the recorded apogee the stack counts as descending for a height trigger, a
    device's included: the third review found a main set above the apogee never opening when a
-   part let go there set the rest's centre rising, landing at 98 m/s instead of 6.
+   part let go there set the rest's centre rising, landing at 98 m/s instead of about 7.
 6. **A release can land the rest.** A part let go just above the ground, forward of the centre
    of a rocket falling nose up, can step the rest's centre to or below the ground, which a
    crossing from above never sees (re-review found the flight running underground to the time
