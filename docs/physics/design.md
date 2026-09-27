@@ -26,8 +26,8 @@
   out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). A
   [pod](../glossary.md#pod)'s mass, centre and inertia match the hand-worked parallel-axis sum to
   1e-15 ([Pods](#pods)), and OpenRocket's on eighteen probe designs
-  ([`.ork`: Pods](../format/ork.md#pods)); not yet on whole flights
-  ([M1.13c](../decisions-and-roadmap.md#m1-13c)). OpenRocket's
+  ([`.ork`: Pods](../format/ork.md#pods)); on whole flights, one private design whose pods hold a
+  lug ([aerodynamics: Pods](aero.md#pods)). OpenRocket's
   cluster example flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees
   are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee
   ([M1.9c](../decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against
@@ -37,9 +37,9 @@
   otherwise, so a two-stage design whose file says nothing flies with every motor lit at once, and
   nothing warns; a staged flight gives the sustainer its ignition ([Staging](staging.md)). A
   cluster's motors light together, or not at all: no spread in ignition and no thrust misalignment.
-  Fins on a nose cone or transition are refused. Pods are weighed but can't fly yet: no cited
-  model gives their normal force and drag, so the aerodynamics refuse a design with pods
-  (an empty pod set flies; [Pods](#pods)).
+  Fins on a nose cone or transition are refused. Pods fly with each pod's parts' own normal force
+  and drag, without the flow between the pods and the body
+  ([aerodynamics: Pods](aero.md#pods)).
   [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and
   overrides; the OpenRocket comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) is mapping them,
   and the mass conventions it has found are on the [mass page](mass.md#checked-against-openrocket).
@@ -313,10 +313,10 @@ A pod is a body beside the airframe: a side pod, or an outboard motor pod. In hp
 with a position along it. Its children are the pod's own body components (a nose cone, body tubes,
 a transition), which stack aft from that position along the pod's axis, and take their automatic
 radii from one another as a stage's do. Parts go on and inside them as on the airframe: fins on a
-pod's tube, a mass or a motor mount inside it. **hpr weighs pods but can't fly them yet**: the
-aerodynamics stop with an error naming the pod set, so a design with pods gives its mass, centre of
-mass, inertia and motors only ([M1.13c](../decisions-and-roadmap.md#m1-13c), pod aerodynamics). The
-decision record is [ADR-089][adr-089].
+pod's tube, a mass or a motor mount inside it. A design with pods flies: each pod's parts add their
+own normal force and drag, once per pod ([aerodynamics: Pods](aero.md#pods),
+[M1.13c1](../decisions-and-roadmap.md#m1-13c1)). The decision records are [ADR-089][adr-089] for
+the layout and weight, and [ADR-092][adr-092] for the aerodynamics.
 
 - **Where the pods sit.** `count` pods, 1 to 64, spaced evenly around the body's axis at
   `radial_offset_m` from it, the first at `angle_rad` from the body's `x` axis toward its `y` axis
@@ -357,10 +357,11 @@ decision record is [ADR-089][adr-089].
   without a warning: a pod is held by a pylon, and an outboard booster often extends past the tube
   it hangs from. A pod set that doesn't touch its tube at all is still an error. A pod set in a pod
   and one of more than 64 pods are refused.
+- **Flying.** A pod's parts add their normal force and drag once per pod, on the rocket's axis
+  at their stations ([aerodynamics: Pods](aero.md#pods)). Canted fins on a pod and a pod's tube of
+  no length with a radius are refused. The tumble model counts each pod's tubes and fins as the
+  airframe's ([recovery](recovery.md)). An empty pod set adds no force and no drag area.
 - **What it can't do yet.**
-  - Fly: the aerodynamics refuse pods, as does the tumble model, which gives a falling airframe's
-    drag area from its body tubes and fins. An empty pod set flies: it adds no force and no drag
-    area.
   - Move or release a part inside several pods: a [moving](moving-mass.md) or
     [released](released-mass.md) part must be one part, so it can be inside a pod only when there
     is one pod.
@@ -370,8 +371,7 @@ decision record is [ADR-089][adr-089].
     pod's radius steps ([#206](https://github.com/nrdptel/hpr-sim/issues/206)).
 
   The refusals are pinned by tests in `hpr-aero` (`unsupported_inputs_are_refused`) and `hpr-sim`
-  (`tumbling_refuses_an_airframe_the_model_cannot_represent`,
-  `a_pod_s_parts_are_located_as_the_airframe_s_are`, `partings_the_design_cant_make_are_refused`).
+  (`a_pod_s_parts_are_located_as_the_airframe_s_are`, `partings_the_design_cant_make_are_refused`).
 
 In a JSON design, this component goes in a body tube's `children` list. It holds two pods 50 mm
 from the axis (`angle_rad` is optional and 0 by default), each a 0.3 m tube, 0.1 m aft of the top
@@ -561,4 +561,5 @@ unless the caller sets
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [levels]: ../accuracy.md#four-kinds-of-evidence
 [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
+[adr-092]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-092-a-pods-parts-are-barrowmans-once-per-pod-on-the-axis-2026-09-27
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25

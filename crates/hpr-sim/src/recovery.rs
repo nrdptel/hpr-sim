@@ -359,8 +359,9 @@ impl DeviceDrag {
     /// - `A_f` is, for each fin set, one fin's planform area times the efficiency factor for its
     ///   fin count ([`TUMBLE_FIN_EFFICIENCY`]). Launch lugs and rail buttons add nothing, and an
     ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
-    ///   the model has no factor for them. So is one with **pods**, whose tubes the model has no
-    ///   factor for either.
+    ///   the model has no factor for them.
+    /// - A **pod**'s tubes and fins count as the airframe's do, once per pod: the documentation's
+    ///   model has no term for them, and none for one part shading another.
     ///
     /// It sums **every** stage, so it is the whole stack tumbling. For a spent booster on its
     /// own, which is what the documentation's model was written for, use
@@ -375,7 +376,7 @@ impl DeviceDrag {
     ///
     /// [`SimError::Design`] if a fin planform's area or a nose cone's or transition's profile can't
     /// be computed, and [`SimError::Domain`] if the airframe presents no area at all, carries tube
-    /// fins or pods, or has a fin set of more than the eight fins Table 3.4 covers.
+    /// fins, or has a fin set of more than the eight fins Table 3.4 covers.
     pub fn tumbling(assembly: &hpr_design::Assembly) -> Result<Self, SimError> {
         Self::tumbling_stages(
             assembly,
@@ -421,28 +422,10 @@ impl DeviceDrag {
             if !member(index, component) {
                 continue;
             }
-            let holds = |index| {
-                assembly
-                    .layout
-                    .components
-                    .iter()
-                    .any(|c| c.parent == Some(index))
-            };
-            if matches!(component.part, hpr_design::Part::PodSet(_)) && !holds(index) {
-                // A pod set that holds nothing adds no drag area.
-                continue;
-            }
-            if matches!(component.part, hpr_design::Part::PodSet(_)) {
-                // A pod's tubes are listed as the pod set's children; counting them as the
-                // airframe's own side profile would credit pods with a body tube's broadside drag
-                // factor, which no source gives for them.
-                return Err(SimError::Domain {
-                    what: "tumbling an airframe with pods (the model covers body tubes and fin sets \
-                           only)",
-                    value: 0.0,
-                });
-            }
-            body_profile_m2 += side_profile_m2(component)?;
+            // A part in a pod counts once per pod: each pod's tubes and fins are broadside to
+            // the air as the airframe's are.
+            let copies = component.copies.len() as f64;
+            body_profile_m2 += copies * side_profile_m2(component)?;
             if matches!(component.part, hpr_design::Part::TubeFinSet(_)) {
                 // Tube fins are a large part of such a rocket's broadside area and the model has
                 // no factor for them, so hpr refuses rather than crediting a bare tube's drag.
@@ -462,7 +445,7 @@ impl DeviceDrag {
                                cover 1 to 8)",
                             value: fins.count.into(),
                         })?;
-                fin_area_m2 += fins.planform.geometry()?.area_m2 * efficiency;
+                fin_area_m2 += copies * fins.planform.geometry()?.area_m2 * efficiency;
             }
         }
         let drag_area_m2 = TUMBLE_FIN_DRAG_COEFFICIENT * fin_area_m2
@@ -3229,14 +3212,32 @@ mod tests {
             DeviceDrag::tumbling(&design("rocketpy-valetudo").assemble("example").unwrap()).is_ok()
         );
 
-        // Pods: their tubes would otherwise count as the airframe's side profile.
+        // Pods: each pod's tube and fins count as the airframe's do, once per pod.
         let mut rocket = design("rocketpy-valetudo");
         let airframe = &mut rocket.stages[0].components[1];
+        let fin_set = airframe
+            .children
+            .iter()
+            .find(|c| matches!(c.part, hpr_design::Part::FinSet(_)))
+            .expect("Valetudo has a fin set")
+            .clone();
         let mut pod_tube = airframe.clone();
         pod_tube.id = "pod-tube".to_owned();
         pod_tube.auto.clear();
         pod_tube.motor_mount = None;
         pod_tube.children.clear();
+        let hpr_design::Part::BodyTube(tube) = &pod_tube.part else {
+            panic!("Valetudo's airframe is a body tube");
+        };
+        let tube_profile_m2 = 2.0 * tube.outer_radius_m * tube.length_m;
+        let hpr_design::Part::FinSet(fins) = &fin_set.part else {
+            unreachable!("found as a fin set");
+        };
+        // Three fins: Table 3.4's factor 1.50.
+        let fin_m2 = 1.5 * fins.planform.geometry().unwrap().area_m2;
+        let mut pod_fins = fin_set.clone();
+        pod_fins.id = "pod-fins".to_owned();
+        pod_tube.children.push(pod_fins);
         let mut pods = pod_tube.clone();
         pods.id = "pods".to_owned();
         pods.part = hpr_design::Part::PodSet(hpr_design::PodSet {
@@ -3246,12 +3247,27 @@ mod tests {
         });
         pods.position = Some(hpr_design::Position::Top { aft_offset_m: 0.0 });
         pods.children = vec![pod_tube];
+        pods.overrides = hpr_design::Overrides::default();
         airframe.children.push(pods);
-        let error = DeviceDrag::tumbling(&rocket.assemble("example").unwrap()).expect_err("pods");
+        let tumble = |rocket: &hpr_design::Rocket| match DeviceDrag::tumbling(
+            &rocket.assemble("example").unwrap(),
+        )
+        .unwrap()
+        {
+            DeviceDrag::Tumble {
+                body_profile_m2,
+                fin_area_m2,
+                ..
+            } => (body_profile_m2, fin_area_m2),
+            other => panic!("tumbling should build a Tumble: {other:?}"),
+        };
+        let (bare_body, bare_fins) = tumble(&design("rocketpy-valetudo"));
+        let (body, fins) = tumble(&rocket);
         assert!(
-            matches!(error, SimError::Domain { what, .. } if what.starts_with("tumbling an airframe with pods")),
-            "{error:?}"
+            (body - bare_body - 2.0 * tube_profile_m2).abs() <= 1e-15,
+            "{body}"
         );
+        assert!((fins - bare_fins - 2.0 * fin_m2).abs() <= 1e-15, "{fins}");
         // A pod set that holds nothing adds no drag area.
         let pods = rocket.stages[0].components[1].children.last_mut().unwrap();
         pods.children.clear();

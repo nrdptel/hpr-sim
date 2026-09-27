@@ -450,10 +450,11 @@ impl FinOutline {
 
 impl FinOutline {
     /// The first and second moments of the fin's area about the body axis, `∫ξ dA` (m³) and
-    /// `∫ξ² dA` (m⁴), with `ξ = r_t + y` the distance from the axis and `r_t ≥ 0` the body radius
-    /// at the fins.
+    /// `∫ξ² dA` (m⁴), with `ξ = r_t + y` the distance from the axis and `r_t` the body radius
+    /// at the fins. For a fin on a pod, `r_t` is how far its root lies along its span from the
+    /// rocket's axis, which may be negative.
     pub fn axis_moments(&self, body_radius_m: f64) -> (f64, f64) {
-        debug_assert!(body_radius_m >= 0.0, "body radius {body_radius_m}");
+        debug_assert!(body_radius_m.is_finite(), "body radius {body_radius_m}");
         let m = clipped_moments(&self.points_m, 1.0, |_| 0.0);
         about_axis(m, body_radius_m)
     }
@@ -465,7 +466,7 @@ impl FinOutline {
     /// `beta` must be positive and finite, as for [`FinOutline::tip_cone`].
     pub fn tip_cone_axis_moments(&self, beta: f64, body_radius_m: f64) -> (f64, f64) {
         debug_assert!(beta > 0.0 && beta.is_finite(), "beta {beta}");
-        debug_assert!(body_radius_m >= 0.0, "body radius {body_radius_m}");
+        debug_assert!(body_radius_m.is_finite(), "body radius {body_radius_m}");
         let [x_t, s] = self.tip_leading_edge_m;
         let aft = |p: [f64; 2]| p[0] - x_t - beta * (s - p[1]);
         let here = about_axis(clipped_moments(&self.points_m, 1.0, aft), body_radius_m);
@@ -501,7 +502,8 @@ pub struct FinRoll {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct FinRollTerms {
-    /// Radius of the body at the fins, m.
+    /// Radius of the body at the fins, m: where the strips start from the axis. For a fin on a
+    /// pod, taken about the rocket's axis, its root's offset from that axis along its span.
     pub body_radius_m: f64,
     /// Reference diameter, m.
     pub reference_diameter_m: f64,
@@ -719,6 +721,32 @@ impl FinAero {
         reference_diameter_m: f64,
     ) -> Result<FinRollTerms, AeroError> {
         check_dimension("body radius at the fins", body_radius_m, true)?;
+        self.roll_terms_about(body_radius_m, reference_diameter_m)
+    }
+
+    /// [`FinAero::roll_terms`] for a fin whose root lies `root_offset_m` from the rocket's axis
+    /// along its span, which may be negative: a fin on a pod. The strips' distance from the axis
+    /// is then `root_offset_m + y`, and so is each strip's arm about it: a fin element at `P`
+    /// moves across its own plane at `p (P · ê)` under the roll rate `p`, `ê` the fin's spanwise
+    /// direction, and its normal force turns the rocket with the same arm `P · ê`. Only the
+    /// damping of such terms means anything: the forcing's arm assumes a root on the axis.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Domain`] for a root offset that isn't finite or a non-positive reference
+    /// diameter.
+    pub(crate) fn roll_terms_about(
+        &self,
+        root_offset_m: f64,
+        reference_diameter_m: f64,
+    ) -> Result<FinRollTerms, AeroError> {
+        if !root_offset_m.is_finite() {
+            return Err(AeroError::Domain {
+                what: "fin root offset from the axis",
+                value: root_offset_m,
+            });
+        }
+        let body_radius_m = root_offset_m;
         check_dimension("reference diameter", reference_diameter_m, false)?;
         let (first, second) = self.outline.axis_moments(body_radius_m);
         let mut terms = FinRollTerms {

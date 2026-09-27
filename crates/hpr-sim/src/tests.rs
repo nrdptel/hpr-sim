@@ -626,7 +626,7 @@ fn own_table(aero: &hpr_aero::AeroModel, alphas_deg: &[f64]) -> hpr_aero::Normal
             let (mut force, mut moment) = (0.0, 0.0);
             let components = aero.components(&Flow::new(mach, alpha, 0.0)).unwrap();
             for (index, component) in components.iter().enumerate() {
-                let scale = if index >= aero.bodies().len() {
+                let scale = if index >= aero.fin_set_start() {
                     alpha.sin() / alpha
                 } else {
                     1.0
@@ -1026,6 +1026,93 @@ fn a_supersonic_flight_flies_on_the_drag_buildup() {
 /// `p_eq = −δ V A_fin (r_t + y_MAC) k_T(B) / (k_R(B) Σ)`, with `Σ = ∫ξ² c dξ` (Niskanen eq. 3.70),
 /// and `k = q N a Σ k_R(B)/(V I)`, `a` the fin's slope per unit of its area (Barrowman eq. 3-6).
 /// Positive cant turns fin 0's leading edge toward `−y_B`, so the rocket rolls toward `−z_B`.
+/// Pods fly (M1.13c1, ADR-092): three pods on Valetudo's tube, each a cone 10 mm in radius on a
+/// tube, 70 mm from the axis. Their cones' normal force damps the roll by
+/// `C_lp = −2 N C_Nα ρ²/d²`, so the canted fins spin the rocket to a slower balance, by the ratio
+/// of the airframe's damping to the whole's; and three even pods push it neither in pitch nor yaw.
+#[test]
+fn pods_damp_the_spin_of_canted_fins_by_their_cones() {
+    let (t0, speed, cant) = (10.0, 100.0, 1f64.to_radians());
+    let air = UniformAir::sea_level();
+    let material =
+        serde_json::json!({ "name": "test", "density": { "kind": "bulk", "kg_m3": 1000.0 } });
+    let pods = serde_json::json!({
+        "id": "pods",
+        "part": { "pod_set": { "count": 3, "radial_offset_m": 0.07, "angle_rad": 0.2 } },
+        "position": { "from": "top", "aft_offset_m": 0.3 },
+        "children": [
+            { "id": "pod-nose", "part": { "nose_cone": {
+                "shape": { "kind": "conical" }, "length_m": 0.05, "base_radius_m": 0.01,
+                "wall": { "kind": "filled" }, "shoulder": null, "material": material } } },
+            { "id": "pod-tube", "part": { "body_tube": {
+                "length_m": 0.2, "outer_radius_m": 0.01, "thickness_m": 0.001,
+                "material": material } } }
+        ]
+    });
+    let mut rocket = serde_json::to_value(design("rocketpy-valetudo")).unwrap();
+    rocket["stages"][0]["components"][1]["children"][1]["part"]["fin_set"]["cant_rad"] =
+        serde_json::json!(cant);
+    let bare = rocket.clone();
+    rocket["stages"][0]["components"][1]["children"]
+        .as_array_mut()
+        .unwrap()
+        .push(pods);
+    let simulation = |rocket: serde_json::Value| {
+        Simulation::new(
+            &serde_json::from_value(rocket).unwrap(),
+            "example",
+            analytic_environment(air, 0.0),
+            Rail::vertical(3.0),
+            capped(t0 + 12.0),
+        )
+        .unwrap()
+        .with_drag_table(constant_drag(0.0))
+    };
+    let (sim, bare) = (simulation(rocket), simulation(bare));
+    let mach = speed / air.0.speed_of_sound_m_s;
+    let (with, without) = (
+        sim.aero().roll(mach).unwrap(),
+        bare.aero().roll(mach).unwrap(),
+    );
+    // By hand: each cone's slope is `2 (0.01/0.04045)²` on Valetudo's 80.9 mm reference.
+    let slope = 2.0 * (0.01_f64 / 0.04045).powi(2);
+    let pods_damping = -2.0 * 3.0 * slope * 0.07 * 0.07 / (0.0809 * 0.0809);
+    assert!(
+        (with.damping - without.damping - pods_damping).abs() < 1e-12 * pods_damping.abs(),
+        "{} against {pods_damping}",
+        with.damping - without.damping
+    );
+    assert_eq!(with.forcing, without.forcing);
+    let p_bare = bare.aero().steady_roll_rate_rad_s(mach, speed).unwrap();
+    let p_eq = p_bare * without.damping / (without.damping + pods_damping);
+    let steady = sim.aero().steady_roll_rate_rad_s(mach, speed).unwrap();
+    assert!(
+        ((steady - p_eq) / p_eq).abs() < 1e-12,
+        "{steady} against {p_eq}"
+    );
+
+    let state = State {
+        position_enu_m: DVec3::new(0.0, 0.0, 1000.0),
+        velocity_enu_m_s: DVec3::new(0.0, 0.0, speed),
+        attitude: DQuat::IDENTITY,
+        body_rate_rad_s: DVec3::ZERO,
+    };
+    let mut recorder = Recorder::new(vec![Channel::Time, Channel::BodyRates], Some(0.001)).unwrap();
+    sim.run_free(t0, state, &mut recorder).unwrap();
+    let last = *column(&recorder, "body_rate_z_rad_s").last().unwrap();
+    assert!(
+        p_eq < 0.0 && ((last - p_eq) / p_eq).abs() < 1e-6,
+        "{last} against {p_eq}"
+    );
+    // Three even pods: no pitch or yaw from them.
+    for axis in ["body_rate_x_rad_s", "body_rate_y_rad_s"] {
+        let worst = column(&recorder, axis)
+            .iter()
+            .fold(0.0_f64, |m, r| m.max(r.abs()));
+        assert!(worst < 1e-9, "{axis}: {worst}");
+    }
+}
+
 #[test]
 fn canted_fins_spin_to_the_analytic_balance() {
     let (t0, speed, cant) = (10.0, 100.0, 1f64.to_radians());

@@ -749,7 +749,7 @@ format's specification recommends. See [Exporting a flight](exporting-a-flight.m
 
 ## Pod
 
-A body mounted beside the airframe rather than on its axis: a side pod, or an outboard pod that holds a motor. hpr repeats one pod, and everything in it, evenly around the axis, turning each copy with its pod as a fin set's fins turn, and weighs each copy where it sits, so the pods' inertia is mostly the [parallel-axis](#parallel-axis-theorem) term. Pods are weighed but can't fly yet: no cited model gives their normal force and drag ([M1.13c](decisions-and-roadmap.md#m1-13c), pod aerodynamics). See [Pods](physics/design.md#pods).
+A body mounted beside the airframe rather than on its axis: a side pod, or an outboard pod that holds a motor. hpr repeats one pod, and everything in it, evenly around the axis, turning each copy with its pod as a fin set's fins turn, and weighs each copy where it sits, so the pods' inertia is mostly the [parallel-axis](#parallel-axis-theorem) term. Each pod's parts fly with their own normal force and drag, once per pod, without the pods' and the body's effect on each other's flow ([aerodynamics: Pods](physics/aero.md#pods)). See [Pods](physics/design.md#pods).
 
 ## Power-on and power-off drag
 

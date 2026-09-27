@@ -719,10 +719,11 @@ The example leaves out several kinds of part and setting that a design can have:
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
   are open tubes that run along the body, touching it, in place of flat fins. A design can hold
   them, but a flight or a CP can't be worked out with them.
-- **Pods are weighed but not flown.** A [pod set](physics/design.md#pods) gives the rocket's mass,
-  centre of mass, inertia and a motor per pod, but the aerodynamics refuse it until a cited method
-  for a pod's normal force and drag is in ([M1.13c](decisions-and-roadmap.md#m1-13c), pod
-  aerodynamics).
+- **Pods fly on Barrowman's rules, without their interference with the body.** A
+  [pod set](physics/design.md#pods) gives each pod's parts their own normal force and drag, once
+  per pod, as if the airframe did not disturb the air around them. Nothing measured checks it yet,
+  and a single pod's off-axis moments are left out ([aerodynamics: Pods](physics/aero.md#pods)).
+  Canted fins on a pod are refused.
 - **Two nose shapes have no drag of hpr's own**, on a nose cone or on a transition that widens,
   because no drag data covers them: a bulged secant ogive (`NoseShape::Ogive` with a
   `radius_ratio` below 1, which bulges wider than the body just ahead of its base) and a Haack

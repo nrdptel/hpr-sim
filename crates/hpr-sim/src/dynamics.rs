@@ -189,7 +189,7 @@ impl Vehicle {
             })
             .collect();
         let reference_area_m2 = aero.reference_area_m2();
-        let first_fin_index = aero.bodies().len();
+        let first_fin_index = aero.fin_set_start();
         Ok(Self {
             assembly,
             aero,

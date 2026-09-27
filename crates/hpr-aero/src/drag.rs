@@ -1000,8 +1000,16 @@ pub struct ComponentDragTerms {
     /// Launch lugs' and rail buttons' areas (a lug's times its length factor), times the
     /// stagnation drag coefficient (eq. 3.95–3.96).
     pub parasitic_area_ratio: f64,
-    /// Area of the aft base, m²: the last body component's aft area, zero for the rest.
+    /// Area of the aft base, m²: the last body component's aft area, zero for the rest. A pod's
+    /// last body component has its pod's base.
     pub base_area_m2: f64,
+    /// How many copies of the component fly: one pod per copy for a part in a pod set
+    /// ([`hpr_design::PlacedComponent::copies`]), 1 for any other. Every term is one copy's, and
+    /// the component's drag is their sum.
+    pub copies: u32,
+    /// Whether the component is in a pod. A pod's base keeps its whole area while a motor thrusts:
+    /// the thrusting motors' area is taken from the airframe's base ([`DragConditions`]).
+    pub in_pod: bool,
 }
 
 impl ComponentDragTerms {
@@ -1020,6 +1028,8 @@ impl ComponentDragTerms {
             fins: None,
             parasitic_area_ratio: 0.0,
             base_area_m2: 0.0,
+            copies: 1,
+            in_pod: false,
         })
     }
 
@@ -1237,9 +1247,20 @@ impl ComponentDragTerms {
         if relief < 0.0 {
             relief = 0.0;
         }
-        let base =
-            base_coefficient * relief * (self.base_area_m2 - thrusting_motor_area_m2).max(0.0)
-                / reference_area_m2;
+        let motor_area_m2 = if self.in_pod {
+            0.0
+        } else {
+            thrusting_motor_area_m2
+        };
+        let base = base_coefficient * relief * (self.base_area_m2 - motor_area_m2).max(0.0)
+            / reference_area_m2;
+        let copies = f64::from(self.copies);
+        let (friction, pressure, base, parasitic) = (
+            copies * friction,
+            copies * pressure,
+            copies * base,
+            copies * parasitic,
+        );
         let zero_lift = friction + pressure + base + parasitic;
         Ok(Drag {
             zero_lift_coefficient: zero_lift,
