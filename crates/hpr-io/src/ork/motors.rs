@@ -397,10 +397,10 @@ pub enum NotFlown {
     /// motors in more than one mount ([`staging`]).
     IgnitionNotFlown,
     /// The airframe or a motor mount was not read exactly as written: reading it raised a
-    /// warning. A part was left out (a pod, a parallel stage, a part hpr could not give a shape), a
-    /// value was dropped or simplified (fin fillets left off, a flipped nose cone read
-    /// forward, a material that could not be read), or something was assumed (a shape hpr does
-    /// not know read as a cone). Flying it would fly a
+    /// warning. A part was left out (a pod set hpr cannot lay out, a parallel stage, a part hpr
+    /// could not give a shape), a value was dropped or simplified (fin fillets left off, a
+    /// material that could not be read), or something was assumed (a shape hpr does not know read
+    /// as a cone). Flying it would fly a
     /// rocket the design may not be.
     AirframeNotAsWritten,
     /// Its stages come apart in a way hpr doesn't fly: more than one separation; one that can

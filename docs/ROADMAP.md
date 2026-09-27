@@ -721,7 +721,7 @@
     - [x] **M1.13b1 Pods of body components.** *Done when:* every corpus pod set is counted; those
       whose pods are body components with a length are read, each part placed as OpenRocket 24.12
       places it; and their parts' cached numbers are held. *Result:* met: 5 of 9 read (8 pods),
-      placed to 1e-15 m on 8 probes; cached numbers 71 of 75 agree, the pods' 4 among them.
+      placed to 1e-15 m on 9 probes; cached numbers 71 of 75 agree, the pods' 4 among them.
     - [ ] **M1.13b2 Pods of no length**, which hang fins off the axis, and an empty pod set.
       *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read.
   - [ ] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.

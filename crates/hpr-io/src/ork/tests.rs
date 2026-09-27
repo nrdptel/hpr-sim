@@ -4207,3 +4207,106 @@ fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
     };
     assert_eq!(tail.fore_radius_m, 0.01);
 }
+
+/// A pod set whose distance from the axis is not known when the file is read, or is no distance,
+/// is left out with a `Skipped` warning, and the rest lays out: a pod whose radii are all
+/// automatic, a tube whose automatic radius cached nothing, and a negative `free` offset. An
+/// override on a pod set is its pods' total even when the file does not say it covers them, with a
+/// `Dropped` warning, since a pod set weighs nothing of its own. A tube radius OpenRocket cached is
+/// taken, and said.
+#[test]
+fn a_pod_set_with_no_known_distance_is_left_out_and_its_override_covers_its_pods() {
+    let pod_set = |id: &str, method: &str, number: &str, inside: &str, extra: &str| {
+        format!(
+            "<podset><name>{id}</name><id>{id}</id><instancecount>2</instancecount>\
+             <radiusoffset method='{method}'>{number}</radiusoffset>{extra}\
+             <axialoffset method='top'>0.0</axialoffset><subcomponents>{inside}</subcomponents>\
+             </podset>"
+        )
+    };
+    let all_auto = pod_tube("auto-pod", "0.1").replace("0.01</radius>", "auto 0.01</radius>");
+    let inside = [
+        pod_set("all-auto", "relative", "0.0", &all_auto, ""),
+        pod_set(
+            "negative",
+            "free",
+            "-0.02",
+            &pod_tube("negative-pod", "0.1"),
+            "",
+        ),
+        pod_set(
+            "overridden",
+            "relative",
+            "0.0",
+            &pod_tube("overridden-pod", "0.1"),
+            "<overridemass>0.5</overridemass>",
+        ),
+    ]
+    .concat();
+    let xml = one_tube_holding(&inside);
+    let file = read(xml.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&file.value.document);
+    let said = |kind: WarningKind, at: &str, what: &str| {
+        spine
+            .warnings
+            .iter()
+            .any(|w| w.kind == kind && w.at.ends_with(at) && w.message.contains(what))
+    };
+    assert!(
+        said(WarningKind::Skipped, "podset[0]", "radii are all automatic"),
+        "{:?}",
+        spine.warnings
+    );
+    assert!(
+        said(WarningKind::Skipped, "podset[1]", "which is no distance"),
+        "{:?}",
+        spine.warnings
+    );
+    assert!(
+        said(WarningKind::Dropped, "podset[2]", "read as covering them"),
+        "{:?}",
+        spine.warnings
+    );
+    let tube = &spine.value.stages[0].components[1];
+    let ids: Vec<&str> = tube.children.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, ["overridden"]);
+    assert!(tube.children[0].overrides_include_children);
+    let layout = spine.value.layout().expect("the rest lays out");
+    let (_, placed) = layout.find("overridden").expect("the pod set");
+    assert!((placed.with_children.mass_kg - 0.5).abs() < 1e-15);
+
+    // The tube's radius automatic: taken from its cache and said, or, with none, left out.
+    for (radius, left_out) in [("auto 0.05", false), ("auto", true)] {
+        let xml = one_tube_holding(&pod_set(
+            "pods",
+            "relative",
+            "0.0",
+            &pod_tube("pod", "0.1"),
+            "",
+        ))
+        .replace(
+            "<radius>0.05</radius>",
+            &format!("<radius>{radius}</radius>"),
+        );
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let spine = component::rocket(&read.value.document);
+        let tube = &spine.value.stages[0].components[1];
+        assert_eq!(tube.children.is_empty(), left_out, "{radius}");
+        let what = if left_out {
+            "no number cached"
+        } else {
+            "by the tube radius OpenRocket cached"
+        };
+        assert!(
+            spine.warnings.iter().any(|w| w.message.contains(what)),
+            "{radius}: {:?}",
+            spine.warnings
+        );
+        if !left_out {
+            let hpr_design::tree::Part::PodSet(pods) = &tube.children[0].part else {
+                panic!("a pod set");
+            };
+            assert!((pods.radial_offset_m - 0.06).abs() < 1e-15);
+        }
+    }
+}

@@ -1118,7 +1118,7 @@ mod tests {
     fn every_pod_is_where_openrocket_puts_it() {
         let record = pods();
         let probes = record["probes"].as_object().expect("probes");
-        assert_eq!(probes.len(), 8);
+        assert_eq!(probes.len(), 9);
         for (question, probe) in probes {
             let (layout, warnings) = hpr(probe);
             assert!(warnings.is_empty(), "{question}: {warnings:?}");

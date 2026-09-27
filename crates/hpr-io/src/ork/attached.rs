@@ -33,7 +33,7 @@ use hpr_design::parts::{
     CenteringRing, InnerTube, LaunchLug, MassComponent, Packing, Parachute, PodSet, RailButton,
     ShockCord, Streamer,
 };
-use hpr_design::tree::{AutoDimension, Component, Part, Position};
+use hpr_design::tree::{AutoDimension, Component, Overrides, Part, Position};
 use hpr_design::{Finish, MotorMount};
 
 use super::component::{
@@ -239,8 +239,8 @@ fn one(
     let (overrides, include_children) = overrides(&mut values);
     radial_offset_on_the_surface(&mut values, &part);
     // Only a tube holds other parts. `hpr-design` says the same, so anything written inside
-    // another kind is said out loud here rather than tallied with the pods, whose tally carries a
-    // message about a spine of their own. Nothing in the reference library does this.
+    // another kind is said out loud here rather than tallied with the parallel stages, whose tally
+    // carries a message about a spine of their own. Nothing in the reference library does this.
     let children = if matches!(part, Part::InnerTube(_)) {
         children(element, &part, &auto, at, ids, skipped, warnings)
     } else {
@@ -290,7 +290,7 @@ fn one(
     })
 }
 
-/// Reads one pod set (ADR-089), or leaves it out with a warning.
+/// Reads one pod set (ADR-089, ADR-090), or leaves it out with a warning.
 ///
 /// A pod set holds pods beside its body tube, each the stack of nose cones, body tubes and
 /// transitions written inside it, with everything on and in them; `hpr-design`'s
@@ -309,10 +309,12 @@ fn one(
 /// | `free` | `v` |
 ///
 /// for the tube's outer radius `R`, the written number `v`, and `ρ` the **widest** radius of the
-/// pod's own body components: a probe whose widest part is aft and one whose widest part is in the
-/// middle both put the pod at the widest radius, which neither the first nor the last part gives.
-/// `hpr-design` holds a pod set at a fixed distance, so when an automatic radius decides `R` or
-/// `ρ`, the number OpenRocket cached for it is taken, and said.
+/// pod's own body components: a probe whose widest tube is aft of a stated narrower nose and tube,
+/// and ahead of another narrower tube, puts the pod at the widest radius, which neither the first
+/// part, the first tube nor the last part gives. An automatic radius in a pod can only take a
+/// radius stated in the pod, so `ρ` is the widest stated one, and a pod with none is left out.
+/// `hpr-design` holds a pod set at a fixed distance, so when the tube's radius is automatic, the
+/// number OpenRocket cached for it is taken, and said; with none cached, the pod set is left out.
 fn pod_set(
     element: &Element,
     parent: &Part,
@@ -350,12 +352,21 @@ fn pod_set(
     let count = instances(&mut values, "pod set")?;
     let name = values.word(&["name"]).unwrap_or_default();
     let position = position(&mut values);
+    // A pod set weighs nothing of its own, so an override on it can only be its pods' total, as a
+    // stage's is; `hpr-design` refuses one that does not say it covers them.
     let (overrides, include_children) = overrides(&mut values);
+    if overrides != Overrides::default() && !include_children {
+        values.warn_at(
+            WarningKind::Dropped,
+            "an override on a pod set that does not cover its pods; a pod set weighs nothing of \
+             its own, so it was read as covering them",
+        );
+    }
     let angle_rad = roll_angle(&mut values);
-    let offset = values.element(&["radiusoffset"]).map(|offset| {
-        let method = offset.attribute("method").unwrap_or("relative").to_owned();
-        (method, offset.text().trim().parse::<f64>().ok())
-    });
+    let method = values
+        .element(&["radiusoffset"])
+        .map(|offset| offset.attribute("method").unwrap_or("relative").to_owned());
+    let number = values.number(&["radiusoffset"]);
     let id = ids.take(&mut Values::new(element, at, warnings), "podset");
 
     let mut pods = Vec::new();
@@ -399,8 +410,8 @@ fn pod_set(
         return None;
     }
 
-    // The widest radius of the pod, and whether only an automatic one reaches it.
-    let (mut stated, mut automatic) = (0.0_f64, 0.0_f64);
+    // The widest stated radius of the pod: an automatic one can only take a stated one in the pod.
+    let mut widest: Option<f64> = None;
     for pod in &pods {
         let radii: &[(f64, AutoDimension)] = match &pod.part {
             Part::NoseCone(nose) => &[(nose.base_radius_m, AutoDimension::BaseRadius)],
@@ -412,29 +423,31 @@ fn pod_set(
             _ => &[],
         };
         for &(radius_m, dimension) in radii {
-            if pod.auto.contains(&dimension) {
-                automatic = automatic.max(radius_m);
-            } else {
-                stated = stated.max(radius_m);
+            if !pod.auto.contains(&dimension) {
+                widest = Some(widest.map_or(radius_m, |w: f64| w.max(radius_m)));
             }
         }
     }
-    let pod_radius_m = stated.max(automatic);
+    let Some(pod_radius_m) = widest else {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "a pod whose radii are all automatic, with no fixed radius in the pod to take; \
+                 the pod set was left out{}",
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
+    };
     let tube_radius_m = tube.outer_radius_m;
-    let (method, number) = offset.unwrap_or_else(|| {
+    let method = method.unwrap_or_else(|| {
         values.warn_at(
             WarningKind::Unusual,
             "no `radiusoffset`, so the pods were read touching the tube",
         );
-        ("surface".to_owned(), Some(0.0))
+        "surface".to_owned()
     });
-    let number = number.unwrap_or_else(|| {
-        values.warn_at(
-            WarningKind::Dropped,
-            "`radiusoffset` is not a number; it was read as zero",
-        );
-        0.0
-    });
+    let number = number.unwrap_or_default();
     let radial_offset_m = match method.as_str() {
         "relative" => tube_radius_m + pod_radius_m + number,
         "surface" => tube_radius_m + pod_radius_m,
@@ -450,24 +463,38 @@ fn pod_set(
             tube_radius_m + pod_radius_m + number
         }
     };
-    if method != "free" {
-        let tube_auto = parent_auto.contains(&AutoDimension::OuterRadius);
-        let pod_auto = automatic > stated;
-        if tube_auto || pod_auto {
-            let which = match (tube_auto, pod_auto) {
-                (true, true) => "the tube's and the pod's widest radius are",
-                (true, false) => "the tube's radius is",
-                _ => "the pod's widest radius is",
-            };
+    if method != "free" && parent_auto.contains(&AutoDimension::OuterRadius) {
+        if tube_radius_m <= 0.0 {
             values.warn_at(
-                WarningKind::Unusual,
+                WarningKind::Skipped,
                 format!(
-                    "{which} automatic, and hpr places pods at a fixed distance from the axis: \
-                     they were placed {radial_offset_m} m from it, by the number OpenRocket \
-                     cached"
+                    "the tube's radius is automatic with no number cached, and hpr places pods at \
+                     a fixed distance from the axis, so where they sit is not known; the pod set \
+                     was left out{}",
+                    and_what_was_inside(element)
                 ),
             );
+            return None;
         }
+        values.warn_at(
+            WarningKind::Unusual,
+            format!(
+                "the tube's radius is automatic, and hpr places pods at a fixed distance from the \
+                 axis: they were placed {radial_offset_m} m from it, by the tube radius OpenRocket \
+                 cached, {tube_radius_m} m"
+            ),
+        );
+    }
+    if !(radial_offset_m >= 0.0 && radial_offset_m.is_finite()) {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "the pods would sit {radial_offset_m} m from the axis, which is no distance; the \
+                 pod set was left out{}",
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
     }
 
     ids.read.insert(at.to_owned());
@@ -484,7 +511,7 @@ fn pod_set(
         motor_mount: None,
         finish: None,
         overrides,
-        overrides_include_children: include_children,
+        overrides_include_children: true,
         children: pods,
     })
 }

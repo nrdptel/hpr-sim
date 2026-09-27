@@ -718,8 +718,9 @@ everything else (26). On all 121, the two **agree on the number**, so which one 
 change an angle. They differ on the *frame* — `relative` to the parent against `fixed` in the
 rocket — but that is the same angle for every parent hpr builds, all of which sit on the rocket's
 own axis. A pod set hangs from a body tube, which is on the axis too, and OpenRocket 24.12 puts its
-pods in the same places for `relative`, `fixed` and `mirror_xy` ([Pods](#pods)). What a part
-*inside* a pod does with the frame is not asked yet.
+pods in the same places whichever of its three frame words the file writes (`relative`, `fixed`,
+or `mirror_xy`, mirrored) ([Pods](#pods)). Whether a part *inside* a pod measures its angle from
+the pod or from the rocket has not been tested against OpenRocket.
 
 **Which *direction* the angle turns is assumed, and is not settled.** hpr measures a roll angle
 from `x_B` toward `y_B`, right-handed about `+z_B`, which points at the nose
@@ -862,42 +863,53 @@ cones, body tubes and transitions written inside the `podset`, with everything o
 `instancecount` of them are spaced evenly around the axis. hpr reads it into a
 [`PodSet`][p-podset] ([M1.13b](../decisions-and-roadmap.md#m1-13b)). The first pod's roll angle is
 `angleoffset`, read as every angle is ([which way round](#which-way-round)). Pods cannot fly yet:
-the aerodynamics refuse them until [M1.13c](../decisions-and-roadmap.md#m1-13c).
+the aerodynamics refuse a design with pods, with an error naming the pod set, until
+[M1.13c](../decisions-and-roadmap.md#m1-13c).
 
 **How far from the axis** depends on the `method` written on `radiusoffset`, and no document says
 how. OpenRocket 24.12 was asked, as an outside oracle, on eight probe designs
 (`validation/oracles/openrocket/pods.py`). It puts each pod's axis at this distance from the
-body's:
+body's (OpenRocket's own names for the methods in brackets):
 
-| `radiusoffset` method | distance | on a 50 mm tube, pods 10 mm in radius, number 20 mm |
+| `radiusoffset` method | distance | tube 50 mm in radius, pods 10 mm in radius, number 20 mm |
 | --- | --- | --- |
-| `relative` | tube radius + pod radius + the number | 80 mm |
-| `surface` | tube radius + pod radius; the number is ignored | 60 mm |
-| `free` | the number, from the axis | 20 mm |
+| `relative` ("surface of the parent component") | tube radius + pod radius + the number | 80 mm |
+| `surface` ("… without offset") | tube radius + pod radius; the number is ignored | 60 mm |
+| `free` ("center of the parent component") | the number, from the axis | 20 mm, inside the tube |
 
-The **pod radius** is the widest of the pod's own parts. One probe has its widest tube aft and one
-has it in the middle, and both put the pod at the widest radius; neither the first part nor the
-last would do that. hpr's test holds every part in every pod to OpenRocket's place, to 10⁻¹⁵ m.
-When an automatic radius decides the tube's or the pod's radius, hpr takes the number OpenRocket
-cached for it, and says so in a warning, because hpr keeps a pod at a fixed distance.
+The **pod radius** is the widest of the pod's own parts. One probe has a stated 10 mm nose, a
+10 mm tube, a 15 mm tube and another 10 mm tube, and OpenRocket puts the pod at the 15 mm radius:
+not the first part's, the first tube's or the last part's. hpr's test
+(`every_pod_is_where_openrocket_puts_it`, in `hpr-validate`) holds every part in every pod to
+OpenRocket's place, to 10⁻¹⁵ m. An automatic radius inside a pod can only take a radius stated in
+the pod, so hpr takes the widest stated one.
 
-**What it weighs.** On the probes, mass is within 1.2 × 10⁻⁷ of OpenRocket's, the centre of mass
-within 1.1 × 10⁻⁷ and the roll inertia within 2 × 10⁻⁹. OpenRocket reports one pitch inertia, the
-same number for both axes across the rocket. It is hpr's inertia about one of them (OpenRocket's
-`y`) within 6.1 × 10⁻⁷. With one pod or two the rocket is not the same both ways, so hpr's other
-pitch inertia is 0.3% to 1.0% away from that one number on the probes. hpr's is the true inertia
-about that axis.
+hpr fixes each pod's distance when it reads the file, so it cannot work out an automatic tube
+radius later. When the tube's radius is automatic, hpr uses the number OpenRocket cached for it and
+warns that it did. With nothing cached, the pod set is left out. A method hpr does not know is
+read as `relative`, and a missing `radiusoffset` as touching the tube, each with a warning.
 
-**A flipped nose cone** is a tail cone, and hpr reads it as one: a transition from the nose's base
-radius to a point. Its base is forward, so an automatic radius takes the part ahead of it. With one
-end a point, a clipped and an unclipped transition are the same whole nose shape
-([shapes](../physics/shapes.md)). The only one in the corpus closes a pod.
+**What it weighs.** On the probes (`pods_weigh_as_openrocket_s`), mass is within 1.2 parts in 10⁷
+of OpenRocket's, the centre of mass within 1.1 parts in 10⁷ and the roll inertia within 2 parts in
+10⁹. OpenRocket gives one pitch inertia for both pitch axes. It matches hpr's inertia about `x_B`
+(OpenRocket's `y`) to 6.1 parts in 10⁷. With one or two pods the rocket is not the same both ways,
+so hpr's inertia about `y_B` differs from that one number, by 0.3% to 1.0% on the probes; hpr's is
+the true inertia about that axis. With three pods the two agree.
+
+**A flipped nose cone**, anywhere in a design, is a tail cone, and hpr reads it as one: a
+transition from the nose's base radius to a point. Its base is forward, so an automatic radius
+takes the part ahead of it. With one end a point, a clipped and an unclipped transition are the
+same whole nose shape ([shapes](../physics/shapes.md)). The only one in the corpus closes a pod.
 
 **Left out, with a reason.** A pod set is left out with a `Skipped` warning when hpr cannot lay it
-out: when it holds no nose cone, body tube or transition, or when a pod holds a part of no length.
-OpenRocket users draw a tube of no length to hang fins off the axis, as winglets; hpr sits fins on
-a tube's surface, along its length. A pod set on anything but a body tube, and one inside a pod,
-are left out too. Reading those pods is [M1.13b2](../decisions-and-roadmap.md#m1-13b2).
+out: it holds no nose cone, body tube or transition; a pod holds a part of no length; its pods'
+radii are all automatic; the tube's radius is automatic with nothing cached; or the distance comes
+out negative. OpenRocket users draw a tube of no length to hang fins off the axis, as winglets;
+hpr sits fins on a tube's surface, along its length. A pod set on anything but a body tube, and one
+inside a pod, are left out too; the corpus has neither. A part directly inside a pod set that is
+not a nose cone, body tube or transition is left out on its own. An override on a pod set is its
+pods' total, since a pod set weighs nothing of its own. Reading the pods of no length and the
+empty pod set is [M1.13b2](../decisions-and-roadmap.md#m1-13b2).
 
 `cargo xtask ork` counts them. On the corpus, 2026-09-27:
 
@@ -908,8 +920,10 @@ are left out too. Reading those pods is [M1.13b2](../decisions-and-roadmap.md#m1
 | left out: a pod with a part of no length | 3 |
 | left out: no nose cone, body tube or transition in it | 1 |
 
-The public example *Pods--powered with recovery deployment* now weighs within 1% of OpenRocket; it
-was 12.5% light with its pods left out.
+`cargo xtask ork` on 2026-09-27 also weighs each design against OpenRocket 24.12. The public example *Pods--powered with recovery
+deployment*'s mass is now within 1% of OpenRocket's; it was 12.5% light with its pods left out.
+*Pods--airframes and winglets* still leaves its winglet pod out, and its roll inertia is 1.78%
+below OpenRocket's.
 
 ### What is left out, and why
 

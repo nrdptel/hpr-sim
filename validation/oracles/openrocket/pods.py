@@ -5,7 +5,9 @@ A `.ork` pod set writes its pods' count (`instancecount`), their distance from t
 its position along its tube. No published document says what a `radiusoffset` of each method is
 measured from, so this script asks OpenRocket (M1.13b): it has OpenRocket read small probe
 designs, each a pod set on the conventions probe's body tube (50 mm in radius) holding a short nose
-and a tube 10 mm in radius (one with a wider tube between them), and records every pod set's
+and a tube 10 mm in radius (two with a wider tube between them, one of those with the nose's radius
+stated and another narrow tube first, so that the widest part is neither the first part, the first
+tube nor the last), and records every pod set's
 resolved radius, angle and instance offsets, where the parts inside a pod sit (their component
 locations), and the structure's mass properties with its per-part breakdown. hpr's tests in
 `hpr_validate` read the same documents and hold hpr to them.
@@ -53,9 +55,16 @@ POD_WIDE_TUBE = (
     f"<bodytube><name>Pod wide tube</name><id>{conventions.uid(13)}</id><length>0.1</length>"
     f"<thickness>0.001</thickness><radius>0.015</radius>{conventions.MATERIAL}</bodytube>"
 )
+POD_STATED_NOSE = POD_NOSE.replace("<aftradius>auto</aftradius>", "<aftradius>0.01</aftradius>")
+POD_FIRST_TUBE = (
+    f"<bodytube><name>Pod first tube</name><id>{conventions.uid(14)}</id><length>0.05</length>"
+    f"<thickness>0.001</thickness><radius>0.01</radius>{conventions.MATERIAL}</bodytube>"
+)
 
 
-def pod_set(count, radius, radius_method, angle, angle_method="relative", axial="0.1", more=""):
+def pod_set(
+    count, radius, radius_method, angle, angle_method="relative", axial="0.1", more="", nose=POD_NOSE
+):
     """A pod set of `count` pods, each the nose and tube above, placed as the arguments say."""
     return (
         f"<podset><name>Pods</name><id>{conventions.uid(10)}</id>"
@@ -63,7 +72,7 @@ def pod_set(count, radius, radius_method, angle, angle_method="relative", axial=
         f'<radiusoffset method="{radius_method}">{radius}</radiusoffset>'
         f'<angleoffset method="{angle_method}">{angle}</angleoffset>'
         f'<axialoffset method="top">{axial}</axialoffset>'
-        f"<subcomponents>{POD_NOSE}{more}{POD_TUBE}</subcomponents></podset>"
+        f"<subcomponents>{nose}{more}{POD_TUBE}</subcomponents></podset>"
     )
 
 
@@ -76,6 +85,9 @@ PROBES = {
     "two pods, relative 0.02, at 30 fixed": pod_set(2, "0.02", "relative", "30.0", "fixed"),
     "two pods, relative 0.02, at 30, a wider tube between": pod_set(
         2, "0.02", "relative", "30.0", more=POD_WIDE_TUBE
+    ),
+    "two pods, relative 0.02, at 30, a stated nose, a tube, a wider tube, a tube": pod_set(
+        2, "0.02", "relative", "30.0", more=POD_FIRST_TUBE + POD_WIDE_TUBE, nose=POD_STATED_NOSE
     ),
     "two pods, relative 0.02, at 30 mirror_xy": pod_set(2, "0.02", "relative", "30.0", "mirror_xy"),
 }
