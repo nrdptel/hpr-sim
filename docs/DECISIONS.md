@@ -7670,8 +7670,8 @@ under a state that carries across, the nose tip's.
    way down. The parts a release refuses are a shift's: a body component or an external one, one
    copy of a cluster's, a part that holds a motor, a part in a stage, or inside a component, whose
    overridden mass covers it; and a part released twice or inside another that is released, a
-   part with no mass, and releases that would leave the rest none. It is refused on the pad or
-   the rail, where the part has nowhere to go.
+   part with no mass, and releases that would leave the airframe none, its motors aside. It is
+   refused on the pad or the rail, where the part has nowhere to go.
 2. **The rest flies on by a vehicle swap**, as at a powered separation: the stack's structure
    loses the part (`MassProperties::without_part`, the parallel-axis theorem run backwards), the
    state carries straight across, and the integrator restarts at the same instant. The
@@ -7688,20 +7688,27 @@ under a state that carries across, the nose tip's.
    time cap, in `FlightResult::released`. A point mass drops the part's own spin, `I_p ω`; its
    share of the angular momentum is stated with the test. hpr's tumble model needs body tubes and
    fins, so the area is the user's; the docs point to that model's body term, `0.56` of the side
-   profile, as a start. A zero area (a fall as if in a vacuum) is refused. A part let go already
-   at or below the ground has landed.
+   profile, as a start. A zero area (a fall as if in a vacuum) is refused.
 5. **The flight has one apogee.** The rest's centre sits apart from the rocket's, so on a flight
    that turns it can rise for a moment after the rocket's apogee (review found a second `Apogee`
    8 ms later off an 85° rail), or already be falling when a part leaves just before it. Once a
    part has left and an apogee is recorded, the flight stops watching for one; a release that
    leaves the rest falling before any apogee makes the apogee, and fires the devices waiting for
-   it, there.
-6. **The optimum-delay flight holds a release, or a shift, fired by a motor's delay**, with the
+   it, there. A release on the apogee fires on the recorded one, as a device does, and the
+   releases are scanned again until no part leaves, so a part waiting for the apogee leaves at
+   it however the others move the rest's centre (re-review found a second one riding to the
+   ground).
+6. **A release can land the rest.** A part let go just above the ground, forward of the centre
+   of a rocket falling nose up, can step the rest's centre to or below the ground, which a
+   crossing from above never sees (re-review found the flight running underground to the time
+   cap); the rocket has then landed at the release. A part let go at or below the ground has
+   landed too.
+7. **The optimum-delay flight holds a release, or a shift, fired by a motor's delay**, with the
    charge that fires it (review found the optimum delay moving from 13.53 s to 12.62 s with the
    delay flown). Releases and shifts on other triggers still happen in it.
-7. **No release with a separation, ejections or mass shifts**, in either order: their pieces and
+8. **No release with a separation, ejections or mass shifts**, in either order: their pieces and
    parts are fixed before the flight with every part where the design puts it.
-8. **`Simulation::mass_properties(flight, t)`** leaves out a part released at or before `t`,
+9. **`Simulation::mass_properties(flight, t)`** leaves out a part released at or before `t`,
    taking parts out in the order the flight did.
 
 **Consequences.**

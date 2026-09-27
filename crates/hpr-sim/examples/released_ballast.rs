@@ -136,7 +136,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         margin_after - margin_before
     );
     println!(
-        "                       by hand −Δ/d = −{aft_m:.4} / {d_m:.4} = {:.3} cal",
+        "                       by hand −Δ/d = −{aft_m:.5} / {d_m:.5} = {:.3} cal",
         -aft_m / d_m
     );
 

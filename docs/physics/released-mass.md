@@ -20,12 +20,11 @@
 - **What it leaves out:** a push that throws the part out; a release in a flight that also
   separates, ejects pieces or moves a mass; a release before the rocket leaves the rail;
   parachutes on the part; and the part's own spin once it is out. Where and how fast the part
-  lands depends on its [drag area](../glossary.md#drag-area), which you give.
-- **Check the margin yourself.** Dropping a part forward of the centre of mass moves the centre
-  aft, 1.7 [calibres](../glossary.md#calibre-caliber) in the example below. hpr does not warn when
-  a release leaves the rocket unstable; read the
-  [stability margin](../glossary.md#stability-margin) from the flight's metrics
-  ([Flight metrics](metrics.md#stability-margins)).
+  lands depends on its [drag area](../glossary.md#drag-area), which you give. hpr doesn't warn
+  when a release leaves the rocket unstable: dropping a part forward of the centre of mass moves
+  the centre aft, and the [stability margin](../glossary.md#stability-margin) falls by 1.683
+  [calibres](../glossary.md#calibre-caliber) in the example below. Read it from the flight's
+  metrics ([Flight metrics](metrics.md#stability-margins)).
 
 ## Describing a release
 
@@ -42,6 +41,7 @@ inside the airframe, such as a mass component or an inner tube
 ([Rocket design: the tree](design.md#the-tree)). These are refused, each with an error that names
 the part and the rule:
 
+- an `id` that names no component;
 - a body component (a nose cone, a tube, a transition), or a part outside the airframe (fins, rail
   buttons);
 - one of several copies in a [cluster](../glossary.md#cluster) of tubes;
@@ -50,11 +50,11 @@ the part and the rule:
   component around it that includes it, because the override doesn't say how much of the mass is
   the part's;
 - a part released twice, or inside another part that is released;
-- a part with no mass;
+- a part with no mass, or releases that would leave the airframe, its motors aside, with none;
 - a drag area that is zero, negative or not finite. A part with no drag would fall as if in a
   vacuum, which is a wrong number rather than a model;
 - a trigger a parachute couldn't have either: a time before launch, a height that isn't positive,
-  a motor that isn't there, has no ejection delay, or never lights.
+  a motor that isn't there, has no ejection delay, or is set to fail to light.
 
 A release that would come on the pad or the rail makes `Simulation::run` return an error, with no
 flight: the part has nowhere to go. A flight can't combine a release with a separation, ejected
@@ -93,15 +93,23 @@ rest's centre goes on at `v_O + ω × cg'`. Nothing pushes the two apart, so eve
 keeps its velocity: once the motor has burned out, the rest's momentum plus the part's is the
 rocket's just before, and the same holds for the angular momentum.
 
-While a motor burns, the centre of mass also moves along the airframe as propellant burns, and the
-reported centre-of-mass velocity includes that drift. The drift steps with the release, so the
-reported momenta then differ by the burning rate times the step in the centre, `Ṁ (cg' − cg)`,
-turned into the launch frame. Every material point still keeps its velocity.
+While the motor burns, the centre of mass drifts along the airframe as propellant is used, and the
+reported centre-of-mass velocity includes that drift. A release steps the centre by `cg' − cg`, so
+the drift's share of the velocity steps too. The reported momenta then differ by
+`Ṁ (cg' − cg)`, with `Ṁ` the propellant's mass flow, turned into the
+[launch frame](../glossary.md#launch-frame-enu). No part of the rocket changes its velocity; only
+the reported centre does.
 
 **The flight has one apogee.** The rest's centre is not where the rocket's was, so on a flight
 that turns, it can rise for a moment after the rocket's apogee, or already be falling when a part
 leaves just before it. The flight records one [apogee](../glossary.md#apogee): the rocket's, or
-the release itself when the rest is already falling there.
+the release itself when it leaves the rest already falling. A part let go at apogee leaves at
+that one, even when another part leaving first sets the rest rising again. A flight started part
+way (`Simulation::run_free`) after the rocket's apogee records the first apogee it sees.
+
+**The rest can land at the release.** A part let go just above the ground, forward of the centre
+of mass of a rocket falling nose up, steps the rest's centre down, to the ground or below it. The
+rocket has then landed, at the release.
 
 ## The part's fall
 
@@ -117,13 +125,14 @@ gravity and `a_Coriolis` the [Coriolis acceleration](../glossary.md#coriolis-acc
 falls from its release to the ground or to the flight's time cap (`FlightSettings::max_time_s`).
 If it left climbing, its own apogee is recorded.
 
-The drag area is yours to give. For a part tumbling at random, the tumble model hpr uses for a
-whole airframe gives a body `0.56` times its side profile, its diameter times its length
-([Recovery: tumble](recovery.md#tumble)); half the `1.12` of a cylinder broadside. That model was
-fitted to whole rockets, not small parts, so treat it as a starting point. hpr doesn't build it
-for you, because it needs the part's body tubes and fins, and a released part has neither. If
-the part carries a parachute, give the parachute's drag area; it is taken as open from the
-instant the part leaves.
+The drag area is yours to give. For a part tumbling at random, the tumble model's body term gives
+`0.56` times its side profile, its diameter times its length
+([Recovery: tumble](recovery.md#tumble)). That is half the `1.12` of a cylinder broadside. It was
+fitted to whole rockets 44 to 103 mm across falling at 5 to 6.6 m/s, and its one drop test without
+fins wanted 0.79, which gives a speed 16% lower. So treat a tumbling part's landing speed as
+uncertain by at least that much. hpr doesn't build the area for you, because its tumble model
+needs body tubes and fins, and a released part has neither. If the part carries a parachute, give
+the parachute's drag area; it is taken as open from the instant the part leaves.
 
 ## Reading a release back
 
@@ -143,8 +152,9 @@ flies the project's 54 mm test design
 ([`synthetic-54mm-three-fin.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/designs/synthetic-54mm-three-fin.json),
 a body 56.3 mm across) on an I175 motor
 ([motor designation](../glossary.md#motor-designation)), with 200 g of ballast in its airframe: a
-cylinder 50 mm long and 30 mm across, on the axis, its centre 0.375 m aft of the nose tip. A drogue
-with a drag area of 0.3 m² opens at apogee. At 5 s, well after the 2.5 s burn, the ballast is let
+cylinder 50 mm long and 30 mm across, on the axis, its centre 0.375 m aft of the nose tip. It flies
+in calm standard air from a site in New Mexico 1,400 m up, and a drogue with a drag area of 0.3 m²
+opens at apogee. At 5 s, well after the 2.5 s burn, the ballast is let
 go to tumble down under `0.56 × 0.05 × 0.03 = 0.00084` m², the tumble model's body term.
 
 In the table the transverse inertia is about an axis across the rocket through its centre of
@@ -156,8 +166,9 @@ mass, the one it pitches about. What the example prints:
 | 6.00 | 0.6188 | 0.7628 | 0.07277 |
 
 By hand, the rest's centre is at `(0.8188 × 0.6681 − 0.2 × 0.375) / 0.6188 = 0.7628` m aft of the
-tip. It moves 0.0947 m aft, because the ballast sat forward of the centre, and the static margin
-falls by `0.0947 / 0.0563 = 1.683` calibres, from 4.297 to 2.615: still stable.
+tip. It moves 0.09474 m aft, because the ballast sat forward of the centre, and the static margin
+falls by `0.09474 / 0.05630 = 1.683` calibres (the body's diameter is 0.05630 m), from 4.297 to
+2.615: still stable.
 
 At the release the rocket carries 131.5839 kg·m/s of upward momentum. Every point of the airframe
 moves at `v_O + ω × r`, so it divides between the rest, 99.4433, and the ballast, 32.1406; the
@@ -173,9 +184,10 @@ free-flight test below checks that the flight keeps it so.
 - **It comes down more slowly** under the same drogue, and so lands later. A terminal speed goes
   as the square root of the mass: `7.07 × √(0.6188 / 0.8188) = 6.15` m/s.
 - **The ballast peaks lower than the rocket**, having more drag for its mass. Its terminal speed
-  at the ground is `√(2 × 0.2 × 9.79 / (1.069 × 0.00084)) = 66.0` m/s, with the air's density
-  1.069 kg/m³ at the site, 1,400 m up. It lands a little faster, 66.74 m/s, because it is still
-  slowing as the air thickens.
+  at the ground is `√(2 × 0.2 × 9.79 / (1.069 × 0.00084)) = 66.0` m/s, with the standard air's
+  density 1.069 kg/m³ at the site, 1,400 m up ([Atmosphere](atmosphere.md)), and gravity
+  9.79 m/s² there ([Gravity](gravity.md)). It lands a little faster, 66.74 m/s, because it is
+  still slowing as the air thickens.
 
 ## How it is checked
 
@@ -191,8 +203,11 @@ test measured, where its comments record one, and in brackets the bound it holds
 | `a_payload_let_go_under_the_drogue_lands_slower_and_falls_at_its_own_speed` | in uniform air, under a drogue, a release at 150 m on the way down: the rest lands at the lighter rocket's terminal speed, the part at its own | (1e-6 m/s) |
 | `a_release_comes_at_apogee_and_a_part_let_go_climbing_has_its_own` | a release at apogee comes at the rocket's apogee; a part let go climbing records its own apogee, then its landing | (1e-6 m/s at its apogee) |
 | `a_release_at_apogee_on_a_tilted_rail_leaves_one_apogee` | off a rail 5° from vertical, in wind, with and without a drogue, the flight records one apogee | exactly one |
-| `a_part_let_go_just_before_apogee_can_make_the_apogee_there` | a release that leaves the rest already falling makes the apogee, and fires the drogue, at the release | exactly one, at the release |
-| `the_optimum_delay_holds_a_release_on_the_motor_s_charge` | a release or a mass shift fired by the motor's ejection charge is held with the charge when hpr works out the optimum delay, so the answer doesn't depend on the delay flown | equal |
+| `a_part_let_go_just_before_apogee_can_make_the_apogee_there` | a release that leaves the rest already falling makes the apogee, and fires the drogue, at the release; a part waiting for the apogee leaves there too | exactly one, at the release |
+| `parts_waiting_for_the_apogee_all_leave_at_it` | two parts let go at apogee off the tilted rail, listed either way round, both leave at the flight's one apogee | exactly one |
+| `a_release_that_puts_the_rest_on_the_ground_lands_it` | under a drogue, a release 5 cm above the ground steps the rest's centre below it: the rocket lands at the release | at the release |
+| `the_optimum_delay_holds_a_release_on_the_motor_s_charge` | a release or a mass shift fired by the motor's ejection charge is held with the charge when hpr works out the [optimum delay](metrics.md#optimum-ejection-delay) (the delay that fires the charge at apogee), so the answer doesn't depend on the delay flown | equal |
+| `a_release_and_its_flight_read_back_as_written` | a release, and a flight with a released part, write to JSON and read back unchanged | equal |
 | `a_part_let_go_at_the_ground_has_landed` | a part let go as the rocket hits the ground, already at or below it, has landed | — |
 
 In the free-flight test the ballast leaves 0.146 m/s away from the rocket centre's velocity,

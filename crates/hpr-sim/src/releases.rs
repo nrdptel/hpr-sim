@@ -33,8 +33,8 @@ use crate::shifts::{NotAPart, NotCarried, check_carried, inside, locate_part};
 /// It can't be a body component or an external one, one copy of a cluster's, or hold a motor.
 /// Its mass can't be under an override: not its stage's, and not one on a component around it
 /// that covers what that component holds, since the override doesn't say how much of the mass is
-/// the part's. It must have mass, and leave some behind. A part can be released once, and not from
-/// inside another part that is released.
+/// the part's. It must have mass, and leave the airframe some, motors aside. A part can be released
+/// once, and not from inside another part that is released.
 ///
 /// The drag area `C_D S` is the part's own once it is out, m²: a tumbling weight's, or its
 /// parachute's taken as open at once. It must be positive: a part with none would fall as if in a
@@ -116,7 +116,7 @@ impl Releases {
     /// # Errors
     ///
     /// [`SimError::MassRelease`] for a part that can't be released ([`MassRelease`] says which) or
-    /// that has no mass, or releases that would leave the rest of the rocket none, and
+    /// that has no mass, or releases that would leave the airframe none, its motors aside, and
     /// [`SimError::Domain`] for a drag area that is not positive and finite.
     pub(crate) fn new(
         rocket: &Rocket,
@@ -211,7 +211,7 @@ impl Releases {
             rest_kg -= part.mass_kg;
             if rest_kg <= 0.0 {
                 return Err(refuse(
-                    "a mass release that leaves the rest of the rocket with no mass",
+                    "a mass release that leaves the airframe, its motors aside, with no mass",
                     &release.component,
                 ));
             }
@@ -661,7 +661,7 @@ mod tests {
         assert!(nose > 1e-3 && centre > 1e-3, "{nose:e}, {centre:e}");
         // The part's own spin, which a point mass doesn't carry on, against the rocket's:
         // measured 1.5e-3.
-        assert!(part_spin.length() / angular0.length() < 1e-2);
+        assert!(part_spin.length() / angular0.length() < 3e-3);
 
         // A flight that starts after the release starts without the part, and records nothing.
         let later = sim.run_free(t0 + 1.0, state, &mut ()).unwrap();
@@ -1072,65 +1072,154 @@ mod tests {
     fn a_part_let_go_just_before_apogee_can_make_the_apogee_there() {
         // In a vacuum, the rocket pitched 45° and turning about a transverse axis, its centre
         // rising at half the speed the release adds to the rest's centre downward (ω × Δ, Δ the
-        // centre's step aft). Before the part leaves the rocket is still rising; after, the rest
-        // is already falling, so the apogee, and the drogue it fires, are at the release.
+        // centre's step aft). Before the ballast leaves the rocket is still rising; after, the
+        // rest is already falling, so the apogee, and the drogue it fires, are at the release.
+        // With a second part waiting for the apogee, listed first, it leaves there too.
         let t0 = 10.0;
         let tilted = Rail {
             elevation_rad: 45f64.to_radians(),
             ..Rail::vertical(3.0)
         };
-        let drogue = Device::new(
+        let timed = release(Trigger::Time { time_s: t0 });
+        let waiting = MassRelease::new(Trigger::Apogee, "sleeve", PART_DRAG_AREA_M2);
+        for (rocket, releases) in [
+            (with_ballast(0.0), vec![timed.clone()]),
+            (with_sleeve(), vec![waiting, timed]),
+        ] {
+            let drogue = Device::new(
+                "drogue",
+                DeviceDrag::DragArea { cd_s_m2: 0.3 },
+                Trigger::Apogee,
+            );
+            let count = releases.len();
+            let sim = simulation(
+                &rocket,
+                UniformAir::vacuum(),
+                G,
+                FlightSettings {
+                    max_time_s: t0 + 2.0,
+                    accept_design_errors: true,
+                    ..FlightSettings::default()
+                },
+            )
+            .with_recovery(vec![drogue])
+            .unwrap()
+            .with_releases(releases)
+            .unwrap();
+            let attitude = tilted.attitude();
+            let whole = sim.assembly().mass_properties(t0);
+            let rest = whole.without_part(&ballast(&sim));
+            let step = rest.cg_m - whole.cg_m;
+            let up = |omega: DVec3| attitude.mul_vec3(omega.cross(step)).z;
+            let omega = if up(DVec3::X) < 0.0 {
+                DVec3::X
+            } else {
+                -DVec3::X
+            };
+            let jump = up(omega);
+            assert!(jump < -0.02, "{jump}");
+            let cg_velocity = DVec3::new(2.0, 0.0, -0.5 * jump);
+            let state = State {
+                position_enu_m: DVec3::new(0.0, 0.0, 1000.0) - attitude.mul_vec3(whole.cg_m),
+                velocity_enu_m_s: cg_velocity - attitude.mul_vec3(omega.cross(whole.cg_m)),
+                attitude,
+                body_rate_rad_s: omega,
+            };
+            let result = sim.run_free(t0, state, &mut ()).unwrap();
+            let timed_index = count - 1;
+            let left = result
+                .event(EventKind::MassRelease(timed_index))
+                .unwrap()
+                .sample;
+            assert!(left.vertical_speed_m_s > 0.0, "{left:?}");
+            assert_eq!(apogees(&result), 1, "{:?}", result.events);
+            let apogee = result.event(EventKind::Apogee).unwrap().sample;
+            assert_eq!(apogee.time_s, t0);
+            assert!(apogee.vertical_speed_m_s < 0.0, "{apogee:?}");
+            close(
+                apogee.mass_kg,
+                rest.mass_kg,
+                1e-15,
+                "the rest's mass at the apogee",
+            );
+            let fired = result.event(EventKind::Trigger(0)).unwrap().sample.time_s;
+            assert_eq!(fired, t0);
+            // Every part left at the apogee.
+            assert_eq!(result.released.len(), count);
+            for flown in &result.released {
+                assert_eq!(flown.start_sample.time_s, t0);
+            }
+        }
+    }
+
+    #[test]
+    fn parts_waiting_for_the_apogee_all_leave_at_it() {
+        // Off a rail 5° from vertical, in wind, two parts both let go at apogee, listed either
+        // way round. The first leaving sets the rest's centre rising for a moment; the second
+        // still leaves at the flight's one apogee.
+        let rail = Rail {
+            elevation_rad: 85f64.to_radians(),
+            ..Rail::vertical(3.0)
+        };
+        let at_apogee = |id: &str| MassRelease::new(Trigger::Apogee, id, PART_DRAG_AREA_M2);
+        for ids in [["ballast", "sleeve"], ["sleeve", "ballast"]] {
+            let result = Simulation::new(
+                &with_sleeve(),
+                "i175",
+                crate::testing::analytic_wind_environment(
+                    UniformAir::sea_level(),
+                    G,
+                    hpr_atmos::ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap(),
+                ),
+                rail,
+                FlightSettings {
+                    accept_design_errors: true,
+                    ..FlightSettings::default()
+                },
+            )
+            .unwrap()
+            .with_releases(ids.iter().map(|id| at_apogee(id)).collect())
+            .unwrap()
+            .run(&mut ())
+            .unwrap();
+            assert_eq!(apogees(&result), 1, "{ids:?}");
+            let apogee = result.event(EventKind::Apogee).unwrap().sample.time_s;
+            assert_eq!(result.released.len(), 2, "{ids:?}");
+            for flown in &result.released {
+                assert_eq!(flown.start_sample.time_s, apogee, "{ids:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_release_that_puts_the_rest_on_the_ground_lands_it() {
+        // Straight down under a drogue with its attitude frozen nose up, the rocket lets its
+        // ballast go 5 cm above the ground. The ballast sat forward of the centre, so the rest's
+        // centre steps 9.5 cm down, below the ground: the rocket has landed there.
+        let sim = simulation(
+            &with_ballast(0.0),
+            UniformAir::sea_level(),
+            G,
+            FlightSettings::default(),
+        )
+        .with_recovery(vec![Device::new(
             "drogue",
             DeviceDrag::DragArea { cd_s_m2: 0.3 },
             Trigger::Apogee,
-        );
-        let sim = simulation(
-            &with_ballast(0.0),
-            UniformAir::vacuum(),
-            G,
-            FlightSettings {
-                max_time_s: t0 + 2.0,
-                ..FlightSettings::default()
-            },
-        )
-        .with_recovery(vec![drogue])
+        )])
         .unwrap()
-        .with_releases(vec![release(Trigger::Time { time_s: t0 })])
+        .with_releases(vec![release(Trigger::Altitude {
+            height_above_ground_m: 0.05,
+        })])
         .unwrap();
-        let attitude = tilted.attitude();
-        let whole = sim.assembly().mass_properties(t0);
-        let rest = whole.without_part(&ballast(&sim));
-        let step = rest.cg_m - whole.cg_m;
-        let up = |omega: DVec3| attitude.mul_vec3(omega.cross(step)).z;
-        let omega = if up(DVec3::X) < 0.0 {
-            DVec3::X
-        } else {
-            -DVec3::X
-        };
-        let jump = up(omega);
-        assert!(jump < -0.05, "{jump}");
-        let cg_velocity = DVec3::new(2.0, 0.0, -0.5 * jump);
-        let state = State {
-            position_enu_m: DVec3::new(0.0, 0.0, 1000.0) - attitude.mul_vec3(whole.cg_m),
-            velocity_enu_m_s: cg_velocity - attitude.mul_vec3(omega.cross(whole.cg_m)),
-            attitude,
-            body_rate_rad_s: omega,
-        };
-        let result = sim.run_free(t0, state, &mut ()).unwrap();
+        let result = sim.run(&mut ()).unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
         let left = result.event(EventKind::MassRelease(0)).unwrap().sample;
-        assert!(left.vertical_speed_m_s > 0.0, "{left:?}");
-        assert_eq!(apogees(&result), 1, "{:?}", result.events);
-        let apogee = result.event(EventKind::Apogee).unwrap().sample;
-        assert_eq!(apogee.time_s, t0);
-        assert!(apogee.vertical_speed_m_s < 0.0, "{apogee:?}");
-        close(
-            apogee.mass_kg,
-            rest.mass_kg,
-            1e-15,
-            "the rest's mass at the apogee",
-        );
-        let fired = result.event(EventKind::Trigger(0)).unwrap().sample.time_s;
-        assert_eq!(fired, t0);
+        close(left.height_above_ground_m, 0.05, 1e-6, "the release height");
+        let landed = result.event(EventKind::GroundHit).unwrap().sample;
+        assert_eq!(landed.time_s, left.time_s);
+        assert!(landed.height_above_ground_m <= 0.0, "{landed:?}");
+        assert_eq!(result.released[0].termination, Termination::GroundHit);
     }
 
     #[test]
@@ -1295,7 +1384,9 @@ mod tests {
         hollow.stages[0].components.iter_mut().for_each(weightless);
         let (what, id) = release_refusal(lenient(&hollow), vec![release(Trigger::Apogee)]);
         assert!(
-            what.starts_with("a mass release that leaves the rest of the rocket with no mass"),
+            what.starts_with(
+                "a mass release that leaves the airframe, its motors aside, with no mass"
+            ),
             "{what}"
         );
         assert_eq!(id, "ballast");

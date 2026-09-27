@@ -1305,104 +1305,114 @@ impl Simulation {
             // Mass releases: one whose time is known comes at that stop time; the flight watches
             // for the apogee and the heights of the rest, as it does for a device's. The part
             // leaves with the velocity its centre had in the airframe, the stack flies on from
-            // the same state without it, and the part falls on its own.
-            // The rocket's vertical speed just before the first part left in this pass.
-            let mut rising: Option<f64> = None;
-            for (index, gone) in released.iter_mut().enumerate() {
-                if *gone {
-                    continue;
-                }
-                let stack = lightened.as_ref().unwrap_or(&self.vehicle);
-                let window = (t, next_stop(&stops, t, cap));
-                let area = self.ascent_drag_area_m2(&run, t);
-                let leaves = match self.release_times_s[index] {
-                    Some(time_s) => t >= time_s,
-                    None if matches!(phase, Phase::Free | Phase::Descent) => {
-                        match self.releases[index].trigger {
-                            // At or past the apogee, as a device's apogee trigger is.
-                            Trigger::Apogee => {
-                                self.evaluate(stack, phase, window, t, &y, area)?
-                                    .vertical_speed_m_s
-                                    <= 0.0
-                            }
-                            Trigger::Altitude {
-                                height_above_ground_m,
-                            } => {
-                                let e = self.evaluate(stack, phase, window, t, &y, area)?;
-                                e.vertical_speed_m_s < 0.0
-                                    && e.height_above_ground_m <= height_above_ground_m
-                            }
-                            Trigger::Time { .. }
-                            | Trigger::MotorDelay { .. }
-                            | Trigger::Burnout { .. } => false,
-                        }
+            // the same state without it, and the part falls on its own. The passes repeat until
+            // no part leaves, since a release can make the apogee another release waits for.
+            let mut landed: Option<Sample> = None;
+            loop {
+                let apogee_passed = events.iter().any(|event| event.kind == EventKind::Apogee);
+                // The rocket's vertical speed just before the first part left in this pass.
+                let mut rising: Option<f64> = None;
+                for (index, gone) in released.iter_mut().enumerate() {
+                    if *gone {
+                        continue;
                     }
-                    None => false,
-                };
-                if !leaves {
-                    continue;
+                    let stack = lightened.as_ref().unwrap_or(&self.vehicle);
+                    let window = (t, next_stop(&stops, t, cap));
+                    let area = self.ascent_drag_area_m2(&run, t);
+                    let leaves = match self.release_times_s[index] {
+                        Some(time_s) => t >= time_s,
+                        None if matches!(phase, Phase::Free | Phase::Descent) => {
+                            match self.releases[index].trigger {
+                                // At the flight's apogee, as a device's apogee trigger is, or
+                                // past one it didn't see (a flight started falling).
+                                Trigger::Apogee => {
+                                    apogee_passed
+                                        || self
+                                            .evaluate(stack, phase, window, t, &y, area)?
+                                            .vertical_speed_m_s
+                                            <= 0.0
+                                }
+                                Trigger::Altitude {
+                                    height_above_ground_m,
+                                } => {
+                                    let e = self.evaluate(stack, phase, window, t, &y, area)?;
+                                    e.vertical_speed_m_s < 0.0
+                                        && e.height_above_ground_m <= height_above_ground_m
+                                }
+                                Trigger::Time { .. }
+                                | Trigger::MotorDelay { .. }
+                                | Trigger::Burnout { .. } => false,
+                            }
+                        }
+                        None => false,
+                    };
+                    if !leaves {
+                        continue;
+                    }
+                    if matches!(phase, Phase::Pad | Phase::Rail) {
+                        // On the pad or the rail the part has nowhere to go.
+                        return Err(SimError::Domain {
+                            what: "time of a mass release, s (it must come once the rocket has left \
+                                   the rail)",
+                            value: t,
+                        });
+                    }
+                    let sample = self.sample(stack, phase, window, t, &y, area)?;
+                    record(&mut events, observer, EventKind::MassRelease(index), sample);
+                    rising.get_or_insert(sample.vertical_speed_m_s);
+                    // Its centre, and the velocity that point had: `v_O + ω × c` in `L` (the body
+                    // rates are zero in the descent, whose attitude is frozen).
+                    let part = self.release_parts.part(index);
+                    let state = State::from_array(&y);
+                    let omega = if phase == Phase::Free {
+                        state.body_rate_rad_s
+                    } else {
+                        DVec3::ZERO
+                    };
+                    let velocity_enu_m_s = state.velocity_enu_m_s
+                        + state.unit_attitude().mul_vec3(omega.cross(part.cg_m));
+                    released_flights.push(self.fly_released(
+                        index,
+                        t,
+                        (state.point_enu_m(part.cg_m), velocity_enu_m_s),
+                        part.mass_kg,
+                    )?);
+                    lighten(
+                        &mut lightened
+                            .get_or_insert_with(|| self.vehicle.clone())
+                            .assembly,
+                        part,
+                    );
+                    *gone = true;
                 }
-                if matches!(phase, Phase::Pad | Phase::Rail) {
-                    // On the pad or the rail the part has nowhere to go.
-                    return Err(SimError::Domain {
-                        what: "time of a mass release, s (it must come once the rocket has left \
-                               the rail)",
-                        value: t,
-                    });
-                }
-                let sample = self.sample(stack, phase, window, t, &y, area)?;
-                record(&mut events, observer, EventKind::MassRelease(index), sample);
-                rising.get_or_insert(sample.vertical_speed_m_s);
-                // Its centre, and the velocity that point had: `v_O + ω × c` in `L` (the body
-                // rates are zero in the descent, whose attitude is frozen).
-                let part = self.release_parts.part(index);
-                let state = State::from_array(&y);
-                let omega = if phase == Phase::Free {
-                    state.body_rate_rad_s
-                } else {
-                    DVec3::ZERO
+                let (Some(rising), Some(stack)) = (rising, lightened.as_ref()) else {
+                    break;
                 };
-                let velocity_enu_m_s =
-                    state.velocity_enu_m_s + state.unit_attitude().mul_vec3(omega.cross(part.cg_m));
-                released_flights.push(self.fly_released(
-                    index,
-                    t,
-                    (state.point_enu_m(part.cg_m), velocity_enu_m_s),
-                    part.mass_kg,
-                )?);
-                lighten(
-                    &mut lightened
-                        .get_or_insert_with(|| self.vehicle.clone())
-                        .assembly,
-                    part,
-                );
-                *gone = true;
-            }
-            if let Some(rising) = rising {
                 // The mass steps here, so the integrator starts afresh from the same state: the
                 // nose tip's, which the stack keeps.
                 integrator.reset(t, y)?;
+                let window = (t, next_stop(&stops, t, cap));
+                let area = self.ascent_drag_area_m2(&run, t);
+                let sample = self.sample(stack, phase, window, t, &y, area)?;
+                if sample.height_above_ground_m <= 0.0 {
+                    // The rest's centre stepped to the ground or below it, which the ground
+                    // event, a crossing from above, would never see: it has landed.
+                    landed = Some(sample);
+                    break;
+                }
                 // The rest's centre moves at `v_O + ω × cg'`, not as the rocket's did: a part let
                 // go just before the apogee can leave it already falling, and the apogee the
                 // flight watches for, its vertical speed falling through zero, is then here.
-                if let Some(stack) = lightened.as_ref().filter(|_| {
-                    rising > 0.0
-                        && matches!(phase, Phase::Free | Phase::Descent)
-                        && events.iter().all(|event| event.kind != EventKind::Apogee)
-                }) {
-                    let window = (t, next_stop(&stops, t, cap));
-                    let area = self.ascent_drag_area_m2(&run, t);
-                    let sample = self.sample(stack, phase, window, t, &y, area)?;
-                    if sample.vertical_speed_m_s <= 0.0 {
-                        self.reach_apogee(
-                            sample,
-                            &mut run,
-                            (&mut stops, cap),
-                            &mut events,
-                            observer,
-                        );
-                    }
+                if rising > 0.0
+                    && sample.vertical_speed_m_s <= 0.0
+                    && events.iter().all(|event| event.kind != EventKind::Apogee)
+                {
+                    self.reach_apogee(sample, &mut run, (&mut stops, cap), &mut events, observer);
                 }
+            }
+            if let Some(sample) = landed {
+                record(&mut events, observer, EventKind::GroundHit, sample);
+                break Termination::GroundHit;
             }
             let vehicle = sustainer
                 .as_ref()

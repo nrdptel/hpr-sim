@@ -7,7 +7,7 @@ time (s)   mass (kg)   centre of mass (m aft of tip)   transverse inertia (kg m�
 by hand                0.6188   (M cg − m c)/(M − m) = (0.8188 × 0.6681 − 0.2 × 0.3750) / 0.6188 = 0.7628
 
 static margin          4.297 cal before, 2.615 after, a change of -1.683
-                       by hand −Δ/d = −0.0947 / 0.0563 = -1.683 cal
+                       by hand −Δ/d = −0.09474 / 0.05630 = -1.683 cal
 
 momentum at 5 s        131.5839 kg m/s up: the rest carries 99.4433, the ballast 32.1406
 
