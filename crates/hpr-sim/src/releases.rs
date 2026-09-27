@@ -33,7 +33,8 @@ use crate::shifts::{NotAPart, NotCarried, check_carried, inside, locate_part};
 /// It can't be a body component or an external one, one copy of a cluster's, or hold a motor.
 /// Its mass can't be under an override: not its stage's, and not one on a component around it
 /// that covers what that component holds, since the override doesn't say how much of the mass is
-/// the part's. A part can be released once, and not from inside another part that is released.
+/// the part's. It must have mass, and leave some behind. A part can be released once, and not from
+/// inside another part that is released.
 ///
 /// The drag area `C_D S` is the part's own once it is out, m²: a tumbling weight's, or its
 /// parachute's taken as open at once. It must be positive: a part with none would fall as if in a
@@ -76,6 +77,7 @@ impl MassRelease {
 
 /// A released part's own flight, from the instant it left the rocket to its landing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ReleasedFlight {
     /// Which release, by its index in the flight's releases ([`crate::Simulation::with_releases`]).
     pub release: usize,
@@ -93,6 +95,14 @@ pub struct ReleasedFlight {
     pub stats: Stats,
 }
 
+impl ReleasedFlight {
+    /// Its first event of `kind`.
+    #[must_use]
+    pub fn event(&self, kind: EventKind) -> Option<&BodyEvent> {
+        self.events.iter().find(|event| event.kind == kind)
+    }
+}
+
 /// A flight's releases: each part that leaves, as the design places it.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Releases {
@@ -105,7 +115,8 @@ impl Releases {
     ///
     /// # Errors
     ///
-    /// [`SimError::Release`] for a part that can't be released ([`MassRelease`] says which), and
+    /// [`SimError::MassRelease`] for a part that can't be released ([`MassRelease`] says which) or
+    /// that has no mass, or releases that would leave the rest of the rocket none, and
     /// [`SimError::Domain`] for a drag area that is not positive and finite.
     pub(crate) fn new(
         rocket: &Rocket,
@@ -113,7 +124,7 @@ impl Releases {
         releases: &[MassRelease],
     ) -> Result<Self, SimError> {
         let components = &assembly.layout.components;
-        let refuse = |what: &'static str, component: &str| SimError::Release {
+        let refuse = |what: &'static str, component: &str| SimError::MassRelease {
             what,
             component: component.to_owned(),
         };
@@ -184,12 +195,28 @@ impl Releases {
                 )
             })?;
         }
-        Ok(Self {
-            parts: indices
-                .iter()
-                .map(|&index| components[index].with_children)
-                .collect(),
-        })
+        let parts: Vec<MassProperties> = indices
+            .iter()
+            .map(|&index| components[index].with_children)
+            .collect();
+        let mut rest_kg = assembly.layout.structure.mass_kg;
+        for (part, release) in parts.iter().zip(releases) {
+            // A part with no mass would fall with no weight to carry it through the air.
+            if !(part.mass_kg.is_finite() && part.mass_kg > 0.0) {
+                return Err(refuse(
+                    "a mass release of a part with no mass",
+                    &release.component,
+                ));
+            }
+            rest_kg -= part.mass_kg;
+            if rest_kg <= 0.0 {
+                return Err(refuse(
+                    "a mass release that leaves the rest of the rocket with no mass",
+                    &release.component,
+                ));
+            }
+        }
+        Ok(Self { parts })
     }
 
     /// Release `index`'s part with everything inside it, where the design puts it, in body axes.
@@ -266,11 +293,20 @@ impl Simulation {
         ];
         let start_sample = self.point_sample(t0, &start, mass_kg, drag_area_m2)?;
         if start_sample.height_above_ground_m <= 0.0 {
-            // The ground event is a falling crossing, so a part that starts below the site would
-            // integrate underground to the time cap.
-            return Err(SimError::Domain {
-                what: "starting height of a released part's centre of mass above the ground",
-                value: start_sample.height_above_ground_m,
+            // Let go as the rocket reaches the ground, with its centre at or below the site: it
+            // has landed. The ground event is a falling crossing, so it would otherwise integrate
+            // underground to the time cap.
+            return Ok(ReleasedFlight {
+                release,
+                start_sample,
+                termination: Termination::GroundHit,
+                events: vec![BodyEvent {
+                    kind: EventKind::GroundHit,
+                    sample: start_sample,
+                    after: None,
+                }],
+                final_sample: start_sample,
+                stats: Stats::default(),
             });
         }
         let mut integrator =
@@ -463,6 +499,23 @@ mod tests {
             assert!(diff <= 1e-15, "{what}: inertia off by {diff:e}");
         }
 
+        // And the design built without the ballast, which shares no arithmetic with either.
+        let mut without = with_ballast(0.01);
+        without.stages[0].components[1]
+            .children
+            .retain(|child| child.id != "ballast");
+        let built = lenient(&without)
+            .assembly()
+            .mass_properties(RELEASE_S + 1.0);
+        let got = sim.mass_properties(&result, RELEASE_S + 1.0);
+        close(got.mass_kg, built.mass_kg, 1e-15, "built without it");
+        close_vec(got.cg_m, built.cg_m, 1e-15, "built without it");
+        let diff = (got.inertia_kg_m2 - built.inertia_kg_m2)
+            .to_cols_array()
+            .iter()
+            .fold(0.0_f64, |most, v| most.max(v.abs()));
+        assert!(diff <= 1e-15, "built without it: inertia off by {diff:e}");
+
         // The flight flew them: each step's mass, and its centre where the rest's is.
         for sample in &ends.0 {
             let expected = if sample.time_s <= RELEASE_S {
@@ -556,16 +609,20 @@ mod tests {
             1e-15,
             "mass",
         );
-        // About the launch frame's origin: `Σ m x × v` plus each body's spin `R I ω`. The part
-        // flies as a point mass, so its own spin, `R I_p ω` at the release, is carried as it was.
+        // About the centre of mass of the rocket, then of the rest and the part together, which
+        // moves at the rocket's velocity `V` from where the rocket's centre was at the release:
+        // `Σ m (x − X) × (v − V)` plus each body's spin `R I ω`. At the release it is the rocket's
+        // spin alone. The part flies as a point mass, so its own spin, `R I_p ω` at the release,
+        // is carried as it was.
         let spin = |inertia: DMat3, sample: &Sample| {
             sample
                 .state
                 .unit_attitude()
                 .mul_vec3(inertia * sample.state.body_rate_rad_s)
         };
-        let momentum0 = before.cg_velocity_enu_m_s * whole.mass_kg;
-        let angular0 = before.cg_enu_m.cross(momentum0) + spin(whole.inertia_kg_m2, &before);
+        let (origin, centre_velocity) = (before.cg_enu_m, before.cg_velocity_enu_m_s);
+        let momentum0 = centre_velocity * whole.mass_kg;
+        let angular0 = spin(whole.inertia_kg_m2, &before);
         let part_spin = spin(part.inertia_kg_m2, &before);
         let v_part = flown.start_sample.cg_velocity_enu_m_s;
         let (mut linear_error, mut angular_error, mut after) = (0.0_f64, 0.0_f64, 0);
@@ -573,17 +630,17 @@ mod tests {
             after += 1;
             let x_part = flown.start_sample.cg_enu_m + v_part * (sample.time_s - release_s);
             let momentum = sample.cg_velocity_enu_m_s * rest.mass_kg + v_part * part.mass_kg;
-            let angular = sample
-                .cg_enu_m
-                .cross(sample.cg_velocity_enu_m_s * rest.mass_kg)
+            let centre = origin + centre_velocity * (sample.time_s - release_s);
+            let angular = (sample.cg_enu_m - centre)
+                .cross((sample.cg_velocity_enu_m_s - centre_velocity) * rest.mass_kg)
                 + spin(rest.inertia_kg_m2, sample)
-                + x_part.cross(v_part * part.mass_kg)
+                + (x_part - centre).cross((v_part - centre_velocity) * part.mass_kg)
                 + part_spin;
             linear_error = linear_error.max((momentum - momentum0).length() / momentum0.length());
             angular_error = angular_error.max((angular - angular0).length() / angular0.length());
         }
         assert!(after > 10, "{after} steps after the release");
-        // Measured: see the ADR.
+        // Measured over 213 steps: 1.5e-13 of the momentum and 7.3e-12 of the angular momentum.
         assert!(linear_error < 1e-12, "momentum: {linear_error:e}");
         assert!(angular_error < 1e-10, "angular momentum: {angular_error:e}");
         // The part keeps its velocity with nothing acting on it.
@@ -593,10 +650,18 @@ mod tests {
             1e-12,
             "the part's final velocity",
         );
-        // It leaves across the rocket's velocity: ω × c is not small here.
-        assert!((v_part - before.cg_velocity_enu_m_s).length() > 0.1);
-        // The part's own spin is a small share of the whole's angular momentum.
-        assert!(part_spin.length() / angular0.length() < 1e-3);
+        // `ω × c` matters here: the part leaves 0.146 m/s from the rocket centre's velocity, so
+        // leaving at the nose tip's velocity would put the momentum off by 5.0e-3 of itself, and
+        // at the centre's by 3.4e-3.
+        let off = |v: DVec3| (v - v_part).length() * part.mass_kg / momentum0.length();
+        let (nose, centre) = (
+            off(before.state.velocity_enu_m_s),
+            off(before.cg_velocity_enu_m_s),
+        );
+        assert!(nose > 1e-3 && centre > 1e-3, "{nose:e}, {centre:e}");
+        // The part's own spin, which a point mass doesn't carry on, against the rocket's:
+        // measured 1.5e-3.
+        assert!(part_spin.length() / angular0.length() < 1e-2);
 
         // A flight that starts after the release starts without the part, and records nothing.
         let later = sim.run_free(t0 + 1.0, state, &mut ()).unwrap();
@@ -702,7 +767,7 @@ mod tests {
     /// The `what` and the component of a refused release, or the error when it is another kind.
     fn release_refusal(sim: Simulation, releases: Vec<MassRelease>) -> (&'static str, String) {
         match sim.with_releases(releases) {
-            Err(SimError::Release { what, component }) => (what, component),
+            Err(SimError::MassRelease { what, component }) => (what, component),
             other => panic!("{other:?}"),
         }
     }
@@ -806,7 +871,7 @@ mod tests {
             let result = lenient(&overridden).with_releases(vec![of("ballast")]);
             if covers_children {
                 assert!(
-                    matches!(&result, Err(SimError::Release { what, component })
+                    matches!(&result, Err(SimError::MassRelease { what, component })
                         if what.starts_with("a mass release inside a component whose overridden")
                             && component == "ballast"),
                     "{result:?}"
@@ -944,5 +1009,295 @@ mod tests {
         .with_separation(Separation::new(Trigger::Apogee, 0))
         .unwrap();
         unsupported(two_stage.with_releases(vec![release(time)]));
+    }
+
+    /// The flight's apogee events.
+    fn apogees(result: &crate::FlightResult) -> usize {
+        result
+            .events
+            .iter()
+            .filter(|event| event.kind == EventKind::Apogee)
+            .count()
+    }
+
+    #[test]
+    fn a_release_at_apogee_on_a_tilted_rail_leaves_one_apogee() {
+        // Off a rail 5° from vertical, in a 5 m/s wind, the rocket turns at its apogee. The rest's
+        // centre sits aft of the rocket's, so it rises at ω × Δ for a moment after the part
+        // leaves; the flight still has one apogee, the rocket's.
+        let rail = Rail {
+            elevation_rad: 85f64.to_radians(),
+            ..Rail::vertical(3.0)
+        };
+        for drogue in [false, true] {
+            let mut sim = Simulation::new(
+                &with_ballast(0.0),
+                "i175",
+                crate::testing::analytic_wind_environment(
+                    UniformAir::sea_level(),
+                    G,
+                    hpr_atmos::ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap(),
+                ),
+                rail,
+                FlightSettings::default(),
+            )
+            .unwrap();
+            if drogue {
+                sim = sim
+                    .with_recovery(vec![Device::new(
+                        "drogue",
+                        DeviceDrag::DragArea { cd_s_m2: 0.3 },
+                        Trigger::Apogee,
+                    )])
+                    .unwrap();
+            }
+            let result = sim
+                .with_releases(vec![release(Trigger::Apogee)])
+                .unwrap()
+                .run(&mut ())
+                .unwrap();
+            assert_eq!(apogees(&result), 1, "drogue {drogue}: {:?}", result.events);
+            let apogee = result.event(EventKind::Apogee).unwrap().sample.time_s;
+            let left = result
+                .event(EventKind::MassRelease(0))
+                .unwrap()
+                .sample
+                .time_s;
+            assert_eq!(left, apogee);
+            assert_eq!(result.termination, Termination::GroundHit);
+        }
+    }
+
+    #[test]
+    fn a_part_let_go_just_before_apogee_can_make_the_apogee_there() {
+        // In a vacuum, the rocket pitched 45° and turning about a transverse axis, its centre
+        // rising at half the speed the release adds to the rest's centre downward (ω × Δ, Δ the
+        // centre's step aft). Before the part leaves the rocket is still rising; after, the rest
+        // is already falling, so the apogee, and the drogue it fires, are at the release.
+        let t0 = 10.0;
+        let tilted = Rail {
+            elevation_rad: 45f64.to_radians(),
+            ..Rail::vertical(3.0)
+        };
+        let drogue = Device::new(
+            "drogue",
+            DeviceDrag::DragArea { cd_s_m2: 0.3 },
+            Trigger::Apogee,
+        );
+        let sim = simulation(
+            &with_ballast(0.0),
+            UniformAir::vacuum(),
+            G,
+            FlightSettings {
+                max_time_s: t0 + 2.0,
+                ..FlightSettings::default()
+            },
+        )
+        .with_recovery(vec![drogue])
+        .unwrap()
+        .with_releases(vec![release(Trigger::Time { time_s: t0 })])
+        .unwrap();
+        let attitude = tilted.attitude();
+        let whole = sim.assembly().mass_properties(t0);
+        let rest = whole.without_part(&ballast(&sim));
+        let step = rest.cg_m - whole.cg_m;
+        let up = |omega: DVec3| attitude.mul_vec3(omega.cross(step)).z;
+        let omega = if up(DVec3::X) < 0.0 {
+            DVec3::X
+        } else {
+            -DVec3::X
+        };
+        let jump = up(omega);
+        assert!(jump < -0.05, "{jump}");
+        let cg_velocity = DVec3::new(2.0, 0.0, -0.5 * jump);
+        let state = State {
+            position_enu_m: DVec3::new(0.0, 0.0, 1000.0) - attitude.mul_vec3(whole.cg_m),
+            velocity_enu_m_s: cg_velocity - attitude.mul_vec3(omega.cross(whole.cg_m)),
+            attitude,
+            body_rate_rad_s: omega,
+        };
+        let result = sim.run_free(t0, state, &mut ()).unwrap();
+        let left = result.event(EventKind::MassRelease(0)).unwrap().sample;
+        assert!(left.vertical_speed_m_s > 0.0, "{left:?}");
+        assert_eq!(apogees(&result), 1, "{:?}", result.events);
+        let apogee = result.event(EventKind::Apogee).unwrap().sample;
+        assert_eq!(apogee.time_s, t0);
+        assert!(apogee.vertical_speed_m_s < 0.0, "{apogee:?}");
+        close(
+            apogee.mass_kg,
+            rest.mass_kg,
+            1e-15,
+            "the rest's mass at the apogee",
+        );
+        let fired = result.event(EventKind::Trigger(0)).unwrap().sample.time_s;
+        assert_eq!(fired, t0);
+    }
+
+    #[test]
+    fn the_optimum_delay_holds_a_release_on_the_motor_s_charge() {
+        // A release fired by the motor's own ejection charge is held with the charge, so the
+        // optimum delay is the rocket's, whatever delay is flown.
+        let delays = |delay: Option<f64>| {
+            let mut rocket = with_ballast(0.0);
+            let mut releases = Vec::new();
+            if let Some(delay_s) = delay {
+                rocket.configurations[0].motors[0].delay = Some(hpr_motor::Delay::Seconds(delay_s));
+                releases.push(release(Trigger::MotorDelay { motor: 0 }));
+            }
+            let sim = lenient(&rocket).with_releases(releases).unwrap();
+            crate::metrics::optimum_delays(&sim).unwrap().unwrap()[0].delay_s
+        };
+        let alone = delays(None);
+        assert_eq!(delays(Some(2.0)), alone);
+        assert_eq!(delays(Some(6.0)), alone);
+        // And a shift fired so.
+        let mut rocket = with_ballast(0.0);
+        rocket.configurations[0].motors[0].delay = Some(hpr_motor::Delay::Seconds(2.0));
+        let sim = lenient(&rocket)
+            .with_shifts(vec![MassShift::new(
+                Trigger::MotorDelay { motor: 0 },
+                "ballast",
+                0.3,
+                1.0,
+            )])
+            .unwrap();
+        assert_eq!(
+            crate::metrics::optimum_delays(&sim).unwrap().unwrap()[0].delay_s,
+            alone
+        );
+    }
+
+    #[test]
+    fn two_releases_leave_the_design_without_both_parts() {
+        // The sleeve with the weight it holds leaves at 4 s, the ballast at 6 s, given in the
+        // other order. After both the rocket is the design with neither.
+        let rocket = with_sleeve();
+        let sim = lenient(&rocket)
+            .with_releases(vec![
+                MassRelease::new(Trigger::Time { time_s: 6.0 }, "ballast", 0.01),
+                MassRelease::new(Trigger::Time { time_s: 4.0 }, "sleeve", 0.01),
+            ])
+            .unwrap();
+        let result = sim.run(&mut ()).unwrap();
+        let order: Vec<usize> = result.released.iter().map(|flown| flown.release).collect();
+        assert_eq!(order, [1, 0]);
+        let mut without = rocket.clone();
+        without.stages[0].components[1]
+            .children
+            .retain(|child| child.id != "ballast" && child.id != "sleeve");
+        let expected = lenient(&without).assembly().mass_properties(7.0);
+        let got = sim.mass_properties(&result, 7.0);
+        close(got.mass_kg, expected.mass_kg, 1e-15, "mass");
+        close_vec(got.cg_m, expected.cg_m, 1e-15, "centre");
+        let diff = (got.inertia_kg_m2 - expected.inertia_kg_m2)
+            .to_cols_array()
+            .iter()
+            .fold(0.0_f64, |most, v| most.max(v.abs()));
+        assert!(diff <= 1e-15, "inertia off by {diff:e}");
+        // Between the two, only the sleeve is gone.
+        let between = sim.mass_properties(&result, 5.0).mass_kg;
+        close(
+            between,
+            sim.assembly().mass_properties(5.0).mass_kg
+                - sim
+                    .assembly()
+                    .layout
+                    .find("sleeve")
+                    .unwrap()
+                    .1
+                    .with_children
+                    .mass_kg,
+            1e-15,
+            "between",
+        );
+    }
+
+    #[test]
+    fn a_part_let_go_at_the_ground_has_landed() {
+        // The rocket flies ballistic, nose first into the ground; 2 ms before its centre lands,
+        // the ballast, forward of it, is already at or below the site.
+        let ballistic = simulation(
+            &with_ballast(0.0),
+            UniformAir::sea_level(),
+            G,
+            FlightSettings::default(),
+        );
+        let landed_s = ballistic.run(&mut ()).unwrap().final_sample.time_s;
+        let result = simulation(
+            &with_ballast(0.0),
+            UniformAir::sea_level(),
+            G,
+            FlightSettings::default(),
+        )
+        .with_releases(vec![release(Trigger::Time {
+            time_s: landed_s - 0.002,
+        })])
+        .unwrap()
+        .run(&mut ())
+        .unwrap();
+        let flown = &result.released[0];
+        assert!(flown.start_sample.height_above_ground_m <= 0.0, "{flown:?}");
+        assert_eq!(flown.termination, Termination::GroundHit);
+        assert_eq!(flown.final_sample, flown.start_sample);
+        assert!(flown.event(EventKind::GroundHit).is_some());
+        assert_eq!(result.termination, Termination::GroundHit);
+    }
+
+    #[test]
+    fn a_release_and_its_flight_read_back_as_written() {
+        let release = MassRelease::new(Trigger::Apogee, "ballast", 0.25);
+        let text = serde_json::to_string(&release).unwrap();
+        assert_eq!(serde_json::from_str::<MassRelease>(&text).unwrap(), release);
+        let sim = simulation(
+            &with_ballast(0.0),
+            UniformAir::sea_level(),
+            G,
+            FlightSettings::default(),
+        )
+        .with_releases(vec![release])
+        .unwrap();
+        let result = sim.run(&mut ()).unwrap();
+        let text = serde_json::to_string(&result).unwrap();
+        assert!(text.contains("\"released\""));
+        let back: crate::FlightResult = serde_json::from_str(&text).unwrap();
+        assert_eq!(back, result);
+    }
+
+    #[test]
+    fn parts_with_no_mass_are_refused() {
+        let mut empty = with_ballast(0.0);
+        let airframe = &mut empty.stages[0].components[1];
+        let ballast = airframe
+            .children
+            .iter_mut()
+            .find(|child| child.id == "ballast")
+            .unwrap();
+        let Part::MassComponent(mass) = &mut ballast.part else {
+            panic!("the ballast is a mass component");
+        };
+        mass.mass_kg = 0.0;
+        let (what, id) = release_refusal(lenient(&empty), vec![release(Trigger::Apogee)]);
+        assert!(
+            what.starts_with("a mass release of a part with no mass"),
+            "{what}"
+        );
+        assert_eq!(id, "ballast");
+
+        // Every other component's own mass overridden to nothing: letting the ballast go would
+        // leave nothing behind.
+        fn weightless(component: &mut hpr_design::Component) {
+            if component.id != "ballast" {
+                component.overrides.mass_kg = Some(0.0);
+            }
+            component.children.iter_mut().for_each(weightless);
+        }
+        let mut hollow = with_ballast(0.0);
+        hollow.stages[0].components.iter_mut().for_each(weightless);
+        let (what, id) = release_refusal(lenient(&hollow), vec![release(Trigger::Apogee)]);
+        assert!(
+            what.starts_with("a mass release that leaves the rest of the rocket with no mass"),
+            "{what}"
+        );
+        assert_eq!(id, "ballast");
     }
 }

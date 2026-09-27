@@ -283,10 +283,14 @@ q̇   = ½ q ⊗ (0, ω)
   falling through zero.
 - **Rail exit.** The travel along the rail reaching the exit travel.
 - **Apogee.** The centre of mass's ellipsoidal-height rate, `û(r_cg) · v_cg`, falling through
-  zero. `û` is the ellipsoid normal at its position.
+  zero. `û` is the ellipsoid normal at its position. A flight that has let a part go records one
+  apogee ([Released mass](released-mass.md)).
 - **Ground hit.** The centre of mass's ellipsoidal height reaching the launch site's, descending
   ([Frames](frames.md), [Loft lesson L35](../decisions-and-roadmap.md#l35)).
 - **User events.** A function of the `Sample`, in free flight.
+- **Mass shifts and releases.** A part starting to move along the airframe (`Shift`) or leaving it
+  (`MassRelease`), on its trigger ([Moving mass](moving-mass.md),
+  [Released mass](released-mass.md)).
 - **Heights.** Atmosphere and wind heights are `h − N`, the height
   [above sea level](../glossary.md#height-above-sea-level-msl): `h` is the ellipsoidal height, and
   the geoid undulation `N`, the height of sea level above the ellipsoid, is given in `Environment`

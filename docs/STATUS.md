@@ -57,7 +57,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-26: M1.12b Released mass (ADR-088): hand values to 1e-15; momentum 1.5e-13, angular 3.9e-13; M1.12 done.
+- 2026-09-26: M1.12b Released mass (ADR-088): hand values to 1e-15; momentum 1.5e-13, angular 7.3e-12; M1.12 done.
 - 2026-09-26: M1.12a Moving mass (ADR-087; M1.12 split a, b): hand values to 1e-15, margin 1e-12 cal, momenta 6.9e-12.
 - 2026-09-26: M1.11b Ejection impulse, tumbling pieces (ADR-086): `J/m` and momenta to 1e-9; nose cone tumbles at its `v_e`; M1.11 done.
 - 2026-09-26: M1.11a Ejected pieces (ADR-085; M1.11 split a, b): nose cone and payload land; 1e-12, 1e-9, `v_e` 0.1%.

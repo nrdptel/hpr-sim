@@ -519,7 +519,7 @@ impl Simulation {
     /// builders can be given in any order. A device on a body that nothing makes is refused when
     /// the flight starts, since an ejection given later can make it.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
-        self.check_no_shifts()?;
+        self.check_no_moving_parts()?;
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
             return Err(SimError::Domain {
@@ -598,7 +598,7 @@ impl Simulation {
     /// a flight with ejections and a pushed payload whose section's forward joint hasn't parted.
     pub fn with_ejections(mut self, ejections: Vec<Ejection>) -> Result<Self, SimError> {
         if !ejections.is_empty() {
-            self.check_no_shifts()?;
+            self.check_no_moving_parts()?;
         }
         Pieces::new(
             &self.rocket,
@@ -704,7 +704,7 @@ impl Simulation {
     ///
     /// # Errors
     ///
-    /// [`SimError::Release`] for a part that can't be released ([`MassRelease`] says which);
+    /// [`SimError::MassRelease`] for a part that can't be released ([`MassRelease`] says which);
     /// [`SimError::Domain`] for a drag area or trigger outside its domain, or a trigger on a
     /// motor with no ignition known before the flight, which could never fire (a release that
     /// comes before the rocket leaves the rail is refused by [`Self::run`] when it comes);
@@ -790,33 +790,64 @@ impl Simulation {
                 shifts.start(index, event.sample.time_s);
             }
         }
-        let gone: Vec<usize> = (0..self.releases.len())
-            .filter(|&index| {
+        let mut gone: Vec<(f64, usize)> = (0..self.releases.len())
+            .filter_map(|index| {
                 self.release_times_s[index]
                     .or_else(|| {
                         flight
                             .event(EventKind::MassRelease(index))
                             .map(|event| event.sample.time_s)
                     })
-                    .is_some_and(|time_s| time_s <= t_s)
+                    .filter(|&time_s| time_s <= t_s)
+                    .map(|time_s| (time_s, index))
             })
             .collect();
-        let whole = if gone.is_empty() {
-            self.vehicle
-                .assembly
-                .mass_properties_lit(t_s, self.vehicle.ignition_s())
-        } else {
-            let mut assembly = self.vehicle.assembly.clone();
-            for index in gone {
-                lighten(&mut assembly, self.release_parts.part(index));
-            }
-            assembly.mass_properties_lit(t_s, self.vehicle.ignition_s())
-        };
+        // Taken out in the order the flight takes them, so the sums are the ones it flew.
+        gone.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let assembly = &self.vehicle.assembly;
+        let structure = gone
+            .iter()
+            .fold(assembly.layout.structure, |structure, &(_, index)| {
+                structure.without_part(self.release_parts.part(index))
+            });
+        let whole = assembly.mass_properties_lit_on(structure, t_s, self.vehicle.ignition_s());
         shifts.apply(whole, t_s)
     }
 
+    /// The stack's apogee at `sample`: its event, and the trigger of each of the stack's own
+    /// devices waiting for it, whose deployment becomes a stop time (below `cap`).
+    fn reach_apogee(
+        &self,
+        sample: Sample,
+        run: &mut Run,
+        (stops, cap): (&mut Vec<f64>, f64),
+        events: &mut Vec<FlightEvent>,
+        observer: &mut dyn Observer,
+    ) {
+        let mut record = |kind: EventKind| {
+            let event = FlightEvent { kind, sample };
+            observer.event(&event);
+            events.push(event);
+        };
+        record(EventKind::Apogee);
+        let t = sample.time_s;
+        for device in 0..self.devices.len() {
+            // Only the stack's own: a body's device waits for its body, which finds its own
+            // apogee.
+            if !self.recovery_held
+                && self.devices[device].trigger == Trigger::Apogee
+                && run.pending(device)
+                && self.acts_before_separation(device)
+            {
+                let deploy_s = run.trigger(&self.devices, device, t);
+                insert_stop(stops, deploy_s, cap);
+                record(EventKind::Trigger(device));
+            }
+        }
+    }
+
     /// Refuses a separation or ejections in a flight with mass shifts or releases.
-    fn check_no_shifts(&self) -> Result<(), SimError> {
+    fn check_no_moving_parts(&self) -> Result<(), SimError> {
         if !self.releases.is_empty() {
             Err(Self::releases_and_shifts())
         } else if self.shifts.is_empty() {
@@ -968,11 +999,19 @@ impl Simulation {
     /// This simulation with its recovery charges held: the stack's devices never fire, so it
     /// coasts through its apogee as if every delay were long. A separation that lights a motor
     /// ahead of it still happens, and a separated body's devices act as they would; one that
-    /// doesn't is held with the charges. User events, which can't be copied, are left
+    /// doesn't is held with the charges, and so is a mass shift or release fired by a motor's
+    /// delay: the charge that would fire it doesn't. User events, which can't be copied, are left
     /// out.
     pub(crate) fn with_recovery_held(&self) -> Self {
+        let on_charge = |trigger: Trigger| matches!(trigger, Trigger::MotorDelay { .. });
+        let mut vehicle = self.vehicle.clone();
+        for (index, shift) in self.shifts.iter().enumerate() {
+            if on_charge(shift.trigger) {
+                vehicle.shifts.hold(index);
+            }
+        }
         Self {
-            vehicle: self.vehicle.clone(),
+            vehicle,
             environment: self.environment.clone(),
             rail: self.rail,
             guides: self.guides,
@@ -988,7 +1027,12 @@ impl Simulation {
             shifts: self.shifts.clone(),
             releases: self.releases.clone(),
             release_parts: self.release_parts.clone(),
-            release_times_s: self.release_times_s.clone(),
+            release_times_s: self
+                .releases
+                .iter()
+                .zip(&self.release_times_s)
+                .map(|(release, time)| time.filter(|_| !on_charge(release.trigger)))
+                .collect(),
             rocket: self.rocket.clone(),
             configuration_id: self.configuration_id.clone(),
             aero_overridden: self.aero_overridden,
@@ -1090,10 +1134,31 @@ impl Simulation {
             )?
             .check_pushed_payloads(&self.ejections)?;
         }
+        // Which parts have left; one that left before the flight's start isn't recorded, and the
+        // stack starts without it.
+        let mut released: Vec<bool> = self
+            .release_times_s
+            .iter()
+            .map(|time| time.is_some_and(|time_s| time_s < t0))
+            .collect();
+        // The stack once a part has left it.
+        let mut lightened: Option<Vehicle> = released.contains(&true).then(|| {
+            let mut stack = self.vehicle.clone();
+            // In the order they left, as the flight would have taken them out.
+            let mut gone: Vec<(f64, usize)> = (0..released.len())
+                .filter_map(|index| Some((self.release_times_s[index]?, index)))
+                .filter(|&(_, index)| released[index])
+                .collect();
+            gone.sort_by(|a, b| a.0.total_cmp(&b.0));
+            for (_, index) in gone {
+                lighten(&mut stack.assembly, self.release_parts.part(index));
+            }
+            stack
+        });
         if start_phase == Phase::Free {
             let height = self
                 .evaluate(
-                    &self.vehicle,
+                    lightened.as_ref().unwrap_or(&self.vehicle),
                     Phase::Free,
                     (t0, t0),
                     t0,
@@ -1131,21 +1196,6 @@ impl Simulation {
                     .is_some_and(|start_s| start_s < t0)
             })
             .collect();
-        // Which parts have left; one that left before the flight's start isn't recorded, and the
-        // stack starts without it.
-        let mut released: Vec<bool> = self
-            .release_times_s
-            .iter()
-            .map(|time| time.is_some_and(|time_s| time_s < t0))
-            .collect();
-        // The stack once a part has left it.
-        let mut lightened: Option<Vehicle> = released.contains(&true).then(|| {
-            let mut stack = self.vehicle.clone();
-            for index in (0..released.len()).filter(|&index| released[index]) {
-                lighten(&mut stack.assembly, self.release_parts.part(index));
-            }
-            stack
-        });
         let mut released_flights: Vec<ReleasedFlight> = Vec::new();
         let mut staged = false;
         let mut booster: Vec<BodyFlight> = Vec::new();
@@ -1256,7 +1306,8 @@ impl Simulation {
             // for the apogee and the heights of the rest, as it does for a device's. The part
             // leaves with the velocity its centre had in the airframe, the stack flies on from
             // the same state without it, and the part falls on its own.
-            let mut lost = false;
+            // The rocket's vertical speed just before the first part left in this pass.
+            let mut rising: Option<f64> = None;
             for (index, gone) in released.iter_mut().enumerate() {
                 if *gone {
                     continue;
@@ -1301,6 +1352,7 @@ impl Simulation {
                 }
                 let sample = self.sample(stack, phase, window, t, &y, area)?;
                 record(&mut events, observer, EventKind::MassRelease(index), sample);
+                rising.get_or_insert(sample.vertical_speed_m_s);
                 // Its centre, and the velocity that point had: `v_O + ω × c` in `L` (the body
                 // rates are zero in the descent, whose attitude is frozen).
                 let part = self.release_parts.part(index);
@@ -1325,12 +1377,32 @@ impl Simulation {
                     part,
                 );
                 *gone = true;
-                lost = true;
             }
-            if lost {
+            if let Some(rising) = rising {
                 // The mass steps here, so the integrator starts afresh from the same state: the
                 // nose tip's, which the stack keeps.
                 integrator.reset(t, y)?;
+                // The rest's centre moves at `v_O + ω × cg'`, not as the rocket's did: a part let
+                // go just before the apogee can leave it already falling, and the apogee the
+                // flight watches for, its vertical speed falling through zero, is then here.
+                if let Some(stack) = lightened.as_ref().filter(|_| {
+                    rising > 0.0
+                        && matches!(phase, Phase::Free | Phase::Descent)
+                        && events.iter().all(|event| event.kind != EventKind::Apogee)
+                }) {
+                    let window = (t, next_stop(&stops, t, cap));
+                    let area = self.ascent_drag_area_m2(&run, t);
+                    let sample = self.sample(stack, phase, window, t, &y, area)?;
+                    if sample.vertical_speed_m_s <= 0.0 {
+                        self.reach_apogee(
+                            sample,
+                            &mut run,
+                            (&mut stops, cap),
+                            &mut events,
+                            observer,
+                        );
+                    }
+                }
             }
             let vehicle = sustainer
                 .as_ref()
@@ -1694,10 +1766,14 @@ impl Simulation {
                     };
                 }
             }
+            // Once a part has left, the rest's centre sits apart from where the rocket's was, and
+            // can rise again for a moment after the rocket's apogee: the flight has one.
+            let apogee_pending = !(released.contains(&true)
+                && events.iter().any(|event| event.kind == EventKind::Apogee));
             let watches = self.watches(
                 phase,
                 &run,
-                !staged && !separation_held,
+                (!staged && !separation_held, apogee_pending),
                 (&shift_started, &released),
             );
             let mut system = PhaseSystem {
@@ -1762,25 +1838,13 @@ impl Simulation {
                             }
                             Watch::Apogee => {
                                 let sample = self.sample(vehicle, phase, window, t, &y, area)?;
-                                record(&mut events, observer, EventKind::Apogee, sample);
-                                for device in 0..self.devices.len() {
-                                    // Only the stack's own: a body's device waits for its body,
-                                    // which finds its own apogee.
-                                    if !self.recovery_held
-                                        && self.devices[device].trigger == Trigger::Apogee
-                                        && run.pending(device)
-                                        && self.acts_before_separation(device)
-                                    {
-                                        let deploy_s = run.trigger(&self.devices, device, t);
-                                        insert_stop(&mut stops, deploy_s, cap);
-                                        record(
-                                            &mut events,
-                                            observer,
-                                            EventKind::Trigger(device),
-                                            sample,
-                                        );
-                                    }
-                                }
+                                self.reach_apogee(
+                                    sample,
+                                    &mut run,
+                                    (&mut stops, cap),
+                                    &mut events,
+                                    observer,
+                                );
                             }
                             Watch::Ground => {
                                 let sample = self.sample(vehicle, phase, window, t, &y, area)?;
@@ -2535,14 +2599,18 @@ impl Simulation {
         &self,
         phase: Phase,
         run: &Run,
-        separation_pending: bool,
+        (separation_pending, apogee_pending): (bool, bool),
         (shift_started, released): (&[bool], &[bool]),
     ) -> Vec<Watch> {
         match phase {
             Phase::Pad => vec![Watch::RailForce],
             Phase::Rail => vec![Watch::RailExit, Watch::RailStall],
             Phase::Free | Phase::Descent => {
-                let mut watches = vec![Watch::Apogee, Watch::Ground];
+                let mut watches = if apogee_pending {
+                    vec![Watch::Apogee, Watch::Ground]
+                } else {
+                    vec![Watch::Ground]
+                };
                 for (index, device) in self.devices.iter().enumerate() {
                     if matches!(device.trigger, Trigger::Altitude { .. })
                         && run.pending(index)

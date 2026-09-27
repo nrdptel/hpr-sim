@@ -701,7 +701,9 @@ pub struct OptimumDelay {
 /// ([Loft lesson L94][l94]).
 ///
 /// - The held flight holds the stack's devices and any separation with nothing ahead of it left
-///   to burn, which is part of the recovery. A powered separation still happens.
+///   to burn, which is part of the recovery, and a mass shift or release fired by a motor's delay,
+///   whose charge is held. A powered separation still happens, and so does a shift or release
+///   on any other trigger.
 /// - A motor that burns out after that apogee, or never lights, has none. Nor does a motor in a
 ///   body a powered separation drops: its charge fires in that body, which never reaches the
 ///   stack's apogee.

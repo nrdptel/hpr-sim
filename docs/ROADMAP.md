@@ -710,7 +710,7 @@
   - [x] **M1.12b Mass released in flight** (ADR-088). Ballast or a payload that leaves while the
     rest flies on in six degrees of freedom. *Done when:* the mass properties after a release match
     hand-computed values, and a release conserves mass and momentum. *Result:* met: 1e-15 m, kg,
-    kg·m²; momentum to 1.5e-13, angular momentum 3.9e-13, the part leaving at 0.146 m/s across.
+    kg·m²; momentum to 1.5e-13, angular momentum 7.3e-12, the part leaving at 0.146 m/s across.
 
 - [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19).
   - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.

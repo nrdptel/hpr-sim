@@ -389,6 +389,11 @@ impl Shifts {
         }
     }
 
+    /// Holds shift `index`: it doesn't start unless [`Self::start`] starts it.
+    pub(crate) fn hold(&mut self, index: usize) {
+        self.start(index, f64::INFINITY);
+    }
+
     /// When shift `index` starts, s: `None` while not known.
     pub(crate) fn start_s(&self, index: usize) -> Option<f64> {
         self.terms

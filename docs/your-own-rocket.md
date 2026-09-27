@@ -703,14 +703,16 @@ The example leaves out several kinds of part and setting that a design can have:
   the same kinds a parachute has. The centre of mass, the inertia and the stability margin follow
   it, and `Simulation::mass_properties` tells you what they were at any time. A shift must start
   after the rocket leaves the rail. A flight that separates or ejects pieces can't have one yet.
-  To let ballast or a payload go instead, give the flight a `MassRelease` with
-  `Simulation::with_releases`: the part's `id`, a trigger, and the part's own drag area once it
-  is out. The rest flies on without it, and the part falls to the ground on its own
-  (`FlightResult::released`). This is checked against exact answers only
-  ([Moving mass](physics/moving-mass.md) and [Released mass](physics/released-mass.md), with the
-  examples
-  [`moving_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/moving_ballast.rs)
-  and
+  This is checked against exact answers only ([Moving mass](physics/moving-mass.md), with the
+  example
+  [`moving_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/moving_ballast.rs)).
+- **Mass released in flight is yours to declare too.** To let ballast or a payload go during the
+  flight, give it a `MassRelease` with `Simulation::with_releases`: the part's `id`, a trigger,
+  and the part's own drag area once it is out. The rest flies on without it, and the part falls
+  to the ground on its own (`FlightResult::released`). A release must come after the rocket
+  leaves the rail, and a flight can't combine one with a separation, ejected pieces or a mass
+  shift yet. Check the stability margin after it: hpr doesn't warn. This is checked against exact
+  answers only ([Released mass](physics/released-mass.md), with the example
   [`released_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/released_ballast.rs)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).

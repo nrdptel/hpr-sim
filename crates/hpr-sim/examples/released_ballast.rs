@@ -1,8 +1,8 @@
-//! Ballast dropped during the coast: 200 g let go 5 s after launch, tumbling down under 0.002 m²
-//! of its own drag area while the rocket coasts on to its apogee and comes down under a drogue. The
-//! program prints the rocket's mass properties before and after the release beside the hand
-//! calculation, the momentum on both sides of it, the apogee against a flight that keeps the
-//! ballast, and where each lands.
+//! Ballast dropped during the coast: 200 g let go 5 s after launch, tumbling down on its own while
+//! the rocket coasts on to its apogee and comes down under a drogue. The program prints the
+//! rocket's mass properties and static margin before and after the release beside the hand
+//! calculation, how the momentum divides, the apogee against a flight that keeps the ballast, and
+//! where each lands.
 //!
 //! Run it from anywhere in the repository:
 //!
@@ -24,8 +24,8 @@ use std::error::Error;
 use hpr_core::geodesy::Geodetic;
 use hpr_design::{Part, Position, Rocket};
 use hpr_sim::{
-    Device, DeviceDrag, Environment, EventKind, FlightResult, FlightSettings, MassRelease, Rail,
-    Simulation, Trigger,
+    Device, DeviceDrag, Environment, EventKind, FlightMetrics, FlightResult, FlightSettings,
+    MassRelease, Rail, Simulation, Trigger,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -59,32 +59,32 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Calm air over a site in New Mexico 1,400 m up, a 3 m vertical rail, and a drogue with a
     // drag area of 0.3 m² that opens at apogee.
     let site = Geodetic::from_degrees(32.99, -106.97, 1400.0)?;
-    let flight =
-        |releases: Vec<MassRelease>| -> Result<(Simulation, FlightResult), Box<dyn Error>> {
-            let sim = Simulation::new(
-                &rocket,
-                "i175",
-                Environment::standard(site)?,
-                Rail::vertical(3.0),
-                FlightSettings::default(),
-            )?
-            .with_recovery(vec![Device::new(
-                "drogue",
-                DeviceDrag::DragArea { cd_s_m2: 0.3 },
-                Trigger::Apogee,
-            )])?
-            .with_releases(releases)?;
-            let result = sim.run(&mut ())?;
-            Ok((sim, result))
-        };
-    let (_, kept) = flight(Vec::new())?;
-    let (sim, dropped) = flight(vec![MassRelease::new(
+    let simulation = |releases: Vec<MassRelease>| -> Result<Simulation, Box<dyn Error>> {
+        Ok(Simulation::new(
+            &rocket,
+            "i175",
+            Environment::standard(site)?,
+            Rail::vertical(3.0),
+            FlightSettings::default(),
+        )?
+        .with_recovery(vec![Device::new(
+            "drogue",
+            DeviceDrag::DragArea { cd_s_m2: 0.3 },
+            Trigger::Apogee,
+        )])?
+        .with_releases(releases)?)
+    };
+    let kept = simulation(Vec::new())?.run(&mut ())?;
+    // The ballast's drag area tumbling: the tumble model's body term, 0.56 times its side
+    // profile, 50 mm long by 30 mm across (the Recovery page's Tumble section).
+    let tumbling_m2 = 0.56 * 0.05 * 0.03;
+    let sim = simulation(vec![MassRelease::new(
         Trigger::Time { time_s: 5.0 },
         "ballast",
-        // An assumed drag area for the cylinder tumbling: about its side, 50 mm by 30 mm, at a
-        // drag coefficient near 1.3.
-        0.002,
+        tumbling_m2,
     )])?;
+    let mut metrics = FlightMetrics::new();
+    let dropped = sim.run(&mut metrics)?;
 
     println!("A 54 mm rocket on an I175 that drops its 200 g of ballast 5 s after launch");
     println!("Not yet validated: see the Accuracy page before trusting these numbers.");
@@ -103,6 +103,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // By hand: the ballast, m at station c, leaving a rocket of mass M with its centre at station
     // cg leaves the rest's centre at (M cg − m c)/(M − m).
     let before = sim.mass_properties(&dropped, 4.0);
+    let after = sim.mass_properties(&dropped, 6.0);
     let (_, placed) = sim.assembly().layout.find("ballast").ok_or("no ballast")?;
     let (big_m, cg, c) = (before.mass_kg, -before.cg_m.z, -placed.with_children.cg_m.z);
     println!(
@@ -112,28 +113,50 @@ fn main() -> Result<(), Box<dyn Error>> {
         (big_m * cg - 0.2 * c) / (big_m - 0.2)
     );
 
-    // The momentum just before and just after: the rocket's, and then the rest's plus the
-    // ballast's. The rest's centre moves with the airframe, v_O + ω × r, as the ballast's does.
+    // The static margin just before and after: the centre of mass moving aft by Δ takes Δ/d
+    // calibres off it, with d the body's diameter.
+    let margin_at = |t_s: f64| {
+        metrics
+            .stability()
+            .iter()
+            .rfind(|sample| sample.time_s <= t_s)
+            .and_then(|sample| {
+                sample
+                    .static_margin
+                    .margin_cal
+                    .map(|margin| (margin, sample.reference_diameter_m))
+            })
+    };
+    let (margin_before, d_m) = margin_at(4.99).ok_or("no margin before the release")?;
+    let (margin_after, _) = margin_at(5.5).ok_or("no margin after the release")?;
+    let aft_m = before.cg_m.z - after.cg_m.z;
+    println!();
+    println!(
+        "static margin          {margin_before:.3} cal before, {margin_after:.3} after, a change of {:.3}",
+        margin_after - margin_before
+    );
+    println!(
+        "                       by hand −Δ/d = −{aft_m:.4} / {d_m:.4} = {:.3} cal",
+        -aft_m / d_m
+    );
+
+    // How the momentum divides as the ballast leaves: every point of the airframe moves at
+    // v_O + ω × r, the rest's centre and the ballast's with it.
     let event = dropped
         .event(EventKind::MassRelease(0))
         .ok_or("no release")?
         .sample;
     let part = &dropped.released[0];
-    let rest = sim.mass_properties(&dropped, 5.0);
     let state = event.state;
     let rest_velocity = state.velocity_enu_m_s
         + state
             .unit_attitude()
-            .mul_vec3(state.body_rate_rad_s.cross(rest.cg_m));
-    let momentum_before = event.cg_velocity_enu_m_s * big_m;
-    let momentum_after = rest_velocity * rest.mass_kg
-        + part.start_sample.cg_velocity_enu_m_s * part.start_sample.mass_kg;
+            .mul_vec3(state.body_rate_rad_s.cross(after.cg_m));
     println!();
     println!(
-        "momentum at 5 s        {:.4} kg m/s up before, {:.4} after (rest {:.4} + ballast {:.4})",
-        momentum_before.z,
-        momentum_after.z,
-        rest_velocity.z * rest.mass_kg,
+        "momentum at 5 s        {:.4} kg m/s up: the rest carries {:.4}, the ballast {:.4}",
+        event.cg_velocity_enu_m_s.z * big_m,
+        rest_velocity.z * after.mass_kg,
         part.start_sample.cg_velocity_enu_m_s.z * part.start_sample.mass_kg
     );
 

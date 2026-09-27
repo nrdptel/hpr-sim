@@ -45,7 +45,7 @@ pub enum SimError {
     },
     /// A mass release that the design can't make, with the component id it names.
     #[error("{what}: `{component}`")]
-    Release {
+    MassRelease {
         /// Why it can't be made.
         what: &'static str,
         /// The component.

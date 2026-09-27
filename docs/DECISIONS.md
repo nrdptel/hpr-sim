@@ -7669,37 +7669,54 @@ under a state that carries across, the nose tip's.
    before the flight comes then, and the flight watches for the apogee and for a height on the
    way down. The parts a release refuses are a shift's: a body component or an external one, one
    copy of a cluster's, a part that holds a motor, a part in a stage, or inside a component, whose
-   overridden mass covers it; and a part released twice or inside another that is released. It is
-   refused on the pad or the rail, where the part has nowhere to go.
+   overridden mass covers it; and a part released twice or inside another that is released, a
+   part with no mass, and releases that would leave the rest none. It is refused on the pad or
+   the rail, where the part has nowhere to go.
 2. **The rest flies on by a vehicle swap**, as at a powered separation: the stack's structure
    loses the part (`MassProperties::without_part`, the parallel-axis theorem run backwards), the
    state carries straight across, and the integrator restarts at the same instant. The
    aerodynamics are unchanged: the part was inside the airframe.
 3. **The part leaves at the velocity its centre had in the airframe**, `v_O + ω × c`, from where
-   it was. Every point of a rigid body moves so, so the rest's centre and the part together carry
-   the rocket's mass and momentum exactly; nothing pushes them apart. A spring or a charge that
-   does is left for later, as the ejection impulse was added to ejections in ADR-086.
+   it was. Every material point keeps its velocity, so after burnout the rest and the part carry
+   the rocket's momentum and angular momentum exactly; nothing pushes them apart. During a burn
+   the reported centre-of-mass velocity includes the centre's drift along the airframe, which
+   steps at the release, so the reported momenta differ by `Ṁ (cg' − cg)`: stated in the docs,
+   not a loss. A spring or a charge that pushes is left for later, as the ejection impulse was
+   added to ejections in ADR-086.
 4. **The part then falls as a point mass** under a drag area the user gives (`drag_area_m2`,
    positive): a separated body's equations (ADR-085) with a fixed `C_D S`, to the ground or the
    time cap, in `FlightResult::released`. A point mass drops the part's own spin, `I_p ω`; its
-   share of the angular momentum is stated with the test. hpr has no model of a small part's
-   tumbling drag, so the area is the user's, and a zero one (a fall as if in a vacuum) is
-   refused.
-5. **No release with a separation, ejections or mass shifts**, in either order: their pieces and
+   share of the angular momentum is stated with the test. hpr's tumble model needs body tubes and
+   fins, so the area is the user's; the docs point to that model's body term, `0.56` of the side
+   profile, as a start. A zero area (a fall as if in a vacuum) is refused. A part let go already
+   at or below the ground has landed.
+5. **The flight has one apogee.** The rest's centre sits apart from the rocket's, so on a flight
+   that turns it can rise for a moment after the rocket's apogee (review found a second `Apogee`
+   8 ms later off an 85° rail), or already be falling when a part leaves just before it. Once a
+   part has left and an apogee is recorded, the flight stops watching for one; a release that
+   leaves the rest falling before any apogee makes the apogee, and fires the devices waiting for
+   it, there.
+6. **The optimum-delay flight holds a release, or a shift, fired by a motor's delay**, with the
+   charge that fires it (review found the optimum delay moving from 13.53 s to 12.62 s with the
+   delay flown). Releases and shifts on other triggers still happen in it.
+7. **No release with a separation, ejections or mass shifts**, in either order: their pieces and
    parts are fixed before the flight with every part where the design puts it.
-6. **`Simulation::mass_properties(flight, t)`** leaves out a part released at or before `t`.
+8. **`Simulation::mass_properties(flight, t)`** leaves out a part released at or before `t`,
+   taking parts out in the order the flight did.
 
 **Consequences.**
 
 - `releases::tests` holds the milestone's bullets. The 54 mm test design dropping its 200 g of
   ballast at 5 s: its mass, centre and inertia after the release match the two-body hand
-  calculation to 1e-15 (the rest's inertia is the whole's less the part's own and its reduced
-  mass times `|L|² E − L Lᵀ`), and every step after it flies the rest's mass and centre.
+  calculation (the rest's inertia is the whole's less the part's own and its reduced mass times
+  `|L|² E − L Lᵀ`) and the design built without the ballast to 1e-15, and every step after it
+  flies the rest's mass and centre.
 - In free flight, with no air and no gravity, the rocket turning about all three axes and the
   ballast 1 cm off the axis, the rest and the part keep the rocket's momentum to 1.5e-13 of
-  itself and its angular momentum about a fixed point to 3.9e-13, over 213 steps. The part
-  leaves at 0.146 m/s relative to the rocket's centre, so leaving out `ω × c` would miss by
-  about 3e-3 of the momentum; its own spin is 2.7e-8 of the angular momentum.
+  itself and its angular momentum about their common centre of mass to 7.3e-12, over 213 steps.
+  The part leaves 0.146 m/s from the rocket centre's velocity: leaving at the nose tip's velocity
+  would miss the momentum by 5.0e-3, and at the centre's by 3.4e-3. Its own spin is 1.5e-3 of
+  the angular momentum.
 - Under a drogue in uniform air, a release on the way down leaves the rest landing at the
   lighter rocket's terminal speed and the part at its own, both to 1e-6 m/s.
 - A flight with no release runs the same arithmetic as before: the separated bodies' equations
@@ -7707,4 +7724,3 @@ under a state that carries across, the nose tip's.
   flights and the real flights reproduce.
 - Left for later: a push at the release; a release in a flight with a separation, ejections or
   shifts; recovery devices on a released part.
-
