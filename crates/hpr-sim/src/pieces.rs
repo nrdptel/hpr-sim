@@ -561,7 +561,7 @@ impl Pieces {
 }
 
 /// The design's component with id `id`, searched through every stage.
-fn node<'a>(rocket: &'a Rocket, id: &str) -> Option<&'a Component> {
+pub(crate) fn node<'a>(rocket: &'a Rocket, id: &str) -> Option<&'a Component> {
     fn within<'a>(components: &'a [Component], id: &str) -> Option<&'a Component> {
         components.iter().find_map(|component| {
             if component.id == id {

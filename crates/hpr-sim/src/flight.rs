@@ -53,6 +53,7 @@ use crate::pieces::{Ejection, Pieces};
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
 use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Separation, Trigger};
+use crate::shifts::{MassShift, Shifts};
 use crate::staging::Sustainer;
 use crate::state::{STATE_LEN, State};
 
@@ -120,6 +121,9 @@ pub enum EventKind {
     /// A piece left the airframe at an ejection, by its index in the flight's ejections
     /// ([`crate::Ejection`]); the bodies it leaves are in [`FlightResult::bodies`].
     Ejection(usize),
+    /// A part started to move along the airframe, by its index in the flight's mass shifts
+    /// ([`crate::MassShift`]).
+    Shift(usize),
     /// A user event, by its index in the order added.
     User(usize),
     /// A motor lit after launch, by its index in [`hpr_design::Assembly::motors`].
@@ -267,6 +271,8 @@ pub struct Simulation {
     ejections: Vec<Ejection>,
     /// Each ejection's trigger time, when it is one that is known before the flight.
     ejection_times_s: Vec<Option<f64>>,
+    /// The parts that move along the airframe, in the order given.
+    shifts: Vec<MassShift>,
     /// The design, kept to build a sustainer's models from at a powered separation.
     rocket: Rocket,
     /// The configuration flown.
@@ -331,6 +337,7 @@ impl Simulation {
             separation_time_s: None,
             ejections: Vec::new(),
             ejection_times_s: Vec::new(),
+            shifts: Vec::new(),
             rocket: rocket.clone(),
             configuration_id: configuration_id.to_owned(),
             aero_overridden: false,
@@ -457,6 +464,7 @@ impl Simulation {
     /// builders can be given in any order. A device on a body that nothing makes is refused when
     /// the flight starts, since an ejection given later can make it.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
+        self.check_no_shifts()?;
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
             return Err(SimError::Domain {
@@ -534,6 +542,9 @@ impl Simulation {
     /// ahead of a separation that would light one, is an error, and so are a powered separation in
     /// a flight with ejections and a pushed payload whose section's forward joint hasn't parted.
     pub fn with_ejections(mut self, ejections: Vec<Ejection>) -> Result<Self, SimError> {
+        if !ejections.is_empty() {
+            self.check_no_shifts()?;
+        }
         Pieces::new(
             &self.rocket,
             &self.vehicle.assembly,
@@ -592,6 +603,99 @@ impl Simulation {
     #[must_use]
     pub fn ejections(&self) -> &[Ejection] {
         &self.ejections
+    }
+
+    /// Flies with parts that move along the airframe ([`MassShift`]), in the order given: a
+    /// shift's index in this list names it in [`EventKind::Shift`]. A shift with a trigger known
+    /// before the flight (a time, or a motor's burnout or delay) starts then; the flight watches
+    /// for the apogee and for a height, descending, as it does for a recovery device's.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Shift`] for a part that can't move ([`MassShift`] says which);
+    /// [`SimError::Domain`] for a travel, duration or trigger outside its domain, or a trigger on
+    /// a motor with no ignition known before the flight, which could never fire;
+    /// [`SimError::Unsupported`] with a separation or ejections, whose pieces are fixed before the
+    /// flight with every part where the design puts it.
+    pub fn with_shifts(mut self, shifts: Vec<MassShift>) -> Result<Self, SimError> {
+        if !shifts.is_empty() && self.parts() {
+            return Err(Self::shifts_and_partings());
+        }
+        let mut starts_s = Vec::with_capacity(shifts.len());
+        for shift in &shifts {
+            if let Trigger::Altitude {
+                height_above_ground_m,
+            } = shift.trigger
+                && !(height_above_ground_m.is_finite() && height_above_ground_m > 0.0)
+            {
+                return Err(SimError::Domain {
+                    what: "height above the launch site at which a part starts to move, m",
+                    value: height_above_ground_m,
+                });
+            }
+            let start_s = recovery::trigger_time_s(
+                shift.trigger,
+                &self.vehicle.assembly.motors,
+                self.vehicle.ignition_s(),
+            )?;
+            if let (None, Trigger::MotorDelay { motor } | Trigger::Burnout { motor, .. }) =
+                (start_s, shift.trigger)
+            {
+                return Err(SimError::Domain {
+                    what: "index of the motor a mass shift is timed from (it has no ignition \
+                           time before the flight, so the shift could never start)",
+                    value: motor as f64,
+                });
+            }
+            starts_s.push(start_s);
+        }
+        self.vehicle.shifts =
+            Shifts::new(&self.rocket, &self.vehicle.assembly, &shifts, &starts_s)?;
+        self.shifts = shifts;
+        Ok(self)
+    }
+
+    /// The mass shifts, in the order given.
+    #[must_use]
+    pub fn shifts(&self) -> &[MassShift] {
+        &self.shifts
+    }
+
+    /// The stack's mass properties at `t_s` as `flight` flew it (a flight of this simulation):
+    /// the design's, its motors burned to `t_s`, with each part that moves where it was then. A
+    /// shift starts where `flight` records it ([`EventKind::Shift`]); one it doesn't record hasn't
+    /// started. They are the whole stack's, in body axes about its centre of mass, before any
+    /// separation (and a flight with a powered separation has none that move).
+    #[must_use]
+    pub fn mass_properties(&self, flight: &FlightResult, t_s: f64) -> hpr_design::MassProperties {
+        let mut shifts = self.vehicle.shifts.clone();
+        for index in 0..self.shifts.len() {
+            if let Some(event) = flight.event(EventKind::Shift(index)) {
+                shifts.start(index, event.sample.time_s);
+            }
+        }
+        let whole = self
+            .vehicle
+            .assembly
+            .mass_properties_lit(t_s, self.vehicle.ignition_s());
+        shifts.apply(whole, t_s)
+    }
+
+    /// Refuses a separation or ejections in a flight with mass shifts.
+    fn check_no_shifts(&self) -> Result<(), SimError> {
+        if self.shifts.is_empty() {
+            Ok(())
+        } else {
+            Err(Self::shifts_and_partings())
+        }
+    }
+
+    /// The refusal of mass shifts with a separation or ejections.
+    fn shifts_and_partings() -> SimError {
+        SimError::Unsupported {
+            what: "a mass shift in a flight with a separation or ejections (the pieces are fixed \
+                   before the flight, with every part where the design puts it)",
+        }
     }
 
     /// The drag area of piece `piece` tumbling on its own, for a device on the body it leads:
@@ -737,6 +841,7 @@ impl Simulation {
             separation_time_s: self.separation_time_s,
             ejections: self.ejections.clone(),
             ejection_times_s: self.ejection_times_s.clone(),
+            shifts: self.shifts.clone(),
             rocket: self.rocket.clone(),
             configuration_id: self.configuration_id.clone(),
             aero_overridden: self.aero_overridden,
@@ -867,6 +972,17 @@ impl Simulation {
             .map(|ignition| ignition.is_some_and(|time| time <= t0))
             .collect();
         let mut sustainer: Option<Vehicle> = None;
+        // The stack once a shift the flight watched for has started, with its start set.
+        let mut shifted: Option<Vehicle> = None;
+        // Which shifts have started; one that started before the flight's start isn't recorded.
+        let mut shift_started: Vec<bool> = (0..self.shifts.len())
+            .map(|index| {
+                self.vehicle
+                    .shifts
+                    .start_s(index)
+                    .is_some_and(|start_s| start_s < t0)
+            })
+            .collect();
         let mut staged = false;
         let mut booster: Vec<BodyFlight> = Vec::new();
         let mut stops = self.vehicle.thrust_knots_s();
@@ -874,6 +990,7 @@ impl Simulation {
         stops.extend(trigger_times_s.iter().flatten().copied());
         stops.extend(self.separation_time_s);
         stops.extend(self.ejection_times_s.iter().flatten().copied());
+        stops.extend(self.vehicle.shifts.knots_s());
         stops.retain(|t| *t <= cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
@@ -905,7 +1022,63 @@ impl Simulation {
             if t >= cap {
                 break Termination::TimeCap;
             }
-            let vehicle = sustainer.as_ref().unwrap_or(&self.vehicle);
+
+            // Mass shifts: one whose start is known begins at that stop time; the flight watches
+            // for the apogee and the heights of the rest, as it does for a device's. A shift
+            // makes no step in the state, so the integrator carries on.
+            for (index, started) in shift_started.iter_mut().enumerate() {
+                if *started {
+                    continue;
+                }
+                let stack = shifted.as_ref().unwrap_or(&self.vehicle);
+                let window = (t, next_stop(&stops, t, cap));
+                let area = self.ascent_drag_area_m2(&run, t);
+                let starts = match stack.shifts.start_s(index) {
+                    Some(start_s) => t >= start_s,
+                    None if matches!(phase, Phase::Free | Phase::Descent) => {
+                        match self.shifts[index].trigger {
+                            // At or past the apogee, as a device's apogee trigger is.
+                            Trigger::Apogee => {
+                                self.evaluate(stack, phase, window, t, &y, area)?
+                                    .vertical_speed_m_s
+                                    <= 0.0
+                            }
+                            Trigger::Altitude {
+                                height_above_ground_m,
+                            } => {
+                                let e = self.evaluate(stack, phase, window, t, &y, area)?;
+                                e.vertical_speed_m_s < 0.0
+                                    && e.height_above_ground_m <= height_above_ground_m
+                            }
+                            Trigger::Time { .. }
+                            | Trigger::MotorDelay { .. }
+                            | Trigger::Burnout { .. } => false,
+                        }
+                    }
+                    None => false,
+                };
+                if !starts {
+                    continue;
+                }
+                if stack.shifts.start_s(index).is_none() {
+                    shifted
+                        .get_or_insert_with(|| self.vehicle.clone())
+                        .shifts
+                        .start(index, t);
+                }
+                let stack = shifted.as_ref().unwrap_or(&self.vehicle);
+                if let Some(end_s) = stack.shifts.end_s(index) {
+                    insert_stop(&mut stops, end_s, cap);
+                }
+                *started = true;
+                let window = (t, next_stop(&stops, t, cap));
+                let sample = self.sample(stack, phase, window, t, &y, area)?;
+                record(&mut events, observer, EventKind::Shift(index), sample);
+            }
+            let vehicle = sustainer
+                .as_ref()
+                .or(shifted.as_ref())
+                .unwrap_or(&self.vehicle);
 
             // Motors lit after launch: their ignitions are stop times, so each is found here at
             // its own time.
@@ -1263,7 +1436,7 @@ impl Simulation {
                     };
                 }
             }
-            let watches = self.watches(phase, &run, !staged && !separation_held);
+            let watches = self.watches(phase, &run, !staged && !separation_held, &shift_started);
             let mut system = PhaseSystem {
                 simulation: self,
                 vehicle,
@@ -1365,9 +1538,12 @@ impl Simulation {
                                     );
                                 }
                             }
-                            Watch::SeparationHeight | Watch::EjectionHeight(_) => {
-                                // The separation or ejection itself fires at the top of the next
-                                // pass, which is where its burnout check and its bodies live.
+                            Watch::SeparationHeight
+                            | Watch::EjectionHeight(_)
+                            | Watch::ShiftHeight(_) => {
+                                // The separation, ejection or shift itself fires at the top of
+                                // the next pass, which is where its burnout check and its bodies
+                                // live, and where a shift's start is set.
                             }
                             Watch::User(user) => {
                                 let sample = self.sample(vehicle, phase, window, t, &y, area)?;
@@ -1392,7 +1568,10 @@ impl Simulation {
 
         let t = integrator.time_s();
         let y = *integrator.state();
-        let vehicle = sustainer.as_ref().unwrap_or(&self.vehicle);
+        let vehicle = sustainer
+            .as_ref()
+            .or(shifted.as_ref())
+            .unwrap_or(&self.vehicle);
         let next = next_stop(&stops, t, f64::INFINITY);
         let area = self.ascent_drag_area_m2(&run, t);
         let final_sample = self.sample(vehicle, phase, (t, next.max(t)), t, &y, area)?;
@@ -2033,7 +2212,13 @@ impl Simulation {
     }
 
     /// What the integrator watches for in `phase`, in event order.
-    fn watches(&self, phase: Phase, run: &Run, separation_pending: bool) -> Vec<Watch> {
+    fn watches(
+        &self,
+        phase: Phase,
+        run: &Run,
+        separation_pending: bool,
+        shift_started: &[bool],
+    ) -> Vec<Watch> {
         match phase {
             Phase::Pad => vec![Watch::RailForce],
             Phase::Rail => vec![Watch::RailExit, Watch::RailStall],
@@ -2061,6 +2246,13 @@ impl Simulation {
                         if matches!(ejection.trigger, Trigger::Altitude { .. }) {
                             watches.push(Watch::EjectionHeight(index));
                         }
+                    }
+                }
+                for (index, shift) in self.shifts.iter().enumerate() {
+                    if matches!(shift.trigger, Trigger::Altitude { .. })
+                        && !shift_started.get(index).copied().unwrap_or(true)
+                    {
+                        watches.push(Watch::ShiftHeight(index));
                     }
                 }
                 watches.extend((0..self.user_events.len()).map(Watch::User));
@@ -2155,6 +2347,8 @@ enum Watch {
     SeparationHeight,
     /// An ejection's height, descending, by its index.
     EjectionHeight(usize),
+    /// A mass shift's height, descending, by its index.
+    ShiftHeight(usize),
     /// A user event.
     User(usize),
 }
@@ -2409,7 +2603,8 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                 | Watch::Ground
                 | Watch::Altitude(_)
                 | Watch::SeparationHeight
-                | Watch::EjectionHeight(_),
+                | Watch::EjectionHeight(_)
+                | Watch::ShiftHeight(_),
             ) => Direction::Falling,
             Some(Watch::User(user)) => self
                 .simulation
@@ -2453,10 +2648,13 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                     .map(|e| e.height_above_ground_m - height_m);
                 self.or_fail(value)
             }
-            Watch::SeparationHeight | Watch::EjectionHeight(_) => {
+            Watch::SeparationHeight | Watch::EjectionHeight(_) | Watch::ShiftHeight(_) => {
                 let trigger = match watch {
                     Watch::EjectionHeight(index) => {
                         self.simulation.ejections.get(index).map(|e| e.trigger)
+                    }
+                    Watch::ShiftHeight(index) => {
+                        self.simulation.shifts.get(index).map(|s| s.trigger)
                     }
                     _ => self.simulation.separation.map(|s| s.trigger),
                 };

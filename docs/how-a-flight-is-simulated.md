@@ -161,7 +161,8 @@ flight:
   ([Clusters](physics/design.md#clusters)). A rocket that separates more than once is not
   compared yet, and neither is one that ejects a nose cone or a payload to land on its own: those
   pieces are checked against exact answers only
-  ([Recovery: ejected pieces](physics/recovery.md#ejected-pieces)).
+  ([Recovery: ejected pieces](physics/recovery.md#ejected-pieces)). So is ballast or a payload
+  that slides along the airframe in flight ([Moving mass](physics/moving-mass.md)).
 - [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
   axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
   modelled, and checked against measurements only from Mach 1.5 up

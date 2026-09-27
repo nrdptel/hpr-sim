@@ -1,0 +1,15 @@
+A 54 mm rocket on an I175 whose 200 g of ballast slides 0.3 m aft from 5 s to 6 s
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+time (s)   mass (kg)   centre of mass (m aft of tip)   transverse inertia (kg m²)
+    4.00      0.8188                          0.6681                      0.09556
+    5.25      0.8188                          0.6748                      0.09248
+    5.50      0.8188                          0.7048                      0.08138
+    5.75      0.8188                          0.7347                      0.07483
+    7.00      0.8188                          0.7414                      0.07399
+
+centre of mass moves   0.0733 m aft   by hand mΔ/M = 0.2 × 0.3 / 0.8188 = 0.0733 m
+static margin          4.297 cal before, 2.996 after, a change of -1.302
+                       by hand −mΔ/(M d) = −0.0733 / 0.0563 = -1.302 cal
+
+apogee                 1749.8 m with the ballast moving, 1749.9 m held still

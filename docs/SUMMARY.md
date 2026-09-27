@@ -37,6 +37,7 @@
 - [Time integration and events](physics/integration.md)
 - [Recovery](physics/recovery.md)
 - [Staging](physics/staging.md)
+- [Moving mass](physics/moving-mass.md)
 - [Flight metrics](physics/metrics.md)
 - [Fin flutter](physics/flutter.md)
 
