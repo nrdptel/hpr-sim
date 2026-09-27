@@ -166,7 +166,7 @@ pub(crate) fn cluster_spread_kg_m2(layout: &Layout) -> Option<f64> {
             0.0,
             -placed.fore_station_m,
         ));
-        let mut stacked = MassProperties::copied(one, &placed.copies_m);
+        let mut stacked = MassProperties::placed(one, &placed.copies);
         if stacked.mass_kg > 0.0 {
             stacked = stacked.scaled(placed.own.mass_kg / stacked.mass_kg);
         }

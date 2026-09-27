@@ -23,7 +23,10 @@
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). A
   [cluster](../glossary.md#cluster)'s tubes sit where OpenRocket puts them, to 1e-15 m, and a motor
-  out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). OpenRocket's
+  out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). A
+  [pod](../glossary.md#pod)'s mass, centre and inertia match the hand-worked parallel-axis sum to
+  1e-15 ([Pods](#pods)); pods are not yet compared with OpenRocket
+  ([M1.13c](../decisions-and-roadmap.md#m1-13c)). OpenRocket's
   cluster example flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees
   are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee
   ([M1.9c](../decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against
@@ -33,7 +36,9 @@
   otherwise, so a two-stage design whose file says nothing flies with every motor lit at once, and
   nothing warns; a staged flight gives the sustainer its ignition ([Staging](staging.md)). A
   cluster's motors light together, or not at all: no spread in ignition and no thrust misalignment.
-  Fins on a nose cone or transition are refused.
+  Fins on a nose cone or transition are refused. Pods are weighed but can't fly yet: no cited
+  model gives their normal force and drag, so the aerodynamics refuse a design with pods
+  ([Pods](#pods)).
   [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and
   overrides; the OpenRocket comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) is mapping them,
   and the mass conventions it has found are on the [mass page](mass.md#checked-against-openrocket).
@@ -85,7 +90,8 @@ Each [`Stage`](../api/hpr_design/tree/struct.Stage.html) lists **body components
 | role | parts | where |
 |---|---|---|
 | body | nose cone, body tube, transition | a stage's list; they stack |
-| external | fin set, tube fin set, launch lug, rail button | children of a body tube; they take its outer radius |
+| external | fin set, tube fin set, launch lug, rail button, pod set | children of a body tube; they take its outer radius |
+| a pod's body | nose cone, body tube, transition | children of a pod set; they stack along the pod ([Pods](#pods)) |
 | internal | inner tube, centering ring, mass component, parachute, streamer, shock cord | children of a body component or an inner tube |
 
 - **Stacking.** Body components start at `s = 0` and follow one another through every stage, forward
@@ -96,10 +102,12 @@ Each [`Stage`](../api/hpr_design/tree/struct.Stage.html) lists **body components
   - a row of lugs or buttons from the first one's forward end to the last one's aft end,
     `(n − 1)·spacing + length` (for a button, its diameter);
   - a packed part's packed length;
+  - a pod set's pod, its body components' lengths added;
   - otherwise the part's length.
 - **Refused trees** (`DesignError::Tree`): no stages, an empty stage, a part in the wrong role, an
   attached part without a position, a body component with one, children under anything but a body
-  component or inner tube, and motor mounts on anything but a body tube or inner tube.
+  component, inner tube or pod set, anything but body components in a pod set, and motor mounts on
+  anything but a body tube or inner tube.
   `DesignError::DuplicateId` covers an empty or repeated id.
 - Fins on a nose cone or transition are refused for now. Their root would follow a curved or
   sloped surface, which `FinSet` doesn't model.
@@ -297,6 +305,117 @@ all three lit, the thrusts balance, and the rocket turns 225 times slower (0.186
 centre of mass sitting 0.033 mm off the axis. The numbers are pinned by the test
 `cluster_motor_out_produces_pitch_moment` in `hpr-sim`.
 
+## Pods
+
+A pod is a body beside the airframe: a side pod, or an outboard motor pod. In hpr a
+[`PodSet`](../api/hpr_design/parts/struct.PodSet.html) is attached to a body tube like a fin set,
+with a position along it. Its children are the pod's own body components (a nose cone, body tubes,
+a transition), which stack aft from that position along the pod's axis, and take their automatic
+radii from one another as a stage's do. Parts go on and inside them as on the airframe: fins on a
+pod's tube, a mass or a motor mount inside it. **hpr weighs pods but can't fly them yet**: the
+aerodynamics stop with an error naming the pod set, so a design with pods gives its mass, centre of
+mass, inertia and motors only ([M1.13c](../decisions-and-roadmap.md#m1-13c), pod aerodynamics). The
+decision record is [ADR-089][adr-089].
+
+- **Where the pods sit.** `count` pods, 1 to 64, spaced evenly around the body's axis at
+  `radial_offset_m` from it, the first at `angle_rad` from the body's `x` axis toward its `y` axis
+  ([frames](frames.md)): pod `k` is at `r (cos φ_k, sin φ_k)`, `φ_k = angle + 2π k / count`.
+- **Each pod is the first one turned.** The pod written in the tree is one pod on the body's axis.
+  Pod `k` is that pod turned by `φ_k` about the body's axis, then moved out, as a fin set's fins
+  are. So whatever it holds keeps its place relative to the airframe: a fin that points away from
+  the airframe on one pod points away on every pod, and a symmetric pod set keeps its centre of
+  mass on the axis.
+- **Mass.** Each copy is weighed where it sits, with its own
+  [parallel-axis](../glossary.md#parallel-axis-theorem) term, and everything the pod holds is
+  repeated with it. The pod set itself weighs nothing.
+- **Overrides.** A mass override on the pod set is the total for all its pods, and must be set with
+  `overrides_include_children` (an override on the pod set alone is refused, since it has nothing
+  of its own). An override on a part inside a pod is that part's in each pod. A centre override
+  `cg_xy_m` inside a pod is measured in the pod as written, on the body's axis, and turns with each
+  pod; so does an inertia override's tensor. The test `what_a_pod_holds_turns_with_it_and_overrides_keep_their_scope` pins all three.
+- **Motors.** A motor mount inside a pod gives one motor per pod, each nozzle on its pod's axis.
+  The configuration names the mount by its id, the pod tube's for a pod that is its own motor
+  tube, and a mounted motor's `failed_tubes` counts the pods, in order from the first.
+- **Checks.** A pod may run past the end of the tube it hangs from, or past the rocket's end,
+  without a warning: a pod is held by a pylon, and an outboard booster often extends past the tube
+  it hangs from. A pod set that doesn't touch its tube at all is still an error. A pod set in a pod,
+  an empty one, and one of more than 64 pods are refused.
+- **What it can't do yet.**
+  - Fly: the aerodynamics refuse pods, as does the tumble model, which gives a falling airframe's
+    drag area from its body tubes and fins.
+  - Move or release a part inside several pods: a [moving](moving-mass.md) or
+    [released](released-mass.md) part must be one part, so it can be inside a pod only when there
+    is one pod.
+  - Part at a pod: a pod's body component is neither a joint nor an ejected payload; it stays with
+    the tube its pod set hangs from.
+  - Check a pod's geometry: nothing warns when pods overlap the airframe or each other, or when a
+    pod's radius steps ([#206](https://github.com/nrdptel/hpr-sim/issues/206)).
+  - Read pods from a `.ork` file: they are kept but not read
+    ([M1.13b](../decisions-and-roadmap.md#m1-13b)).
+
+  The refusals are pinned by tests in `hpr-aero` (`unsupported_inputs_are_refused`) and `hpr-sim`
+  (`tumbling_refuses_an_airframe_the_model_cannot_represent`,
+  `a_pod_s_parts_are_located_as_the_airframe_s_are`, `partings_the_design_cant_make_are_refused`).
+
+In a JSON design, this component goes in a body tube's `children` list. It holds two pods 50 mm
+from the axis (`angle_rad` is optional and 0 by default), each a 0.3 m tube, 0.1 m aft of the top
+of the body tube:
+
+```json
+{
+  "id": "pods",
+  "part": { "pod_set": { "count": 2, "radial_offset_m": 0.05, "angle_rad": 0.0 } },
+  "position": { "from": "top", "aft_offset_m": 0.1 },
+  "children": [
+    {
+      "id": "pod-tube",
+      "part": {
+        "body_tube": {
+          "length_m": 0.3,
+          "outer_radius_m": 0.012,
+          "thickness_m": 0.001,
+          "material": { "name": "cardboard", "density": { "kind": "bulk", "kg_m3": 790.0 } }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Worked example.** The same two pods, at 0° and 180°, each a cardboard tube (790 kg/m³, radius
+12 mm, wall 1 mm, 0.3 m long) with a 50 g mass added inside it (a solid cylinder 0.1 m long,
+radius 8 mm, its top 0.02 m below the pod's). They hang on the tests' 54 mm airframe (radius
+27 mm), so each stands 11 mm clear of it, from a body tube whose top is 0.2 m aft of the nose tip.
+The pod starts 0.3 m aft of the nose tip (at [station](../glossary.md#station) 0.3 m). Each pod,
+about its own axis and centre:
+
+| quantity | value |
+|---|---|
+| the tube's mass `ρ π (r_o² − r_i²) L` | 17.125 g |
+| one pod's mass `m` (tube and mass) | 67.125 g |
+| its centre, from the tube's at station 0.45 m and the mass's at 0.37 m | station 0.39041 m |
+| its roll inertia, the two cylinders' `m (r_o² + r_i²)/2` and `m r²/2` added | 3.869e-6 kg m² |
+| its pitch inertia, each cylinder's `m (3 (r_o² + r_i²) + L²)/12` and its own `m Δz²` | 2.53675e-4 kg m² |
+
+Each pod's axis is `d = 0.05` m off the body's. A pod's parallel-axis term about a line through
+the body's axis is `m` times the square of the pod's distance from that line. Both pods lie on the
+`x` axis, so they add nothing about it, and `m d²` = 1.6781e-4 kg m² each about the `y` and `z`
+axes:
+
+| quantity (the two pods about their joint centre, on the axis) | value |
+|---|---|
+| mass | 134.25 g |
+| `I_xx`: no `m d²` | 2 × 2.53675e-4 ≈ 5.0735e-4 kg m² |
+| `I_yy` | 2 × (2.53675e-4 + 1.6781e-4) ≈ 8.4298e-4 kg m² |
+| `I_zz` (roll) | 2 × (3.869e-6 + 1.6781e-4) ≈ 3.4336e-4 kg m² |
+
+The pods' roll inertia is 44 times what it would be with both on the axis: nearly all of it is the
+parallel-axis term. The test `a_pod_is_its_stack_repeated_with_its_parallel_axis_term` in
+`hpr-design` pins these to 1e-15. It also pins a single pod at 90° (`y = d`). About the nose tip,
+where its centre is at `z = −0.39041` m, the pod's
+[product of inertia](../glossary.md#product-of-inertia) is `I_yz = −m y z` = 0.067125 × 0.05 ×
+0.39041 = 1.3103e-3 kg m².
+
 ## Checks
 
 [`checks::check`](../api/hpr_design/checks/fn.check.html) resolves a design and returns typed
@@ -362,6 +481,16 @@ unless the caller sets
   - `hpr_sim::staging::tests`: three motors' thrust and mass summed, and the motor out above
     (`cluster_motor_out_produces_pitch_moment`, [Loft lesson L31](../decisions-and-roadmap.md#l31));
     a clustered sustainer lit after a powered separation.
+- **Pods by hand** (`tree::tests`): two pods' mass, centre and inertia, and one pod off the axis
+  with its product of inertia, against the textbook cylinders' sum above, to 1e-15
+  (`a_pod_is_its_stack_repeated_with_its_parallel_axis_term`); a mass off a pod's axis turning
+  with its pod, a centre override in the pod as written, and the two override scopes
+  (`what_a_pod_holds_turns_with_it_and_overrides_keep_their_scope`); a pod's nose taking its
+  tube's radius, its parts repeated in each of three pods, a motor per pod, no warning for pods
+  past the rocket's end, this page's JSON, and each refused tree
+  (`pods_stack_hold_motors_and_refuse_the_wrong_trees`); a pod's nose never the reference nose
+  (`a_pod_s_nose_is_not_the_reference_nose`). The aerodynamics, the tumble model, a mass shift
+  and an ejection each refuse a pod, or a pod's body component, by name ([above](#pods)).
 - **Overrides** (`overrides_rescale_move_and_replace`, `nested_overrides_apply_deepest_first`):
   each step, the scopes, a stage override, deeper overrides first, the massless case, and refusal
   of non-finite and unphysical results.
@@ -415,4 +544,5 @@ unless the caller sets
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [levels]: ../accuracy.md#four-kinds-of-evidence
+[adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25

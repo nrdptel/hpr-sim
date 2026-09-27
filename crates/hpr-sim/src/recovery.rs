@@ -359,7 +359,8 @@ impl DeviceDrag {
     /// - `A_f` is, for each fin set, one fin's planform area times the efficiency factor for its
     ///   fin count ([`TUMBLE_FIN_EFFICIENCY`]). Launch lugs and rail buttons add nothing, and an
     ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
-    ///   the model has no factor for them.
+    ///   the model has no factor for them. So is one with **pods**, whose tubes the model has no
+    ///   factor for either.
     ///
     /// It sums **every** stage, so it is the whole stack tumbling. For a spent booster on its
     /// own, which is what the documentation's model was written for, use
@@ -373,9 +374,8 @@ impl DeviceDrag {
     /// # Errors
     ///
     /// [`SimError::Design`] if a fin planform's area or a nose cone's or transition's profile can't
-    /// be computed, and [`SimError::Domain`]
-    /// if the airframe presents no area at all, carries tube fins, or has a fin set of more than
-    /// the eight fins Table 3.4 covers.
+    /// be computed, and [`SimError::Domain`] if the airframe presents no area at all, carries tube
+    /// fins or pods, or has a fin set of more than the eight fins Table 3.4 covers.
     pub fn tumbling(assembly: &hpr_design::Assembly) -> Result<Self, SimError> {
         Self::tumbling_stages(
             assembly,
@@ -420,6 +420,16 @@ impl DeviceDrag {
         for (index, component) in assembly.layout.components.iter().enumerate() {
             if !member(index, component) {
                 continue;
+            }
+            if matches!(component.part, hpr_design::Part::PodSet(_)) {
+                // A pod's tubes are listed as the pod set's children; counting them as the
+                // airframe's own side profile would credit pods with a body tube's broadside drag
+                // factor, which no source gives for them.
+                return Err(SimError::Domain {
+                    what: "tumbling an airframe with pods (the model covers body tubes and fin sets \
+                           only)",
+                    value: 0.0,
+                });
             }
             body_profile_m2 += side_profile_m2(component)?;
             if matches!(component.part, hpr_design::Part::TubeFinSet(_)) {
@@ -3206,6 +3216,30 @@ mod tests {
         // The unchanged design is fine, so the refusal is about the tube fins and nothing else.
         assert!(
             DeviceDrag::tumbling(&design("rocketpy-valetudo").assemble("example").unwrap()).is_ok()
+        );
+
+        // Pods: their tubes would otherwise count as the airframe's side profile.
+        let mut rocket = design("rocketpy-valetudo");
+        let airframe = &mut rocket.stages[0].components[1];
+        let mut pod_tube = airframe.clone();
+        pod_tube.id = "pod-tube".to_owned();
+        pod_tube.auto.clear();
+        pod_tube.motor_mount = None;
+        pod_tube.children.clear();
+        let mut pods = pod_tube.clone();
+        pods.id = "pods".to_owned();
+        pods.part = hpr_design::Part::PodSet(hpr_design::PodSet {
+            count: 2,
+            radial_offset_m: 0.2,
+            angle_rad: 0.0,
+        });
+        pods.position = Some(hpr_design::Position::Top { aft_offset_m: 0.0 });
+        pods.children = vec![pod_tube];
+        airframe.children.push(pods);
+        let error = DeviceDrag::tumbling(&rocket.assemble("example").unwrap()).expect_err("pods");
+        assert!(
+            matches!(error, SimError::Domain { what, .. } if what.starts_with("tumbling an airframe with pods")),
+            "{error:?}"
         );
     }
 

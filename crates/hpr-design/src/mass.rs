@@ -217,6 +217,33 @@ impl MassProperties {
         Self::combine(&copies)
     }
 
+    /// Copies of `body`, one at each of `places`, combined into one rigid body: a cluster's tubes
+    /// or a pod set's pods, or what each of them holds. Each copy is `body` rolled by its place's
+    /// angle about the body's axis, then moved across it by its offset, so each carries its own
+    /// parallel-axis term. One place that neither moves nor turns is `body` itself, bit for bit;
+    /// no places at all is no body (zero mass).
+    #[must_use]
+    pub fn placed(body: Self, places: &[Placement]) -> Self {
+        if let [only] = places
+            && *only == Placement::HERE
+        {
+            return body;
+        }
+        let copies: Vec<Self> = places
+            .iter()
+            .map(|place| {
+                let turned = if place.roll_rad == 0.0 {
+                    body
+                } else {
+                    body.rolled(place.roll_rad)
+                };
+                let [x, y] = place.offset_m;
+                turned.translated(DVec3::new(x, y, 0.0))
+            })
+            .collect();
+        Self::combine(&copies)
+    }
+
     /// The bodies combined into one rigid body.
     ///
     /// With zero total mass the centre is the plain average of the parts' centres (the origin with
@@ -370,11 +397,96 @@ fn symmetric_eigenvalues(m: DMat3) -> [f64; 3] {
     eig
 }
 
+/// Where one copy of a repeated part sits: the part as it is written, turned by `roll_rad` about
+/// the body's axis (from `x_B` toward `y_B`), then moved across the axis by `offset_m`, in body
+/// axes. A point `p` of the part goes to `R(roll) p + offset`.
+///
+/// A cluster's tubes only move (`roll_rad = 0`). A pod set's pod `k` also turns, by its angle
+/// `φ_k`, so that what a pod holds keeps its place relative to the airframe, as the fins of a fin
+/// set do ([ADR-089][adr-089]).
+///
+/// [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Placement {
+    /// How far the copy moves across the axis, `[x, y]` in body axes, m.
+    pub offset_m: [f64; 2],
+    /// How far the copy turns about the body's axis, from `x_B` toward `y_B`, rad.
+    #[serde(default)]
+    pub roll_rad: f64,
+}
+
+impl Placement {
+    /// The part where it is written: no move, no turn.
+    pub const HERE: Self = Self {
+        offset_m: [0.0, 0.0],
+        roll_rad: 0.0,
+    };
+
+    /// A copy moved by `offset_m` without turning, as a cluster's tube is.
+    pub fn moved(offset_m: [f64; 2]) -> Self {
+        Self {
+            offset_m,
+            roll_rad: 0.0,
+        }
+    }
+
+    /// Where the point `[x, y]` of the part (body axes, m) goes: `R(roll) [x, y] + offset`.
+    pub fn point(&self, [x, y]: [f64; 2]) -> [f64; 2] {
+        let [ox, oy] = self.offset_m;
+        if self.roll_rad == 0.0 {
+            return [x + ox, y + oy];
+        }
+        let (sin, cos) = self.roll_rad.sin_cos();
+        [cos * x - sin * y + ox, sin * x + cos * y + oy]
+    }
+
+    /// The place of a copy that `inner` places inside a part that `self` places: `self` after
+    /// `inner`. The turns add, and `inner`'s offset turns with `self`.
+    #[must_use]
+    pub fn after(&self, inner: &Self) -> Self {
+        Self {
+            offset_m: self.point(inner.offset_m),
+            roll_rad: self.roll_rad + inner.roll_rad,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::f64::consts::PI;
 
     use super::*;
+
+    /// A place inside a place: the turns add and the inner offset turns with the outer place, so
+    /// placing a point by the composite is placing it by the inner place, then the outer one; and a
+    /// body placed by it is the body placed twice.
+    #[test]
+    fn placements_compose_as_turn_then_move() {
+        use std::f64::consts::FRAC_PI_2;
+        let outer = Placement {
+            offset_m: [1.0, 0.0],
+            roll_rad: FRAC_PI_2,
+        };
+        let inner = Placement::moved([0.1, 0.0]);
+        let both = outer.after(&inner);
+        assert!((both.offset_m[0] - 1.0).abs() < 1e-15, "{both:?}");
+        assert!((both.offset_m[1] - 0.1).abs() < 1e-15, "{both:?}");
+        assert_eq!(both.roll_rad, FRAC_PI_2);
+        let p = [0.02, -0.03];
+        let [a, b] = both.point(p);
+        let [c, d] = outer.point(inner.point(p));
+        assert!((a - c).abs() < 1e-15 && (b - d).abs() < 1e-15);
+        let body = MassProperties::axisymmetric(0.5, DVec3::new(0.01, 0.0, -0.2), 1e-4, 3e-3);
+        let once = MassProperties::placed(body, &[both]);
+        let twice = MassProperties::placed(MassProperties::placed(body, &[inner]), &[outer]);
+        assert!((once.cg_m - twice.cg_m).length() < 1e-15);
+        let gap = once.inertia_kg_m2 - twice.inertia_kg_m2;
+        for col in [gap.x_axis, gap.y_axis, gap.z_axis] {
+            assert!(col.abs().max_element() < 1e-15, "{gap:?}");
+        }
+        assert_eq!(MassProperties::placed(body, &[Placement::HERE]), body);
+    }
 
     fn assert_mat_close(a: DMat3, b: DMat3, tol: f64) {
         let diff = (a - b)

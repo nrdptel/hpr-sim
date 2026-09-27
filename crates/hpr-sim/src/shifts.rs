@@ -131,11 +131,12 @@ pub(crate) enum NotCarried {
 /// the airframe.
 pub(crate) fn locate_part(assembly: &Assembly, id: &str) -> Result<usize, NotAPart> {
     let (index, placed) = assembly.layout.find(id).ok_or(NotAPart::Missing)?;
-    if placed.parent.is_none() {
+    // A pod's body components hang from its pod set but are still body components.
+    if placed.parent.is_none() || placed.part.is_body() {
         Err(NotAPart::BodyComponent)
     } else if placed.body_radius_m.is_some() {
         Err(NotAPart::Outside)
-    } else if placed.copies_m.len() != 1 {
+    } else if placed.copies.len() != 1 {
         Err(NotAPart::NotOnePart)
     } else {
         Ok(index)
@@ -969,6 +970,50 @@ mod tests {
             Err(SimError::Shift { what, component }) => (what, component),
             other => panic!("{other:?}"),
         }
+    }
+
+    /// A pod's parts, as a shift or a release looks them up: its body components are body
+    /// components though they hang from the pod set, the pod set is outside the airframe, and a
+    /// part inside a pod is one part only when there is one pod.
+    #[test]
+    fn a_pod_s_parts_are_located_as_the_airframe_s_are() {
+        let podded = |count: u32| {
+            let mut rocket = with_sleeve();
+            let airframe = &mut rocket.stages[0].components[1];
+            let mut held = airframe
+                .children
+                .iter()
+                .find(|child| child.id == "ballast")
+                .unwrap()
+                .clone();
+            held.id = "pod-ballast".to_owned();
+            held.position = Some(Position::Top { aft_offset_m: 0.0 });
+            let mut pod_tube = airframe.clone();
+            pod_tube.id = "pod-tube".to_owned();
+            pod_tube.auto.clear();
+            pod_tube.motor_mount = None;
+            pod_tube.children = vec![held];
+            let mut pods = pod_tube.clone();
+            pods.id = "pods".to_owned();
+            pods.part = Part::PodSet(hpr_design::PodSet {
+                count,
+                radial_offset_m: 0.2,
+                angle_rad: 0.0,
+            });
+            pods.position = Some(Position::Top { aft_offset_m: 0.0 });
+            pods.children = vec![pod_tube];
+            airframe.children.push(pods);
+            let id = rocket.configurations[0].id.clone();
+            rocket.assemble(&id).unwrap()
+        };
+        let one = podded(1);
+        assert_eq!(locate_part(&one, "pod-tube"), Err(NotAPart::BodyComponent));
+        assert_eq!(locate_part(&one, "pods"), Err(NotAPart::Outside));
+        assert!(locate_part(&one, "pod-ballast").is_ok());
+        assert_eq!(
+            locate_part(&podded(2), "pod-ballast"),
+            Err(NotAPart::NotOnePart)
+        );
     }
 
     #[test]

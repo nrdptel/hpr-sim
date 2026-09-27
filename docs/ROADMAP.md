@@ -643,21 +643,18 @@
   - Mean absolute apogee error is reported against the 5% target.
   - Each outlier has an explanation.
   - [x] **M2.3a ERA5 weather.** netCDF classic read from the specification; ERA5 levels at a site.
-    *Done when:*
-    - Classic and 64-bit offset files read value for value as the Unidata library reads them
-      (every type, records, the lone-record padding, packing), the Users Guide's departures from
-      netCDF4-python pinned; netCDF-4 and CDF-5 refused with the conversion.
-    - ERA5 levels at Bella Lui's and NDRT 2020's sites on the hour match RocketPy 1.13's reading
-      (temperature, wind, geopotential height) to 1e-12; between hours, weighted in time; the
-      height conversion's difference is published with numbers.
-    - The Data Store's netCDF-4 file for NDRT 2020, converted as the guide says, reads like the
-      older file of the same analysis.
-    - A guide page explains getting, converting and reading an ERA5 file, with an example CI runs.
+    *Done when:* classic and 64-bit offset files read value for value as the Unidata library reads
+    them (every type, records, the lone-record padding, packing), the Users Guide's departures
+    from netCDF4-python pinned, netCDF-4 and CDF-5 refused with the conversion; ERA5 levels at
+    Bella Lui's and NDRT 2020's sites on the hour match RocketPy 1.13's reading (temperature,
+    wind, geopotential height) to 1e-12, between hours weighted in time, the height conversion's
+    difference published with numbers; the Data Store's netCDF-4 file for NDRT 2020, converted as
+    the guide says, reads like the older file of the same analysis; and a guide page explains
+    getting, converting and reading an ERA5 file, with an example CI runs.
   - [x] **M2.3b RocketPy's logged flights.** Met (ADR-082): seven flights in their ERA5 weather,
     apogee and ascent RMS each, hpr read as the logs' barometers; mean absolute apogee error 6.04%
-    against 5%, outside it; the five outliers explained (drag, impulse) by claims the report
-    checks. Astra and
-    Andromeda (EuRoC 2022, netCDF-4) wait.
+    against 5%, outside it; the five outliers explained (drag, impulse) by claims the report checks.
+    Astra and Andromeda (EuRoC 2022, netCDF-4) wait.
   - [ ] [blocked] **M2.3c Corpus flights with logs.** The private designs that have a flight log,
     in their day's weather; *done when* each is in a report as anonymised statistics beside
     M2.3b's. Blocked (ADR-083): no private design is the rocket of a logged flight; needs a pair.
@@ -712,7 +709,7 @@
     hand-computed values, and a release conserves mass and momentum. *Result:* met: 1e-15 m, kg,
     kg·m²; momentum to 1.5e-13, angular momentum 7.3e-12, the part leaving at 0.146 m/s across.
 
-- [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19).
+- [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19). Split a to c (ADR-089).
   - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.
     Mass properties off the axis; each pod's normal force and drag, and its interference with the
     body, from a cited source.
@@ -722,6 +719,12 @@
   - A pod's mass properties match the hand-computed parallel-axis values.
   - A pod design matches OpenRocket within the per-case tolerance, with the limits of both codes'
     pod models stated in the docs.
+  - [x] **M1.13a Pod mass** (ADR-089). *Done when:* the first bullet is met, and what a pod holds
+    (a motor too) is repeated in every pod. *Result:* met: two pods, and one off the axis with its
+    `I_yz = −m y z`, to 1e-15 kg, m and kg·m²; a motor in a 3-pod set is three motors.
+  - [ ] **M1.13b `.ork` pods**, read into `PodSet`. *Done when:* `cargo xtask ork` reads and counts
+    every corpus pod set, and their parts' cached numbers are held as the airframe's are.
+  - [ ] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
 ## Phase 2: Library surfaces and interop
 
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
@@ -768,8 +771,7 @@
 
   *Done when:*
   - pytest passes in CI.
-  - A notebook-style example reproduces a RocketPy example flight via hpr within the M2.1
-    tolerance.
+  - A notebook-style example reproduces a RocketPy example flight via hpr within the M2.1 tolerance.
 
 - [ ] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings.
@@ -868,8 +870,7 @@
   *Done when:*
   - Fixed canards match OpenRocket's normal force and centre of pressure within the per-case
     tolerance.
-  - A roll-control case damps a step roll disturbance as the linearised analytic response
-    predicts.
+  - A roll-control case damps a step roll disturbance as the linearised analytic response predicts.
 ## Phase 4: More formats and embeddings
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
@@ -953,8 +954,7 @@ up in `docs/research/`.
 
 - [ ] **M8.1 Design assistant.**
   - Templates: minimum diameter, 3FNC, dual deploy L1/L2/L3.
-  - Automatic checks (stability window, motor fit, rail buttons, flutter margin, recovery
-    sizing).
+  - Automatic checks (stability window, motor fit, rail buttons, flutter margin, recovery sizing).
   - Auto-size parachutes to a target descent rate.
   - Suggestions with reasons.
   - Loft lessons: L97.
@@ -970,8 +970,7 @@ up in `docs/research/`.
 
 - [ ] **M9.0 UI architecture ADR plus a spike.** Compare the leading option (web UI plus WASM core,
   PWA, Tauri v2 for desktop and mobile) against all-Rust. Build a throwaway 3D trajectory spike in
-  each and measure bundle size, frame rate on a phone-class device profile, and development
-  effort.
+  each and measure bundle size, frame rate on a phone-class device profile, and development effort.
   - Loft lessons: P15 (read Loft's `OWNER-NOTES.md` UI notes before the spike).
   *Done when:* the ADR is merged with measurements.
 

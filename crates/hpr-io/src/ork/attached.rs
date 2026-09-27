@@ -154,7 +154,7 @@ fn one(
         "parachute" => parachute(&mut values, &mut auto),
         "streamer" => streamer(&mut values, &mut auto),
         "shockcord" => shock_cord(&mut values, &mut auto),
-        // Pods and parallel stages hold a spine of their own, which is M3.1c's work, and anything
+        // Pods and parallel stages hold a spine of their own, which is M1.13b's work, and anything
         // else is a tag this reader has never seen. Both are counted by the caller.
         _ => return None,
     }?;
@@ -1032,7 +1032,7 @@ pub(super) fn finish(values: &mut Values<'_>) -> Option<Finish> {
 /// 26 other parts of the reference corpus that carry both names, the two agree on the **number**
 /// every time, so which one is read cannot change an angle. The frames — `relative` to the parent
 /// and `fixed` in the rocket — are the same angle for every parent this reader builds, because all
-/// of them sit on the rocket's own axis. A pod set does not, and a pod set is M3.1c's work.
+/// of them sit on the rocket's own axis. A pod set does not, and a pod set is M1.13b's work.
 ///
 /// **Which way the angle turns is assumed, not sourced.** `docs/physics/frames.md` measures a roll
 /// angle from `x_B` toward `y_B`, right-handed about `+z_B`, which points at the nose; OpenRocket's

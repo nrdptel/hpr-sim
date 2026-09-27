@@ -27,7 +27,7 @@ use hpr_core::DVec3;
 use serde::{Deserialize, Serialize};
 
 use crate::error::DesignError;
-use crate::mass::MassProperties;
+use crate::mass::{MassProperties, Placement};
 use crate::material::Material;
 use crate::shapes::{NoseShape, Profile, check_dimension};
 use crate::solids::{Wall, revolve};
@@ -378,6 +378,78 @@ impl InnerTube {
             }
         }
         Ok(self.cluster_m.clone())
+    }
+}
+
+/// Pods beside the airframe: side pods, or outboard motor pods. A pod set attaches to a body tube
+/// like a fin set, and its children are the pod's own body components (nose cone, body tubes,
+/// transitions), which stack aft from the pod set's position along the pod's axis instead of the
+/// body's.
+///
+/// **Copies.** The pod written in the tree is one pod on the body's axis, repeated `count` times
+/// around it as a rotational pattern: pod `k` is that pod turned by `φ_k = angle + 2π k / count`
+/// about the body's axis and moved to `r (cos φ_k, sin φ_k)` ([`Self::pods`]), in
+/// [body axes](https://github.com/nrdptel/hpr-sim/blob/main/docs/physics/frames.md). Everything
+/// the pod holds (fins on its tubes, parts inside them, a motor in a mount) turns and moves with
+/// it, so what points away from the airframe on one pod does on every pod. Each copy adds its own
+/// parallel-axis term, `I_O = I_cg + m (|d|² E − d dᵀ)` with `d` the copy's centre from the point
+/// `O` (J. L. Meriam and L. G. Kraige, *Engineering Mechanics: Dynamics*, appendix B). The pod set
+/// itself weighs nothing: its mass is its pods'. See the design page's *Pods* section
+/// (`docs/physics/design.md`) and the decision record on pods, [ADR-089][adr-089].
+///
+/// **Not flown yet.** The aerodynamic model and the tumble model refuse a design with pods, since
+/// no cited method for a pod's normal force and drag is in yet
+/// ([M1.13c](https://github.com/nrdptel/hpr-sim/blob/main/docs/decisions-and-roadmap.md#m1-13c),
+/// pod aerodynamics).
+///
+/// [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PodSet {
+    /// Number of pods, at least one, spaced evenly around the body's axis.
+    pub count: u32,
+    /// Distance of each pod's axis from the body's axis, m.
+    pub radial_offset_m: f64,
+    /// Roll angle of the first pod from `x_B` toward `y_B`, rad.
+    #[serde(default)]
+    pub angle_rad: f64,
+}
+
+impl PodSet {
+    /// The most pods a set may have. Far more than any rocket carries, it bounds the copies a
+    /// design file can ask for.
+    pub const MAX_COUNT: u32 = 64;
+
+    /// Where each pod sits: pod `k` is the pod as written (on the body's axis) turned by
+    /// `φ_k = angle + 2π k / count` about the axis and moved to `r (cos φ_k, sin φ_k)`, for
+    /// `k = 0 … count − 1`.
+    ///
+    /// # Errors
+    ///
+    /// [`DesignError::Domain`] for no pods or more than [`Self::MAX_COUNT`], a radial offset that
+    /// is negative or not finite, or an angle that is not finite.
+    pub fn pods(&self) -> Result<Vec<Placement>, DesignError> {
+        if self.count == 0 || self.count > Self::MAX_COUNT {
+            return Err(DesignError::Domain {
+                what: "pod count (1 to 64)",
+                value: f64::from(self.count),
+            });
+        }
+        check_dimension("pod radial offset", self.radial_offset_m, true)?;
+        check_angle("pod angle", self.angle_rad)?;
+        let step = std::f64::consts::TAU / f64::from(self.count);
+        Ok((0..self.count)
+            .map(|k| {
+                let phi = self.angle_rad + step * f64::from(k);
+                Placement {
+                    offset_m: [
+                        self.radial_offset_m * phi.cos(),
+                        self.radial_offset_m * phi.sin(),
+                    ],
+                    roll_rad: phi,
+                }
+            })
+            .collect())
     }
 }
 

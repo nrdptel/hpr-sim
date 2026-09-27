@@ -116,7 +116,8 @@ pub struct MountedMotor {
     pub ignition: Ignition,
     /// The tubes whose motor fails to light, by index into the mount's tubes (a cluster's in the
     /// order of [`InnerTube::cluster_m`](crate::InnerTube::cluster_m), `0` for a single tube; a
-    /// cluster inside another cluster counts the outer copies first, each with all its tubes): a
+    /// cluster inside another cluster counts the outer copies first, each with all its tubes; a
+    /// mount in a pod counts the pods, in the order of [`PodSet::pods`](crate::PodSet::pods)): a
     /// motor out. Each is carried loaded and gives no thrust. An ignition on the mount's burnout
     /// takes its first motor that lights, but a recovery device or separation triggered by one
     /// motor's index waits on that motor alone: point it at a tube that lights, or it never fires.
@@ -389,7 +390,7 @@ impl Layout {
                     }
                 }
             }
-            let tubes = mount.contents_copies_m().map_err(in_mount)?;
+            let tubes = mount.contents_copies().map_err(in_mount)?;
             for (k, &tube) in mounted.failed_tubes.iter().enumerate() {
                 if tube >= tubes.len() || mounted.failed_tubes[..k].contains(&tube) {
                     return Err(in_mount(DesignError::Domain {
@@ -398,13 +399,14 @@ impl Layout {
                     }));
                 }
             }
-            let [x, y] = mount.part.axis_offset_m();
+            let axis = mount.part.axis_offset_m();
             let z = -(mount.aft_station_m() + spec.overhang_m);
-            for (tube, [u, v]) in tubes.into_iter().enumerate() {
+            for (tube, place) in tubes.into_iter().enumerate() {
+                let [x, y] = place.point(axis);
                 motors.push(PlacedMotor {
                     mount: mount.id.clone(),
                     stage: mount.stage,
-                    nozzle_m: DVec3::new(x + u, y + v, z),
+                    nozzle_m: DVec3::new(x, y, z),
                     mounted: mounted.clone(),
                     tube,
                     fails: mounted.failed_tubes.contains(&tube),
