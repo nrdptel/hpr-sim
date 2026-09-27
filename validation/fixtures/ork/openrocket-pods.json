@@ -1,0 +1,1916 @@
+{
+ "command": "refs/venv/bin/python validation/oracles/openrocket/pods.py validation/fixtures/ork/openrocket-pods.json",
+ "generated": "2026-09-27",
+ "inputs_sha256": {
+  "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
+  "conventions.py": "f79b2932fc2d979107c920b8778612013d2d699126baa804c132a1e0f6d401bf",
+  "mass.py": "ce8b915d342ff631d3ad3ec74244d2c2faf55321f710a4b036eda5d7671cabe5",
+  "pods.py": "6cdef7626982ac11e4634562efbb8f110dbd8da1d52648be4f9155a65f55fd45"
+ },
+ "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
+ "openrocket": "24.12",
+ "probes": {
+  "one pod, relative 0.0, at 0": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.0,
+     "class": "PodSet",
+     "count": 1,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.060000000000000005,
+       0.0
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.060000000000000005,
+       0.0
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.0
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.060000000000000005,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.060000000000000005,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>1</instancecount><radiusoffset method=\"relative\">0.0</radiusoffset><angleoffset method=\"relative\">0.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.013382146638429872,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0014440945547886728,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0119380520836412,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4723025152224915,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4129837337328485,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4129837337328485,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4129837337328485,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4723025152224915,
+    "ixx": 0.0008974118354817739,
+    "iyy": 0.015954699158576547,
+    "izz": 0.015954699158576547,
+    "longitudinal_inertia": 0.015954699158576547,
+    "mass_kg": 0.4129837337328485,
+    "rotational_inertia": 0.0008974118354817739
+   }
+  },
+  "three pods, relative 0.005, at -45": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": -0.7853981633974483,
+     "class": "PodSet",
+     "count": 3,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.04596194077712559,
+       -0.045961940777125586
+      ],
+      [
+       0.0,
+       0.016823237931663862,
+       0.06278517870878944
+      ],
+      [
+       0.0,
+       -0.06278517870878945,
+       -0.016823237931663824
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.04596194077712559,
+       -0.045961940777125586
+      ],
+      [
+       0.4,
+       0.016823237931663862,
+       0.06278517870878944
+      ],
+      [
+       0.4,
+       -0.06278517870878945,
+       -0.016823237931663824
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.005
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.04596194077712559,
+       -0.045961940777125586
+      ],
+      [
+       0.4,
+       0.016823237931663862,
+       0.06278517870878944
+      ],
+      [
+       0.4,
+       -0.06278517870878945,
+       -0.016823237931663824
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.04596194077712559,
+       -0.045961940777125586
+      ],
+      [
+       0.45,
+       0.016823237931663862,
+       0.06278517870878944
+      ],
+      [
+       0.45,
+       -0.06278517870878945,
+       -0.016823237931663824
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>3</instancecount><radiusoffset method=\"relative\">0.005</radiusoffset><angleoffset method=\"relative\">-45.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.01338214663842987,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228588,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.004332283664366018,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.5499999999999999,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0358141562509236,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4762705365092973,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4397480270097083,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4397480270097083,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4397480270097083,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4762705365092973,
+    "ixx": 0.0010227073525313852,
+    "iyy": 0.016262022168213052,
+    "izz": 0.016262022168213052,
+    "longitudinal_inertia": 0.016262022168213052,
+    "mass_kg": 0.4397480270097083,
+    "rotational_inertia": 0.0010227073525313852
+   }
+  },
+  "two pods, free 0.08, at 30": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.0,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "radius_method": "Center of the parent component",
+     "radius_offset_m": 0.08
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.45,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"free\">0.08</radiusoffset><angleoffset method=\"relative\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.013382146638429872,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0028881891095773457,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4743487970807936,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4263658803712784,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4743487970807936,
+    "ixx": 0.0010232343854538483,
+    "iyy": 0.016110455505418057,
+    "izz": 0.016110455505418057,
+    "longitudinal_inertia": 0.016110455505418057,
+    "mass_kg": 0.4263658803712784,
+    "rotational_inertia": 0.0010232343854538483
+   }
+  },
+  "two pods, relative 0.02, at 30": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.0,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.02
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.45,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"relative\">0.02</radiusoffset><angleoffset method=\"relative\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.013382146638429872,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0028881891095773457,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4743487970807936,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4263658803712784,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4743487970807936,
+    "ixx": 0.0010232343854538483,
+    "iyy": 0.016110455505418057,
+    "izz": 0.016110455505418057,
+    "longitudinal_inertia": 0.016110455505418057,
+    "mass_kg": 0.4263658803712784,
+    "rotational_inertia": 0.0010232343854538483
+   }
+  },
+  "two pods, relative 0.02, at 30 fixed": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.0,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.02
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.45,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"relative\">0.02</radiusoffset><angleoffset method=\"fixed\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.013382146638429872,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0028881891095773457,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4743487970807936,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4263658803712784,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4743487970807936,
+    "ixx": 0.0010232343854538483,
+    "iyy": 0.016110455505418057,
+    "izz": 0.016110455505418057,
+    "longitudinal_inertia": 0.016110455505418057,
+    "mass_kg": 0.4263658803712784,
+    "rotational_inertia": 0.0010232343854538483
+   }
+  },
+  "two pods, relative 0.02, at 30 mirror_xy": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.0,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.02
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.4,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.06928203230275509,
+       0.039999999999999994
+      ],
+      [
+       0.45,
+       -0.0692820323027551,
+       -0.03999999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"relative\">0.02</radiusoffset><angleoffset method=\"mirror_xy\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.013382146638429872,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0028881891095773457,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4743487970807936,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4263658803712784,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4743487970807936,
+    "ixx": 0.0010232343854538483,
+    "iyy": 0.016110455505418057,
+    "izz": 0.016110455505418057,
+    "longitudinal_inertia": 0.016110455505418057,
+    "mass_kg": 0.4263658803712784,
+    "rotational_inertia": 0.0010232343854538483
+   }
+  },
+  "two pods, relative 0.02, at 30, a stated nose, a tube, a wider tube, a tube": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.0,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.4,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.02
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.4,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.6000000000000001,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.6000000000000001,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000013": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.5,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.5,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000014": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.45,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"relative\">0.02</radiusoffset><angleoffset method=\"relative\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>0.01</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod first tube</name><id>00000000-0000-4000-8000-000000000014</id><length>0.05</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube><bodytube><name>Pod wide tube</name><id>00000000-0000-4000-8000-000000000013</id><length>0.1</length><thickness>0.001</thickness><radius>0.015</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.025477278354750568,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0028881891095773457,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.7000000000000001,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0091106186954104,
+     "each_mass_kg": 0.0091106186954104,
+     "id": "00000000-0000-4000-8000-000000000013",
+     "mass_kg": 0.0182212373908208,
+     "mass_overridden": false,
+     "name": "Pod wide tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0091106186954104
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.4750000000000001,
+     "component_mass_kg": 0.0029845130209103,
+     "each_mass_kg": 0.0029845130209103,
+     "id": "00000000-0000-4000-8000-000000000014",
+     "mass_kg": 0.0059690260418206,
+     "mass_overridden": false,
+     "name": "Pod first tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0029845130209103
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.48536576193152214,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.45055614380391984,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.45055614380391984,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.45055614380391984,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.48536576193152214,
+    "ixx": 0.0012244653480356445,
+    "iyy": 0.017306973237984705,
+    "izz": 0.017306973237984705,
+    "longitudinal_inertia": 0.017306973237984705,
+    "mass_kg": 0.45055614380391984,
+    "rotational_inertia": 0.0012244653480356445
+   }
+  },
+  "two pods, relative 0.02, at 30, a wider tube between": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.0,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.4,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ],
+     "radius_method": "Surface of the parent component",
+     "radius_offset_m": 0.02
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.4,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.55,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.55,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000013": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.07361215932167729,
+       0.042499999999999996
+      ],
+      [
+       0.45,
+       -0.0736121593216773,
+       -0.04249999999999998
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"relative\">0.02</radiusoffset><angleoffset method=\"relative\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod wide tube</name><id>00000000-0000-4000-8000-000000000013</id><length>0.1</length><thickness>0.001</thickness><radius>0.015</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.023341365550792845,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.43389941606675014,
+     "component_mass_kg": 0.002292694771741243,
+     "each_mass_kg": 0.002292694771741243,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.004585389543482486,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.002292694771741243
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.65,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.5,
+     "component_mass_kg": 0.0091106186954104,
+     "each_mass_kg": 0.0091106186954104,
+     "id": "00000000-0000-4000-8000-000000000013",
+     "mass_kg": 0.0182212373908208,
+     "mass_overridden": false,
+     "name": "Pod wide tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0091106186954104
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4805906132262808,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.44628431819600434,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.44628431819600434,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.44628431819600434,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4805906132262808,
+    "ixx": 0.00119341214518863,
+    "iyy": 0.01676691239263381,
+    "izz": 0.01676691239263381,
+    "longitudinal_inertia": 0.01676691239263381,
+    "mass_kg": 0.44628431819600434,
+    "rotational_inertia": 0.00119341214518863
+   }
+  },
+  "two pods, surface 0.02, at 30": {
+   "components": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.3,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000010": {
+     "angle_offset_rad": 0.5235987755982988,
+     "class": "PodSet",
+     "count": 2,
+     "instance_offsets_m": [
+      [
+       0.0,
+       0.051961524227066326,
+       0.03
+      ],
+      [
+       0.0,
+       -0.05196152422706633,
+       -0.029999999999999985
+      ]
+     ],
+     "locations_m": [
+      [
+       0.4,
+       0.051961524227066326,
+       0.03
+      ],
+      [
+       0.4,
+       -0.05196152422706633,
+       -0.029999999999999985
+      ]
+     ],
+     "radius_method": "Surface of the parent component (without offset)",
+     "radius_offset_m": 0.0
+    },
+    "00000000-0000-4000-8000-000000000011": {
+     "class": "NoseCone",
+     "locations_m": [
+      [
+       0.4,
+       0.051961524227066326,
+       0.03
+      ],
+      [
+       0.4,
+       -0.05196152422706633,
+       -0.029999999999999985
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000012": {
+     "class": "BodyTube",
+     "locations_m": [
+      [
+       0.45,
+       0.051961524227066326,
+       0.03
+      ],
+      [
+       0.45,
+       -0.05196152422706633,
+       -0.029999999999999985
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000098": {
+     "class": "Rocket",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    },
+    "00000000-0000-4000-8000-000000000099": {
+     "class": "AxialStage",
+     "locations_m": [
+      [
+       0.0,
+       0.0,
+       0.0
+      ]
+     ]
+    }
+   },
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><podset><name>Pods</name><id>00000000-0000-4000-8000-000000000010</id><instancecount>2</instancecount><radiusoffset method=\"surface\">0.02</radiusoffset><angleoffset method=\"relative\">30.0</angleoffset><axialoffset method=\"top\">0.1</axialoffset><subcomponents><nosecone><name>Pod nose</name><id>00000000-0000-4000-8000-000000000011</id><length>0.05</length><thickness>0.001</thickness><shape>conical</shape><aftradius>auto</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Pod tube</name><id>00000000-0000-4000-8000-000000000012</id><length>0.2</length><thickness>0.001</thickness><radius>0.01</radius><material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube></subcomponents></podset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "PodSet",
+     "cm_x_m": 0.4,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.013382146638429872,
+     "id": "00000000-0000-4000-8000-000000000010",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Pods",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.4341527598228587,
+     "component_mass_kg": 0.0014440945547886728,
+     "each_mass_kg": 0.0014440945547886728,
+     "id": "00000000-0000-4000-8000-000000000011",
+     "mass_kg": 0.0028881891095773457,
+     "mass_overridden": false,
+     "name": "Pod nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.0014440945547886728
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.0119380520836412,
+     "each_mass_kg": 0.0119380520836412,
+     "id": "00000000-0000-4000-8000-000000000012",
+     "mass_kg": 0.0238761041672824,
+     "mass_overridden": false,
+     "name": "Pod tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0119380520836412
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.4743487970807936,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4263658803712784,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4263658803712784,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.4743487970807936,
+    "ixx": 0.0009482943642786415,
+    "iyy": 0.01609172050012426,
+    "izz": 0.01609172050012426,
+    "longitudinal_inertia": 0.01609172050012426,
+    "mass_kg": 0.4263658803712784,
+    "rotational_inertia": 0.0009482943642786415
+   }
+  }
+ },
+ "source": "validation/oracles/openrocket/pods.py"
+}

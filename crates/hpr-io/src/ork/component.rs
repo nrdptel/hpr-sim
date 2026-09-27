@@ -31,7 +31,7 @@ use super::value::Values;
 use super::warning::{Imported, Warning, WarningKind};
 
 /// The body tags this milestone reads. Anything else in a `<subcomponents>` is counted and left.
-const BODY_TAGS: [&str; 3] = ["nosecone", "bodytube", "transition"];
+pub(super) const BODY_TAGS: [&str; 3] = ["nosecone", "bodytube", "transition"];
 
 /// A filled tube whose automatic radius cached a number, read as solid to that number.
 const FILLED_TO_CACHE: &str = "a filled tube whose radius is automatic; it was read as solid to \
@@ -192,7 +192,7 @@ pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Walked) {
             at,
             WarningKind::Skipped,
             format!(
-                "{note} were left out: a pod or a parallel stage carries a spine of its own, \
+                "{note} were left out: a parallel stage carries a spine of its own, \
                  which is a later milestone's work"
             ),
         ));
@@ -306,8 +306,8 @@ fn stage(
 }
 
 /// Reads one body component, and everything on and inside it; for a body tube, also the wall as
-/// the file wrote it.
-fn body(
+/// the file wrote it. A pod's body components are read here too ([`attached::children`]).
+pub(super) fn body(
     element: &Element,
     at: &str,
     ids: &mut Ids,
@@ -327,7 +327,7 @@ fn body(
         }
         _ => (transition(element, at, &mut auto, warnings), None),
     };
-    let children = attached::children(element, &part, at, ids, skipped, warnings);
+    let children = attached::children(element, &part, &auto, at, ids, skipped, warnings);
     let mount = match part {
         Part::BodyTube(_) => motors::mount(element, at, warnings),
         _ => None,
@@ -367,17 +367,30 @@ fn nose_cone(
 ) -> Part {
     let mut values = Values::new(element, at, warnings);
     let length_m = values.number(&["length"]).unwrap_or_default();
+    // A flipped nose cone is a tail cone: its base is forward, so its radius is the fore radius of
+    // a transition that ends in a point, and its shoulder is on that base. With one end a point, a
+    // transition's clipped and unclipped profiles are both the whole nose shape, mirrored
+    // (`hpr_design::shapes`), so the solid is the nose cone's, turned end for end.
+    if values.flag(&["isflipped"]) == Some(true) {
+        let (stated_m, fore_radius_m) =
+            stated_radius(&mut values, &["aftradius"], AutoDimension::ForeRadius, auto);
+        return Part::Transition(Transition {
+            wall: wall(&mut values, stated_m),
+            shape: shape(&mut values),
+            clipped: false,
+            length_m,
+            fore_radius_m,
+            aft_radius_m: 0.0,
+            fore_shoulder: shoulder(&mut values, "aft", AutoDimension::ForeShoulderRadius, auto),
+            aft_shoulder: None,
+            material: material(&mut values, &["material"], "bulk"),
+        });
+    }
     let (stated_m, base_radius_m) =
         stated_radius(&mut values, &["aftradius"], AutoDimension::BaseRadius, auto);
     let wall = wall(&mut values, stated_m);
     let shape = shape(&mut values);
     let shoulder = shoulder(&mut values, "aft", AutoDimension::ShoulderRadius, auto);
-    if values.flag(&["isflipped"]) == Some(true) {
-        values.warn_at(
-            WarningKind::Dropped,
-            "a flipped nose cone is a tail cone; it was read pointing forward",
-        );
-    }
     Part::NoseCone(NoseCone {
         shape,
         length_m,

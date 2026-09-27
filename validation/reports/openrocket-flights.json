@@ -3206,7 +3206,7 @@
       "design": "Pods--powered with recovery deployment",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[C6-7; 2× A3-4, B6-0]",
-      "why": "a motor in a part not read"
+      "why": "a motor hpr can't light as written"
     },
     {
       "aborted": false,
@@ -3230,7 +3230,7 @@
       "design": "Pods--powered with recovery deployment",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[None; 2× A10-3, B6-4]",
-      "why": "a motor in a part not read"
+      "why": "an airframe not read exactly as written"
     },
     {
       "aborted": false,
