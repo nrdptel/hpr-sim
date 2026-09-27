@@ -112,7 +112,7 @@ expression: snapshot_of(&design)
     {
       "at": "openrocket/rocket",
       "kind": "skipped",
-      "says": "1 `parallelstage` were left out: a pod or a parallel stage carries a spine of its own, which is a later milestone's work"
+      "says": "1 `parallelstage` were left out: a parallel stage carries a spine of its own, which is a later milestone's work"
     },
     {
       "at": "openrocket/rocket/stage[0]/nosecone[0]",

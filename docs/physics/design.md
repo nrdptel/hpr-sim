@@ -350,8 +350,8 @@ decision record is [ADR-089][adr-089].
     the tube its pod set hangs from.
   - Check a pod's geometry: nothing warns when pods overlap the airframe or each other, or when a
     pod's radius steps ([#206](https://github.com/nrdptel/hpr-sim/issues/206)).
-  - Read pods from a `.ork` file: they are kept but not read
-    ([M1.13b](../decisions-and-roadmap.md#m1-13b)).
+  - Read a `.ork` pod of no length, drawn to hang fins off the axis: it is left out with a warning
+    ([`.ork`: Pods](../format/ork.md#pods), [M1.13b2](../decisions-and-roadmap.md#m1-13b2)).
 
   The refusals are pinned by tests in `hpr-aero` (`unsupported_inputs_are_refused`) and `hpr-sim`
   (`tumbling_refuses_an_airframe_the_model_cannot_represent`,

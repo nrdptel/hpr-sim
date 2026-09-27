@@ -30,14 +30,15 @@
 
 use hpr_design::fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
 use hpr_design::parts::{
-    CenteringRing, InnerTube, LaunchLug, MassComponent, Packing, Parachute, RailButton, ShockCord,
-    Streamer,
+    CenteringRing, InnerTube, LaunchLug, MassComponent, Packing, Parachute, PodSet, RailButton,
+    ShockCord, Streamer,
 };
 use hpr_design::tree::{AutoDimension, Component, Part, Position};
 use hpr_design::{Finish, MotorMount};
 
 use super::component::{
-    Ids, UNNAMED_RAIL_BUTTON, material, material_or, overrides, stated_radius, subcomponents,
+    BODY_TAGS, Ids, UNNAMED_RAIL_BUTTON, body, material, material_or, overrides, stated_radius,
+    subcomponents,
 };
 use super::document::Element;
 use super::motors;
@@ -69,6 +70,7 @@ pub const ATTACHED_TAGS: &[&str] = &[
     "parachute",
     "streamer",
     "shockcord",
+    "podset",
 ];
 
 /// How many of one part a design may say there are.
@@ -104,11 +106,13 @@ fn spoken(part: &Part) -> String {
 ///
 /// `parent` is what the parent was read as, which decides two things a child cannot decide for
 /// itself: whether an external part may attach here at all, and whether an automatic radius has a
-/// bore to take. Anything left out is counted into `skipped` or warned about, never dropped in
-/// silence.
+/// bore to take. `parent_auto` is which of its dimensions were automatic, which a pod set's
+/// distance from the axis needs to know ([`pod_set`]). Anything left out is counted into
+/// `skipped` or warned about, never dropped in silence.
 pub(super) fn children(
     element: &Element,
     parent: &Part,
+    parent_auto: &[AutoDimension],
     at: &str,
     ids: &mut Ids,
     skipped: &mut Vec<String>,
@@ -117,7 +121,12 @@ pub(super) fn children(
     let mut components = Vec::new();
     for (index, child) in subcomponents(element).enumerate() {
         let at = format!("{at}/{}[{index}]", child.name);
-        match one(child, parent, &at, ids, skipped, warnings) {
+        let read = if child.name == "podset" {
+            pod_set(child, parent, parent_auto, &at, ids, skipped, warnings)
+        } else {
+            one(child, parent, &at, ids, skipped, warnings)
+        };
+        match read {
             Some(component) => components.push(component),
             // A part this module knows and could not read has already said so, with its reason;
             // only a tag no milestone reads yet goes into the tally.
@@ -154,8 +163,9 @@ fn one(
         "parachute" => parachute(&mut values, &mut auto),
         "streamer" => streamer(&mut values, &mut auto),
         "shockcord" => shock_cord(&mut values, &mut auto),
-        // Pods and parallel stages hold a spine of their own, which is M1.13b's work, and anything
-        // else is a tag this reader has never seen. Both are counted by the caller.
+        // A pod set is read by `pod_set`, before this; a parallel stage holds a spine of its own,
+        // which is a later milestone's work, and anything else is a tag this reader has never
+        // seen. Both are counted by the caller.
         _ => return None,
     }?;
 
@@ -232,7 +242,7 @@ fn one(
     // another kind is said out loud here rather than tallied with the pods, whose tally carries a
     // message about a spine of their own. Nothing in the reference library does this.
     let children = if matches!(part, Part::InnerTube(_)) {
-        children(element, &part, at, ids, skipped, warnings)
+        children(element, &part, &auto, at, ids, skipped, warnings)
     } else {
         if subcomponents(element).next().is_some() {
             let (kind, inside) = (spoken(&part), and_what_was_inside(element));
@@ -277,6 +287,205 @@ fn one(
         overrides,
         overrides_include_children: include_children,
         children,
+    })
+}
+
+/// Reads one pod set (ADR-089), or leaves it out with a warning.
+///
+/// A pod set holds pods beside its body tube, each the stack of nose cones, body tubes and
+/// transitions written inside it, with everything on and in them; `hpr-design`'s
+/// [`PodSet`] repeats that stack `instancecount` times around the axis. Its roll angle is the
+/// `angleoffset` read as every angle is ([`roll_angle`]); the angle's `method` changes nothing for
+/// a pod set on a body tube, which sits on the axis.
+///
+/// **The distance from the axis** is not in any document. OpenRocket 24.12 was asked, as an
+/// external oracle, on probes (`validation/oracles/openrocket/pods.py`, recorded in
+/// `validation/fixtures/ork/openrocket-pods.json`), and puts a pod's axis at
+///
+/// | `radiusoffset` method | distance of each pod's axis from the body's |
+/// | --- | --- |
+/// | `relative` | `R + ρ + v` |
+/// | `surface` | `R + ρ`, the number ignored |
+/// | `free` | `v` |
+///
+/// for the tube's outer radius `R`, the written number `v`, and `ρ` the **widest** radius of the
+/// pod's own body components: a probe whose widest part is aft and one whose widest part is in the
+/// middle both put the pod at the widest radius, which neither the first nor the last part gives.
+/// `hpr-design` holds a pod set at a fixed distance, so when an automatic radius decides `R` or
+/// `ρ`, the number OpenRocket cached for it is taken, and said.
+fn pod_set(
+    element: &Element,
+    parent: &Part,
+    parent_auto: &[AutoDimension],
+    at: &str,
+    ids: &mut Ids,
+    skipped: &mut Vec<String>,
+    warnings: &mut Vec<Warning>,
+) -> Option<Component> {
+    let mut values = Values::new(element, at, warnings);
+    let Part::BodyTube(tube) = parent else {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "a pod set hangs from a {}, and hpr hangs one only from a body tube; it was left \
+                 out{}",
+                spoken(parent),
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
+    };
+    // The path names every pod set above this one: a pod set inside a pod would multiply its
+    // copies by the outer set's, and `hpr-design` refuses it.
+    if at.matches("/podset[").count() > 1 {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "a pod set inside a pod, which hpr does not nest; it was left out{}",
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
+    }
+    let count = instances(&mut values, "pod set")?;
+    let name = values.word(&["name"]).unwrap_or_default();
+    let position = position(&mut values);
+    let (overrides, include_children) = overrides(&mut values);
+    let angle_rad = roll_angle(&mut values);
+    let offset = values.element(&["radiusoffset"]).map(|offset| {
+        let method = offset.attribute("method").unwrap_or("relative").to_owned();
+        (method, offset.text().trim().parse::<f64>().ok())
+    });
+    let id = ids.take(&mut Values::new(element, at, warnings), "podset");
+
+    let mut pods = Vec::new();
+    for (index, child) in subcomponents(element).enumerate() {
+        let at = format!("{at}/{}[{index}]", child.name);
+        if BODY_TAGS.contains(&child.name.as_str()) {
+            pods.push(body(child, &at, ids, skipped, warnings).0);
+        } else {
+            let tag = child.name.clone();
+            Values::new(child, &at, warnings).warn_at(
+                WarningKind::Skipped,
+                format!(
+                    "a `{tag}` directly inside a pod set, where hpr's pod is a stack of nose \
+                     cones, body tubes and transitions; it was left out{}",
+                    and_what_was_inside(child)
+                ),
+            );
+        }
+    }
+    let mut values = Values::new(element, at, warnings);
+    if pods.is_empty() {
+        values.warn_at(
+            WarningKind::Skipped,
+            "a pod set with no nose cone, body tube or transition in it, so no pod to repeat; it \
+             was left out",
+        );
+        return None;
+    }
+    // OpenRocket draws a pod of a tube with no length to hang fins off the axis (winglets);
+    // `hpr-design` sits fins on a tube's surface along its length, and refuses a body component
+    // of no length, so the pod set goes rather than the whole design.
+    if pods.iter().any(|pod| pod.part.length_m() <= 0.0) {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "a pod with a part of no length in it, which hpr cannot lay out (OpenRocket draws \
+                 one to hang fins off the axis); the pod set was left out{}",
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
+    }
+
+    // The widest radius of the pod, and whether only an automatic one reaches it.
+    let (mut stated, mut automatic) = (0.0_f64, 0.0_f64);
+    for pod in &pods {
+        let radii: &[(f64, AutoDimension)] = match &pod.part {
+            Part::NoseCone(nose) => &[(nose.base_radius_m, AutoDimension::BaseRadius)],
+            Part::BodyTube(tube) => &[(tube.outer_radius_m, AutoDimension::OuterRadius)],
+            Part::Transition(t) => &[
+                (t.fore_radius_m, AutoDimension::ForeRadius),
+                (t.aft_radius_m, AutoDimension::AftRadius),
+            ],
+            _ => &[],
+        };
+        for &(radius_m, dimension) in radii {
+            if pod.auto.contains(&dimension) {
+                automatic = automatic.max(radius_m);
+            } else {
+                stated = stated.max(radius_m);
+            }
+        }
+    }
+    let pod_radius_m = stated.max(automatic);
+    let tube_radius_m = tube.outer_radius_m;
+    let (method, number) = offset.unwrap_or_else(|| {
+        values.warn_at(
+            WarningKind::Unusual,
+            "no `radiusoffset`, so the pods were read touching the tube",
+        );
+        ("surface".to_owned(), Some(0.0))
+    });
+    let number = number.unwrap_or_else(|| {
+        values.warn_at(
+            WarningKind::Dropped,
+            "`radiusoffset` is not a number; it was read as zero",
+        );
+        0.0
+    });
+    let radial_offset_m = match method.as_str() {
+        "relative" => tube_radius_m + pod_radius_m + number,
+        "surface" => tube_radius_m + pod_radius_m,
+        "free" => number,
+        other => {
+            values.warn_at(
+                WarningKind::Unusual,
+                format!(
+                    "a `radiusoffset` measured by `{other}`, which this reader does not know; it \
+                     was read as `relative`, from the tube's surface to the pod's"
+                ),
+            );
+            tube_radius_m + pod_radius_m + number
+        }
+    };
+    if method != "free" {
+        let tube_auto = parent_auto.contains(&AutoDimension::OuterRadius);
+        let pod_auto = automatic > stated;
+        if tube_auto || pod_auto {
+            let which = match (tube_auto, pod_auto) {
+                (true, true) => "the tube's and the pod's widest radius are",
+                (true, false) => "the tube's radius is",
+                _ => "the pod's widest radius is",
+            };
+            values.warn_at(
+                WarningKind::Unusual,
+                format!(
+                    "{which} automatic, and hpr places pods at a fixed distance from the axis: \
+                     they were placed {radial_offset_m} m from it, by the number OpenRocket \
+                     cached"
+                ),
+            );
+        }
+    }
+
+    ids.read.insert(at.to_owned());
+    Some(Component {
+        id,
+        name,
+        part: Part::PodSet(PodSet {
+            count,
+            radial_offset_m,
+            angle_rad,
+        }),
+        position: Some(position),
+        auto: Vec::new(),
+        motor_mount: None,
+        finish: None,
+        overrides,
+        overrides_include_children: include_children,
+        children: pods,
     })
 }
 
@@ -1032,7 +1241,8 @@ pub(super) fn finish(values: &mut Values<'_>) -> Option<Finish> {
 /// 26 other parts of the reference corpus that carry both names, the two agree on the **number**
 /// every time, so which one is read cannot change an angle. The frames — `relative` to the parent
 /// and `fixed` in the rocket — are the same angle for every parent this reader builds, because all
-/// of them sit on the rocket's own axis. A pod set does not, and a pod set is M1.13b's work.
+/// of them sit on the rocket's own axis. A pod set hangs from a body tube, on the axis too, and
+/// OpenRocket 24.12 places its pods alike for `relative`, `fixed` and `mirror_xy` ([`pod_set`]).
 ///
 /// **Which way the angle turns is assumed, not sourced.** `docs/physics/frames.md` measures a roll
 /// angle from `x_B` toward `y_B`, right-handed about `+z_B`, which points at the nose; OpenRocket's

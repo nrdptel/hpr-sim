@@ -787,7 +787,7 @@ fn unread_motors(
     {
         let reason = match inside {
             Some("podset") => {
-                "its mount is inside a pod set, which hpr does not read yet".to_owned()
+                "its mount is inside a pod set, in a part hpr did not read".to_owned()
             }
             Some(_) => {
                 "its mount is inside a parallel stage, which hpr does not read yet".to_owned()

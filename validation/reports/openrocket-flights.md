@@ -156,10 +156,10 @@ Configurations OpenRocket flew that hpr does not fly yet:
 | Pods--airframes and winglets | [C6-5] | an airframe not read exactly as written |
 | Pods--airframes and winglets | [C12-6] | an airframe not read exactly as written |
 | Pods--airframes and winglets | [D16-6] | an airframe not read exactly as written |
-| Pods--powered with recovery deployment | [C6-7; 2× A3-4, B6-0] | a motor in a part not read |
+| Pods--powered with recovery deployment | [C6-7; 2× A3-4, B6-0] | a motor hpr can't light as written |
 | Pods--powered with recovery deployment | [C6-7; B6-0] | an airframe not read exactly as written |
 | Pods--powered with recovery deployment | [C6-5; None] | an airframe not read exactly as written |
-| Pods--powered with recovery deployment | [None; 2× A10-3, B6-4] | a motor in a part not read |
+| Pods--powered with recovery deployment | [None; 2× A10-3, B6-4] | an airframe not read exactly as written |
 | Simulation extensions | [2800CC172L-L540-P] | a motor with no curve |
 | Simulation scripting | [2800CC172L-L540-P] | a motor with no curve |
 | Three stage low power rocket | [A8-5; B6-0; B6-0] | stages hpr can't separate as written |

@@ -668,18 +668,15 @@
   *Result (ADR-084):* 648 rows; 2% more skin friction on #199 failed validate on all three OSes
   (74 rows, 17 worse; run 36267483063); #199 closed. Linux's reproduction miss there is #200.
 
-- [x] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17).
-  - A separation at any joint, not only a stage boundary (ADR-014): an ejected nose cone, a body
-    section, or a payload carried inside, each flown to its own landing under its own recovery
-    device, or tumbling. Pieces joined by a shock cord fly as one.
-  - Ejection triggers as for recovery devices (apogee, altitude, timer, motor delay), and an
-    optional ejection impulse.
-
+- [x] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17). A
+  separation at any joint, not only a stage boundary (ADR-014): an ejected nose cone, a body
+  section, or a payload carried inside, each flown to its own landing under its own recovery
+  device, or tumbling; pieces joined by a shock cord fly as one. Ejection triggers as for recovery
+  devices (apogee, altitude, timer, motor delay), and an optional ejection impulse.
   *Done when (met by M1.11a):* a design that ejects its nose cone and a payload, each under its own
   parachute, lands every piece and reports each landing point; the pieces' masses sum to the
   rocket's and momentum is conserved at each split, to M1.7c's tolerances; each descent rate
   matches the analytic terminal velocity for its device and mass.
-
   - [x] **M1.11a Pieces at any joint** (ADR-085), done when the milestone's bullets. *Result:* met:
     nose cone at apogee, 250 g payload at 300 m, each lands within 0.1% of `v_e`; 1e-12, 1e-9.
   - [x] **M1.11b Ejection impulse and tumbling pieces** (ADR-086). An optional impulse, equal and
@@ -688,17 +685,13 @@
     and a tumbling nose cone lands at its tumble model's terminal speed. *Result:* met. 1 N·s:
     `J/m` to 1e-9 at both partings (4 m/s on the 250 g payload), momenta to 1e-9; the nose cone
     tumbles down at 13.849 m/s, its `v_e` to 1e-6. Tumble side areas now integrate curved noses.
-
 - [x] **M1.12 Mass that moves or leaves in flight.** Added by Neer on 2026-09-18 (VISION V18).
-  - Payload mass that moves along the airframe, or leaves it (released ballast or payload), on an
-    event or a schedule, with the mass, centre of gravity and inertia updated through the flight.
-  - The equations of motion carry the moving mass's relative-motion terms, or an ADR shows, with
-    numbers, that they are negligible.
-
-  *Done when (met by M1.12a and b):* mass properties before, during and after a change match
-  hand-computed values, and a release conserves mass and momentum; a test shows a moving mass
-  shifting the stability margin as the hand calculation predicts.
-
+  Payload mass that moves along the airframe, or leaves it (released ballast or payload), on an
+  event or a schedule, with the mass, centre of gravity and inertia updated through the flight;
+  the equations of motion carry the moving mass's relative-motion terms, or an ADR shows, with
+  numbers, that they are negligible. *Done when (met by M1.12a and b):* mass properties before,
+  during and after a change match hand-computed values, and a release conserves mass and momentum;
+  a test shows a moving mass shifting the stability margin as the hand calculation predicts.
   - [x] **M1.12a A mass that moves along the airframe** (ADR-087). *Done when:* the mass properties
     before, during and after a shift match hand-computed values, the static margin moves as the
     hand calculation predicts, and a part moving off the axis keeps both momenta in free flight
@@ -723,7 +716,14 @@
     (a motor too) is repeated in every pod. *Result:* met: two pods, and one off the axis with its
     `I_yz = −m y z`, to 1e-15 kg, m and kg·m²; a motor in a 3-pod set is three motors.
   - [ ] **M1.13b `.ork` pods**, read into `PodSet`. *Done when:* `cargo xtask ork` reads and counts
-    every corpus pod set, and their parts' cached numbers are held as the airframe's are.
+    every corpus pod set, and their parts' cached numbers are held as the airframe's are. Split
+    b1, b2 (ADR-090).
+    - [x] **M1.13b1 Pods of body components.** *Done when:* every corpus pod set is counted; those
+      whose pods are body components with a length are read, each part placed as OpenRocket 24.12
+      places it; and their parts' cached numbers are held. *Result:* met: 5 of 9 read (8 pods),
+      placed to 1e-15 m on 8 probes; cached numbers 71 of 75 agree, the pods' 4 among them.
+    - [ ] **M1.13b2 Pods of no length**, which hang fins off the axis, and an empty pod set.
+      *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read.
   - [ ] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
 ## Phase 2: Library surfaces and interop
 

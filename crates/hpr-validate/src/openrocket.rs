@@ -1104,6 +1104,92 @@ mod tests {
         assert!(apart.abs() < 2e-6, "{apart:e}");
     }
 
+    fn pods() -> Value {
+        let text = include_str!("../../../validation/fixtures/ork/openrocket-pods.json");
+        serde_json::from_str(text).expect("the committed record is JSON")
+    }
+
+    /// Every part inside every pod OpenRocket 24.12 was asked about sits where OpenRocket puts it:
+    /// each copy across the axis to 1e-15 m, with OpenRocket's `(y, z)` read as hpr's `(x, y)`,
+    /// and along it to 1e-15 m. That holds the reader's distance from the axis for each
+    /// `radiusoffset` method (`relative`, `surface`, `free`), a pod whose widest part is in its
+    /// middle, one, two and three pods, a negative angle, and every angle method (M1.13b).
+    #[test]
+    fn every_pod_is_where_openrocket_puts_it() {
+        let record = pods();
+        let probes = record["probes"].as_object().expect("probes");
+        assert_eq!(probes.len(), 8);
+        for (question, probe) in probes {
+            let (layout, warnings) = hpr(probe);
+            assert!(warnings.is_empty(), "{question}: {warnings:?}");
+            let mut inside = 0;
+            for (id, theirs) in probe["components"].as_object().expect("components") {
+                let Some((_, placed)) = layout.find(id) else {
+                    continue;
+                };
+                let parent = placed_parent(&layout, id);
+                if !matches!(layout.find(&parent), Some((_, p)) if matches!(p.part, Part::PodSet(_)))
+                {
+                    continue;
+                }
+                inside += 1;
+                let locations = theirs["locations_m"].as_array().expect("locations");
+                assert_eq!(placed.copies.len(), locations.len(), "{question}: {id}");
+                for (copy, location) in placed.copies.iter().zip(locations) {
+                    let at = |k: usize| location[k].as_f64().expect("a number");
+                    let across = (copy.offset_m[0] - at(1)).hypot(copy.offset_m[1] - at(2));
+                    assert!(across <= 1e-15, "{question}: {id} {copy:?} vs {location:?}");
+                    let along = (placed.fore_station_m - at(0)).abs();
+                    assert!(along <= 1e-15, "{question}: {id} {along:e}");
+                }
+            }
+            assert!(inside >= 2, "{question}: {inside} parts in the pod");
+        }
+    }
+
+    /// The id of the part `id` hangs from.
+    fn placed_parent(layout: &Layout, id: &str) -> String {
+        let (_, placed) = layout.find(id).expect("the part");
+        placed
+            .parent
+            .map(|index| layout.components[index].id.clone())
+            .unwrap_or_default()
+    }
+
+    /// A design with pods weighs what OpenRocket 24.12 says, on every probe: mass within 1.2e-7,
+    /// the centre within 1.1e-7 and the roll inertia within 2e-9, relative, which holds each pod
+    /// weighed where it sits (ADR-089). OpenRocket gives one pitch inertia, the same number as
+    /// `iyy` and `izz`; it is hpr's inertia about `x_B` (OpenRocket's `y`) within 6.1e-7 on every
+    /// probe, and so the mean across the axis only where the pods leave the two equal (three
+    /// pods): with one pod or two, OpenRocket's `izz` is not the inertia about its `z` axis, and
+    /// hpr's is, 0.3% to 1.0% apart on these probes.
+    #[test]
+    fn pods_weigh_as_openrocket_s() {
+        for (question, probe) in pods()["probes"].as_object().expect("probes") {
+            let (ours, theirs, _) = both(probe);
+            for (k, bound) in [(0, 1.2e-7), (1, 1.1e-7), (2, 2e-9)] {
+                let apart = relative(ours[k], theirs[k]);
+                assert!(apart.abs() < bound, "{question}: quantity {k}, {apart:e}");
+            }
+            let (layout, _) = hpr(probe);
+            let i = layout.structure.inertia_kg_m2;
+            let pitch = probe["structure"]["iyy"].as_f64().expect("a number");
+            assert_eq!(
+                probe["structure"]["izz"].as_f64(),
+                Some(pitch),
+                "{question}"
+            );
+            let about_x = relative(i.x_axis.x, pitch);
+            assert!(about_x.abs() < 6.1e-7, "{question}: {about_x:e}");
+            let about_y = relative(i.y_axis.y, pitch);
+            if question.starts_with("three") {
+                assert!(about_y.abs() < 6.1e-7, "{question}: {about_y:e}");
+            } else {
+                assert!((0.002..0.011).contains(&about_y), "{question}: {about_y:e}");
+            }
+        }
+    }
+
     fn clusters() -> Value {
         let text = include_str!("../../../validation/fixtures/ork/openrocket-clusters.json");
         serde_json::from_str(text).expect("the committed record is JSON")

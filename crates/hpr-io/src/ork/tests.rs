@@ -1091,19 +1091,20 @@ fn a_filled_part_is_solid() {
     assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
 }
 
-/// A part no milestone has reached yet is counted and named, not silently dropped. A pod set
-/// carries a spine of its own, which is M1.13b's work.
+/// A part no milestone has reached yet is counted and named, not silently dropped. A parallel
+/// stage carries a spine of its own, which is a later milestone's work.
 #[test]
 fn parts_no_milestone_reads_yet_are_reported_not_dropped() {
     let xml = ACROSS_A_STAGE.replace(
         "</bodytube>",
-        "<subcomponents><podset><name>Pods</name></podset></subcomponents></bodytube>",
+        "<subcomponents><parallelstage><name>Boosters</name></parallelstage></subcomponents>\
+         </bodytube>",
     );
     let read = read(xml.as_bytes()).expect("a readable design");
     let spine = component::rocket(&read.value.document);
     let warnings: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
     assert_eq!(warnings.len(), 1, "{warnings:?}");
-    assert!(warnings[0].contains("2 `podset`"), "{warnings:?}");
+    assert!(warnings[0].contains("2 `parallelstage`"), "{warnings:?}");
     assert_eq!(spine.count(WarningKind::Skipped), 1);
 }
 
@@ -2279,8 +2280,8 @@ fn read_design(xml: &[u8]) -> Design {
 /// mount, which holds its motor and may change when that motor ignites; some mounts name a
 /// configuration `<rocket>` never declares; and Loft fired a motor whose mount it could not find
 /// from stage 0. Here each configuration takes its own ignition, an undeclared one is read with a
-/// warning, and a motor in a pod — a mount hpr does not read — keeps its configuration out of the
-/// rocket rather than flying from anywhere else.
+/// warning, and a motor in a parallel stage — a mount hpr does not read — keeps its configuration
+/// out of the rocket rather than flying from anywhere else.
 #[test]
 fn per_config_overrides_and_dangling_mount_warn() {
     let f15 = |config: &str| {
@@ -2302,11 +2303,12 @@ fn per_config_overrides_and_dangling_mount_warn() {
         f15("d")
     );
     let pod = format!(
-        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount>\
-         <subcomponents><bodytube><name>Pod</name><id>pod</id>\
+        "<parallelstage><name>Boosters</name><id>boosters</id><instancecount>2</instancecount>\
+         <subcomponents><bodytube><name>Booster</name><id>booster</id>\
          <material type='bulk' density='680.0'>Cardboard</material><length>0.2</length>\
          <thickness>0.001</thickness><radius>0.015</radius>\
-         <motormount><overhang>0.0</overhang>{}</motormount></bodytube></subcomponents></podset>",
+         <motormount><overhang>0.0</overhang>{}</motormount></bodytube></subcomponents>\
+         </parallelstage>",
         f15("c")
     );
     let xml = motor_design(
@@ -2340,8 +2342,8 @@ fn per_config_overrides_and_dangling_mount_warn() {
     assert_eq!(a.delay, Some(hpr_motor::Delay::Plugged));
     assert!(matches!(a.curve, Curve::Catalog { .. }));
     // `b` keeps the mount's event and takes its own delay, so it lights 1.5 s after launch: an
-    // air start hpr flies (M1.9c), though not on this rocket, whose pod keeps every configuration
-    // out (below).
+    // air start hpr flies (M1.9c), though not on this rocket, whose parallel stage keeps every
+    // configuration out (below).
     let b = by_id("b");
     assert_eq!(
         b.motors[0].ignition,
@@ -2354,11 +2356,15 @@ fn per_config_overrides_and_dangling_mount_warn() {
         b.left_out.as_ref().map(|l| l.why),
         Some(NotFlown::AirframeNotAsWritten)
     );
-    // `c`'s only motor is in the pod: read nowhere, flown from nowhere.
+    // `c`'s only motor is in the parallel stage: read nowhere, flown from nowhere.
     let c = by_id("c");
     assert!(c.motors.is_empty());
     assert_eq!(c.unread.len(), 1);
-    assert!(c.unread[0].reason.contains("pod set"), "{:?}", c.unread);
+    assert!(
+        c.unread[0].reason.contains("parallel stage"),
+        "{:?}",
+        c.unread
+    );
     assert_eq!(
         c.left_out.as_ref().map(|l| l.why),
         Some(NotFlown::UnreadMotor)
@@ -2374,7 +2380,7 @@ fn per_config_overrides_and_dangling_mount_warn() {
         design.warnings
     );
 
-    // The pod is part of the airframe hpr has not read, so nothing flies on this rocket, and `c`
+    // The boosters are part of the airframe hpr has not read, so nothing flies on this rocket, and `c`
     // is never flown from the body's mount or any other.
     assert_eq!(
         by_id("a").left_out.as_ref().map(|l| l.why),
@@ -2630,8 +2636,8 @@ fn a_configuration_flies_only_as_written() {
     assert_eq!(assembly.motors[0].stage, 0);
 }
 
-/// A configuration whose airframe was read only in part is not flown: here a pod set with no
-/// motor in it, which hpr does not read yet, would otherwise fly the rocket without the pod.
+/// A configuration whose airframe was read only in part is not flown: here a parallel stage with
+/// no motor in it, which hpr does not read yet, would otherwise fly the rocket without it.
 #[test]
 fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
     let xml = motor_design(
@@ -2639,7 +2645,8 @@ fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
         "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
          <manufacturer>Estes</manufacturer><designation>F15</designation>\
          <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
-        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount></podset>",
+        "<parallelstage><name>Boosters</name><id>boosters</id><instancecount>2</instancecount>\
+         </parallelstage>",
     );
     let design = read_design(xml.as_bytes());
     let a = &design.motors.configurations[0];
@@ -2797,7 +2804,7 @@ fn a_recovery_warning_does_not_ground_a_configuration_but_a_shape_warning_does()
 
 /// A parachute's own deployment, a configuration that changes one of its three settings, the drag
 /// coefficient stated or left to OpenRocket, a stage's separation per configuration, and a
-/// parachute inside a pod, which is kept apart as not read.
+/// parachute inside a parallel stage, which is kept apart as not read.
 #[test]
 fn recovery_settings_are_read_per_configuration() {
     let chute = |id: &str, cd: &str, extra: &str| {
@@ -2819,11 +2826,11 @@ fn recovery_settings_are_read_per_configuration() {
          <deployaltitude>150.0</deployaltitude></deploymentconfiguration>",
     );
     let pod = format!(
-        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount><subcomponents>\
-         <bodytube><name>Pod</name><id>pod</id>\
+        "<parallelstage><name>Boosters</name><id>boosters</id><instancecount>2</instancecount>\
+         <subcomponents><bodytube><name>Booster</name><id>booster</id>\
          <material type='bulk' density='680.0'>Cardboard</material><length>0.2</length>\
          <thickness>0.001</thickness><radius>0.015</radius><subcomponents>{}</subcomponents>\
-         </bodytube></subcomponents></podset>",
+         </bodytube></subcomponents></parallelstage>",
         chute("pod-chute", "1.5", "")
     );
     let xml = format!(
@@ -2886,7 +2893,7 @@ fn recovery_settings_are_read_per_configuration() {
     assert_eq!((in_a.altitude_m, in_a.delay_s), (Some(200.0), Some(0.5)));
 
     assert_eq!(recovery.unread.len(), 1);
-    assert_eq!(recovery.unread[0].inside, "podset");
+    assert_eq!(recovery.unread[0].inside, "parallelstage");
     assert!(recovery.unread_separations.is_empty());
 }
 
@@ -3193,8 +3200,9 @@ fn stored_reference_and_reproduction_screens_are_separate() {
 }
 
 /// Loft lesson L66: Loft dropped pods, parallel stages and booster sets, and its export then lost
-/// the note that the rocket was reduced. Here both are kept whole in `extensions.x-openrocket`, at
-/// paths that lead back to them, and the design says it is reduced.
+/// the note that the rocket was reduced. Here the pod is read into the rocket (M1.13b), and the
+/// parallel stage, which hpr does not read yet, is kept whole in `extensions.x-openrocket`, at a
+/// path that leads back to it, and the design says it is reduced.
 #[test]
 fn pods_kept_in_extensions_or_flagged_reduced() {
     let xml = motor_design(
@@ -3219,16 +3227,15 @@ fn pods_kept_in_extensions_or_flagged_reduced() {
     let at: Vec<&str> = parts.iter().map(|kept| kept.at.as_str()).collect();
     assert_eq!(
         at,
-        [
-            "openrocket/rocket/stage[0]/bodytube[1]/podset[0]",
-            "openrocket/rocket/stage[0]/bodytube[1]/parallelstage[1]",
-        ]
+        ["openrocket/rocket/stage[0]/bodytube[1]/parallelstage[1]"]
     );
     for kept in parts {
         assert_eq!(element_at(&file.document, &kept.at), Some(&kept.element));
     }
-    // Neither is in the rocket, and no configuration flies on a rocket read only in part.
-    assert!(motors::stage_of(&design.rocket, "pod").is_none());
+    // The pod is in the rocket, the boosters are not, and no configuration flies on a rocket read
+    // only in part.
+    assert!(motors::stage_of(&design.rocket, "pod").is_some());
+    assert!(motors::stage_of(&design.rocket, "boosters").is_none());
     assert!(design.rocket.configurations.is_empty());
 
     // A design with nothing left out is not reduced, and keeps no parts.
@@ -4021,4 +4028,182 @@ fn a_second_separation_and_a_stage_of_two_mounts_are_left_out() {
     let pair = out("pair");
     assert_eq!(pair.why, NotFlown::IgnitionNotFlown);
     assert!(pair.message.contains("in 2 mounts"), "{}", pair.message);
+}
+
+/// One `.ork` stage: a nose and a body tube 50 mm in radius holding `inside`.
+fn one_tube_holding(inside: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12"><rocket><name>Pods</name><subcomponents>
+<stage><name>Stage</name><subcomponents>
+<nosecone><name>Nose</name><id>nose</id><length>0.3</length><thickness>0.002</thickness>
+<shape>conical</shape><aftradius>0.05</aftradius></nosecone>
+<bodytube><name>Tube</name><id>tube</id><length>0.5</length><thickness>0.002</thickness>
+<radius>0.05</radius><subcomponents>{inside}</subcomponents></bodytube>
+</subcomponents></stage></subcomponents></rocket></openrocket>"#
+    )
+}
+
+/// A pod tube `length` long and 10 mm in radius, with the id `id`.
+fn pod_tube(id: &str, length: &str) -> String {
+    format!(
+        "<bodytube><name>Pod</name><id>{id}</id><length>{length}</length>\
+         <thickness>0.001</thickness><radius>0.01</radius></bodytube>"
+    )
+}
+
+/// A pod set is read into `PodSet` with its pods' body components as its children, at the
+/// distance OpenRocket 24.12 gives each `radiusoffset` method (ADR-090): `relative` from the
+/// tube's surface to the pod's widest part, `surface` touching, `free` from the axis; an unknown
+/// method is read as `relative`, with a warning.
+#[test]
+fn a_pod_set_is_read_at_openrocket_s_distance() {
+    for (method, number, expected, warned) in [
+        ("relative", "0.02", 0.08, false),
+        ("surface", "0.02", 0.06, false),
+        ("free", "0.02", 0.02, false),
+        ("sideways", "0.02", 0.08, true),
+    ] {
+        let xml = one_tube_holding(&format!(
+            "<podset><name>Pods</name><id>pods</id><instancecount>3</instancecount>\
+             <radiusoffset method='{method}'>{number}</radiusoffset>\
+             <angleoffset method='relative'>30.0</angleoffset>\
+             <axialoffset method='top'>0.1</axialoffset><subcomponents>{}</subcomponents>\
+             </podset>",
+            pod_tube("pod", "0.2")
+        ));
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let spine = component::rocket(&read.value.document);
+        let unknown = spine
+            .warnings
+            .iter()
+            .filter(|w| w.message.contains("which this reader does not know"))
+            .count();
+        assert_eq!(
+            unknown,
+            usize::from(warned),
+            "{method}: {:?}",
+            spine.warnings
+        );
+        let tube = &spine.value.stages[0].components[1];
+        let hpr_design::tree::Part::PodSet(pods) = &tube.children[0].part else {
+            panic!("{method}: not a pod set");
+        };
+        assert_eq!(pods.count, 3);
+        assert!((pods.radial_offset_m - expected).abs() < 1e-15, "{method}");
+        assert!((pods.angle_rad - 30f64.to_radians()).abs() < 1e-15);
+        assert_eq!(tube.children[0].children[0].id, "pod");
+        spine.value.layout().expect("pods lay out");
+    }
+}
+
+/// A pod set hpr cannot lay out is left out, with a `Skipped` warning saying why, and the rest of
+/// the design lays out: a pod of no length (winglets), a pod set with no body component in it, one
+/// inside a pod, and one on anything but a body tube. A part in a pod set that is not a body
+/// component is left out on its own. A flipped nose cone is a tail cone: a transition from its
+/// base radius, the fore one, to a point, whose automatic radius takes the part ahead.
+#[test]
+fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
+    let pod_set = |id: &str, inside: &str| {
+        format!(
+            "<podset><name>{id}</name><id>{id}</id><instancecount>2</instancecount>\
+             <radiusoffset method='relative'>0.0</radiusoffset>\
+             <axialoffset method='top'>0.0</axialoffset><subcomponents>{inside}</subcomponents>\
+             </podset>"
+        )
+    };
+    let fins = "<trapezoidfinset><name>Fins</name><fincount>2</fincount><rootchord>0.05</rootchord>\
+                <tipchord>0.02</tipchord><height>0.03</height><sweeplength>0.02</sweeplength>\
+                <thickness>0.003</thickness><axialoffset method='top'>0.0</axialoffset>\
+                </trapezoidfinset>";
+    let tail = "<nosecone><name>Tail</name><id>tail</id><length>0.03</length>\
+                <thickness>0.001</thickness><shape>conical</shape><aftradius>auto 0.01</aftradius>\
+                <isflipped>true</isflipped></nosecone>";
+    let inside = [
+        pod_set(
+            "winglets",
+            &pod_tube("zero", "0.0").replace(
+                "</bodytube>",
+                &format!("<subcomponents>{fins}</subcomponents></bodytube>"),
+            ),
+        ),
+        pod_set("empty", ""),
+        pod_set(
+            "outer",
+            &pod_tube("outer-pod", "0.2").replace(
+                "</bodytube>",
+                &format!(
+                    "<subcomponents>{}</subcomponents></bodytube>",
+                    pod_set("inner", &pod_tube("inner-pod", "0.1"))
+                ),
+            ),
+        ),
+        pod_set(
+            "kept",
+            &format!("{}{fins}{tail}", pod_tube("kept-pod", "0.2")),
+        ),
+    ]
+    .concat();
+    let xml = one_tube_holding(&inside).replace(
+        "<aftradius>0.05</aftradius></nosecone>",
+        &format!(
+            "<aftradius>0.05</aftradius><subcomponents>{}</subcomponents></nosecone>",
+            pod_set("on-a-nose", &pod_tube("nose-pod", "0.1"))
+        ),
+    );
+    let read = read(xml.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&read.value.document);
+    let skipped: Vec<(&str, &str)> = spine
+        .warnings
+        .iter()
+        .filter(|w| w.kind == WarningKind::Skipped)
+        .map(|w| (w.at.as_str(), w.message.as_str()))
+        .collect();
+    let says = |at: &str, what: &str| {
+        skipped
+            .iter()
+            .any(|(where_, message)| where_.ends_with(at) && message.contains(what))
+    };
+    assert!(
+        says("nosecone[0]/podset[0]", "hangs from a nose cone"),
+        "{skipped:?}"
+    );
+    assert!(
+        says("bodytube[1]/podset[0]", "a part of no length"),
+        "{skipped:?}"
+    );
+    assert!(
+        says(
+            "bodytube[1]/podset[1]",
+            "no nose cone, body tube or transition"
+        ),
+        "{skipped:?}"
+    );
+    assert!(
+        says("podset[2]/bodytube[0]/podset[0]", "a pod set inside a pod"),
+        "{skipped:?}"
+    );
+    assert!(
+        says("podset[3]/trapezoidfinset[1]", "directly inside a pod set"),
+        "{skipped:?}"
+    );
+    assert_eq!(skipped.len(), 5, "{skipped:?}");
+
+    let tube = &spine.value.stages[0].components[1];
+    let ids: Vec<&str> = tube.children.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, ["outer", "kept"]);
+    let hpr_design::tree::Part::Transition(tail) = &tube.children[1].children[1].part else {
+        panic!("a tail cone is read as a transition");
+    };
+    assert_eq!(tail.aft_radius_m, 0.0);
+    assert_eq!(
+        tube.children[1].children[1].auto,
+        [hpr_design::tree::AutoDimension::ForeRadius]
+    );
+    let layout = spine.value.layout().expect("the rest lays out");
+    let (_, placed) = layout.find("tail").expect("the tail cone");
+    let hpr_design::tree::Part::Transition(tail) = &placed.part else {
+        panic!("a transition");
+    };
+    assert_eq!(tail.fore_radius_m, 0.01);
 }

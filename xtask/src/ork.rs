@@ -175,6 +175,26 @@ fn count_tree(
         .sum::<usize>()
 }
 
+/// Counts the pod sets read into `PodSet` under `component`, and the pods they repeat.
+fn count_pods(component: &Component, counts: &mut [usize; 3]) {
+    if let Part::PodSet(pods) = &component.part {
+        counts[1] += 1;
+        counts[2] += pods.count as usize;
+    }
+    for child in &component.children {
+        count_pods(child, counts);
+    }
+}
+
+/// How many elements named `tag` there are in `element`, at any depth.
+fn count_tag(element: &ork::Element, tag: &str) -> usize {
+    usize::from(element.name == tag)
+        + element
+            .elements()
+            .map(|child| count_tag(child, tag))
+            .sum::<usize>()
+}
+
 /// Every automatic dimension a file cached a number with, as `(component id, tag, cached)`.
 ///
 /// This is the only oracle available offline for the resolution rules: `auto 0.025` is the answer
@@ -183,13 +203,24 @@ fn count_tree(
 /// 104 of 413 automatic dimensions that cache anything say a number at all.
 fn cached_dimensions(element: &ork::Element, found: &mut Vec<(String, String, f64)>) {
     let id = element.child("id").map(|id| id.text().trim().to_owned());
+    // A flipped nose cone is read as a tail cone, a transition whose base is its fore end, so its
+    // `aft` radii are the transition's `fore` ones.
+    let flipped = element.name == "nosecone"
+        && element
+            .child("isflipped")
+            .is_some_and(|flag| flag.text().trim() == "true");
     if let Some(id) = id.filter(|id| !id.is_empty()) {
         for child in element.elements() {
             if let Some(Dimension::Automatic {
                 cached: Some(value),
             }) = Dimension::parse(&child.text())
             {
-                found.push((id.clone(), child.name.clone(), value));
+                let tag = match child.name.as_str() {
+                    "aftradius" if flipped => "foreradius".to_owned(),
+                    "aftshoulderradius" if flipped => "foreshoulderradius".to_owned(),
+                    tag => tag.to_owned(),
+                };
+                found.push((id.clone(), tag, value));
             }
         }
     }
@@ -260,6 +291,9 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut attached_parts: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut auto_marked: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut left_out: BTreeMap<String, usize> = BTreeMap::new();
+    // Pod sets written, read into `PodSet` (and the pods those repeat), and why any was left out.
+    let mut pod_sets = [0usize; 3];
+    let mut pod_sets_left_out: BTreeMap<String, usize> = BTreeMap::new();
     let mut spine_warning_kinds: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut cached_checked = 0usize;
     let mut cached_agree = 0usize;
@@ -360,6 +394,10 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                         if ATTACHED_TAGS.contains(&tag) {
                             *left_out.entry(tag.to_owned()).or_default() += 1;
                         }
+                        if tag == "podset" {
+                            let why = warning.message.split(';').next().unwrap_or_default();
+                            *pod_sets_left_out.entry(why.to_owned()).or_default() += 1;
+                        }
                     }
                 }
                 stages_read += spine.value.stages.len();
@@ -374,9 +412,11 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                         }
                         for child in &component.children {
                             attached += count_tree(child, &mut attached_parts, &mut auto_marked);
+                            count_pods(child, &mut pod_sets);
                         }
                     }
                 }
+                pod_sets[0] += count_tag(&read.value.document.root, "podset");
                 off_the_spine(&read.value.document.root, &mut off_spine);
                 angles(&read.value.document.root, &mut angle_counts);
                 if defaulted_here > 0 {
@@ -622,6 +662,12 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
         "largest_unpacked_bytes": largest_unpacked,
         "attached_parts": to_value(&attached_parts),
         "parts_left_out": to_value(&left_out),
+        "pod_sets": json!({
+            "written": pod_sets[0],
+            "read": pod_sets[1],
+            "pods_read": pod_sets[2],
+            "left_out": to_value(&pod_sets_left_out),
+        }),
         "design_warnings": to_value(&spine_warning_kinds),
         "parts_weighing_nothing": to_value(&weightless),
         "angles_written": angle_counts[0],
@@ -740,6 +786,14 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     print_counts("attached parts", &attached_parts);
     print_counts("automatic dimensions marked", &auto_marked);
     print_counts("parts left out, by tag", &left_out);
+    println!(
+        "  pod sets: {} written, {} read into PodSet ({} pods), {} left out",
+        pod_sets[0],
+        pod_sets[1],
+        pod_sets[2],
+        pod_sets_left_out.values().sum::<usize>()
+    );
+    print_counts("pod sets left out, by reason", &pod_sets_left_out);
     print_counts("parts that weigh nothing", &weightless);
     print_counts("warnings reading designs", &spine_warning_kinds);
     println!(
