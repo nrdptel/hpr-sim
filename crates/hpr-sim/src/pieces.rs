@@ -954,7 +954,7 @@ mod tests {
         // 1 N·s on each ejection, in wind, from a stack tilted 60° up toward 30° east of north,
         // moving sideways and turning at 0.6 rad/s. The first parting, from the stack in free
         // flight, pushes along its axis. At the second the airframe hangs under its canopy, so
-        // the payload leaves up its velocity through the air, toward the canopy.
+        // the payload leaves against its velocity through the air, toward the canopy.
         const J: f64 = 1.0;
         let wind = ConstantWind::new(5.0, 0.9).unwrap();
         let wind_enu = wind.wind(0.0).unwrap().velocity_enu_m_s;
@@ -1330,7 +1330,7 @@ mod tests {
         // The booster section leaves at apogee; at 300 m the nose and the interstage both leave
         // the body left, each with 1 N·s, in one pass, as the stack's partings do at the first:
         // each final body takes the pushes of the joints on its sides. By hand, on the way the
-        // nose points (up the velocity through the air, under the canopy it hangs from since
+        // nose points (against the velocity through the air, under the canopy it hangs from since
         // apogee): the nose cone `+J/m`, the sustainer's airframe between the two joints `−J/m +
         // J/m = 0`, and the interstage `−J/m`. Given in either order, the same (found in review:
         // taken one at a time, the order moved the nose cone's push from 15.85 to 17.66 m/s).
@@ -1584,7 +1584,7 @@ mod tests {
     fn a_drogue_released_as_the_body_parts_is_still_hung_from() {
         // A drogue on the stack since apogee, cut away by a main that opens at 300 m, as the nose
         // cone leaves. Up to that instant the stack hung from the drogue, so the nose cone goes
-        // up its velocity through the air whether the main opens at once, releasing the drogue at
+        // against its velocity through the air whether the main opens at once, releasing the drogue at
         // that instant, or fills over a second (found in review: the push flipped with the law).
         for inflation in [
             Inflation::Instant,

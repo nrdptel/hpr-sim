@@ -7565,7 +7565,7 @@ lone nose cone that is the whole area.
 - `pieces::tests` pins the impulse at both kinds of parting. With 1 N·s, in wind, from a stack
   tilted 60° up toward 30° east of north, moving sideways and turning at 0.6 rad/s, each body's
   change of velocity is `J/m` to 1e-9: along the hand-computed rail axis at the first parting,
-  15.9 m/s on the 0.063 kg nose cone, and 4 m/s on the 250 g payload at the second, up the
+  15.9 m/s on the 0.063 kg nose cone, and 4 m/s on the 250 g payload at the second, against the
   airframe's velocity through the air. The momenta add up to 1e-9 at both partings. Each
   direction rule has its own test, and so do a separation with a pushed ejection and two pushed
   partings in one pass.
