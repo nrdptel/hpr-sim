@@ -359,7 +359,8 @@ impl DeviceDrag {
     /// - `A_f` is, for each fin set, one fin's planform area times the efficiency factor for its
     ///   fin count ([`TUMBLE_FIN_EFFICIENCY`]). Launch lugs and rail buttons add nothing, and an
     ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
-    ///   the model has no factor for them.
+    ///   the model has no factor for them. So is one with **pods**, whose tubes the model has no
+    ///   factor for either.
     ///
     /// It sums **every** stage, so it is the whole stack tumbling. For a spent booster on its
     /// own, which is what the documentation's model was written for, use
@@ -373,9 +374,8 @@ impl DeviceDrag {
     /// # Errors
     ///
     /// [`SimError::Design`] if a fin planform's area or a nose cone's or transition's profile can't
-    /// be computed, and [`SimError::Domain`]
-    /// if the airframe presents no area at all, carries tube fins, or has a fin set of more than
-    /// the eight fins Table 3.4 covers.
+    /// be computed, and [`SimError::Domain`] if the airframe presents no area at all, carries tube
+    /// fins or pods, or has a fin set of more than the eight fins Table 3.4 covers.
     pub fn tumbling(assembly: &hpr_design::Assembly) -> Result<Self, SimError> {
         Self::tumbling_stages(
             assembly,

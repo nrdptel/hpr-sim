@@ -136,7 +136,7 @@ pub(crate) fn locate_part(assembly: &Assembly, id: &str) -> Result<usize, NotAPa
         Err(NotAPart::BodyComponent)
     } else if placed.body_radius_m.is_some() {
         Err(NotAPart::Outside)
-    } else if placed.copies_m.len() != 1 {
+    } else if placed.copies.len() != 1 {
         Err(NotAPart::NotOnePart)
     } else {
         Ok(index)

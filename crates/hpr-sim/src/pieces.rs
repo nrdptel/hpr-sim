@@ -154,9 +154,9 @@ impl Pieces {
     /// # Errors
     ///
     /// [`SimError::Parting`] for an ejection that names a component the design doesn't have, a
-    /// joint aft of an internal component or of the last body component, a payload that is a body
-    /// component, an external part, one of several copies in a cluster or inside another payload,
-    /// two partings at one joint or of one payload, or a split through a stage or component whose
+    /// joint aft of an internal component or of the last body component, a pod's body component as
+    /// a joint or a payload, a payload that is a body component, an external part, one of several
+    /// copies in a cluster or inside another payload, two partings at one joint or of one payload, or a split through a stage or component whose
     /// overridden mass doesn't say how it divides; [`SimError::Domain`] for a separation with no
     /// stage aft of it.
     pub(crate) fn new(
@@ -202,6 +202,13 @@ impl Pieces {
             match &ejection.parting {
                 Parting::AftOf { component } => {
                     let index = find(component)?;
+                    if components[index].parent.is_some() && components[index].part.is_body() {
+                        return Err(refuse(
+                            "a pod's body component leaves with the tube its pod set hangs \
+                             from, at no joint of its own and not as a payload",
+                            component,
+                        ));
+                    }
                     if components[index].parent.is_some() {
                         return Err(refuse(
                             "a joint is aft of a body component, and this one is inside another \
@@ -234,8 +241,14 @@ impl Pieces {
                 }
                 Parting::Payload { component } => {
                     let index = find(component)?;
-                    // A pod's body components hang from its pod set but are body components.
-                    if components[index].parent.is_none() || components[index].part.is_body() {
+                    if components[index].part.is_body() && components[index].parent.is_some() {
+                        return Err(refuse(
+                            "a pod's body component leaves with the tube its pod set hangs \
+                             from, at no joint of its own and not as a payload",
+                            component,
+                        ));
+                    }
+                    if components[index].parent.is_none() {
                         return Err(refuse(
                             "a payload is carried inside the airframe, and this is a body \
                              component (a body component leaves at a joint, `Parting::AftOf`)",
@@ -248,7 +261,7 @@ impl Pieces {
                             component,
                         ));
                     }
-                    if components[index].copies_m.len() != 1 {
+                    if components[index].copies.len() != 1 {
                         return Err(refuse(
                             "a payload that isn't exactly one part (one of several copies in a \
                              cluster of tubes, or none)",
@@ -2269,8 +2282,7 @@ mod tests {
             ("a payload inside another payload", "inner".to_owned())
         );
 
-        // One pod's body tube is still a body component, not a payload, though it hangs from its
-        // pod set and is a single copy.
+        // A pod's body tube is neither a joint nor a payload, though one pod's is a single copy.
         let mut rocket = with_payload();
         let airframe = &mut rocket.stages[0].components[1];
         let mut pod_tube = airframe.clone();
@@ -2289,22 +2301,22 @@ mod tests {
         pods.children = vec![pod_tube];
         airframe.children.push(pods);
         let assembly = rocket.assemble("i175").unwrap();
-        let error = Pieces::new(
-            &rocket,
-            &assembly,
-            None,
-            &[Ejection::payload(apogee, "pod-tube")],
-        )
-        .err()
-        .unwrap();
-        assert_eq!(
-            what(error),
-            (
-                "a payload is carried inside the airframe, and this is a body component (a body \
-                 component leaves at a joint, `Parting::AftOf`)",
-                "pod-tube".to_owned()
-            )
-        );
+        for ejection in [
+            Ejection::payload(apogee, "pod-tube"),
+            Ejection::aft_of(apogee, "pod-tube"),
+        ] {
+            let error = Pieces::new(&rocket, &assembly, None, &[ejection])
+                .err()
+                .unwrap();
+            assert_eq!(
+                what(error),
+                (
+                    "a pod's body component leaves with the tube its pod set hangs from, at no \
+                     joint of its own and not as a payload",
+                    "pod-tube".to_owned()
+                )
+            );
+        }
 
         // A stage whose mass is overridden can't be divided between pieces.
         let mut rocket = with_payload();

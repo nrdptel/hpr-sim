@@ -1092,7 +1092,7 @@ fn a_filled_part_is_solid() {
 }
 
 /// A part no milestone has reached yet is counted and named, not silently dropped. A pod set
-/// carries a spine of its own, which is M3.1c's work.
+/// carries a spine of its own, which is M1.13b's work.
 #[test]
 fn parts_no_milestone_reads_yet_are_reported_not_dropped() {
     let xml = ACROSS_A_STAGE.replace(

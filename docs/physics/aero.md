@@ -2399,8 +2399,10 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
     - Body tubes give none at small angles. Their own slope is 0, and their body lift grows with
       `sin² α`, so it adds nothing there.
   - Tube fins, which are refused until a cited method exists
-    ([issue #15](https://github.com/nrdptel/hpr-sim/issues/15)). Any part kind the model doesn't
-    know is refused too.
+    ([issue #15](https://github.com/nrdptel/hpr-sim/issues/15)), and
+    [pods](../glossary.md#pod), refused until a cited method for their normal force and drag is in
+    ([M1.13c](../decisions-and-roadmap.md#m1-13c), pod aerodynamics). Any part kind the model
+    doesn't know is refused too.
   - Launch lugs and rail buttons add drag only.
 
 ### Fins through Mach 1

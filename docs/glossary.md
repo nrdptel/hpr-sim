@@ -749,7 +749,7 @@ format's specification recommends. See [Exporting a flight](exporting-a-flight.m
 
 ## Pod
 
-A body mounted beside the airframe rather than on its axis: a side pod, or an outboard pod that holds a motor. hpr repeats one pod, and everything in it, evenly around the axis, and weighs each copy where it sits, so the pods' inertia is mostly the [parallel-axis](#parallel-axis-theorem) term. Pods are weighed but can't fly yet: no cited model gives their normal force and drag ([M1.13c](decisions-and-roadmap.md#m1-13c), pod aerodynamics). See [Pods](physics/design.md#pods).
+A body mounted beside the airframe rather than on its axis: a side pod, or an outboard pod that holds a motor. hpr repeats one pod, and everything in it, evenly around the axis, turning each copy with its pod as a fin set's fins turn, and weighs each copy where it sits, so the pods' inertia is mostly the [parallel-axis](#parallel-axis-theorem) term. Pods are weighed but can't fly yet: no cited model gives their normal force and drag ([M1.13c](decisions-and-roadmap.md#m1-13c), pod aerodynamics). See [Pods](physics/design.md#pods).
 
 ## Power-on and power-off drag
 
@@ -766,6 +766,10 @@ shoulder of a [boattail](#boattail): it speeds up and its pressure falls, by an 
 only on the Mach number and the angle turned (the Prandtl–Meyer function). hpr uses the pressure
 after such a turn as the upper limit of a boattail's [wave drag](#wave-drag). See
 [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
+
+## Product of inertia
+
+An off-diagonal term of the inertia tensor, such as `I_yz = −∫ y z dm`. It is zero when the mass is balanced about the axes, as in a rocket that is symmetric about its centre line, and not zero when mass sits off the axis on one side, like a single side pod. Its sign follows the positive convention in [Mass properties](physics/mass.md). A rocket with products of inertia turns a little about one axis when pushed about another.
 
 ## Property test
 

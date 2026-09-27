@@ -42,7 +42,7 @@ pub use config::{Assembly, Configuration, Ignition, MotorMount, MountedMotor, Pl
 pub use error::DesignError;
 pub use finish::Finish;
 pub use fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
-pub use mass::MassProperties;
+pub use mass::{MassProperties, Placement};
 pub use material::{Density, Material};
 pub use parts::{
     BodyTube, CenteringRing, InnerTube, LaunchLug, MassComponent, NoseCone, Packing, Parachute,

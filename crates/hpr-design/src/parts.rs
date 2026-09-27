@@ -27,7 +27,7 @@ use hpr_core::DVec3;
 use serde::{Deserialize, Serialize};
 
 use crate::error::DesignError;
-use crate::mass::MassProperties;
+use crate::mass::{MassProperties, Placement};
 use crate::material::Material;
 use crate::shapes::{NoseShape, Profile, check_dimension};
 use crate::solids::{Wall, revolve};
@@ -387,11 +387,18 @@ impl InnerTube {
 /// body's.
 ///
 /// **Copies.** The pod written in the tree is one pod on the body's axis, repeated `count` times
-/// around it at `radial_offset_m`, the first at `angle_rad` from `x_B` toward `y_B` and the rest
-/// every `2π / count` after it. Everything the pod holds (fins on its tubes, parts inside them, a
-/// motor in a mount) is repeated in every pod, each copy with its own parallel-axis term, as a
-/// cluster's tube repeats what it holds (`docs/physics/design.md`, the decision record on pods,
-/// [ADR-089][adr-089]). The pod set itself weighs nothing: its mass is its pods'.
+/// around it as a rotational pattern: pod `k` is that pod turned by `φ_k = angle + 2π k / count`
+/// about the body's axis and moved to `r (cos φ_k, sin φ_k)` ([`Self::pods`]), in
+/// [body axes](https://github.com/nrdptel/hpr-sim/blob/main/docs/physics/frames.md). Everything
+/// the pod holds (fins on its tubes, parts inside them, a motor in a mount) turns and moves with
+/// it, so what points away from the airframe on one pod does on every pod. Each copy adds its own
+/// parallel-axis term, `I_O = I_cg + m (|d|² E − d dᵀ)` with `d` the copy's centre from the point
+/// `O` (J. L. Meriam and L. G. Kraige, *Engineering Mechanics: Dynamics*, appendix B). The pod set
+/// itself weighs nothing: its mass is its pods'. See the design page's *Pods* section
+/// (`docs/physics/design.md`) and the decision record on pods, [ADR-089][adr-089].
+///
+/// **Not flown yet.** The aerodynamic model and the tumble model refuse a design with pods, since
+/// no cited method for a pod's normal force and drag is in yet (M1.13c).
 ///
 /// [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -407,18 +414,23 @@ pub struct PodSet {
 }
 
 impl PodSet {
-    /// Where each pod's axis sits, `[x, y]` in body axes, m: `r (cos φ_k, sin φ_k)` with
-    /// `φ_k = angle + 2π k / count` for `k = 0 … count − 1`.
+    /// The most pods a set may have. Far more than any rocket carries, it bounds the copies a
+    /// design file can ask for.
+    pub const MAX_COUNT: u32 = 64;
+
+    /// Where each pod sits: pod `k` is the pod as written (on the body's axis) turned by
+    /// `φ_k = angle + 2π k / count` about the axis and moved to `r (cos φ_k, sin φ_k)`, for
+    /// `k = 0 … count − 1`.
     ///
     /// # Errors
     ///
-    /// [`DesignError::Domain`] for no pods, a radial offset that is negative or not finite, or an
-    /// angle that is not finite.
-    pub fn pods_m(&self) -> Result<Vec<[f64; 2]>, DesignError> {
-        if self.count == 0 {
+    /// [`DesignError::Domain`] for no pods or more than [`Self::MAX_COUNT`], a radial offset that
+    /// is negative or not finite, or an angle that is not finite.
+    pub fn pods(&self) -> Result<Vec<Placement>, DesignError> {
+        if self.count == 0 || self.count > Self::MAX_COUNT {
             return Err(DesignError::Domain {
-                what: "pod count",
-                value: 0.0,
+                what: "pod count (1 to 64)",
+                value: f64::from(self.count),
             });
         }
         check_dimension("pod radial offset", self.radial_offset_m, true)?;
@@ -427,10 +439,13 @@ impl PodSet {
         Ok((0..self.count)
             .map(|k| {
                 let phi = self.angle_rad + step * f64::from(k);
-                [
-                    self.radial_offset_m * phi.cos(),
-                    self.radial_offset_m * phi.sin(),
-                ]
+                Placement {
+                    offset_m: [
+                        self.radial_offset_m * phi.cos(),
+                        self.radial_offset_m * phi.sin(),
+                    ],
+                    roll_rad: phi,
+                }
             })
             .collect())
     }
