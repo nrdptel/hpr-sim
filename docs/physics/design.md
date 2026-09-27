@@ -332,7 +332,7 @@ decision record is [ADR-089][adr-089].
   `overrides_include_children` (an override on the pod set alone is refused, since it has nothing
   of its own). An override on a part inside a pod is that part's in each pod. A centre override
   `cg_xy_m` inside a pod is measured in the pod as written, on the body's axis, and turns with each
-  pod. The test `what_a_pod_holds_turns_with_it_and_overrides_keep_their_scope` pins all three.
+  pod; so does an inertia override's tensor. The test `what_a_pod_holds_turns_with_it_and_overrides_keep_their_scope` pins all three.
 - **Motors.** A motor mount inside a pod gives one motor per pod, each nozzle on its pod's axis.
   The configuration names the mount by its id, the pod tube's for a pod that is its own motor
   tube, and a mounted motor's `failed_tubes` counts the pods, in order from the first.

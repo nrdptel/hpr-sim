@@ -398,7 +398,9 @@ impl InnerTube {
 /// (`docs/physics/design.md`) and the decision record on pods, [ADR-089][adr-089].
 ///
 /// **Not flown yet.** The aerodynamic model and the tumble model refuse a design with pods, since
-/// no cited method for a pod's normal force and drag is in yet (M1.13c).
+/// no cited method for a pod's normal force and drag is in yet
+/// ([M1.13c](https://github.com/nrdptel/hpr-sim/blob/main/docs/decisions-and-roadmap.md#m1-13c),
+/// pod aerodynamics).
 ///
 /// [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

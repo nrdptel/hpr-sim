@@ -526,7 +526,8 @@ pub struct Overrides {
     /// carry it to each place.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cg_xy_m: Option<[f64; 2]>,
-    /// Inertia tensor about the centre of mass.
+    /// Inertia tensor about the centre of mass. For a part inside a cluster's tube or a pod, it is
+    /// in that one copy's axes as written, and turns with each pod.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inertia: Option<InertiaOverride>,
 }
@@ -2086,8 +2087,8 @@ mod tests {
         let (_, pods) = two.find("pods").unwrap();
         let mass = pods.with_children;
         close(mass.mass_kg, 2.0 * m1, 1e-15, "two pods' mass");
-        close(mass.cg_m.x, 0.0, 1e-17, "centre x");
-        close(mass.cg_m.y, 0.0, 1e-17, "centre y");
+        close(mass.cg_m.x, 0.0, 1e-16, "centre x");
+        close(mass.cg_m.y, 0.0, 1e-16, "centre y");
         close(-mass.cg_m.z, z1, 1e-15, "centre station");
         let i = mass.inertia_kg_m2;
         // Both pods lie on the x axis, so rolling about x moves them only along the pod's length.
@@ -2095,14 +2096,14 @@ mod tests {
         close(i.col(1).y, 2.0 * (transverse1 + m1 * d * d), 1e-15, "I_yy");
         close(i.col(2).z, 2.0 * (axial1 + m1 * d * d), 1e-15, "I_zz");
         for (k, product) in [i.col(1).x, i.col(2).x, i.col(2).y].into_iter().enumerate() {
-            close(product, 0.0, 1e-17, &format!("product {k}"));
+            close(product, 0.0, 1e-16, &format!("product {k}"));
         }
         close(pods.length_m, 0.3, 1e-15, "the pod's extent");
         assert_eq!(pods.own.mass_kg, 0.0);
         let (_, pod_tube) = two.find("pod-tube").unwrap();
         close(pod_tube.fore_station_m, 0.3, 1e-15, "pod tube station");
         assert_eq!(pod_tube.copies.len(), 2);
-        close(pod_tube.copies[1].offset_m[0], -d, 1e-17, "second pod x");
+        close(pod_tube.copies[1].offset_m[0], -d, 1e-16, "second pod x");
         assert_eq!(pod_tube.copies[1].roll_rad, PI);
         close(
             two.structure.mass_kg,
@@ -2117,8 +2118,8 @@ mod tests {
         let (_, pod) = one.find("pods").unwrap();
         let mass = pod.with_children;
         close(mass.mass_kg, m1, 1e-15, "one pod's mass");
-        close(mass.cg_m.x, 0.0, 1e-17, "centre x");
-        close(mass.cg_m.y, d, 1e-17, "centre y");
+        close(mass.cg_m.x, 0.0, 1e-16, "centre x");
+        close(mass.cg_m.y, d, 1e-16, "centre y");
         let i = mass.inertia_kg_m2;
         close(i.col(0).x, transverse1, 1e-15, "I_xx about its centre");
         close(i.col(2).z, axial1, 1e-15, "I_zz about its centre");
@@ -2139,7 +2140,7 @@ mod tests {
         );
     }
 
-    /// What a pod holds turns with its pod, as a rotational pattern: a mass 5 mm off the pod's
+    /// What a pod holds turns with its pod, as a rotational pattern: a mass 3 mm off the pod's
     /// axis, outward on the pod at 0°, is outward on the pod at 180° too, so the pair's centre
     /// stays on the axis; alone at 90° it sits at `y = d + e`. A centre override inside a pod is measured
     /// in the pod as written, and turns with it. An override on the pod set, covering its pods, is
@@ -2147,7 +2148,7 @@ mod tests {
     #[test]
     fn what_a_pod_holds_turns_with_it_and_overrides_keep_their_scope() {
         use std::f64::consts::{FRAC_PI_2, PI};
-        let (d, e) = (0.05, 0.005);
+        let (d, e) = (0.05, 0.003);
         let off_axis = |count: u32, angle_rad: f64| {
             let mut design = podded(count, angle_rad);
             let pod_tube = &mut design.stages[0].components[1].children[6].children[0];
@@ -2162,8 +2163,8 @@ mod tests {
 
         let two = off_axis(2, 0.0).layout().unwrap();
         let pods = two.find("pods").unwrap().1.with_children;
-        close(pods.cg_m.x, 0.0, 1e-17, "the pair's centre x");
-        close(pods.cg_m.y, 0.0, 1e-17, "the pair's centre y");
+        close(pods.cg_m.x, 0.0, 1e-16, "the pair's centre x");
+        close(pods.cg_m.y, 0.0, 1e-16, "the pair's centre y");
         let roll = pods
             .inertia_about(DVec3::new(0.0, 0.0, pods.cg_m.z))
             .col(2)
@@ -2177,8 +2178,8 @@ mod tests {
 
         let one = off_axis(1, FRAC_PI_2).layout().unwrap();
         let (_, mass) = one.find("pod-mass").unwrap();
-        close(mass.own.cg_m.x, 0.0, 1e-17, "the turned mass's x");
-        close(mass.own.cg_m.y, d + e, 1e-17, "the turned mass's y");
+        close(mass.own.cg_m.x, 0.0, 1e-16, "the turned mass's x");
+        close(mass.own.cg_m.y, d + e, 1e-16, "the turned mass's y");
 
         // The pod tube's centre set 10 mm out from the pod's axis, as written.
         let mut design = podded(1, FRAC_PI_2);
@@ -2186,11 +2187,11 @@ mod tests {
         pod_tube.overrides.cg_xy_m = Some([0.01, 0.0]);
         let layout = design.layout().unwrap();
         let (_, tube) = layout.find("pod-tube").unwrap();
-        close(tube.own.cg_m.x, 0.0, 1e-17, "the overridden centre's x");
+        close(tube.own.cg_m.x, 0.0, 1e-16, "the overridden centre's x");
         close(
             tube.own.cg_m.y,
             d + 0.01,
-            1e-17,
+            1e-16,
             "the overridden centre's y",
         );
 

@@ -156,9 +156,9 @@ impl Pieces {
     /// [`SimError::Parting`] for an ejection that names a component the design doesn't have, a
     /// joint aft of an internal component or of the last body component, a pod's body component as
     /// a joint or a payload, a payload that is a body component, an external part, one of several
-    /// copies in a cluster or inside another payload, two partings at one joint or of one payload, or a split through a stage or component whose
-    /// overridden mass doesn't say how it divides; [`SimError::Domain`] for a separation with no
-    /// stage aft of it.
+    /// copies in a cluster or inside another payload, two partings at one joint or of one payload,
+    /// or a split through a stage or component whose overridden mass doesn't say how it divides;
+    /// [`SimError::Domain`] for a separation with no stage aft of it.
     pub(crate) fn new(
         rocket: &Rocket,
         assembly: &Assembly,
