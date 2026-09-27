@@ -11,7 +11,8 @@ this script writes probe designs that exercise the pod model: one airframe (a co
 - four pods of a nose, a tube, a tail cone and four fins each;
 - two pods of no length, each hanging two fins off the airframe (the way OpenRocket's own example
   hangs its winglets);
-- two pods of a nose, a tube and three fins, each with its own H128W beside the airframe's.
+- two pods of a nose, a tube and three fins, each with its own H128W, and none in the airframe;
+- nothing: the airframe alone, the control the others' pods are measured against.
 
 Every part is the conventions probe's material (1,000 kg/m³) and every element has a fixed id, so
 hpr and OpenRocket name each part the same way. The motor names OpenRocket's database curve by its
@@ -24,7 +25,8 @@ the same configurations. Run from the repository root, then `flights.py` as its 
     refs/venv/bin/python validation/oracles/openrocket/pod_probes.py \\
         validation/fixtures/ork/pod-flights
 
-No OpenRocket is needed to write them; the files are plain XML, which OpenRocket and hpr both read.
+OpenRocket is not run to write them, but `conventions` needs the oracle environment (JPype). The
+files are plain XML, which OpenRocket and hpr both read.
 """
 
 import sys
@@ -62,11 +64,11 @@ def fins(n, name, count, root, tip, sweep, span, angle="0.0", where="bottom", at
 
 
 def mount(n, name):
-    """A 29 mm motor mount 0.2 m long at the bottom of its tube, holding the H128W."""
+    """A motor mount 0.2 m long with a 29 mm bore at the bottom of its tube, holding the H128W."""
     return (
         f"<innertube><name>{name}</name><id>{uid(n)}</id>"
         '<axialoffset method="bottom">0.0</axialoffset><position type="bottom">0.0</position>'
-        f"<length>0.2</length><outerradius>0.0145</outerradius><thickness>0.0005</thickness>"
+        f"<length>0.2</length><outerradius>0.015</outerradius><thickness>0.0005</thickness>"
         f"{MATERIAL}<motormount><ignitionevent>automatic</ignitionevent>"
         "<ignitiondelay>0.0</ignitiondelay><overhang>0.0</overhang>"
         f'<motor configid="{CONFIGURATION}"><type>single</type>'
@@ -197,7 +199,7 @@ PROBES = {
             "0.0",
             "90.0",
             "0.45",
-            phantom(21, fins(22, "Winglets", 2, "0.05", "0.03", "0.02", "0.03", angle="90.0")),
+            phantom(21, fins(22, "Winglets", 2, "0.05", "0.03", "0.02", "0.03")),
         ),
         {},
     ),

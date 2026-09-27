@@ -159,10 +159,14 @@ fn counts_are_generated_and_each_case_counts_once() {
     // itself.
     let real: RealFlightReport = committed("real-flights.json");
     assert_eq!(flights(Group::FlightLogs), real.summary.flights);
+    // The pod probes (M1.13c2) are held with them, and listed apart in the report.
     let examples: Value = committed("openrocket-flights.json");
+    let probes = examples["probes"].as_array().map_or(0, Vec::len) as u64;
     assert_eq!(
         Some(flights(Group::OpenRocketExamples) as u64),
-        examples["summary"]["flown"].as_u64()
+        examples["summary"]["flown"]
+            .as_u64()
+            .map(|flown| flown + probes)
     );
     let library: Value = committed("openrocket-library-flights.json");
     assert_eq!(
@@ -656,9 +660,12 @@ fn openrocket_reports_count_what_they_leave_unflown() {
             .iter()
             .filter(|row| row.group == Group::OpenRocketExamples && row.metric == metric)
             .count();
+        let probes = examples["probes"].as_array().map_or(0, Vec::len);
         assert_eq!(
             Some(rows),
-            examples["flights"].as_array().map(Vec::len),
+            examples["flights"]
+                .as_array()
+                .map(|flights| flights.len() + probes),
             "{metric}"
         );
     }

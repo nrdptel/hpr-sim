@@ -1162,6 +1162,9 @@ use crate::flight_metrics::{
 };
 
 /// OpenRocket 24.12's flights of the public designs, as `flights.py` recorded them.
+/// Where the pod probes' files are (M1.13c2).
+const POD_PROBES: &str = "validation/fixtures/ork/pod-flights/";
+
 fn openrocket_flights() -> serde_json::Value {
     serde_json::from_str(include_str!(
         "../../../validation/fixtures/ork/openrocket-flights.json"
@@ -1176,6 +1179,13 @@ fn flown(record: &serde_json::Value) -> Vec<(&str, &serde_json::Value)> {
         .expect("the record lists designs");
     designs
         .iter()
+        // The pod probes (M1.13c2) carry no recovery device, so they say nothing of the summary
+        // words' events; `xtask`'s `ork_flights` holds them.
+        .filter(|design| {
+            !design["file"]
+                .as_str()
+                .is_some_and(|file| file.starts_with(POD_PROBES))
+        })
         .flat_map(|design| {
             let file = design["file"]
                 .as_str()
@@ -1360,7 +1370,8 @@ fn openrocket_flight_record_is_its_script_s_on_the_pinned_jar() {
         .iter()
         .flat_map(|d| d["flights"].as_array().into_iter().flatten());
     assert!(flights.clone().all(|f| f["refused"].is_null()));
-    assert_eq!(flights.filter(|f| f["has_motors"] == true).count(), 57);
+    // 57 in the designs, and one in each of the six pod probes (M1.13c2).
+    assert_eq!(flights.filter(|f| f["has_motors"] == true).count(), 63);
     let aborted: Vec<_> = flown(&record)
         .into_iter()
         .filter(|(_, flight)| flight["aborted"] == true)

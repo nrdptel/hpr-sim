@@ -35,10 +35,11 @@ and the reference length it is taken from, so hpr's margin can be compared on th
 
 The public designs are the example designs inside the OpenRocket jar and the seven Loft demos in
 `validation/fixtures/ork/loft-demo/`; the pod probes `pod_probes.py` writes to
-`validation/fixtures/ork/pod-flights/` (M1.13c2) are flown the same way. Each configuration is flown in a new simulation that takes
-the launch conditions of the design's first stored simulation (OpenRocket's defaults when there is
-none), in calm air: no wind and no turbulence, so the flight is repeatable and hpr can fly the same
-one. The conditions used are recorded with each flight. Simulation extensions are not carried over.
+`validation/fixtures/ork/pod-flights/` (M1.13c2) are flown the same way. Each configuration is
+flown in a new simulation that takes the launch conditions of the design's first stored simulation
+(OpenRocket's defaults when there is none), in calm air: no wind and no turbulence, so the flight
+is repeatable and hpr can fly the same one. The conditions used are recorded with each flight.
+Simulation extensions are not carried over.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API that `javap` prints for the jar. Only numbers and the
@@ -68,7 +69,7 @@ import automatic_radius  # noqa: E402 - the jar's path
 import events  # noqa: E402 - the JVM start with the motor database loaded
 import geometry  # noqa: E402 - the same file discovery and comment retry as the cross-check
 
-GENERATED = "2026-09-25"
+GENERATED = "2026-09-27"
 SEED = 1
 
 

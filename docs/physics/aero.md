@@ -93,10 +93,11 @@
     export comes back from hpr's table, and a flight on a table swings in pitch as the equations
     predict; no real export has flown faster than Mach 0.75
     ([The normal force from RASAero II](#the-normal-force-from-rasaero-ii)).
-  - *[Pods](../glossary.md#pod)* take each pod's parts on Barrowman's rules, once per pod, checked
-    only against hand-worked numbers: no measurement, and no OpenRocket comparison of a pod with
-    bodies or fins yet. The pods' and the body's effect on each other's flow is left out, and so
-    are a single pod's off-axis moments ([Pods](#pods)).
+  - *[Pods](../glossary.md#pod)* take each pod's parts on Barrowman's rules, once per pod. They
+    are checked against hand-worked numbers, and against OpenRocket on six probe designs, within
+    0.81% of its apogee below Mach 0.81. No measured flight checks them. Both codes leave out the
+    pods' and the body's effect on each other's flow, and hpr a single pod's off-axis moments
+    ([Pods](#pods)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
   ([transonic and supersonic](../glossary.md#transonic-and-supersonic)), a steep boattail's drag
@@ -2637,14 +2638,17 @@ What it leaves out:
 
 A [pod](../glossary.md#pod) is a body beside the airframe: a side pod, or an outboard motor pod
 ([the design page's *Pods*](design.md#pods)). hpr gives each pod the forces its parts would have on
-the airframe, once per pod, and adds them to the airframe's. **No measured flight checks it**: the
-formulas are checked against hand-worked numbers, and against OpenRocket 24.12 flying six probe
-designs with pods of bodies, fins, a tail cone, winglets and motors
-([M1.13c2](../decisions-and-roadmap.md#m1-13c2)). There hpr's apogee is within 0.81% of
-OpenRocket's and its margin within 0.002 calibres, below Mach 0.81, and what the pods change agrees
-to 0.32 points of apogee (table below). That shows the two codes compute the same thing, not that
-either is right: both leave out how the pods and the body disturb each other's flow, whose size is
-given below. Faster than sound a pod keeps slender-body theory's slope, which nothing checks.
+the airframe, once per pod, and adds them to the airframe's. **No measured flight checks it.**
+The formulas are checked against hand-worked numbers. They are also checked against OpenRocket
+24.12 on six *probe designs*, small designs written only to test pods: five carry pods of bodies,
+fins, a tail cone, winglets or motors, and one is the same airframe without pods
+([M1.13c2](../decisions-and-roadmap.md#m1-13c2), a pod design against OpenRocket). Below Mach
+0.81, hpr's apogee is within 0.81% of OpenRocket's, and its
+[stability margin](../glossary.md#stability-margin) within 0.0014
+[calibres](../glossary.md#calibre-caliber). What the pods change agrees to 0.32 percentage points
+of apogee (table below). That shows the two codes compute the same thing, not that either is
+right: both leave out how the pods and the body disturb each other's flow, whose size is given
+below. Faster than sound a pod keeps slender-body theory's slope, which nothing checks.
 
 **The rule.** A pod's nose cones, transitions and tubes are
 [Barrowman's](../glossary.md#barrowmans-method) bodies, as on the airframe ([B67] eq. 3-65, [N09]
@@ -2723,11 +2727,13 @@ fin pointing each way. In `hpr-sim`, `pods_damp_the_spin_of_canted_fins_by_their
 [Valetudo](../glossary.md#example-rockets) with three pods and canted fins: it spins to the
 balance the pods' damping predicts, to 1e-6.
 
-**Against OpenRocket.** Six probe designs test the pods
-([`pod_probes.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/pod_probes.py)).
+**Against OpenRocket.** The six probe designs are written by
+[`pod_probes.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/pod_probes.py).
 Each is one airframe, a 0.2 m conical nose on 0.6 m of tube 60 mm across, with three fins and an
-AeroTech H128W, carrying one set of pods; every outside part states OpenRocket's regular paint
-(60 µm). OpenRocket 24.12 flies them straight up in calm air, and hpr flies the same files
+AeroTech H128W, carrying one set of pods. The pods are about 0.3 m long and 20 mm to 32 mm across,
+5 mm to 10 mm off the airframe; the winglets hang from pods of no length at its surface. Every
+outside part is set to OpenRocket's *regular paint* finish, 60 µm roughness. OpenRocket 24.12 flies
+them straight up in calm air, and hpr flies the same files
 ([hpr's flights against OpenRocket's](../format/ork.md#hprs-flights-against-openrockets)). In such
 a flight the apogee and the largest speed test the drag and the mass; the normal force enters only
 through the margin, which both codes take at the moment the rocket leaves the rod. *Pods' change*
@@ -2736,24 +2742,29 @@ in each code:
 
 | probe | its pods | apogee, OpenRocket | hpr | pods' change, OpenRocket | hpr | margin, OpenRocket | hpr |
 |---|---|---:|---:|---:|---:|---:|---:|
-| `pods-none` | none | 776.1 m | +0.81% | | | 2.759 cal | 2.761 cal |
-| `pods-bodies-3` | three: a cone and a tube | 663.3 m | +0.48% | −14.53% | −14.81% | 2.362 cal | 2.363 cal |
-| `pods-fins-2` | two: a cone, a tube, three fins | 613.6 m | +0.49% | −20.93% | −21.18% | 2.655 cal | 2.656 cal |
-| `pods-fins-tail-4` | four: a cone, a tube, four fins, a tail cone | 533.3 m | +0.41% | −31.28% | −31.55% | 2.472 cal | 2.473 cal |
-| `pods-winglets-2` | two of no length, two fins each | 699.7 m | +0.71% | −9.84% | −9.92% | 2.699 cal | 2.700 cal |
-| `pods-motors-2` | two: a cone, a tube, three fins and an H128W each | 876.8 m | +0.53% | +12.98% | +12.66% | 2.993 cal | 2.994 cal |
+| `pods-none` | none | 776.1 m | +0.81% |  |  | 2.757 cal | 2.759 cal |
+| `pods-bodies-3` | three: a cone and a tube | 663.3 m | +0.48% | −14.53% | −14.81% | 2.360 cal | 2.362 cal |
+| `pods-fins-2` | two: a cone, a tube, three fins | 613.7 m | +0.49% | −20.93% | −21.18% | 2.653 cal | 2.654 cal |
+| `pods-fins-tail-4` | four: a cone, a tube, four fins, a tail cone | 533.3 m | +0.41% | −31.28% | −31.56% | 2.470 cal | 2.471 cal |
+| `pods-winglets-2` | two of no length, two fins each | 699.8 m | +0.71% | −9.84% | −9.92% | 2.622 cal | 2.623 cal |
+| `pods-motors-2` | two: a cone, a tube, three fins and an H128W each | 876.9 m | +0.53% | +12.98% | +12.66% | 2.990 cal | 2.991 cal |
 
-`pods-motors-2` also moves the airframe's motor into its pods and carries more nose ballast, so its
-change is not its pods' alone. hpr's largest speed is 0.59% to 1.24% above OpenRocket's; its margin
-is 0.001 to 0.002 calibres larger, and the pods' change of margin agrees to 0.0003 calibres. The
-test `pod_designs_are_within_5_percent_of_openrocket` holds every probe within 5% of OpenRocket's
-apogee and largest speed, the per-case tolerance ([ADR-076][adr-076]), and the pods' change within
-1 point of apogee and 0.05 calibres, bounds set after these numbers were measured. The whole table
-is in the [committed report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-flights.md#pod-probes).
+`pods-motors-2` flies an H128W in each of its two pods and none in the airframe, twice the impulse,
+with 0.35 kg of nose ballast instead of 0.15 kg, so its change is not its pods' alone. hpr's
+largest speed is 0.59% to 1.24% above OpenRocket's, its margin 0.0011 to 0.0014 calibres larger,
+and the pods' change of margin agrees to 0.0004 calibres. The launch masses agree within 0.0001%.
+The test `pod_designs_are_within_5_percent_of_openrocket` holds every probe within 5% of
+OpenRocket's apogee and largest speed, the bar every flight against OpenRocket is held to
+([ADR-076][adr-076]). It also holds each margin within 0.005 calibres, and the pods' change within
+1 percentage point of apogee and 0.005 calibres. Those bounds were set after these numbers were
+measured, tight enough to catch a broken pod rule: a pod fin's body interference taken on the
+airframe's radius would move a margin by some 0.04 calibres. The whole table is in the
+[committed report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-flights.md#pod-probes).
 
-The first probes stated no surface finish, and hpr flew them 6% to 7% high: OpenRocket reads a part
-with no finish as regular paint, 60 µm, and hpr's reader gives it hpr's own default, 20 µm
-([issue #216](https://github.com/nrdptel/hpr-sim/issues/216)). The probes now state their finish.
+The first probes stated no surface finish, and hpr flew them 6.0% to 7.3% high: OpenRocket reads a
+part with no finish as regular paint, 60 µm, and hpr's reader gives it hpr's own default, 20 µm
+([issue #216](https://github.com/nrdptel/hpr-sim/issues/216), which gives the run). The probes now
+state their finish.
 
 One private design flies with pods too: `C02`, an anonymised design of the library
 ([hpr's flights of the private designs](../format/ork.md#hprs-flights-of-the-private-designs)).
@@ -2764,12 +2775,14 @@ one of those. Neither of OpenRocket's own pod examples flies yet, for reasons ou
 leaves out one's freeform fin, and reads the other's rail buttons without their screw heads, so
 neither design is read exactly as written and neither is flown.
 
-**What neither code models.** OpenRocket documents no pod model of its own. Its developers say it
-counts each pod's forces per pod and leaves out interference, and the probes' margins, the same to
-0.0003 calibres in what the pods change, fit that: its answer is hpr's. So the limits below are
-both codes' limits, and the agreement above cannot size them. The probes do not test a single pod
-(each has two or more), a pod faster than Mach 0.81, a rocket flying at an angle of attack, or a
-roll: none has canted fins, and neither code's roll is compared.
+**What neither code models.** OpenRocket documents no pod model of its own. The probes show that,
+on them, its answer is hpr's: the pods' change of margin agrees to 0.0004 calibres. Neither code
+turns the flow around the body, then: on `pods-fins-2` the upwash beside the body (below) would add
+about a third to the pod fins' force. So the limits below are both codes' limits, and the agreement
+above cannot size them. The probes do not test a single pod (each has two or more), a pod faster
+than Mach 0.81, a rocket flying at an angle of attack (so not a pod's body lift, which is zero
+straight into the air), airframe and pod motors burning together, or a roll: none has canted fins,
+and neither code's roll is compared.
 
 **Left out, and how large it may be.**
 

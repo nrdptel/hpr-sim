@@ -167,7 +167,11 @@ fn fly_all(root: &Path, record: &Value) -> Result<Value, String> {
     let mut probes = Vec::new();
     for entry in designs {
         let file = entry["file"].as_str().ok_or("a design without a file")?;
+        let probe = file.starts_with(POD_PROBES);
         let Some(recorded) = entry["flights"].as_array() else {
+            if probe {
+                return Err(format!("OpenRocket flew nothing of the pod probe {file}"));
+            }
             continue;
         };
         let bytes = match file.split_once('!') {
@@ -188,20 +192,28 @@ fn fly_all(root: &Path, record: &Value) -> Result<Value, String> {
         let label =
             |_: usize, flight: &Value| flight["name"].as_str().unwrap_or_default().to_owned();
         let flown = fly_design(file, &name, &bytes, recorded, &supply, label, false)?;
-        if file.starts_with(POD_PROBES) {
+        if probe {
             // A probe is not a design: it is listed apart, out of the designs' statistics, and
             // it exists to be flown.
-            if let Some(entry) = flown.not_flown.first() {
+            if let Some(refused) = flown.not_flown.first() {
                 return Err(format!(
                     "the pod probe {name} is not flown: {}",
-                    entry["why"]
+                    refused["why"]
                 ));
+            }
+            if flown.flights.is_empty() {
+                return Err(format!("the pod probe {name} has no flight"));
             }
             probes.extend(flown.flights);
             continue;
         }
         flights.extend(flown.flights);
         not_flown.extend(flown.not_flown);
+    }
+    if !probes.is_empty() && !probes.iter().any(|probe| probe["design"] == WITHOUT_PODS) {
+        return Err(format!(
+            "the pod probes have no {WITHOUT_PODS} to measure the pods against"
+        ));
     }
     let summary = summarise(&flights, &not_flown);
     Ok(json!({
@@ -1338,7 +1350,6 @@ pub(crate) fn page(report: &Value) -> String {
             ));
         }
     }
-    out.push_str(&probes_table(report));
     let not_flown = report["not_flown"].as_array().unwrap_or(&empty);
     if !not_flown.is_empty() {
         out.push_str("\nConfigurations OpenRocket flew that hpr does not fly yet:\n\n");
@@ -1352,6 +1363,7 @@ pub(crate) fn page(report: &Value) -> String {
             ));
         }
     }
+    out.push_str(&probes_table(report));
     out
 }
 
@@ -1370,16 +1382,22 @@ fn probes_table(report: &Value) -> String {
     let mut out = String::from(
         "\n## Pod probes\n\nSmall designs written to test pods ([M1.13c2][m1-13c2]), not counted \
          among the designs above: one airframe on an AeroTech H128W, carrying pods of bodies, \
-         fins, a tail cone, winglets or motors, and once with none (`pods-none`). *Pods' change* \
-         is the apogee's and the margin's change from `pods-none` in each code; `pods-motors-2` also \
-         moves the airframe's motor into its pods and carries 0.35 kg of nose ballast, not 0.15, \
-         so its change is not its pods' alone.\n\n\
+         fins, a tail cone, winglets or motors, and once with none (`pods-none`, first). *Pods' \
+         change* is the apogee's and the margin's change from `pods-none` in each code. \
+         `pods-motors-2` flies an H128W in each of its two pods and none in the airframe, with \
+         0.35 kg of nose ballast, not 0.15, so its change is not its pods' alone.\n\n\
          [m1-13c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-13c2\n\n\
          | probe | apogee OR (m) | hpr (m) | Δ | pods' change OR | hpr | max speed OR (m/s) \
          | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | pods' change OR (cal) \
          | hpr (cal) |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n",
     );
-    for probe in probes {
+    let first = probes
+        .iter()
+        .filter(|probe| probe["design"] == WITHOUT_PODS);
+    let others = probes
+        .iter()
+        .filter(|probe| probe["design"] != WITHOUT_PODS);
+    for probe in first.chain(others) {
         let m = &probe["metrics"];
         let change = pods_change(probe, without).map_or_else(
             || {
@@ -1787,7 +1805,8 @@ mod tests {
     fn the_reference_values_are_the_records_and_the_outcomes_are_compares() {
         let (record, report) = committed();
         let tool = openrocket();
-        for flight in report["flights"].as_array().unwrap() {
+        let probes = report["probes"].as_array().unwrap();
+        for flight in report["flights"].as_array().unwrap().iter().chain(probes) {
             let design = flight["file"].as_str().unwrap();
             let configuration = flight["configuration"].as_str().unwrap();
             let source = recorded(&record, design, configuration);
@@ -1934,8 +1953,11 @@ mod tests {
     /// carrying pods of bodies, fins, a tail cone, winglets or motors, within 5% of OpenRocket's
     /// apogee and largest speed. So the pods are seen to count, not only the airframe, what each
     /// probe's pods change (its apogee and margin against the same airframe without pods) is held
-    /// too: within 1 point of apogee and 0.05 calibres of OpenRocket's change, bounds set after
-    /// the measurement (0.32 points and 0.0003 calibres at most) to catch a pod rule that breaks.
+    /// too: within 1 point of apogee and 0.005 calibres of OpenRocket's change, and each margin
+    /// within 0.005 calibres of OpenRocket's. The bounds were set after the measurement (0.32
+    /// points, 0.0004 and 0.0014 calibres at most), to catch a pod rule that breaks: a pod fin's
+    /// `K_T(B)` taken on the airframe moves the margin by some 0.04 calibres, and dropping a pod's
+    /// base drag the apogee by some 6 points.
     #[test]
     fn pod_designs_are_within_5_percent_of_openrocket() {
         let (_, report) = committed();
@@ -1988,8 +2010,15 @@ mod tests {
                 "{design}: the pods change the apogee {apogee_hpr:+.2}% in hpr, {apogee_or:+.2}% \
                  in OpenRocket"
             );
+            let margin = flight["metrics"]["rod_clearance_margin_cal"]["difference"]
+                .as_f64()
+                .unwrap_or(f64::NAN);
             assert!(
-                (margin_hpr - margin_or).abs() <= 0.05,
+                margin.abs() <= 0.005,
+                "{design}: margin {margin:+.4} cal off"
+            );
+            assert!(
+                (margin_hpr - margin_or).abs() <= 0.005,
                 "{design}: the pods change the margin {margin_hpr:+.4} cal in hpr, \
                  {margin_or:+.4} in OpenRocket"
             );

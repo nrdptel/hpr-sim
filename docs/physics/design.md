@@ -26,8 +26,8 @@
   out turns the rocket as the hand calculation says, to 3.7e-7 ([below](#clusters)). A
   [pod](../glossary.md#pod)'s mass, centre and inertia match the hand-worked parallel-axis sum to
   1e-15 ([Pods](#pods)), and OpenRocket's on eighteen probe designs
-  ([`.ork`: Pods](../format/ork.md#pods)); on whole flights, six probe designs with pods of
-  bodies, fins and motors are within 0.81% of OpenRocket's apogee, and their launch masses within
+  ([`.ork`: Pods](../format/ork.md#pods)); on whole flights, six probe designs, five with pods of
+  bodies, fins and motors, are within 0.81% of OpenRocket's apogee, and their launch masses within
   0.0001% ([aerodynamics: Pods](aero.md#pods)). OpenRocket's
   cluster example flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees
   are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee

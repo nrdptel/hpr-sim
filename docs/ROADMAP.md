@@ -592,7 +592,7 @@
       *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
     - [ ] [blocked] **M2.2e5 Twenty designs** (on #173, #174, #133; M1.13 done). *Done when:*
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
-      bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the four above.
+      bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the three above.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts

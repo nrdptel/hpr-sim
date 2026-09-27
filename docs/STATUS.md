@@ -6,7 +6,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e5 on #173, #174,
   #133, M2.3c on Neer (no private design has a log); next: M2.2e5's issues, else M4.1.
-- **Order:** M1.8e16 waits on #108, M2.2e5 on its four, M2.3c on a design with its log.
+- **Order:** M1.8e16 waits on #108, M2.2e5 on its three, M2.3c on a design with its log.
   **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.

@@ -748,7 +748,9 @@ fn openrocket_example_rows(
             }),
         }
     };
-    for flight in array(report, "flights", EXAMPLES)? {
+    // The pod probes (M1.13c2) are listed apart from the designs, and held here as they are.
+    let probes = array(report, "probes", EXAMPLES)?;
+    for flight in array(report, "flights", EXAMPLES)?.iter().chain(probes) {
         let case = case_of(flight)?;
         let regime = Regime::of_mach(flight["max_mach_openrocket"].as_f64().unwrap_or(f64::NAN));
         let metrics = &flight["metrics"];

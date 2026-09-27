@@ -138,21 +138,6 @@ What hpr's design checks object to, in flights flown anyway as OpenRocket flies 
 | Two stage high power rocket | [H148R-0; H148R-0] | `[{"component":"ea8ebe8b-955b-4d0e-bc42-bad00893b21e","kind":"internal_part_wider_than_parent","parent":"1b6ccd8c-3617-4ef0-a8b9-8d7c2254b5df","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"7883e2a1-af01-473a-8829-2ee7f449020f","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"9836b369-28be-4825-81d5-b9c5d17d3bdf","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"46b32aa1-dc29-4f0d-8de9-5b07a9836915","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"8cf0397d-b6ab-40cc-b32f-84c4b3f80116","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"15da66e1-4072-4775-87f6-c0df55da51d4","kind":"internal_part_wider_than_parent","parent":"5ec3bffd-83dd-4684-ab84-bdc6c6cc0c4a","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"209978b9-283e-446d-b8f5-207fca53dba0","kind":"internal_part_wider_than_parent","parent":"95e2d3f8-2ac1-466d-9185-2e49a65a15b2","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"96f4154e-1f4e-4dca-bd7c-3105dad111f1","kind":"internal_part_wider_than_parent","parent":"95e2d3f8-2ac1-466d-9185-2e49a65a15b2","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"003eb614-a1e7-4993-9313-755aeb59f777","kind":"internal_part_wider_than_parent","parent":"96f4154e-1f4e-4dca-bd7c-3105dad111f1","reach_m":0.048641,"room_m":0.04572},{"component":"272ecc19-3819-42c6-9efc-1103650d8ddf","kind":"internal_part_wider_than_parent","parent":"95e2d3f8-2ac1-466d-9185-2e49a65a15b2","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"37007aba-2fad-4292-8e93-72d5e280f559","kind":"internal_part_wider_than_parent","parent":"ebb70147-d092-4f81-8cf1-8522f7038249","reach_m":0.04953,"room_m":0.048437799999999996}]` |
 | Two stage high power rocket | [I59WN-P; I357T-14] | `[{"component":"ea8ebe8b-955b-4d0e-bc42-bad00893b21e","kind":"internal_part_wider_than_parent","parent":"1b6ccd8c-3617-4ef0-a8b9-8d7c2254b5df","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"7883e2a1-af01-473a-8829-2ee7f449020f","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"9836b369-28be-4825-81d5-b9c5d17d3bdf","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"46b32aa1-dc29-4f0d-8de9-5b07a9836915","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"8cf0397d-b6ab-40cc-b32f-84c4b3f80116","kind":"internal_part_wider_than_parent","parent":"12474132-2b01-4503-87c9-27e6cd58a50f","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"15da66e1-4072-4775-87f6-c0df55da51d4","kind":"internal_part_wider_than_parent","parent":"5ec3bffd-83dd-4684-ab84-bdc6c6cc0c4a","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"209978b9-283e-446d-b8f5-207fca53dba0","kind":"internal_part_wider_than_parent","parent":"95e2d3f8-2ac1-466d-9185-2e49a65a15b2","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"96f4154e-1f4e-4dca-bd7c-3105dad111f1","kind":"internal_part_wider_than_parent","parent":"95e2d3f8-2ac1-466d-9185-2e49a65a15b2","reach_m":0.048641,"room_m":0.048437799999999996},{"component":"003eb614-a1e7-4993-9313-755aeb59f777","kind":"internal_part_wider_than_parent","parent":"96f4154e-1f4e-4dca-bd7c-3105dad111f1","reach_m":0.048641,"room_m":0.04572},{"component":"272ecc19-3819-42c6-9efc-1103650d8ddf","kind":"internal_part_wider_than_parent","parent":"95e2d3f8-2ac1-466d-9185-2e49a65a15b2","reach_m":0.04953,"room_m":0.048437799999999996},{"component":"37007aba-2fad-4292-8e93-72d5e280f559","kind":"internal_part_wider_than_parent","parent":"ebb70147-d092-4f81-8cf1-8522f7038249","reach_m":0.04953,"room_m":0.048437799999999996}]` |
 
-## Pod probes
-
-Small designs written to test pods ([M1.13c2][m1-13c2]), not counted among the designs above: one airframe on an AeroTech H128W, carrying pods of bodies, fins, a tail cone, winglets or motors, and once with none (`pods-none`). *Pods' change* is the apogee's and the margin's change from `pods-none` in each code; `pods-motors-2` also moves the airframe's motor into its pods and carries 0.35 kg of nose ballast, not 0.15, so its change is not its pods' alone.
-
-[m1-13c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-13c2
-
-| probe | apogee OR (m) | hpr (m) | Δ | pods' change OR | hpr | max speed OR (m/s) | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | pods' change OR (cal) | hpr (cal) |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| pods-bodies-3 | 663.3 | 666.5 | +0.48% | -14.53% | -14.81% | 226.25 | 227.99 | +0.77% | 0.666 | 2.362 | 2.363 | -0.3973 | -0.3974 |
-| pods-fins-2 | 613.6 | 616.7 | +0.49% | -20.93% | -21.18% | 220.85 | 222.46 | +0.73% | 0.650 | 2.655 | 2.656 | -0.1044 | -0.1046 |
-| pods-fins-tail-4 | 533.3 | 535.5 | +0.41% | -31.28% | -31.55% | 202.30 | 203.49 | +0.59% | 0.595 | 2.472 | 2.473 | -0.2878 | -0.2881 |
-| pods-motors-2 | 876.8 | 881.4 | +0.53% | +12.98% | +12.66% | 274.23 | 277.63 | +1.24% | 0.807 | 2.993 | 2.994 | +0.2332 | +0.2329 |
-| pods-none | 776.1 | 782.3 | +0.81% | +0.00% | +0.00% | 254.09 | 256.87 | +1.09% | 0.748 | 2.759 | 2.761 | +0.0000 | +0.0000 |
-| pods-winglets-2 | 699.7 | 704.7 | +0.71% | -9.84% | -9.92% | 242.15 | 244.46 | +0.95% | 0.713 | 2.699 | 2.700 | -0.0608 | -0.0608 |
-
 Configurations OpenRocket flew that hpr does not fly yet:
 
 | design | motors | why |
@@ -181,3 +166,18 @@ Configurations OpenRocket flew that hpr does not fly yet:
 | Three stage low power rocket | [C6-5; B6-0; B6-0] | stages hpr can't separate as written |
 | Three stage low power rocket | [C6-7; C6-0; C6-0] | stages hpr can't separate as written |
 | Tube fin rocket | [D12-7] | an airframe not read exactly as written |
+
+## Pod probes
+
+Small designs written to test pods ([M1.13c2][m1-13c2]), not counted among the designs above: one airframe on an AeroTech H128W, carrying pods of bodies, fins, a tail cone, winglets or motors, and once with none (`pods-none`, first). *Pods' change* is the apogee's and the margin's change from `pods-none` in each code. `pods-motors-2` flies an H128W in each of its two pods and none in the airframe, with 0.35 kg of nose ballast, not 0.15, so its change is not its pods' alone.
+
+[m1-13c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-13c2
+
+| probe | apogee OR (m) | hpr (m) | Δ | pods' change OR | hpr | max speed OR (m/s) | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | pods' change OR (cal) | hpr (cal) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| pods-none | 776.1 | 782.4 | +0.81% | +0.00% | +0.00% | 254.00 | 256.78 | +1.09% | 0.747 | 2.757 | 2.759 | +0.0000 | +0.0000 |
+| pods-bodies-3 | 663.3 | 666.5 | +0.48% | -14.53% | -14.81% | 226.17 | 227.91 | +0.77% | 0.665 | 2.360 | 2.362 | -0.3970 | -0.3971 |
+| pods-fins-2 | 613.7 | 616.7 | +0.49% | -20.93% | -21.18% | 220.78 | 222.39 | +0.73% | 0.650 | 2.653 | 2.654 | -0.1040 | -0.1042 |
+| pods-fins-tail-4 | 533.3 | 535.5 | +0.41% | -31.28% | -31.56% | 202.24 | 203.43 | +0.59% | 0.595 | 2.470 | 2.471 | -0.2872 | -0.2875 |
+| pods-motors-2 | 876.9 | 881.5 | +0.53% | +12.98% | +12.66% | 274.13 | 277.52 | +1.24% | 0.807 | 2.990 | 2.991 | +0.2326 | +0.2322 |
+| pods-winglets-2 | 699.8 | 704.8 | +0.71% | -9.84% | -9.92% | 242.07 | 244.37 | +0.95% | 0.712 | 2.622 | 2.623 | -0.1357 | -0.1359 |
