@@ -14,10 +14,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** no branch in flight; the 2026-09-27 run ended with 47 min left, too few
-  for a cycle. Split #173 (tilted rod) off M2.2e5 as an increment; else #174, #133, else M4.1. Pod probes (ADR-093): `pod_probes.py`, then
-  `flights.py` (its docstring's command) and `motor_database.py ... refs validation/fixtures/ork/
-  pod-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
+- **Next (resume here):** nothing in flight (the 2026-09-27 run stopped at its deadline). Split
+  #173 (tilted rod) off M2.2e5 as an increment; else #174, #133, else M4.1. Pod probes (ADR-093):
+  `pod_probes.py`, then `flights.py` (its docstring's command) and `motor_database.py ... refs
+  validation/fixtures/ork/pod-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
   M2.3c (ADR-083): fly a pair with `hpr_validate::real_flight`, commit only statistics; `xtask
