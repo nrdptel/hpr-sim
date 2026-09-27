@@ -352,16 +352,7 @@ fn pod_set(
     let count = instances(&mut values, "pod set")?;
     let name = values.word(&["name"]).unwrap_or_default();
     let position = position(&mut values);
-    // A pod set weighs nothing of its own, so an override on it can only be its pods' total, as a
-    // stage's is; `hpr-design` refuses one that does not say it covers them.
-    let (overrides, include_children) = overrides(&mut values);
-    if overrides != Overrides::default() && !include_children {
-        values.warn_at(
-            WarningKind::Dropped,
-            "an override on a pod set that does not cover its pods; a pod set weighs nothing of \
-             its own, so it was read as covering them",
-        );
-    }
+    let (mut overrides, include_children) = overrides(&mut values);
     let angle_rad = roll_angle(&mut values);
     let method = values
         .element(&["radiusoffset"])
@@ -387,29 +378,40 @@ fn pod_set(
         }
     }
     let mut values = Values::new(element, at, warnings);
-    if pods.is_empty() {
-        values.warn_at(
-            WarningKind::Skipped,
-            "a pod set with no nose cone, body tube or transition in it, so no pod to repeat; it \
-             was left out",
-        );
-        return None;
-    }
-    // OpenRocket draws a pod of a tube with no length to hang fins off the axis (winglets);
-    // `hpr-design` sits fins on a tube's surface along its length, and refuses a body component
-    // of no length, so the pod set goes rather than the whole design.
-    if pods.iter().any(|pod| pod.part.length_m() <= 0.0) {
+    // OpenRocket draws a pod of a tube with no length, radius or wall (its "phantom body") to hang
+    // fins or a lug off the axis, and `hpr-design` weighs such a tube as nothing. A nose cone or a
+    // transition of no length, or a part of negative length, is no shape `hpr-design` has, so
+    // that pod set goes rather than the whole design.
+    if pods.iter().any(|pod| {
+        let length_m = pod.part.length_m();
+        length_m < 0.0 || (length_m == 0.0 && !matches!(pod.part, Part::BodyTube(_)))
+    }) {
         values.warn_at(
             WarningKind::Skipped,
             format!(
-                "a pod with a part of no length in it, which hpr cannot lay out (OpenRocket draws \
-                 one to hang fins off the axis); the pod set was left out{}",
+                "a pod with a nose cone or transition of no length, or a part of negative length, \
+                 which hpr cannot lay out; the pod set was left out{}",
                 and_what_was_inside(element)
             ),
         );
         return None;
     }
-
+    // A tube of no length has no room inside it.
+    let flat = |pod: &Component| pod.part.length_m() == 0.0;
+    if pods
+        .iter()
+        .any(|pod| flat(pod) && pod.children.iter().any(|c| !c.part.is_external()))
+    {
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "a pod's tube of no length with a part inside it, where it has no room; the pod set \
+                 was left out{}",
+                and_what_was_inside(element)
+            ),
+        );
+        return None;
+    }
     // The widest stated radius of the pod: an automatic one can only take a stated one in the pod.
     let mut widest: Option<f64> = None;
     for pod in &pods {
@@ -428,7 +430,8 @@ fn pod_set(
             }
         }
     }
-    let Some(pod_radius_m) = widest else {
+    // A pod set that holds nothing weighs nothing, and its radius is no matter.
+    let Some(pod_radius_m) = widest.or(pods.is_empty().then_some(0.0)) else {
         values.warn_at(
             WarningKind::Skipped,
             format!(
@@ -507,6 +510,50 @@ fn pod_set(
             ),
         );
         return None;
+    }
+
+    // Only now that the pod set is read: what is dropped from it next.
+    if pods.is_empty() && overrides != Overrides::default() {
+        // OpenRocket 24.12 puts an override on a pod set that holds nothing at the rocket's tip,
+        // on the axis (`pods.py`), which no design means.
+        overrides = Overrides::default();
+        values.warn_at(
+            WarningKind::Dropped,
+            "an override on a pod set that holds nothing, which OpenRocket weighs at the rocket's \
+             tip; it was left out",
+        );
+    } else if overrides != Overrides::default() && !include_children {
+        // A pod set weighs nothing of its own, so an override on it can only be its pods' total,
+        // as a stage's is; `hpr-design` refuses one that does not say it covers them.
+        values.warn_at(
+            WarningKind::Dropped,
+            "an override on a pod set that does not cover its pods; a pod set weighs nothing of \
+             its own, so it was read as covering them",
+        );
+    }
+    // A tube of no length has no wall for a fin's tab to sit in either: the tab would reach below
+    // the tube's radius.
+    for pod in pods.iter_mut().filter(|pod| flat(pod)) {
+        let radius_m = match &pod.part {
+            Part::BodyTube(tube) => tube.outer_radius_m,
+            _ => 0.0,
+        };
+        for child in &mut pod.children {
+            if let Part::FinSet(fins) = &mut child.part
+                && fins.tab.as_ref().is_some_and(|tab| tab.height_m > radius_m)
+            {
+                fins.tab = None;
+                values.warn_at(
+                    WarningKind::Dropped,
+                    format!(
+                        "a tab on the fins `{}` on a pod's tube of no length, deeper than the \
+                         tube's radius ({radius_m} m); the tab was left out, and the fins read \
+                         without it",
+                        child.id
+                    ),
+                );
+            }
+        }
     }
 
     ids.read.insert(at.to_owned());

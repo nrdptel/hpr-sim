@@ -3187,7 +3187,9 @@ fn stored_reference_and_reproduction_screens_are_separate() {
         "<overhang>0.0</overhang><motor configid='c1'><type>single</type>\
          <manufacturer>Estes</manufacturer><designation>F15</designation>\
          <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
-        "<podset><name>Pod</name><id>pod</id><instancecount>2</instancecount></podset>",
+        "<podset><name>Pod</name><id>pod</id><instancecount>2</instancecount><subcomponents>\
+         <nosecone><name>Flat</name><length>0.0</length><aftradius>0.01</aftradius></nosecone>\
+         </subcomponents></podset>",
     )
     .replace("</openrocket>", &format!("{stored_results}</openrocket>"));
     let reduced = read_design(reduced.as_bytes());
@@ -4098,8 +4100,9 @@ fn a_pod_set_is_read_at_openrocket_s_distance() {
 }
 
 /// A pod set hpr cannot lay out is left out, with a `Skipped` warning saying why, and the rest of
-/// the design lays out: a pod of no length (winglets), a pod set with no body component in it, one
-/// inside a pod, and one on anything but a body tube. A part in a pod set that is not a body
+/// the design lays out: a pod with a nose cone of no length, one inside a pod, and one on anything
+/// but a body tube. A pod of a tube of no length (winglets) and a pod set with no body component
+/// in it are read (M1.13b2). A part in a pod set that is not a body
 /// component is left out on its own. A flipped nose cone is a tail cone: a transition from its
 /// base radius, the fore one, to a point, whose automatic radius takes the part ahead.
 #[test]
@@ -4142,6 +4145,16 @@ fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
             "kept",
             &format!("{}{fins}{tail}", pod_tube("kept-pod", "0.2")),
         ),
+        pod_set(
+            "flat",
+            &tail
+                .replace("<id>tail</id>", "<id>flat-nose</id>")
+                .replace("<length>0.03</length>", "<length>0.0</length>")
+                .replace(
+                    "<aftradius>auto 0.01</aftradius>",
+                    "<aftradius>0.01</aftradius>",
+                ),
+        ),
     ]
     .concat();
     let xml = one_tube_holding(&inside).replace(
@@ -4169,13 +4182,9 @@ fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
         "{skipped:?}"
     );
     assert!(
-        says("bodytube[1]/podset[0]", "a part of no length"),
-        "{skipped:?}"
-    );
-    assert!(
         says(
-            "bodytube[1]/podset[1]",
-            "no nose cone, body tube or transition"
+            "bodytube[1]/podset[4]",
+            "a nose cone or transition of no length"
         ),
         "{skipped:?}"
     );
@@ -4187,17 +4196,21 @@ fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
         says("podset[3]/trapezoidfinset[1]", "directly inside a pod set"),
         "{skipped:?}"
     );
-    assert_eq!(skipped.len(), 5, "{skipped:?}");
+    assert_eq!(skipped.len(), 4, "{skipped:?}");
 
     let tube = &spine.value.stages[0].components[1];
     let ids: Vec<&str> = tube.children.iter().map(|c| c.id.as_str()).collect();
-    assert_eq!(ids, ["outer", "kept"]);
-    let hpr_design::tree::Part::Transition(tail) = &tube.children[1].children[1].part else {
+    assert_eq!(ids, ["winglets", "empty", "outer", "kept"]);
+    assert!(tube.children[1].children.is_empty());
+    let winglets = &tube.children[0].children[0];
+    assert_eq!(winglets.part.length_m(), 0.0);
+    assert_eq!(winglets.children.len(), 1);
+    let hpr_design::tree::Part::Transition(tail) = &tube.children[3].children[1].part else {
         panic!("a tail cone is read as a transition");
     };
     assert_eq!(tail.aft_radius_m, 0.0);
     assert_eq!(
-        tube.children[1].children[1].auto,
+        tube.children[3].children[1].auto,
         [hpr_design::tree::AutoDimension::ForeRadius]
     );
     let layout = spine.value.layout().expect("the rest lays out");
@@ -4206,6 +4219,91 @@ fn pod_sets_hpr_cannot_lay_out_are_left_out_and_a_tail_cone_is_a_transition() {
         panic!("a transition");
     };
     assert_eq!(tail.fore_radius_m, 0.01);
+}
+
+/// A pod's tube of no length has no room inside it and no wall: a pod set whose tube of no length
+/// holds a part inside it is left out, and a fin tab deeper than that tube's radius is dropped,
+/// the fins read without it. A pod part of negative length is left out as one of no length is.
+/// An override on a pod set that holds nothing is dropped: OpenRocket 24.12 weighs it at the
+/// rocket's tip (`validation/fixtures/ork/openrocket-pods.json`). Each says so, and the rest lays
+/// out (M1.13b2).
+#[test]
+fn a_pod_of_no_length_has_no_room_or_wall_and_an_empty_set_no_override() {
+    let pod_set = |id: &str, inside: &str, extra: &str| {
+        format!(
+            "<podset><name>{id}</name><id>{id}</id><instancecount>1</instancecount>\
+             <radiusoffset method='relative'>0.01</radiusoffset>{extra}\
+             <axialoffset method='top'>0.1</axialoffset><subcomponents>{inside}</subcomponents>\
+             </podset>"
+        )
+    };
+    let phantom = |id: &str, children: &str| {
+        format!(
+            "<bodytube><name>(phantom body)</name><id>{id}</id><length>0.0</length>\
+             <thickness>0.0</thickness><radius>0.0</radius><subcomponents>{children}\
+             </subcomponents></bodytube>"
+        )
+    };
+    let fins = "<trapezoidfinset><name>Fins</name><id>tabbed</id><fincount>2</fincount>\
+                <rootchord>0.03</rootchord><tipchord>0.015</tipchord><height>0.02</height>\
+                <sweeplength>0.01</sweeplength><thickness>0.003</thickness>\
+                <tabheight>0.005</tabheight><tablength>0.01</tablength>\
+                <axialoffset method='bottom'>0.0</axialoffset></trapezoidfinset>";
+    let mass = "<masscomponent><name>Weight</name><id>weight</id><mass>0.01</mass>\
+                <packedlength>0.01</packedlength><packedradius>0.005</packedradius>\
+                <axialoffset method='top'>0.0</axialoffset></masscomponent>";
+    let inside = [
+        pod_set("winglets", &phantom("flat", fins), ""),
+        pod_set("crammed", &phantom("full", mass), ""),
+        pod_set("negative", &pod_tube("negative-pod", "-0.01"), ""),
+        pod_set(
+            "empty",
+            "",
+            "<overridemass>0.1</overridemass>\
+             <overridesubcomponentsmass>true</overridesubcomponentsmass>",
+        ),
+    ]
+    .concat();
+    let read = read(one_tube_holding(&inside).as_bytes()).expect("a readable design");
+    let spine = component::rocket(&read.value.document);
+    let said = |kind: WarningKind, at: &str, what: &str| {
+        spine
+            .warnings
+            .iter()
+            .filter(|w| w.kind == kind && w.at.ends_with(at) && w.message.contains(what))
+            .count()
+    };
+    assert_eq!(
+        said(
+            WarningKind::Dropped,
+            "podset[0]",
+            "a tab on the fins `tabbed`"
+        ),
+        1,
+        "{:?}",
+        spine.warnings
+    );
+    assert_eq!(said(WarningKind::Skipped, "podset[1]", "has no room"), 1);
+    assert_eq!(
+        said(WarningKind::Skipped, "podset[2]", "negative length"),
+        1
+    );
+    assert_eq!(
+        said(WarningKind::Dropped, "podset[3]", "at the rocket's tip"),
+        1
+    );
+    assert_eq!(spine.warnings.len(), 4, "{:?}", spine.warnings);
+
+    let tube = &spine.value.stages[0].components[1];
+    let ids: Vec<&str> = tube.children.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, ["winglets", "empty"]);
+    let hpr_design::tree::Part::FinSet(fins) = &tube.children[0].children[0].children[0].part
+    else {
+        panic!("the fins");
+    };
+    assert_eq!(fins.tab, None);
+    assert!(tube.children[1].overrides.is_empty());
+    spine.value.layout().expect("the rest lays out");
 }
 
 /// A pod set whose distance from the axis is not known when the file is read, or is no distance,

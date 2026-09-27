@@ -917,6 +917,19 @@ mod tests {
             .unwrap()
             .inertia_kg_m2;
         assert!((two.x_axis.x - two.y_axis.y).abs() > 1e-4 * two.y_axis.y);
+
+        // Roots on the axis, as on a pod of no length (M1.13b2): the same boxes, `d = s/2` out.
+        let d = s / 2.0;
+        let on_axis = set(4, rectangle(c, s), t).mass_properties(0.0).unwrap();
+        let transverse =
+            2.0 * m * (t * t + c * c) / 12.0 + 2.0 * (m * (s * s + c * c) / 12.0 + m * d * d);
+        let axial = 4.0 * (m * (s * s + t * t) / 12.0 + m * d * d);
+        mat_close(
+            on_axis.inertia_kg_m2,
+            DMat3::from_diagonal(DVec3::new(transverse, transverse, axial)),
+            1e-12,
+            "four fins from the axis",
+        );
     }
 
     #[test]

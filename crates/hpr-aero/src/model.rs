@@ -937,7 +937,7 @@ impl AeroModel {
         let mut supersonic_open = true;
         let mut behind_boattail = false;
         let (mut vertex_m, mut supersonic_end_m) = (0.0, 0.0);
-        for component in &layout.components {
+        for (index, component) in layout.components.iter().enumerate() {
             let in_component = |e: AeroError| AeroError::InComponent {
                 id: component.id.clone(),
                 source: Box::new(e),
@@ -1027,6 +1027,10 @@ impl AeroModel {
                     return Err(in_component(AeroError::Unsupported(
                         "tube fins (no cited normal-force method yet)".to_owned(),
                     )));
+                }
+                // A pod set that holds nothing adds no force.
+                Part::PodSet(_) if !layout.components.iter().any(|c| c.parent == Some(index)) => {
+                    None
                 }
                 Part::PodSet(_) => {
                     return Err(in_component(AeroError::Unsupported(
@@ -2129,6 +2133,12 @@ mod tests {
                 && matches!(&**source, AeroError::Unsupported(what) if what.starts_with("pods"))),
             "{err}"
         );
+        // A pod set that holds nothing adds nothing, and flies.
+        let bare = AeroModel::new(&crate::testing::finned_rocket(4).layout().unwrap()).unwrap();
+        let pods = rocket.stages[0].components[3].children.last_mut().unwrap();
+        pods.children.clear();
+        let empty = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+        assert_eq!(format!("{empty:?}"), format!("{bare:?}"));
 
         let err = AeroModel::new(&finned_rocket(9).layout().unwrap()).unwrap_err();
         assert!(

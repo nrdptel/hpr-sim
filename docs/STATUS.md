@@ -5,17 +5,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e5 on #173, #174,
-  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.13b2, pods of no length.
+  M1.13, #133, M2.3c on Neer (no private design has a log); active: M1.13c, pod aerodynamics.
 - **Order:** M1.8e16 waits on #108, M2.2e5 on its four, M2.3c on a design with its log.
-  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-12, M1.13a, b1, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
+  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-12, M1.13a, b, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-27; M1.13b1 `.ork` pods done (ADR-090); M1.13b2 next.
+- **Last updated:** 2026-09-27; M1.13b2 pods of no length done (ADR-091); M1.13c next.
 
 ## Handoff (overwrite each session)
 
-- **Start M1.13b2** (`m1.13b2-<slug>`): the 4 pod sets `cargo xtask ork` lists as left out, 3 of
-  no length hanging fins, 1 empty; probe OpenRocket first (`oracles/openrocket/pods.py`). Then M1.13c.
+- **Start M1.13c** (`m1.13c-<slug>`): pod normal force and drag from a cited source (research it
+  first), then a pod design against OpenRocket; the aero and tumble refusals of `Part::PodSet` go.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
   M2.3c (ADR-083): fly a pair with `hpr_validate::real_flight`, commit only statistics; `xtask
@@ -56,7 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-27: M1.13b1 `.ork` pods (ADR-090; b split b1, b2): 5 of 9 read, placed as OpenRocket to 1e-15 m.
+- 2026-09-27: M1.13b `.ork` pods (ADR-090, ADR-091; b1, b2): 9 of 9 read, placed as OpenRocket to 1e-15 m.
 - 2026-09-27: M1.13a Pod mass (ADR-089; M1.13 split a to c): two pods and one off the axis to 1e-15 by hand.
 - 2026-09-26: M1.12b Released mass (ADR-088): hand values to 1e-15; momentum 1.5e-13, angular 7.3e-12; M1.12 done.
 - 2026-09-26: M1.12a Moving mass (ADR-087; M1.12 split a, b): hand values to 1e-15, margin 1e-12 cal, momenta 6.9e-12.
@@ -66,8 +66,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M2.3c needs a design with its flight's log** (ADR-083): no `loft-fixtures` design is the rocket
   of a `debrief-fixtures` log. Add one pair (design file as flown, plus log, date, site, motor) to
   those repos, and an ERA5 file of the day unless cached (Data Store account). Or drop M2.3c.
-- **Scrub #186's first revision** (1 minute): it quotes a private design's sizes. On issue #186 click
-  *edited* → the oldest revision (marked *created*) → *Delete revision from history*. No API can.
+- **Scrub the first revisions of #186 and #210** (1 minute each): they quote a private design's
+  sizes. On each issue click *edited* → the oldest revision (*created*) → *Delete revision from history*.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).
@@ -80,12 +80,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-081 to ADR-090 (M2.3, M2.4, M1.11 to M1.13b1): netCDF classic by hand; real flights read as
+- ADR-081 to ADR-091 (M2.3, M2.4, M1.11 to M1.13b): netCDF classic by hand; real flights read as
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; a push
   along the axis, else by the airspeed; tumble areas integrated; a shift's cycloid, `ω×h + h′`;
   a released part leaves at `v_O + ω×c`, falls under a drag area the user gives; a pod is one
   stack of body components repeated around the axis, refused by the aero until M1.13c; `.ork`
-  pods at OpenRocket's measured distance, a tail cone a transition, pods of no length left out.
+  pods at OpenRocket's measured distance, a tail cone a transition, a tube of no length weightless.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
 - ADR-073 to ADR-076: a cause sized by OR flying without it; M1.9's body 0 flies on, a motor per tube.

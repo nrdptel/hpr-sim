@@ -285,11 +285,26 @@ pub struct BodyTube {
 impl BodyTube {
     /// Mass properties in the tube's frame.
     ///
+    /// A tube of no length weighs nothing, whatever its radius: it has no wall to weigh. Only a
+    /// pod may hold one ([`PodSet`]), as OpenRocket's "phantom body" does, to hang fins or a lug
+    /// off the airframe's axis; a stage refuses a body component of no length.
+    ///
     /// # Errors
     ///
     /// Geometry and material errors.
     pub fn mass_properties(&self) -> Result<MassProperties, DesignError> {
         let density = self.material.bulk_kg_m3("body tube")?;
+        if self.length_m == 0.0 {
+            check_dimension("outer radius", self.outer_radius_m, true)?;
+            check_dimension("wall thickness", self.thickness_m, true)?;
+            if self.thickness_m > self.outer_radius_m {
+                return Err(DesignError::Geometry(format!(
+                    "body tube: wall thickness {} m exceeds the outer radius {} m",
+                    self.thickness_m, self.outer_radius_m
+                )));
+            }
+            return Ok(MassProperties::ZERO);
+        }
         hollow_cylinder(
             "body tube",
             density,
@@ -397,8 +412,15 @@ impl InnerTube {
 /// itself weighs nothing: its mass is its pods'. See the design page's *Pods* section
 /// (`docs/physics/design.md`) and the decision record on pods, [ADR-089][adr-089].
 ///
-/// **Not flown yet.** The aerodynamic model and the tumble model refuse a design with pods, since
-/// no cited method for a pod's normal force and drag is in yet
+/// **A pod of no length.** A pod may be a single body tube of no length, which weighs nothing: what
+/// hangs from it (fins, a launch lug) sits on a tube of that radius, most often none, so on the
+/// pod's own axis, and is repeated around the body's as any pod is. OpenRocket draws winglets this
+/// way, calling the tube a "phantom body". A pod set may also hold nothing at all, and then weighs
+/// nothing.
+///
+/// **Not flown yet.** The aerodynamic model and the tumble model refuse a design with pods (but
+/// for an empty pod set, which adds nothing), since no cited method for a pod's normal force and
+/// drag is in yet
 /// ([M1.13c](https://github.com/nrdptel/hpr-sim/blob/main/docs/decisions-and-roadmap.md#m1-13c),
 /// pod aerodynamics).
 ///

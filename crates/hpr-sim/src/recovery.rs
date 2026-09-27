@@ -421,6 +421,17 @@ impl DeviceDrag {
             if !member(index, component) {
                 continue;
             }
+            let holds = |index| {
+                assembly
+                    .layout
+                    .components
+                    .iter()
+                    .any(|c| c.parent == Some(index))
+            };
+            if matches!(component.part, hpr_design::Part::PodSet(_)) && !holds(index) {
+                // A pod set that holds nothing adds no drag area.
+                continue;
+            }
             if matches!(component.part, hpr_design::Part::PodSet(_)) {
                 // A pod's tubes are listed as the pod set's children; counting them as the
                 // airframe's own side profile would credit pods with a body tube's broadside drag
@@ -3240,6 +3251,14 @@ mod tests {
         assert!(
             matches!(error, SimError::Domain { what, .. } if what.starts_with("tumbling an airframe with pods")),
             "{error:?}"
+        );
+        // A pod set that holds nothing adds no drag area.
+        let pods = rocket.stages[0].components[1].children.last_mut().unwrap();
+        pods.children.clear();
+        assert_eq!(
+            DeviceDrag::tumbling(&rocket.assemble("example").unwrap()).unwrap(),
+            DeviceDrag::tumbling(&design("rocketpy-valetudo").assemble("example").unwrap())
+                .unwrap()
         );
     }
 

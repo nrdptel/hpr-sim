@@ -70,4 +70,5 @@ Configurations OpenRocket flew that hpr does not fly here, by reason:
 | a curve found by name, which OpenRocket may not fly | 1 | C11/4 |
 | a launch rod not vertical | 3 | C12/1, C12/2, C12/3 |
 | a motor hpr can't light as written | 1 | C04/1 |
-| an airframe not read exactly as written | 14 | C01/1, C01/2, C02/1, C02/2, C02/3, C02/4, C02/5, C05/1, C05/2, C05/3, C05/4, C05/5, C06/1, C10/1 |
+| an airframe not read exactly as written | 9 | C01/1, C01/2, C05/1, C05/2, C05/3, C05/4, C05/5, C06/1, C10/1 |
+| hpr's flight of it failed | 5 | C02/1, C02/2, C02/3, C02/4, C02/5 |
