@@ -8002,8 +8002,10 @@ model, and its source is not to be read.
    metric definitions as every other comparison.
 3. **Listed apart.** A probe is not a design: the report holds them in `probes`, out of the
    designs' statistics and out of M2.2's count toward twenty designs, and a probe hpr cannot fly
-   is an error rather than a row in `not_flown`. The census (ADR-084) holds them with the
-   OpenRocket group's rows, so a regenerated report that moves one needs an accepted reason.
+   is an error rather than a row in `not_flown`. The census (ADR-084) leaves them out too: its
+   OpenRocket group is the examples' headline in the README and the accuracy page, and probes
+   would pad it. In CI they are held instead by the bounds in item 4 and by the test that ties
+   every report row to the record and to `compare`; `ork-flights --check` holds them locally.
 4. **The bar.** Each probe within 5% of OpenRocket's apogee and largest speed (ADR-076's per-case
    tolerance). Because a calm vertical flight tests drag and mass far more than normal force, each
    margin is held within 0.005 calibres, and what the pods change against the control, in apogee

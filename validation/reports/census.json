@@ -1,43 +1,12 @@
 {
   "generated_by": "cargo xtask census --accept",
-  "reason": "M1.13c2: six pod probe designs flown against OpenRocket, held with the OpenRocket group",
+  "reason": "M1.13c1: pods have aerodynamics (ADR-092), so the private design whose pods hold a launch lug flies",
   "changes": [
-    "added: calm flights of OpenRocket's examples: pods-bodies-3 / 00000000-0000-4000-8000-000000000097 apogee (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-bodies-3 / 00000000-0000-4000-8000-000000000097 launch_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-bodies-3 / 00000000-0000-4000-8000-000000000097 margin (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-bodies-3 / 00000000-0000-4000-8000-000000000097 max_speed (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-bodies-3 / 00000000-0000-4000-8000-000000000097 rod_clearance_cg (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-bodies-3 / 00000000-0000-4000-8000-000000000097 rod_clearance_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-2 / 00000000-0000-4000-8000-000000000097 apogee (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-2 / 00000000-0000-4000-8000-000000000097 launch_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-2 / 00000000-0000-4000-8000-000000000097 margin (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-2 / 00000000-0000-4000-8000-000000000097 max_speed (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-2 / 00000000-0000-4000-8000-000000000097 rod_clearance_cg (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-2 / 00000000-0000-4000-8000-000000000097 rod_clearance_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097 apogee (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097 launch_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097 margin (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097 max_speed (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097 rod_clearance_cg (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097 rod_clearance_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-motors-2 / 00000000-0000-4000-8000-000000000097 apogee (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-motors-2 / 00000000-0000-4000-8000-000000000097 launch_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-motors-2 / 00000000-0000-4000-8000-000000000097 margin (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-motors-2 / 00000000-0000-4000-8000-000000000097 max_speed (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-motors-2 / 00000000-0000-4000-8000-000000000097 rod_clearance_cg (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-motors-2 / 00000000-0000-4000-8000-000000000097 rod_clearance_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-none / 00000000-0000-4000-8000-000000000097 apogee (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-none / 00000000-0000-4000-8000-000000000097 launch_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-none / 00000000-0000-4000-8000-000000000097 margin (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-none / 00000000-0000-4000-8000-000000000097 max_speed (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-none / 00000000-0000-4000-8000-000000000097 rod_clearance_cg (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-none / 00000000-0000-4000-8000-000000000097 rod_clearance_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-winglets-2 / 00000000-0000-4000-8000-000000000097 apogee (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-winglets-2 / 00000000-0000-4000-8000-000000000097 launch_mass (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-winglets-2 / 00000000-0000-4000-8000-000000000097 margin (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-winglets-2 / 00000000-0000-4000-8000-000000000097 max_speed (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-winglets-2 / 00000000-0000-4000-8000-000000000097 rod_clearance_cg (within the bar)",
-    "added: calm flights of OpenRocket's examples: pods-winglets-2 / 00000000-0000-4000-8000-000000000097 rod_clearance_mass (within the bar)"
+    "flown: calm flights of the private designs: C02/1 (the case), not flown before: hpr flies it now (L85); apogee -0.564490% (within the bar), launch_mass +0.001000% (within the bar), margin +0.004105 cal (within the bar), max_speed +0.075020% (within the bar), rod_clearance_cg -0.000040 cal (within the bar), rod_clearance_mass +0.001000% (within the bar)",
+    "flown: calm flights of the private designs: C02/2 (the case), not flown before: hpr flies it now (L85); apogee +2.151235% (within the bar), launch_mass +0.001000% (within the bar), margin +0.004361 cal (within the bar), max_speed +0.241008% (within the bar), rod_clearance_cg -0.000296 cal (within the bar), rod_clearance_mass -0.006000% (within the bar)",
+    "flown: calm flights of the private designs: C02/3 (the case), not flown before: hpr flies it now (L85); apogee -0.942128% (within the bar), launch_mass +0.001000% (within the bar), margin +0.004361 cal (within the bar), max_speed +0.241008% (within the bar), rod_clearance_cg -0.000296 cal (within the bar), rod_clearance_mass -0.006000% (within the bar)",
+    "flown: calm flights of the private designs: C02/4 (the case), not flown before: hpr flies it now (L85); apogee -0.053970% (within the bar), launch_mass +0.001000% (within the bar), margin +0.004105 cal (within the bar), max_speed +1.180148% (within the bar), rod_clearance_cg -0.000040 cal (within the bar), rod_clearance_mass +0.001000% (within the bar)",
+    "flown: calm flights of the private designs: C02/5 (the case), not flown before: hpr flies it now (L85); apogee -0.577352% (within the bar), launch_mass +0.001000% (within the bar), margin +0.004813 cal (within the bar), max_speed +0.765283% (within the bar), rod_clearance_cg -0.000748 cal (within the bar), rod_clearance_mass -0.021000% (within the bar)"
   ],
   "summaries": [
     {
@@ -104,15 +73,15 @@
     {
       "group": "open_rocket_examples",
       "reference": "OpenRocket 24.12",
-      "cases": 39,
+      "cases": 33,
       "not_flown": 24,
       "regimes": {
-        "subsonic": 37,
-        "transonic": 2
+        "subsonic": 32,
+        "transonic": 1
       },
-      "rows": 258,
+      "rows": 222,
       "standings": {
-        "within_bar": 225,
+        "within_bar": 189,
         "over_bar": 9,
         "not_flown": 24
       },
@@ -121,51 +90,51 @@
           "metric": "apogee",
           "scale": 5.0,
           "unit": "percent",
-          "within": 33,
-          "compared": 39
+          "within": 27,
+          "compared": 33
         },
         {
           "metric": "max_speed",
           "scale": 5.0,
           "unit": "percent",
-          "within": 37,
-          "compared": 39
+          "within": 31,
+          "compared": 33
         },
         {
           "metric": "margin",
           "scale": 0.5,
           "unit": "calibre",
-          "within": 39,
-          "compared": 39
+          "within": 33,
+          "compared": 33
         },
         {
           "metric": "launch_mass",
           "scale": 1.0,
           "unit": "percent",
-          "within": 39,
-          "compared": 39
+          "within": 33,
+          "compared": 33
         },
         {
           "metric": "rod_clearance_mass",
           "scale": 1.0,
           "unit": "percent",
-          "within": 38,
-          "compared": 39
+          "within": 32,
+          "compared": 33
         },
         {
           "metric": "rod_clearance_cg",
           "scale": 0.5,
           "unit": "calibre",
-          "within": 39,
-          "compared": 39
+          "within": 33,
+          "compared": 33
         }
       ],
       "apogee_percent": {
-        "count": 39,
+        "count": 33,
         "min": -19.130570894617726,
         "max": 13.801253044805415,
-        "mean_absolute": 3.0597235530851212,
-        "within": 33
+        "mean_absolute": 3.512180475760094,
+        "within": 27
       }
     },
     {
@@ -6247,426 +6216,6 @@
         "slack": 0.0,
         "standing": "not_flown",
         "regime": "unknown"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-bodies-3 / 00000000-0000-4000-8000-000000000097",
-        "metric": "apogee",
-        "difference": 0.4766159733650954,
-        "percent": 0.4766159733650954,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-bodies-3 / 00000000-0000-4000-8000-000000000097",
-        "metric": "launch_mass",
-        "difference": 1.2569585979740335e-6,
-        "percent": 1.2569585979740335e-6,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-bodies-3 / 00000000-0000-4000-8000-000000000097",
-        "metric": "margin",
-        "difference": 0.0013326873642887094,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-bodies-3 / 00000000-0000-4000-8000-000000000097",
-        "metric": "max_speed",
-        "difference": 0.770348149890873,
-        "percent": 0.770348149890873,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-bodies-3 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_cg",
-        "difference": 0.00007593812351991414,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-bodies-3 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_mass",
-        "difference": 0.002136331209195025,
-        "percent": 0.002136331209195025,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "apogee",
-        "difference": 0.49374027124141423,
-        "percent": 0.49374027124141423,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "launch_mass",
-        "difference": 1.2479025883147687e-6,
-        "percent": 1.2479025883147687e-6,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "margin",
-        "difference": 0.0011927848434125643,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "max_speed",
-        "difference": 0.7280022272393457,
-        "percent": 0.7280022272393457,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_cg",
-        "difference": 0.00007452224357236878,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_mass",
-        "difference": 0.002135054846605787,
-        "percent": 0.002135054846605787,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097",
-        "metric": "apogee",
-        "difference": 0.40883259577103237,
-        "percent": 0.40883259577103237,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097",
-        "metric": "launch_mass",
-        "difference": -1.9276530758383177e-6,
-        "percent": -1.9276530758383177e-6,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097",
-        "metric": "margin",
-        "difference": 0.0010827256885836967,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097",
-        "metric": "max_speed",
-        "difference": 0.5899236156120814,
-        "percent": 0.5899236156120814,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_cg",
-        "difference": 0.0000563787653710494,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-fins-tail-4 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_mass",
-        "difference": 0.0016937860733779906,
-        "percent": 0.0016937860733779906,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-motors-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "apogee",
-        "difference": 0.5259533502446586,
-        "percent": 0.5259533502446586,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "transonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-motors-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "launch_mass",
-        "difference": 9.354467163001955e-7,
-        "percent": 9.354467163001955e-7,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "transonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-motors-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "margin",
-        "difference": 0.0010510120580971005,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "transonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-motors-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "max_speed",
-        "difference": 1.2363054438129941,
-        "percent": 1.2363054438129941,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "transonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-motors-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_cg",
-        "difference": 0.00016939922768225796,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "transonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-motors-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_mass",
-        "difference": 0.003666834033743722,
-        "percent": 0.003666834033743722,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "transonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-none / 00000000-0000-4000-8000-000000000097",
-        "metric": "apogee",
-        "difference": 0.8087239489063165,
-        "percent": 0.8087239489063165,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-none / 00000000-0000-4000-8000-000000000097",
-        "metric": "launch_mass",
-        "difference": 1.3602970812187037e-6,
-        "percent": 1.3602970812187037e-6,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-none / 00000000-0000-4000-8000-000000000097",
-        "metric": "margin",
-        "difference": 0.001384188073854986,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-none / 00000000-0000-4000-8000-000000000097",
-        "metric": "max_speed",
-        "difference": 1.0933749672081143,
-        "percent": 1.0933749672081143,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-none / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_cg",
-        "difference": 0.00012527135559992075,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-none / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_mass",
-        "difference": 0.0033091781307719253,
-        "percent": 0.0033091781307719253,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-winglets-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "apogee",
-        "difference": 0.7133967307081018,
-        "percent": 0.7133967307081018,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-winglets-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "launch_mass",
-        "difference": 1.3269206120821554e-6,
-        "percent": 1.3269206120821554e-6,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-winglets-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "margin",
-        "difference": 0.0011895761226288215,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-winglets-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "max_speed",
-        "difference": 0.9507703289126289,
-        "percent": 0.9507703289126289,
-        "unit": "percent",
-        "scale": 5.0,
-        "slack": 0.005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-winglets-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_cg",
-        "difference": 0.00009838601573441963,
-        "unit": "calibre",
-        "scale": 0.5,
-        "slack": 0.0005,
-        "standing": "within_bar",
-        "regime": "subsonic"
-      },
-      {
-        "group": "open_rocket_examples",
-        "case": "pods-winglets-2 / 00000000-0000-4000-8000-000000000097",
-        "metric": "rod_clearance_mass",
-        "difference": 0.0026421407654885214,
-        "percent": 0.0026421407654885214,
-        "unit": "percent",
-        "scale": 1.0,
-        "slack": 0.001,
-        "standing": "within_bar",
-        "regime": "subsonic"
       },
       {
         "group": "open_rocket_library",

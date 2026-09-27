@@ -2794,7 +2794,7 @@ and neither code's roll is compared.
   three pods or more, spaced evenly, both average to zero, and the first-order change cancels.
   For one or two they do not: on the worked example's pods, `a²/r² = 0.46`, so a pair's cones
   lift up to 46% more or less, by roll angle, and push sideways by up to as much. hpr leaves this
-  out; OpenRocket's developers say theirs does too. Interference drag is left out as well, as
+  out; the probes above show OpenRocket leaves it out too. Interference drag is left out as well, as
   Barrowman leaves it out for fins ([B67] p. 62, "No interference drag effects are considered")
   and Niskanen for the whole rocket ([N09] §3.4).
 - **A single pod's moments.** One pod's drag acts off the axis and pitches the rocket; its normal

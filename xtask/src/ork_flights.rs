@@ -1956,8 +1956,8 @@ mod tests {
     /// too: within 1 point of apogee and 0.005 calibres of OpenRocket's change, and each margin
     /// within 0.005 calibres of OpenRocket's. The bounds were set after the measurement (0.32
     /// points, 0.0004 and 0.0014 calibres at most), to catch a pod rule that breaks: a pod fin's
-    /// `K_T(B)` taken on the airframe moves the margin by some 0.04 calibres, and dropping a pod's
-    /// base drag the apogee by some 6 points.
+    /// `K_T(B)` taken on the airframe, by a hand estimate, moves the margin by some 0.04 calibres.
+    /// The census leaves the probes out (ADR-093), so these bounds are what holds them in CI.
     #[test]
     fn pod_designs_are_within_5_percent_of_openrocket() {
         let (_, report) = committed();
