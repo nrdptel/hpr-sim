@@ -138,7 +138,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - `.ork` (M3.1): hpr alone flies 4 of 170 configurations (93 with OR's database, ADR-067), one
   powered split at most (#183); recovery read, not flown; 5 parts left out (tube fins #133); fillets
   and screw heads read simpler, warned; `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).
-  Pods (ADR-092) fly without pod–body interference, a single pod's moments dropped (#213).
+  Pods (ADR-092) fly without pod–body interference, a single pod's moments dropped (#213); two motor pod sets refused (#214).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against
   the Arcas Robin it reads high at every row (#70, #72, #73); a cylinder's base drag is unmeasured
