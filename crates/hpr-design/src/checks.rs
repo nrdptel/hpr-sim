@@ -60,15 +60,16 @@ pub enum Finding {
         /// How far past, m.
         excess_m: f64,
     },
-    /// An external part (fin root, tube fins, lug or rail button) doesn't overlap the body tube it
-    /// is attached to at all (error).
+    /// An external part (fin root, tube fins, lug, rail button or pod set) doesn't overlap the body
+    /// tube it is attached to at all (error).
     AttachmentOffBody {
         /// Component id.
         component: String,
         /// Body tube id.
         body: String,
     },
-    /// An external part runs past an end of its body tube (warning).
+    /// An external part runs past an end of its body tube (warning). Pods are exempt: a pod hangs
+    /// from a pylon and often runs past its tube.
     AttachmentPastBodyEnd {
         /// Component id.
         component: String,
@@ -243,7 +244,12 @@ pub fn check_layout(layout: &Layout) -> Vec<Finding> {
         .components
         .iter()
         .map(|c| {
-            if c.parent.is_none() || c.part.is_external() || !apart(c, 0.0, length) {
+            // A pod's body components are outside the airframe, like the pod set they hang from.
+            if c.parent.is_none()
+                || c.part.is_external()
+                || c.part.is_body()
+                || !apart(c, 0.0, length)
+            {
                 return false;
             }
             let mut ancestor = c.parent;
@@ -306,6 +312,10 @@ fn attached_findings(
     layout: &Layout,
     findings: &mut Vec<Finding>,
 ) {
+    // A pod's body components stack along it, so they span the pod set exactly.
+    if component.part.is_body() {
+        return;
+    }
     let (fore, aft) = (component.fore_station_m, component.aft_station_m());
     let span = excess(fore, aft, parent.fore_station_m, parent.aft_station_m());
     if component.part.is_external() {
@@ -314,6 +324,9 @@ fn attached_findings(
                 component: component.id.clone(),
                 body: parent.id.clone(),
             }),
+            // A pod is held by its pylon, not along its length: outboard pods often run past the
+            // tube they hang from.
+            Some(_) if matches!(component.part, Part::PodSet(_)) => {}
             Some(e) if e > LENGTH_TOLERANCE_M => {
                 findings.push(Finding::AttachmentPastBodyEnd {
                     component: component.id.clone(),

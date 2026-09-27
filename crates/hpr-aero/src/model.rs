@@ -896,9 +896,9 @@ impl AeroModel {
     ///
     /// - [`AeroError::Domain`] for a non-positive reference diameter, rocket length or body radius.
     /// - [`AeroError::InComponent`] naming the component, around:
-    ///   - [`AeroError::Unsupported`] for tube fins, or a part kind or fin cross-section this model
-    ///     doesn't know (a nose shape the drag buildup has no data for builds, and the buildup
-    ///     refuses it when asked: [`AeroModel::drag`]);
+    ///   - [`AeroError::Unsupported`] for tube fins, pods, or a part kind or fin cross-section this
+    ///     model doesn't know (a nose shape the drag buildup has no data for builds, and the
+    ///     buildup refuses it when asked: [`AeroModel::drag`]);
     ///   - [`AeroError::Domain`] for a fin set of more than eight fins, a non-finite station, or a
     ///     drag input out of range (a negative fin thickness, a launch lug's wall thicker than its
     ///     radius, a rail button's base and flange taller than the button, a negative roughness);
@@ -1026,6 +1026,11 @@ impl AeroModel {
                 Part::TubeFinSet(_) => {
                     return Err(in_component(AeroError::Unsupported(
                         "tube fins (no cited normal-force method yet)".to_owned(),
+                    )));
+                }
+                Part::PodSet(_) => {
+                    return Err(in_component(AeroError::Unsupported(
+                        "pods (no cited normal-force and drag method yet)".to_owned(),
                     )));
                 }
                 // Drag only.
@@ -1840,7 +1845,7 @@ mod tests {
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
     use hpr_design::{
-        FinPlanform, LaunchLug, NoseShape, Part, Position, ReferenceDiameter, TubeFinSet,
+        FinPlanform, LaunchLug, NoseShape, Part, PodSet, Position, ReferenceDiameter, TubeFinSet,
     };
     use proptest::prelude::*;
 
@@ -2080,7 +2085,8 @@ mod tests {
         );
     }
 
-    /// Refusals: tube fins, nine fins, Mach 5, angles outside `[0, π]`. Lugs add no normal force.
+    /// Refusals: tube fins, pods, nine fins, Mach 5, angles outside `[0, π]`. Lugs add no normal
+    /// force.
     #[test]
     fn unsupported_inputs_are_refused() {
         let mut rocket = crate::testing::finned_rocket(4);
@@ -2100,6 +2106,27 @@ mod tests {
         assert!(
             matches!(&err, AeroError::InComponent { id, source } if id == "tube-fins"
                 && matches!(**source, AeroError::Unsupported(_))),
+            "{err}"
+        );
+
+        // Pods, until a cited method gives their normal force and drag: refused at the pod set,
+        // before its tube could be taken for part of the airframe.
+        let mut rocket = crate::testing::finned_rocket(4);
+        let mut pods = component(
+            "pods",
+            Part::PodSet(PodSet {
+                count: 2,
+                radial_offset_m: 0.1,
+                angle_rad: 0.0,
+            }),
+            Some(Position::Top { aft_offset_m: 0.0 }),
+        );
+        pods.children = vec![component("pod-tube", body_part(0.2, 0.02, 0.02), None)];
+        rocket.stages[0].components[3].children.push(pods);
+        let err = AeroModel::new(&rocket.layout().unwrap()).unwrap_err();
+        assert!(
+            matches!(&err, AeroError::InComponent { id, source } if id == "pods"
+                && matches!(&**source, AeroError::Unsupported(what) if what.starts_with("pods"))),
             "{err}"
         );
 

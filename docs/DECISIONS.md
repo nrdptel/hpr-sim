@@ -94,6 +94,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-086 | Ejection impulse and tumbling pieces | accepted |
 | ADR-087 | Mass that moves along the airframe | accepted |
 | ADR-088 | Mass released in flight | accepted |
+| ADR-089 | A pod is a stack of body components repeated around the axis | accepted |
 
 ---
 
@@ -7738,3 +7739,46 @@ under a state that carries across, the nose tip's.
   flights and the real flights reproduce.
 - Left for later: a push at the release; a release in a flight with a separation, ejections or
   shifts; recovery devices on a released part.
+
+## ADR-089: A pod is a stack of body components repeated around the axis (2026-09-27)
+
+**Context.** M1.13 (VISION V19) asks for pods: bodies beside the airframe, as side pods or
+outboard motor pods, with their mass properties off the axis, a cited normal force, drag and
+interference for each, the `.ork` reader taking them, and a pod design matching OpenRocket. That
+is more than one session, and the mass is what the rest stands on.
+
+**Decision.**
+
+1. **Split a to c.** M1.13a is the pod's mass, done when a pod's mass properties match the
+   hand-computed parallel-axis values (the milestone's first bullet) and what a pod holds is
+   repeated in every pod. M1.13b reads `.ork` pod sets. M1.13c is the aerodynamics and the
+   OpenRocket comparison (the second bullet), which needs a design in both codes, so it comes
+   after the reader.
+2. **A `PodSet` part, external, on a body tube**, with `count`, `radial_offset_m` and `angle_rad`,
+   placed along its tube by the usual positions. Its children are the pod's body components (nose
+   cone, body tubes, transitions): they take no position and stack aft from the pod set's
+   position, and their automatic radii resolve among themselves by the stage rule. Anything else
+   as a direct child is refused. This is OpenRocket's own layout for a pod set (a component
+   assembly of body components), so the reader in M1.13b maps element to element.
+3. **One pod, repeated.** The pod is laid out on the body's axis and copied to
+   `r (cos φ_k, sin φ_k)`, `φ_k = angle + 2π k / count`, through the copies a cluster already uses
+   (ADR-075): each copy is weighed where it sits, with its parallel-axis term
+   `I_p = I_cg + m (|d|² E − d dᵀ)` (Meriam and Kraige, appendix B), and everything inside is
+   repeated with it, so a motor mount in a pod gives a motor per pod. The pod set weighs nothing.
+   Overrides follow ADR-075: on the pod set with its children they set all the pods' mass, and
+   on a part inside a pod each copy's.
+4. **Checks.** A pod's body components are not internal parts: they are neither "outside the
+   rocket" nor "past their parent's end". A pod set past its tube's end raises no warning, since
+   pods hang from pylons and outboard boosters often run past the tube; one that doesn't touch its
+   tube at all is still an error.
+5. **Refused until M1.13c.** The aerodynamic model refuses a design with pods (`Unsupported`,
+   naming the pod set), before a pod's tube could be read as part of the airframe; so does the
+   tumble model. A mass shift, a release and an ejected payload refuse a pod's body component as a
+   body component, even for a single pod whose one copy would otherwise pass. A part inside
+   several pods is several copies and is refused as a cluster's is.
+
+**Consequences.** `hpr-design` gains `PodSet`, `Part::PodSet`, `Component::length_m` and the pod
+arm of `PlacedComponent::contents_copies_m`. The design page's *Pods* section works two pods and
+one off the axis by hand; the test pins them to 1e-15 kg, m and kg·m², and parses the page's JSON.
+A pod can't fly until M1.13c; a `.ork` file's pods are still kept unread until M1.13b.
+

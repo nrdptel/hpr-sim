@@ -747,6 +747,10 @@ with a small header saying how many values it holds and how they are stored. A r
 page at a time. hpr-sim's pages hold up to 1024 numbers of 8 bytes each: 8 KiB, the page size the
 format's specification recommends. See [Exporting a flight](exporting-a-flight.md).
 
+## Pod
+
+A body mounted beside the airframe rather than on its axis: a side pod, or an outboard pod that holds a motor. hpr repeats one pod, and everything in it, evenly around the axis, and weighs each copy where it sits, so the pods' inertia is mostly the [parallel-axis](#parallel-axis-theorem) term. Pods are weighed but can't fly yet: no cited model gives their normal force and drag ([M1.13c](decisions-and-roadmap.md#m1-13c), pod aerodynamics). See [Pods](physics/design.md#pods).
+
 ## Power-on and power-off drag
 
 Drag while a motor burns, and while the rocket coasts. Under power, the part of the base the

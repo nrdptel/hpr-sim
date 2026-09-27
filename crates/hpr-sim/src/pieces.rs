@@ -234,7 +234,8 @@ impl Pieces {
                 }
                 Parting::Payload { component } => {
                     let index = find(component)?;
-                    if components[index].parent.is_none() {
+                    // A pod's body components hang from its pod set but are body components.
+                    if components[index].parent.is_none() || components[index].part.is_body() {
                         return Err(refuse(
                             "a payload is carried inside the airframe, and this is a body \
                              component (a body component leaves at a joint, `Parting::AftOf`)",
@@ -2266,6 +2267,43 @@ mod tests {
         assert_eq!(
             what(error),
             ("a payload inside another payload", "inner".to_owned())
+        );
+
+        // One pod's body tube is still a body component, not a payload, though it hangs from its
+        // pod set and is a single copy.
+        let mut rocket = with_payload();
+        let airframe = &mut rocket.stages[0].components[1];
+        let mut pod_tube = airframe.clone();
+        pod_tube.id = "pod-tube".to_owned();
+        pod_tube.auto.clear();
+        pod_tube.motor_mount = None;
+        pod_tube.children.clear();
+        let mut pods = pod_tube.clone();
+        pods.id = "pods".to_owned();
+        pods.part = hpr_design::Part::PodSet(hpr_design::PodSet {
+            count: 1,
+            radial_offset_m: 0.2,
+            angle_rad: 0.0,
+        });
+        pods.position = Some(Position::Top { aft_offset_m: 0.0 });
+        pods.children = vec![pod_tube];
+        airframe.children.push(pods);
+        let assembly = rocket.assemble("i175").unwrap();
+        let error = Pieces::new(
+            &rocket,
+            &assembly,
+            None,
+            &[Ejection::payload(apogee, "pod-tube")],
+        )
+        .err()
+        .unwrap();
+        assert_eq!(
+            what(error),
+            (
+                "a payload is carried inside the airframe, and this is a body component (a body \
+                 component leaves at a joint, `Parting::AftOf`)",
+                "pod-tube".to_owned()
+            )
         );
 
         // A stage whose mass is overridden can't be divided between pieces.
