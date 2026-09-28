@@ -1459,11 +1459,13 @@ impl AeroModel {
     /// cross-section is not taken off the base ([`DragConditions::thrusting_motor_area_m2`] and
     /// the pods' are read as zero), and a burning motor still selects a table's power-on curve.
     ///
-    /// hpr's own buildup takes it off, as Niskanen describes (2009, p. 50: "if the base is the
-    /// same size as the motor itself, no base drag"). OpenRocket 24.12 does not: it keeps the
-    /// whole base's coefficient, as its own output shows on a minimum-diameter rocket
-    /// ([ADR-097][adr-097]). This is how a comparison with OpenRocket sizes that
-    /// difference; it is not a better model.
+    /// hpr's own buildup takes it off, as Niskanen describes (2009, pp. 50–51: "if the base is
+    /// the same size as the motor itself, no base drag"). OpenRocket 24.12 does not: on every one
+    /// of its example designs' flights of one branch, powered pods among them, its base-drag
+    /// column is the whole base's coefficient while a motor burns, as after, where the motors
+    /// cover up to 94% of the reference area (`validation/fixtures/ork/openrocket-base-drag.json`,
+    /// [ADR-097][adr-097]). This is how a comparison with OpenRocket sizes that difference; it is
+    /// not a better model. Neither rule has been checked against a measured flight.
     ///
     /// [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
     #[must_use]

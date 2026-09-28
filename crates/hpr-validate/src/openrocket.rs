@@ -1699,10 +1699,6 @@ mod tests {
         assert!(record["probes"].as_object().expect("probes").len() >= 22);
     }
 
-    /// The record was written by the script it names, from OpenRocket 24.12 with no default
-    /// materials saved in its preferences, and every probe it holds is one a test here reads: a
-    /// probe added to the script and not to a test would be a question nobody checks the answer
-    /// to.
     /// The probes of an automatic outer radius inside a nose cone or transition, and of an inner
     /// tube written `auto` (M2.2e7).
     const BORES: [&str; 13] = [
@@ -1727,8 +1723,9 @@ mod tests {
     /// M2.2e7 ([ADR-096][adr-096]): inside a hollow nose cone or transition, an automatic outer
     /// radius is the parent's outer radius at the part's narrower end less its wall, the shoulder
     /// left out; a wall thicker than that is the tube solid, in a body tube too; and an
-    /// `innertube` written `auto` keeps 9.5 mm, with a warning. So every coupler, engine block,
-    /// inner tube, ring and bulkhead weighs OpenRocket's mass at OpenRocket's station, to 1e-15.
+    /// `innertube` written `auto` keeps 9.5 mm, with no warning, as OpenRocket reads it. So every
+    /// coupler, engine block, inner tube, ring and bulkhead weighs OpenRocket's mass to 1e-14 at
+    /// OpenRocket's station to 1e-15.
     ///
     /// The nose cones and the transition carry the gaps their walls already had: 5.1e-7 of the
     /// cone's mass, 3.9e-5 of the ogive's and 2.8e-6 of the transition's, and centres within
@@ -1746,12 +1743,7 @@ mod tests {
         for question in BORES {
             let probe = probe(&record, question);
             let (layout, warnings) = hpr(probe);
-            if question.contains("an inner tube of automatic radius") {
-                assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
-                assert!(warnings[0].contains("keeps its 9.5 mm"), "{warnings:?}");
-            } else {
-                assert!(warnings.is_empty(), "{question}: {warnings:?}");
-            }
+            assert!(warnings.is_empty(), "{question}: {warnings:?}");
             for part in probe["parts"].as_array().expect("parts") {
                 let class = part["class"].as_str().expect("a class");
                 if matches!(class, "Rocket" | "AxialStage") {
@@ -1809,6 +1801,10 @@ mod tests {
         );
     }
 
+    /// The record was written by the script it names, from OpenRocket 24.12 with no default
+    /// materials saved in its preferences, and every probe it holds is one a test here reads: a
+    /// probe added to the script and not to a test would be a question nobody checks the answer
+    /// to.
     #[test]
     fn every_probe_is_checked() {
         let record = record();

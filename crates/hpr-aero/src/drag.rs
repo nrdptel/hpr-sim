@@ -461,7 +461,7 @@ pub struct DragConditions {
     /// Whether a motor is thrusting. It selects an override table's power-on curve.
     pub thrusting: bool,
     /// Total cross-section area of the motors thrusting into the aft base, m², subtracted from
-    /// the base area (Niskanen 2009 p. 50). Zero while coasting. It leaves out motors in pods.
+    /// the base area (Niskanen 2009 pp. 50–51). Zero while coasting. It leaves out motors in pods.
     pub thrusting_motor_area_m2: f64,
     /// Total cross-section area of the thrusting motors in pods, m², over every pod: each pod's
     /// share, this over the number of pods, comes off its own base. Zero while none thrusts.
@@ -1703,7 +1703,7 @@ mod tests {
     }
 
     /// Loft lesson L13: under power the base drag's area is the base less the thrusting motors'
-    /// area (Niskanen p. 50), down to none when the motors fill the base.
+    /// area (Niskanen pp. 50–51), down to none when the motors fill the base.
     #[test]
     fn power_on_base_drag_subtracts_thrusting_motor_area() {
         let r = 0.04;

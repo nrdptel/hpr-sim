@@ -47,7 +47,7 @@ import geometry  # noqa: E402 - the same file discovery and comment retry
 GENERATED = "2026-09-28"
 
 
-def curves(times, mach, drag, thrust, altitude):
+def curves(mach, drag, thrust, altitude):
     """The power-on and power-off curves of one branch, launch to the largest altitude."""
     highest = altitude.index(flights.peak(altitude))
     burning = [i for i in range(highest + 1) if thrust[i] > 0.0]
@@ -95,7 +95,6 @@ def flight(text, scratch, configuration):
         "max_altitude_m": flights.finite(data.getMaxAltitude()),
         "reference_length_m": flights.finite(reference[0]) if reference else None,
         **curves(
-            column(F.TYPE_TIME),
             column(F.TYPE_MACH_NUMBER),
             column(F.TYPE_DRAG_COEFF),
             column(F.TYPE_THRUST_FORCE),
