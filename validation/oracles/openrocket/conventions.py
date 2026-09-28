@@ -305,6 +305,11 @@ OLD_FLAG_PROBES = {
         "",
         [tube(overrides(mass_kg=0.5) + old_flag("true"), inner())],
     ),
+    "the old flag on a tube's mass override, schema 1.8": (
+        "1.8",
+        "",
+        [tube(overrides(mass_kg=0.5) + old_flag("true"), inner())],
+    ),
     "the old flag, false, on a tube's mass override, schema 1.8": (
         "1.8",
         "",
@@ -324,6 +329,11 @@ OLD_FLAG_PROBES = {
         "1.10",
         "",
         [tube(overrides(mass_kg=0.5) + old_flag("true") + "<overridesubcomponentsmass>false</overridesubcomponentsmass>", inner())],
+    ),
+    "the old flag before a drag flag that says false": (
+        "1.10",
+        "",
+        [tube(overrides(mass_kg=0.5) + "<overridecd>0.5</overridecd>" + old_flag("true") + "<overridesubcomponentscd>false</overridesubcomponentscd>", inner())],
     ),
     "the old flag, false, after a centre flag that says true": (
         "1.10",

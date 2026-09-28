@@ -251,16 +251,19 @@ override" — reading it as missing is
 component declares its own mass, centre of gravity and drag coefficient with three tags, and
 whether each covers the components inside it with three more, all read independently.
 
-**Observed** override tags: `overridemass` 118, `overridesubcomponentsmass` 95,
-`overridesubcomponents` 20, `overridecg` 16, `overridesubcomponentscg` 9, `overridecd` 2,
-`overridesubcomponentscd` 2. The third of those is the single flag that the three per-quantity ones
-replaced before schema 1.9. **Policy:** it is read as OpenRocket 24.12 reads it, measured on probe
-designs ([M2.2e6](../decisions-and-roadmap.md#m2-2e6)): as setting all three, in files of schema
-1.4, 1.8 and 1.10 alike. Where a part writes both forms, the one written later wins, quantity by
-quantity: `<overridesubcomponents>true</overridesubcomponents>` then
-`<overridesubcomponentsmass>false</overridesubcomponentsmass>` covers the parts inside for the
-centre of gravity and the drag but not the mass. No element in the corpus carries both forms. Read
-so, the flag is read as written, and nothing is warned of.
+**Observed** override tags: `overridemass` 108, `overridesubcomponentsmass` 95,
+`overridesubcomponents` 10, `overridecg` 14, `overridesubcomponentscg` 9, `overridecd` 2,
+`overridesubcomponentscd` 2. The third of those is the single flag that files before schema 1.9
+use in place of the three per-quantity ones. **Policy:** it is read as OpenRocket 24.12 reads it:
+as setting all three, in files of schema 1.4, 1.8 and 1.10 alike. Where a part writes both forms,
+the one written later wins, quantity by quantity: `<overridesubcomponents>true</overridesubcomponents>`
+then `<overridesubcomponentsmass>false</overridesubcomponentsmass>` covers the parts inside for the
+centre of gravity and the drag but not the mass. No element in the corpus carries both forms. Ten
+probe designs measured this ([M2.2e6](../decisions-and-roadmap.md#m2-2e6), the old override flag),
+and the tests in `hpr_validate::openrocket` hold hpr to them. hpr no longer warns about the flag.
+Not measured: a value other than `true` or `false`, which is dropped with a warning (so the design
+is not flown), and a flag tag written twice on one part, which is read at its first copy, also with
+a warning.
 
 ## Warnings, not failures
 
@@ -275,8 +278,8 @@ departs from [F] but leaves the file readable is a warning that travels with the
 | `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a part inside an inner tube set off the body's axis, placed from the body's axis ([below](#clusters)); a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 31 warnings over 73
-readable files: 4 dropped, 8 skipped and 19 unusual ([below](#measured-on-the-reference-library)). Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 21 warnings over 73
+readable files: 4 dropped, 8 skipped and 9 unusual ([below](#measured-on-the-reference-library)). Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -1228,7 +1231,7 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 31: 4 dropped, 8 skipped, 19 unusual (below); 35, with 12 skipped, before pods were read ([Pods](#pods)) |
+| warnings raised | 21: 4 dropped, 8 skipped, 9 unusual (below); 31 before the old override flag was read as OpenRocket reads it ([M2.2e6](../decisions-and-roadmap.md#m2-2e6)), 35, with 12 skipped, before pods were read ([Pods](#pods)) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage`; since pods are read ([Pods](#pods)), 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -2261,8 +2264,9 @@ another. The four more the bar needs can come from:
   of which also has an inner tube whose automatic radius has nothing to take;
 - stages hpr can't separate yet: three public designs
   ([#183](https://github.com/nrdptel/hpr-sim/issues/183),
-  [#184](https://github.com/nrdptel/hpr-sim/issues/184)), and the private design the old override
-  flag held back, which now waits on an unpowered separation that can come before apogee (#184);
+  [#184](https://github.com/nrdptel/hpr-sim/issues/184)), and the second of the two private
+  designs the old override flag was blamed for. Its flag reads the same either way; what holds it
+  is a stage separation with no motor ahead of it that could come before apogee (#184);
 - the private design with a motor hpr can't light as written;
 - the four public designs held back by parts hpr leaves out: parallel stages, tube fins
   ([#133](https://github.com/nrdptel/hpr-sim/issues/133)), and the freeform fin and the rail
@@ -2338,19 +2342,22 @@ and part on the coast, where drag matters most.
   airfoil fin set, a departure hpr keeps on purpose ([ADR-062][adr-062]), and packed parachutes
   whose automatic radius OpenRocket may meet by stretching the packed length
   ([#186](https://github.com/nrdptel/hpr-sim/issues/186)).
+- `C05` reads within 0.0007 calibres on four flights; on `C05/2` it reads +0.0113, nearly all
+  from its CG (−0.0111 calibres), with the mass there within 0.005%. Not traced.
 - `C12`, launched from a tilted rod, reads +0.0125 to +0.0366 calibres, nearly all from its CP.
   OpenRocket's rocket clears the rod at an angle of attack, as on
   [the probes](#a-tilted-launch-rod). With hpr's CP taken at that angle (the report's *at OR's
   α*), `C12` reads +0.0033 to +0.0074, so most of its gap is the angle each program looks at.
-- hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 12
+- hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 11
   of the flights, all of `C03`'s among them. That puts mass in a slightly different place, not
   lift, so it cannot move the CP, and `C03`'s CG agrees within 0.013 calibres.
 - The 4 designs hpr does not fly wait on: a motor hpr can't light as written (1 design); stages
-  hpr can't separate as written (1: an unpowered separation that can come before apogee, #184); an
-  airframe hpr reads simpler than written (2: fin fillets on both, and on one of them an inner
-  tube whose [automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
-  The report lists each configuration with its coarse reason; the breakdown is in
-  [ADR-072][adr-072] and #174.
+  hpr can't separate as written (1: a separation with no motor ahead of it that could come before
+  apogee, [#184](https://github.com/nrdptel/hpr-sim/issues/184)); an airframe hpr reads simpler
+  than written (2: fin fillets on both, and on one of them an inner tube whose
+  [automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)). The
+  report lists each configuration with its coarse reason; the breakdown is in [ADR-072][adr-072],
+  [ADR-095][adr-095] and [#174](https://github.com/nrdptel/hpr-sim/issues/174).
 
 To repeat it, you need the private library, OpenRocket's flights of it and the motor record, as
 [above](#openrockets-flights-of-the-private-designs). Then:
@@ -2361,6 +2368,7 @@ cargo xtask ork-flights --library --check   # compares with the committed one
 ```
 
 [adr-072]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-072-hprs-flights-of-the-private-library-under-anonymised-ids-2026-09-25
+[adr-095]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-095-the-single-pre-19-override-flag-read-as-openrocket-reads-it-2026-09-27
 
 ### Stored simulations in the reference library
 

@@ -551,13 +551,17 @@ mod tests {
 
     /// The single subcomponent-override flag written before schema 1.9, and how far hpr's centre
     /// of mass is from OpenRocket's, in metres, on each probe of it.
-    const OLD_FLAG: [(&str, f64); 8] = [
+    const OLD_FLAG: [(&str, f64); 10] = [
         (
             "the old flag on both of a stage's overrides, schema 1.4",
             0.0,
         ),
         (
             "the old flag on a tube's mass override, schema 1.4",
+            -0.003686,
+        ),
+        (
+            "the old flag on a tube's mass override, schema 1.8",
             -0.003686,
         ),
         (
@@ -570,6 +574,7 @@ mod tests {
         ),
         ("the old flag after a mass flag that says false", -0.003686),
         ("the old flag before a mass flag that says false", 0.0),
+        ("the old flag before a drag flag that says false", -0.003686),
         (
             "the old flag, false, after a centre flag that says true",
             0.0,
@@ -580,7 +585,7 @@ mod tests {
         ),
     ];
 
-    /// The element of `document` whose `<id>` is `id`.
+    /// The element at or under `element` whose `<id>` is `id`.
     fn with_id<'a>(element: &'a ork::Element, id: &str) -> Option<&'a ork::Element> {
         if element
             .child("id")
@@ -615,22 +620,23 @@ mod tests {
             assert!(warnings.is_empty(), "{question}: {warnings:?}");
 
             let document = probe["document"].as_str().expect("the probe's document");
-            let read = ork::read(document.as_bytes()).expect("a probe reads");
+            let parsed = ork::read(document.as_bytes()).expect("a probe reads");
             let flags = probe["override_flags"].as_object().expect("the flags");
             assert!(flags.len() >= 3, "{question}: {flags:?}");
-            for (id, theirs) in flags {
-                let element = with_id(&read.value.document.root, id).expect("the part");
-                let mut warnings = Vec::new();
-                let read = ork::Values::new(element, "probe", &mut warnings).overrides();
-                let ours = [
-                    read.subcomponents_mass,
-                    read.subcomponents_cg,
-                    read.subcomponents_cd,
+            for (id, recorded) in flags {
+                let element = with_id(&parsed.value.document.root, id).expect("the part");
+                let mut part_warnings = Vec::new();
+                let overrides = ork::Values::new(element, "probe", &mut part_warnings).overrides();
+                let flags_ours = [
+                    overrides.subcomponents_mass,
+                    overrides.subcomponents_cg,
+                    overrides.subcomponents_cd,
                 ]
                 .map(Option::unwrap_or_default);
-                let theirs = ["mass", "cg", "cd"].map(|k| theirs[k].as_bool().expect("a flag"));
-                assert_eq!(ours, theirs, "{question}: {id}");
-                assert!(warnings.is_empty(), "{question}: {warnings:?}");
+                let flags_theirs =
+                    ["mass", "cg", "cd"].map(|k| recorded[k].as_bool().expect("a flag"));
+                assert_eq!(flags_ours, flags_theirs, "{question}: {id}");
+                assert!(part_warnings.is_empty(), "{question}: {part_warnings:?}");
             }
         }
     }

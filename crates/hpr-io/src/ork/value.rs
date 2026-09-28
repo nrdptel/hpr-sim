@@ -256,34 +256,36 @@ impl<'a> Values<'a> {
         self.warn(kind, message.into());
     }
 
-    /// The mass, centre of gravity and drag a component's own figures are replaced by.
+    /// The mass, centre of gravity and drag a component's own figures are replaced by, and
+    /// whether each covers the components inside this one.
+    ///
+    /// Until schema 1.9 a file said that last once, with `overridesubcomponents`, for all three
+    /// quantities. OpenRocket 24.12 reads that flag, in schema 1.4, 1.8 and 1.10 files alike, as
+    /// setting all three, and where a component writes it beside a per-quantity flag, the tag
+    /// written later wins, quantity by quantity: measured on probe designs
+    /// ([M2.2e6][m2-2e6], [ADR-095][adr-095]), whose answers `hpr_validate::openrocket` holds hpr
+    /// to. This reads it the same way. A flag tag written twice on one component is taken at its
+    /// first and warned of, since which copy OpenRocket takes is not measured.
+    ///
+    /// [m2-2e6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e6
+    /// [adr-095]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-095-the-single-pre-19-override-flag-read-as-openrocket-reads-it-2026-09-27
     pub fn overrides(&mut self) -> Overrides {
         let mass_kg = self.number(&["overridemass"]);
         let cg_m = self.number(&["overridecg"]);
         let cd = self.number(&["overridecd"]);
-        // The three flags were one until schema 1.9. OpenRocket 24.12 still reads the old one, in
-        // every schema version, as setting all three, and where a file writes both forms the one
-        // written later wins, quantity by quantity: measured on probe designs (M2.2e6), whose
-        // answers `hpr_validate::openrocket` holds hpr to.
-        let all = self.flag(&["overridesubcomponents"]).map(|all| {
-            let at = self.place("overridesubcomponents");
-            (all, at)
-        });
+        let all = self.placed_flag("overridesubcomponents");
         let [mass, cg, drag] = [
             "overridesubcomponentsmass",
             "overridesubcomponentscg",
             "overridesubcomponentscd",
         ]
-        .map(|name| {
-            let own = self.flag(&[name]).map(|own| (own, self.place(name)));
-            match (own, all) {
-                (Some((own, own_at)), Some((all, all_at))) => {
-                    Some(if all_at > own_at { all } else { own })
-                }
-                (Some((own, _)), None) => Some(own),
-                (None, Some((all, _))) => Some(all),
-                (None, None) => None,
+        .map(|name| match (self.placed_flag(name), all) {
+            (Some((own, own_at)), Some((all, all_at))) => {
+                Some(if all_at > own_at { all } else { own })
             }
+            (Some((own, _)), None) => Some(own),
+            (None, Some((all, _))) => Some(all),
+            (None, None) => None,
         });
         Overrides {
             mass_kg,
@@ -295,13 +297,22 @@ impl<'a> Values<'a> {
         }
     }
 
-    /// Where the first child called `name` stands among the element's children, in document
-    /// order. Called only for a child that is there; `usize::MAX` otherwise.
-    fn place(&self, name: &str) -> usize {
-        self.element
+    /// The flag called `name`, and where it stands among the element's children in document
+    /// order. A tag written more than once is read at its first copy, with a warning.
+    fn placed_flag(&mut self, name: &str) -> Option<(bool, usize)> {
+        let copies = self.element.children_named(name).count();
+        if copies > 1 {
+            self.warn(
+                WarningKind::Dropped,
+                format!("`{name}` is written {copies} times; the first was taken"),
+            );
+        }
+        let value = self.flag(&[name])?;
+        let place = self
+            .element
             .elements()
-            .position(|child| child.name == name)
-            .unwrap_or(usize::MAX)
+            .position(|child| child.name == name)?;
+        Some((value, place))
     }
 
     fn warn(&mut self, kind: WarningKind, message: impl Into<String>) {
