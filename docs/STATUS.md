@@ -14,8 +14,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Next (resume here):** nothing in flight. M2.2e9: a cited normal-force and drag method for tube
   fins (hpr-aero refuses them, `model.rs`); find the primary source first. Then drop
-  `NO_TUBE_FIN_AERO` in `xtask/src/ork_flights.rs` so `Tube fin rocket` flies; e4's bar on it.
-  OR's tube-fin roll inertia is unphysical (ADR-098): don't chase it. Library runs need `drag_curves.py` (ADR-097).
+  `NotFlown::NoAerodynamicModel`'s screen (`hpr-io` `ork/mod.rs`) so `Tube fin rocket` flies, e4's
+  bar on it. OR's tube-fin roll and pitch inertias are departures (ADR-098): don't chase them. Library runs need `drag_curves.py` (ADR-097).
   Probes (ADR-093, ADR-094): `pod_probes.py`, `rod_probes.py`, then `flights.py` (its docstring's
   command) and `motor_database.py ... refs validation/fixtures/ork/{pod,rod}-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
@@ -58,7 +58,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-28: M2.2e8 A tube fin set's `auto` radius (ADR-098): 14 OR probes, radius bit for bit; e8 split, e9 aero.
+- 2026-09-28: M2.2e8 A tube fin set's `auto` radius (ADR-098): 19 OR probes, radius to 1e-15; e8 split, e9 aero.
 - 2026-09-28: M2.2e7 Fillets, a bore's auto radius (ADR-096, 097): 21 OR probes to 1e-15; `C01`, `C06` fly; 18 designs.
 - 2026-09-27: M2.2e5, e6 Tilted rod, old override flag (ADR-094, 095): 15 OR probes; `C12`, `C05` fly; `C10` not (#184).
 - 2026-09-27: M1.13 Pods (a to c2, ADR-089 to ADR-093): mass and placement to 1e-15; aero to 1e-11 by hand; 6 OR probes within 0.81%.
@@ -82,7 +82,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-098 (M2.2e8): tube fins close the ring; 8 tubes at most; OR's roll inertia a departure; e8 split.
+- ADR-098 (M2.2e8): tube fins close the ring; 8 at most; OR's roll, pitch departures; e8 split.
 - ADR-096, 097 (M2.2e7): fillets a section prism; a nose's `auto` bore; drag causes on OR's drag.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; tumble

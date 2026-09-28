@@ -521,8 +521,9 @@ It has eight steps.
      parts around it, and the value stored for it (0 here) is ignored. The nose's base radius and
      its shoulder's radius follow the airframe
      ([Automatic dimensions](physics/design.md#automatic-dimensions)). Other parts can take theirs
-     the same way: a tube fin set's `outer_radius_m`, for one, can be automatic, and then its tubes
-     are just wide enough to touch the body and each other, closing the ring.
+     the same way: a tube fin set's `outer_radius_m`, for one, can be automatic. Then three tubes or
+     more are just wide enough to touch the body and each other, closing the ring, and one or two
+     take the body's radius.
    - **Motor mount.** Setting `motor_mount` makes a body tube or inner tube a mount, and its
      `overhang_m` is how far the nozzle sits aft of the mount's end.
    - <a id="packing"></a>**Packing.** A

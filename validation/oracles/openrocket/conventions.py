@@ -656,13 +656,22 @@ def tube_fin_set(count, radius="auto", thickness="0.001", offset=""):
 
 
 # M2.2e8: a tube fin set whose radius OpenRocket works out from the body it rings (#133). The
-# tube is `tube()`, 50 mm in radius; the counts run past the ones a ring can close, 1 and 2.
+# tube is `tube()`, 50 mm in radius, and a 20 mm one; the counts run past the ones a ring can close,
+# 1 and 2, and past 8.
 TUBE_FIN_PROBES = {
     **{
         f"a tube and {count} tube fins of automatic radius": [tube(children=tube_fin_set(count))]
         for count in [1, 2, 3, 4, 5, 6, 8, 9, 12, 20]
     },
     "a tube and 6 tube fins of a stated radius": [tube(children=tube_fin_set(6, radius="0.02"))],
+    "a tube and 12 tube fins of a stated radius": [tube(children=tube_fin_set(12, radius="0.02"))],
+    "a tube and 100 tube fins of automatic radius": [tube(children=tube_fin_set(100))],
+    **{
+        f"a 20 mm tube and {count} tube fins of automatic radius": [
+            tube(children=tube_fin_set(count)).replace("<radius>0.05</radius>", "<radius>0.02</radius>", 1)
+        ]
+        for count in [1, 2, 5]
+    },
     "a tube and 6 tube fins of automatic radius and a wall thicker than it": [
         tube(children=tube_fin_set(6, thickness="0.1"))
     ],
@@ -677,8 +686,9 @@ TUBE_FIN_PROBES = {
 
 
 def tube_fins(component, found):
-    """Each tube fin set's size and places as OpenRocket resolved them, by id, through its public
-    getters: the radius it works out when the file says `auto`, and where each tube's axis sits."""
+    """Each tube fin set as OpenRocket resolved it, by id, through its public getters: the radius it
+    works out when the file says `auto`, the wall, the count, the set's centre and unit inertias,
+    and its instance offsets, which are points on the body's surface, not the tubes' axes."""
     if str(component.getClass().getSimpleName()) == "TubeFinSet":
         found[str(component.getID())] = {
             "automatic": bool(component.isOuterRadiusAutomatic()),
@@ -687,7 +697,7 @@ def tube_fins(component, found):
             "thickness_m": float(component.getThickness()),
             "body_radius_m": float(component.getBodyRadius()),
             "count": int(component.getFinCount()),
-            "axes_yz_m": [[float(c.y), float(c.z)] for c in component.getInstanceOffsets()],
+            "instance_offsets_yz_m": [[float(c.y), float(c.z)] for c in component.getInstanceOffsets()],
             "component_mass_kg": float(component.getComponentMass()),
             "component_cg_xyz_m": [float(v) for v in (lambda c: (c.x, c.y, c.z))(component.getComponentCG())],
             "rotational_unit_inertia_m2": float(component.getRotationalUnitInertia()),

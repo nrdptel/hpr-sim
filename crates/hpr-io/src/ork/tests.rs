@@ -2758,6 +2758,37 @@ fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
     assert!(design.rocket.configurations.is_empty());
 }
 
+/// Nor is one whose airframe holds tube fins: they are read and weighed (ADR-098), but the
+/// aerodynamics refuses them until it has a cited method (M2.2e9). The same design without them
+/// flies.
+#[test]
+fn a_configuration_with_tube_fins_is_weighed_but_not_flown() {
+    let with = |inside: &str| {
+        motor_design(
+            r#"<motorconfiguration configid="a" default="true"/>"#,
+            "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+             <manufacturer>Estes</manufacturer><designation>F15</designation>\
+             <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+            inside,
+        )
+    };
+    let tubes = "<tubefinset><name>Tubes</name><id>tubes</id>\
+                 <axialoffset method=\"bottom\">0.0</axialoffset><instancecount>6</instancecount>\
+                 <length>0.1</length><radius>auto</radius><thickness>0.001</thickness>\
+                 <material type=\"bulk\" density=\"680.0\">Cardboard</material></tubefinset>";
+    let design = read_design(with(tubes).as_bytes());
+    let a = &design.motors.configurations[0];
+    assert_eq!(
+        a.left_out.as_ref().map(|l| l.why),
+        Some(NotFlown::NoAerodynamicModel)
+    );
+    assert!(design.rocket.configurations.is_empty());
+    assert!(design.rocket.layout().is_ok());
+    let design = read_design(with("").as_bytes());
+    assert!(design.motors.configurations[0].left_out.is_none());
+    assert_eq!(design.rocket.configurations.len(), 1);
+}
+
 /// Nor is one whose airframe rests on an assumption: a nose shape hpr does not know is read as a
 /// cone, with a warning. A shoulder of no wall is no assumption: OpenRocket gives it no mass, and
 /// so does hpr (ADR-061), so that design flies, as does one with a shoulder wall stated.

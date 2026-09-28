@@ -3,7 +3,7 @@
  "generated": "2026-09-28",
  "inputs_sha256": {
   "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
-  "conventions.py": "fa58c274d5b03e0b0a3030e648570bfdf0e2875ce6bd031991f885cf75bca62c",
+  "conventions.py": "2c25f486cc343e9b34c292fb29a115f24e4bce5c8c5af4806e633c59be436331",
   "mass.py": "ce8b915d342ff631d3ad3ec74244d2c2faf55321f710a4b036eda5d7671cabe5"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
@@ -11,6 +11,341 @@
  "jpype": "1.7.1",
  "openrocket": "24.12",
  "probes": {
+  "a 20 mm tube and 1 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.02</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>1</instancecount><fincount>1</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.11938052083641207,
+     "each_mass_kg": 0.11938052083641207,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.11938052083641207,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.11938052083641207
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.012252211349000203,
+     "each_mass_kg": 0.012252211349000203,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.012252211349000203,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.012252211349000203
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.26861575178997615,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.13163273218541227,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.13163273218541227,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.13163273218541227,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.26861575178997615,
+    "ixx": 6.565658011666554e-05,
+    "iyy": 0.002970159562875265,
+    "izz": 0.002970159562875265,
+    "longitudinal_inertia": 0.002970159562875265,
+    "mass_kg": 0.13163273218541227,
+    "rotational_inertia": 6.565658011666554e-05
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "body_radius_m": 0.02,
+     "component_cg_xyz_m": [
+      0.05,
+      0.034641016151377546,
+      0.019999999999999997
+     ],
+     "component_mass_kg": 0.012252211349000203,
+     "count": 1,
+     "inner_radius_m": 0.019,
+     "instance_offsets_yz_m": [
+      [
+       0.017320508075688773,
+       0.009999999999999998
+      ]
+     ],
+     "longitudinal_unit_inertia_m2": 0.0010235833333333336,
+     "outer_radius_m": 0.02,
+     "rotational_unit_inertia_m2": 0.0003805,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a 20 mm tube and 2 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.02</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>2</instancecount><fincount>2</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.11938052083641207,
+     "each_mass_kg": 0.11938052083641207,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.11938052083641207,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.11938052083641207
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.024504422698000405,
+     "each_mass_kg": 0.024504422698000405,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.024504422698000405,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.024504422698000405
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.28406113537117905,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.14388494353441247,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.14388494353441247,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.14388494353441247,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.28406113537117905,
+    "ixx": 0.001061644060294376,
+    "iyy": 0.0033721139118747445,
+    "izz": 0.0033721139118747445,
+    "longitudinal_inertia": 0.0033721139118747445,
+    "mass_kg": 0.14388494353441247,
+    "rotational_inertia": 0.001061644060294376
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "body_radius_m": 0.02,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.024504422698000405,
+     "count": 2,
+     "inner_radius_m": 0.019,
+     "instance_offsets_yz_m": [
+      [
+       0.017320508075688773,
+       0.009999999999999998
+      ],
+      [
+       -0.017320508075688777,
+       -0.009999999999999995
+      ]
+     ],
+     "longitudinal_unit_inertia_m2": 0.002047166666666667,
+     "outer_radius_m": 0.02,
+     "rotational_unit_inertia_m2": 0.041561,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a 20 mm tube and 5 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.02</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>5</instancecount><fincount>5</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.11938052083641207,
+     "each_mass_kg": 0.11938052083641207,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.11938052083641207,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.11938052083641207
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.08802239948970401,
+     "each_mass_kg": 0.08802239948970401,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.08802239948970401,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.08802239948970401
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.33488057868355897,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.20740292032611607,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.20740292032611607,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.20740292032611607,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.33488057868355897,
+    "ixx": 0.009549009878481715,
+    "iyy": 0.005074885331413795,
+    "izz": 0.005074885331413795,
+    "longitudinal_inertia": 0.005074885331413795,
+    "mass_kg": 0.20740292032611607,
+    "rotational_inertia": 0.009549009878481715
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "body_radius_m": 0.02,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.08802239948970401,
+     "count": 5,
+     "inner_radius_m": 0.027518399963191827,
+     "instance_offsets_yz_m": [
+      [
+       0.017320508075688773,
+       0.009999999999999998
+      ],
+      [
+       -0.004158233816355182,
+       0.019562952014676113
+      ],
+      [
+       -0.019890437907365468,
+       0.0020905692653530746
+      ],
+      [
+       -0.008134732861516001,
+       -0.01827090915285202
+      ],
+      [
+       0.014862896509547885,
+       -0.013382612127177163
+      ]
+     ],
+     "longitudinal_unit_inertia_m2": 0.006129868507910138,
+     "outer_radius_m": 0.028518399963191828,
+     "rotational_unit_inertia_m2": 0.10799289936478984,
+     "thickness_m": 0.001
+    }
+   }
+  },
   "a centre of gravity override on a nose with a shoulder": {
    "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><aftshoulderradius>0.048</aftshoulderradius><aftshoulderlength>0.1</aftshoulderlength><aftshoulderthickness>0.002</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped><overridecg>0.25</overridecg><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone></subcomponents></stage></subcomponents></rocket></openrocket>\n",
    "materials": {
@@ -3454,12 +3789,6 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
-      [
-       0.04330127018922194,
-       0.024999999999999998
-      ]
-     ],
      "body_radius_m": 0.05,
      "component_cg_xyz_m": [
       0.05,
@@ -3469,9 +3798,281 @@
      "component_mass_kg": 0.031101767270538993,
      "count": 1,
      "inner_radius_m": 0.049,
+     "instance_offsets_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ]
+     ],
      "longitudinal_unit_inertia_m2": 0.0020585833333333337,
      "outer_radius_m": 0.05,
      "rotational_unit_inertia_m2": 0.0024505000000000004,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 100 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>100</instancecount><fincount>100</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.15328820898000356,
+     "each_mass_kg": 0.15328820898000356,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.15328820898000356,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.15328820898000356
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3164787853811604,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.46116428903180373,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3164787853811604,
+    "ixx": 0.06437371361648471,
+    "iyy": 0.012469589787753947,
+    "izz": 0.012469589787753947,
+    "longitudinal_inertia": 0.012469589787753947,
+    "mass_kg": 0.46116428903180373,
+    "rotational_inertia": 0.06437371361648471
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "instance_offsets_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       0.012940952255126049,
+       0.04829629131445341
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.04829629131445341,
+       0.01294095225512605
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -0.012940952255126032,
+       -0.04829629131445342
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ],
+      [
+       0.04829629131445342,
+       -0.012940952255126035
+      ]
+     ],
+     "longitudinal_unit_inertia_m2": 0.010387622473878354,
+     "outer_radius_m": 0.03099572022108876,
+     "rotational_unit_inertia_m2": 0.4151277889906155,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 12 tube fins of a stated radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>12</instancecount><fincount>12</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>0.02</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.09801769079200162,
+     "each_mass_kg": 0.09801769079200162,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.09801769079200162,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.09801769079200162
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.298297213622291,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4058937708438018,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4058937708438018,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4058937708438018,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.298297213622291,
+    "ixx": 0.04055861712239033,
+    "iyy": 0.010560389732044559,
+    "izz": 0.010560389732044559,
+    "longitudinal_inertia": 0.010560389732044559,
+    "mass_kg": 0.4058937708438018,
+    "rotational_inertia": 0.04055861712239033
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": false,
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.09801769079200162,
+     "count": 8,
+     "inner_radius_m": 0.019,
+     "instance_offsets_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       0.012940952255126049,
+       0.04829629131445341
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.04829629131445341,
+       0.01294095225512605
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -0.012940952255126032,
+       -0.04829629131445342
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ],
+      [
+       0.04829629131445342,
+       -0.012940952255126035
+      ]
+     ],
+     "longitudinal_unit_inertia_m2": 0.008188666666666669,
+     "outer_radius_m": 0.02,
+     "rotational_unit_inertia_m2": 0.40624400000000005,
      "thickness_m": 0.001
     }
    }
@@ -3559,7 +4160,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -3593,15 +4203,6 @@
        -0.012940952255126035
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.15328820898000356,
-     "count": 8,
-     "inner_radius_m": 0.02999572022108876,
      "longitudinal_unit_inertia_m2": 0.010387622473878354,
      "outer_radius_m": 0.03099572022108876,
      "rotational_unit_inertia_m2": 0.4151277889906155,
@@ -3692,16 +4293,6 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
-      [
-       0.04330127018922194,
-       0.024999999999999998
-      ],
-      [
-       -0.043301270189221946,
-       -0.024999999999999988
-      ]
-     ],
      "body_radius_m": 0.05,
      "component_cg_xyz_m": [
       0.05,
@@ -3711,6 +4302,16 @@
      "component_mass_kg": 0.062203534541077986,
      "count": 2,
      "inner_radius_m": 0.049,
+     "instance_offsets_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ]
+     ],
      "longitudinal_unit_inertia_m2": 0.004117166666666667,
      "outer_radius_m": 0.05,
      "rotational_unit_inertia_m2": 0.10990100000000001,
@@ -3801,7 +4402,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -3835,15 +4445,6 @@
        -0.012940952255126035
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.15328820898000356,
-     "count": 8,
-     "inner_radius_m": 0.02999572022108876,
      "longitudinal_unit_inertia_m2": 0.010387622473878354,
      "outer_radius_m": 0.03099572022108876,
      "rotational_unit_inertia_m2": 0.4151277889906155,
@@ -3934,7 +4535,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.608284746589162,
+     "count": 3,
+     "inner_radius_m": 0.3222050807568876,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -3948,15 +4558,6 @@
        -0.05
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.608284746589162,
-     "count": 3,
-     "inner_radius_m": 0.3222050807568876,
      "longitudinal_unit_inertia_m2": 0.15870822871946402,
      "outer_radius_m": 0.3232050807568876,
      "rotational_unit_inertia_m2": 0.7758010301201267,
@@ -4047,7 +4648,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.3021223866084909,
+     "count": 4,
+     "inner_radius_m": 0.11971067811865473,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4065,15 +4675,6 @@
        -0.04330127018922193
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.3021223866084909,
-     "count": 4,
-     "inner_radius_m": 0.11971067811865473,
      "longitudinal_unit_inertia_m2": 0.03223504760082696,
      "outer_radius_m": 0.12071067811865473,
      "rotational_unit_inertia_m2": 0.3160876997824491,
@@ -4164,7 +4765,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.22241219321445366,
+     "count": 5,
+     "inner_radius_m": 0.07029599990797956,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4186,15 +4796,6 @@
        -0.033456530317942906
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.22241219321445366,
-     "count": 5,
-     "inner_radius_m": 0.07029599990797956,
      "longitudinal_unit_inertia_m2": 0.016697475674093278,
      "outer_radius_m": 0.07129599990797957,
      "rotational_unit_inertia_m2": 0.3004772160292463,
@@ -4285,7 +4886,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": false,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.07351326809400122,
+     "count": 6,
+     "inner_radius_m": 0.019,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4311,15 +4921,6 @@
        -0.025000000000000022
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.07351326809400122,
-     "count": 6,
-     "inner_radius_m": 0.019,
      "longitudinal_unit_inertia_m2": 0.006141500000000002,
      "outer_radius_m": 0.02,
      "rotational_unit_inertia_m2": 0.30468300000000004,
@@ -4410,7 +5011,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": false,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.07351326809400122,
+     "count": 6,
+     "inner_radius_m": 0.019,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4436,15 +5046,6 @@
        -0.025000000000000022
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.07351326809400122,
-     "count": 6,
-     "inner_radius_m": 0.019,
      "longitudinal_unit_inertia_m2": 0.006141500000000002,
      "outer_radius_m": 0.02,
      "rotational_unit_inertia_m2": 0.30468300000000004,
@@ -4535,7 +5136,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.18661060362323395,
+     "count": 6,
+     "inner_radius_m": 0.048999999999999995,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4561,15 +5171,6 @@
        -0.025000000000000022
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.18661060362323395,
-     "count": 6,
-     "inner_radius_m": 0.048999999999999995,
      "longitudinal_unit_inertia_m2": 0.012351499999999998,
      "outer_radius_m": 0.049999999999999996,
      "rotational_unit_inertia_m2": 0.32970299999999997,
@@ -4660,7 +5261,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 4.71238898038469,
+     "count": 6,
+     "inner_radius_m": 0.0,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4686,15 +5296,6 @@
        -0.025000000000000022
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 4.71238898038469,
-     "count": 6,
-     "inner_radius_m": 0.0,
      "longitudinal_unit_inertia_m2": 0.00875,
      "outer_radius_m": 0.049999999999999996,
      "rotational_unit_inertia_m2": 0.3225,
@@ -4785,7 +5386,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4819,15 +5429,6 @@
        -0.012940952255126035
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.15328820898000356,
-     "count": 8,
-     "inner_radius_m": 0.02999572022108876,
      "longitudinal_unit_inertia_m2": 0.010387622473878354,
      "outer_radius_m": 0.03099572022108876,
      "rotational_unit_inertia_m2": 0.4151277889906155,
@@ -4918,7 +5519,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -4952,15 +5562,6 @@
        -0.012940952255126035
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.15328820898000356,
-     "count": 8,
-     "inner_radius_m": 0.02999572022108876,
      "longitudinal_unit_inertia_m2": 0.010387622473878354,
      "outer_radius_m": 0.03099572022108876,
      "rotational_unit_inertia_m2": 0.4151277889906155,
@@ -9207,7 +9808,16 @@
    "tube_fins": {
     "00000000-0000-4000-8000-000000000030": {
      "automatic": true,
-     "axes_yz_m": [
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.3021223866084909,
+     "count": 4,
+     "inner_radius_m": 0.11971067811865473,
+     "instance_offsets_yz_m": [
       [
        0.04330127018922194,
        0.024999999999999998
@@ -9225,15 +9835,6 @@
        -0.04330127018922193
       ]
      ],
-     "body_radius_m": 0.05,
-     "component_cg_xyz_m": [
-      0.05,
-      0.0,
-      0.0
-     ],
-     "component_mass_kg": 0.3021223866084909,
-     "count": 4,
-     "inner_radius_m": 0.11971067811865473,
      "longitudinal_unit_inertia_m2": 0.03223504760082696,
      "outer_radius_m": 0.12071067811865473,
      "rotational_unit_inertia_m2": 0.3160876997824491,

@@ -580,16 +580,18 @@
       moved to e6 (ADR-094): 17 flights, 4 of 12 private designs, 9 in all.
     - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
       *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
-    - [x] **M2.2e5 A tilted rod** (#173). Met (ADR-094), bars kept (a rod as OR records it, probes
-      within 5%, bearing 0.1°): bearings within 0.03°, loss within 0.27 points; `C12` 0.53%.
-    - [x] **M2.2e6 The old override flag** (#174). Met (ADR-095), bars kept: 11 probes, flags part by
-      part; `C05` flies, within 0.26%. **Not met for `C10`**: a second blocker, #184 (ADR-095).
+    - [x] **M2.2e5 A tilted rod** (#173). Met (ADR-094), bars kept (a rod as OR records it, a test
+      on OR's landings, probes within 5%, bearing 0.1°, the five spreads, e4's bar): bearings within
+      0.03°, loss within 0.27 points; `C12` 0.53%.
+    - [x] **M2.2e6 The old override flag** (#174). Met (ADR-095), bars kept (probes, a test, the five
+      spreads, e4's bar): 11 probes; `C05` flies, 0.26%. **Not met for `C10`**: #184, in e10's pool.
     - [x] **M2.2e7 Fin fillets and an inner tube's radius** (#174). Met (ADR-096), bars kept: 21
-      probes to 1e-15; `C01`, `C06` fly: 18 designs. `C06/1` +13.60%, +1.11% on OR's drag (ADR-097).
+      probes to 1e-15; `C01`, `C06` fly: 18 designs. `C06/1` +13.60%, +1.11% on OR's drag (ADR-097);
+      supersonic pressure drag twice OR's (#222).
     - [x] **M2.2e8 Tube fins OpenRocket sizes** (#133; split from the old e8, whose flight is now
       e9 and whose bar is e10; ADR-098). *Done when:* an `auto` tube-fin radius resolves as OR 24.12
-      does, on probes, with a test. *Result:* 14 probes, radius bit for bit, masses to 1e-14; the
-      example's mass within 5e-6; roll inertia a departure (OR's past any ring's bound).
+      does, on probes, with a test. *Result:* 19 probes, radius within 1e-15; the example's mass
+      within 5e-6; roll (past any ring's bound) and pitch (no spread term) OR departures.
     - [ ] **M2.2e9 Tube fin aerodynamics.** *Done when:* tube fins have a cited normal-force and drag
       method, pinned by tests; the tube fin example flies, e4's bar on it.
     - [ ] **M2.2e10 Twenty designs.** *Done when:* anonymised ids beside the public report make at

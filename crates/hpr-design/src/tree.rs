@@ -1557,7 +1557,8 @@ fn finish(
                     tube.thickness_m = tube.thickness_m.min(tube.outer_radius_m);
                 }
                 // Tubes that close the ring around the body tube they sit on, a wall thicker than
-                // that radius cut to it, as OpenRocket 24.12 reads both (ADR-098).
+                // that radius cut to it, as OpenRocket 24.12 reads both (ADR-098). An external part
+                // on anything but a body tube is refused before this, so the error is a backstop.
                 Part::TubeFinSet(tubes) => {
                     let body_radius_m = p_tube_radius.ok_or_else(|| {
                         tree(

@@ -58,6 +58,9 @@ is no command-line tool yet.
   ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
 - **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone,
   is left out. Each one is named in a warning rather than guessed at ([what is left out, and why](#what-is-left-out-and-why)).
+- **Tube fins are read and weighed, but a design holding them doesn't fly yet.** hpr has no
+  aerodynamic model for them until [M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin
+  aerodynamics ([Tube fins sized from the body](#tube-fins-sized-from-the-body)).
 - **Every one of the 72 designs in the current reference survey lays out**, meaning every part gets a
   position and a radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
   default of 25 mm, with a warning
@@ -265,7 +268,7 @@ as setting all three, in files of schema 1.4, 1.8 and 1.10 alike. Where a part w
 the one written later wins, quantity by quantity: `<overridesubcomponents>true</overridesubcomponents>`
 then `<overridesubcomponentsmass>false</overridesubcomponentsmass>` covers the parts inside for the
 centre of gravity and the drag but not the mass. No element in the corpus carries both forms. Eleven
-probe designs measured this ([M2.2e6](../decisions-and-roadmap.md#m2-2e6), the old override flag),
+[probe designs](../glossary.md#probe-design) measured this ([M2.2e6](../decisions-and-roadmap.md#m2-2e6), the old override flag),
 and the tests in `hpr_validate::openrocket` hold hpr to them. hpr no longer warns about the flag.
 Not measured: a value other than `true` or `false`, which is dropped with a warning (so the design
 is not flown), and a flag tag written twice on one part, which is read at its first copy, also with
@@ -824,7 +827,8 @@ OpenRocket, a tube fin set's radius can be written `auto`. OpenRocket then sizes
 the body tube they sit on. Since [M2.2e8](../decisions-and-roadmap.md#m2-2e8) hpr works that
 radius out as OpenRocket 24.12 does ([ADR-098][adr-098], the decision on a tube fin set's
 automatic radius). Before, hpr left such a set out with a `Skipped` warning
-([#133][issue-133]).
+([#133][issue-133]). hpr reads and weighs tube fins now, but a design that holds them does not
+fly yet ([below](#what-tube-fins-still-lack)).
 
 **The rule.** With three tubes or more, each tube touches the body and its two neighbours, so the
 ring closes:
@@ -838,14 +842,15 @@ ring closes:
 
 One or two tubes can't close a ring. For those, OpenRocket gives the tubes the body's radius, and
 so does hpr. The rule is
-[`TubeFinSet::closing_radius_m`](../api/hpr_design/fins/struct.TubeFinSet.html#method.closing_radius_m),
-and the layout applies it through `AutoDimension::OuterRadius`, as for any other automatic
-dimension ([Automatic dimensions](../physics/design.md#automatic-dimensions)).
+[`TubeFinSet::closing_radius_m`](../api/hpr_design/fins/struct.TubeFinSet.html#method.closing_radius_m).
+hpr applies it when it lays the design out, the step that works out every automatic dimension
+([Automatic dimensions](../physics/design.md#automatic-dimensions)).
 
 For example, take four tubes on a body of 50 mm radius. `sin(π/4)` is 0.7071, so
 `r = 50 × 0.7071 / 0.2929` = 120.7 mm. The axes then sit 170.7 mm from the airframe's axis, and
 neighbours are `2 × 170.7 × 0.7071` = 241.4 mm apart, which is `2r`: they touch. Fewer tubes
-must be wider to close the ring:
+must be wider to close the ring. Three to five tubes come out wider than the body, six exactly as
+wide, and more than six narrower:
 
 | tubes on a 50 mm body | radius |
 | --- | --- |
@@ -860,41 +865,58 @@ Three more things are read as OpenRocket reads them:
 
 - **A wall thicker than the radius** is cut to the radius, so the tubes are solid rods. OpenRocket
   weighs them that way, as it does an inner tube's ([above](#inside-a-nose-cone-or-a-transition)).
-- **More than 8 tubes are read as 8,** with a `Dropped` warning. OpenRocket 24.12 reads 9, 12 and
-  20 tubes as 8. That is OpenRocket's reading of the file, not a limit of the physics: hpr's own
-  design files take any count.
+- **More than 8 tubes are read as 8,** with a `Dropped` warning, whether the radius is `auto` or
+  stated. OpenRocket 24.12 reads 9, 12, 20 and 100 tubes as 8. hpr caps the count before it
+  checks its own limit of 64 parts in a row, so 100 tubes read as 8 rather than being refused.
+  That cap is OpenRocket's reading of the file, not a limit of the physics: hpr's own design files
+  take any count.
 - **A radial offset** (tubes standing off the body) changes none of OpenRocket's numbers. hpr
   reads such a set sitting on the body, with a `Dropped` warning, as it did before.
 
-**Measured.** Fourteen probe designs in `validation/oracles/openrocket/conventions.py` ask
-OpenRocket 24.12 these questions, each a 50 mm tube carrying one tube fin set: `auto` sets of 1, 2,
-3, 4, 5, 6, 8, 9, 12 and 20 tubes; six tubes of a stated 20 mm radius, with and without a 10 mm
-radial offset; six `auto` tubes with a wall thicker than their radius; and four `auto` tubes on a
-body tube whose own radius is `auto`. OpenRocket's answers are in
-`validation/fixtures/ork/openrocket-conventions.json`. The test
+**Measured.** Nineteen [probe designs](../glossary.md#probe-design), small designs made only to ask
+OpenRocket one question each, are in `validation/oracles/openrocket/conventions.py`. Each carries
+one tube fin set:
+
+- on a 50 mm tube: `auto` sets of 1, 2, 3, 4, 5, 6, 8, 9, 12, 20 and 100 tubes; six tubes of a
+  stated 20 mm radius, with and without a 10 mm radial offset; twelve tubes of a stated radius;
+  six `auto` tubes with a wall thicker than their radius; and four `auto` tubes on a tube whose own
+  radius is `auto`, taken from the nose cone ahead of it;
+- on a 20 mm tube: 1, 2 and 5 `auto` tubes. One and two take the body's 20 mm; five take the
+  closed form's 28.5 mm.
+
+OpenRocket's answers are in `validation/fixtures/ork/openrocket-conventions.json`. The test
 `a_tube_fin_sets_automatic_radius_reads_as_openrocket_does` in `hpr-validate` holds hpr to them:
 
-| quantity | hpr against OpenRocket, on all 14 |
+| quantity | hpr against OpenRocket, on all 19 |
 | --- | --- |
-| the tubes' radius and wall | within 1e-15, relative; the radius equals the rule bit for bit |
+| the tubes' radius and wall | within 1e-15, relative, in the test (equal when the oracle script compares them in Python) |
 | the number of tubes | the same |
-| each part's mass | within 1e-14, relative; the one nose cone within 5e-5, the gap nose walls already had ([above](#inside-a-nose-cone-or-a-transition)) |
-| each part's centre of mass, along the airframe | within 1e-15 m; the nose cone within 5e-6 m |
+| each part's mass | within 1e-14, relative; the one nose cone, on the probe whose tube takes its radius from it, within 5e-5, the gap nose walls already had ([above](#inside-a-nose-cone-or-a-transition)) |
+| each part's centre of mass, along the airframe | within 1e-15 m; that nose cone within 5e-6 m |
 
 OpenRocket's *Tube fin rocket* example is the only design in the reference library with tube
 fins, in two copies. It now reads with its tube fins, and its mass is within 5.0e-6 of OpenRocket's
 and its centre of mass within 2.4e-6 of its length ([Mass properties](../physics/mass.md#tube-fins)).
 
-**What differs: the roll inertia.** For two tubes or more, OpenRocket's roll inertia for the set
-is larger than any mass inside the ring could have. hpr keeps its own, a departure: a difference
-kept on purpose, measured and pinned by the same test
-([Mass properties](../physics/mass.md#tube-fins) has the numbers). For a single tube the two
-agree.
+**What differs: the roll and pitch inertia.** hpr keeps its own figure for both, each a
+departure: a difference kept on purpose, measured and pinned by the same test.
 
-**What is not done.** hpr's aerodynamics has no model for tube fins yet, so a design holding them
-reads and weighs, but does not fly. The *Tube fin rocket* is held back from
-[hpr's flights](#hprs-flights-against-openrockets) for that reason alone.
-[M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, is the next step.
+- **Roll** (spin about the airframe's axis). For two tubes or more, OpenRocket's roll inertia for
+  the set is larger than any mass inside the ring could have. For a single tube the two agree.
+- **Pitch** (turning end over end). OpenRocket's figure has no term for how far the tubes sit from
+  the airframe's axis: per kilogram, it is the number of tubes times one tube's own figure about
+  its own middle. On the probes it is 1.3 to 2.6 times hpr's. Some mass inside the ring could have
+  that much, but not tubes where both programs put them.
+
+[Mass properties](../physics/mass.md#tube-fins) has the numbers. On the *Tube fin rocket*, hpr's
+roll inertia is 98.7% below OpenRocket's and its pitch inertia 1.98% below, almost all of it
+OpenRocket's pitch rule.
+
+<a id="what-tube-fins-still-lack"></a>**What is not done.** hpr's aerodynamics has no model for
+tube fins yet, so a design holding them reads and weighs, but does not fly. The reader leaves every
+configuration of such a design out, for "tube fins, which hpr has no aerodynamic model for yet":
+the *Tube fin rocket*'s 2. [M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics,
+is the next step.
 
 ### The surface finish
 
@@ -1649,8 +1671,8 @@ And of **configurations**, over 78 motor mounts in 63 designs (none named only b
 | configurations | count |
 |---|---|
 | declared | 170 |
-| the rocket flies | 108, in 29 designs, and all 108 assemble. The reader holds none of them back, but the 2 of OpenRocket's *Tube fin rocket* wait on tube fin aerodynamics ([above](#tube-fins-sized-from-the-body)) |
-| left out, by the first reason the reader finds | 24 a motor with no curve, 19 stages hpr can't separate as written, 15 an airframe not read exactly as written, 2 a motor in a part not read, 2 a motor hpr can't light as written |
+| the rocket flies | 106, in 27 designs, and all 106 assemble |
+| left out, by the first reason the reader finds | 24 a motor with no curve, 19 stages hpr can't separate as written, 15 an airframe not read exactly as written, 2 tube fins, which hpr has no aerodynamic model for yet ([above](#what-tube-fins-still-lack)), 2 a motor in a part not read, 2 a motor hpr can't light as written |
 
 On 2026-09-25, before pods, the old override flag, fillets, the bore inside a nose cone and tube
 fins were read, 93 flew in 23 designs, and 30 were held back as an airframe not read exactly as
@@ -1662,9 +1684,10 @@ curves can still be held back for another reason, so these counts differ from th
 
 | what became of the 164 | configurations |
 |---|---|
-| fly | 104 |
+| fly | 102 |
 | held back for another reason: stages hpr can't separate as written | 19 |
 | held back for another reason: an airframe not read exactly as written | 15 |
+| held back for another reason: tube fins, which hpr has no aerodynamic model for yet | 2 |
 | held back for another reason: a motor hpr can't light as written | 2 |
 | still no curve: the motor records no digest, and the bundled catalog lacks it | 20 |
 | still no curve: a hybrid | 3 |

@@ -201,9 +201,9 @@ fn one(
         _ => false,
     };
     // A tube fin set's automatic radius comes from the body it rings, not a bore; it sits on a body
-    // tube, or was left out above.
+    // tube, whose `bore_along` is true, or was left out above.
     let needs_a_bore = auto.iter().any(|dimension| match dimension {
-        AutoDimension::OuterRadius => !part.is_external() && !bore_along,
+        AutoDimension::OuterRadius => !bore_along,
         AutoDimension::PackedRadius => !matches!(parent, Part::BodyTube(_) | Part::InnerTube(_)),
         _ => false,
     });
@@ -965,8 +965,8 @@ fn tab(values: &mut Values<'_>, root_chord_m: f64) -> Option<FinTab> {
     })
 }
 
-/// OpenRocket 24.12 reads a tube fin set of more than this many tubes as this many: 9, 12 and 20
-/// all read as 8 on its probes (ADR-098).
+/// OpenRocket 24.12 reads a tube fin set of more than this many tubes as this many, whether its
+/// radius is stated or `auto`: 9, 12, 20 and 100 all read as 8 on its probes (ADR-098).
 const MOST_TUBE_FINS: u32 = 8;
 
 /// A ring of tubes around the body. An `auto` radius is the one at which the tubes close the ring
@@ -975,17 +975,28 @@ fn tube_fins(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<P
     let (stated_m, outer_radius_m) =
         stated_radius(values, &["radius"], AutoDimension::OuterRadius, auto);
     let thickness_m = tube_wall(values, stated_m)?;
-    let mut count = instances(values, "tube fin set")?;
-    if count > MOST_TUBE_FINS {
-        values.warn_at(
-            WarningKind::Dropped,
-            format!(
-                "a tube fin set of {count} tubes; OpenRocket 24.12 reads at most \
-                 {MOST_TUBE_FINS}, so it was read as {MOST_TUBE_FINS}"
-            ),
-        );
-        count = MOST_TUBE_FINS;
-    }
+    // The count is read once, and capped before `MOST_INSTANCES` could leave the set out, so that
+    // a count past it reads as 8 too, as OpenRocket reads 100 on its probe.
+    let count = match values.count(&INSTANCE_COUNT).unwrap_or(1) {
+        0 => {
+            values.warn_at(
+                WarningKind::Skipped,
+                "a tube fin set of none; it was left out",
+            );
+            return None;
+        }
+        written if written > MOST_TUBE_FINS => {
+            values.warn_at(
+                WarningKind::Dropped,
+                format!(
+                    "a tube fin set of {written} tubes; OpenRocket 24.12 reads at most \
+                     {MOST_TUBE_FINS}, so it was read as {MOST_TUBE_FINS}"
+                ),
+            );
+            MOST_TUBE_FINS
+        }
+        written => written,
+    };
     Some(Part::TubeFinSet(TubeFinSet {
         count,
         length_m: values.number(&["length"]).unwrap_or_default(),

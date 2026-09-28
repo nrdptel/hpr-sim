@@ -22,9 +22,11 @@
   hpr does not, and hpr's figure is the exact one for the fin as drawn
   ([below](#fins-rail-buttons-and-roll-inertia)); on the four files with a cluster (two designs by content), OpenRocket
   also stacks the tubes on the cluster's axis ([below](#clusters-and-fillets)). A ring of tube fins
-  is a departure: OpenRocket's roll inertia for it is more than any mass inside the ring could have,
-  and hpr keeps its own ([below](#tube-fins)). The pitch inertia
-  is within 1% on 56, and the rest have no named cause yet. Not compared with weighed parts or a real flight
+  departs twice: OpenRocket's roll inertia for it is more than any mass inside the ring could have,
+  and its pitch inertia leaves out how far the tubes sit from the axis. hpr keeps its own for both
+  ([below](#tube-fins)). The pitch inertia
+  is within 1% on 56. Of the 15 outside, the two copies of OpenRocket's tube fin example are the
+  tube fin departure, and the rest have no named cause yet. Not compared with weighed parts or a real flight
   ([checked against OpenRocket](#checked-against-openrocket)).
 - **What it leaves out:** the sliver between a flat fin root and the round tube, and the step ring
   at a nose shoulder. Fillets are weighed, but the aerodynamics leaves them out
@@ -329,7 +331,9 @@ The cluster cause is sized, not only present: the survey names it only when hpr'
 less the spread of the clusters' own tubes, is within 1% of OpenRocket's. The two are +1.01% and
 +2.08% apart, and +0.04% and +0.00% without the spread.
 
-The pitch inertia is within 1% on 56 of 71. The 15 outside have no named cause yet, and no bound
+The pitch inertia is within 1% on 56 of 71. Two of the 15 outside are the two copies of OpenRocket's
+*Tube fin rocket*, 1.98% below, which OpenRocket's pitch rule for tube fins accounts for
+([below](#tube-fins)). The other 13 have no named cause yet, and no bound
 is known; on the fin probes below, pitch differs by up to 0.41% where the fins weigh the same.
 
 **What it leaves out.** Motors: this is the structure alone, and a motor's mass is
@@ -577,15 +581,16 @@ OpenRocket works out from the body
 ([the format guide](../format/ork.md#tube-fins-sized-from-the-body) has the rule).
 [ADR-098][adr-098], the decision on that radius, records what follows.
 
-**Mass and centre agree.** On 14 OpenRocket probe designs, each tube fin set's mass is within 1e-14
-of OpenRocket's and its centre within 1e-15 m. OpenRocket's *Tube fin rocket* example is within
-5.0e-6 of OpenRocket's mass and 2.4e-6 of its length in centre of mass.
+**Mass and centre agree.** On 19 OpenRocket [probe designs](../glossary.md#probe-design), each tube
+fin set's mass is within 1e-14 of OpenRocket's and its centre within 1e-15 m. OpenRocket's *Tube
+fin rocket* example is within 5.0e-6 of OpenRocket's mass and 2.4e-6 of its length in centre of
+mass. Its two inertias are not: each is a *departure*, a difference hpr keeps on purpose, measured
+and pinned by a test.
 
-**Roll inertia is a departure.** A departure is a difference hpr keeps on purpose, measured and
-pinned by a test. Divide a part's roll inertia by its mass and you get its *unit inertia*, in m²:
-the mean of the squared distance of its mass from the axis. No mass inside a ring of tubes is
-farther from the axis than `R + 2r`, the outer edge of the tubes. So no ring's unit inertia can
-exceed `(R + 2r)²`. For two tubes or more, OpenRocket's does:
+**Roll inertia, the first departure.** Divide a part's roll inertia by its mass and you get its
+*unit inertia*, in m²: the mean of the squared distance of its mass from the axis. No mass inside
+a ring of tubes is farther from the axis than `R + 2r`, the outer edge of the tubes. So no ring's
+unit inertia can exceed `(R + 2r)²`. For two tubes or more, OpenRocket's does:
 
 | six tubes of 20 mm radius on a 50 mm body | unit roll inertia |
 | --- | --- |
@@ -596,14 +601,34 @@ hpr keeps its own figure, which is below that bound, as it must be. For a single
 agree: OpenRocket puts its centre at `R + r`, where hpr does, and its unit inertia about the
 tube's own axis is `(r² + rᵢ²)/2`, with `rᵢ` the tube's inner radius, as hpr's is.
 
-On OpenRocket's *Tube fin rocket* this leaves hpr's roll inertia 98.7% below OpenRocket's, and its
-pitch inertia 1.98% below. The survey [above](#checked-against-openrocket) names tube fins as the
-cause of that roll gap. OpenRocket's fin shortcut, which the survey swaps in for flat fins, is not
-given OpenRocket's mass for tube fins, so it cannot close this one.
+**Pitch inertia, the second departure.** Pitch is turning end over end, about an axis across the
+airframe through the set's centre. One tube's own unit pitch inertia, about its own middle, is
+`(r² + rᵢ²)/4 + L²/12` for a tube of length `L`.
+
+- hpr adds, for three tubes or more, the ring's spread: `(R + r)²/2`, the mean squared distance of
+  the tube axes from the pitch axis, since they sit at `R + r` all around.
+- On all 19 probes, OpenRocket's is `N` times one tube's own, for `N` tubes, with no term for the
+  tubes' distance from the airframe's axis.
+
+OpenRocket's figure is 1.3 to 2.6 times hpr's on the probes, and 1.77 times on six tubes of 20 mm
+radius on a 50 mm body. On the probes, whose tubes are 0.1 m long, it stays under the most any mass
+inside the ring could have about that axis, `(R + 2r)² + (L/2)²`. On the *Tube fin rocket*'s
+longer tubes it is 18% over that bound (3.352e-3 m² against 2.834e-3 m² a unit of mass), so no
+mass could have it. Either way it is not what tubes at `R + r` weigh, so hpr keeps its own. For a
+single tube the two agree.
+
+**On the example.** On OpenRocket's *Tube fin rocket*, hpr's roll inertia is 98.7% below
+OpenRocket's, and its pitch inertia 1.98% below. The pitch gap is sized: OpenRocket's pitch rule for
+its six tubes accounts for −1.9822% of the survey's −1.9800%, and its nose cone the other
++0.0023%. The survey
+[above](#checked-against-openrocket) names tube fins as the cause of the roll gap. OpenRocket's fin
+shortcut, which the survey swaps in for flat fins, is not given OpenRocket's mass for tube fins,
+so it cannot close this one.
 
 The test `a_tube_fin_sets_automatic_radius_reads_as_openrocket_does` in `hpr-validate` holds both
-sides: OpenRocket's figure above the bound, and hpr's below it, on every probe with two tubes or
-more.
+departures both ways. OpenRocket's roll is above the bound and hpr's below it, on every probe with
+two tubes or more. OpenRocket's pitch is `N` times one tube's own, to 1e-14. hpr's roll and pitch
+match their closed forms to 1e-13.
 
 [adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
 

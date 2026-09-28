@@ -829,7 +829,8 @@ impl TubeFinSet {
     /// `r = R sin(π/N) / (1 − sin(π/N))`.
     ///
     /// For one or two tubes `sin(π/N)` is 0 or 1 and no finite ring closes; OpenRocket 24.12 gives
-    /// those the body's radius, measured on its probes, and so does this. On a 50 mm body, six
+    /// those the body's radius, measured on its probes on 20 and 50 mm bodies, and so does this;
+    /// so does a count of none, which [`Self::mass_properties`] refuses. On a 50 mm body, six
     /// tubes are 50 mm (`sin(π/6) = 1/2`), four are 120.7 mm and eight are 31.0 mm.
     ///
     /// [adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28

@@ -1801,8 +1801,8 @@ mod tests {
         );
     }
 
-    /// M2.2e8's probes: tube fin sets on a 50 mm tube, most of them written `auto` (ADR-098).
-    const TUBE_FINS: [&str; 14] = [
+    /// M2.2e8's probes: tube fin sets on a 50 mm or a 20 mm tube, most written `auto` (ADR-098).
+    const TUBE_FINS: [&str; 19] = [
         "a tube and 1 tube fins of automatic radius",
         "a tube and 2 tube fins of automatic radius",
         "a tube and 3 tube fins of automatic radius",
@@ -1817,6 +1817,11 @@ mod tests {
         "a tube and 6 tube fins of automatic radius and a wall thicker than it",
         "a tube and 6 tube fins of a stated radius, offset from the body",
         "a tube of automatic radius and 4 tube fins of automatic radius",
+        "a tube and 12 tube fins of a stated radius",
+        "a tube and 100 tube fins of automatic radius",
+        "a 20 mm tube and 1 tube fins of automatic radius",
+        "a 20 mm tube and 2 tube fins of automatic radius",
+        "a 20 mm tube and 5 tube fins of automatic radius",
     ];
 
     /// A tube fin set written `auto` has the radius OpenRocket 24.12 works out, the ring closed
@@ -1833,9 +1838,9 @@ mod tests {
             let (layout, warnings) = hpr(probe);
             // More than 8 tubes are read as 8 out loud; an offset from the body is read as none,
             // out loud, which is also what OpenRocket's numbers show.
-            let capped = ["9", "12", "20"]
+            let capped = ["9", "12", "20", "100"]
                 .iter()
-                .any(|n| question.contains(&format!(" {n} ")));
+                .any(|n| question.contains(&format!(" and {n} tube fins")));
             let offset = question.contains("offset");
             assert_eq!(
                 warnings.len(),
@@ -1909,26 +1914,76 @@ mod tests {
             );
             let body_radius_m = number("body_radius_m");
             assert_eq!(placed.body_radius_m, Some(body_radius_m), "{question}");
-            // One tube's centre, off the axis: its axis at `R_b + r`, where hpr puts it.
+            // Per unit mass, about the set's centre: one tube's own inertias, across and about its
+            // axis, and how far its axis is from the body's.
+            let (r_i, length_m) = (number("inner_radius_m"), 0.1);
+            let across = (r * r + r_i * r_i) / 4.0 + length_m * length_m / 12.0;
+            let about = (r * r + r_i * r_i) / 2.0;
+            let d2 = (body_radius_m + r).powi(2);
+            let unit = |i: f64| i / placed.own.mass_kg;
+            let inertia = &placed.own.inertia_kg_m2;
+            // OpenRocket's pitch is each tube's own inertia across it, times the count, with no term
+            // for the tubes' distance from the axis: a second departure (ADR-098).
+            let their_pitch = number("longitudinal_unit_inertia_m2");
+            let n = f64::from(ours.count);
+            assert!(
+                relative(their_pitch, n * across).abs() <= 1e-14,
+                "{question}: {their_pitch}"
+            );
             if ours.count == 1 {
+                // One tube: its centre `R_b + r` off the axis, and its own roll, in both codes.
                 let [_, y, z] =
-                    [0, 1, 2].map(|k| theirs["component_cg_xyz_m"][k].as_f64().expect("cg"));
+                    [0, 1, 2].map(|k| theirs["component_cg_xyz_m"][k].as_f64().expect("a centre"));
                 let off = y.hypot(z);
                 assert!(
                     (off - (body_radius_m + r)).abs() <= 1e-15,
                     "{question}: {off}"
                 );
-                let own = (r * r + number("inner_radius_m").powi(2)) / 2.0;
-                assert!(relative(number("rotational_unit_inertia_m2"), own).abs() <= 1e-15);
-            } else {
-                let bound = (body_radius_m + 2.0 * r).powi(2);
-                let theirs = number("rotational_unit_inertia_m2");
+                let ours_off = placed.own.cg_m.x.hypot(placed.own.cg_m.y);
                 assert!(
-                    theirs > bound,
-                    "{question}: OpenRocket's {theirs} within {bound}"
+                    (ours_off - off).abs() <= 1e-15,
+                    "{question}: hpr's centre {ours_off}"
                 );
-                let roll = placed.own.inertia_kg_m2.z_axis.z / placed.own.mass_kg;
-                assert!(roll < bound, "{question}: hpr's {roll} beyond {bound}");
+                let roll = number("rotational_unit_inertia_m2");
+                assert!(relative(roll, about).abs() <= 1e-15, "{question}: {roll}");
+                assert!(
+                    relative(unit(inertia.z_axis.z), roll).abs() <= 1e-14,
+                    "{question}"
+                );
+                // And its own pitch, about its own centre: the one count where the two agree.
+                assert!(
+                    relative(unit(inertia.x_axis.x), across).abs() <= 1e-13,
+                    "{question}"
+                );
+                assert!(relative(their_pitch, across).abs() <= 1e-14, "{question}");
+            } else {
+                // A ring: hpr's tubes at `R_b + r`, which OpenRocket's roll exceeds past any mass
+                // inside `R_b + 2r`.
+                assert!(
+                    relative(unit(inertia.z_axis.z), about + d2).abs() <= 1e-13,
+                    "{question}"
+                );
+                let bound = (body_radius_m + 2.0 * r).powi(2);
+                let roll = number("rotational_unit_inertia_m2");
+                assert!(
+                    roll > bound,
+                    "{question}: OpenRocket's {roll} within {bound}"
+                );
+                if ours.count >= 3 {
+                    let pitch = unit(inertia.x_axis.x);
+                    assert!(
+                        relative(pitch, across + d2 / 2.0).abs() <= 1e-13,
+                        "{question}: {pitch}"
+                    );
+                    assert!(
+                        relative(unit(inertia.y_axis.y), pitch).abs() <= 1e-13,
+                        "{question}"
+                    );
+                    assert!(
+                        their_pitch > pitch * 1.2,
+                        "{question}: {their_pitch} against hpr's {pitch}"
+                    );
+                }
             }
         }
     }
