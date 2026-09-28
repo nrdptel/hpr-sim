@@ -323,6 +323,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             thickness_m: 0.003175,
             cross_section: FinCrossSection::Rounded,
             tab: None,
+            fillet: None,
             cant_rad: 0.0,
             base_angle_rad: 0.0,
             material: material("birch_plywood")?,
@@ -617,10 +618,14 @@ at the end of the output shows the rules:
 | a choice with no values | a string | `"cross_section": "rounded"` |
 | `None` | `null` | `"tab": null` |
 
-- Some keys can be left out, and take a default: a component's `name`, or a fin set's `tab` and
-  `cant_rad`, for example. `cant_rad` is the fins' [cant](glossary.md#cant) in radians, 0 by
+- Some keys can be left out, and take a default: a component's `name`, or a fin set's `tab`,
+  `fillet` and `cant_rad`, for example. `cant_rad` is the fins' [cant](glossary.md#cant) in radians, 0 by
   default; a cant spins the rocket
-  ([Roll: forcing and damping](physics/aero.md#roll-forcing-and-damping)).
+  ([Roll: forcing and damping](physics/aero.md#roll-forcing-and-damping)). `fillet` gives the fins'
+  [fillets](glossary.md#fillet), a radius and a material, and is not written when there are none,
+  which is why the output above has no `fillet` key. In Rust it is, for example,
+  `fillet: Some(FinFillet { radius_m: 0.005, material: material("epoxy")? })`, with `FinFillet`
+  added to the `use hpr_design::{…}` list.
 - A key hpr doesn't know is refused, so a misspelt key is an error rather than silently ignored.
 - A mounted motor is stored whole: its thrust curve, masses and size. Its `designation` is only a
   label, so a design file doesn't depend on the catalog.

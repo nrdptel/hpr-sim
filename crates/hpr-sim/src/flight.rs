@@ -408,6 +408,19 @@ impl Simulation {
         self
     }
 
+    /// Keeps the aft base's whole drag while a motor burns, as OpenRocket 24.12 does, instead of
+    /// taking the burning motor's cross-section off it
+    /// ([`hpr_aero::AeroModel::with_full_base_drag_under_power`]). A sustainer lit at a powered
+    /// separation keeps the same rule. For sizing a difference from OpenRocket, not a better model
+    /// ([ADR-097][adr-097]).
+    ///
+    /// [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
+    #[must_use]
+    pub fn with_full_base_drag_under_power(mut self) -> Self {
+        self.vehicle.aero = self.vehicle.aero.clone().with_full_base_drag_under_power();
+        self
+    }
+
     /// Flies another tool's normal force and centre of pressure, against Mach number and angle of
     /// attack, instead of hpr's own ([`hpr_aero::NormalForceTable`], read from a RASAero II
     /// export). The table sets the static normal force at the centre of mass's airflow; the pitch
@@ -1731,7 +1744,12 @@ impl Simulation {
                         separation,
                     )?;
                     let lit_here = model.motors.iter().map(|&index| lit[index]).collect();
-                    let flown = Vehicle::lit(model.assembly, model.aero, lit_here)?;
+                    let aero = if self.vehicle.aero.full_base_drag_under_power() {
+                        model.aero.with_full_base_drag_under_power()
+                    } else {
+                        model.aero
+                    };
+                    let flown = Vehicle::lit(model.assembly, aero, lit_here)?;
                     booster = self.fly_bodies(
                         t,
                         &State::from_array(&y),

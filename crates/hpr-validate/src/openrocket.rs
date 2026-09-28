@@ -843,10 +843,15 @@ mod tests {
     /// - A fin set: its roll is OpenRocket's rule exactly, whatever its outline, section, tab or
     ///   fillets, but for an ellipse (OpenRocket's is a 30-sided polygon) and a cant (−2.66e-5).
     ///   Its mass is OpenRocket's but for a rounded or airfoil section
-    ///   ([`a_fin_section_is_weighed_as_pinned`]), fillets, which hpr leaves out, an ellipse, and a
-    ///   cant (−4.19e-5, not traced). Its pitch inertia is apart by up to 0.11% where the masses
-    ///   agree (0.406% on a single fin, below): OpenRocket's pitch rule for fins is not measured
-    ///   here.
+    ///   ([`a_fin_section_is_weighed_as_pinned`]), an ellipse, and a cant (−4.19e-5, not traced).
+    ///   Its pitch inertia is apart by up to 0.11% where the masses agree (0.406% on a single fin,
+    ///   below): OpenRocket's pitch rule for fins is not measured here.
+    /// - Fillets (M2.2e7, [ADR-096][adr-096]): OpenRocket's in mass and centre to 1e-15 (held
+    ///   here to 1e-12), in their own material or cardboard's when none is named, on any outline,
+    ///   count or tube; before, hpr left them out (−0.808% and −2.79% of the probe's mass at 5 and
+    ///   10 mm). The pitch inertia is apart by −0.0077% to −0.638%, largest with the 30 mm fillets,
+    ///   and +0.425% on a single fin: hpr's is the exact prism, and OpenRocket's pitch rule for fins
+    ///   is not measured.
     /// - A rail button, one or a row, from any end: OpenRocket's in mass and centre (#151), its
     ///   inertias apart by 7.16e-6 and 9.23e-5 (one), 1.43e-5 and 4.99e-4 (two).
     /// - A launch lug: its pitch inertia is apart by 3.13e-4.
@@ -865,7 +870,8 @@ mod tests {
     ///
     /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
     /// [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
-    const ALONE: [(&str, [f64; 4]); 43] = [
+    /// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
+    const ALONE: [(&str, [f64; 4]); 50] = [
         ("a tube and a bulkhead", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a canted fin set",
@@ -887,11 +893,39 @@ mod tests {
         ("a tube and a fin set with a tab", [0.0, 0.0, 0.0, -0.00109]),
         (
             "a tube and a fin set with fillets",
-            [-0.00808, 0.000737, 0.0, -0.00439],
+            [0.0, 0.0, 0.0, -0.00035],
         ),
         (
             "a tube and a fin set with wider fillets",
-            [-0.0279, 0.00254, 0.0, -0.0152],
+            [0.0, 0.0, 0.0, -0.00129],
+        ),
+        (
+            "a tube and a fin set with fillets of 30 mm",
+            [0.0, 0.0, 0.0, -0.00638],
+        ),
+        (
+            "a tube and a fin set with fillets of their own material",
+            [0.0, 0.0, 0.0, -0.000749],
+        ),
+        (
+            "a tube and a fin set with fillets that name no material",
+            [0.0, 0.0, 0.0, -0.000223],
+        ),
+        (
+            "a tube and a single fin with fillets",
+            [0.0, 0.0, 7.78e-6, 0.00425],
+        ),
+        (
+            "a tube and four fins of rounded section with fillets",
+            [0.000179, -1.52e-5, 0.0, -0.000428],
+        ),
+        (
+            "a tube and a freeform fin set with fillets",
+            [0.0, 0.0, 0.0, -7.74e-5],
+        ),
+        (
+            "a wider tube and a fin set with fillets",
+            [0.0, 0.0, 0.0, -0.00123],
         ),
         ("a tube and a freeform fin set", [0.0, 0.0, 0.0, 4.57e-5]),
         ("a tube and a launch lug", [0.0, 0.0, 0.0, 0.000313]),
@@ -1001,17 +1035,7 @@ mod tests {
         for (question, pinned) in ALONE {
             let probe = probe(&record, question);
             let (ours, theirs, warnings) = both(probe);
-            if question == "a tube and a fin set with fillets"
-                || question == "a tube and a fin set with wider fillets"
-            {
-                assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
-                assert!(
-                    warnings[0].contains("the fillets along the fin roots were dropped"),
-                    "{warnings:?}"
-                );
-            } else {
-                assert!(warnings.is_empty(), "{question}: {warnings:?}");
-            }
+            assert!(warnings.is_empty(), "{question}: {warnings:?}");
             let (layout, _) = hpr(probe);
             let mut roll = ours[2];
             for part in probe["parts"].as_array().expect("parts") {
@@ -1675,6 +1699,108 @@ mod tests {
         assert!(record["probes"].as_object().expect("probes").len() >= 22);
     }
 
+    /// The probes of an automatic outer radius inside a nose cone or transition, and of an inner
+    /// tube written `auto` (M2.2e7).
+    const BORES: [&str; 13] = [
+        "a nose holding a coupler of automatic radius at its bottom",
+        "an ogive nose holding a coupler of automatic radius at its bottom",
+        "a nose holding a coupler of automatic radius past its base",
+        "a nose with a shoulder, holding a coupler of automatic radius past its base",
+        "a nose holding a long coupler of automatic radius from its middle",
+        "a nose holding an engine block of automatic radius",
+        "a nose holding a centering ring and a bulkhead of automatic radius",
+        "a nose holding a coupler of automatic radius and a wall thicker than its bore",
+        "a nose holding a coupler of automatic radius with a mass inside",
+        "a transition holding a coupler of automatic radius",
+        "a tube holding a coupler of automatic radius and a wall thicker than its bore",
+        "a tube holding an inner tube of automatic radius",
+        "a nose holding an inner tube of automatic radius",
+    ];
+
+    /// The one bore probe hpr refuses: a coupler at the tip, where the cone's wall meets the axis.
+    const BORE_REFUSED: &str = "a nose holding a coupler of automatic radius at its tip";
+
+    /// M2.2e7 ([ADR-096][adr-096]): inside a hollow nose cone or transition, an automatic outer
+    /// radius is the parent's outer radius at the part's narrower end less its wall, the shoulder
+    /// left out; a wall thicker than that is the tube solid, in a body tube too; and an
+    /// `innertube` written `auto` keeps 9.5 mm, with no warning, as OpenRocket reads it. So every
+    /// coupler, engine block, inner tube, ring and bulkhead weighs OpenRocket's mass to 1e-14 at
+    /// OpenRocket's station to 1e-15.
+    ///
+    /// The nose cones and the transition carry the gaps their walls already had: 5.1e-7 of the
+    /// cone's mass, 3.9e-5 of the ogive's and 2.8e-6 of the transition's, and centres within
+    /// 2.5e-6 m (hpr measures a wall normal to the surface). One mass component is pinned apart: packed with an
+    /// automatic radius inside the coupler, OpenRocket shortens it to 8.49 mm, keeping the volume
+    /// of its 12.5 mm by 50 mm default, and hpr keeps its written 50 mm, 20.75 mm further aft of
+    /// its centre ([#186][i186]). A coupler at the tip, where the wall meets the axis, has no
+    /// radius: OpenRocket weighs it as nothing, and hpr refuses the design.
+    ///
+    /// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
+    /// [i186]: https://github.com/nrdptel/hpr-sim/issues/186
+    #[test]
+    fn an_automatic_radius_inside_a_nose_reads_as_openrocket_does() {
+        let record = record();
+        for question in BORES {
+            let probe = probe(&record, question);
+            let (layout, warnings) = hpr(probe);
+            assert!(warnings.is_empty(), "{question}: {warnings:?}");
+            for part in probe["parts"].as_array().expect("parts") {
+                let class = part["class"].as_str().expect("a class");
+                if matches!(class, "Rocket" | "AxialStage") {
+                    continue;
+                }
+                let id = part["id"].as_str().expect("an id");
+                let (_, placed) = layout
+                    .find(id)
+                    .unwrap_or_else(|| panic!("{question}: no part {id} in hpr"));
+                let mass = part["mass_kg"].as_f64().expect("a mass");
+                let station = part["cm_x_m"].as_f64().expect("a station");
+                let (mass_bound, station_gap, station_bound) = match class {
+                    "NoseCone" | "Transition" => (5e-5, 0.0, 5e-6),
+                    "MassComponent" => (1e-15, 0.020755, 1e-6),
+                    _ => (1e-14, 0.0, 1e-15),
+                };
+                let found = relative(placed.own.mass_kg, mass);
+                assert!(
+                    found.abs() <= mass_bound,
+                    "{question}: {class} {id} is {found:e} from OpenRocket's mass"
+                );
+                let apart_m = -placed.own.cg_m.z - station;
+                assert!(
+                    (apart_m - station_gap).abs() <= station_bound,
+                    "{question}: {class} {id} is {apart_m:e} m from OpenRocket's station"
+                );
+            }
+        }
+
+        let probe = probe(&record, BORE_REFUSED);
+        let coupler = probe["parts"]
+            .as_array()
+            .expect("parts")
+            .iter()
+            .find(|part| part["class"] == "TubeCoupler")
+            .expect("the coupler");
+        assert_eq!(coupler["mass_kg"].as_f64(), Some(0.0));
+        let document = probe["document"].as_str().expect("the probe's document");
+        let read = ork::read(document.as_bytes()).expect("a probe reads");
+        let error = ork::rocket(&read.value.document)
+            .value
+            .layout()
+            .expect_err("a tube of no radius");
+        assert!(
+            matches!(
+                &error,
+                hpr_design::DesignError::InComponent { source, .. }
+                    if matches!(
+                        **source,
+                        hpr_design::DesignError::Domain { what: "outer radius", value }
+                            if value == 0.0
+                    )
+            ),
+            "{error:?}"
+        );
+    }
+
     /// The record was written by the script it names, from OpenRocket 24.12 with no default
     /// materials saved in its preferences, and every probe it holds is one a test here reads: a
     /// probe added to the script and not to a test would be a question nobody checks the answer
@@ -1694,6 +1820,8 @@ mod tests {
         read.extend(INERTIA.iter().map(|(question, _)| *question));
         read.extend(ALONE.iter().map(|(question, _)| *question));
         read.extend(OLD_FLAG.iter().map(|(question, _)| *question));
+        read.extend(BORES);
+        read.push(BORE_REFUSED);
         let probes: Vec<&str> = record["probes"]
             .as_object()
             .expect("probes")

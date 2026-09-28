@@ -1988,3 +1988,86 @@ fn a_real_flight_explanation_that_stops_holding_fails() {
     let error = report.check_consistent(&page).unwrap_err();
     assert!(error.contains("no explanation"), "{error}");
 }
+
+/// OpenRocket 24.12 keeps the whole base's drag while a motor burns (ADR-097): on every example
+/// design's flight of one data branch (nothing separating), its base-drag column over
+/// Niskanen's whole-base coefficient (eq. 3.94) is the same while a motor burns as while none
+/// does, to 1e-12. Taking the motors' cross-section off the base would drop that ratio by about
+/// `motor_area_fraction` while they all burn: at least 5% of the reference area on every flight
+/// compared and over 90% on one. One of them burns motors in pods. On every flight, the base
+/// column is what OpenRocket flies: the drag coefficient is the sum of its friction, pressure
+/// and base columns to 1e-12 while a motor burns. hpr's `with_full_base_drag_under_power` flies
+/// this rule; hpr's own takes the area off.
+#[test]
+fn openrocket_keeps_the_whole_base_drag_under_power() {
+    let record: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../validation/fixtures/ork/openrocket-base-drag.json"
+    ))
+    .expect("the committed record is JSON");
+    assert_eq!(record["openrocket"], "24.12");
+    assert_eq!(
+        record["jar_sha256"],
+        "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897"
+    );
+    for (name, bytes) in [
+        (
+            "base_drag.py",
+            include_bytes!("../../../validation/oracles/openrocket/base_drag.py").as_slice(),
+        ),
+        (
+            "flights.py",
+            include_bytes!("../../../validation/oracles/openrocket/flights.py").as_slice(),
+        ),
+        (
+            "events.py",
+            include_bytes!("../../../validation/oracles/openrocket/events.py").as_slice(),
+        ),
+    ] {
+        assert_eq!(
+            record["inputs_sha256"][name],
+            sha256_hex(bytes).as_str(),
+            "{name} changed since the record was written: rerun it"
+        );
+    }
+    let number = |value: &serde_json::Value| value.as_f64().expect("a number");
+    let mut compared = 0;
+    let mut largest_fraction: f64 = 0.0;
+    let mut smallest_fraction = f64::INFINITY;
+    let mut pods = 0;
+    for flight in record["flights"].as_array().expect("flights") {
+        assert!(flight["refused"].is_null(), "{flight}");
+        if flight["burning"]["rows"] != 0 {
+            assert!(number(&flight["sum_residual"]) <= 1e-12, "{flight}");
+        }
+        let (burning, coasting) = (&flight["burning"], &flight["coasting"]);
+        if flight["branches"] != 1 || burning["rows"] == 0 || coasting["rows"] == 0 {
+            continue;
+        }
+        let whole = number(&coasting["min"]);
+        for value in [&burning["min"], &burning["max"], &coasting["max"]] {
+            assert!(
+                (number(value) - whole).abs() <= 1e-12 * whole,
+                "{} {}: {value} against {whole}",
+                flight["file"],
+                flight["configuration"]
+            );
+        }
+        compared += 1;
+        let fraction = number(&flight["motor_area_fraction"]);
+        largest_fraction = largest_fraction.max(fraction);
+        smallest_fraction = smallest_fraction.min(fraction);
+        if number(&flight["pod_motors"]) > 0.0 {
+            pods += 1;
+        }
+    }
+    assert_eq!(
+        compared, 42,
+        "the example flights of one branch with both kinds of row"
+    );
+    assert!(largest_fraction > 0.9, "{largest_fraction}");
+    assert!(smallest_fraction > 0.05, "{smallest_fraction}");
+    assert_eq!(
+        pods, 1,
+        "the flight of one branch that burns motors in pods"
+    );
+}

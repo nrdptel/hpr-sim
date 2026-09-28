@@ -100,6 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             thickness_m: 0.003175,
             cross_section: FinCrossSection::Rounded,
             tab: None,
+            fillet: None,
             cant_rad: 0.0,
             base_angle_rad: 0.0,
             material: material("birch_plywood")?,

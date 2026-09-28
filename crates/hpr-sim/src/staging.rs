@@ -581,6 +581,58 @@ mod tests {
     }
 
     #[test]
+    fn a_whole_base_under_power_holds_through_a_powered_separation() {
+        // OpenRocket's rule (ADR-097): the base keeps its whole drag while a motor burns, so the
+        // axial coefficient doesn't step at a burnout, the booster's or the sustainer's lit after
+        // the separation. hpr's own rule takes the burning motor's area off the base, so the
+        // coefficient steps up at each burnout.
+        let rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        let steps = |whole: bool| {
+            let sim = staged(&rocket, |sim| {
+                Separation::new(
+                    Trigger::Burnout {
+                        motor: motor_index(sim, BOOSTER_MOUNT),
+                        delay_s: 0.5,
+                    },
+                    0,
+                )
+            });
+            let sim = if whole {
+                sim.with_full_base_drag_under_power()
+            } else {
+                sim
+            };
+            let mut starts = StepStarts::default();
+            let result = sim.run(&mut starts).unwrap();
+            let burnouts = [
+                booster_burnout_s(&sim),
+                time_of(&result, EventKind::Burnout),
+            ];
+            // The coefficient's relative step across each burnout, from the last step start
+            // before it to the first at or after it.
+            burnouts
+                .iter()
+                .map(|&t| {
+                    let before = starts.0.iter().rfind(|s| s.time_s < t).unwrap();
+                    let after = starts.0.iter().find(|s| s.time_s >= t).unwrap();
+                    assert!(before.thrust_n > 0.0 && after.thrust_n == 0.0);
+                    after.axial_coefficient / before.axial_coefficient - 1.0
+                })
+                .collect::<Vec<f64>>()
+        };
+        // The airspeed changes over the few milliseconds between the samples, so even the whole
+        // base's coefficient moves a little: 0.25% and 0.29% here, against 13% and 15%.
+        let (relieved, whole) = (steps(false), steps(true));
+        for (relieved, whole) in relieved.into_iter().zip(whole) {
+            assert!(relieved > 0.1, "{relieved}");
+            assert!(whole.abs() < 0.005, "{whole}");
+        }
+    }
+
+    #[test]
     fn staging_refuses_what_it_cannot_fly() {
         // A drag table is the whole stack's; the sustainer would fly it on the wrong shape.
         let rocket = two_stage(Ignition::Burnout {

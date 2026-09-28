@@ -1,6 +1,6 @@
 # hpr against OpenRocket 24.12's flights of the private design library
 
-This report compares hpr's flights of 8 of the library's 12 private designs with OpenRocket 24.12's, and publishes only the differences. It is a code-to-code comparison with no target: agreeing with OpenRocket is not agreeing with a real flight. hpr's stability margin is larger than OpenRocket's by up to 0.1108 calibres, so it can call a rocket more stable than OpenRocket does (open leads: [#172](https://github.com/nrdptel/hpr-sim/issues/172) and [#186](https://github.com/nrdptel/hpr-sim/issues/186)). With the [public report](openrocket-flights.md) it covers 16 designs of the 20 that [M2.2][m2-2] (the OpenRocket comparison) asks for: not met. Nobody without the private library can fly these again; CI checks only that this report adds up and names nothing of a design.
+This report compares hpr's flights of 10 of the library's 12 private designs with OpenRocket 24.12's, and publishes only the differences. It is a code-to-code comparison with no target: agreeing with OpenRocket is not agreeing with a real flight. hpr's stability margin is larger than OpenRocket's by up to 0.1108 calibres, so it can call a rocket more stable than OpenRocket does (open leads: [#172](https://github.com/nrdptel/hpr-sim/issues/172) and [#186](https://github.com/nrdptel/hpr-sim/issues/186)). With the [public report](openrocket-flights.md) it covers 18 designs of the 20 that [M2.2][m2-2] (the OpenRocket comparison) asks for: not met. Nobody without the private library can fly these again; CI checks only that this report adds up and names nothing of a design.
 
 - Written by `cargo xtask ork-flights --library` ([M2.2e3][m2-2e3], hpr's flights of the library; decision [ADR-072][adr-072]) from OpenRocket's flights of it ([M2.2e2][m2-2e2]), flown and compared as in the public report, by the same definitions. The explanation is on the [documentation site][site].
 - A design is an id, `C01` onwards, in the order of its file's SHA-256 hash, and a flight is the design's id and the configuration's place in the file: `C09/2` is the second configuration of `C09`. The ids hold while the library's files do; `ids_sha256` in the report's JSON changes when they would move.
@@ -16,19 +16,23 @@ This report compares hpr's flights of 8 of the library's 12 private designs with
 [adr-072]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-072-hprs-flights-of-the-private-library-under-anonymised-ids-2026-09-25
 [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-of-the-private-designs
 
-- designs: 27 files in the library; 0 OpenRocket did not open, 15 public designs (the same file, or an edited copy of the same rocket) left to the public report, 0 found twice; 12 private designs, 8 with a flight compared in all five spreads
-- with the public report's 8, 16 designs in all, against [M2.2][m2-2]'s bar of 20 (not met)
-- configurations flown: 31 (6 OpenRocket flew are not flown by hpr); apogee more than 5% from OpenRocket's: 0; the same reference diameter as OpenRocket's: 31
-- apogee, no named cause: 25 scored, median -0.49%, mean absolute 1.42%, from -4.84% to +1.17%
+- designs: 27 files in the library; 0 OpenRocket did not open, 15 public designs (the same file, or an edited copy of the same rocket) left to the public report, 0 found twice; 12 private designs, 10 with a flight compared in all five spreads
+- with the public report's 8, 18 designs in all, against [M2.2][m2-2]'s bar of 20 (not met)
+- configurations flown: 34 (3 OpenRocket flew are not flown by hpr); apogee more than 5% from OpenRocket's: 1; the same reference diameter as OpenRocket's: 34
+- apogee, hpr's own drag coefficient: 1 scored, median +13.60%, mean absolute 13.60%, from +13.60% to +13.60%
+- apogee, no named cause: 27 scored, median -0.36%, mean absolute 1.33%, from -4.84% to +1.17%
 - apogee, reference parachute open before apogee: 6 scored, median -0.32%, mean absolute 1.56%, from -3.09% to +2.15%
-- largest speed, no named cause: 31 scored, median +0.24%, mean absolute 0.46%, from -0.65% to +2.28%
-- margin at rod clearance, no named cause: 31 scored, median +0.0350 cal, mean absolute 0.0296 cal, from -0.0008 cal to +0.1108 cal
-- mass at launch: 31 compared, median +0.000%, mean absolute 0.001%, from +0.000% to +0.004%
-- mass at rod clearance: 31 compared, median +0.001%, mean absolute 0.009%, from -0.021% to +0.065%
-- centre of mass at rod clearance: 31 compared, median -0.0004 cal, mean absolute 0.0110 cal, from -0.1102 cal to +0.0042 cal
+- largest speed, hpr's own drag coefficient: 1 scored, median +7.98%, mean absolute 7.98%, from +7.98% to +7.98%
+- largest speed, no named cause: 33 scored, median +0.26%, mean absolute 0.46%, from -0.65% to +2.28%
+- margin at rod clearance, no named cause: 34 scored, median +0.0329 cal, mean absolute 0.0293 cal, from -0.0166 cal to +0.1108 cal
+- mass at launch: 34 compared, median +0.000%, mean absolute 0.027%, from -0.770% to +0.070%
+- mass at rod clearance: 34 compared, median +0.001%, mean absolute 0.035%, from -0.781% to +0.072%
+- centre of mass at rod clearance: 34 compared, median -0.0004 cal, mean absolute 0.0120 cal, from -0.1102 cal to +0.0198 cal
 
 | flight | Mach | site | apogee Δ | max speed Δ | margin Δ (cal) | at OR's α (cal) | CG Δ (cal) | CP Δ (cal) | launch mass Δ | rod-clearance mass Δ | named cause |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| C01/1 | subsonic | sea level | -0.36% | +0.28% | -0.0166 | -0.0166 | +0.0198 | +0.0031 | +0.070% | +0.072% |  |
+| C01/2 | subsonic | sea level | +0.04% | +0.56% | +0.0025 | +0.0025 | +0.0006 | +0.0031 | +0.065% | +0.065% |  |
 | C02/1 | subsonic | sea level | -0.56% | +0.08% | +0.0041 | +0.0041 | -0.0000 | +0.0041 | +0.001% | +0.001% |  |
 | C02/2 | subsonic | sea level | +2.15% | +0.24% | +0.0044 | +0.0044 | -0.0003 | +0.0041 | +0.001% | -0.006% | chute 1.45 s early |
 | C02/3 | subsonic | sea level | -0.94% | +0.24% | +0.0044 | +0.0044 | -0.0003 | +0.0041 | +0.001% | -0.006% |  |
@@ -44,6 +48,7 @@ This report compares hpr's flights of 8 of the library's 12 private designs with
 | C05/3 | subsonic | sea level | -0.03% | +0.16% | +0.0003 | +0.0003 | +0.0000 | +0.0003 | +0.000% | +0.000% |  |
 | C05/4 | transonic | sea level | +0.11% | +0.56% | +0.0007 | +0.0007 | -0.0004 | +0.0003 | +0.000% | -0.008% |  |
 | C05/5 | subsonic | sea level | +0.25% | +0.24% | +0.0002 | +0.0002 | +0.0001 | +0.0003 | +0.000% | +0.001% |  |
+| C06/1 | supersonic | above sea level | +13.60% | +7.98% | +0.0604 | +0.0540 | -0.0447 | +0.0156 | -0.770% | -0.781% | hpr's own drag coefficient (on OR's drag +1.11% and +1.04%; with OR's base drag alone -10.71% and -3.43%) |
 | C07/1 | subsonic | sea level | +0.68% | +1.06% | +0.0032 | +0.0032 | -0.0005 | +0.0027 | +0.000% | -0.007% | chute 0.55 s early |
 | C08/1 | subsonic | sea level | +0.78% | +0.54% | +0.1108 | +0.1108 | -0.1102 | +0.0006 | +0.004% | +0.001% |  |
 | C09/1 | subsonic | above sea level | -0.49% | -0.06% | +0.0455 | +0.0455 | -0.0249 | +0.0205 | +0.000% | +0.000% |  |
@@ -61,7 +66,7 @@ This report compares hpr's flights of 8 of the library's 12 private designs with
 | C12/2 | subsonic | sea level | +0.14% | +0.33% | +0.0366 | +0.0074 | +0.0000 | +0.0366 | +0.000% | +0.001% |  |
 | C12/3 | subsonic | sea level | -0.53% | +0.24% | +0.0125 | +0.0033 | -0.0001 | +0.0123 | +0.000% | +0.004% |  |
 
-*Chute s early*: OpenRocket's parachute opened that long before the apogee of the same flight with nothing deployed; hpr flies no parachute from a `.ork` yet. An early parachute lowers OpenRocket's apogee, so it can explain an apogee Δ above zero, not one below.
+*Chute s early*: OpenRocket's parachute opened that long before the apogee of the same flight with nothing deployed; hpr flies no parachute from a `.ork` yet. An early parachute lowers OpenRocket's apogee, so it can explain an apogee Δ above zero, not one below. *hpr's own drag coefficient*: hpr flew the flight again on OpenRocket's drag coefficient along OpenRocket's own flight (power on while a motor burns, power off after), and again with its own drag but OpenRocket's base drag under power, the whole base's while a motor burns where hpr takes the motor's cross-section off it; the brackets give each one's apogee and largest speed differences. The first names the cause of each metric within 5% on it; that says the gap is in the drag, not which drag is right, so each such flight also has a written breakdown ([ADR-097](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28)). hpr flies both for an apogee more than 5% off with no other named cause.
 
 What hpr's [design checks](https://nrdptel.github.io/hpr-sim/physics/design.html#checks) object to, by kind, in flights flown anyway as OpenRocket flies them:
 
@@ -72,6 +77,7 @@ What hpr's [design checks](https://nrdptel.github.io/hpr-sim/physics/design.html
 | C03/3 | `internal_part_wider_than_parent` |
 | C03/4 | `internal_part_wider_than_parent` |
 | C03/5 | `internal_part_wider_than_parent` |
+| C06/1 | `motor_wider_than_mount` |
 | C07/1 | `internal_part_wider_than_parent` |
 | C08/1 | `attachment_off_body` |
 | C11/2 | `internal_part_wider_than_parent` |
@@ -86,5 +92,4 @@ Configurations OpenRocket flew that hpr does not fly here, by reason:
 |---|---:|---|
 | a curve found by name, which OpenRocket may not fly | 1 | C11/4 |
 | a motor hpr can't light as written | 1 | C04/1 |
-| an airframe not read exactly as written | 3 | C01/1, C01/2, C06/1 |
 | stages hpr can't separate as written | 1 | C10/1 |

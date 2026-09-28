@@ -28,13 +28,13 @@
 //! [guide]: https://nrdptel.github.io/hpr-sim/format/ork.html
 //! [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 
-use hpr_design::fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
+use hpr_design::fins::{FinCrossSection, FinFillet, FinPlanform, FinSet, FinTab, TubeFinSet};
 use hpr_design::parts::{
     CenteringRing, InnerTube, LaunchLug, MassComponent, Packing, Parachute, PodSet, RailButton,
     ShockCord, Streamer,
 };
 use hpr_design::tree::{AutoDimension, Component, Overrides, Part, Position};
-use hpr_design::{Finish, MotorMount};
+use hpr_design::{Finish, MotorMount, Wall};
 
 use super::component::{
     BODY_TAGS, Ids, UNNAMED_RAIL_BUTTON, body, material, material_or, overrides, stated_radius,
@@ -152,7 +152,7 @@ fn one(
     let mut auto = Vec::new();
     let mut values = Values::new(element, at, warnings);
     let part = match element.name.as_str() {
-        tag if TUBES.contains(&tag) => inner_tube(&mut values, &mut auto),
+        tag if TUBES.contains(&tag) => inner_tube(tag, &mut values, &mut auto),
         "centeringring" => ring(&mut values, &mut auto, true),
         "bulkhead" => ring(&mut values, &mut auto, false),
         "trapezoidfinset" | "ellipticalfinset" | "freeformfinset" => fin_set(element, &mut values),
@@ -184,17 +184,28 @@ fn one(
         );
         return None;
     }
-    // An automatic outer or packed radius is the parent's bore, and a nose cone or transition has
-    // none to give. The layout would refuse the whole design over it, so the part goes instead. A
-    // ring's automatic *bore* is not in this list: it comes from the ring's siblings, and is zero
-    // when none of them is a motor tube, so it needs nothing of the parent.
-    let needs_a_bore = auto.iter().any(|dimension| {
-        matches!(
-            dimension,
-            AutoDimension::OuterRadius | AutoDimension::PackedRadius
-        )
+    // An automatic outer or packed radius is the parent's bore. A hollow nose cone's or
+    // transition's bore narrows along it, and the layout takes an outer radius at the part's
+    // narrower end, as OpenRocket 24.12 does (ADR-096); a packed radius in one, or anything
+    // automatic in a solid one or any other part, has no bore to take. The layout would refuse the
+    // whole design over it, so the part goes instead. A part in a hollow nose whose bore narrows
+    // to nothing at its end (at the tip) stays, and the layout refuses the design: OpenRocket
+    // weighs it as nothing, which hpr does not yet do (ADR-096). A ring's automatic *bore* is not in this
+    // list: it comes from the ring's siblings, and is zero when none of them is a motor tube, so
+    // it needs nothing of the parent.
+    let hollow = |wall: &Wall| matches!(wall, Wall::Shell { .. });
+    let bore_along = match parent {
+        Part::BodyTube(_) | Part::InnerTube(_) => true,
+        Part::NoseCone(nose) => hollow(&nose.wall),
+        Part::Transition(transition) => hollow(&transition.wall),
+        _ => false,
+    };
+    let needs_a_bore = auto.iter().any(|dimension| match dimension {
+        AutoDimension::OuterRadius => !bore_along,
+        AutoDimension::PackedRadius => !matches!(parent, Part::BodyTube(_) | Part::InnerTube(_)),
+        _ => false,
     });
-    if needs_a_bore && !matches!(parent, Part::BodyTube(_) | Part::InnerTube(_)) {
+    if needs_a_bore {
         values.warn_at(
             WarningKind::Skipped,
             format!(
@@ -575,11 +586,25 @@ fn pod_set(
     })
 }
 
+/// The radius OpenRocket 24.12 gives an `innertube` whose outer radius is written `auto`: its
+/// inner tube has no automatic radius, so it keeps the 9.5 mm it starts with, in a body tube or a
+/// nose cone alike, where a coupler or an engine block fills its parent. Measured on probe designs
+/// (`validation/oracles/openrocket/conventions.py`, [ADR-096][adr-096]).
+///
+/// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
+const INNER_TUBE_UNRESOLVED_M: f64 = 0.0095;
+
 /// An inner tube, tube coupler or engine block: all three are a tube inside another one.
-fn inner_tube(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<Part> {
+fn inner_tube(tag: &str, values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<Part> {
     let length_m = values.number(&["length"]).unwrap_or_default();
-    let (stated_m, outer_radius_m) =
+    let (mut stated_m, mut outer_radius_m) =
         stated_radius(values, &["outerradius"], AutoDimension::OuterRadius, auto);
+    if tag == "innertube" && auto.contains(&AutoDimension::OuterRadius) {
+        auto.retain(|dimension| *dimension != AutoDimension::OuterRadius);
+        // OpenRocket's own reading, measured, so no warning: one would keep the design from
+        // flying (ADR-055) for a part read exactly as OpenRocket reads it.
+        (stated_m, outer_radius_m) = (Some(INNER_TUBE_UNRESOLVED_M), INNER_TUBE_UNRESOLVED_M);
+    }
     let thickness_m = tube_wall(values, stated_m)?;
     let angle_rad = roll_angle(values);
     let cluster_m = cluster(values, outer_radius_m, angle_rad);
@@ -791,17 +816,21 @@ fn fin_set(element: &Element, values: &mut Values<'_>) -> Option<Part> {
         _ => outline(values)?,
     };
     let count = instances(values, "fin set")?;
-    if values.number(&["filletradius"]).is_some_and(|r| r > 0.0) {
-        values.warn_at(
-            WarningKind::Dropped,
-            "the fillets along the fin roots were dropped; hpr does not model their mass",
-        );
-    }
+    // Fillets weigh what OpenRocket 24.12 weighs them, in their own material, which is cardboard
+    // when none is named, as for any solid part (ADR-096).
+    let fillet = values
+        .number(&["filletradius"])
+        .filter(|radius_m| *radius_m > 0.0)
+        .map(|radius_m| FinFillet {
+            radius_m,
+            material: material(values, &["filletmaterial"], "bulk"),
+        });
     Some(Part::FinSet(FinSet {
         count,
         thickness_m: values.number(&["thickness"]).unwrap_or_default(),
         cross_section: cross_section(values),
         tab: tab(values, planform.root_chord_m()),
+        fillet,
         // Degrees, like every other angle in the file (see `roll_angle`). The corpus's two
         // non-zero cants are 1.0 and -3.98, which as radians would be 57° and 228° — a fin turned
         // more than half a turn from the airflow, which is not a cant anyone builds and which

@@ -69,7 +69,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-061 | What a `.ork` leaves unsaid, read as OpenRocket reads it; overrides measured, two departures kept | accepted |
 | ADR-062 | Fins and rail buttons against OpenRocket; roll inertia explained | accepted |
 | ADR-063 | Packed parts read and weighed as OpenRocket packs them | accepted |
-| ADR-064 | Clusters, fillets and unread parts remain visible departures | accepted |
+| ADR-064 | Clusters, fillets and unread parts remain visible departures | accepted; fillets superseded by ADR-096 |
 | ADR-065 | Stored results are references only when current and structurally plausible | accepted |
 | ADR-066 | Every curve hpr flies is integrated as OpenRocket integrates it | accepted |
 | ADR-067 | Curves come from OpenRocket's own database by digest, each held to its impulse | accepted |
@@ -78,7 +78,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-070 | M2.2e split: mass and centre of mass first, then the corpus | accepted |
 | ADR-071 | The corpus OpenRocket flies is its `.ork` files | accepted |
 | ADR-072 | hpr's flights of the private library, under anonymised ids | accepted |
-| ADR-073 | Each named cause sized by OpenRocket's own flight without it | accepted |
+| ADR-073 | Each named cause sized by OpenRocket's own flight without it | accepted; a cause in the drag sized by ADR-097 |
 | ADR-074 | Ignition times and powered staging: the sustainer flies on as a rigid body | accepted |
 | ADR-075 | A cluster is one tube repeated, and a motor in it one motor per tube | accepted |
 | ADR-076 | A `.ork` file's ignitions and one powered separation flown against OpenRocket | accepted |
@@ -101,6 +101,8 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-093 | Pod probes flown as the public designs are, and listed apart | accepted |
 | ADR-094 | A tilted launch rod flown as OpenRocket records it | accepted |
 | ADR-095 | The single pre-1.9 override flag read as OpenRocket reads it | accepted |
+| ADR-096 | Fin fillets and an automatic radius inside a nose cone read as OpenRocket reads them | accepted |
+| ADR-097 | A cause in the drag sized by hpr flying OpenRocket's drag | accepted |
 
 ---
 
@@ -8144,3 +8146,147 @@ radius OpenRocket works out (#133), and M2.2e9 the bar, unchanged.
   and 1 in a Loft demo design outside both reports.
 - Not measured: an old flag that is neither `true` nor `false` (hpr drops it, out loud, and the
   file is not flown), and which copy of a tag written twice OpenRocket takes.
+
+## ADR-096: Fin fillets and an automatic radius inside a nose cone read as OpenRocket reads them (2026-09-28)
+
+**Context.** Issue #174 holds back two private designs from M2.2's count of 20. `C01` has fin
+fillets, the rounded glue joint along a fin root. hpr left them out with a warning, a measured
+departure since ADR-064 (−0.808% and −2.79% of the probe's mass at 5 and 10 mm). A warning makes a
+design "an airframe not read exactly as written", which is not flown (ADR-055). `C06` has fillets
+too, and a coupler inside a nose cone whose outer radius is `auto`. hpr's neighbour rule
+(ADR-007, ADR-054) looks only at body tubes, so inside a nose it found nothing and took
+OpenRocket's default, which is wrong there.
+
+**Decision.**
+
+1. **Measured, not assumed.** `conventions.py` gained 21 probes. The 86 earlier probes' answers are
+   unchanged.
+   - Seven fillet probes: a 30 mm radius, their own material, no material named, a single fin,
+     four rounded fins, a freeform fin set and a wider tube.
+   - Fourteen bore probes: a coupler with an automatic radius at a nose's bottom, past its base,
+     with a shoulder, long from its middle, at the tip, and with a wall thicker than its bore; an
+     ogive nose; a transition; an engine block; a centering ring and a bulkhead; a mass component
+     inside; an inner tube written `auto`, in a nose and in a tube.
+2. **A fillet is a prism of its section along the root.** The section is the region between the
+   tube, the fin's mid-plane and the fillet's circle: OpenRocket's reading, which leaves the fin's
+   thickness out. With body radius `R` and fillet radius `r`,
+   the circle's centre is `c = √(R² + 2Rr)` along the fin and `r` off it, and the region is the
+   triangle `(0, 0)`, `(c, 0)`, `(c, r)` less the body's sector up to `θ = atan2(r, c)` and the
+   fillet's quarter circle up to the tangent points. There is one fillet each side of every fin,
+   of the root chord's length, in `filletmaterial` (cardboard's density when none is named, as
+   OpenRocket does). hpr computes the section's area, first moment and second moments in closed
+   form, the sectors' second moments in a stable form, and tests it by quadrature to 1e-11. The
+   final subtraction still loses about `log10(R/r)` digits, at most 2 for a real fillet
+   (`r/R ≥ 0.01`). Past a thousand times the body radius it cancels away, so such a fillet is
+   refused; under a millionth of it, or on a body of no radius, a fillet weighs nothing.
+   OpenRocket's mass and centre of mass agree to 1e-15 on every probe (the test holds them to
+   1e-12). The pitch inertia is apart by −0.0077% to −0.638%, largest with the 30 mm fillets, and
+   +0.425% on a single fin: hpr's is the exact prism, and OpenRocket's pitch rule for fins is not
+   measured (ADR-062).
+3. **An automatic outer radius inside a nose or transition is its bore at the narrow end.** It is
+   the parent's outer radius at whichever end of the part is narrower, less the parent's wall,
+   the shoulder left out; zero if the wall is thicker. A filled nose has no bore and is refused.
+   A packed radius inside a nose is still not taken. A coupler at the tip, where the wall meets
+   the axis, has no radius: OpenRocket weighs it as nothing, and hpr refuses the design. An inner
+   tube whose own radius is thinner than its wall is solid, in a body tube too.
+4. **An `innertube` written `auto` keeps 9.5 mm**, as OpenRocket does (a motor mount's radius is
+   not something OpenRocket works out). It raises no warning: it is OpenRocket's reading, and a
+   warning would keep the design from flying (ADR-055). A number written after `auto` is not an
+   input (ADR-052), so it is not kept either.
+5. **Held to the probes.** `hpr_validate::openrocket` holds the fillets' mass, centre, roll and
+   pitch inertia (pinned rows), and every bore probe's parts to OpenRocket's mass (to 1e-14) and
+   station (to 1e-15). The noses carry the gaps their walls already had: up to 3.9e-5 of the mass and 2.5e-6 m.
+   One mass component is pinned apart: OpenRocket shortens its packed length to keep its volume,
+   and hpr keeps the written length (#186).
+
+**Consequences.**
+
+- `C01` and `C06` fly. The two reports hold 18 designs.
+- In the mass survey the fillet cause is gone. One private design stays outside 1% in mass: its
+  airfoil fins, which OpenRocket weighs as the outline times the thickness times 0.85 (ADR-062),
+  where hpr integrates the NACA section. That cause is now sized: `cargo xtask ork` names it only
+  when the design comes within both thresholds with its fin sections weighed OpenRocket's way.
+- The library report's largest speed is now taken over every sample up to the apogee. The old
+  rule stopped at the first sample whose vertical speed stopped being positive. A rocket held on
+  the pad can read a few µm/s either way (#223), so on `C06/1` the old rule stopped before
+  liftoff.
+- `C06/1`'s apogee is 13.60% above OpenRocket's; ADR-097 sizes it.
+
+## ADR-097: A cause in the drag sized by hpr flying OpenRocket's drag (2026-09-28)
+
+**Context.** `C06/1` is the first supersonic flight in either OpenRocket report. Its apogee is
++13.60% and its largest speed +7.98% from OpenRocket's, with neither named cause of ADR-073.
+M2.2e4's bar asks for a written, sized cause. The mass is within 0.77%. Taken per component at
+zero angle of attack through OpenRocket's public API (a look not kept as a record), OpenRocket's
+drag differs from hpr's in two ways:
+
+- **Base drag while a motor burns.** hpr takes the burning motor's cross-section off the aft base
+  (Niskanen 2009, pp. 50–51, who cites Fleeman's *Tactical Missile Design* for it; Loft lesson
+  L13). OpenRocket 24.12 does not.
+- **Supersonic pressure drag.** hpr's is about twice OpenRocket's. OpenRocket gives the tangent
+  ogive nose almost none well above Mach 1, and the airfoiled fins about a quarter of hpr's
+  (#222).
+
+The two pull in opposite directions. So neither can be named a cause by being present
+(ADR-073's point); each needs a size.
+
+**Decision.**
+
+1. **OpenRocket's base rule is measured on public designs.** A new oracle, `base_drag.py`, flies
+   every motor configuration of the jar's example designs with nothing deployed. It records
+   OpenRocket's base-drag column over Niskanen's whole-base coefficient (`0.12 + 0.13 M²` below
+   Mach 1, `0.25/M` above), with thrust and without, and the burning motors' area over the
+   reference area. It is committed as `validation/fixtures/ork/openrocket-base-drag.json`. Of its
+   56 flights, the 42 of one data branch (nothing separating) are compared; on each, the
+   ratio while a motor burns equals the ratio after, to 1e-12. The motors there cover 9% to 94%
+   of the reference area, and one flight burns motors in pods. Taking the area off would drop
+   the ratio by about that much. On every flight the drag coefficient is the sum of the
+   friction, pressure and base columns while a motor burns, so the base column is what
+   OpenRocket flies. A test in `hpr_validate` holds all of this. The 14 flights left out
+   separate, which changes the base itself.
+2. **An opt-in flies OpenRocket's base rule.** `AeroModel::with_full_base_drag_under_power` and
+   `Simulation::with_full_base_drag_under_power` keep the whole base while a motor burns, pods
+   included; a sustainer lit after a separation keeps the rule. It is for comparisons with
+   OpenRocket, not a better model. hpr keeps its documented source's rule by default. Neither rule
+   has been checked against a measured flight; #222 holds both questions.
+3. **A cause in the drag is sized by hpr flying OpenRocket's drag.** A second oracle,
+   `drag_curves.py`, flies each configuration as `flights.py` does, with nothing deployed. It
+   records OpenRocket's drag coefficient along the first branch, launch to apogee, as two curves in
+   Mach number:
+   - power on: the burning rows, each faster than every earlier one;
+   - power off: the rows after the last burning one, each slower than every earlier one.
+
+   `cargo xtask ork-flights --library` flies hpr on them as a drag table. It does this for an
+   apogee more than 5% off with no other named cause and no separation. It also flies hpr with
+   only OpenRocket's base rule. The curves are private values, so the record stays in
+   `corpus-out/`. A probe hpr fails to fly is marked failed, and the flight stays compared.
+4. **What that shows, and what it doesn't.** Within 5% of OpenRocket's on OpenRocket's drag,
+   the metric's cause is "hpr's own drag coefficient". The apogee and the largest speed are each
+   judged by their own number. The label is weaker than ADR-073's causes. Those are things hpr
+   knowingly does not do; this is the whole drag model. With mass within 1% and OpenRocket's own
+   thrust curves, it bounds the net effect of every other cause on that flight by what is left,
+   though parts of it can cancel, and the table in Mach number leaves out OpenRocket's
+   dependence on the Reynolds number. It cannot tell a deliberate modelling choice from a defect
+   in hpr's drag, nor which code is right.
+5. **So each flight it names needs its own written breakdown.** The breakdown says which drag rule
+   moves the flight, by how much, and what is left open. A list in the library report's tests
+   (`DRAG_CAUSES_WRITTEN`) names each such flight with the record that breaks it down. A new flight
+   labelled this way fails the bar's test until one is written.
+
+**Consequences.**
+
+- **`C06/1`'s breakdown** (this record):
+  - On OpenRocket's drag: apogee +1.11%, largest speed +1.04%, within the bar.
+  - With only OpenRocket's base rule: −10.71% and −3.43%. That switch alone lowers the apogee by
+    24.3 percentage points; it is measured by its own flight.
+  - Switching the rest of the drag to OpenRocket's then raises it 11.8 percentage points. That number is by
+    subtraction, and the split depends on which change is made first.
+  - A look at OpenRocket's per-component columns on this flight, not kept as a record, points
+    the rest to the supersonic pressure drag, with the friction and base close. It is a lead for
+    #222, not a measurement the repository reproduces.
+- Which supersonic pressure drag is right, and which base rule, is open (#222). Neither code has
+  been checked against a measurement on this shape, and the public report has no supersonic
+  flight.
+- The library run now needs `corpus-out/openrocket-drag-curves.json`, written by the current
+  scripts with the pinned jar. The public report is unchanged: none of its flights is more than
+  5% off without a named cause.

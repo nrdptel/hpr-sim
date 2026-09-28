@@ -3,9 +3,8 @@
 ## In short
 
 - **What it models:** the mass, centre of mass and inertia of each part (tubes, rings, shoulders,
-  fins, rail buttons, lugs, mass components, recovery gear), every tube of a cluster, how they add
-  up, and 49 built-in
-  material densities.
+  fins and their fillets, rail buttons, lugs, mass components, recovery gear), every tube of a
+  cluster, how they add up, and 49 built-in material densities.
 - **Sources:** Meriam and Kraige's *Engineering Mechanics: Dynamics*, the *OpenRocket technical
   documentation* v13.05, Abbott and von Doenhoff's *Theory of Wing Sections*, Golub and Van
   Loan's *Matrix Computations*, and data sheets, specifications and handbooks for densities.
@@ -14,16 +13,20 @@
   cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
   their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Against
   [OpenRocket](../glossary.md#openrocket) 24.12, on the structure (the rocket without motors) of
-  71 compared designs: the mass is within 1% on 65 and the centre of mass within 1% of the rocket's
-  length on 66. Every file outside either shows a difference hpr names in a warning. The roll
+  71 compared designs: the mass is within 1% on 66 and the centre of mass within 1% of the rocket's
+  length on 66. Every file outside either has a named cause: parts hpr keeps unread, or, on one
+  design, airfoil fins, which OpenRocket weighs by a factor. Fin fillets agree with OpenRocket's to
+  1e-15 in mass and centre of mass on nine probe designs, with the probes' pitch inertia up to
+  0.638% apart ([below](#fin-fillets)). The roll
   inertia is a median 1.686% apart, and that is explained: OpenRocket takes a shortcut for fins that
   hpr does not, and hpr's figure is the exact one for the fin as drawn
   ([below](#fins-rail-buttons-and-roll-inertia)); on the four files with a cluster (two designs by content), OpenRocket
   also stacks the tubes on the cluster's axis ([below](#clusters-and-fillets)). The pitch inertia
-  is within 1% on 55, and the rest have no named cause yet. Not compared with weighed parts or a real flight
+  is within 1% on 56, and the rest have no named cause yet. Not compared with weighed parts or a real flight
   ([checked against OpenRocket](#checked-against-openrocket)).
-- **What it leaves out:** fin fillets, the sliver between a flat fin root and the round tube, and
-  the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Where a `.ork`
+- **What it leaves out:** the sliver between a flat fin root and the round tube, and the step ring
+  at a nose shoulder. Fillets are weighed, but the aerodynamics leaves them out
+  ([Drag limits](aero.md#drag-limits)). Parachutes weigh as flat circular canopies. Where a `.ork`
   file leaves something unsaid (a wall of no thickness, no material), hpr reads it as OpenRocket
   does, and two rules for overrides stay hpr's own, each measured
   ([below](#what-a-ork-leaves-unsaid-and-overrides)). Fin sections are hpr's own too: an airfoil
@@ -31,9 +34,8 @@
   airfoil fins are 19.4% lighter, with no warning ([below](#fins-rail-buttons-and-roll-inertia)). Packed
   recovery gear and mass components are OpenRocket's too, down to the size one takes when its file
   writes none ([below](#packed-parts)). A cluster's inertia differs from OpenRocket's on purpose, since OpenRocket stacks the tubes
-  on the axis and hpr weighs each where it sits, and fin fillets remain a measured, visible
-  departure ([below](#clusters-and-fillets)); designs with parts hpr does not read (parallel stages and
-  five skipped parts across three kinds) are retained as reduced designs ([the format guide](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)).
+  on the axis and hpr weighs each where it sits ([below](#clusters-and-fillets)); designs with
+  parts hpr does not read (parallel stages and four skipped parts of two kinds) are retained as reduced designs ([the format guide](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)).
 
 ## Code and sources
 
@@ -144,7 +146,8 @@ properties.
   must lie along the root chord and reach no deeper than the body radius. Loft never
   read them ([Loft lesson L46](../decisions-and-roadmap.md#l46)).
 - **Root.** The flat root is placed at radius `R_b`; the sliver between it and the curved tube,
-  `t²/8R_b` deep, is ignored. Fillets are not modeled yet.
+  `t²/8R_b` deep, is ignored. Fillets are solids of their own
+  ([Clusters and fillets](#clusters-and-fillets)).
 - **Cant** `δ` turns each fin and its tab about the fin's outward span axis through the root
   mid-chord, right-handed, so a positive cant turns fin 0's leading edge toward `−y_B`
   (`positive_cant_turns_the_leading_edge_toward_negative_y`). [TD] doesn't state the pivot. Mass and trace are unchanged; the
@@ -193,7 +196,7 @@ OpenRocket opens among hpr's `.ork` test files: the *reference library* (designs
 inside OpenRocket's program file (its Java *jar*). The current default survey compares 71 designs.
 Some hold the same design found in two places (several private files are copies of OpenRocket's
 examples), so there are 51 different files by content. Mass and centre of mass agree closely on most,
-and every file outside 1% has a cause hpr already warns about. The roll inertia is a median 1.686%
+and every file outside 1% has a named cause. The roll inertia is a median 1.686%
 apart: OpenRocket's shortcut for fins ([below](#fins-rail-buttons-and-roll-inertia)), and on the
 cluster designs its stacking of their tubes on the axis ([below](#clusters-and-fillets)).
 This was [M2.2a](../decisions-and-roadmap.md#m2-2a); [ADR-060][adr-060] records how it was decided.
@@ -229,39 +232,49 @@ numbers match to 15 digits, and so does hpr's layout of the same file (the test
 The thresholds, 1% of the mass and 1% of the length, were set before any design was measured. A
 design outside either needs a written reason, not a pass.
 
-**The results**, as `cargo xtask ork` printed them on 2026-09-27, after
-[M1.13b](../decisions-and-roadmap.md#m1-13b) read every pod set.
+**The results**, as `cargo xtask ork` printed them on 2026-09-28, after
+[M2.2e7](../decisions-and-roadmap.md#m2-2e7) weighed fin fillets.
 
 | | within 0.1% | within 1% | median |
 |---|---|---|---|
-| mass | 57 of 71 | 65 of 71 | 0.001% |
-| centre of mass (share of length) | 62 of 71 | 66 of 71 | 0.000% |
-| pitch inertia | 41 of 71 | 55 of 71 | 0.065% |
+| mass | 58 of 71 | 66 of 71 | 0.001% |
+| centre of mass (share of length) | 63 of 71 | 66 of 71 | 0.000% |
+| pitch inertia | 41 of 71 | 56 of 71 | 0.065% |
 | roll inertia | 10 of 71 | 29 of 71 | 1.686% |
-| roll inertia, OpenRocket's fin shortcut in hpr's place | 56 of 71 | 56 of 71 | 0.001% |
+| roll inertia, OpenRocket's fin shortcut in hpr's place | 57 of 71 | 57 of 71 | 0.001% |
 
-Counting each file's content once, 47 of 51 are within 1% in mass and 48 of 51 in centre of mass.
+Counting each file's content once, 48 of 51 are within 1% in mass and 48 of 51 in centre of mass.
+Before fillets were weighed, 65 of 71 were within 1% in mass, 55 in pitch inertia, and 56 in
+roll inertia with the shortcut.
 Before [M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a
 [cluster](../glossary.md#cluster), 58 and 59 of 71 were.
 Before [M2.2b1](../decisions-and-roadmap.md#m2-2b1) (reading what a `.ork` leaves unsaid), 57 of
 74 files were within 1% in mass and 58 in centre of mass (median mass 0.020%). Those are the earlier
 74-file measurement; the current default survey is the 71-file table above.
 
-**The 6 files outside a threshold** are 4 different files by content, each a different design.
-Each has one or two of two causes, and
-hpr already warns of every one when it reads the file. `cargo xtask ork` works the causes out from
-those warnings, counts them by content as below, and fails if a file outside has none. One file has
-two causes, so the last column adds to 5:
+**The 5 files outside a threshold** are 3 different files by content, each a different design, and
+each is outside both. Each has one cause. `cargo xtask ork` works the causes out, counts them by
+content as below, and fails if a file outside has none:
 
 | cause | what hpr does | what OpenRocket does | files by content |
 |---|---|---|---|
-| fin fillets (the rounded glue joint along a fin's root) | leaves them out, with a warning | counts them | 2 |
-| parallel stages, tube fins and parts left out | keeps them unread (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 3 |
+| parallel stages, tube fins and parts left out | keeps them unread, with a warning (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 2 |
+| airfoil fin sections | integrates the airfoil's section, 0.6851 of a square slab ([below](#fins-rail-buttons-and-roll-inertia)) | weighs the outline times the thickness times 0.85 | 1 |
 
-A third cause, a cluster read as one tube, went when
-[M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files by content are now within both
-thresholds, and pods went when [M1.13b](../decisions-and-roadmap.md#m1-13b) read them.
-`cargo xtask ork` prints each of the 6 with the parts that differ most, by id, or by name in an
+The fin-section cause is sized, not only present. hpr gives no warning for it, since the section is
+hpr's own choice. So `cargo xtask ork` weighs the design again with its rounded and airfoil fins
+weighed OpenRocket's way: square, at 0.99 or 0.85 of their density. It names the cause only if the
+design then comes within both thresholds. The one design it names is a private one: `C06` in hpr's
+flights of the private designs. There hpr's centre of mass sits forward of OpenRocket's, and the
+same fins are a likely cause, but the survey's thresholds are coarser than that flight's gap, so
+they are a lead for it, not its size
+([the format guide](../format/ork.md#hprs-flights-of-the-private-designs)).
+
+Three causes are gone. A cluster read as one tube went when
+[M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files by content
+are now within both thresholds. Pods went when [M1.13b](../decisions-and-roadmap.md#m1-13b) read
+them. Fin fillets, which hpr left out, went when [M2.2e7](../decisions-and-roadmap.md#m2-2e7)
+weighed them ([below](#clusters-and-fillets)). `cargo xtask ork` prints each of the 5 with the parts that differ most, by id, or by name in an
 older file that writes no ids. A private design is named only by the start of its file's hash.
 
 **A worked example, now settled.** In the first comparison
@@ -274,7 +287,7 @@ and since [M2.2b1](../decisions-and-roadmap.md#m2-2b1) so does hpr, so the file 
 both mass and centre of mass. Two causes the first comparison counted, this shoulder of no wall (6
 files by content) and a part written with no material (1), are gone the same way.
 
-**Two more conventions, which move no file outside a threshold.**
+**Two more conventions.**
 
 - **Inertia under a mass override.** A departure kept on purpose
   ([below](#what-a-ork-leaves-unsaid-and-overrides)). Loft's public `stage-weighed.ork` overrides
@@ -284,31 +297,31 @@ files by content) and a part written with no material (1), are gone the same way
 - **An airfoil fin section.** hpr's airfoil fin weighs less than OpenRocket's: the CONTROL fins of
   the jar's *Simulation scripting* example are 0.0378 kg in hpr and 0.0469 kg in OpenRocket, 19.4%
   lighter, with no warning. It is a departure kept on purpose
-  ([below](#fins-rail-buttons-and-roll-inertia)).
+  ([below](#fins-rail-buttons-and-roll-inertia)), and the cause of the one private design above.
 
 **Roll and pitch inertia.** On the six Loft demo designs OpenRocket opens, the roll inertia is 1.2%
 to 3.8% apart, though their mass, centre of mass and pitch inertia agree within 0.1% and every part
 of each is within 0.3 g of OpenRocket's. Across all 71 compared designs the median is 1.686%. It is the fins:
 OpenRocket takes a shortcut for a fin set's roll inertia, and hpr integrates the fin exactly
 ([below](#fins-rail-buttons-and-roll-inertia)). With OpenRocket's shortcut in hpr's place, the
-median is 0.001% and 56 files are within 1%. The shortcut takes OpenRocket's own mass for each fin
+median is 0.001% and 57 files are within 1%. The shortcut takes OpenRocket's own mass for each fin
 set, paired by id, or in an older file by name, so the way OpenRocket weighs a section (below) is
 set aside too. Five of the six Loft demos come within 0.0005%. The sixth, whose fins are
 elliptical, is 0.093% apart in that row, and within 0.0002% once OpenRocket's ellipse is drawn as
-OpenRocket draws it, a 30-sided polygon (a test). For each of the 15 files still outside 1% (10 by
+OpenRocket draws it, a 30-sided polygon (a test). For each of the 14 files still outside 1% (9 by
 content), `cargo xtask ork` names a cause, and it fails if it can't. Each has exactly one:
 
 | cause | files by content |
 |---|---|
 | a mass override covering the parts inside (a departure, [below](#what-a-ork-leaves-unsaid-and-overrides)) | 5 |
-| parts hpr keeps unread (a reduced design) | 3 |
+| parts hpr keeps unread (a reduced design) | 2 |
 | a cluster's tubes, which OpenRocket weighs stacked on the cluster's axis ([below](#clusters-and-fillets)) | 2 |
 
 The cluster cause is sized, not only present: the survey names it only when hpr's roll inertia,
 less the spread of the clusters' own tubes, is within 1% of OpenRocket's. The two are +1.01% and
 +2.08% apart, and +0.04% and +0.00% without the spread.
 
-The pitch inertia is within 1% on 55 of 71. The 16 outside have no named cause yet, and no bound
+The pitch inertia is within 1% on 56 of 71. The 15 outside have no named cause yet, and no bound
 is known; on the fin probes below, pitch differs by up to 0.41% where the fins weigh the same.
 
 **What it leaves out.** Motors: this is the structure alone, and a motor's mass is
@@ -530,13 +543,15 @@ and with a row of two.
 
 **What is left, each pinned by a test.**
 
-- Fin fillets: 0.81% of the probe's mass at a 5 mm radius, left out, with a warning.
+- Fin fillets' pitch inertia: −0.008% to −0.638% on the eight probes with more than one fin,
+  and +0.425% on a single fin ([below](#clusters-and-fillets)). Their mass and centre agree.
 - Small and not traced: a canted fin set's mass (−0.004%), fins' pitch inertia (up to 0.41% where
   the fins weigh the same, on a single fin; up to 0.11% on the other probes), a launch lug's pitch
   inertia (0.03%) and a rail button's inertias (up to 0.05%).
 
-The fillet omission is a measured departure, settled with the 5 mm and 10 mm probes in
-[ADR-064][adr-064]. A cluster's departure is measured below. Two more gaps these probes found, both
+Fin fillets were left out, a measured departure ([ADR-064][adr-064], the decision to keep it
+visible), until [M2.2e7](../decisions-and-roadmap.md#m2-2e7) weighed them
+([below](#clusters-and-fillets)). A cluster's departure is measured below. Two more gaps these probes found, both
 in packed parts, are settled [below](#packed-parts).
 
 **Run it yourself.** As for [the probes above](#what-a-ork-leaves-unsaid-and-overrides): the same
@@ -571,13 +586,85 @@ off the axis is +0.015% and +0.021%, which hpr has not traced. Before
 2.43% low in roll and 3.68% low in pitch. `each_part_alone_is_openrocket_s_or_pinned` and
 `a_cluster_weighs_as_openrocket_s_but_for_its_tubes_spread` check these.
 
-A fin fillet is the rounded joint along a fin root. hpr reads a positive `filletradius`, warns, and
-does not add a fillet solid or use `filletmaterial`. The 5 mm probe is 0.808% light, 0.737 mm
-forward in centre and 0.439% low in pitch; the 10 mm probe is 2.79% light, 2.54 mm forward and
-1.52% low in pitch. Their roll rows are zero because the comparison substitutes OpenRocket's fin
-shortcut, as it does for every fin probe. The omissions remain deliberate until a fillet shape is
-modelled and measured; [ADR-064][adr-064] records the decision.
+### Fin fillets
 
+A [fin fillet](../glossary.md#fillet) is the rounded glue joint along a fin's root, where the fin
+meets the tube. Since [M2.2e7](../decisions-and-roadmap.md#m2-2e7) hpr weighs fillets as OpenRocket
+24.12 does ([ADR-096][adr-096], the decision on fillets). Before, it left them out with a warning,
+and the 5 mm and 10 mm probes were 0.808% and 2.79% light ([ADR-064][adr-064]).
+
+**The shape.** A fillet fills the corner between the tube and the fin's side. Its concave face is a
+circle of the fillet's radius that touches both. Its section is bounded by three edges: the tube's
+circle, the fin's plane and that circle. As in OpenRocket, the fin is taken as having no thickness
+there, so the section starts at the fin's middle plane, not its face. Two fillets run along each
+fin, one each side, as long as the root chord. So each is a prism of that section. It is made of the
+file's `filletmaterial`; a file that names none gets OpenRocket's cardboard, 680 kg/m³. Most
+fillets are epoxy, which is heavier (hpr's `epoxy` is 1,180 kg/m³), so set `filletmaterial` in
+OpenRocket, or the fillet's material in hpr, to what you used.
+
+**The equation.** Take the body radius `R` and the fillet radius `r`. Take `x` outward from the
+body's axis along the fin's mid-plane, and `y` square to it. The fillet circle's centre is at
+`(c, r)`, with `c = √(R² + 2Rr)`. That puts it `√(c² + r²) = R + r` from the axis, so the circle
+just touches the tube. The section is the triangle `(0, 0)`, `(c, 0)`,
+`(c, r)` less two circular sectors: the tube's, up to the angle `θ = atan(r/c)`, and the fillet
+circle's, whose angle is `π/2 − θ`:
+
+`A = c r/2 − R² θ/2 − r² (π/2 − θ)/2`
+
+On a flat body (`R` very large) this tends to `r² (1 − π/4)`: a square less a quarter circle. hpr
+works out the section's first and second moments the same way, in closed form. The sectors' second
+moments are computed in a stable form, but the final subtraction still loses about `log10(R/r)`
+digits: at most 2 for a fillet 1% of the body radius or larger. A test checks all four against
+numerical integration to 1e-11 (`fillet_section_is_its_region_by_quadrature` in
+`hpr_design::fins`). Far from real fillets the subtraction cancels away, so hpr weighs a fillet
+under a millionth of the body radius as nothing, refuses one over a thousand times it
+(`FILLET_RATIO_MAX`), and gives a body of no radius no fillet. Against 60-digit arithmetic, the
+area keeps 10 significant digits at a millionth of the body radius and 12 at a thousand times it,
+checked once while writing the code; the thousand is a cautious limit, not where the digits run
+out (at ten thousand times it still keeps 10).
+
+**A worked example.** An invented 5 mm fillet on a tube 30 mm in radius. Then
+`c = √(30² + 2 × 30 × 5)` = 34.64 mm and `θ = atan(5/34.64)` = 0.1433 rad (8.21°).
+
+| piece | formula | area |
+|---|---|---|
+| the triangle | `c r/2` | 86.60 mm² |
+| less the tube's sector | `R² θ/2` | 64.51 mm² |
+| less the fillet circle's sector | `r² (π/2 − θ)/2` | 17.84 mm² |
+| the section | `A` | 4.253 mm² |
+
+That is 79% of the 5.365 mm² a flat body would give: the tube curves away from the fin, so the
+corner holds less. Three fins with a 100 mm root chord have six fillets. Their volume is
+`6 × 4.253 mm² × 100 mm` = 2,552 mm³ = 2.55 cm³. In cardboard they weigh
+`2.552 cm³ × 0.680 g/cm³` = 1.735 g. A unit test pins these numbers
+(`the_worked_fillet_example_is_the_docs` in `hpr_design::fins`).
+
+**How well.** Nine probe designs measure it: the 5 mm and 10 mm probes of
+[M2.2b4](../decisions-and-roadmap.md#m2-2b4), and seven new in
+[M2.2e7](../decisions-and-roadmap.md#m2-2e7):
+
+- fillets of 30 mm;
+- fillets in their own material;
+- fillets naming no material;
+- a single fin;
+- four fins of rounded section;
+- a freeform fin set;
+- a wider tube.
+
+On every one the fillets' mass and centre of mass are OpenRocket's to 1e-15, and the test holds
+them to 1e-12. On the rounded-section probe the whole fin set's mass is 1.79e-4 apart, from the fin
+section's factor ([below](#fins-rail-buttons-and-roll-inertia)), not from the fillets. The whole
+probe's pitch inertia is apart by −0.0077% to −0.638% on the eight with more than one fin, growing
+with the fillets' mass. On the single fin it is +0.425%, near the +0.406% a single fin reads
+without fillets. hpr's figure is the exact prism's; how OpenRocket works out a fin's pitch inertia has not
+been measured ([ADR-062][adr-062]). The roll rows use OpenRocket's fin shortcut, as every fin probe
+does. `each_part_alone_is_openrocket_s_or_pinned` pins every row.
+
+**What it leaves out.** The fillets' drag and lift: the aerodynamics ignores them
+([Drag limits](aero.md#drag-limits)). A fillet that is not a circular arc, such as a hand-shaped
+bead of glue, is weighed as one.
+
+[adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
 [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 
@@ -614,9 +701,8 @@ that weighs nothing still becomes a point mass under an override; both programs 
 **How well.** Eleven probes ask these questions, a tube and one packed part each. hpr's structure is
 OpenRocket's to 1e-12 on every one, in mass, centre of mass, roll and pitch. The earlier 74-file
 before-and-after measurement took the roll inertia, with OpenRocket's fin shortcut in hpr's place,
-from 49 to 53 files within 0.1%, and from 55 to 57 within 1%. The current scratch-excluding survey
-has 52 of 71 within 0.1% and 52 of 71 within 1% with that shortcut (56 before [M1.9b](../decisions-and-roadmap.md#m1-9b) weighed the
-clusters' tubes where they sit):
+from 49 to 53 files within 0.1%, and from 55 to 57 within 1%. The current survey, on 71 designs,
+has 57 within 0.1% and within 1% with that shortcut ([above](#checked-against-openrocket)):
 
 | (earlier 74-file measurement) | before | after |
 |---|---|---|

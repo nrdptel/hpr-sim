@@ -41,7 +41,7 @@ pub use checks::{Finding, Severity};
 pub use config::{Assembly, Configuration, Ignition, MotorMount, MountedMotor, PlacedMotor};
 pub use error::DesignError;
 pub use finish::Finish;
-pub use fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
+pub use fins::{FinCrossSection, FinFillet, FinPlanform, FinSet, FinTab, TubeFinSet};
 pub use mass::{MassProperties, Placement};
 pub use material::{Density, Material};
 pub use parts::{
@@ -95,6 +95,7 @@ mod tests {
             thickness_m: 0.004,
             cross_section: FinCrossSection::Square,
             tab: None,
+            fillet: None,
             cant_rad: 0.0,
             base_angle_rad: 0.0,
             material: Material::bulk("plywood", 630.0),
