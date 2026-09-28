@@ -19,7 +19,7 @@
   (relative) at the times RocketPy computed, and within 1.3e-5 in mass and 2.6e-5 in inertia
   between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand; the whole structure against
-  OpenRocket on 71 compared designs, within 1% in mass on 65 and in centre of mass on 66
+  OpenRocket on 71 compared designs, within 1% in mass on 68 and in centre of mass on 68
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). A
   [cluster](../glossary.md#cluster)'s tubes sit where OpenRocket puts them, to 1e-15 m, and a motor
@@ -151,6 +151,12 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
   (by a positive length). With none, it is zero: a bulkhead.
 - **Packed parts** (mass components and recovery parts) take the parent tube's inner radius, less
   the distance from the parent's axis to the part's axis. An offset outside the bore is refused.
+- **Tube fin sets:** the outer radius `r` is the one at which the tubes close the ring around the
+  body tube of radius `R` they sit on, each touching the body and its two neighbours. For `N ≥ 3`
+  tubes, `r = R sin(π/N) / (1 − sin(π/N))`; one or two tubes take the body's radius. Six tubes on
+  a 50 mm body are 50 mm; four are 120.7 mm. A wall thicker than `r` is cut to it. This is the
+  radius OpenRocket 24.12 gives, measured on probes
+  ([`.ork` design files](../format/ork.md#tube-fins-sized-from-the-body)).
 
 ## Overrides
 

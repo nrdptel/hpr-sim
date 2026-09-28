@@ -520,7 +520,9 @@ It has eight steps.
    - **Automatic dimensions.** A dimension named in a component's `auto` list is taken from the
      parts around it, and the value stored for it (0 here) is ignored. The nose's base radius and
      its shoulder's radius follow the airframe
-     ([Automatic dimensions](physics/design.md#automatic-dimensions)).
+     ([Automatic dimensions](physics/design.md#automatic-dimensions)). Other parts can take theirs
+     the same way: a tube fin set's `outer_radius_m`, for one, can be automatic, and then its tubes
+     are just wide enough to touch the body and each other, closing the ring.
    - **Motor mount.** Setting `motor_mount` makes a body tube or inner tube a mount, and its
      `overhang_m` is how far the nozzle sits aft of the mount's end.
    - <a id="packing"></a>**Packing.** A
@@ -723,7 +725,9 @@ The example leaves out several kinds of part and setting that a design can have:
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
   are open tubes that run along the body, touching it, in place of flat fins. A design can hold
-  them, but a flight or a CP can't be worked out with them.
+  them, and they are weighed, but a flight or a CP can't be worked out with them.
+  [M2.2e9](decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, is the milestone that adds a
+  method.
 - **Pods fly on Barrowman's rules, without their interference with the body.** A
   [pod set](physics/design.md#pods) gives each pod's parts their own normal force and drag, once
   per pod, as if the airframe did not disturb the air around them. Nothing measured checks it yet,

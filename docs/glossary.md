@@ -1098,6 +1098,16 @@ closed forms and from Stoney's 1961 NASA measurements. See
 [Aerodynamics](physics/aero.md#fins-through-mach-1) and
 [Aerodynamics](physics/aero.md#drag-through-mach-1).
 
+## Tube fin
+
+A short open tube glued along the airframe in place of a flat fin. A *tube fin set* is a ring of
+them around the body. hpr weighs each tube as a hollow cylinder beside the body. A `.ork` file can
+leave the tubes' radius to OpenRocket, which makes them just wide enough to touch the body and each
+other; hpr reads that radius as OpenRocket does. The aerodynamics refuses tube fins until a cited
+method exists ([M2.2e9](decisions-and-roadmap.md#m2-2e9)). See
+[`.ork` design files](format/ork.md#tube-fins-sized-from-the-body) and
+[Mass properties](physics/mass.md#tube-fins).
+
 ## Tumble recovery
 
 Recovery with nothing deployed: the body falls broadside, tumbling, and its own drag slows it. hpr

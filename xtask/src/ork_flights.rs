@@ -382,6 +382,10 @@ pub(crate) fn fly_design(
             })
         };
         let flew = |rocket: &hpr_design::Rocket| flew_as(rocket, Drag::Own);
+        if has_tube_fins(&design.rocket) {
+            out.not_flown.push(not_flown(NO_TUBE_FIN_AERO));
+            continue;
+        }
         let mut entry = match flew(&design.rocket) {
             Ok(entry) => entry,
             Err(_) if list_failures => {
@@ -500,6 +504,22 @@ pub(crate) const REFUSED: &str = "OpenRocket refused to fly it";
 
 /// Why a configuration is not flown: hpr's flight of it failed.
 pub(crate) const FLIGHT_FAILED: &str = "hpr's flight of it failed";
+
+/// Why a configuration is not flown: its airframe has tube fins, which `hpr-aero` refuses until it
+/// has a cited method for them (M2.2e9); their size is read as OpenRocket's since M2.2e8
+/// (ADR-098).
+pub(crate) const NO_TUBE_FIN_AERO: &str = "tube fins, which hpr has no aerodynamic model for yet";
+
+/// Whether any part of the rocket is a tube fin set.
+fn has_tube_fins(rocket: &hpr_design::Rocket) -> bool {
+    fn any(components: &[hpr_design::Component]) -> bool {
+        components.iter().any(|component| {
+            matches!(component.part, hpr_design::tree::Part::TubeFinSet(_))
+                || any(&component.children)
+        })
+    }
+    rocket.stages.iter().any(|stage| any(&stage.components))
+}
 
 /// Why a configuration is not flown: the importer builds none of the recorded id.
 pub(crate) const NO_SUCH_CONFIGURATION: &str = "the importer builds no configuration of that id";

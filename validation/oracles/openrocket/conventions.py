@@ -15,7 +15,8 @@ each (every kind of part, fin outlines, sections, a tab, fillets, a cant, rail b
 end), so that a part's roll inertia is the probe's less the tube's (ADR-062). M2.2e6 added
 probes of the single subcomponent-override flag written before schema 1.9, with the flags
 OpenRocket reads each part with. M2.2e7 added probes of fillets and of an automatic outer radius
-inside a nose cone or transition (ADR-096).
+inside a nose cone or transition (ADR-096). M2.2e8 added probes of tube fin sets, among them
+sets whose radius OpenRocket works out from the body (#133).
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API `javap` prints for the jar. Each probe is saved once, to a
@@ -642,6 +643,60 @@ PART_PROBES = {
 }
 
 
+def tube_fin_set(count, radius="auto", thickness="0.001", offset=""):
+    """`count` tubes 0.1 m long at the bottom of their tube, written as OpenRocket's example writes
+    them, with `radius` and a `thickness` wall."""
+    offset = offset or '<radiusoffset method="coaxial">0.0</radiusoffset>'
+    return (
+        f"<tubefinset><name>Tube fins</name><id>{uid(30)}</id>"
+        f'<position type="bottom">0.0</position><instancecount>{count}</instancecount>'
+        f"<fincount>{count}</fincount>{offset}<rotation>30</rotation><radius>{radius}</radius>"
+        f"<length>0.1</length><thickness>{thickness}</thickness>{MATERIAL}</tubefinset>"
+    )
+
+
+# M2.2e8: a tube fin set whose radius OpenRocket works out from the body it rings (#133). The
+# tube is `tube()`, 50 mm in radius; the counts run past the ones a ring can close, 1 and 2.
+TUBE_FIN_PROBES = {
+    **{
+        f"a tube and {count} tube fins of automatic radius": [tube(children=tube_fin_set(count))]
+        for count in [1, 2, 3, 4, 5, 6, 8, 9, 12, 20]
+    },
+    "a tube and 6 tube fins of a stated radius": [tube(children=tube_fin_set(6, radius="0.02"))],
+    "a tube and 6 tube fins of automatic radius and a wall thicker than it": [
+        tube(children=tube_fin_set(6, thickness="0.1"))
+    ],
+    "a tube and 6 tube fins of a stated radius, offset from the body": [
+        tube(children=tube_fin_set(6, radius="0.02", offset='<radiusoffset method="surface">0.01</radiusoffset>'))
+    ],
+    "a tube of automatic radius and 4 tube fins of automatic radius": [
+        nose(),
+        tube(children=tube_fin_set(4)).replace("<radius>0.05</radius>", "<radius>auto</radius>", 1),
+    ],
+}
+
+
+def tube_fins(component, found):
+    """Each tube fin set's size and places as OpenRocket resolved them, by id, through its public
+    getters: the radius it works out when the file says `auto`, and where each tube's axis sits."""
+    if str(component.getClass().getSimpleName()) == "TubeFinSet":
+        found[str(component.getID())] = {
+            "automatic": bool(component.isOuterRadiusAutomatic()),
+            "outer_radius_m": float(component.getOuterRadius()),
+            "inner_radius_m": float(component.getInnerRadius()),
+            "thickness_m": float(component.getThickness()),
+            "body_radius_m": float(component.getBodyRadius()),
+            "count": int(component.getFinCount()),
+            "axes_yz_m": [[float(c.y), float(c.z)] for c in component.getInstanceOffsets()],
+            "component_mass_kg": float(component.getComponentMass()),
+            "component_cg_xyz_m": [float(v) for v in (lambda c: (c.x, c.y, c.z))(component.getComponentCG())],
+            "rotational_unit_inertia_m2": float(component.getRotationalUnitInertia()),
+            "longitudinal_unit_inertia_m2": float(component.getLongitudinalUnitInertia()),
+        }
+    for child in component.getChildren():
+        tube_fins(child, found)
+
+
 def document(parts, stage_tags="", version="1.10"):
     return (
         "<?xml version='1.0' encoding='utf-8'?>\n"
@@ -700,6 +755,10 @@ def measure(text, scratch, name, flags=False):
         "parts_skipped": skipped,
         "materials": found,
     }
+    rings = {}
+    tube_fins(document_.getRocket(), rings)
+    if rings:
+        measured["tube_fins"] = rings
     if flags:
         measured["override_flags"] = {}
         for stage in document_.getRocket().getChildren():
@@ -738,6 +797,7 @@ def main():
     with tempfile.TemporaryDirectory() as scratch:
         everything = [(q, document(parts)) for q, parts in PROBES.items()]
         everything += [(q, document(parts)) for q, parts in BORE_PROBES.items()]
+        everything += [(q, document(parts)) for q, parts in TUBE_FIN_PROBES.items()]
         everything += [(q, document(parts, tags)) for q, (tags, parts) in STAGE_PROBES.items()]
         everything += [(q, document([tube(children=part)])) for q, part in PART_PROBES.items()]
         # The body's radius, for the fins' roll inertia: rectangular fins on a tube twice as wide.

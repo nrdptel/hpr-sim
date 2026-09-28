@@ -13,15 +13,17 @@
   cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
   their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Against
   [OpenRocket](../glossary.md#openrocket) 24.12, on the structure (the rocket without motors) of
-  71 compared designs: the mass is within 1% on 66 and the centre of mass within 1% of the rocket's
-  length on 66. Every file outside either has a named cause: parts hpr keeps unread, or, on one
+  71 compared designs: the mass is within 1% on 68 and the centre of mass within 1% of the rocket's
+  length on 68. Every file outside either has a named cause: parts hpr keeps unread, or, on one
   design, airfoil fins, which OpenRocket weighs by a factor. Fin fillets agree with OpenRocket's to
   1e-15 in mass and centre of mass on nine probe designs, with the probes' pitch inertia up to
   0.638% apart ([below](#fin-fillets)). The roll
   inertia is a median 1.686% apart, and that is explained: OpenRocket takes a shortcut for fins that
   hpr does not, and hpr's figure is the exact one for the fin as drawn
   ([below](#fins-rail-buttons-and-roll-inertia)); on the four files with a cluster (two designs by content), OpenRocket
-  also stacks the tubes on the cluster's axis ([below](#clusters-and-fillets)). The pitch inertia
+  also stacks the tubes on the cluster's axis ([below](#clusters-and-fillets)). A ring of tube fins
+  is a departure: OpenRocket's roll inertia for it is more than any mass inside the ring could have,
+  and hpr keeps its own ([below](#tube-fins)). The pitch inertia
   is within 1% on 56, and the rest have no named cause yet. Not compared with weighed parts or a real flight
   ([checked against OpenRocket](#checked-against-openrocket)).
 - **What it leaves out:** the sliver between a flat fin root and the round tube, and the step ring
@@ -35,7 +37,7 @@
   recovery gear and mass components are OpenRocket's too, down to the size one takes when its file
   writes none ([below](#packed-parts)). A cluster's inertia differs from OpenRocket's on purpose, since OpenRocket stacks the tubes
   on the axis and hpr weighs each where it sits ([below](#clusters-and-fillets)); designs with
-  parts hpr does not read (parallel stages and four skipped parts of two kinds) are retained as reduced designs ([the format guide](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)).
+  parts hpr does not read (parallel stages, and two fin sets left out) are retained as reduced designs ([the format guide](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)).
 
 ## Code and sources
 
@@ -233,18 +235,19 @@ The thresholds, 1% of the mass and 1% of the length, were set before any design 
 design outside either needs a written reason, not a pass.
 
 **The results**, as `cargo xtask ork` printed them on 2026-09-28, after
-[M2.2e7](../decisions-and-roadmap.md#m2-2e7) weighed fin fillets.
+[M2.2e8](../decisions-and-roadmap.md#m2-2e8) read tube fins sized from the body.
 
 | | within 0.1% | within 1% | median |
 |---|---|---|---|
-| mass | 58 of 71 | 66 of 71 | 0.001% |
-| centre of mass (share of length) | 63 of 71 | 66 of 71 | 0.000% |
+| mass | 60 of 71 | 68 of 71 | 0.001% |
+| centre of mass (share of length) | 65 of 71 | 68 of 71 | 0.000% |
 | pitch inertia | 41 of 71 | 56 of 71 | 0.065% |
 | roll inertia | 10 of 71 | 29 of 71 | 1.686% |
 | roll inertia, OpenRocket's fin shortcut in hpr's place | 57 of 71 | 57 of 71 | 0.001% |
 
-Counting each file's content once, 48 of 51 are within 1% in mass and 48 of 51 in centre of mass.
-Before fillets were weighed, 65 of 71 were within 1% in mass, 55 in pitch inertia, and 56 in
+Counting each file's content once, 49 of 51 are within 1% in mass and 49 of 51 in centre of mass.
+Before tube fins were read, 58 and 66 of 71 were within 0.1% and 1% in mass, and 63 and 66 in
+centre of mass. Before fillets were weighed, 65 of 71 were within 1% in mass, 55 in pitch inertia, and 56 in
 roll inertia with the shortcut.
 Before [M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a
 [cluster](../glossary.md#cluster), 58 and 59 of 71 were.
@@ -252,13 +255,13 @@ Before [M2.2b1](../decisions-and-roadmap.md#m2-2b1) (reading what a `.ork` leave
 74 files were within 1% in mass and 58 in centre of mass (median mass 0.020%). Those are the earlier
 74-file measurement; the current default survey is the 71-file table above.
 
-**The 5 files outside a threshold** are 3 different files by content, each a different design, and
+**The 3 files outside a threshold** are 2 different files by content, each a different design, and
 each is outside both. Each has one cause. `cargo xtask ork` works the causes out, counts them by
 content as below, and fails if a file outside has none:
 
 | cause | what hpr does | what OpenRocket does | files by content |
 |---|---|---|---|
-| parallel stages, tube fins and parts left out | keeps them unread, with a warning (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 2 |
+| parallel stages | keeps them unread, with a warning (the design is [reduced](../format/ork.md#what-hpr-keeps-for-writing-the-file-back)) | counts them | 1 |
 | airfoil fin sections | integrates the airfoil's section, 0.6851 of a square slab ([below](#fins-rail-buttons-and-roll-inertia)) | weighs the outline times the thickness times 0.85 | 1 |
 
 The fin-section cause is sized, not only present. hpr gives no warning for it, since the section is
@@ -270,11 +273,15 @@ same fins are a likely cause, but the survey's thresholds are coarser than that 
 they are a lead for it, not its size
 ([the format guide](../format/ork.md#hprs-flights-of-the-private-designs)).
 
-Three causes are gone. A cluster read as one tube went when
+Four causes are gone. A cluster read as one tube went when
 [M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files by content
 are now within both thresholds. Pods went when [M1.13b](../decisions-and-roadmap.md#m1-13b) read
 them. Fin fillets, which hpr left out, went when [M2.2e7](../decisions-and-roadmap.md#m2-2e7)
-weighed them ([below](#clusters-and-fillets)). `cargo xtask ork` prints each of the 5 with the parts that differ most, by id, or by name in an
+weighed them ([below](#clusters-and-fillets)). Tube fins, which hpr left out when OpenRocket sizes
+them from the body, went when [M2.2e8](../decisions-and-roadmap.md#m2-2e8) read them
+([below](#tube-fins)): OpenRocket's *Tube fin rocket* example, the one design with them, is now
+within 5.0e-6 of OpenRocket's mass and 2.4e-6 of its length in centre of mass. `cargo xtask ork`
+prints each of the 3 with the parts that differ most, by id, or by name in an
 older file that writes no ids. A private design is named only by the start of its file's hash.
 
 **A worked example, now settled.** In the first comparison
@@ -314,7 +321,8 @@ content), `cargo xtask ork` names a cause, and it fails if it can't. Each has ex
 | cause | files by content |
 |---|---|
 | a mass override covering the parts inside (a departure, [below](#what-a-ork-leaves-unsaid-and-overrides)) | 5 |
-| parts hpr keeps unread (a reduced design) | 2 |
+| parts hpr keeps unread (a reduced design) | 1 |
+| tube fins, whose roll inertia is a departure ([below](#tube-fins)) | 1 |
 | a cluster's tubes, which OpenRocket weighs stacked on the cluster's axis ([below](#clusters-and-fillets)) | 2 |
 
 The cluster cause is sized, not only present: the survey names it only when hpr's roll inertia,
@@ -558,6 +566,46 @@ in packed parts, are settled [below](#packed-parts).
 script writes these, and `cargo test -p hpr-validate openrocket` checks them.
 
 [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+
+### Tube fins
+
+A *tube fin set* is a ring of short open tubes along the airframe, in place of flat fins. hpr
+weighs each tube as a hollow cylinder with its axis at `R + r` from the airframe's axis, where `R`
+is the body tube's outer radius and `r` the tube's own. Since
+[M2.2e8](../decisions-and-roadmap.md#m2-2e8) hpr also reads a `.ork` tube fin set whose radius
+OpenRocket works out from the body
+([the format guide](../format/ork.md#tube-fins-sized-from-the-body) has the rule).
+[ADR-098][adr-098], the decision on that radius, records what follows.
+
+**Mass and centre agree.** On 14 OpenRocket probe designs, each tube fin set's mass is within 1e-14
+of OpenRocket's and its centre within 1e-15 m. OpenRocket's *Tube fin rocket* example is within
+5.0e-6 of OpenRocket's mass and 2.4e-6 of its length in centre of mass.
+
+**Roll inertia is a departure.** A departure is a difference hpr keeps on purpose, measured and
+pinned by a test. Divide a part's roll inertia by its mass and you get its *unit inertia*, in m²:
+the mean of the squared distance of its mass from the axis. No mass inside a ring of tubes is
+farther from the axis than `R + 2r`, the outer edge of the tubes. So no ring's unit inertia can
+exceed `(R + 2r)²`. For two tubes or more, OpenRocket's does:
+
+| six tubes of 20 mm radius on a 50 mm body | unit roll inertia |
+| --- | --- |
+| the most any ring can have, `(0.05 + 2 × 0.02)²` | 0.0081 m² |
+| OpenRocket 24.12's | 0.3047 m², about 38 times that |
+
+hpr keeps its own figure, which is below that bound, as it must be. For a single tube the two
+agree: OpenRocket puts its centre at `R + r`, where hpr does, and its unit inertia about the
+tube's own axis is `(r² + rᵢ²)/2`, with `rᵢ` the tube's inner radius, as hpr's is.
+
+On OpenRocket's *Tube fin rocket* this leaves hpr's roll inertia 98.7% below OpenRocket's, and its
+pitch inertia 1.98% below. The survey [above](#checked-against-openrocket) names tube fins as the
+cause of that roll gap. OpenRocket's fin shortcut, which the survey swaps in for flat fins, is not
+given OpenRocket's mass for tube fins, so it cannot close this one.
+
+The test `a_tube_fin_sets_automatic_radius_reads_as_openrocket_does` in `hpr-validate` holds both
+sides: OpenRocket's figure above the bound, and hpr's below it, on every probe with two tubes or
+more.
+
+[adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
 
 ## Clusters and fillets
 

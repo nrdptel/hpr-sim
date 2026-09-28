@@ -3806,7 +3806,7 @@
       "design": "Tube fin rocket",
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Tube fin rocket.ork",
       "motors": "[D12-7]",
-      "why": "an airframe not read exactly as written"
+      "why": "tube fins, which hpr has no aerodynamic model for yet"
     }
   ],
   "probes": [

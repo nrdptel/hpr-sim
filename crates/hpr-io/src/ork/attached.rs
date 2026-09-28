@@ -156,7 +156,7 @@ fn one(
         "centeringring" => ring(&mut values, &mut auto, true),
         "bulkhead" => ring(&mut values, &mut auto, false),
         "trapezoidfinset" | "ellipticalfinset" | "freeformfinset" => fin_set(element, &mut values),
-        "tubefinset" => tube_fins(&mut values),
+        "tubefinset" => tube_fins(&mut values, &mut auto),
         "launchlug" => launch_lug(&mut values),
         "railbutton" => rail_button(&mut values),
         "masscomponent" => mass_component(&mut values, &mut auto),
@@ -200,8 +200,10 @@ fn one(
         Part::Transition(transition) => hollow(&transition.wall),
         _ => false,
     };
+    // A tube fin set's automatic radius comes from the body it rings, not a bore; it sits on a body
+    // tube, or was left out above.
     let needs_a_bore = auto.iter().any(|dimension| match dimension {
-        AutoDimension::OuterRadius => !bore_along,
+        AutoDimension::OuterRadius => !part.is_external() && !bore_along,
         AutoDimension::PackedRadius => !matches!(parent, Part::BodyTube(_) | Part::InnerTube(_)),
         _ => false,
     });
@@ -963,24 +965,27 @@ fn tab(values: &mut Values<'_>, root_chord_m: f64) -> Option<FinTab> {
     })
 }
 
-/// A ring of tubes around the body.
-fn tube_fins(values: &mut Values<'_>) -> Option<Part> {
-    let mut auto = Vec::new();
+/// OpenRocket 24.12 reads a tube fin set of more than this many tubes as this many: 9, 12 and 20
+/// all read as 8 on its probes (ADR-098).
+const MOST_TUBE_FINS: u32 = 8;
+
+/// A ring of tubes around the body. An `auto` radius is the one at which the tubes close the ring
+/// around the body tube, which the layout resolves (`AutoDimension::OuterRadius`, ADR-098).
+fn tube_fins(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<Part> {
     let (stated_m, outer_radius_m) =
-        stated_radius(values, &["radius"], AutoDimension::OuterRadius, &mut auto);
-    if stated_m.is_none() {
-        // OpenRocket sizes an automatic tube-fin radius so the tubes close the ring around the
-        // body. `hpr-design` has no automatic dimension for it, and guessing one here would put a
-        // number in the design that no source backs. Tracked as an issue, not invented.
-        values.warn_at(
-            WarningKind::Skipped,
-            "a tube fin set whose radius OpenRocket works out from the body; hpr does not resolve \
-             that yet, so it was left out",
-        );
-        return None;
-    }
+        stated_radius(values, &["radius"], AutoDimension::OuterRadius, auto);
     let thickness_m = tube_wall(values, stated_m)?;
-    let count = instances(values, "tube fin set")?;
+    let mut count = instances(values, "tube fin set")?;
+    if count > MOST_TUBE_FINS {
+        values.warn_at(
+            WarningKind::Dropped,
+            format!(
+                "a tube fin set of {count} tubes; OpenRocket 24.12 reads at most \
+                 {MOST_TUBE_FINS}, so it was read as {MOST_TUBE_FINS}"
+            ),
+        );
+        count = MOST_TUBE_FINS;
+    }
     Some(Part::TubeFinSet(TubeFinSet {
         count,
         length_m: values.number(&["length"]).unwrap_or_default(),

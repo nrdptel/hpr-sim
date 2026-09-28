@@ -3,7 +3,7 @@
  "generated": "2026-09-28",
  "inputs_sha256": {
   "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
-  "conventions.py": "efc142101bc4fe7056435994683d2d1da043fdce17f68fe6fbbd742d46911b54",
+  "conventions.py": "fa58c274d5b03e0b0a3030e648570bfdf0e2875ce6bd031991f885cf75bca62c",
   "mass.py": "ce8b915d342ff631d3ad3ec74244d2c2faf55321f710a4b036eda5d7671cabe5"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
@@ -3369,6 +3369,1603 @@
     "longitudinal_inertia": 0.011277242630050085,
     "mass_kg": 0.4383136416080359,
     "rotational_inertia": 0.0010786367458830415
+   }
+  },
+  "a tube and 1 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>1</instancecount><fincount>1</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.031101767270538993,
+     "each_mass_kg": 0.031101767270538993,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.031101767270538993,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.031101767270538993
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.2683503243744208,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.33897784732233915,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.33897784732233915,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.33897784732233915,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.2683503243744208,
+    "ixx": 0.0010982145217846634,
+    "iyy": 0.008048415264377806,
+    "izz": 0.008048415264377806,
+    "longitudinal_inertia": 0.008048415264377806,
+    "mass_kg": 0.33897784732233915,
+    "rotational_inertia": 0.0010982145217846634
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.08660254037844388,
+      0.049999999999999996
+     ],
+     "component_mass_kg": 0.031101767270538993,
+     "count": 1,
+     "inner_radius_m": 0.049,
+     "longitudinal_unit_inertia_m2": 0.0020585833333333337,
+     "outer_radius_m": 0.05,
+     "rotational_unit_inertia_m2": 0.0024505000000000004,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 12 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>12</instancecount><fincount>12</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.15328820898000356,
+     "each_mass_kg": 0.15328820898000356,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.15328820898000356,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.15328820898000356
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3164787853811604,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.46116428903180373,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3164787853811604,
+    "ixx": 0.06437371361648471,
+    "iyy": 0.012469589787753947,
+    "izz": 0.012469589787753947,
+    "longitudinal_inertia": 0.012469589787753947,
+    "mass_kg": 0.46116428903180373,
+    "rotational_inertia": 0.06437371361648471
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       0.012940952255126049,
+       0.04829629131445341
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.04829629131445341,
+       0.01294095225512605
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -0.012940952255126032,
+       -0.04829629131445342
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ],
+      [
+       0.04829629131445342,
+       -0.012940952255126035
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "longitudinal_unit_inertia_m2": 0.010387622473878354,
+     "outer_radius_m": 0.03099572022108876,
+     "rotational_unit_inertia_m2": 0.4151277889906155,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 2 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>2</instancecount><fincount>2</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.062203534541077986,
+     "each_mass_kg": 0.062203534541077986,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.062203534541077986,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.062203534541077986
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.283616298811545,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.37007961459287814,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.37007961459287814,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.37007961459287814,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.283616298811545,
+    "ixx": 0.007575748993883437,
+    "iyy": 0.009109877352972449,
+    "izz": 0.009109877352972449,
+    "longitudinal_inertia": 0.009109877352972449,
+    "mass_kg": 0.37007961459287814,
+    "rotational_inertia": 0.007575748993883437
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.062203534541077986,
+     "count": 2,
+     "inner_radius_m": 0.049,
+     "longitudinal_unit_inertia_m2": 0.004117166666666667,
+     "outer_radius_m": 0.05,
+     "rotational_unit_inertia_m2": 0.10990100000000001,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 20 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>20</instancecount><fincount>20</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.15328820898000356,
+     "each_mass_kg": 0.15328820898000356,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.15328820898000356,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.15328820898000356
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3164787853811604,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.46116428903180373,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3164787853811604,
+    "ixx": 0.06437371361648471,
+    "iyy": 0.012469589787753947,
+    "izz": 0.012469589787753947,
+    "longitudinal_inertia": 0.012469589787753947,
+    "mass_kg": 0.46116428903180373,
+    "rotational_inertia": 0.06437371361648471
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       0.012940952255126049,
+       0.04829629131445341
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.04829629131445341,
+       0.01294095225512605
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -0.012940952255126032,
+       -0.04829629131445342
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ],
+      [
+       0.04829629131445342,
+       -0.012940952255126035
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "longitudinal_unit_inertia_m2": 0.010387622473878354,
+     "outer_radius_m": 0.03099572022108876,
+     "rotational_unit_inertia_m2": 0.4151277889906155,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 3 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>3</instancecount><fincount>3</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.608284746589162,
+     "each_mass_kg": 0.608284746589162,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.608284746589162,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.608284746589162
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3827899488607026,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.9161608266409622,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.9161608266409622,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.9161608266409622,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3827899488607026,
+    "ixx": 0.4726474513545165,
+    "iyy": 0.11150020864655776,
+    "izz": 0.11150020864655776,
+    "longitudinal_inertia": 0.11150020864655776,
+    "mass_kg": 0.9161608266409622,
+    "rotational_inertia": 0.4726474513545165
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       -0.043301270189221926,
+       0.02500000000000002
+      ],
+      [
+       -9.184850993605149e-18,
+       -0.05
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.608284746589162,
+     "count": 3,
+     "inner_radius_m": 0.3222050807568876,
+     "longitudinal_unit_inertia_m2": 0.15870822871946402,
+     "outer_radius_m": 0.3232050807568876,
+     "rotational_unit_inertia_m2": 0.7758010301201267,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 4 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>4</instancecount><fincount>4</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.3021223866084909,
+     "each_mass_kg": 0.3021223866084909,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.3021223866084909,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.3021223866084909
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.349056769195698,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6099984666602911,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.6099984666602911,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6099984666602911,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.349056769195698,
+    "ixx": 0.09623668858014611,
+    "iyy": 0.02262221564733502,
+    "izz": 0.02262221564733502,
+    "longitudinal_inertia": 0.02262221564733502,
+    "mass_kg": 0.6099984666602911,
+    "rotational_inertia": 0.09623668858014611
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.3021223866084909,
+     "count": 4,
+     "inner_radius_m": 0.11971067811865473,
+     "longitudinal_unit_inertia_m2": 0.03223504760082696,
+     "outer_radius_m": 0.12071067811865473,
+     "rotational_unit_inertia_m2": 0.3160876997824491,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 5 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>5</instancecount><fincount>5</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.22241219321445366,
+     "each_mass_kg": 0.22241219321445366,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.22241219321445366,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.22241219321445366
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3338835042851427,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.5302882732662538,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.5302882732662538,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.5302882732662538,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3338835042851427,
+    "ixx": 0.0675693149723223,
+    "iyy": 0.015662711255105082,
+    "izz": 0.015662711255105082,
+    "longitudinal_inertia": 0.015662711255105082,
+    "mass_kg": 0.5302882732662538,
+    "rotational_inertia": 0.0675693149723223
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       -0.010395584540887957,
+       0.04890738003669029
+      ],
+      [
+       -0.049726094768413664,
+       0.005226423163382687
+      ],
+      [
+       -0.020336832153790008,
+       -0.045677272882130054
+      ],
+      [
+       0.03715724127386971,
+       -0.033456530317942906
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.22241219321445366,
+     "count": 5,
+     "inner_radius_m": 0.07029599990797956,
+     "longitudinal_unit_inertia_m2": 0.016697475674093278,
+     "outer_radius_m": 0.07129599990797957,
+     "rotational_unit_inertia_m2": 0.3004772160292463,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 6 tube fins of a stated radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>6</instancecount><fincount>6</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>0.02</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.07351326809400122,
+     "each_mass_kg": 0.07351326809400122,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.07351326809400122,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.07351326809400122
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.2885502471169687,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.3813893481458014,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.3813893481458014,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.3813893481458014,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.2885502471169687,
+    "ixx": 0.023137761406969,
+    "iyy": 0.009609065702700797,
+    "izz": 0.009609065702700797,
+    "longitudinal_inertia": 0.009609065702700797,
+    "mass_kg": 0.3813893481458014,
+    "rotational_inertia": 0.023137761406969
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": false,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       3.061616997868383e-18,
+       0.05
+      ],
+      [
+       -0.043301270189221926,
+       0.02500000000000002
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -9.184850993605149e-18,
+       -0.05
+      ],
+      [
+       0.04330127018922192,
+       -0.025000000000000022
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.07351326809400122,
+     "count": 6,
+     "inner_radius_m": 0.019,
+     "longitudinal_unit_inertia_m2": 0.006141500000000002,
+     "outer_radius_m": 0.02,
+     "rotational_unit_inertia_m2": 0.30468300000000004,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 6 tube fins of a stated radius, offset from the body": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>6</instancecount><fincount>6</fincount><radiusoffset method=\"surface\">0.01</radiusoffset><rotation>30</rotation><radius>0.02</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.07351326809400122,
+     "each_mass_kg": 0.07351326809400122,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.07351326809400122,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.07351326809400122
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.2885502471169687,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.3813893481458014,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.3813893481458014,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.3813893481458014,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.2885502471169687,
+    "ixx": 0.023137761406969,
+    "iyy": 0.009609065702700797,
+    "izz": 0.009609065702700797,
+    "longitudinal_inertia": 0.009609065702700797,
+    "mass_kg": 0.3813893481458014,
+    "rotational_inertia": 0.023137761406969
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": false,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       3.061616997868383e-18,
+       0.05
+      ],
+      [
+       -0.043301270189221926,
+       0.02500000000000002
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -9.184850993605149e-18,
+       -0.05
+      ],
+      [
+       0.04330127018922192,
+       -0.025000000000000022
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.07351326809400122,
+     "count": 6,
+     "inner_radius_m": 0.019,
+     "longitudinal_unit_inertia_m2": 0.006141500000000002,
+     "outer_radius_m": 0.02,
+     "rotational_unit_inertia_m2": 0.30468300000000004,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 6 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>6</instancecount><fincount>6</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.18661060362323395,
+     "each_mass_kg": 0.18661060362323395,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.18661060362323395,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.18661060362323395
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.32547649301143583,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4944866836750341,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.4944866836750341,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.4944866836750341,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.32547649301143583,
+    "ixx": 0.06226559419067552,
+    "iyy": 0.013736246404757346,
+    "izz": 0.013736246404757346,
+    "longitudinal_inertia": 0.013736246404757346,
+    "mass_kg": 0.4944866836750341,
+    "rotational_inertia": 0.06226559419067552
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       3.061616997868383e-18,
+       0.05
+      ],
+      [
+       -0.043301270189221926,
+       0.02500000000000002
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -9.184850993605149e-18,
+       -0.05
+      ],
+      [
+       0.04330127018922192,
+       -0.025000000000000022
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.18661060362323395,
+     "count": 6,
+     "inner_radius_m": 0.048999999999999995,
+     "longitudinal_unit_inertia_m2": 0.012351499999999998,
+     "outer_radius_m": 0.049999999999999996,
+     "rotational_unit_inertia_m2": 0.32970299999999997,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 6 tube fins of automatic radius and a wall thicker than it": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>6</instancecount><fincount>6</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.1</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 4.71238898038469,
+     "each_mass_kg": 4.71238898038469,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 4.71238898038469,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 4.71238898038469
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.43773466833541924,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 5.02026506043649,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 5.02026506043649,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 5.02026506043649,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.43773466833541924,
+    "ixx": 1.520484964518347,
+    "iyy": 0.05957705050697416,
+    "izz": 0.05957705050697416,
+    "longitudinal_inertia": 0.05957705050697416,
+    "mass_kg": 5.02026506043649,
+    "rotational_inertia": 1.520484964518347
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       3.061616997868383e-18,
+       0.05
+      ],
+      [
+       -0.043301270189221926,
+       0.02500000000000002
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -9.184850993605149e-18,
+       -0.05
+      ],
+      [
+       0.04330127018922192,
+       -0.025000000000000022
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 4.71238898038469,
+     "count": 6,
+     "inner_radius_m": 0.0,
+     "longitudinal_unit_inertia_m2": 0.00875,
+     "outer_radius_m": 0.049999999999999996,
+     "rotational_unit_inertia_m2": 0.3225,
+     "thickness_m": 0.049999999999999996
+    }
+   }
+  },
+  "a tube and 8 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>8</instancecount><fincount>8</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.15328820898000356,
+     "each_mass_kg": 0.15328820898000356,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.15328820898000356,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.15328820898000356
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3164787853811604,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.46116428903180373,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3164787853811604,
+    "ixx": 0.06437371361648471,
+    "iyy": 0.012469589787753947,
+    "izz": 0.012469589787753947,
+    "longitudinal_inertia": 0.012469589787753947,
+    "mass_kg": 0.46116428903180373,
+    "rotational_inertia": 0.06437371361648471
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       0.012940952255126049,
+       0.04829629131445341
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.04829629131445341,
+       0.01294095225512605
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -0.012940952255126032,
+       -0.04829629131445342
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ],
+      [
+       0.04829629131445342,
+       -0.012940952255126035
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "longitudinal_unit_inertia_m2": 0.010387622473878354,
+     "outer_radius_m": 0.03099572022108876,
+     "rotational_unit_inertia_m2": 0.4151277889906155,
+     "thickness_m": 0.001
+    }
+   }
+  },
+  "a tube and 9 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>0.05</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>9</instancecount><fincount>9</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.25,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.45,
+     "component_mass_kg": 0.15328820898000356,
+     "each_mass_kg": 0.15328820898000356,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.15328820898000356,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.15328820898000356
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.3164787853811604,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.46116428903180373,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.46116428903180373,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.3164787853811604,
+    "ixx": 0.06437371361648471,
+    "iyy": 0.012469589787753947,
+    "izz": 0.012469589787753947,
+    "longitudinal_inertia": 0.012469589787753947,
+    "mass_kg": 0.46116428903180373,
+    "rotational_inertia": 0.06437371361648471
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       0.012940952255126049,
+       0.04829629131445341
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.04829629131445341,
+       0.01294095225512605
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       -0.012940952255126032,
+       -0.04829629131445342
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ],
+      [
+       0.04829629131445342,
+       -0.012940952255126035
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.15328820898000356,
+     "count": 8,
+     "inner_radius_m": 0.02999572022108876,
+     "longitudinal_unit_inertia_m2": 0.010387622473878354,
+     "outer_radius_m": 0.03099572022108876,
+     "rotational_unit_inertia_m2": 0.4151277889906155,
+     "thickness_m": 0.001
+    }
    }
   },
   "a tube and a bulkhead": {
@@ -7505,6 +9102,143 @@
     "longitudinal_inertia": 0.0068726555165913835,
     "mass_kg": 0.31549444223675543,
     "rotational_inertia": 0.0007462252430217688
+   }
+  },
+  "a tube of automatic radius and 4 tube fins of automatic radius": {
+   "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim conventions probe\"><rocket><name>Probe</name><id>00000000-0000-4000-8000-000000000098</id><subcomponents><stage><name>Stage</name><id>00000000-0000-4000-8000-000000000099</id><subcomponents><nosecone><name>Nose</name><id>00000000-0000-4000-8000-000000000001</id><length>0.3</length><thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius><material type=\"bulk\" density=\"1000.0\">Probe</material></nosecone><bodytube><name>Tube</name><id>00000000-0000-4000-8000-000000000002</id><length>0.5</length><thickness>0.002</thickness><radius>auto</radius><material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents><tubefinset><name>Tube fins</name><id>00000000-0000-4000-8000-000000000030</id><position type=\"bottom\">0.0</position><instancecount>4</instancecount><fincount>4</fincount><radiusoffset method=\"coaxial\">0.0</radiusoffset><rotation>30</rotation><radius>auto</radius><length>0.1</length><thickness>0.001</thickness><material type=\"bulk\" density=\"1000.0\">Probe</material></tubefinset></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+   "materials": {
+    "00000000-0000-4000-8000-000000000001": {
+     "class": "NoseCone",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000002": {
+     "class": "BodyTube",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    },
+    "00000000-0000-4000-8000-000000000030": {
+     "class": "TubeFinSet",
+     "material": {
+      "density": 1000.0,
+      "kind": "bulk",
+      "name": "Probe"
+     }
+    }
+   },
+   "parts": [
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.20199971059840252,
+     "component_mass_kg": 0.09172550704261852,
+     "each_mass_kg": 0.09172550704261852,
+     "id": "00000000-0000-4000-8000-000000000001",
+     "mass_kg": 0.09172550704261852,
+     "mass_overridden": false,
+     "name": "Nose",
+     "overridden_by": null,
+     "override_mass_kg": 0.09172550704261852
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.55,
+     "component_mass_kg": 0.30787608005180017,
+     "each_mass_kg": 0.30787608005180017,
+     "id": "00000000-0000-4000-8000-000000000002",
+     "mass_kg": 0.30787608005180017,
+     "mass_overridden": false,
+     "name": "Tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.30787608005180017
+    },
+    {
+     "class": "TubeFinSet",
+     "cm_x_m": 0.75,
+     "component_mass_kg": 0.3021223866084909,
+     "each_mass_kg": 0.3021223866084909,
+     "id": "00000000-0000-4000-8000-000000000030",
+     "mass_kg": 0.3021223866084909,
+     "mass_overridden": false,
+     "name": "Tube fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.3021223866084909
+    },
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.5906199237785005,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.7017239737029096,
+     "id": "00000000-0000-4000-8000-000000000098",
+     "mass_kg": 0.7017239737029096,
+     "mass_overridden": false,
+     "name": "Probe",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.7017239737029096,
+     "id": "00000000-0000-4000-8000-000000000099",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Stage",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    }
+   ],
+   "parts_skipped": 0,
+   "structure": {
+    "cm_x_m": 0.5906199237785005,
+    "ixx": 0.09634682167352895,
+    "iyy": 0.03905390719913862,
+    "izz": 0.03905390719913862,
+    "longitudinal_inertia": 0.03905390719913862,
+    "mass_kg": 0.7017239737029096,
+    "rotational_inertia": 0.09634682167352895
+   },
+   "tube_fins": {
+    "00000000-0000-4000-8000-000000000030": {
+     "automatic": true,
+     "axes_yz_m": [
+      [
+       0.04330127018922194,
+       0.024999999999999998
+      ],
+      [
+       -0.02499999999999999,
+       0.043301270189221946
+      ],
+      [
+       -0.043301270189221946,
+       -0.024999999999999988
+      ],
+      [
+       0.02500000000000001,
+       -0.04330127018922193
+      ]
+     ],
+     "body_radius_m": 0.05,
+     "component_cg_xyz_m": [
+      0.05,
+      0.0,
+      0.0
+     ],
+     "component_mass_kg": 0.3021223866084909,
+     "count": 4,
+     "inner_radius_m": 0.11971067811865473,
+     "longitudinal_unit_inertia_m2": 0.03223504760082696,
+     "outer_radius_m": 0.12071067811865473,
+     "rotational_unit_inertia_m2": 0.3160876997824491,
+     "thickness_m": 0.001
+    }
    }
   },
   "a tube of no wall": {

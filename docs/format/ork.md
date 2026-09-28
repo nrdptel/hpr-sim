@@ -56,9 +56,8 @@ is no command-line tool yet.
   compared with OpenRocket yet. **Parallel stages are kept, not
   modelled.** A design with them is marked *reduced*, and none of its configurations flies
   ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
-- **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone
-  or tube fins OpenRocket sizes from the body, is left out. Each one is named in a warning rather
-  than guessed at ([what is left out, and why](#what-is-left-out-and-why)).
+- **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone,
+  is left out. Each one is named in a warning rather than guessed at ([what is left out, and why](#what-is-left-out-and-why)).
 - **Every one of the 72 designs in the current reference survey lays out**, meaning every part gets a
   position and a radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
   default of 25 mm, with a warning
@@ -682,8 +681,9 @@ assert!(placed.own.mass_kg > 0.0);
 [`Warning`](../api/hpr_io/ork/struct.Warning.html), each carrying where in the file it happened,
 how much was lost (`Skipped`, `Dropped` or `Unusual`) and a sentence saying what was read and how —
 for example "a fin set sits on a nose cone, and hpr attaches one only to a body tube; it was left
-out". Read them: a design that opens cleanly raises none, and the 73 readable files of the reference library
-raise 39 between them, every one of them explained on this page.
+out". Read them: a design that opens cleanly raises none, and the 73 readable files of the
+reference library raise 16 between them, every one of them explained on this page
+([what the 16 warnings are](#what-the-warnings-are)).
 
 | `.ork` tag | read as | notes |
 | --- | --- | --- |
@@ -691,7 +691,7 @@ raise 39 between them, every one of them explained on this page.
 | `centeringring` | [`CenteringRing`][p-ring] | bore and outer radius may both be automatic |
 | `bulkhead` | [`CenteringRing`][p-ring] with no bore | |
 | `trapezoidfinset`, `ellipticalfinset`, `freeformfinset` | [`FinSet`][p-fins] | with its tab, its cant (the angle the fins are turned to induce roll) and its section (the shape along the chord: square, rounded or airfoil) |
-| `tubefinset` | [`TubeFinSet`][p-tubefins] | only when its radius is stated; neither in the corpus is, so hpr reads no tube fins from it ([#133][issue-133]) |
+| `tubefinset` | [`TubeFinSet`][p-tubefins] | an `auto` radius closes the ring around the body, as OpenRocket works it out ([Tube fins sized from the body](#tube-fins-sized-from-the-body)); both sets in the corpus are written so |
 | `launchlug`, `railbutton` | [`LaunchLug`][p-lug], [`RailButton`][p-button] | a row of them is one part with a count and a spacing |
 | `masscomponent` | [`MassComponent`][p-mass] | |
 | `parachute`, `streamer`, `shockcord` | [`Parachute`][p-chute], [`Streamer`][p-streamer], [`ShockCord`][p-cord] | the packed shape, not the deployment |
@@ -816,6 +816,85 @@ the test holds the mass to 1e-14 and the station to 1e-15. Three things are pinn
 The test `an_automatic_radius_inside_a_nose_reads_as_openrocket_does` in `hpr-validate` holds hpr
 to these answers. Before, hpr had no bore to give such a part, so it left the part out with a
 warning, and a design holding one did not fly.
+
+### Tube fins sized from the body
+
+A *tube fin set* is a ring of short open tubes glued along the airframe in place of flat fins. In
+OpenRocket, a tube fin set's radius can be written `auto`. OpenRocket then sizes the tubes from
+the body tube they sit on. Since [M2.2e8](../decisions-and-roadmap.md#m2-2e8) hpr works that
+radius out as OpenRocket 24.12 does ([ADR-098][adr-098], the decision on a tube fin set's
+automatic radius). Before, hpr left such a set out with a `Skipped` warning
+([#133][issue-133]).
+
+**The rule.** With three tubes or more, each tube touches the body and its two neighbours, so the
+ring closes:
+
+- The tubes' axes sit on a circle of radius `R + r` around the airframe's axis, where `R` is the
+  body tube's outer radius and `r` the tubes' radius.
+- Neighbouring axes are `2π/N` apart around that circle, for `N` tubes, so the straight line
+  between them (the chord) is `2(R + r) sin(π/N)` long.
+- Two tubes of radius `r` touch when their axes are `2r` apart. Setting the chord to `2r` gives
+  `r = R sin(π/N) / (1 − sin(π/N))`.
+
+One or two tubes can't close a ring. For those, OpenRocket gives the tubes the body's radius, and
+so does hpr. The rule is
+[`TubeFinSet::closing_radius_m`](../api/hpr_design/fins/struct.TubeFinSet.html#method.closing_radius_m),
+and the layout applies it through `AutoDimension::OuterRadius`, as for any other automatic
+dimension ([Automatic dimensions](../physics/design.md#automatic-dimensions)).
+
+For example, take four tubes on a body of 50 mm radius. `sin(π/4)` is 0.7071, so
+`r = 50 × 0.7071 / 0.2929` = 120.7 mm. The axes then sit 170.7 mm from the airframe's axis, and
+neighbours are `2 × 170.7 × 0.7071` = 241.4 mm apart, which is `2r`: they touch. Fewer tubes
+must be wider to close the ring:
+
+| tubes on a 50 mm body | radius |
+| --- | --- |
+| 1 or 2 | 50 mm, the body's |
+| 3 | 323.2 mm |
+| 4 | 120.7 mm |
+| 5 | 71.3 mm |
+| 6 | 50.0 mm, as wide as the body |
+| 8 | 31.0 mm |
+
+Three more things are read as OpenRocket reads them:
+
+- **A wall thicker than the radius** is cut to the radius, so the tubes are solid rods. OpenRocket
+  weighs them that way, as it does an inner tube's ([above](#inside-a-nose-cone-or-a-transition)).
+- **More than 8 tubes are read as 8,** with a `Dropped` warning. OpenRocket 24.12 reads 9, 12 and
+  20 tubes as 8. That is OpenRocket's reading of the file, not a limit of the physics: hpr's own
+  design files take any count.
+- **A radial offset** (tubes standing off the body) changes none of OpenRocket's numbers. hpr
+  reads such a set sitting on the body, with a `Dropped` warning, as it did before.
+
+**Measured.** Fourteen probe designs in `validation/oracles/openrocket/conventions.py` ask
+OpenRocket 24.12 these questions, each a 50 mm tube carrying one tube fin set: `auto` sets of 1, 2,
+3, 4, 5, 6, 8, 9, 12 and 20 tubes; six tubes of a stated 20 mm radius, with and without a 10 mm
+radial offset; six `auto` tubes with a wall thicker than their radius; and four `auto` tubes on a
+body tube whose own radius is `auto`. OpenRocket's answers are in
+`validation/fixtures/ork/openrocket-conventions.json`. The test
+`a_tube_fin_sets_automatic_radius_reads_as_openrocket_does` in `hpr-validate` holds hpr to them:
+
+| quantity | hpr against OpenRocket, on all 14 |
+| --- | --- |
+| the tubes' radius and wall | within 1e-15, relative; the radius equals the rule bit for bit |
+| the number of tubes | the same |
+| each part's mass | within 1e-14, relative; the one nose cone within 5e-5, the gap nose walls already had ([above](#inside-a-nose-cone-or-a-transition)) |
+| each part's centre of mass, along the airframe | within 1e-15 m; the nose cone within 5e-6 m |
+
+OpenRocket's *Tube fin rocket* example is the only design in the reference library with tube
+fins, in two copies. It now reads with its tube fins, and its mass is within 5.0e-6 of OpenRocket's
+and its centre of mass within 2.4e-6 of its length ([Mass properties](../physics/mass.md#tube-fins)).
+
+**What differs: the roll inertia.** For two tubes or more, OpenRocket's roll inertia for the set
+is larger than any mass inside the ring could have. hpr keeps its own, a departure: a difference
+kept on purpose, measured and pinned by the same test
+([Mass properties](../physics/mass.md#tube-fins) has the numbers). For a single tube the two
+agree.
+
+**What is not done.** hpr's aerodynamics has no model for tube fins yet, so a design holding them
+reads and weighs, but does not fly. The *Tube fin rocket* is held back from
+[hpr's flights](#hprs-flights-against-openrockets) for that reason alone.
+[M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, is the next step.
 
 ### The surface finish
 
@@ -1077,18 +1156,19 @@ weighs nothing of its own.
 
 A part hpr cannot give an honest shape is **left out with a `Skipped` warning** naming the part and
 the reason, rather than guessed at. The design still opens and still lays out; what is missing is
-named, never silent. Four parts in the whole corpus, over four rules — the first two catch the same
+named, never silent. Two parts in the whole corpus, over three rules — the first two catch the same
 two fin sets, and the last catches none now:
 
 | rule | in the corpus |
 | --- | --- |
 | an external part on anything but a body tube — a fin's root on a nose cone is not a straight line | 2 fin sets, on one design's nose |
 | a freeform outline that does not end on the root, which would have to be closed along a body it never touches | the same 2 |
-| a tube fin set whose radius OpenRocket sizes from the body, which hpr has no rule for ([#133][issue-133]) | 2 |
 | a part whose automatic radius needs a bore its parent has not got: a filled nose cone, or a packed part inside a nose cone ([above](#inside-a-nose-cone-or-a-transition)) | none; the 1 coupler in a nose cone it caught is read since [M2.2e7](../decisions-and-roadmap.md#m2-2e7) |
 
-2 + 2 = 4, because the freeform outlines that leave the root are the same two fin sets the
-first row catches.
+The count is 2, not 4, because the freeform outlines that leave the root are the same two fin
+sets the first row catches. A fourth rule left out the 2 tube fin sets whose radius OpenRocket
+sizes from the body, until [M2.2e8](../decisions-and-roadmap.md#m2-2e8) worked that radius out
+([Tube fins sized from the body](#tube-fins-sized-from-the-body)).
 
 Two more things are read as the simpler part hpr models, each with a warning so that what is
 missing from a mass is visible: a rail button's **screw head** (2), and a **row** of more than one
@@ -1279,7 +1359,8 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 
 ### Measured on the reference library
 
-`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-23, with the rows for parts left out
+and warnings raised from 2026-09-28:
 
 | | |
 |---|---|
@@ -1291,9 +1372,9 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | parts on and inside them | 752 |
 | by kind | 194 centering rings, 156 inner tubes, 132 parachutes, 104 fin sets, 81 mass components, 40 shock cords, 27 launch lugs, 16 rail buttons, 2 streamers |
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
-| parts left out, with a reason | 4; 5 before [M2.2e7](../decisions-and-roadmap.md#m2-2e7) read a coupler inside a nose cone |
+| parts left out, with a reason | 2; 4 before [M2.2e8](../decisions-and-roadmap.md#m2-2e8) read tube fins sized from the body, 5 before [M2.2e7](../decisions-and-roadmap.md#m2-2e7) read a coupler inside a nose cone |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 18: 2 dropped, 7 skipped, 9 unusual (below); 21 before fin fillets and the coupler inside a nose cone were read ([M2.2e7](../decisions-and-roadmap.md#m2-2e7)), 31 before the old override flag was read as OpenRocket reads it ([M2.2e6](../decisions-and-roadmap.md#m2-2e6)), 35, with 12 skipped, before pods were read ([Pods](#pods)) |
+| warnings raised | 16: 2 dropped, 5 skipped, 9 unusual (below); 18 before tube fins sized from the body were read ([M2.2e8](../decisions-and-roadmap.md#m2-2e8)), 21 before fin fillets and the coupler inside a nose cone were read ([M2.2e7](../decisions-and-roadmap.md#m2-2e7)), 31 before the old override flag was read as OpenRocket reads it ([M2.2e6](../decisions-and-roadmap.md#m2-2e6)), 35, with 12 skipped, before pods were read ([Pods](#pods)) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage`; since pods are read ([Pods](#pods)), 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -1307,8 +1388,10 @@ so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 18 warnings are.** Every one is a reading this page explains, and none of them means a
-file is broken. Before [M2.2e7](../decisions-and-roadmap.md#m2-2e7) weighed fin fillets and read an
+<a id="what-the-warnings-are"></a>**What the 16 warnings are.** Every one is a reading this page
+explains, and none of them means a file is broken. Before
+[M2.2e8](../decisions-and-roadmap.md#m2-2e8) read tube fins sized from the body there were 18.
+Before [M2.2e7](../decisions-and-roadmap.md#m2-2e7) weighed fin fillets and read an
 automatic radius inside a nose cone there were 21. Before [M2.2e6](../decisions-and-roadmap.md#m2-2e6) read the old override flag as
 OpenRocket does there were 31, before [M1.13b](../decisions-and-roadmap.md#m1-13b) read pods 35, before
 [M1.9b](../decisions-and-roadmap.md#m1-9b) read clusters 39, and
@@ -1323,7 +1406,7 @@ before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) 57: 5 more for a
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
 | `Dropped` | 2 | a rail button's screw head |
 | `Skipped` | 3 | a tally of the parallel stages, kept in `x-openrocket`, one per design that has any; 7 before pods were read |
-| `Skipped` | 4 | the four parts left out above |
+| `Skipped` | 2 | the two parts left out above; 4 before tube fins sized from the body were read |
 
 Every design that holds a design lays out. The one readable document that doesn't is Debrief's demonstration file, which holds
 no design at all: it is a stored simulation with a rocket's name on it. The two designs that needed
@@ -1549,8 +1632,7 @@ cargo xtask ork
 ```
 
 `cargo xtask ork`, over the 72 designs, with that record, on 2026-09-28, after
-[M2.2e7](../decisions-and-roadmap.md#m2-2e7) read fin fillets and an automatic radius inside a
-nose cone. The counts are of **motors**, one per mount per configuration:
+[M2.2e8](../decisions-and-roadmap.md#m2-2e8) read tube fins sized from the body. The counts are of **motors**, one per mount per configuration:
 
 | motors | count |
 |---|---|
@@ -1567,11 +1649,12 @@ And of **configurations**, over 78 motor mounts in 63 designs (none named only b
 | configurations | count |
 |---|---|
 | declared | 170 |
-| the rocket flies | 106, in 27 designs, and all 106 assemble |
-| left out, by the first reason the reader finds | 24 a motor with no curve, 19 stages hpr can't separate as written, 17 an airframe not read exactly as written, 2 a motor in a part not read, 2 a motor hpr can't light as written |
+| the rocket flies | 108, in 29 designs, and all 108 assemble. The reader holds none of them back, but the 2 of OpenRocket's *Tube fin rocket* wait on tube fin aerodynamics ([above](#tube-fins-sized-from-the-body)) |
+| left out, by the first reason the reader finds | 24 a motor with no curve, 19 stages hpr can't separate as written, 15 an airframe not read exactly as written, 2 a motor in a part not read, 2 a motor hpr can't light as written |
 
-On 2026-09-25, before pods, the old override flag, fillets and the bore inside a nose cone were
-read, 93 flew in 23 designs, and 30 were held back as an airframe not read exactly as written.
+On 2026-09-25, before pods, the old override flag, fillets, the bore inside a nose cone and tube
+fins were read, 93 flew in 23 designs, and 30 were held back as an airframe not read exactly as
+written.
 
 **What the database changed.** With the bundled catalog alone, 164 configurations are held back
 for want of a curve, and 4 fly. The table follows those 164. A configuration that now has its
@@ -1579,9 +1662,9 @@ curves can still be held back for another reason, so these counts differ from th
 
 | what became of the 164 | configurations |
 |---|---|
-| fly | 102 |
+| fly | 104 |
 | held back for another reason: stages hpr can't separate as written | 19 |
-| held back for another reason: an airframe not read exactly as written | 17 |
+| held back for another reason: an airframe not read exactly as written | 15 |
 | held back for another reason: a motor hpr can't light as written | 2 |
 | still no curve: the motor records no digest, and the bundled catalog lacks it | 20 |
 | still no curve: a hybrid | 3 |
@@ -2349,13 +2432,15 @@ two more, `C01` and `C06`. The two more the bar needs can come from:
   is a stage separation with no motor ahead of it that could come before apogee
   ([#184](https://github.com/nrdptel/hpr-sim/issues/184));
 - the private design with a motor hpr can't light as written;
-- the four public designs held back by parts hpr leaves out: parallel stages, tube fins
-  ([#133](https://github.com/nrdptel/hpr-sim/issues/133)), and the freeform fin and the rail
-  buttons' screw heads of OpenRocket's two pod examples. The pods themselves fly since
-  [M1.13c1](../decisions-and-roadmap.md#m1-13c1).
+- the three public designs held back by parts hpr leaves out: parallel stages, and the freeform
+  fin and the rail buttons' screw heads of OpenRocket's two pod examples. The pods themselves fly
+  since [M1.13c1](../decisions-and-roadmap.md#m1-13c1);
+- OpenRocket's *Tube fin rocket*. hpr reads its tube fins since
+  [M2.2e8](../decisions-and-roadmap.md#m2-2e8)
+  ([Tube fins sized from the body](#tube-fins-sized-from-the-body)), but has no aerodynamic model
+  for them yet. [M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, takes that on.
 
-[M2.2e8](../decisions-and-roadmap.md#m2-2e8) takes on the tube fins, and the bar itself is now
-[M2.2e9](../decisions-and-roadmap.md#m2-2e9).
+The bar itself is now [M2.2e10](../decisions-and-roadmap.md#m2-2e10).
 
 **What is published.** The designs are other people's, so the
 [report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-library-flights.md)
@@ -2614,15 +2699,15 @@ hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
 
 ### Kept in the reference library
 
-`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-28:
 
 | quantity | count |
 |---|---|
-| parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler; since pods are read ([Pods](#pods)), 8 in 8, no pod set among them |
+| parts kept | 5, in 5 reduced designs: 3 parallel stages and 2 freeform fin sets. On 2026-09-23 there were 17, in 10; pods ([Pods](#pods)), tube fins ([Tube fins sized from the body](#tube-fins-sized-from-the-body)) and a tube coupler are read since |
 | sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
-| tags kept | 1,888, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
-| attributes kept | 3,128, most often an event's `id` (1,623), a material's `group` (552), an active stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
-| kept elements and attributes found again at their path | 5,120 of 5,120 (the survey fails if one is not) |
+| tags kept | 1,815, most often a part's `<appearance>` (291), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (127) |
+| attributes kept | 3,177, most often an event's `id` (1,623), a material's `group` (576), an active stage's `number` (201) and a stored branch's optimum altitude and its time (168 each) |
+| kept elements and attributes found again at their path | 5,084 of 5,084 (the survey fails if one is not) |
 
 How this was decided is in [ADR-058][adr-058].
 
@@ -2630,6 +2715,7 @@ How this was decided is in [ADR-058][adr-058].
 [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
 [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
 [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
+[adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 [adr-076]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-076-a-ork-files-ignitions-and-one-powered-separation-flown-against-openrocket-2026-09-25
 

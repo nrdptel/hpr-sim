@@ -103,6 +103,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-095 | The single pre-1.9 override flag read as OpenRocket reads it | accepted |
 | ADR-096 | Fin fillets and an automatic radius inside a nose cone read as OpenRocket reads them | accepted |
 | ADR-097 | A cause in the drag sized by hpr flying OpenRocket's drag | accepted |
+| ADR-098 | A tube fin set's automatic radius read as OpenRocket reads it | accepted |
 
 ---
 
@@ -8290,3 +8291,60 @@ The two pull in opposite directions. So neither can be named a cause by being pr
 - The library run now needs `corpus-out/openrocket-drag-curves.json`, written by the current
   scripts with the pinned jar. The public report is unchanged: none of its flights is more than
   5% off without a named cause.
+
+## ADR-098: A tube fin set's automatic radius read as OpenRocket reads it (2026-09-28)
+
+**Context.** A tube fin set written `<radius>auto</radius>` asks OpenRocket to size its tubes from
+the body they ring (#133). hpr had no rule for it and left the set out with a warning, which made
+OpenRocket's *Tube fin rocket* example "an airframe not read exactly as written" (ADR-055). Its
+two copies are the only tube fins in the reference library. M2.2e8 asks for the radius as
+OpenRocket 24.12 resolves it, and for the example to fly. hpr-aero refuses tube fins until a cited
+method exists, so the flight cannot follow from the radius alone.
+
+**Decision.**
+
+1. **Split M2.2e8.** M2.2e8 is now the radius; a new M2.2e9 is a cited aerodynamic method for tube
+   fins, so that the example flies with e4's bar on it; the bar of 20 designs moves, unchanged,
+   from M2.2e9 to M2.2e10. Between them, the old M2.2e8's *done when* is kept whole.
+2. **Measured, not assumed.** `conventions.py` gained 14 probes on a 50 mm tube: `auto` sets of 1, 2,
+   3, 4, 5, 6, 8, 9, 12 and 20 tubes; 6 tubes of a stated 20 mm radius, with and without a
+   10 mm radial offset; 6 `auto` tubes with a wall thicker than their radius; and 4 `auto` tubes on
+   a tube whose own radius is `auto`. Each probe records the set's resolved radius, wall, count,
+   body radius, centre and unit inertias through OpenRocket's public getters. The 107 earlier
+   probes' answers are unchanged.
+3. **The radius closes the ring.** For `N ≥ 3` tubes on a body of radius `R`, the tubes' axes sit on
+   a circle of radius `R + r`, and neighbours touch when the chord between them, `2(R + r)
+   sin(π/N)`, is `2r`: `r = R sin(π/N) / (1 − sin(π/N))`. OpenRocket's radius equals it bit for
+   bit on every probe (six tubes on 50 mm: 50 mm; four: 120.7 mm; eight: 31.0 mm). For one or two
+   tubes no finite ring closes, and OpenRocket gives the body's radius; hpr does the same.
+   `TubeFinSet::closing_radius_m` is the rule, and `AutoDimension::OuterRadius` now applies to a
+   tube fin set.
+4. **A wall thicker than that radius is cut to it**, so the tubes are solid, as OpenRocket weighs
+   them, and as an inner tube's is (ADR-096).
+5. **More than 8 tubes are read as 8.** OpenRocket 24.12 reads 9, 12 and 20 as 8. hpr does the
+   same, with a `Dropped` warning.
+6. **A radial offset moves nothing.** OpenRocket's numbers for the 10 mm offset are those without
+   it. hpr already read such a set sitting on the body, with a warning; that stands.
+7. **Roll inertia is a departure.** For two tubes or more, OpenRocket's rotational unit inertia is
+   larger than `(R + 2r)²`, the most any mass inside the ring can have: 0.3047 m² for six 20 mm
+   tubes on 50 mm, against a bound of 0.0081 m². hpr keeps its hollow tubes at `R + r`. For one
+   tube, OpenRocket's centre is at `R + r`, where hpr puts it, and its unit inertia is the tube's
+   own, `(r² + rᵢ²)/2`, as hpr's is.
+
+**Evidence.** `hpr_validate::openrocket::tests::a_tube_fin_sets_automatic_radius_reads_as_openrocket_does`
+holds all 14 probes: each part's mass within 1e-14 of OpenRocket's and its station within 1e-15 m
+(the one nose cone within 5e-5 and 5e-6 m, the bore probes' bound), the radius and wall within 1e-15,
+the count, and the inertia departure both ways. `hpr_design`'s
+`a_closing_ring_of_tubes_touches_the_body_and_its_neighbours` checks the rule by construction.
+`cargo xtask ork` now reads both copies of the *Tube fin rocket*: its mass is within 5.0e-6 of
+OpenRocket's and its centre within 2.4e-6. Designs within 1% of OpenRocket's mass go from 66 to 68
+of 71, and within 1% of its centre from 66 to 68; reduced designs go from 6 to 4.
+
+**Consequences.**
+
+- The *Tube fin rocket*'s `[D12-7]` stays unflown in `cargo xtask ork-flights`, now for a reason of
+  its own: "tube fins, which hpr has no aerodynamic model for yet". M2.2e9 removes that reason.
+- Its roll inertia stays about 99% below OpenRocket's in the mass survey. That is the departure
+  above, filed under the survey's existing cause for tube fins.
+- The count of 8 is OpenRocket's reading of the file, not a limit of the physics. hpr's own design
+  files still take any count.
