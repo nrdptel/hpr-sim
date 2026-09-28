@@ -2108,39 +2108,57 @@ OpenRocket's flight of the same configuration with nothing deployed. All three d
 
 hpr flies a tilted launch rod the way OpenRocket records it
 ([M2.2e5](../decisions-and-roadmap.md#m2-2e5), issue
-[#173](https://github.com/nrdptel/hpr-sim/issues/173)). OpenRocket stores the rod's angle from the
-vertical and the compass bearing it leans toward, as [the conditions probe](#what-the-numbers-mean)
-found. hpr's rail takes the same bearing and its angle above the horizon, so a rod 10 degrees from
-the vertical is a rail at 80 degrees. Like the vertical rod before it, the rail has no friction.
+[#173](https://github.com/nrdptel/hpr-sim/issues/173)). This is checked only against OpenRocket,
+on one small airframe, from a 1 m rod in calm air. A tilted rod in wind (or with OpenRocket's
+*launch into wind* setting), a longer rod and the rocket's roll on the rod are not tested.
 
-**How it was checked.** Four small probe designs fly the [pod probes'](#pods) airframe from a
-1 m rod tilted 5, 10 and 20 degrees toward north, east and south-west, in calm air, in both
-programs. The same airframe from OpenRocket's default vertical rod (`pods-none`) is the control.
-From the [public report's table](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-flights.md#tilted-rod-probes)
+OpenRocket stores the rod's angle from the vertical and the compass bearing it leans toward, as
+[the conditions probe](#what-the-numbers-mean) found. The flight comparisons here give hpr's rail
+the same bearing and an elevation of 90 degrees less the tilt, so a rod 10 degrees from the
+vertical is a rail at 80 degrees. Like the vertical rod before it, the rail has no friction. The
+conversion is in the comparison tool (`cargo xtask ork-flights`), which takes the conditions from
+OpenRocket's record; the `.ork` reader itself reads the angles in radians, as the table above says.
+
+**How it was checked.** Four small probe designs fly the airframe of the
+[pod probes](../physics/aero.md#pods) (a 0.2 m cone, a 0.6 m tube 60 mm across, three fins and an
+AeroTech H128W) in both programs: from a rod tilted 5° toward north, 10° toward east, 10° toward
+south-west and 20° toward east. The same airframe from OpenRocket's default vertical rod
+(`pods-none`) is the control. From the
+[public report's table](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-flights.md#tilted-rod-probes)
 (2026-09-27):
 
 | rod | apogee lost to the tilt, OpenRocket | hpr | where the rocket is at apogee, OpenRocket | hpr |
 |---|---:|---:|---|---|
 | 5° toward north | 0.65% | 0.63% | 99.2 m north | 98.5 m north |
 | 10° toward east | 2.60% | 2.52% | 195.0 m east | 194.3 m east |
+| 10° toward south-west | 2.60% | 2.54% | 138.5 m west, 138.1 m south | 138.1 m west, 137.6 m south |
 | 20° toward east | 10.09% | 9.82% | 370.6 m east | 369.6 m east |
 
-At apogee, both rockets are on the same bearing from the pad to within 0.03 degrees, and hpr's is
-at most 0.64% nearer. The south-west rod loses the same 2.6% in OpenRocket as the east one, so in
-calm air the bearing moves little but where the rocket goes. A CI test holds these probes within
-bounds set just above what was measured.
+At apogee both rockets are on the same bearing from the pad to within 0.03 degrees, and hpr's is
+at most 0.64% nearer. In calm air, the direction of the tilt changes only where the rocket goes,
+not how high: the two 10° rods lose the same apogee. The test
+`tilted_rods_fly_as_openrocket_flies_them` (in `xtask/src/ork_flights.rs`) holds each probe within
+0.1 degrees of OpenRocket's bearing, 1% of its distance and 0.5 percentage points of the apogee it
+loses ([ADR-094][adr-094]). The small differences left are Earth's rotation, which the two
+programs apply differently to eastward motion, and OpenRocket's position being read from its
+highest recorded step rather than the apogee itself.
 
-**What differs.** OpenRocket's rocket reaches its rod-clearance row at a small
+**What differs: the margin.** OpenRocket's rocket reaches its first step past the rod's end
+([rail exit](../glossary.md#rail-exit-and-rail-exit-velocity)) at a small
 [angle of attack](../glossary.md#angle-of-attack) that grows with the tilt: none from the vertical
-rod, 0.116 degrees at 10 and 0.228 at 20. That moves its centre of pressure forward, and so its
-stability margin down: by 0.015 calibres at 20 degrees. hpr takes the margin at no angle of attack,
-so the margins part by 0.017 calibres at 20 degrees. hpr's own margin at OpenRocket's angle falls
-too, which leaves 0.005 calibres. So most of the gap is the angle at which each program looks, not
-the aerodynamics.
+rod, 0.116 degrees at 10 and 0.228 at 20. Its centre of pressure moves forward with the angle, so
+its stability margin falls, by 0.016 calibres at 20 degrees. hpr takes the margin at no angle of
+attack, so there the margins part by 0.017 calibres. Taken at OpenRocket's angle, hpr's margin
+falls by 0.012 calibres, to 0.005 from OpenRocket's. So most of the gap is the angle at which each
+program looks. The rest grows with the tilt too, because hpr's centre of pressure moves about a
+fifth less than OpenRocket's for the same angle.
 
-Taking the rod as recorded also changes the vertical flights a little. OpenRocket records a
-direction for a vertical rod too (90 degrees by default), which on a vertical rail only turns the
-rocket about its axis on the pad. That moved the public flights' apogees by less than 0.001%.
+**Vertical rods too.** OpenRocket records a direction for a vertical rod as well (90 degrees by
+default). On a vertical rail it only sets which way the fins face on the pad. Taking it as
+recorded moved the public flights' apogees by under 0.001%, enough to change one rounded apogee
+in the report by 0.1 m.
+
+[adr-094]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-094-a-tilted-launch-rod-flown-as-openrocket-records-it-2026-09-27
 
 ### OpenRocket's flights of the private designs
 
@@ -2230,9 +2248,9 @@ of mass. With the public report's 8, these make 15. Staging and clusters
 ones. The three public designs whose stages hpr can't separate yet
 ([#183](https://github.com/nrdptel/hpr-sim/issues/183),
 [#184](https://github.com/nrdptel/hpr-sim/issues/184)) and the private one with a motor hpr can't
-light as written could add four more, 19 at most. A tilted launch rod
-([M2.2e5](../decisions-and-roadmap.md#m2-2e5)) added one private design. The last design can come
-from two places:
+light as written could add four more. A tilted launch rod
+([M2.2e5](../decisions-and-roadmap.md#m2-2e5)) added one private design, counted in the 15, so
+that makes 19 at most. The last design can come from two places:
 
 - the airframes hpr reads simpler than written
   ([#174](https://github.com/nrdptel/hpr-sim/issues/174), four designs, two of them by the old
@@ -2261,7 +2279,7 @@ the same thrust curves. Each curve must be the one saved in the design file, or 
 OpenRocket's motor database matched by its digest (OpenRocket's fingerprint of a curve), and the
 record of OpenRocket's run must show it loading exactly those curves. One configuration is left out
 because hpr's curve came from its own catalog, found by the motor's name. A tilted rod is flown
-as recorded, as in [the public comparison](#a-tilted-launch-rod).
+as recorded, as in [A tilted launch rod](#a-tilted-launch-rod).
 
 The 26 flights (from the committed report, 2026-09-27):
 
@@ -2292,13 +2310,10 @@ and part on the coast, where drag matters most.
   gives a launch altitude of 0 m throughout). So altitude does not yet explain the sign.
   [M2.2e4](../decisions-and-roadmap.md#m2-2e4) sized only the apogees more than 5% off, so this
   pattern is still untested.
-- **hpr's margin is larger than OpenRocket's** on three designs: hpr calls them more stable, the
+- **hpr's margin is larger than OpenRocket's** on two designs: hpr calls them more stable, the
   direction to worry about. `C03` reads +0.056 to +0.073 calibres: on every flight hpr's CP sits
   0.061 calibres further aft than OpenRocket's, and the CG accounts for the rest. `C09` reads about +0.04, half from its CP (+0.020) and half from
-  its CG, which hpr puts forward of OpenRocket's by 0.0145 to 0.0273 calibres. `C12` reads
-  +0.013 to +0.037, nearly all from its CP. It launches from a tilted rod, where OpenRocket's
-  rocket clears the rod at an angle of attack that moves its CP forward (on the probes, 0.012
-  calibres at 20 degrees); how much of `C12`'s gap that is has not been measured. The reference
+  its CG, which hpr puts forward of OpenRocket's by 0.0145 to 0.0273 calibres. The reference
   diameters agree on all 26 flights, so the calibres are the same. On the public designs the
   margin gap is at most 0.0151 calibres, and the largest (−0.0151) has hpr calling the rocket *less*
   stable. No milestone covers it yet: it is
@@ -2311,6 +2326,10 @@ and part on the coast, where drag matters most.
   airfoil fin set, a departure hpr keeps on purpose ([ADR-062][adr-062]), and packed parachutes
   whose automatic radius OpenRocket may meet by stretching the packed length
   ([#186](https://github.com/nrdptel/hpr-sim/issues/186)).
+- `C12`, launched from a tilted rod, reads +0.0125 to +0.0366 calibres, nearly all from its CP.
+  OpenRocket's rocket clears the rod at an angle of attack, as on
+  [the probes](#a-tilted-launch-rod). With hpr's CP taken at that angle (the report's *at OR's
+  α*), `C12` reads +0.0033 to +0.0074, so most of its gap is the angle each program looks at.
 - hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 11
   of the flights, all of `C03`'s among them. That puts mass in a slightly different place, not
   lift, so it cannot move the CP, and `C03`'s CG agrees within 0.013 calibres.

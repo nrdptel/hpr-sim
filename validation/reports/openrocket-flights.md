@@ -184,14 +184,19 @@ Small designs written to test pods ([M1.13c2][m1-13c2]), not counted among the d
 
 ## Tilted-rod probes
 
-The pod probes' airframe with no pods (`pods-none`, first, from OpenRocket's default vertical rod) launched from a 1 m rod tilted from the vertical toward a compass bearing ([M2.2e5][m2-2e5]), in calm air, not counted among the designs above. *Rod's change* is the apogee's change from `pods-none` in each code. *At apogee* is where the rocket is then, metres east and north of where it started, and *bearing* the direction of that place from the pad, clockwise from north: a rod read the wrong way round would send hpr's rocket another way than OpenRocket's. OpenRocket's rocket reaches its rod-clearance row at an angle of attack (*α OR*) that grows with the tilt, where hpr's margin is taken at none; *at OR's α* is hpr's margin at OpenRocket's angle, which says how much of the margins' difference that accounts for.
+The pod probes' airframe with no pods, launched from a 1 m rod tilted from the vertical toward a compass bearing ([M2.2e5][m2-2e5]), in calm air, and not counted among the designs above:
+
+- `pods-none`, first, is the same airframe from OpenRocket's default vertical rod: the control. Its bearing means nothing: from a vertical rod both codes' rockets drift about 0.4 m west, from Earth's rotation.
+- *Rod's change* is the apogee's change from `pods-none` in each code.
+- *At apogee* is where the rocket is then, metres east and north of where it started, and *bearing* the direction of that place from the pad, clockwise from north: a rod read the wrong way round would send hpr's rocket another way than OpenRocket's.
+- *α OR* is the angle of attack OpenRocket's rocket has at its rod-clearance row, which grows with the tilt, where hpr's margin is taken at none; *at OR's α* is hpr's margin at OpenRocket's angle, which says how much of the margins' difference that accounts for.
 
 [m2-2e5]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e5
 
 | probe | rod | apogee OR (m) | hpr (m) | Δ | rod's change OR | hpr | max speed OR (m/s) | hpr (m/s) | Δ | α OR (°) | margin OR (cal) | hpr (cal) | at OR's α (cal) | at apogee OR (E, N m) | hpr (E, N m) | bearing OR | hpr |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| pods-none | vertical | 776.1 | 782.4 | +0.81% | +0.00% | +0.00% | 254.00 | 256.78 | +1.09% | 0.000 | 2.757 | 2.759 | 2.759 | -0.4, 0.0 | -0.4, -0.0 | 270.6° | 270.0° |
-| rod-10-east | 10° toward 90° | 755.9 | 762.7 | +0.90% | -2.60% | -2.52% | 254.09 | 256.88 | +1.10% | 0.116 | 2.749 | 2.759 | 2.752 | 195.0, 0.0 | 194.3, -0.1 | 90.0° | 90.0° |
-| rod-10-southwest | 10° toward 225° | 755.9 | 762.5 | +0.87% | -2.60% | -2.54% | 254.10 | 256.88 | +1.09% | 0.116 | 2.749 | 2.759 | 2.752 | -138.5, -138.1 | -138.1, -137.6 | 225.1° | 225.1° |
-| rod-20-east | 20° toward 90° | 697.8 | 705.6 | +1.11% | -10.09% | -9.82% | 254.38 | 257.18 | +1.10% | 0.228 | 2.742 | 2.759 | 2.747 | 370.6, 0.1 | 369.6, -0.1 | 90.0° | 90.0° |
-| rod-5-north | 5° toward 0° | 771.1 | 777.5 | +0.83% | -0.65% | -0.63% | 254.02 | 256.81 | +1.09% | 0.058 | 2.753 | 2.759 | 2.756 | -0.4, 99.2 | -0.4, 98.5 | 359.8° | 359.8° |
+| pods-none | vertical | 776.1 | 782.4 | +0.81% | +0.00% | +0.00% | 254.00 | 256.78 | +1.09% | 0.000 | 2.757 | 2.759 | 2.759 | -0.4, 0.0 | -0.4, 0.0 | 270.6° | 270.0° |
+| rod-10-east | 10° toward 90° (east) | 755.9 | 762.7 | +0.90% | -2.60% | -2.52% | 254.09 | 256.88 | +1.10% | 0.116 | 2.749 | 2.759 | 2.752 | 195.0, 0.0 | 194.3, -0.1 | 90.0° | 90.0° |
+| rod-10-southwest | 10° toward 225° (south-west) | 755.9 | 762.5 | +0.87% | -2.60% | -2.54% | 254.10 | 256.88 | +1.09% | 0.116 | 2.749 | 2.759 | 2.752 | -138.5, -138.1 | -138.1, -137.6 | 225.1° | 225.1° |
+| rod-20-east | 20° toward 90° (east) | 697.8 | 705.6 | +1.11% | -10.09% | -9.82% | 254.38 | 257.18 | +1.10% | 0.228 | 2.742 | 2.759 | 2.747 | 370.6, 0.1 | 369.6, -0.1 | 90.0° | 90.0° |
+| rod-5-north | 5° toward 0° (north) | 771.1 | 777.5 | +0.83% | -0.65% | -0.63% | 254.02 | 256.81 | +1.09% | 0.058 | 2.753 | 2.759 | 2.756 | -0.4, 99.2 | -0.4, 98.5 | 359.8° | 359.8° |

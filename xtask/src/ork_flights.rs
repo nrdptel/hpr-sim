@@ -439,6 +439,8 @@ fn recorded_enough(flight: &Value) -> Result<(), String> {
     )
     .map_err(|error| error.to_string())?;
     number(&conditions["rod_length_m"], "rod length")?;
+    number(&conditions["rod_angle_rad"], "rod angle")?;
+    number(&conditions["rod_direction_rad"], "rod direction")?;
     number(&flight["rod_clearance"]["time_s"], "rod-clearance time")?;
     number(
         &flight["rod_clearance"]["mach"],
@@ -463,7 +465,7 @@ pub(crate) const RENAMED: &str =
 
 /// Why a configuration is not flown: a launch rod hpr's rail does not take.
 pub(crate) const ROD_NOT_TAKEN: &str =
-    "a launch rod tilted less than 0 or 90 degrees or more from the vertical";
+    "a launch rod tilted outside 0 up to 90 degrees from the vertical";
 
 /// Why a configuration is not flown: wind.
 pub(crate) const WIND: &str = "wind";
@@ -655,8 +657,8 @@ fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[DragOverri
 }
 
 /// The centre of mass's height and place at the start, and its largest speed up to apogee, from
-/// the dense output. hpr flies no recovery from a `.ork`, so its fall is unbraked and is left out: the
-/// reference's peak speed is on the way up, and a free fall could outrun it.
+/// the dense output. hpr flies no recovery from a `.ork`, so its fall is unbraked and is left out:
+/// the reference's peak speed is on the way up, and a free fall could outrun it.
 #[derive(Default)]
 struct Peaks {
     start_height_m: Option<f64>,
@@ -819,16 +821,14 @@ fn fly(
     let clearance_alpha_rad = clearance["angle_of_attack_rad"]
         .as_f64()
         .filter(|alpha| alpha.is_finite());
-    let cp_at_openrocket_alpha_m = match clearance_alpha_rad {
-        Some(alpha) => {
-            simulation
-                .aero()
-                .normal_force(&Flow::new(clearance_mach, alpha, 0.0))
-                .map_err(|error| format!("{at}: {error}"))?
-                .cp_station_m
-        }
-        None => None,
-    };
+    // A diagnostic, so a flow the model refuses leaves it out rather than failing the flight.
+    let cp_at_openrocket_alpha_m = clearance_alpha_rad.and_then(|alpha| {
+        simulation
+            .aero()
+            .normal_force(&Flow::new(clearance_mach, alpha, 0.0))
+            .ok()
+            .and_then(|force| force.cp_station_m)
+    });
 
     let summary = &recorded["summary"];
     let reference_value = |key: &str| {
@@ -1520,9 +1520,17 @@ pub(crate) fn margin_at_openrocket_alpha_cal(flight: &Value) -> Option<f64> {
     Some((cp - hpr["cg_from_nose_m"].as_f64()?) / hpr["reference_length_m"].as_f64()?)
 }
 
+/// `value` to one decimal, with no sign on a value that rounds to zero.
+fn tenths(value: f64) -> String {
+    // Adding zero turns the `-0.0` a small negative value rounds to into `0.0`.
+    format!("{:.1}", (value * 10.0).round() / 10.0 + 0.0)
+}
+
 /// The compass bearing of a place `east` and `north` of the pad, in degrees from 0 up to 360.
 pub(crate) fn bearing_deg(east: f64, north: f64) -> f64 {
-    east.atan2(north).to_degrees().rem_euclid(360.0)
+    let bearing = east.atan2(north).to_degrees().rem_euclid(360.0);
+    // `rem_euclid` rounds a bearing a hair below 0 up to 360 itself.
+    if bearing >= 360.0 { 0.0 } else { bearing }
 }
 
 /// The tilted-rod probes' table (M2.2e5): the pod probes' airframe from a vertical rod
@@ -1541,20 +1549,25 @@ fn rod_probes_table(report: &Value) -> String {
                 .is_some_and(|file| file.starts_with(ROD_PROBES))
         })
         .collect();
-    if rods.is_empty() {
+    // `fly_all` refuses probes without the control, so neither is ever missing here.
+    if rods.is_empty() || without.is_null() {
         return String::new();
     }
     let mut out = String::from(
-        "\n## Tilted-rod probes\n\nThe pod probes' airframe with no pods (`pods-none`, first, from \
-         OpenRocket's default vertical rod) launched from a 1 m rod tilted from the vertical toward \
-         a compass bearing ([M2.2e5][m2-2e5]), in calm air, not counted among the designs above. \
-         *Rod's change* is the apogee's change from `pods-none` in each code. *At apogee* is where \
-         the rocket is then, metres east and north of where it started, and *bearing* the \
-         direction of that place from the pad, clockwise from north: a rod read the wrong way \
-         round would send hpr's rocket another way than OpenRocket's. OpenRocket's rocket reaches \
-         its rod-clearance row at an angle of attack (*α OR*) that grows with the tilt, where \
-         hpr's margin is taken at none; *at OR's α* is hpr's margin at OpenRocket's angle, which \
-         says how much of the margins' difference that accounts for.\n\n\
+        "\n## Tilted-rod probes\n\nThe pod probes' airframe with no pods, launched from a 1 m \
+         rod tilted from the vertical toward a compass bearing ([M2.2e5][m2-2e5]), in calm air, \
+         and not counted among the designs above:\n\n\
+         - `pods-none`, first, is the same airframe from OpenRocket's default vertical rod: the \
+         control. Its bearing means nothing: from a vertical rod both codes' rockets drift about \
+         0.4 m west, from Earth's rotation.\n\
+         - *Rod's change* is the apogee's change from `pods-none` in each code.\n\
+         - *At apogee* is where the rocket is then, metres east and north of where it started, \
+         and *bearing* the direction of that place from the pad, clockwise from north: a rod \
+         read the wrong way round would send hpr's rocket another way than OpenRocket's.\n\
+         - *α OR* is the angle of attack OpenRocket's rocket has at its rod-clearance row, which \
+         grows with the tilt, where hpr's margin is taken at none; *at OR's α* is hpr's margin \
+         at OpenRocket's angle, which says how much of the margins' difference that accounts \
+         for.\n\n\
          [m2-2e5]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e5\n\n\
          | probe | rod | apogee OR (m) | hpr (m) | Δ | rod's change OR | hpr \
          | max speed OR (m/s) | hpr (m/s) | Δ | α OR (°) | margin OR (cal) | hpr (cal) \
@@ -1569,11 +1582,27 @@ fn rod_probes_table(report: &Value) -> String {
         let rod = if angle == 0.0 {
             "vertical".to_owned()
         } else {
-            format!(
-                "{:.0}° toward {:.0}°",
-                angle.to_degrees(),
-                direction.to_degrees()
-            )
+            let bearing = direction.to_degrees();
+            let names = [
+                "north",
+                "north-east",
+                "east",
+                "south-east",
+                "south",
+                "south-west",
+                "west",
+                "north-west",
+            ];
+            // A whole eighth of the compass is named; 8 eighths is north again.
+            let eighth = (bearing / 45.0).rem_euclid(8.0);
+            let name = (0_u8..)
+                .zip(names)
+                .find(|(at, _)| {
+                    let off = (eighth - f64::from(*at)).abs();
+                    off < 1e-9 || (*at == 0 && (8.0 - eighth).abs() < 1e-9)
+                })
+                .map_or_else(String::new, |(_, name)| format!(" ({name})"));
+            format!("{:.0}° toward {bearing:.0}°{name}", angle.to_degrees())
         };
         let change = |at: usize| {
             probe_change(probe, without).map_or_else(
@@ -1585,7 +1614,7 @@ fn rod_probes_table(report: &Value) -> String {
             let at = &probe["apogee_position_m"][code];
             match (at["east"].as_f64(), at["north"].as_f64()) {
                 (Some(east), Some(north)) => (
-                    format!("{east:.1}, {north:.1}"),
+                    format!("{}, {}", tenths(east), tenths(north)),
                     format!("{:.1}°", bearing_deg(east, north)),
                 ),
                 _ => ("-".to_owned(), "-".to_owned()),
@@ -2268,9 +2297,12 @@ mod tests {
     /// OpenRocket's; and the margin at rod clearance at OpenRocket's angle of attack there,
     /// within 0.006 calibres of OpenRocket's. The bounds were set after the measurement (0.03
     /// degrees, 0.64%, 0.27 points and 0.0048 calibres at most); a bearing read anticlockwise
-    /// turns the south-west probe 90 degrees, and an angle read from the horizon takes 8 of its
-    /// 10 degrees' apogee off. The census leaves the probes out (ADR-093), so these bounds are
-    /// what holds them in CI.
+    /// turns the east probes 180 degrees, and an angle read from the horizon makes the vertical
+    /// rod a horizontal rail, which hpr refuses. The bearing's 0.03 degrees is Earth's rotation,
+    /// which the two codes apply differently to eastward motion (0.18 m across 370 m at 20
+    /// degrees), and the distance's 0.64% is partly that OpenRocket's position is its highest
+    /// 0.05 s row and hpr's its apogee event: a longer flight would take more of both bounds.
+    /// The census leaves the probes out (ADR-093), so these bounds are what holds them in CI.
     #[test]
     fn tilted_rods_fly_as_openrocket_flies_them() {
         let (_, report) = committed();

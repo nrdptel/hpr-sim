@@ -369,6 +369,9 @@ default settings. The numbers were measured on 2026-09-17.
 - **[Loft lesson L26](../decisions-and-roadmap.md#l26).** On a 3 m rail tilted to 1.3 rad, the rail exit comes at the last
   button's travel to 1e-6 m. Across the rail the rocket stays within 1e-9 m, with no rotation.
   Friction (`μ = 0.3`) delays the exit and slows it.
+- **A tilted rail against OpenRocket.** From a 1 m rod tilted 5 to 20 degrees, hpr's rocket is on
+  OpenRocket's bearing at apogee to within 0.03 degrees and loses the same apogee to within 0.27
+  percentage points ([`.ork`: a tilted launch rod](../format/ork.md#a-tilted-launch-rod)).
 - **Events and recorder.** Events come in order: liftoff, rail exit, burnout, apogee, ground hit.
   Apogee's vertical speed is below 1e-6 m/s and ground contact's height below 1e-6 m. Recorder rows
   fall on the interval or at events.

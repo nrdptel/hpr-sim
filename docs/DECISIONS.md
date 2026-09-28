@@ -8054,14 +8054,21 @@ the horizon.
 3. **Where the rocket goes.** `flights.py` now records the position east and north of the pad
    at the row of the largest altitude, and the angle of attack at the rod-clearance row. The
    report gives hpr's position at apogee from where it started beside OpenRocket's, and hpr's
-   margin at OpenRocket's angle of attack beside its margin at none.
+   margin at OpenRocket's angle of attack beside its margin at none; the private report adds
+   that margin's difference (`margin_at_openrocket_alpha_cal`), a difference like its others.
 4. **The bar.** Each probe within 5% of OpenRocket's apogee and largest speed (ADR-076); its
    position at apogee within 0.1 degrees of OpenRocket's bearing and 1% of its distance; the
    apogee the rod takes off, against `pods-none`, within 0.5 points of OpenRocket's; and hpr's
    margin at OpenRocket's angle of attack within 0.006 calibres of OpenRocket's. The bounds were
    set after measuring 0.03 degrees, 0.64%, 0.27 points and 0.0048 calibres; a bearing read
-   anticlockwise or an angle read from the horizon fails them by far. A test also points the
-   rail at the bearings `conditions.py` measured OpenRocket's rocket landing on.
+   anticlockwise fails them by far, and an angle read from the horizon makes a vertical rod a
+   horizontal rail, which hpr refuses. A test also points the rail at the bearings
+   `conditions.py` measured OpenRocket's rocket landing on. The bearing's residue is Earth's
+   rotation, which the codes apply differently to eastward motion (hpr's 10-degree east rod
+   peaks 0.17 m above its south-west one, OpenRocket's 0.02 m below; at 20 degrees east hpr's
+   rocket is 0.09 m south at apogee, OpenRocket's 0.09 m north), and
+   part of the distance's is that OpenRocket's position is its highest 0.05 s row, hpr's its
+   apogee event: a longer probe would take more of both bounds.
 
 **Consequences.**
 
@@ -8070,10 +8077,15 @@ the horizon.
   degrees, and the distance within 0.64%. The south-west rod loses what the east one does.
 - OpenRocket's rocket reaches its rod-clearance row at an angle of attack that grows with the
   tilt (0.116 degrees at 10, 0.228 at 20, none from a vertical rod), where hpr's margin is taken
-  at none. So the margins part by 0.017 calibres at 20 degrees; hpr's margin at OpenRocket's
-  angle leaves 0.005. The report's margin stays at no angle of attack, as ADR-069 defined it.
+  at none. OpenRocket's margin falls 0.016 calibres at 20 degrees, so the margins part by 0.017;
+  hpr's margin at OpenRocket's angle falls 0.012 and leaves 0.005. The residue grows with the
+  tilt because hpr's CP moves about a fifth less than OpenRocket's for the same angle. The
+  report's margin stays at no angle of attack, as ADR-069 defined it.
 - `C12`'s three configurations fly: apogee −0.53% to +0.14%, largest speed within 0.33%, margin
-  +0.013 to +0.037 calibres, nearly all from the CP. How much of that margin gap is the rod's
-  angle of attack is not measured. The two reports now hold 15 designs with the five spreads,
-  against M2.2e6's 20.
+  +0.0125 to +0.0366 calibres, nearly all from the CP; at OpenRocket's angle of attack
+  +0.0033 to +0.0074, so most of it is the angle. The two reports now hold 15 designs with the
+  five spreads, against M2.2e6's 20.
+- Taking the recorded rod on a vertical flight turned several public designs' sideways drift
+  with the rocket: hpr's vertical flights of three designs drift 1.7 to 10.5 m by apogee where
+  OpenRocket's go straight up, which the new positions show (issue #219).
 - Not tested: wind with a tilted rod, a rod longer than 1 m on the probes, and roll on the rod.

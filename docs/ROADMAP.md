@@ -583,9 +583,10 @@
     - [x] **M2.2e1 Mass and CG in the flight report.** Met (ADR-070), bars kept: launch and
       rod-clearance mass and CG against OR's, tested, on all 21; within 0.22% and 0.016 cal.
     - [x] **M2.2e2 OR's flights of the corpus.** Met (ADR-071), bars kept: 88 of the 27 `.ork`
-      designs' 89 configurations flown into `corpus-out/`, none aborted; only counts committed.
-    - [x] **M2.2e3 hpr's flights of the corpus.** Met (ADR-072), bars kept, the 20 designs moved to
-      e6 (ADR-094): by anonymised id, differences only; 17 flights, 4 of 12 private, 9 in all.
+      designs' 89 configurations flown into `corpus-out/` (OR loads no motor for the 89th).
+    - [x] **M2.2e3 hpr's flights of the corpus.** Met (ADR-072), bars kept (anonymised ids,
+      differences only, curves checked as OR's, a test on its words and sums), the 20 designs
+      moved to e6 (ADR-094): 17 flights, 4 of 12 private designs, 9 in all.
     - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
       *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
     - [x] **M2.2e5 A tilted rod** (#173; split from the old e5, whose bar is now e6; ADR-094).
