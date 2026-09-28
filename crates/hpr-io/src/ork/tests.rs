@@ -4479,3 +4479,110 @@ fn a_pod_set_with_no_known_distance_is_left_out_and_its_override_covers_its_pods
         }
     }
 }
+
+/// M2.2e7 ([ADR-096][adr-096]): three readings OpenRocket 24.12 was measured making on probe
+/// designs. Fillets are read with their own material, cardboard when the file names none; an
+/// automatic radius inside a hollow nose cone is laid out from the cone's bore at the part's
+/// narrower end, where before the part was left out; and an `innertube` written `auto` keeps the
+/// 9.5 mm OpenRocket leaves it at, with a warning, where a coupler fills its tube.
+///
+/// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
+#[test]
+fn fillets_a_nose_cone_s_bore_and_an_automatic_inner_tube_read_as_openrocket_reads_them() {
+    let fins = |fillet_material: &str| {
+        format!(
+            "<trapezoidfinset><name>Fins</name><id>fins</id><position type=\"top\">0.1</position>\
+             <fincount>3</fincount><rootchord>0.1</rootchord><tipchord>0.05</tipchord>\
+             <sweeplength>0.05</sweeplength><height>0.05</height><thickness>0.003</thickness>\
+             <filletradius>0.005</filletradius>{fillet_material}\
+             <material type=\"bulk\" density=\"1000.0\">Probe</material></trapezoidfinset>"
+        )
+    };
+    let document = |fillet_material: &str, packed: &str| {
+        format!(
+            "<openrocket version=\"1.10\" creator=\"test\"><rocket><name>R</name><subcomponents>\
+             <stage><name>S</name><subcomponents>\
+             <nosecone><name>Nose</name><id>nose</id><length>0.3</length>\
+             <thickness>0.002</thickness><shape>conical</shape><aftradius>0.05</aftradius>\
+             <material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents>\
+             <tubecoupler><name>Coupler</name><id>coupler</id>\
+             <position type=\"bottom\">0.0</position><length>0.1</length>\
+             <outerradius>auto</outerradius><thickness>0.001</thickness>\
+             <material type=\"bulk\" density=\"1000.0\">Probe</material></tubecoupler>{packed}\
+             </subcomponents></nosecone>\
+             <bodytube><name>Tube</name><id>tube</id><length>0.5</length>\
+             <thickness>0.002</thickness><radius>0.05</radius>\
+             <material type=\"bulk\" density=\"1000.0\">Probe</material><subcomponents>{}\
+             <innertube><name>Inner</name><id>inner</id><position type=\"top\">0.1</position>\
+             <length>0.1</length><outerradius>auto</outerradius><thickness>0.001</thickness>\
+             <material type=\"bulk\" density=\"1000.0\">Probe</material></innertube>\
+             </subcomponents></bodytube></subcomponents></stage></subcomponents></rocket>\
+             </openrocket>",
+            fins(fillet_material)
+        )
+    };
+    let read_spine = |xml: &str| {
+        let read = read(xml.as_bytes()).expect("a readable design");
+        component::rocket(&read.value.document)
+    };
+
+    let spine = read_spine(&document(
+        "<filletmaterial type=\"bulk\" density=\"1200.0\">Epoxy</filletmaterial>",
+        "",
+    ));
+    let messages: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
+    assert_eq!(messages.len(), 1, "{messages:?}");
+    assert!(messages[0].contains("keeps its 9.5 mm"), "{messages:?}");
+    let layout = spine.value.layout().expect("a design that lays out");
+    let hpr_design::tree::Part::FinSet(fin_set) = resolved(&layout, "fins") else {
+        panic!("a fin set");
+    };
+    assert_eq!(
+        fin_set.fillet,
+        Some(hpr_design::FinFillet {
+            radius_m: 0.005,
+            material: hpr_design::Material::bulk("Epoxy", 1200.0),
+        })
+    );
+    let hpr_design::tree::Part::InnerTube(coupler) = resolved(&layout, "coupler") else {
+        panic!("a coupler");
+    };
+    // The cone's radius 0.2 m from its tip, less its wall.
+    assert!(
+        (coupler.outer_radius_m - (0.05 * 0.2 / 0.3 - 0.002)).abs() < 1e-15,
+        "{coupler:?}"
+    );
+    let hpr_design::tree::Part::InnerTube(inner) = resolved(&layout, "inner") else {
+        panic!("an inner tube");
+    };
+    assert_eq!(inner.outer_radius_m, 0.0095);
+
+    // No fillet material is cardboard's 680 kg/m³.
+    let spine = read_spine(&document("", ""));
+    let hpr_design::tree::Part::FinSet(fin_set) =
+        &spine.value.stages[0].components[1].children[0].part
+    else {
+        panic!("a fin set");
+    };
+    let fillet = fin_set.fillet.as_ref().expect("fillets");
+    assert_eq!(
+        fillet.material,
+        hpr_design::Material::bulk("Cardboard", 680.0)
+    );
+
+    // A packed radius in a nose cone still has no bore to take: that part alone goes.
+    let chute = "<parachute><name>Chute</name><id>chute</id><position type=\"top\">0.0</position>\
+                 <packedlength>0.05</packedlength><packedradius>auto</packedradius>\
+                 <diameter>0.5</diameter></parachute>";
+    let spine = read_spine(&document("", chute));
+    assert!(
+        spine.warnings.iter().any(|w| w
+            .message
+            .contains("from its parent's bore, and a nose cone has none")),
+        "{:?}",
+        spine.warnings
+    );
+    let nose = &spine.value.stages[0].components[0];
+    let ids: Vec<&str> = nose.children.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, ["coupler"]);
+}

@@ -66,6 +66,7 @@ pub(crate) fn fin_set(count: u32, planform: FinPlanform) -> Part {
         thickness_m: 0.001,
         cross_section: FinCrossSection::Square,
         tab: None,
+        fillet: None,
         cant_rad: 0.0,
         base_angle_rad: 0.0,
         material: material(),

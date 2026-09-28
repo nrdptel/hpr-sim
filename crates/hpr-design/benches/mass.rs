@@ -50,6 +50,7 @@ fn benches(c: &mut Criterion) {
         thickness_m: 0.00318,
         cross_section: FinCrossSection::Airfoil,
         tab: None,
+        fillet: None,
         cant_rad: 0.0,
         base_angle_rad: 0.0,
         material: Material::bulk("G10", 1800.0),

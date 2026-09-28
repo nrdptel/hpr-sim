@@ -99,6 +99,7 @@ pub(crate) fn fins(root_chord_m: f64, span_m: f64) -> Part {
         thickness_m: 0.003,
         cross_section: FinCrossSection::Square,
         tab: None,
+        fillet: None,
         cant_rad: 0.0,
         base_angle_rad: 0.0,
         material: Material::bulk("plywood", 630.0),

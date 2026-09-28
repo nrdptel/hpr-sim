@@ -14,7 +14,8 @@ part's public `getMaterial` and `getLineMaterial`. M2.2b2 added probes of one tu
 each (every kind of part, fin outlines, sections, a tab, fillets, a cant, rail buttons from each
 end), so that a part's roll inertia is the probe's less the tube's (ADR-062). M2.2e6 added
 probes of the single subcomponent-override flag written before schema 1.9, with the flags
-OpenRocket reads each part with.
+OpenRocket reads each part with. M2.2e7 added probes of fillets and of an automatic outer radius
+inside a nose cone or transition (ADR-096).
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API `javap` prints for the jar. Each probe is saved once, to a
@@ -42,7 +43,7 @@ import mass  # noqa: E402 - the structure and the per-part breakdown, asked the 
 
 
 # Provenance written into the fixture (docs/VALIDATION.md). Update when regenerating.
-GENERATED = "2026-09-27"
+GENERATED = "2026-09-28"
 
 
 def uid(n):
@@ -54,12 +55,13 @@ def uid(n):
 MATERIAL = '<material type="bulk" density="1000.0">Probe</material>'
 
 
-def nose(extra="", thickness="0.002", material=MATERIAL):
+def nose(extra="", thickness="0.002", material=MATERIAL, shape="conical", children=""):
     """A conical nose, 0.3 m long on a 50 mm base, with a 2 mm wall."""
+    inside = f"<subcomponents>{children}</subcomponents>" if children else ""
     return (
         f"<nosecone><name>Nose</name><id>{uid(1)}</id><length>0.3</length>"
-        f"<thickness>{thickness}</thickness><shape>conical</shape><aftradius>0.05</aftradius>"
-        f"{extra}{material}</nosecone>"
+        f"<thickness>{thickness}</thickness><shape>{shape}</shape><aftradius>0.05</aftradius>"
+        f"{extra}{material}{inside}</nosecone>"
     )
 
 
@@ -83,12 +85,14 @@ def tube(extra="", children="", thickness="0.002", material=MATERIAL):
     )
 
 
-def transition(extra="", thickness="0.002", material=MATERIAL):
+def transition(extra="", thickness="0.002", material=MATERIAL, children=""):
     """A transition 0.1 m long from 50 mm to 40 mm, with a 2 mm wall."""
+    inside = f"<subcomponents>{children}</subcomponents>" if children else ""
     return (
         f"<transition><name>Transition</name><id>{uid(3)}</id><length>0.1</length>"
         f"<thickness>{thickness}</thickness><shape>conical</shape>"
-        f"<foreradius>0.05</foreradius><aftradius>0.04</aftradius>{extra}{material}</transition>"
+        f"<foreradius>0.05</foreradius><aftradius>0.04</aftradius>{extra}{material}{inside}"
+        "</transition>"
     )
 
 
@@ -285,6 +289,92 @@ STAGE_PROBES = {
 }
 
 
+def automatic_tube(tag, n, name, position, length="0.1", thickness="0.001", children=""):
+    """An inner tube, coupler or engine block of automatic outer radius, 1 mm wall by default,
+    placed by `position`, a whole `<position>` tag."""
+    inside = f"<subcomponents>{children}</subcomponents>" if children else ""
+    return (
+        f"<{tag}><name>{name}</name><id>{uid(n)}</id>{position}<length>{length}</length>"
+        f"<outerradius>auto</outerradius><thickness>{thickness}</thickness>{MATERIAL}{inside}"
+        f"</{tag}>"
+    )
+
+
+def at(kind, offset):
+    return f'<position type="{kind}">{offset}</position>'
+
+
+# M2.2e7: an automatic outer radius inside a nose cone or transition, whose bore narrows along it,
+# and an `innertube` written `auto` (ADR-096). The nose is `nose()`, 0.3 m long on a 50 mm base.
+BORE_PROBES = {
+    "a nose holding a coupler of automatic radius at its bottom": [
+        nose(children=automatic_tube("tubecoupler", 13, "Coupler", at("bottom", "0.0"))), tube()
+    ],
+    "an ogive nose holding a coupler of automatic radius at its bottom": [
+        nose(shape="ogive", children=automatic_tube("tubecoupler", 13, "Coupler", at("bottom", "0.0"))),
+        tube(),
+    ],
+    "a nose holding a coupler of automatic radius past its base": [
+        nose(children=automatic_tube("tubecoupler", 13, "Coupler", at("bottom", "0.05"))), tube()
+    ],
+    "a nose with a shoulder, holding a coupler of automatic radius past its base": [
+        nose(
+            shoulder("aft", "0.002"),
+            children=automatic_tube("tubecoupler", 13, "Coupler", at("bottom", "0.05")),
+        ),
+        tube(),
+    ],
+    "a nose holding a long coupler of automatic radius from its middle": [
+        nose(children=automatic_tube("tubecoupler", 13, "Coupler", at("middle", "0.0"), length="0.2")),
+        tube(),
+    ],
+    "a nose holding an engine block of automatic radius": [
+        nose(children=automatic_tube("engineblock", 14, "Block", at("bottom", "0.0"))), tube()
+    ],
+    "a nose holding a centering ring and a bulkhead of automatic radius": [
+        nose(
+            children=f"<centeringring><name>Ring</name><id>{uid(6)}</id>{at('bottom', '0.0')}"
+            "<length>0.01</length><outerradius>auto</outerradius><innerradius>0.005</innerradius>"
+            f"{MATERIAL}</centeringring>"
+            f"<bulkhead><name>Bulkhead</name><id>{uid(7)}</id>{at('top', '0.2')}"
+            f"<length>0.01</length><outerradius>auto</outerradius>{MATERIAL}</bulkhead>"
+        ),
+        tube(),
+    ],
+    "a nose holding a coupler of automatic radius and a wall thicker than its bore": [
+        nose(children=automatic_tube("tubecoupler", 13, "Coupler", at("bottom", "0.0"), thickness="0.05")),
+        tube(),
+    ],
+    "a nose holding a coupler of automatic radius with a mass inside": [
+        nose(
+            children=automatic_tube(
+                "tubecoupler", 13, "Coupler", at("bottom", "0.0"),
+                children=f"<masscomponent><name>Mass</name><id>{uid(17)}</id>{at('top', '0.02')}"
+                "<packedlength>0.05</packedlength><packedradius>auto</packedradius><mass>0.1</mass>"
+                "</masscomponent>",
+            )
+        ),
+        tube(),
+    ],
+    "a transition holding a coupler of automatic radius": [
+        tube(),
+        transition(children=automatic_tube("tubecoupler", 13, "Coupler", at("top", "0.0"), length="0.05")),
+    ],
+    "a tube holding a coupler of automatic radius and a wall thicker than its bore": [
+        tube(children=automatic_tube("tubecoupler", 13, "Coupler", at("top", "0.1"), thickness="0.06"))
+    ],
+    "a tube holding an inner tube of automatic radius": [
+        tube(children=automatic_tube("innertube", 4, "Inner", at("top", "0.1")))
+    ],
+    "a nose holding an inner tube of automatic radius": [
+        nose(children=automatic_tube("innertube", 4, "Inner", at("bottom", "0.0"))), tube()
+    ],
+    "a nose holding a coupler of automatic radius at its tip": [
+        nose(children=automatic_tube("tubecoupler", 13, "Coupler", at("top", "0.0"))), tube()
+    ],
+}
+
+
 def old_flag(value):
     """The single subcomponent-override flag written before schema 1.9."""
     return f"<overridesubcomponents>{value}</overridesubcomponents>"
@@ -366,10 +456,10 @@ def fins(section="square", extra="", thickness="0.003", outline=("0.1", "0.05", 
     )
 
 
-def fillets(radius):
+def fillets(radius, density="1000.0"):
     return (
         f"<filletradius>{radius}</filletradius>"
-        '<filletmaterial type="bulk" density="1000.0">Probe</filletmaterial>'
+        f'<filletmaterial type="bulk" density="{density}">Probe</filletmaterial>'
     )
 
 
@@ -401,6 +491,21 @@ PART_PROBES = {
     "a tube and a thicker fin set of airfoil section": fins("airfoil", thickness="0.006"),
     "a tube and a fin set with fillets": fins(extra=fillets("0.005")),
     "a tube and a fin set with wider fillets": fins(extra=fillets("0.01")),
+    # M2.2e7: what fillets weigh, measured further (ADR-096).
+    "a tube and a fin set with fillets of 30 mm": fins(extra=fillets("0.03")),
+    "a tube and a fin set with fillets of their own material": fins(extra=fillets("0.005", "2000.0")),
+    "a tube and a fin set with fillets that name no material": fins(
+        extra="<filletradius>0.005</filletradius>"
+    ),
+    "a tube and a single fin with fillets": fins(extra=fillets("0.005"), count=1),
+    "a tube and four fins of rounded section with fillets": fins("rounded", extra=fillets("0.005"), count=4),
+    "a tube and a freeform fin set with fillets": placed(
+        "freeformfinset", 16, "Freeform",
+        "<fincount>3</fincount><thickness>0.003</thickness><crosssection>square</crosssection>"
+        + fillets("0.005")
+        + '<finpoints><point x="0.0" y="0.0"/><point x="0.05" y="0.05"/>'
+        '<point x="0.12" y="0.05"/><point x="0.1" y="0.0"/></finpoints>',
+    ),
     "a tube and a fin set with a tab": fins(
         extra="<tabheight>0.01</tabheight><tablength>0.05</tablength>"
         '<tabposition relativeto="front">0.02</tabposition>'
@@ -632,12 +737,17 @@ def main():
     probes = {}
     with tempfile.TemporaryDirectory() as scratch:
         everything = [(q, document(parts)) for q, parts in PROBES.items()]
+        everything += [(q, document(parts)) for q, parts in BORE_PROBES.items()]
         everything += [(q, document(parts, tags)) for q, (tags, parts) in STAGE_PROBES.items()]
         everything += [(q, document([tube(children=part)])) for q, part in PART_PROBES.items()]
         # The body's radius, for the fins' roll inertia: rectangular fins on a tube twice as wide.
         wide = tube(children=fins(outline=("0.1", "0.1", "0.0", "0.05")))
         wide = wide.replace("<radius>0.05</radius>", "<radius>0.1</radius>")
         everything += [("a wider tube and rectangular fins", document([wide]))]
+        # And fillets on it (M2.2e7): the fillet's section depends on the body's radius.
+        wide = tube(children=fins(extra=fillets("0.01")))
+        wide = wide.replace("<radius>0.05</radius>", "<radius>0.1</radius>")
+        everything += [("a wider tube and a fin set with fillets", document([wide]))]
         # An unwritten packed size in a tube twice as wide, and in one whose 8 mm bore is narrower
         # than the packing OpenRocket gives (ADR-063): fixed numbers, or the tube's?
         for question, radius in [("a wider", "0.1"), ("a narrow", "0.01")]:

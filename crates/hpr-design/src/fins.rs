@@ -42,6 +42,20 @@
 //! tube, `t²/8R_b` deep, is ignored. **Cant** `δ` turns each fin (with its tab) by `δ` about its own
 //! outward span axis through the root mid-chord, right-handed, so a positive cant turns fin 0's
 //! leading edge toward `−y_B`. See `docs/physics/mass.md`.
+//!
+//! **Fillets.** A fillet of radius `r` runs the root chord `c_r` on each face of each fin. Its
+//! section is the region between the fin's mid-plane, the body's circle of radius `R_b`, and a
+//! circle of radius `r` tangent to both: OpenRocket 24.12's reading, measured on probe designs
+//! to 4e-9, which leaves the fin's thickness out (ADR-096). With the fillet circle's centre at
+//! `(c, r)`, `c = √(R_b² + 2 R_b r)` and `θ = atan(r / c)`, the section is the triangle
+//! `(0, 0), (c, 0), (c, r)` less the body's sector of angle `θ` and the fillet's of `π/2 − θ`:
+//!
+//! ```text
+//! A = c r / 2 − R_b² θ / 2 − r² (π/2 − θ) / 2
+//! ```
+//!
+//! which tends to `r² (1 − π/4)` on a flat body. Its moments come the same way, and the fillets
+//! are a prism of that section along the root, in the fillet's own material.
 
 use std::f64::consts::PI;
 
@@ -112,6 +126,16 @@ pub struct FinTab {
     pub offset_m: f64,
 }
 
+/// Fillets along each fin's root: a concave joint on both faces, running the root chord.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FinFillet {
+    /// Radius of the fillet's concave face, m.
+    pub radius_m: f64,
+    /// Material (bulk).
+    pub material: Material,
+}
+
 /// A set of identical fins spaced evenly around the body.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -128,6 +152,9 @@ pub struct FinSet {
     /// Optional tab below each root.
     #[serde(default)]
     pub tab: Option<FinTab>,
+    /// Optional fillets along each root.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fillet: Option<FinFillet>,
     /// Cant angle, rad.
     #[serde(default)]
     pub cant_rad: f64,
@@ -487,6 +514,9 @@ impl FinSet {
                 return Err(DesignError::Domain { what, value });
             }
         }
+        if let Some(fillet) = &self.fillet {
+            check_dimension("fin fillet radius", fillet.radius_m, true)?;
+        }
         if let Some(tab) = self.tab {
             check_dimension("fin tab height", tab.height_m, false)?;
             check_dimension("fin tab length", tab.length_m, false)?;
@@ -601,9 +631,13 @@ impl FinSet {
         };
         // Move the tensor from the origin to the centre: I_cg = I_o − m(|c|²E − c cᵀ).
         let inertia = about_origin - at_origin.inertia_about(DVec3::ZERO);
-        let fin = MassProperties {
+        let plate = MassProperties {
             inertia_kg_m2: inertia,
             ..at_origin
+        };
+        let fin = match self.fillets(body_radius_m)? {
+            Some(fillets) => MassProperties::combine([&plate, &fillets]),
+            None => plate,
         };
         if self.cant_rad == 0.0 {
             return Ok(fin);
@@ -613,6 +647,45 @@ impl FinSet {
             .translated(-pivot)
             .rotated(DQuat::from_rotation_x(self.cant_rad))
             .translated(pivot))
+    }
+
+    /// Mass properties of the two fillets along one fin's root, at roll angle 0 and no cant, in
+    /// the fin-set frame; `None` for a fin with no fillets or fillets of no radius. The pair is a
+    /// prism of length `c_r` whose section is [`fillet_section`] on each side of the fin's plane,
+    /// so with `A`, `S_x`, `S_xx`, `S_yy` one side's area and moments about the body axis:
+    ///
+    /// ```text
+    /// m = 2ρA c_r,  I_xx = 2ρ(S_yy c_r + A c_r³/3),  I_yy = 2ρ(S_xx c_r + A c_r³/3),
+    /// I_zz = 2ρ(S_xx + S_yy) c_r,  I_xz = ρ S_x c_r²
+    /// ```
+    ///
+    /// about the origin, then moved to the centre, `(S_x/A, 0, −c_r/2)`.
+    fn fillets(&self, body_radius_m: f64) -> Result<Option<MassProperties>, DesignError> {
+        let Some(fillet) = self.fillet.as_ref().filter(|f| f.radius_m > 0.0) else {
+            return Ok(None);
+        };
+        let density = fillet.material.bulk_kg_m3("fin fillet")?;
+        let [area, sx, sxx, syy] = fillet_section(body_radius_m, fillet.radius_m);
+        let l = self.planform.root_chord_m();
+        let mass = 2.0 * density * area * l;
+        if mass <= 0.0 {
+            return Ok(None);
+        }
+        let ixz = density * sx * l * l;
+        let about_origin = DMat3::from_cols(
+            DVec3::new(2.0 * density * (syy * l + area * l.powi(3) / 3.0), 0.0, ixz),
+            DVec3::new(0.0, 2.0 * density * (sxx * l + area * l.powi(3) / 3.0), 0.0),
+            DVec3::new(ixz, 0.0, 2.0 * density * (sxx + syy) * l),
+        );
+        let at_origin = MassProperties {
+            mass_kg: mass,
+            cg_m: DVec3::new(sx / area, 0.0, -0.5 * l),
+            inertia_kg_m2: DMat3::ZERO,
+        };
+        Ok(Some(MassProperties {
+            inertia_kg_m2: about_origin - at_origin.inertia_about(DVec3::ZERO),
+            ..at_origin
+        }))
     }
 
     /// Mass properties of the whole set in its frame, on a body of radius `body_radius_m`.
@@ -629,6 +702,68 @@ impl FinSet {
             .collect();
         Ok(MassProperties::combine(&fins))
     }
+}
+
+/// One fillet's section on the `+y` side of a fin in the plane `y = 0`, with `x` outward along
+/// the fin: its area and moments `[A, S_x, S_xx, S_yy]` about the body axis (`S_x = ∫ x dA`,
+/// `S_xx = ∫ x² dA`, `S_yy = ∫ y² dA`), m², m³, m⁴, m⁴. The section is the triangle
+/// `(0, 0), (c, 0), (c, r)` less two circular sectors, the body's about the axis from `0` to `θ`
+/// and the fillet's about `(c, r)` from `θ − π` to `−π/2` (module docs). A body of no radius
+/// gives a section of none.
+pub(crate) fn fillet_section(body_radius_m: f64, radius_m: f64) -> [f64; 4] {
+    let (rb, r) = (body_radius_m, radius_m);
+    let c = (rb * rb + 2.0 * rb * r).sqrt();
+    let theta = r.atan2(c);
+    // The triangle: vertices (0, 0), (c, 0), (c, r).
+    let triangle_area = 0.5 * c * r;
+    let triangle = [
+        triangle_area,
+        triangle_area * 2.0 * c / 3.0,
+        triangle_area * c * c / 2.0,
+        triangle_area * r * r / 6.0,
+    ];
+    let body = sector([0.0, 0.0], rb, 0.0, theta);
+    let joint = sector([c, r], r, theta - PI, -0.5 * PI);
+    std::array::from_fn(|k| triangle[k] - body[k] - joint[k])
+}
+
+/// A circular sector about `centre`, of radius `rho`, from angle `from` to `to` (`to ≥ from`):
+/// `[A, S_x, S_xx, S_yy]` about the origin. With `Δ = to − from` and `σ = to + from`, the moments
+/// about the centre are `ρ³/3 · 2 sin(Δ/2) [cos(σ/2), sin(σ/2)]` and `ρ⁴/8 · (Δ ± sin Δ cos σ)`,
+/// the second written as `(Δ − sin Δ) + sin Δ (1 ± cos σ)` so that the body's thin sector, whose
+/// `Δ` and `σ` are both small, loses no digits to cancellation.
+fn sector([x0, y0]: [f64; 2], rho: f64, from: f64, to: f64) -> [f64; 4] {
+    let (span, sum) = (to - from, to + from);
+    let area = 0.5 * rho * rho * span;
+    let chord = 2.0 * (0.5 * span).sin() * rho.powi(3) / 3.0;
+    let (sx, sy) = (chord * (0.5 * sum).cos(), chord * (0.5 * sum).sin());
+    let (lean, sine) = (span_less_sine(span), span.sin());
+    let (sxx, syy) = (
+        rho.powi(4) / 8.0 * (lean + sine * 2.0 * (0.5 * sum).cos().powi(2)),
+        rho.powi(4) / 8.0 * (lean + sine * 2.0 * (0.5 * sum).sin().powi(2)),
+    );
+    [
+        area,
+        sx + x0 * area,
+        sxx + 2.0 * x0 * sx + x0 * x0 * area,
+        syy + 2.0 * y0 * sy + y0 * y0 * area,
+    ]
+}
+
+/// `x − sin x`, by its Taylor series below `x = 0.25`, where the difference would cancel: the
+/// terms through `x¹⁵` leave a remainder under 1e-18 of the sum.
+fn span_less_sine(x: f64) -> f64 {
+    if x.abs() >= 0.25 {
+        return x - x.sin();
+    }
+    // x³/3! − x⁵/5! + …, each term the last times −x²/((2k)(2k+1)).
+    let mut term = x.powi(3) / 6.0;
+    let mut sum = 0.0;
+    for k in 2..=8 {
+        sum += term;
+        term *= -x * x / f64::from((2 * k) * (2 * k + 1));
+    }
+    sum
 }
 
 /// Tube fins: open tubes parallel to the body, touching it, spaced evenly around it.
@@ -734,6 +869,7 @@ mod tests {
             thickness_m: thickness,
             cross_section: FinCrossSection::Square,
             tab: None,
+            fillet: None,
             cant_rad: 0.0,
             base_angle_rad: 0.0,
             material: ply(),
@@ -1134,6 +1270,138 @@ mod tests {
         assert!(matches!(
             fabric.mass_properties(0.03),
             Err(DesignError::MaterialKind { .. })
+        ));
+    }
+
+    /// `[A, S_x, S_xx, S_yy]` of one fillet's section by quadrature, column by column: from the
+    /// fillet circle's tangent point on the body out to the body's radius, the section runs from
+    /// the body's circle up to the fillet's; beyond, from the fin's plane up to the fillet's. The
+    /// body's circle is integrated in `x = R_b − v²`, which takes out its vertical tangent.
+    fn fillet_section_by_quadrature(rb: f64, r: f64) -> [f64; 4] {
+        let tol = Tolerance {
+            relative: 1e-12,
+            absolute: 1e-24,
+            ..Tolerance::default()
+        };
+        let c = (rb * rb + 2.0 * rb * r).sqrt();
+        let joint = |x: f64| r - (r * r - (x - c) * (x - c)).max(0.0).sqrt();
+        let body = |x: f64| (rb * rb - x * x).max(0.0).sqrt();
+        let moments = |bottom: f64, top: f64, x: f64| {
+            [
+                top - bottom,
+                x * (top - bottom),
+                x * x * (top - bottom),
+                (top.powi(3) - bottom.powi(3)) / 3.0,
+            ]
+        };
+        let near = integrate(
+            |v| {
+                let x = rb - v * v;
+                moments(body(x), joint(x), x).map(|m| m * 2.0 * v)
+            },
+            0.0,
+            (rb - c * rb / (rb + r)).sqrt(),
+            tol,
+        )
+        .unwrap();
+        let far = integrate(|x| moments(0.0, joint(x), x), rb, c, tol).unwrap();
+        std::array::from_fn(|k| near.value[k] + far.value[k])
+    }
+
+    #[test]
+    fn fillet_section_is_its_region_by_quadrature() {
+        for (rb, r) in [
+            (0.05, 0.005),
+            (0.05, 0.01),
+            (0.05, 0.03),
+            (0.1, 0.001),
+            (0.02, 0.05),
+        ] {
+            let got = fillet_section(rb, r);
+            let want = fillet_section_by_quadrature(rb, r);
+            for (k, what) in ["A", "S_x", "S_xx", "S_yy"].into_iter().enumerate() {
+                close(got[k], want[k], 1e-11, what);
+            }
+        }
+        // No body, no fillet.
+        assert_eq!(fillet_section(0.0, 0.01)[0], 0.0);
+        // The series meets the difference where it hands over.
+        let x: f64 = 0.25;
+        close(
+            span_less_sine(x.next_down()),
+            x - x.sin(),
+            1e-13,
+            "x − sin x",
+        );
+        close(
+            span_less_sine(1e-3),
+            1e-9 / 6.0 - 1e-15 / 120.0 + 1e-21 / 5040.0,
+            1e-15,
+            "x − sin x",
+        );
+    }
+
+    #[test]
+    fn a_fillet_on_a_flat_body_is_a_square_less_a_quarter_circle() {
+        // The curvature's share is of order `r/R_b`, 1e-8 here.
+        let r = 0.01;
+        close(
+            fillet_section(1e6, r)[0],
+            r * r * (1.0 - PI / 4.0),
+            1e-6,
+            "flat",
+        );
+    }
+
+    #[test]
+    fn fillets_are_a_prism_of_their_section_along_the_root() {
+        // Moments by quadrature, assembled by the equations in `FinSet::fillets`' docs.
+        let (rb, r, rho) = (0.05, 0.005, 1200.0);
+        let planform = FinPlanform::Trapezoidal {
+            root_chord_m: 0.1,
+            tip_chord_m: 0.05,
+            span_m: 0.05,
+            sweep_m: 0.05,
+        };
+        let mut fins = set(3, planform, 0.003);
+        let bare = fins.single_fin(rb).unwrap();
+        fins.fillet = Some(FinFillet {
+            radius_m: r,
+            material: Material::bulk("epoxy", rho),
+        });
+        let with = fins.single_fin(rb).unwrap();
+        let pair = with.without_part(&bare);
+        let [a, sx, sxx, syy] = fillet_section_by_quadrature(rb, r);
+        let l = 0.1;
+        close(pair.mass_kg, 2.0 * rho * a * l, 1e-10, "mass");
+        assert!((pair.cg_m - DVec3::new(sx / a, 0.0, -0.5 * l)).length() < 1e-12);
+        let about_origin = with.inertia_about(DVec3::ZERO) - bare.inertia_about(DVec3::ZERO);
+        let want = DMat3::from_cols(
+            DVec3::new(
+                2.0 * rho * (syy * l + a * l.powi(3) / 3.0),
+                0.0,
+                rho * sx * l * l,
+            ),
+            DVec3::new(0.0, 2.0 * rho * (sxx * l + a * l.powi(3) / 3.0), 0.0),
+            DVec3::new(rho * sx * l * l, 0.0, 2.0 * rho * (sxx + syy) * l),
+        );
+        mat_close(about_origin, want, 1e-9, "fillets about the origin");
+        // A fillet of no radius is none, and a negative one is refused.
+        fins.fillet = Some(FinFillet {
+            radius_m: 0.0,
+            material: Material::bulk("epoxy", rho),
+        });
+        assert_eq!(fins.single_fin(rb).unwrap(), bare);
+        fins.fillet = Some(FinFillet {
+            radius_m: -0.001,
+            material: Material::bulk("epoxy", rho),
+        });
+        assert!(matches!(
+            fins.single_fin(rb),
+            Err(DesignError::Domain {
+                what: "fin fillet radius",
+                ..
+            })
         ));
     }
 }

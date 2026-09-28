@@ -45,6 +45,7 @@ use crate::parts::{
     PodSet, RailButton, ShockCord, Streamer, Transition,
 };
 use crate::shapes::check_dimension;
+use crate::solids::Wall;
 
 /// Slack when comparing lengths that should agree, m: far below any build tolerance and far above
 /// the round-off in stations summed from millimetre inputs.
@@ -442,7 +443,11 @@ pub enum AutoDimension {
     /// A body tube's outer radius: the previous body component's aft radius, or, when that can't
     /// be resolved, the next one's forward radius. A centering ring's or inner tube's outer
     /// radius: its parent's inner radius, which is how a coupler or an engine block fills the tube
-    /// it sits in.
+    /// it sits in; inside a hollow nose cone or transition, the parent's outer radius at the
+    /// narrower end of the part less the parent's wall, and never below zero, as OpenRocket 24.12
+    /// reads it ([ADR-096][adr-096]).
+    ///
+    /// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
     OuterRadius,
     /// A transition's forward radius: the previous body component's aft radius.
     ForeRadius,
@@ -1435,6 +1440,19 @@ fn finish(
         Part::BodyTube(tube) => Some(tube.outer_radius_m),
         _ => None,
     };
+    // A nose cone's or transition's bore narrows along it: its outer profile and its wall, when it
+    // has one. A solid one has no bore.
+    let shell = |wall: &Wall| match wall {
+        Wall::Shell { thickness_m } => Some(*thickness_m),
+        Wall::Filled {} => None,
+    };
+    let p_narrowing = match &parent.part {
+        Part::NoseCone(nose) => shell(&nose.wall).map(|t| nose.profile().map(|p| (p, t))),
+        Part::Transition(part) => shell(&part.wall).map(|t| part.profile().map(|p| (p, t))),
+        _ => None,
+    }
+    .transpose()
+    .map_err(|e| within(&node.id, e))?;
     let own = if node.overrides_include_children {
         parent.own
     } else {
@@ -1489,6 +1507,20 @@ fn finish(
             )
         })
     };
+    // An automatic outer radius inside a nose cone or transition is its bore at whichever end of
+    // the part is narrower: the outer radius there less the wall, measured radially, and none
+    // where the wall meets the axis. Where the part runs past an end of its parent, the profile's
+    // radius at that end stands. This is OpenRocket 24.12's reading, measured on probe designs
+    // (`validation/oracles/openrocket/conventions.py`, [ADR-096][adr-096]).
+    //
+    // [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
+    let bore_over = |id: &str, (fore, length): (f64, f64)| match &p_narrowing {
+        Some((profile, wall_m)) => {
+            let at = |station: f64| profile.radius_m(station - p_fore);
+            Ok((at(fore).min(at(fore + length)) - wall_m).max(0.0))
+        }
+        None => bore(id),
+    };
     // Automatic outer radii come first, in a pass of their own. They need nothing but the parent's
     // bore, while a ring's automatic *inner* radius reads its siblings' outer radii — so resolving
     // both in one pass would give a ring whose bore depended on whether the tube inside it was
@@ -1505,11 +1537,16 @@ fn finish(
         resolve_body_radii(&mut resolved, &autos, &ids)?;
         resolve_shoulders(&mut resolved, &autos, &ids)?;
     }
-    for (part, child) in resolved.iter_mut().zip(&node.children) {
+    for ((part, child), &station) in resolved.iter_mut().zip(&node.children).zip(&stations) {
         if child.auto.contains(&AutoDimension::OuterRadius) {
             match part {
-                Part::CenteringRing(ring) => ring.outer_radius_m = bore(&child.id)?,
-                Part::InnerTube(tube) => tube.outer_radius_m = bore(&child.id)?,
+                Part::CenteringRing(ring) => ring.outer_radius_m = bore_over(&child.id, station)?,
+                // A wall thicker than the radius it gets is the tube solid, as it is when the
+                // radius is stated (`hpr-io`'s `.ork` reader, and OpenRocket 24.12 on probes).
+                Part::InnerTube(tube) => {
+                    tube.outer_radius_m = bore_over(&child.id, station)?;
+                    tube.thickness_m = tube.thickness_m.min(tube.outer_radius_m);
+                }
                 _ => {}
             }
         }
@@ -1966,6 +2003,86 @@ mod tests {
             panic!()
         };
         assert_eq!(r.inner_radius_m, 0.0);
+    }
+
+    /// Inside a hollow nose cone or transition, an automatic outer radius is the parent's bore at
+    /// the narrower end of the part: the profile's radius there less the wall (ADR-096). The
+    /// sample's nose is a 0.2 m cone on a 27 mm base with a 2 mm wall, so its radius at `x` from
+    /// the tip is `0.135 x`.
+    #[test]
+    fn an_automatic_radius_inside_a_nose_is_its_bore_at_the_narrow_end() {
+        let with = |part: Part, position: Position| {
+            let mut design = three_fin_rocket();
+            let mut child = attached("inside", part, position);
+            child.auto = vec![AutoDimension::OuterRadius];
+            design.stages[0].components[0].children = vec![child];
+            design.layout()
+        };
+        let radius = |layout: &Layout| match &layout.find("inside").unwrap().1.part {
+            Part::InnerTube(tube) => (tube.outer_radius_m, tube.thickness_m),
+            Part::CenteringRing(ring) => (ring.outer_radius_m, ring.inner_radius_m),
+            other => panic!("{other:?}"),
+        };
+        let coupler = || inner_tube(0.1, 0.0, 0.001);
+        // Stations 0.1 to 0.2 from the tip: the fore end is the narrower.
+        let (r, t) = radius(&with(coupler(), bottom(0.0)).unwrap());
+        close(r, 0.135 * 0.1 - 0.002, 1e-17, "at the bottom");
+        assert_eq!(t, 0.001);
+        // Past the base, 0.15 to 0.25: still the fore end's.
+        let (r, _) = radius(&with(coupler(), bottom(0.05)).unwrap());
+        close(r, 0.135 * 0.15 - 0.002, 1e-17, "past the base");
+        // A ring's outer radius the same way; its written bore stands.
+        let (r, bore) = radius(&with(ring(0.006, 0.0, 0.005), bottom(0.0)).unwrap());
+        close(r, 0.135 * 0.194 - 0.002, 1e-17, "a ring");
+        assert_eq!(bore, 0.005);
+        // A wall thicker than the radius it gets is the tube solid.
+        let (r, t) = radius(&with(inner_tube(0.1, 0.0, 0.02), bottom(0.0)).unwrap());
+        assert_eq!(t, r);
+        // At the tip the wall meets the axis, and a tube of no radius is refused.
+        let error = with(coupler(), top(0.0)).unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                DesignError::InComponent { id, source }
+                    if id == "inside"
+                        && matches!(**source, DesignError::Domain { what: "outer radius", value } if value == 0.0)
+            ),
+            "{error:?}"
+        );
+        // A solid nose has no bore.
+        let mut design = three_fin_rocket();
+        if let Part::NoseCone(nose) = &mut design.stages[0].components[0].part {
+            nose.wall = Wall::Filled {};
+        }
+        let mut child = attached("inside", coupler(), bottom(0.0));
+        child.auto = vec![AutoDimension::OuterRadius];
+        design.stages[0].components[0].children = vec![child];
+        let error = design.layout().unwrap_err().to_string();
+        assert!(error.contains("a nose_cone has none"), "{error}");
+
+        // A transition from 30 mm to 20 mm over 0.1 m narrows aft: a coupler over its first
+        // 0.05 m takes the radius at its aft end, 25 mm, less the wall.
+        let transition = Part::Transition(Transition {
+            shape: crate::shapes::NoseShape::Conical {},
+            clipped: false,
+            length_m: 0.1,
+            fore_radius_m: 0.03,
+            aft_radius_m: 0.02,
+            wall: Wall::Shell { thickness_m: 0.002 },
+            fore_shoulder: None,
+            aft_shoulder: None,
+            material: crate::testing::cardboard(),
+        });
+        let mut part = body("transition", transition);
+        let mut child = attached("inside", inner_tube(0.05, 0.0, 0.001), top(0.0));
+        child.auto = vec![AutoDimension::OuterRadius];
+        part.children = vec![child];
+        let design = rocket(vec![stage(
+            "only",
+            vec![body("tube", tube(0.3, 0.03, 0.001)), part],
+        )]);
+        let (r, _) = radius(&design.layout().unwrap());
+        close(r, 0.025 - 0.002, 1e-17, "a transition");
     }
 
     /// What a clustered tube holds is in every tube: an engine block inside a 3-ring mount has
