@@ -600,7 +600,8 @@ impl FinSet {
     ///
     /// # Errors
     ///
-    /// As [`FinSet::validate`], plus [`DesignError::Domain`] for a negative body radius and
+    /// As [`FinSet::validate`], plus [`DesignError::Domain`] for a negative body radius or a
+    /// fillet more than [`FILLET_RATIO_MAX`] times the body radius, and
     /// [`DesignError::Numerics`] if an integral fails.
     pub fn single_fin(&self, body_radius_m: f64) -> Result<MassProperties, DesignError> {
         self.validate()?;
@@ -668,12 +669,30 @@ impl FinSet {
             return Ok(None);
         };
         let density = fillet.material.bulk_kg_m3("fin fillet")?;
+        // No body, no fillet: the section is none ([`fillet_section`]).
+        if body_radius_m == 0.0 {
+            return Ok(None);
+        }
+        // The section is a triangle less two sectors, and far from real fillets the difference
+        // loses digits to cancellation. At the bounds below it keeps 10 (a millionth of the
+        // body's radius: 8.6e-11 off 60-digit arithmetic) and 12 (a thousand times: 7.6e-13).
+        // A thinner fillet weighs under 1e-12 of the body's radius squared per metre of root:
+        // none. A wider one is refused, not weighed on digits that are noise.
+        let ratio = fillet.radius_m / body_radius_m;
+        if ratio < 1e-6 {
+            return Ok(None);
+        }
+        if ratio > FILLET_RATIO_MAX {
+            return Err(DesignError::Domain {
+                what: "fin fillet radius over the body radius (at most 1000)",
+                value: ratio,
+            });
+        }
         let [area, sx, sxx, syy] = fillet_section(body_radius_m, fillet.radius_m);
-        // A fillet far wider than the body loses its section to cancellation (the triangle less
-        // two sectors of nearly its size): refused, not weighed as nothing or as NaN.
+        // Invariant between the bounds above: the section is positive and finite there.
         if !(area > 0.0 && [sx, sxx, syy].iter().all(|v| v.is_finite())) {
             return Err(DesignError::Domain {
-                what: "fin fillet section area (a fillet radius far wider than the body)",
+                what: "fin fillet section area",
                 value: area,
             });
         }
@@ -714,6 +733,9 @@ impl FinSet {
         Ok(MassProperties::combine(&fins))
     }
 }
+
+/// The widest fin fillet weighed, as a multiple of the body radius ([`FinSet::single_fin`]).
+pub const FILLET_RATIO_MAX: f64 = 1e3;
 
 /// One fillet's section on the `+y` side of a fin in the plane `y = 0`, with `x` outward along
 /// the fin: its area and moments `[A, S_x, S_xx, S_yy]` about the body axis (`S_x = ∫ x dA`,
@@ -1371,30 +1393,62 @@ mod tests {
     fn the_worked_fillet_example_is_the_docs() {
         let [a, ..] = fillet_section(0.030, 0.005);
         assert!((a * 1e6 - 4.253).abs() < 5e-4, "{}", a * 1e6);
-        let mass_g = 6.0 * a * 0.1 * 680.0 * 1e3;
-        assert!((mass_g - 1.735).abs() < 5e-4, "{mass_g}");
-    }
-
-    /// A fillet far wider than the body loses its section to cancellation; it is refused, not
-    /// weighed as nothing or as NaN.
-    #[test]
-    fn a_fillet_far_wider_than_the_body_is_refused() {
         let planform = FinPlanform::Trapezoidal {
             root_chord_m: 0.1,
             tip_chord_m: 0.05,
             span_m: 0.05,
             sweep_m: 0.05,
         };
-        for radius_m in [1e10, 1e100] {
+        let bare = set(3, planform.clone(), 0.003);
+        let mut filleted = set(3, planform, 0.003);
+        filleted.fillet = Some(FinFillet {
+            radius_m: 0.005,
+            material: Material::bulk("cardboard", 680.0),
+        });
+        let mass_g = (filleted.mass_properties(0.030).unwrap().mass_kg
+            - bare.mass_properties(0.030).unwrap().mass_kg)
+            * 1e3;
+        assert!((mass_g - 1.735).abs() < 5e-4, "{mass_g}");
+    }
+
+    /// Far from real fillets the section's closed form cancels away: a fillet more than
+    /// [`FILLET_RATIO_MAX`] times the body radius is refused, not weighed on noise; one under a
+    /// millionth of it, or on a body of no radius, weighs nothing.
+    #[test]
+    fn a_fillet_far_from_the_body_s_size_is_refused_or_none() {
+        let planform = FinPlanform::Trapezoidal {
+            root_chord_m: 0.1,
+            tip_chord_m: 0.05,
+            span_m: 0.05,
+            sweep_m: 0.05,
+        };
+        let filleted = |radius_m: f64| {
             let mut fins = set(3, planform.clone(), 0.003);
             fins.fillet = Some(FinFillet {
                 radius_m,
                 material: Material::bulk("epoxy", 1200.0),
             });
-            let error = fins.single_fin(0.05).unwrap_err();
+            fins
+        };
+        let bare = set(3, planform.clone(), 0.003);
+        let rb = 0.05;
+        let widest = FILLET_RATIO_MAX * rb;
+        for radius_m in [widest * (1.0 + 1e-12), 1e10, 1e12, 1e100] {
+            let error = filleted(radius_m).single_fin(rb).unwrap_err();
             assert!(
-                matches!(error, DesignError::Domain { what, .. } if what.starts_with("fin fillet section")),
+                matches!(error, DesignError::Domain { what, value }
+                    if what.starts_with("fin fillet radius") && value == radius_m / rb),
                 "{radius_m}: {error:?}"
+            );
+        }
+        let mass = |fins: &FinSet, rb: f64| fins.single_fin(rb).unwrap().mass_kg;
+        assert!(mass(&filleted(widest), rb) > mass(&bare, rb));
+        assert!(mass(&filleted(1e-6 * rb), rb) > mass(&bare, rb));
+        for (radius_m, body_m) in [(1e-6 * rb * (1.0 - 1e-12), rb), (1e-20, rb), (0.005, 0.0)] {
+            assert_eq!(
+                mass(&filleted(radius_m), body_m),
+                mass(&bare, body_m),
+                "{radius_m} on {body_m}"
             );
         }
         // A fillet of a weightless material weighs nothing, and is no error.
