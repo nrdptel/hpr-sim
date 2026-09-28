@@ -10,8 +10,12 @@ the jar, flown as `flights.py` flies them with nothing deployed, and records, la
 - the base-drag column (`TYPE_BASE_DRAG_COEFF`) over the whole base's coefficient at the row's
   Mach number, `0.12 + 0.13 M^2` below Mach 1 and `0.25/M` above (Niskanen eq. 3.94): its
   smallest and largest on the rows with thrust, and on the rows without;
-- the burning motors' cross-section over the reference area, `motor_area_fraction`: what the ratio
-  would drop by while they burn if OpenRocket took their area off the base.
+- the configuration's motors' cross-section over the reference area, `motor_area_fraction`: about
+  what the ratio would drop by while they all burn if OpenRocket took their area off the base, and
+  `pod_motors`, how many of those motors sit in a pod;
+- the largest difference, on the rows with thrust, between the drag coefficient
+  (`TYPE_DRAG_COEFF`) and the sum of its friction, pressure and base columns, `sum_residual`:
+  near zero if the base-drag column is what OpenRocket flies.
 
 If the ratio is the same with thrust as without, OpenRocket keeps the whole base while a motor
 burns. Only rows faster than Mach 0.01 count, where the column is not the rounding of a number
@@ -55,6 +59,15 @@ def spread(values):
     return {"rows": len(values), "min": min(values), "max": max(values)} if values else {"rows": 0}
 
 
+def in_a_pod(component):
+    """Whether `component` sits inside a pod set."""
+    while component is not None:
+        if str(component.getClass().getSimpleName()) == "PodSet":
+            return True
+        component = component.getParent()
+    return False
+
+
 def flown(document, configuration):
     """`configuration` flown with nothing deployed, as its base-drag ratios."""
     from info.openrocket.core.document import Simulation
@@ -83,20 +96,26 @@ def flown(document, configuration):
     base = column(F.TYPE_BASE_DRAG_COEFF)
     thrust = column(F.TYPE_THRUST_FORCE)
     reference = column(F.TYPE_REFERENCE_AREA)
-    burning, coasting = [], []
+    total = column(F.TYPE_DRAG_COEFF)
+    friction = column(F.TYPE_FRICTION_DRAG_COEFF)
+    pressure = column(F.TYPE_PRESSURE_DRAG_COEFF)
+    burning, coasting, residual = [], [], []
     for i in range(highest + 1):
         if not (math.isfinite(mach[i]) and math.isfinite(base[i])) or mach[i] <= SLOWEST_MACH:
             continue
         (burning if thrust[i] > 0.0 else coasting).append(base[i] / whole_base(mach[i]))
+        if thrust[i] > 0.0:
+            residual.append(abs(total[i] - friction[i] - pressure[i] - base[i]))
     held = document.getRocket().getFlightConfiguration(configuration)
-    motor_area = sum(
-        math.pi * float(m.getMotor().getDiameter()) ** 2 / 4.0 for m in held.getActiveMotors()
-    )
+    motors = list(held.getActiveMotors())
+    motor_area = sum(math.pi * float(m.getMotor().getDiameter()) ** 2 / 4.0 for m in motors)
     return {
         "branches": int(simulation.getSimulatedData().getBranchCount()),
         "motor_area_fraction": motor_area / reference[0] if reference and reference[0] else None,
+        "pod_motors": sum(1 for m in motors if in_a_pod(m.getMount())),
         "burning": spread(burning),
         "coasting": spread(coasting),
+        "sum_residual": max(residual) if residual else None,
     }
 
 

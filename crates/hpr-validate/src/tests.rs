@@ -1990,11 +1990,14 @@ fn a_real_flight_explanation_that_stops_holding_fails() {
 }
 
 /// OpenRocket 24.12 keeps the whole base's drag while a motor burns (ADR-097): on every example
-/// design's flight of one branch, its base-drag column over Niskanen's whole-base coefficient
-/// (eq. 3.94) is the same while a motor burns as while none does, to 1e-12. Taking the motors'
-/// cross-section off the base would drop that ratio by `motor_area_fraction` while they burn,
-/// which is over half the reference area on some of them, and powered pods are among them. hpr's
-/// `with_full_base_drag_under_power` flies this rule; hpr's own takes the area off.
+/// design's flight of one branch (one stage flown, no separation), its base-drag column over
+/// Niskanen's whole-base coefficient (eq. 3.94) is the same while a motor burns as while none
+/// does, to 1e-12. Taking the motors' cross-section off the base would drop that ratio by about
+/// `motor_area_fraction` while they all burn: at least 5% of the reference area on every flight
+/// compared and over 90% on one. One of them burns motors in pods. On every flight, the base
+/// column is what OpenRocket flies: the drag coefficient is the sum of its friction, pressure
+/// and base columns to 1e-12 while a motor burns. hpr's `with_full_base_drag_under_power` flies
+/// this rule; hpr's own takes the area off.
 #[test]
 fn openrocket_keeps_the_whole_base_drag_under_power() {
     let record: serde_json::Value = serde_json::from_str(include_str!(
@@ -2029,9 +2032,13 @@ fn openrocket_keeps_the_whole_base_drag_under_power() {
     let number = |value: &serde_json::Value| value.as_f64().expect("a number");
     let mut compared = 0;
     let mut largest_fraction: f64 = 0.0;
+    let mut smallest_fraction = f64::INFINITY;
     let mut pods = 0;
     for flight in record["flights"].as_array().expect("flights") {
         assert!(flight["refused"].is_null(), "{flight}");
+        if !flight["sum_residual"].is_null() {
+            assert!(number(&flight["sum_residual"]) <= 1e-12, "{flight}");
+        }
         let (burning, coasting) = (&flight["burning"], &flight["coasting"]);
         if flight["branches"] != 1 || burning["rows"] == 0 || coasting["rows"] == 0 {
             continue;
@@ -2046,11 +2053,10 @@ fn openrocket_keeps_the_whole_base_drag_under_power() {
             );
         }
         compared += 1;
-        largest_fraction = largest_fraction.max(number(&flight["motor_area_fraction"]));
-        if flight["file"]
-            .as_str()
-            .is_some_and(|f| f.contains("Pods--powered"))
-        {
+        let fraction = number(&flight["motor_area_fraction"]);
+        largest_fraction = largest_fraction.max(fraction);
+        smallest_fraction = smallest_fraction.min(fraction);
+        if number(&flight["pod_motors"]) > 0.0 {
             pods += 1;
         }
     }
@@ -2059,5 +2065,9 @@ fn openrocket_keeps_the_whole_base_drag_under_power() {
         "the example flights of one branch with both kinds of row"
     );
     assert!(largest_fraction > 0.9, "{largest_fraction}");
-    assert_eq!(pods, 2, "the powered pods' flights of one branch");
+    assert!(smallest_fraction > 0.05, "{smallest_fraction}");
+    assert_eq!(
+        pods, 1,
+        "the flight of one branch that burns motors in pods"
+    );
 }
