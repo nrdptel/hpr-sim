@@ -846,11 +846,12 @@ mod tests {
     ///   ([`a_fin_section_is_weighed_as_pinned`]), an ellipse, and a cant (−4.19e-5, not traced).
     ///   Its pitch inertia is apart by up to 0.11% where the masses agree (0.406% on a single fin,
     ///   below): OpenRocket's pitch rule for fins is not measured here.
-    /// - Fillets (M2.2e7, [ADR-096][adr-096]): OpenRocket's in mass and centre to 1e-15, in their
-    ///   own material or cardboard's when none is named, on any outline, count or tube; before,
-    ///   hpr left them out (−0.808% and −2.79% of the probe's mass at 5 and 10 mm). The pitch
-    ///   inertia is apart by −0.035% to −0.638%, growing with the fillets' mass: hpr's is the exact
-    ///   prism, and OpenRocket's pitch rule for fins is not measured.
+    /// - Fillets (M2.2e7, [ADR-096][adr-096]): OpenRocket's in mass and centre to 1e-15 (held
+    ///   here to 1e-12), in their own material or cardboard's when none is named, on any outline,
+    ///   count or tube; before, hpr left them out (−0.808% and −2.79% of the probe's mass at 5 and
+    ///   10 mm). The pitch inertia is apart by −0.0077% to −0.638%, largest with the 30 mm fillets,
+    ///   and +0.425% on a single fin: hpr's is the exact prism, and OpenRocket's pitch rule for fins
+    ///   is not measured.
     /// - A rail button, one or a row, from any end: OpenRocket's in mass and centre (#151), its
     ///   inertias apart by 7.16e-6 and 9.23e-5 (one), 1.43e-5 and 4.99e-4 (two).
     /// - A launch lug: its pitch inertia is apart by 3.13e-4.

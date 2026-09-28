@@ -4,16 +4,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M2.2e7 (fillets,
-  an inner tube's radius, #174), e8 (tube fins, #133), e9 (20 designs: one more, `C10` #184 or
-  another). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e6, M2.3a-b, M2.4, M3.1.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M2.2e8 (tube
+  fins OR sizes, #133), e9 (20 designs: two more, `C10` #184 or others). **Run:** M0.1-4, M1.1-7,
+  M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e7, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-27; M2.2e6 (the old override flag, ADR-095) done: 16 of M2.2's 20.
+- **Last updated:** 2026-09-28; M2.2e7 (fillets, a bore's auto radius, ADR-096, 097): 18 of 20.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** nothing in flight. M2.2e7: `C01` waits only on fillets' mass, `C06` on them
-  and an inner tube whose `auto` radius meets a nose cone; probe OR in `conventions.py` as e6 did.
+- **Next (resume here):** nothing in flight. M2.2e8: a tube fin's `auto` radius as OR resolves it;
+  probe OR in `conventions.py` as e7 did. Library runs now need `drag_curves.py` (ADR-097).
   Probes (ADR-093, ADR-094): `pod_probes.py`, `rod_probes.py`, then `flights.py` (its docstring's
   command) and `motor_database.py ... refs validation/fixtures/ork/{pod,rod}-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
@@ -56,11 +56,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-27: M2.2e6 Old override flag (ADR-095): 11 OR probes, later tag wins; `C05` flies; `C10` not met (#184).
-- 2026-09-27: M2.2e5 Tilted rod (ADR-094): 4 OR probes, bearing at apogee within 0.03°; `C12` flies; 15 designs.
+- 2026-09-28: M2.2e7 Fillets, a bore's auto radius (ADR-096, 097): 21 OR probes to 1e-15; `C01`, `C06` fly; 18 designs.
+- 2026-09-27: M2.2e5, e6 Tilted rod, old override flag (ADR-094, 095): 15 OR probes; `C12`, `C05` fly; `C10` not (#184).
 - 2026-09-27: M1.13 Pods (a to c2, ADR-089 to ADR-093): mass and placement to 1e-15; aero to 1e-11 by hand; 6 OR probes within 0.81%.
-- 2026-09-26: M1.12 Moving and released mass (ADR-087, ADR-088): hand values to 1e-15; momenta to 7.3e-12.
-- 2026-09-26: M1.11a, b Ejected pieces, impulse, tumbling (ADR-085, ADR-086): pieces land at `v_e` to 0.1%; `J/m` to 1e-9.
+- 2026-09-26: M1.11a, b, M1.12 Pieces, tumbling, moving mass (ADR-085 to 088): `v_e` to 0.1%; hand values to 1e-15.
 - 2026-09-26: M2.4 Census gate (ADR-084): 648 rows held to the accepted census; throwaway #199 red on 3 OSes.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **M2.3c needs a design with its flight's log** (ADR-083): no `loft-fixtures` design is the rocket
@@ -80,6 +79,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-096, 097 (M2.2e7): fillets a section prism; a nose's `auto` bore; drag causes on OR's drag.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights read as
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; a push
   along the axis, else by the airspeed; tumble areas integrated; a shift's cycloid, `ω×h + h′`;
@@ -89,13 +89,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   once per pod, on the axis, interference left out and sized; single-pod moments #213; pods
   against OR on six probes, listed apart; a rod as OR records it, vertical too, on four more;
   M2.2e6 split by reading (e6 to e9), the old override flag as OR reads it, the later tag winning.
-- ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
-  eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
+- ADR-077 to 080 (M1.10): dense-output peaks, no margin past κ = √10; flutter by TN 4197 eq. 18;
+  exports as core text, GeoJSON on the ellipsoid, Parquet by hand.
 - ADR-071 to ADR-076: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
   flights by id, differences only; public copies out; a cause sized by OR flying without it; M1.9's
   body 0 flies on, a motor per tube.
-- ADR-068, ADR-069: M2.2d split d1, d2; OR flies public designs in calm air, its speed point
-  "unstated"; hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
+- ADR-068, ADR-069: M2.2d split; OR flies public designs in calm air, speed point "unstated"; hpr
+  flies OR's record unrecovered, design checks recorded, causes named.
 - ADR-062 to ADR-066: M2.2b2-b5, c split; exact fin inertia and sections, clusters, fillets pinned
   as departures; packed parts as OR packs them; screens apart; the oracle integrates one file twice.
 - ADR-059 to ADR-061: key geometry agrees unless apart from RocketSerializer and OR; no `orhelper`;
@@ -136,8 +136,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in radius takes the body
   off the method past 2.7e-11 m tube to tube or 1.3e-13 m at a boattail — −8.65% to −11.34% (#87).
 - `.ork` (M3.1): hpr alone flies 4 of 170 configurations (93 with OR's database, ADR-067), one
-  powered split at most (#183); recovery read, not flown; 5 parts left out (tube fins #133); fillets
-  and screw heads read simpler, warned; `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).
+  powered split at most (#183); recovery read, not flown; 5 parts left out (tube fins #133); screw
+  heads read simpler, warned; supersonic pressure drag twice OR's on `C06` (#222); `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).
   Pods (ADR-092) fly without pod–body interference, a single pod's moments dropped (#213); two motor pod sets refused (#214).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against

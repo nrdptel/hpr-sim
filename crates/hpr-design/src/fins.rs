@@ -45,8 +45,9 @@
 //!
 //! **Fillets.** A fillet of radius `r` runs the root chord `c_r` on each face of each fin. Its
 //! section is the region between the fin's mid-plane, the body's circle of radius `R_b`, and a
-//! circle of radius `r` tangent to both: OpenRocket 24.12's reading, measured on probe designs
-//! to 4e-9, which leaves the fin's thickness out (ADR-096). With the fillet circle's centre at
+//! circle of radius `r` tangent to both: OpenRocket 24.12's reading, which leaves the fin's
+//! thickness out. Its mass and centre of mass match OpenRocket's to 1e-15 on nine probe designs
+//! ([ADR-096][adr-096], the decision on fillets). With the fillet circle's centre at
 //! `(c, r)`, `c = √(R_b² + 2 R_b r)` and `θ = atan(r / c)`, the section is the triangle
 //! `(0, 0), (c, 0), (c, r)` less the body's sector of angle `θ` and the fillet's of `π/2 − θ`:
 //!
@@ -56,6 +57,8 @@
 //!
 //! which tends to `r² (1 − π/4)` on a flat body. Its moments come the same way, and the fillets
 //! are a prism of that section along the root, in the fillet's own material.
+//!
+//! [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
 
 use std::f64::consts::PI;
 

@@ -151,7 +151,6 @@
 
     *Done when:* subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs
     at Mach 0.3 (tighten this later), and unit tests cover every drag term's limits.
-
     *Result (ADR-009):* not met for Valetudo (−47% power-off, −50% power-on; its table is 1.44 times
     its own OpenRocket export, which hpr matches to 2%) or Cavour power-on (−18.3%, cause open).
     Calisto, Juno III and Cavour power-off are within 10% (+4.4%, −6.0%, −8.3%) under a declared
@@ -272,7 +271,6 @@
     measurements at every Mach they give and RASAero II's Calisto export from Mach 0.1 to 2.0,
     against targets set before measuring — CP within 0.5 calibers, `C_Nα` within 15% — with every
     miss explained; and the same-drag Prometheus 2022 case flies through Mach 1 and passes.
-
     *Result (ADR-027):* met. Linear theory from `M_s`, a join from Mach 0.8. L7 passes; 37 rows
     pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
     0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010. Since
@@ -592,12 +590,14 @@
       held by a test; the designs it held back fly with the five spreads, e4's bar on them.
       *Result:* 11 probes, flags part by part; `C05` flies, within 0.26%: 16 designs. **Not met for
       `C10`**: a second blocker, #184, not the flag (ADR-095); it stays in e9's pool.
-    - [ ] **M2.2e7 Fin fillets and an inner tube's radius** (#174). *Done when:* both read as OR
+    - [x] **M2.2e7 Fin fillets and an inner tube's radius** (#174). *Done when:* both read as OR
       24.12 does, measured on probes and held by a test; `C01`, `C06` fly, e4's bar on them.
+      *Result (ADR-096):* 21 probes, mass and centre to 1e-15; both fly: 18 designs. `C06/1` +13.60%,
+      sized on OR's own drag, +1.11% (ADR-097); supersonic pressure drag twice OR's (#222).
     - [ ] **M2.2e8 Tube fins OpenRocket sizes** (#133). *Done when:* an `auto` tube-fin radius
       resolves as OR 24.12 does, on probes, with a test; the tube fin example flies, e4's bar on it.
     - [ ] **M2.2e9 Twenty designs.** *Done when:* anonymised ids beside the public report make at
-      least 20 designs with the five spreads; e4's bar on the flights added. 16 since e6.
+      least 20 designs with the five spreads; e4's bar on the flights added. 18 since e7.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts

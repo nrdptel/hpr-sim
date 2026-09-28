@@ -3099,6 +3099,21 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   `DragConditions::thrusting(reynolds_per_m, motor_area_m2)` takes the cross-section of the
   burning motors from the flight engine (zero when unknown: no relief). The base belongs to the
   last body component.
+  - **OpenRocket's rule, for comparisons.** OpenRocket 24.12 does not take the motor off. While a
+    motor burns, its base drag is the whole base's, as measured from its output
+    ([ADR-097][adr-097], the decision on sizing a drag cause). On a rocket whose motor fills most of
+    the base, that is a large difference under power: on one private design's supersonic flight,
+    flying OpenRocket's base rule moved hpr's apogee by about 24 percentage points
+    ([a supersonic flight](../format/ork.md#a-supersonic-flight-and-a-cause-in-the-drag)).
+    `AeroModel::with_full_base_drag_under_power()` and
+    `Simulation::with_full_base_drag_under_power()` fly OpenRocket's rule. A sustainer lit after a
+    powered separation keeps it. They exist to size a difference from OpenRocket, not as a better
+    model: hpr keeps Niskanen's relief by default.
+  - **Supersonic pressure drag against OpenRocket.** On that flight hpr's supersonic pressure drag
+    is about twice OpenRocket's: OpenRocket gives the nose almost none well above Mach 1, and the
+    fins about a quarter of hpr's. Which is right is open, since neither has been checked against a
+    measurement on that shape
+    ([#222: hpr's supersonic pressure drag is about twice OpenRocket's](https://github.com/nrdptel/hpr-sim/issues/222)).
 - **Fins.** Each fin set is its own term with its own thickness, chord and cross-section, so their
   order doesn't matter ([Loft lesson L11](../decisions-and-roadmap.md#l11)). `c̄` is the mean aerodynamic chord and `Γ_L`
   the leading-edge sweep: `atan(x_t/s)` for a trapezoid, the span average for freeform outlines
@@ -3528,7 +3543,9 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   Mach number.
   - The drag buildup's transonic and supersonic terms are [N09]'s semi-empirical ones. [N09]
     expects them "to be reasonably accurate to at least Mach 1.5" (p. 94); against the one wind
-    tunnel they read high from about Mach 1.2 ([Drag limits](#drag-limits)).
+    tunnel they read high from about Mach 1.2 ([Drag limits](#drag-limits)). On the one supersonic
+    flight compared with OpenRocket, hpr's supersonic pressure drag is about twice OpenRocket's
+    ([#222: which is right is open](https://github.com/nrdptel/hpr-sim/issues/222)).
   - The normal force between Mach 0.8 and linear theory's start `M_s` is the straight-line join
     of [Fins through Mach 1](#fins-through-mach-1), which the wind tunnel shows missing by up to
     +29.3% in slope and 2.29 calibres in CP. Past Mach 3 its body terms read low
@@ -4465,3 +4482,4 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-050]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-050-a-reduced-element-is-read-by-the-generalized-method-wherever-it-has-a-tangent-cone-of-its-own-2026-09-20
 [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
+[adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28

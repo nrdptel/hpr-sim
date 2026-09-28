@@ -183,7 +183,9 @@ q̇   = ½ q ⊗ (0, ω)
 - **Axial force.** `−q A C_A z_B` from the whole rocket's drag, at the centre of mass's airspeed,
   Mach number, angle of attack and Reynolds number per metre (`V/ν`). The drag is power-on
   (`DragConditions::thrusting`, with the burning motors' cross-section) while any motor burns in
-  the interval. It acts along the axis, so it has no moment about `O`.
+  the interval. `Simulation::with_full_base_drag_under_power` keeps the whole base's drag instead,
+  as OpenRocket does, for comparisons with it ([base drag under power](aero.md#drag)). The force
+  acts along the axis, so it has no moment about `O`.
 - **Normal and side forces, component by component.** Each body and fin set is evaluated at its
   own local flow: `v_O − wind + ω × p_i` at the station `p_i` the aerodynamics gives it
   (`AeroModel::component_station_m`). That station is the component's small-angle centre of

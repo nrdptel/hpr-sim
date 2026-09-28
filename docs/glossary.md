@@ -107,7 +107,7 @@ Recruiter's slope is 2.87% high. See [Aerodynamics](physics/aero.md#verification
 
 ## Base drag
 
-The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). Behind a [boattail](#boattail), faster than sound, the base's pressure is higher and hpr lowers the base drag to match ([Boattails faster than sound](physics/aero.md#boattails-faster-than-sound)). See [Aerodynamics](physics/aero.md#drag).
+The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). OpenRocket keeps the whole base's drag, and hpr can fly that rule for a comparison ([Aerodynamics](physics/aero.md#drag)). Behind a [boattail](#boattail), faster than sound, the base's pressure is higher and hpr lowers the base drag to match ([Boattails faster than sound](physics/aero.md#boattails-faster-than-sound)). See [Aerodynamics](physics/aero.md#drag).
 
 ## BATES grain
 
@@ -441,6 +441,13 @@ Lui come from RocketPy's own examples; their designs, as hpr reads them, are in 
 examples from his papers, with their printed values in
 [`barrowman-worked-examples.json`][barrowman]. See [Accuracy](accuracy.md).
 
+## Fillet
+
+A fin fillet: the rounded glue joint along a fin's root, filling the corner between the fin and the
+body tube on each side. Its face is a circle of the fillet's radius. hpr weighs fillets as
+OpenRocket does, as a prism of that corner's section along the root chord, in their own material.
+The aerodynamics leaves them out. See [Mass properties](physics/mass.md#fin-fillets).
+
 ## Fineness ratio
 
 A nose cone's length divided by its base diameter. A 3:1 tangent ogive has a fineness ratio of 3,
@@ -756,7 +763,8 @@ A body mounted beside the airframe rather than on its axis: a side pod, or an ou
 Drag while a motor burns, and while the rocket coasts. Under power, the part of the base the
 burning motor covers has no base drag, so hpr subtracts the burning motors' cross-section from the
 base area, and a drag table can carry separate power-on and power-off curves. A flight uses
-power-on drag while any motor burns. See [Aerodynamics](physics/aero.md#drag).
+power-on drag while any motor burns. OpenRocket 24.12 keeps the whole base under power;
+`with_full_base_drag_under_power` flies its rule, for comparisons with OpenRocket. See [Aerodynamics](physics/aero.md#drag).
 
 
 ## Prandtl–Meyer expansion
