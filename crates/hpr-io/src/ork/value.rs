@@ -256,47 +256,63 @@ impl<'a> Values<'a> {
         self.warn(kind, message.into());
     }
 
-    /// The mass, centre of gravity and drag a component's own figures are replaced by.
+    /// The mass, centre of gravity and drag a component's own figures are replaced by, and
+    /// whether each covers the components inside this one.
+    ///
+    /// Until schema 1.9 a file said that last once, with `overridesubcomponents`, for all three
+    /// quantities. OpenRocket 24.12 reads that flag, in schema 1.4, 1.8 and 1.10 files alike, as
+    /// setting all three, and where a component writes it beside a per-quantity flag, the tag
+    /// written later wins, quantity by quantity: measured on probe designs
+    /// ([M2.2e6][m2-2e6], [ADR-095][adr-095]), whose answers `hpr_validate::openrocket` holds hpr
+    /// to. This reads it the same way. A flag tag written twice on one component is read at its
+    /// first copy only, and warned of, since which copy OpenRocket takes is not measured.
+    ///
+    /// [m2-2e6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e6
+    /// [adr-095]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-095-the-single-pre-19-override-flag-read-as-openrocket-reads-it-2026-09-27
     pub fn overrides(&mut self) -> Overrides {
         let mass_kg = self.number(&["overridemass"]);
         let cg_m = self.number(&["overridecg"]);
         let cd = self.number(&["overridecd"]);
-        // The three flags were one until schema 1.9. No element in the reference corpus carries
-        // both forms, so the older one is read as setting all three, which is what it meant.
-        let all = self.flag(&["overridesubcomponents"]);
-        let per_quantity = [
-            ("mass", self.flag(&["overridesubcomponentsmass"])),
-            ("centre of gravity", self.flag(&["overridesubcomponentscg"])),
-            ("drag", self.flag(&["overridesubcomponentscd"])),
-        ];
-        if all.is_some() {
-            let taken: Vec<&str> = per_quantity
-                .iter()
-                .filter(|(_, own)| own.is_none())
-                .map(|(what, _)| *what)
-                .collect();
-            self.warn(
-                WarningKind::Unusual,
-                format!(
-                    "this component uses the single `overridesubcomponents` flag that OpenRocket \
-                     replaced with one flag per quantity; it was read as setting {}",
-                    match taken.as_slice() {
-                        [] => "nothing, since each quantity has a flag of its own".to_owned(),
-                        [one] => format!("the {one} flag"),
-                        many => format!("the {} flags", many.join(", the ")),
-                    }
-                ),
-            );
-        }
-        let [(_, mass), (_, cg), (_, drag)] = per_quantity;
+        let all = self.placed_flag("overridesubcomponents");
+        let [mass, cg, drag] = [
+            "overridesubcomponentsmass",
+            "overridesubcomponentscg",
+            "overridesubcomponentscd",
+        ]
+        .map(|name| match (self.placed_flag(name), all) {
+            (Some((own, own_at)), Some((all, all_at))) => {
+                Some(if all_at > own_at { all } else { own })
+            }
+            (Some((own, _)), None) => Some(own),
+            (None, Some((all, _))) => Some(all),
+            (None, None) => None,
+        });
         Overrides {
             mass_kg,
             cg_m,
             cd,
-            subcomponents_mass: mass.or(all),
-            subcomponents_cg: cg.or(all),
-            subcomponents_cd: drag.or(all),
+            subcomponents_mass: mass,
+            subcomponents_cg: cg,
+            subcomponents_cd: drag,
         }
+    }
+
+    /// The flag called `name`, and where it stands among the element's children in document
+    /// order. A tag written more than once is read at its first copy, with a warning.
+    fn placed_flag(&mut self, name: &str) -> Option<(bool, usize)> {
+        let copies = self.element.children_named(name).count();
+        if copies > 1 {
+            self.warn(
+                WarningKind::Dropped,
+                format!("`{name}` is written {copies} times; only the first is read"),
+            );
+        }
+        let value = self.flag(&[name])?;
+        let place = self
+            .element
+            .elements()
+            .position(|child| child.name == name)?;
+        Some((value, place))
     }
 
     fn warn(&mut self, kind: WarningKind, message: impl Into<String>) {

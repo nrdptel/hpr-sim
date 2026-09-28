@@ -447,16 +447,9 @@
       built and rejected: it re-opens ADR-034's mixture (the mixed reading's CP lands **forward of
       both** pure models) and does not close the boattail's band. #87 is narrowed to the step; #120
       and #121 split off it.
-    - [x] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests' rocket
-      a flare's one element is reduced aft of the nose (issue #81), so the march refuses Mach rows
-      from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and 0.75
-      calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16 calibres).
-      Not monotone in the angle either, and separate from #87 (ADR-047, #117). *Done when:* the
-      region's edges are derived rather than bisected, a rule carries the reading across it or the
-      refusal is shown to be right, and a test pins whichever it is with the switches' sizes
-      measured on both sides. *Result:* met (ADR-050) — the edges are the corner's **crossing** and
-      **balance**, solved from its own state, the reduction is read there, so both switches go. What
-      is left: ADR-050.
+    - [x] **M1.8e19 The near-flat flare the march refuses** (#81, #117). Met (ADR-050), bars kept:
+      the region's edges derived, not bisected (the corner's crossing and balance); the reduction
+      read there, so both switches (−4.6%, −8.3%) go; a test pins the sizes on both sides.
     - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13,
       ADR-044;
       the next free number, so the flare and the step keep theirs). On issue #108; see `STATUS.md`.
@@ -579,7 +572,7 @@
     - [x] **M2.2d2 hpr's flights against the record.** Met (ADR-069), bars kept: 21 flown; margin
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
-    Split into e1 to e6 (ADR-070, ADR-072, ADR-094).
+    Split into e1 to e9 (ADR-070, ADR-072, ADR-094, ADR-095).
     - [x] **M2.2e1 Mass and CG in the flight report.** Met (ADR-070), bars kept: launch and
       rod-clearance mass and CG against OR's, tested, on all 21; within 0.22% and 0.016 cal.
     - [x] **M2.2e2 OR's flights of the corpus.** Met (ADR-071), bars kept: 88 of the 27 `.ork`
@@ -594,9 +587,17 @@
       landings and by public probes (within 5% of OR's apogee and speed, bearing at apogee within
       0.1°); the tilted design's flights have the five spreads, e4's bar on them. *Result:* met:
       bearings within 0.03°, apogee loss within 0.27 points; `C12` within 0.53%; 15 designs.
-    - [ ] [blocked] **M2.2e6 Twenty designs** (on #174, #133; M1.13 done). *Done when:*
-      anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
-      bar on the flights added. 15 since M2.2e5 (ADR-094); the rest wait on the two above.
+    - [x] **M2.2e6 The old override flag** (#174; split from the old e6, whose bar is now e9;
+      ADR-095). *Done when:* `overridesubcomponents` reads as OR 24.12 does, measured on probes and
+      held by a test; the designs it held back fly with the five spreads, e4's bar on them.
+      *Result:* 11 probes, flags part by part; `C05` flies, within 0.26%: 16 designs. **Not met for
+      `C10`**: a second blocker, #184, not the flag (ADR-095); it stays in e9's pool.
+    - [ ] **M2.2e7 Fin fillets and an inner tube's radius** (#174). *Done when:* both read as OR
+      24.12 does, measured on probes and held by a test; `C01`, `C06` fly, e4's bar on them.
+    - [ ] **M2.2e8 Tube fins OpenRocket sizes** (#133). *Done when:* an `auto` tube-fin radius
+      resolves as OR 24.12 does, on probes, with a test; the tube fin example flies, e4's bar on it.
+    - [ ] **M2.2e9 Twenty designs.** *Done when:* anonymised ids beside the public report make at
+      least 20 designs with the five spreads; e4's bar on the flights added. 16 since e6.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts

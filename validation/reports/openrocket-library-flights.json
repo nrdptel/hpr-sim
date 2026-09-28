@@ -250,6 +250,121 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
+      "apogee_percent": 0.255815,
+      "chute_early_s": null,
+      "design_checks": [],
+      "drag_overrides_not_applied": null,
+      "flight": "C05/1",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_at_openrocket_alpha_cal": 0.000252,
+      "margin_cal": 0.000254,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.38655,
+      "reference_same": true,
+      "rod_clearance_cg_cal": 5e-6,
+      "rod_clearance_cp_cal": 0.000259,
+      "rod_clearance_mass_percent": 0.0,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": 0.237154,
+      "chute_early_s": null,
+      "design_checks": [],
+      "drag_overrides_not_applied": null,
+      "flight": "C05/2",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_at_openrocket_alpha_cal": 0.011336,
+      "margin_cal": 0.011339,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.605837,
+      "reference_same": true,
+      "rod_clearance_cg_cal": -0.011079,
+      "rod_clearance_cp_cal": 0.00026,
+      "rod_clearance_mass_percent": 0.005,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": -0.028629,
+      "chute_early_s": null,
+      "design_checks": [],
+      "drag_overrides_not_applied": null,
+      "flight": "C05/3",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_at_openrocket_alpha_cal": 0.000257,
+      "margin_cal": 0.00026,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.159293,
+      "reference_same": true,
+      "rod_clearance_cg_cal": 0.0,
+      "rod_clearance_cp_cal": 0.00026,
+      "rod_clearance_mass_percent": 0.0,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": 0.1092,
+      "chute_early_s": null,
+      "design_checks": [],
+      "drag_overrides_not_applied": null,
+      "flight": "C05/4",
+      "launch_mass_percent": 0.0,
+      "mach": "transonic",
+      "margin_at_openrocket_alpha_cal": 0.000685,
+      "margin_cal": 0.000687,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.559569,
+      "reference_same": true,
+      "rod_clearance_cg_cal": -0.000429,
+      "rod_clearance_cp_cal": 0.000259,
+      "rod_clearance_mass_percent": -0.008,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": 0.245113,
+      "chute_early_s": null,
+      "design_checks": [],
+      "drag_overrides_not_applied": null,
+      "flight": "C05/5",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_at_openrocket_alpha_cal": 0.000162,
+      "margin_cal": 0.000166,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.237425,
+      "reference_same": true,
+      "rod_clearance_cg_cal": 0.000095,
+      "rod_clearance_cp_cal": 0.000261,
+      "rod_clearance_mass_percent": 0.001,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
       "apogee_percent": 0.682838,
       "chute_early_s": 0.55,
       "design_checks": [
@@ -650,38 +765,13 @@
     },
     {
       "aborted": false,
-      "flight": "C05/1",
-      "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
-      "flight": "C05/2",
-      "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
-      "flight": "C05/3",
-      "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
-      "flight": "C05/4",
-      "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
-      "flight": "C05/5",
-      "why": "an airframe not read exactly as written"
-    },
-    {
-      "aborted": false,
       "flight": "C06/1",
       "why": "an airframe not read exactly as written"
     },
     {
       "aborted": false,
       "flight": "C10/1",
-      "why": "an airframe not read exactly as written"
+      "why": "stages hpr can't separate as written"
     },
     {
       "aborted": false,
@@ -699,27 +789,27 @@
     "apogee_over_5_percent": 0,
     "bar": 20,
     "bar_met": false,
-    "designs_with_all_five": 7,
-    "flown": 26,
+    "designs_with_all_five": 8,
+    "flown": 31,
     "mass_and_cg": {
       "launch_mass_percent": {
-        "count": 26,
+        "count": 31,
         "max": 0.004,
-        "mean_absolute": 0.0009230769230769231,
+        "mean_absolute": 0.0007741935483870968,
         "median": 0.0,
         "min": 0.0
       },
       "rod_clearance_cg_cal": {
-        "count": 26,
+        "count": 31,
         "max": 0.004178,
-        "mean_absolute": 0.012692423076923077,
-        "median": -0.000626,
+        "mean_absolute": 0.011019709677419354,
+        "median": -0.000429,
         "min": -0.110245
       },
       "rod_clearance_mass_percent": {
-        "count": 26,
+        "count": 31,
         "max": 0.065,
-        "mean_absolute": 0.009807692307692307,
+        "mean_absolute": 0.008677419354838711,
         "median": 0.001,
         "min": -0.021
       }
@@ -732,14 +822,14 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 26
+          "scored": 31
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 20,
+            "count": 25,
             "max": 1.167295,
-            "mean_absolute": 1.7352928000000003,
-            "median": -0.753259,
+            "mean_absolute": 1.4232706800000003,
+            "median": -0.486136,
             "min": -4.844469
           },
           "reference parachute open before apogee": {
@@ -758,13 +848,13 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 26
+          "scored": 31
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 26,
+            "count": 31,
             "max": 2.281658,
-            "mean_absolute": 0.47299530769230774,
+            "mean_absolute": 0.45956619354838707,
             "median": 0.241031,
             "min": -0.65326
           }
@@ -777,22 +867,22 @@
         },
         "difference_unit": "calibres",
         "outcomes": {
-          "scored": 26
+          "scored": 31
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 26,
+            "count": 31,
             "max": 0.110841,
-            "mean_absolute": 0.03480026923076923,
-            "median": 0.039088,
+            "mean_absolute": 0.029597193548387097,
+            "median": 0.034974,
             "min": -0.000849
           }
         }
       }
     },
-    "not_flown": 11,
+    "not_flown": 6,
     "public_designs_with_all_five": 8,
-    "reference_same": 26,
-    "together": 15
+    "reference_same": 31,
+    "together": 16
   }
 }
