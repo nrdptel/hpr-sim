@@ -1018,6 +1018,65 @@ fn a_supersonic_flight_flies_on_the_drag_buildup() {
     );
 }
 
+/// Tube fins fly (M2.2e9, ADR-099): six 20 mm tubes 0.1 m long at the foot of the synthetic
+/// 54 mm rocket's airframe. On a constant drag coefficient of 3 it stays below Mach 0.8 and lands.
+/// On its own drag buildup it reaches Mach 0.8, where the tube-fin model refuses, and the flight
+/// stops with that error, not a panic.
+#[test]
+fn tube_fins_fly_below_mach_0_8_and_stop_the_flight_past_it() {
+    struct Fastest(f64);
+    impl crate::recorder::Observer for Fastest {
+        fn step(&mut self, step: &dyn crate::recorder::FlightStep) -> Result<(), SimError> {
+            self.0 = self.0.max(step.sample(step.end_s())?.mach);
+            Ok(())
+        }
+    }
+    let material =
+        serde_json::json!({ "name": "test", "density": { "kind": "bulk", "kg_m3": 700.0 } });
+    let tubes = serde_json::json!({
+        "id": "tube-fins",
+        "part": { "tube_fin_set": {
+            "count": 6, "length_m": 0.1, "outer_radius_m": 0.02, "thickness_m": 0.0005,
+            "material": material } },
+        "position": { "from": "bottom", "aft_offset_m": 0.0 }
+    });
+    let mut rocket = serde_json::to_value(design("synthetic-54mm-three-fin")).unwrap();
+    rocket["stages"][0]["components"][1]["children"]
+        .as_array_mut()
+        .unwrap()
+        .push(tubes);
+    let simulation = || {
+        Simulation::new(
+            &serde_json::from_value(rocket.clone()).unwrap(),
+            "i175",
+            Environment::standard(site()).unwrap(),
+            Rail::vertical(2.0),
+            FlightSettings::default(),
+        )
+        .unwrap()
+    };
+    assert_eq!(simulation().aero().tube_fin_sets().len(), 1);
+    // Measured: Mach 0.625.
+    let mut slow = Fastest(0.0);
+    let landed = simulation()
+        .with_drag_table(constant_drag(3.0))
+        .run(&mut slow)
+        .unwrap();
+    assert_eq!(landed.termination, Termination::GroundHit);
+    assert!((slow.0 - 0.625).abs() < 0.005, "{}", slow.0);
+    let mut fast = Fastest(0.0);
+    let error = simulation().run(&mut fast).unwrap_err();
+    assert!(
+        matches!(
+            error,
+            SimError::Aero(hpr_aero::AeroError::Mach { limit, model, .. })
+                if limit == 0.8 && model == "the tube-fin model"
+        ),
+        "{error}"
+    );
+    assert!(fast.0 < 0.8 && fast.0 > 0.79, "{}", fast.0);
+}
+
 /// Pods fly (M1.13c1, ADR-092): three pods on Valetudo's tube, each a cone 10 mm in radius on a
 /// tube, 70 mm from the axis. Their cones' normal force damps the roll by
 /// `C_lp = −2 N C_Nα ρ²/d²`, so the canted fins spin the rocket to a slower balance, by the ratio

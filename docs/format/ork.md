@@ -61,7 +61,7 @@ is no command-line tool yet.
 - **Tube fins are read, weighed and flown**, each tube as a ring wing
   ([Tube fins sized from the body](#tube-fins-sized-from-the-body);
   [the aerodynamics](../physics/aero.md#tube-fins)). OpenRocket's example flies 6.95% higher in
-  hpr than in OpenRocket, all of it in the drag.
+  hpr than in OpenRocket, a net gap in the drag.
 - **Every one of the 72 designs in the current reference survey lays out**, meaning every part gets a
   position and a radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
   default of 25 mm, with a warning
@@ -916,9 +916,10 @@ OpenRocket's pitch rule.
 
 <a id="what-tube-fins-still-lack"></a>**How they fly.** Since
 [M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, a design with tube fins
-flies. hpr's aerodynamics takes each tube as a ring wing, with a cited slope, centre and drag
+flies. hpr's aerodynamics takes each tube as a ring wing: a cited slope, a centre from
+Fletcher's measurements and hpr's own derivation, and drag from the fin rules
 ([Tube fins](../physics/aero.md#tube-fins)). The *Tube fin rocket*'s apogee is 6.95% above
-OpenRocket's. On OpenRocket's own drag, hpr's apogee is within 0.03%, so the gap is in the drag
+OpenRocket's. On OpenRocket's own drag, hpr's apogee is within 0.03%, so the net gap is the drag's
 ([ADR-099][adr-099], tube fins flown as ring wings). OpenRocket's tube-fin drag was refined
 against measured flights, so hpr's probably reads low
 ([#228](https://github.com/nrdptel/hpr-sim/issues/228)).
@@ -2055,16 +2056,22 @@ OpenRocket's on ordinary hobby rockets.
   margins within 0.0014 calibres ([aerodynamics: Pods](../physics/aero.md#pods)).
 - The bar, set for the whole corpus ([M2.2](../decisions-and-roadmap.md#m2-2), OpenRocket
   comparisons), is that every apogee more than 5% off has a written cause. Seven apogees are
-  more than 5% off, and each has a named cause, sized. For six
-  ([M2.2e4](../decisions-and-roadmap.md#m2-2e4), sizing the causes), OpenRocket flies each flight
-  again with the causes taken out. Against every such flight, five of the six come within 5%.
-  The seventh, the *Tube fin rocket*, is 6.95% high. hpr flies it again on OpenRocket's own drag
-  and comes within 0.03%, so its cause is hpr's drag ([ADR-099][adr-099]). The sixth, the *Base drag hack* on an E12-4, stays 7.80% high like for like
-  (the part OpenRocket is told has no drag removed from both programs),
-  and all three of that design's flights are left reading high, which the causes don't
-  explain. There is a lead for that remainder
-  ([#177](https://github.com/nrdptel/hpr-sim/issues/177), a very blunt nose's drag), not an
-  explanation.
+  more than 5% off, and each has a named cause, sized in one of two ways:
+
+  | how the cause is sized | flights | within 5% after |
+  |---|---:|---:|
+  | OpenRocket flies the flight again with its causes taken out ([M2.2e4](../decisions-and-roadmap.md#m2-2e4)) | 6 | 5 |
+  | hpr flies the flight again on OpenRocket's own drag ([ADR-097][adr-097]) | 1 | 1 |
+
+  The one of the six still over 5% is the *Base drag hack* on an E12-4. It stays 7.80% high like for
+  like, with the part OpenRocket is told has no drag removed from both programs. All three of
+  that design's flights are left reading high, which the causes don't explain. There is a lead
+  for that remainder ([#177](https://github.com/nrdptel/hpr-sim/issues/177), a very blunt nose's
+  drag), not an explanation.
+
+  The seventh is the *Tube fin rocket*, 6.95% high. On OpenRocket's drag hpr comes within 0.03%,
+  so its cause is hpr's own drag: the net gap is the drag's, though parts of it could cancel. Its
+  written breakdown is in [ADR-099][adr-099].
 
 **How they were flown.** `cargo xtask ork-flights` flies every configuration of the record in the
 section above that hpr can fly. It uses the conditions OpenRocket flew: the launch rod as recorded
@@ -2127,6 +2134,10 @@ the record's, and that every outcome, summary and table follows from hpr's figur
 | largest speed | a part set to no drag, which hpr ignores | 3 | −9.55% | −12.33% to −3.69% |
 | largest speed | hpr's own drag, sized on OpenRocket's | 1 | +6.40% | +6.40% |
 | margin at rod clearance | none | 34 | −0.0007 cal | −1.0768 to +0.0037 cal |
+
+The margin's −1.0768 cal is the *Tube fin rocket*'s, whose tube fins' centre of pressure the two
+programs place differently ([aerodynamics: Tube fins](../physics/aero.md#tube-fins)). The other 33
+flights' margins are within −0.0151 to +0.0037 cal.
 
 The rocket's mass and centre of mass, over the same 34 flights (hpr less OpenRocket):
 

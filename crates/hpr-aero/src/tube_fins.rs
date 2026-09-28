@@ -3,7 +3,7 @@
 //!
 //! **Normal force.** One tube of mean diameter `d` and length `L`, with `λ = L/d`, takes
 //! Weissinger's approximation for a thin ring wing (Weissinger 1955, as quoted by Wagner 2021
-//! eq. 15, for `λ < 5`), on the area `d L`:
+//! eq. 15), on the area `d L`:
 //!
 //! `C_Lα = π² / (1 + πλ/2 + λ arctan(1.2 λ))` per radian.
 //!
@@ -11,7 +11,10 @@
 //! slender-body theory's `π/λ`, which is Hoerner's `L = q d² π α` for a ring of small aspect ratio
 //! (Hoerner 1965 p. 7-13): the ring deflects the air inside it as well as the air around it, so it
 //! lifts twice as much as a solid body of its diameter. Fletcher's measured slopes on five rings
-//! (NACA TN 4117, 1957, Fig. 11, at Mach 0.13) lie within 3% of it.
+//! (NACA TN 4117, 1957, Fig. 11, at Mach 0.13) lie within 3% of it, taken at his diameter (the
+//! rings' inner one) and on his area; for a paper tube the inner and mean diameters differ by
+//! about 1%. Wagner gives the formula for `λ < 5`; past that it runs on to the slender-body limit,
+//! which is exact for a long ring.
 //!
 //! Compressibility follows Göthert's rule, as Barrowman's fin slope does: the slope at Mach `M` is
 //! the incompressible slope of the ring stretched to `λ/β`, over `β = √(1 − M²)`. It leaves the
@@ -21,13 +24,19 @@
 //!
 //! **Centre of pressure.** Against the ring's aspect ratio `A = d/L`, at the stretched ring's
 //! `β A` faster than Mach 0 ([`ring_centre_fraction`]): Fletcher's measured aerodynamic centre
-//! from `A = 2/3` to 3 ([`FLETCHER_AERODYNAMIC_CENTRE`], his Fig. 8), where his rings act as
-//! wings, held at 3 beyond; below `A = 2/3`, a straight line to the leading edge at `A = 0`, where
-//! slender-body theory puts a thin ring's lift (it all comes where the ring's apparent mass
-//! appears, at its leading edge). Fletcher's fifth ring, at `A = 1/3`, is left out: its centre
-//! sits ahead of its leading edge, which he puts down to that thick ring (a Clark Y section, 11.7%
-//! of a chord three diameters long) acting like a body of revolution, and a paper tube is not
-//! thick. No thin tube's centre is measured.
+//! from `A = 2/3` to 3 ([`FLETCHER_AERODYNAMIC_CENTRE`], his Fig. 8); below `A = 2/3`, a straight
+//! line to the leading edge at `A = 0`. That end point is hpr's derivation from slender-body
+//! theory, in which a section's lift is the growth of its apparent mass along the body: a thin
+//! ring's appears whole at its leading edge and stays, so all its lift is there. Fletcher's fifth
+//! ring, at `A = 1/3`, is left out, a judgement: its centre sits 0.11 of its chord ahead of its
+//! leading edge, which he puts down to its low aspect ratio making it act like a body of
+//! revolution (p. 4). hpr infers, beyond his text, that its thick section (a Clark Y 11.7% of a
+//! chord three bores long, outside a straight bore, so walls 0.35 of the bore thick) is what
+//! makes it so, that a paper tube's centre lies aft of it, and that his thinner-walled rings may
+//! carry the same forward bias in smaller measure. Holding his point below `A = 1/3` instead put
+//! OpenRocket's *Tube fin rocket* at a margin of 0.29 calibres rather than 0.79, in a one-off run
+//! not kept in the report. No thin tube's centre is measured. Rings shorter than a third of their
+//! diameter, past `A = 3`, are refused.
 //!
 //! **The set.** `N` tubes add `N` times one tube's slope, with no interference from the body or
 //! between the tubes: none is measured or cited. The body's own crossflow disturbance at the tubes
@@ -44,14 +53,14 @@ use crate::error::{AeroError, check_dimension, check_mach};
 
 /// The top of the tube-fin model's range, Mach 0.8, where hpr's fin model leaves its subsonic
 /// method ([`crate::fins::TRANSONIC_START_MACH`]). No source covers tube fins faster; a judgement.
-pub const TUBE_FIN_MACH_LIMIT: f64 = 0.8;
+pub const TUBE_FIN_MACH_LIMIT: f64 = crate::fins::TRANSONIC_START_MACH;
 
 /// Fletcher's measured aerodynamic centre of five annular airfoils, `(A, x_ac/c)`: the aspect
 /// ratio `A = d/c` (diameter over chord) and the aerodynamic centre's distance aft of the leading
 /// edge as a fraction of the chord, from α = 0° to 10° at Mach 0.13 (NACA TN 4117, 1957, Fig. 8,
-/// p. 16). Read from the chart to its finest grid line, 0.02 of the chord, and checked against
+/// p. 16). Read from the chart, two independent readings within 0.003 of the chord, and checked against
 /// the text: the centre moves aft as `A` rises, and sits ahead of the leading edge at `A = 1/3`
-/// (p. 4–5).
+/// (p. 4).
 pub const FLETCHER_AERODYNAMIC_CENTRE: [(f64, f64); 5] = [
     (1.0 / 3.0, -0.11),
     (2.0 / 3.0, 0.143),
@@ -89,7 +98,7 @@ fn weissinger(l: f64) -> f64 {
 
 /// A thin ring's aerodynamic centre aft of its leading edge, as a fraction of its length, at an
 /// aspect ratio `A = d/L`: [`THIN_RING_CENTRE`] interpolated linearly in `A`, and held at `A = 3`
-/// beyond it.
+/// beyond it ([`TubeFinSetAero::new`] refuses a ring that short).
 ///
 /// # Errors
 ///
@@ -140,8 +149,10 @@ impl TubeFinSetAero {
     ///
     /// # Errors
     ///
-    /// [`AeroError::Unsupported`] for fewer than three tubes, [`AeroError::Layout`] for a set
-    /// without the radius of its body tube, and [`AeroError::Domain`] for a bad dimension.
+    /// [`AeroError::Unsupported`] for fewer than three tubes, solid tubes, tubes shorter than a
+    /// third of their diameter (past Fletcher's measurements) and tubes that overlap their
+    /// neighbours; [`AeroError::Layout`] for a set without the radius of its body tube, and
+    /// [`AeroError::Domain`] for a bad dimension.
     pub fn new(
         component: &PlacedComponent,
         set: &TubeFinSet,
@@ -170,13 +181,29 @@ impl TubeFinSetAero {
             ));
         }
         let mean_diameter = set.outer_radius_m + inner;
+        if mean_diameter > 3.0 * set.length_m {
+            return Err(AeroError::Unsupported(
+                "tube fins shorter than a third of their diameter (past Fletcher's measured rings)"
+                    .to_owned(),
+            ));
+        }
+        // Neighbouring axes, `s = R + r` from the rocket's, are `2 s sin(π/N)` apart; tubes that
+        // touch (the closing radius) are `2r` apart, and closer ones overlap, which `N` isolated
+        // rings don't describe. The tolerance takes the closing radius's rounding.
+        let axis = body_radius + set.outer_radius_m;
+        let gap = axis * (PI / f64::from(set.count)).sin();
+        if gap < set.outer_radius_m * (1.0 - 1e-9) {
+            return Err(AeroError::Unsupported(
+                "tube fins that overlap their neighbours".to_owned(),
+            ));
+        }
         Ok(Self {
             id: component.id.clone(),
             count: set.count,
             fore_station_m: component.fore_station_m,
             length_m: set.length_m,
             mean_diameter_m: mean_diameter,
-            axis_radius_m: body_radius + set.outer_radius_m,
+            axis_radius_m: axis,
             area_ratio: mean_diameter * set.length_m / reference_area_m2,
         })
     }

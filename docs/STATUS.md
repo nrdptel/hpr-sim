@@ -82,8 +82,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-098, 099 (M2.2e8, e9): tube fins close the ring, 8 at most, OR's inertias departures; fly as
-  ring wings, no interference, under 3 tubes or Mach 0.8 refused; the examples' drag curves public.
+- ADR-098, 099 (M2.2e8, e9): tube fins close the ring, 8 at most, OR's inertias departures; ring
+  wings, no interference; centre past `A=2/3` a judgement (0.29 v 0.79 cal); drag curves public.
 - ADR-096, 097 (M2.2e7): fillets a section prism; a nose's `auto` bore; drag causes on OR's drag.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; tumble

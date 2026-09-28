@@ -111,8 +111,10 @@
     ([Pods](#pods)).
   - *[Tube fins](../glossary.md#tube-fin)*, each tube a ring wing below Mach 0.8: the slope is
     within 3% of five rings measured in a wind tunnel. No tube fin rocket has been checked against
-    a measurement. On OpenRocket's example, hpr's apogee is 6.95% higher, all of it in the drag,
-    and OpenRocket's tube-fin drag was refined against real flights, so hpr's probably reads low
+    a measurement. On OpenRocket's example, hpr's apogee is 6.95% higher, a net gap in the drag,
+    and OpenRocket's tube-fin drag was refined against real flights, so hpr's probably reads low.
+    The centre of pressure rests on a judgement that moves that example's margin from 0.29 to
+    0.79 calibres, against OpenRocket's 1.87
     ([Tube fins](#tube-fins), [#228](https://github.com/nrdptel/hpr-sim/issues/228)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
@@ -2850,16 +2852,21 @@ paper tubes. What the tubes do to each other and to the body is not modelled, be
 measures it. [M2.2e9](../decisions-and-roadmap.md#m2-2e9) added it ([ADR-099][adr-099], tube fins
 flown as ring wings).
 
-**The normal force.** A ring wing of diameter `d` and length `L` lifts as much as a flat wing of
-span `d` with twice the lift. A long, thin ring lifts twice what a solid body of its diameter
+**The normal force.** A ring wing of diameter `d` and length `L` lifts about twice as much as a
+flat wing of span `d` and chord `L`. A long, thin ring lifts twice what a solid body of its diameter
 would, because it turns the air inside it as well as the air around it (Hoerner 1965, p. 7-13:
 `L = q d² π α` for a ring of small aspect ratio). hpr takes Weissinger's formula for a thin ring
 (1955, as quoted by Wagner 2021, eq. 15), which runs from the short-ring limit to that long-ring
-limit. On the area `d L`, with `λ = L/d`, it reads:
+limit. With `λ = L/d`, its lift slope reads as below. At small angles that is its
+[normal-force slope](../glossary.md#normal-force-slope), here on the area `d L`, not the
+reference area:
 
 `C_Lα = π² / (1 + πλ/2 + λ arctan(1.2 λ))` per radian.
 
-`d` is the tube's mean diameter, its outer and inner radii added. A set of `N` tubes takes `N`
+`d` is the tube's mean diameter, its outer and inner radii added; for a paper tube it is within
+a few per cent of the inner diameter the other choice would give. Fletcher's rings run from
+`λ = 1/3` to 3. A longer tube rests on the formula alone, which the tests hold to its long-ring
+limit. A set of `N` tubes takes `N`
 times one tube's slope, on the rocket's [reference area](../glossary.md#reference-area).
 Faster than Mach 0, it takes Göthert's rule, the same idea as the fins' Prandtl–Glauert factor:
 the slope is the one a ring `1/β` times longer would have, over `β = √(1 − M²)`. That leaves the
@@ -2873,13 +2880,31 @@ in straight lines:
 |---|---|---|---|---|---|---|
 | aerodynamic centre, fraction of `L` aft of the leading edge | 0 (theory) | −0.11 (left out) | 0.143 | 0.203 | 0.253 | 0.355 |
 
-Past `A = 3` the last value is held. Below `A = 2/3` the line runs to the leading edge at `A = 0`.
-That is where slender-body theory puts a long, thin ring's lift, since all of it appears at the
-ring's front edge. Fletcher's `A = 1/3` ring is left out. Its centre sits ahead of its leading
-edge, which he puts down to that ring acting like a body of revolution. It was a Clark Y section
-11.7% of a chord three diameters long, so its walls were far thicker than a paper tube's.
+The table ends at `A = 3`, Fletcher's shortest ring; a shorter ring is refused. Below
+`A = 2/3` the line runs to the leading edge at `A = 0`. That end point is hpr's own derivation
+from [slender-body theory](../glossary.md#slender-body-theory), in which a long, thin ring's lift
+all appears at its front edge; no source states it for a ring.
 
-**The drag.** Friction takes the inside and the outside of every tube, `2π L (r_o + r_i)` each,
+Fletcher's `A = 1/3` ring is left out, and that is a judgement. Its centre sits ahead of its
+leading edge. Fletcher puts that down to its low aspect ratio: such a ring behaves more like a
+slender body of revolution than the others (p. 4). That this would not carry over to a paper
+tube is hpr's inference, untested. His rings had a Clark Y section 11.7% of the chord thick,
+all of it outside a straight bore. At a chord of three bores that wall is 0.35 of the bore
+thick, so about two thirds of the ring's frontal disc is wall, against a few per cent for a
+paper tube. His thinner rings may carry some of the same forward shift. The choice matters. On
+the worked example below, the margin at rod clearance is:
+
+| centre rule | margin (calibres) |
+|---|---|
+| Fletcher's `A = 1/3` point taken | 0.29 |
+| the line to the leading edge (hpr's) | 0.79 |
+| OpenRocket | 1.87 |
+
+The 0.29 holds Fletcher's −0.11 below `A = 1/3`, as a first version of this model did; it comes
+from a one-off run, not kept in the report.
+
+**The drag.** Friction takes the inside and the outside of every tube, `2π L (r_o + r_i)` per
+tube,
 at the rocket's skin-friction coefficient ([Drag](#drag)). The wall's front ring,
 `π (r_o² − r_i²)` per tube, takes a square fin edge's pressure drag: a blunt face at the front and
 base drag behind ([Drag](#drag), eqs. 3.90 and 3.92).
@@ -2887,16 +2912,21 @@ base drag behind ([Drag](#drag), eqs. 3.90 and 3.92).
 **Refused.** hpr refuses these cases rather than guess:
 
 - Mach 0.8 and faster. No source covers tube fins near the speed of sound, where the flow through
-  a tube can choke.
+  a tube can choke. A flight that reaches it stops with the tube-fin model's error, even on an
+  override table, which still takes the tubes' stations and roll from the model.
 - Fewer than three tubes. The body's own flow around three or more evenly spaced tubes cancels in
   the sum, but around one or two it doesn't.
 - Solid tubes, with a wall as thick as the radius.
 - Tube fins on a pod.
+- A ring shorter than a third of its diameter (`A > 3`), past Fletcher's rings.
+- Tubes that overlap each other.
 
 A tumbling airframe with tube fins stays refused too ([Recovery](recovery.md)).
 
 **Worked example.** OpenRocket's *Tube fin rocket* has six tubes 76.2 mm long, of radius
-12.395 mm with a 0.330 mm wall, on a body of the same radius.
+12.395 mm with a 0.330 mm wall, on a body of the same radius. Its tubes are just longer than
+Fletcher's longest ring, and their centre falls on the line below his `A = 2/3`, the judgement
+above.
 
 | quantity | value |
 |---|---|
@@ -2914,26 +2944,30 @@ A tumbling airframe with tube fins stays refused too ([Recovery](recovery.md)).
 **Against OpenRocket.** The *Tube fin rocket* is in the
 [flight report](../format/ork.md#hprs-flights-against-openrockets). Flown on hpr's own drag, its
 apogee is 6.95% above OpenRocket's, 302.5 m against 282.8 m. On OpenRocket's recorded drag, hpr's
-apogee is within 0.03% of OpenRocket's ([ADR-097][adr-097]). So the whole gap is in the drag,
-and the rest of the flight agrees. OpenRocket's per-component drag, read through its public API
-but not kept as a record, says where:
+apogee is within 0.03% of OpenRocket's ([ADR-097][adr-097]). So the net gap is the drag's,
+though parts of it could cancel, and the rest of the flight agrees. OpenRocket's per-component
+drag, read through its public API but not kept as a record, points to where. These are leads
+for [#228](https://github.com/nrdptel/hpr-sim/issues/228), not measurements the repository
+reproduces:
 
 - The nose, the body and the lug agree within 0.005.
 - The tube fins take 1.18 in OpenRocket's total and 1.05 in hpr's.
 - Keeping the whole base while the motor burns, as OpenRocket does, closes 2.3 of the 6.95
-  points. That rule is not specific to tube fins
+  points. This one is in the report: hpr flew it. That rule is not specific to tube fins
   ([#222](https://github.com/nrdptel/hpr-sim/issues/222)).
 
-**hpr's tube-fin drag probably reads low.** OpenRocket refined its tube-fin drag against five
-measured flights of two tube-fin rockets. In the description of the change that last revised it,
-it reaches their apogees within −2% to +5.2%
-([openrocket#2066](https://github.com/openrocket/openrocket/pull/2066)). hpr has checked itself
+**hpr's tube-fin drag probably reads low.** OpenRocket refined its tube-fin drag against
+measured flights of two tube-fin rockets. A table in a comment on the change that last revised
+it ([openrocket#2066](https://github.com/openrocket/openrocket/pull/2066)) has seven flights in
+five motor cases: OpenRocket's apogee is within −2% to +5.2% of the measured one, and high in
+four of the five. hpr has checked itself
 against no measured flight, and a code-to-code gap is not a measurement. Still, that is evidence
 OpenRocket's drag is the nearer of the two here. What hpr's leaves out is listed below, and
 [#228](https://github.com/nrdptel/hpr-sim/issues/228) holds the search for a measured source.
 
 The [stability margin](../glossary.md#stability-margin) differs more. At rod clearance hpr gives
-0.80 [calibres](../glossary.md#calibre-caliber) and OpenRocket 1.87.
+0.79 [calibres](../glossary.md#calibre-caliber) and OpenRocket 1.87. The next two points come
+from the same look, and are leads too:
 
 - OpenRocket's tube fins take a slope of 37.8 per radian, 1.62 times the 23.4 that six isolated
   thin rings reach at their long-ring limit. hpr takes 22.9.

@@ -1536,11 +1536,17 @@ pub(crate) fn page(report: &Value) -> String {
                 " ({without:+.2}% without the part set to no drag)"
             ));
         }
-        let speed_probe = probe["max_speed_m_s"]["relative_percent"]
+        let mut speed_probe = probe["max_speed_m_s"]["relative_percent"]
             .as_f64()
             .map_or(String::new(), |p| {
                 format!(" ({p:+.2}% without the part set to no drag)")
             });
+        for (text, key) in [
+            (&mut early, "apogee_m"),
+            (&mut speed_probe, "max_speed_m_s"),
+        ] {
+            text.push_str(&drag_probes(flight, key));
+        }
         out.push_str(&format!(
             "| {} | {} | {} | {} | {}{} | {} | {} | {}{} | {} | {} | {} | {} |\n",
             flight["design"].as_str().unwrap_or_default(),
@@ -1567,6 +1573,25 @@ pub(crate) fn page(report: &Value) -> String {
          away too, so it is a probe, not the override ([#165][i165]).\n\n\
          [i165]: https://github.com/nrdptel/hpr-sim/issues/165\n",
     );
+    if report["flights"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .any(|f| f[OPENROCKET_DRAG_PROBE].is_object() || f[WHOLE_BASE_PROBE].is_object())
+    {
+        out.push_str(
+            "\n*On OpenRocket's drag*: the same flight by hpr on OpenRocket's drag coefficient \
+             along OpenRocket's own flight (power on while a motor burns, power off after). \
+             *With the whole base under power*: hpr's own drag, but with OpenRocket's base drag \
+             under power, the whole base's while a motor burns, where hpr takes the motor's \
+             cross-section off it. hpr flies both for an apogee more than 5% off with no other \
+             named cause. Within 5% on OpenRocket's drag, the metric's cause is *hpr's own drag \
+             coefficient*: the net gap is in the drag, though parts of it could cancel, and it \
+             does not say which drag is right, so each such flight has a written breakdown \
+             ([ADR-097][adr-097]).\n\n\
+             [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28\n",
+        );
+    }
     out.push_str(&causes_table(report));
     out.push_str(
         "\nAt the rod-clearance step, the parts of the margin (m from the nose tip, and kg):\n\n",
@@ -1940,6 +1965,31 @@ fn causes_table(report: &Value) -> String {
     out
 }
 
+/// The brackets after a flight's apogee or largest-speed difference (`key`) giving hpr's drag
+/// probes, where the flight holds them: a probe hpr failed to fly says so, as the library's
+/// report does, and a flight probed with no drag curve of OpenRocket's to fly says it has none.
+fn drag_probes(flight: &Value, key: &str) -> String {
+    let probed = flight[WHOLE_BASE_PROBE].is_object();
+    [
+        (OPENROCKET_DRAG_PROBE, "on OpenRocket's drag"),
+        (WHOLE_BASE_PROBE, "with the whole base under power"),
+    ]
+    .iter()
+    .map(|(probe, label)| {
+        let probe = &flight[*probe];
+        if probe["failed"] == true {
+            format!(" (failed {label})")
+        } else if probe.is_null() && probed {
+            format!(" (no curve to fly {label})")
+        } else {
+            probe[key]["relative_percent"]
+                .as_f64()
+                .map_or(String::new(), |p| format!(" ({p:+.2}% {label})"))
+        }
+    })
+    .collect()
+}
+
 /// The summary, as lines for the terminal and the page.
 pub(crate) fn summary_lines(report: &Value) -> String {
     let summary = &report["summary"];
@@ -2011,6 +2061,23 @@ pub(crate) fn summary_lines(report: &Value) -> String {
             sized["over_5_percent_sized"],
             sized["over_5_percent_within_5_percent_after"],
             sized["over_5_percent"],
+        ));
+    }
+    let own_drag = report["flights"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|f| {
+            f["metrics"]["apogee_m"]["relative_percent"]
+                .as_f64()
+                .is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT)
+                && cause(f, FlightMetric::Apogee) == OWN_DRAG
+        })
+        .count();
+    if own_drag > 0 {
+        out.push_str(&format!(
+            "- apogees more than 5% off sized instead by hpr flying OpenRocket's drag, within 5% on \
+             it, and so put down to hpr's own drag coefficient: {own_drag}\n"
         ));
     }
     let mass_and_cg = &summary["mass_and_cg"];
@@ -2420,6 +2487,76 @@ mod tests {
             assert!(
                 openrocket_drag(&design(&changed), "ABC", false).is_err(),
                 "{key}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_drag_probe_hpr_failed_or_had_no_curve_for_is_marked() {
+        let flown = json!({ "apogee_m": { "relative_percent": 0.025 } });
+        let whole = json!({ "apogee_m": { "relative_percent": 4.61 } });
+        let both = json!({ OPENROCKET_DRAG_PROBE: flown, WHOLE_BASE_PROBE: whole });
+        assert_eq!(
+            drag_probes(&both, "apogee_m"),
+            " (+0.03% on OpenRocket's drag) (+4.61% with the whole base under power)"
+        );
+        let failed = json!({ OPENROCKET_DRAG_PROBE: { "failed": true }, WHOLE_BASE_PROBE: whole });
+        assert_eq!(
+            drag_probes(&failed, "apogee_m"),
+            " (failed on OpenRocket's drag) (+4.61% with the whole base under power)"
+        );
+        let no_curve = json!({ WHOLE_BASE_PROBE: { "failed": true } });
+        assert_eq!(
+            drag_probes(&no_curve, "apogee_m"),
+            " (no curve to fly on OpenRocket's drag) (failed with the whole base under power)"
+        );
+        // A flight hpr did not probe has no brackets.
+        assert_eq!(drag_probes(&json!({}), "apogee_m"), "");
+    }
+
+    /// Each flight with a metric put down to hpr's own drag, and the decision that writes its
+    /// breakdown: flying on OpenRocket's drag says the gap is in the drag, not which drag is
+    /// right, so each one needs its parts sized in writing (ADR-097), as the library's do.
+    const DRAG_CAUSES_WRITTEN: [(&str, &str); 1] = [("Tube fin rocket [D12-7]", "ADR-099")];
+
+    #[test]
+    fn every_flight_put_down_to_the_drag_has_a_written_breakdown() {
+        let (_, report) = committed();
+        let caused: BTreeSet<String> = report["flights"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|flight| {
+                [FlightMetric::Apogee, FlightMetric::MaxSpeed]
+                    .into_iter()
+                    .any(|metric| cause(flight, metric) == OWN_DRAG)
+            })
+            .map(|flight| {
+                format!(
+                    "{} {}",
+                    flight["design"].as_str().unwrap(),
+                    flight["motors"].as_str().unwrap()
+                )
+            })
+            .collect();
+        let written: BTreeSet<String> = DRAG_CAUSES_WRITTEN
+            .iter()
+            .map(|(flight, _)| (*flight).to_owned())
+            .collect();
+        assert_eq!(
+            caused, written,
+            "a flight put down to the drag needs a written breakdown"
+        );
+        let decisions =
+            fs::read_to_string(crate::ork::root().unwrap().join("docs/DECISIONS.md")).unwrap();
+        for (flight, adr) in DRAG_CAUSES_WRITTEN {
+            let start = decisions.find(&format!("\n## {adr}: ")).unwrap();
+            let end = decisions[start + 1..]
+                .find("\n## ")
+                .map_or(decisions.len(), |e| start + 1 + e);
+            assert!(
+                decisions[start..end].contains(&format!("`{flight}`'s breakdown")),
+                "{adr} writes no breakdown of {flight}"
             );
         }
     }

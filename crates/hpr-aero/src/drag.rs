@@ -1027,7 +1027,7 @@ pub struct ComponentDragTerms {
     /// only parts between that leave some: the base drag's factor
     /// ([`Boattail::base_pressure_ratio`], [`BaseBehindBoattail`]).
     pub base_behind: Option<BaseBehindBoattail>,
-    /// A fin set's pressure-drag inputs.
+    /// A fin set's pressure-drag inputs, or a tube fin set's walls as square-edged fins'.
     pub fins: Option<FinPressureTerms>,
     /// Launch lugs' and rail buttons' areas (a lug's times its length factor), times the
     /// stagnation drag coefficient (eq. 3.95–3.96).
