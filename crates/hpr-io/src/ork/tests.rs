@@ -774,47 +774,58 @@ fn cd_and_cg_subcomponent_overrides_are_independent() {
     let mut read = Values::new(&plain, AT, &mut plain_warnings);
     assert_eq!(read.overrides(), Overrides::default());
     assert!(plain_warnings.is_empty(), "{plain_warnings:?}");
+}
 
-    // Before schema 1.9 the three flags were one. 20 elements of the reference corpus carry it,
-    // and none of them carries a per-quantity flag, so it is read as setting all three — out loud.
-    let old = component(concat!(
-        "<bodytube><overridemass>0.25</overridemass>",
-        "<overridesubcomponents>true</overridesubcomponents></bodytube>",
-    ));
-    let mut old_warnings = Vec::new();
-    let mut read = Values::new(&old, AT, &mut old_warnings);
-    let overrides = read.overrides();
-    assert_eq!(overrides.subcomponents_mass, Some(true));
-    assert_eq!(overrides.subcomponents_cg, Some(true));
-    assert_eq!(overrides.subcomponents_cd, Some(true));
-    assert_eq!(old_warnings.len(), 1, "{old_warnings:?}");
-    assert_eq!(old_warnings[0].kind, WarningKind::Unusual);
-    assert!(
-        old_warnings[0]
-            .message
-            .contains("the mass, the centre of gravity, the drag flags"),
-        "{:?}",
-        old_warnings[0]
-    );
+/// Before schema 1.9 the three subcomponent flags were one. OpenRocket 24.12 reads it, in every
+/// schema version, as setting all three, and where both forms are written the later one wins,
+/// quantity by quantity (measured on probes, M2.2e6; `hpr_validate::openrocket` holds hpr's
+/// structure to OpenRocket's on them). Read so, it is read as written, and nothing is warned of.
+#[test]
+fn the_single_old_subcomponent_flag_reads_as_openrocket_reads_it() {
+    let read = |text: &str| {
+        let element = component(text);
+        let mut warnings = Vec::new();
+        let overrides = Values::new(&element, AT, &mut warnings).overrides();
+        assert!(warnings.is_empty(), "{text}: {warnings:?}");
+        [
+            overrides.subcomponents_mass,
+            overrides.subcomponents_cg,
+            overrides.subcomponents_cd,
+        ]
+    };
+    let old = |v: &str| format!("<overridesubcomponents>{v}</overridesubcomponents>");
+    let own =
+        |q: &str, v: &str| format!("<overridesubcomponents{q}>{v}</overridesubcomponents{q}>");
+    let tube =
+        |inside: String| format!("<bodytube><overridemass>0.25</overridemass>{inside}</bodytube>");
 
-    // A per-quantity flag beside it wins, and the warning says only what the old flag did set.
-    let mixed = component(concat!(
-        "<bodytube><overridesubcomponents>true</overridesubcomponents>",
-        "<overridesubcomponentscd>false</overridesubcomponentscd></bodytube>",
-    ));
-    let mut mixed_warnings = Vec::new();
-    let overrides = Values::new(&mixed, AT, &mut mixed_warnings).overrides();
-    assert_eq!(overrides.subcomponents_mass, Some(true));
-    assert_eq!(overrides.subcomponents_cg, Some(true));
-    assert_eq!(overrides.subcomponents_cd, Some(false));
-    assert_eq!(mixed_warnings.len(), 1, "{mixed_warnings:?}");
-    assert!(
-        mixed_warnings[0]
-            .message
-            .contains("the mass, the centre of gravity flags"),
-        "{:?}",
-        mixed_warnings[0]
+    // Alone, it sets all three, either way.
+    assert_eq!(read(&tube(old("true"))), [Some(true); 3]);
+    assert_eq!(read(&tube(old("false"))), [Some(false); 3]);
+    // Written after a per-quantity flag, it wins over it; written before, it loses.
+    assert_eq!(
+        read(&tube(own("mass", "false") + &old("true"))),
+        [Some(true); 3]
     );
+    assert_eq!(
+        read(&tube(old("true") + &own("mass", "false"))),
+        [Some(false), Some(true), Some(true)]
+    );
+    assert_eq!(
+        read(&tube(old("false") + &own("cg", "true"))),
+        [Some(false), Some(true), Some(false)]
+    );
+    assert_eq!(
+        read(&tube(own("cg", "true") + &old("false"))),
+        [Some(false); 3]
+    );
+    // A flag that is neither true nor false is dropped, out loud, and the other form stands.
+    let element = component(&tube(own("mass", "yes") + &old("true")));
+    let mut warnings = Vec::new();
+    let overrides = Values::new(&element, AT, &mut warnings).overrides();
+    assert_eq!(overrides.subcomponents_mass, Some(true));
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert_eq!(warnings[0].kind, WarningKind::Dropped);
 }
 
 /// Text a `.ork` could hold: the characters that make writing awkward, and a few ordinary ones.

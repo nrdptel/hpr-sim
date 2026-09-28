@@ -12,7 +12,9 @@ records its structure (mass, centre of mass, inertias) and its own per-part brea
 It also records the material OpenRocket gives each kind of part that names none, read through the
 part's public `getMaterial` and `getLineMaterial`. M2.2b2 added probes of one tube and one part
 each (every kind of part, fin outlines, sections, a tab, fillets, a cant, rail buttons from each
-end), so that a part's roll inertia is the probe's less the tube's (ADR-062).
+end), so that a part's roll inertia is the probe's less the tube's (ADR-062). M2.2e6 added
+probes of the single subcomponent-override flag written before schema 1.9, with the flags
+OpenRocket reads each part with.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API `javap` prints for the jar. Each probe is saved once, to a
@@ -40,7 +42,7 @@ import mass  # noqa: E402 - the structure and the per-part breakdown, asked the 
 
 
 # Provenance written into the fixture (docs/VALIDATION.md). Update when regenerating.
-GENERATED = "2026-09-23"
+GENERATED = "2026-09-27"
 
 
 def uid(n):
@@ -283,6 +285,59 @@ STAGE_PROBES = {
 }
 
 
+def old_flag(value):
+    """The single subcomponent-override flag written before schema 1.9."""
+    return f"<overridesubcomponents>{value}</overridesubcomponents>"
+
+
+# The single flag the three per-quantity ones replaced before schema 1.9 (M2.2e6): what OpenRocket
+# reads it as, in the schema versions the library's files were written in and the current one,
+# alone and beside a per-quantity flag in either order. Each probe: its schema version, the stage's
+# tags, and the stage's parts. The flags OpenRocket reads each part with are recorded too.
+OLD_FLAG_PROBES = {
+    "the old flag on both of a stage's overrides, schema 1.4": (
+        "1.4",
+        overrides(2.0, 0.4) + old_flag("true"),
+        [nose(), tube()],
+    ),
+    "the old flag on a tube's mass override, schema 1.4": (
+        "1.4",
+        "",
+        [tube(overrides(mass_kg=0.5) + old_flag("true"), inner())],
+    ),
+    "the old flag, false, on a tube's mass override, schema 1.8": (
+        "1.8",
+        "",
+        [tube(overrides(mass_kg=0.5) + old_flag("false"), inner())],
+    ),
+    "the old flag on a tube's mass override, schema 1.10": (
+        "1.10",
+        "",
+        [tube(overrides(mass_kg=0.5) + old_flag("true"), inner())],
+    ),
+    "the old flag after a mass flag that says false": (
+        "1.10",
+        "",
+        [tube(overrides(mass_kg=0.5, children_mass="false") + old_flag("true"), inner())],
+    ),
+    "the old flag before a mass flag that says false": (
+        "1.10",
+        "",
+        [tube(overrides(mass_kg=0.5) + old_flag("true") + "<overridesubcomponentsmass>false</overridesubcomponentsmass>", inner())],
+    ),
+    "the old flag, false, after a centre flag that says true": (
+        "1.10",
+        "",
+        [tube(overrides(cg_m=0.1, children_cg="true") + old_flag("false"), inner())],
+    ),
+    "the old flag, false, before a centre flag that says true": (
+        "1.10",
+        "",
+        [tube(overrides(cg_m=0.1) + old_flag("false") + "<overridesubcomponentscg>true</overridesubcomponentscg>", inner())],
+    ),
+}
+
+
 def fins(section="square", extra="", thickness="0.003", outline=("0.1", "0.05", "0.05", "0.05"), count=3):
     """Trapezoidal fins, three by default, 0.1 m below the top of their tube: by default 0.1 m root,
     and 0.05 m tip, sweep and span; `outline` is root, tip, sweep and span."""
@@ -467,10 +522,10 @@ PART_PROBES = {
 }
 
 
-def document(parts, stage_tags=""):
+def document(parts, stage_tags="", version="1.10"):
     return (
         "<?xml version='1.0' encoding='utf-8'?>\n"
-        '<openrocket version="1.10" creator="hpr-sim conventions probe">'
+        f'<openrocket version="{version}" creator="hpr-sim conventions probe">'
         f"<rocket><name>Probe</name><id>{uid(98)}</id><subcomponents>"
         f"<stage><name>Stage</name><id>{uid(99)}</id>{stage_tags}<subcomponents>"
         + "".join(parts)
@@ -498,7 +553,19 @@ def materials(component, found):
         materials(child, found)
 
 
-def measure(text, scratch, name):
+def override_flags(component, found):
+    """Whether each part's mass, centre of gravity and drag overrides cover the parts inside it,
+    as OpenRocket read them, by id, through its public getters."""
+    found[str(component.getID())] = {
+        "mass": bool(component.isSubcomponentsOverriddenMass()),
+        "cg": bool(component.isSubcomponentsOverriddenCG()),
+        "cd": bool(component.isSubcomponentsOverriddenCD()),
+    }
+    for child in component.getChildren():
+        override_flags(child, found)
+
+
+def measure(text, scratch, name, flags=False):
     path = Path(scratch) / f"{name}.ork"
     path.write_text(text, encoding="utf-8")
     document_ = automatic_radius.load(path)
@@ -506,13 +573,18 @@ def measure(text, scratch, name):
     found = {}
     materials(document_.getRocket(), found)
     parts, skipped = mass.parts(document_)
-    return {
+    measured = {
         "document": text,
         "structure": mass.structure(document_),
         "parts": parts,
         "parts_skipped": skipped,
         "materials": found,
     }
+    if flags:
+        measured["override_flags"] = {}
+        for stage in document_.getRocket().getChildren():
+            override_flags(stage, measured["override_flags"])
+    return measured
 
 
 def saved_materials():
@@ -559,6 +631,9 @@ def main():
             everything += [(f"{question} tube and a parachute that writes no packed size", document([text]))]
         for k, (question, text) in enumerate(everything):
             probes[question] = measure(text, scratch, f"probe-{k}")
+        for k, (question, (version, tags, parts)) in enumerate(OLD_FLAG_PROBES.items()):
+            text = document(parts, tags, version)
+            probes[question] = measure(text, scratch, f"old-flag-{k}", flags=True)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(

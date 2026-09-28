@@ -261,42 +261,47 @@ impl<'a> Values<'a> {
         let mass_kg = self.number(&["overridemass"]);
         let cg_m = self.number(&["overridecg"]);
         let cd = self.number(&["overridecd"]);
-        // The three flags were one until schema 1.9. No element in the reference corpus carries
-        // both forms, so the older one is read as setting all three, which is what it meant.
-        let all = self.flag(&["overridesubcomponents"]);
-        let per_quantity = [
-            ("mass", self.flag(&["overridesubcomponentsmass"])),
-            ("centre of gravity", self.flag(&["overridesubcomponentscg"])),
-            ("drag", self.flag(&["overridesubcomponentscd"])),
-        ];
-        if all.is_some() {
-            let taken: Vec<&str> = per_quantity
-                .iter()
-                .filter(|(_, own)| own.is_none())
-                .map(|(what, _)| *what)
-                .collect();
-            self.warn(
-                WarningKind::Unusual,
-                format!(
-                    "this component uses the single `overridesubcomponents` flag that OpenRocket \
-                     replaced with one flag per quantity; it was read as setting {}",
-                    match taken.as_slice() {
-                        [] => "nothing, since each quantity has a flag of its own".to_owned(),
-                        [one] => format!("the {one} flag"),
-                        many => format!("the {} flags", many.join(", the ")),
-                    }
-                ),
-            );
-        }
-        let [(_, mass), (_, cg), (_, drag)] = per_quantity;
+        // The three flags were one until schema 1.9. OpenRocket 24.12 still reads the old one, in
+        // every schema version, as setting all three, and where a file writes both forms the one
+        // written later wins, quantity by quantity: measured on probe designs (M2.2e6), whose
+        // answers `hpr_validate::openrocket` holds hpr to.
+        let all = self.flag(&["overridesubcomponents"]).map(|all| {
+            let at = self.place("overridesubcomponents");
+            (all, at)
+        });
+        let [mass, cg, drag] = [
+            "overridesubcomponentsmass",
+            "overridesubcomponentscg",
+            "overridesubcomponentscd",
+        ]
+        .map(|name| {
+            let own = self.flag(&[name]).map(|own| (own, self.place(name)));
+            match (own, all) {
+                (Some((own, own_at)), Some((all, all_at))) => {
+                    Some(if all_at > own_at { all } else { own })
+                }
+                (Some((own, _)), None) => Some(own),
+                (None, Some((all, _))) => Some(all),
+                (None, None) => None,
+            }
+        });
         Overrides {
             mass_kg,
             cg_m,
             cd,
-            subcomponents_mass: mass.or(all),
-            subcomponents_cg: cg.or(all),
-            subcomponents_cd: drag.or(all),
+            subcomponents_mass: mass,
+            subcomponents_cg: cg,
+            subcomponents_cd: drag,
         }
+    }
+
+    /// Where the first child called `name` stands among the element's children, in document
+    /// order. Called only for a child that is there; `usize::MAX` otherwise.
+    fn place(&self, name: &str) -> usize {
+        self.element
+            .elements()
+            .position(|child| child.name == name)
+            .unwrap_or(usize::MAX)
     }
 
     fn warn(&mut self, kind: WarningKind, message: impl Into<String>) {

@@ -4,20 +4,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (`[blocked]` on #108), M2.2e6 on #174 and
-  #133, M2.3c on Neer (no private design has a log); next: M2.2e6's issues, else M4.1.
-- **Order:** M1.8e16 waits on #108, M2.2e6 on its two, M2.3c on a design with its log.
-  **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e5, M2.3a-b, M2.4, M3.1.
-- **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
-  this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-27; M2.2e5 (a tilted rod, ADR-094) done: 15 of M2.2's 20 designs.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M2.2e7 (fillets,
+  an inner tube's radius, #174), e8 (tube fins, #133), e9 (20 designs: one more, `C10` #184 or
+  another). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e6, M2.3a-b, M2.4, M3.1.
+- **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
+- **Last updated:** 2026-09-27; M2.2e6 (the old override flag, ADR-095) done: 16 of M2.2's 20.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** nothing in flight. Split #174 (airframes read simpler, 4 designs) off
-  M2.2e6 as M2.2e6 with the bar renumbered e7, as e5 was; else #133, else M4.1. Probes (ADR-093,
-  ADR-094): `pod_probes.py`, `rod_probes.py`, then `flights.py` (its docstring's command) and
-  `motor_database.py ... refs validation/fixtures/ork/{pod,rod}-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
+- **Next (resume here):** nothing in flight. M2.2e7: `C01` waits only on fillets' mass, `C06` on them
+  and an inner tube whose `auto` radius meets a nose cone; probe OR in `conventions.py` as e6 did.
+  Probes (ADR-093, ADR-094): `pod_probes.py`, `rod_probes.py`, then `flights.py` (its docstring's
+  command) and `motor_database.py ... refs validation/fixtures/ork/{pod,rod}-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
   M2.3c (ADR-083): fly a pair with `hpr_validate::real_flight`, commit only statistics; `xtask
@@ -58,6 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-27: M2.2e6 Old override flag (ADR-095): 8 OR probes, later tag wins; `C05` within 0.26%; 16 designs.
 - 2026-09-27: M2.2e5 Tilted rod (ADR-094): 4 OR probes, bearing at apogee within 0.03°; `C12` flies; 15 designs.
 - 2026-09-27: M1.13 Pods (a to c2, ADR-089 to ADR-093): mass and placement to 1e-15; aero to 1e-11 by hand; 6 OR probes within 0.81%.
 - 2026-09-26: M1.12 Moving and released mass (ADR-087, ADR-088): hand values to 1e-15; momenta to 7.3e-12.
@@ -81,14 +80,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-081 to ADR-094 (M2.3, M2.4, M1.11 to M1.13, M2.2e5): netCDF classic by hand; real flights read as
+- ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights read as
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; a push
   along the axis, else by the airspeed; tumble areas integrated; a shift's cycloid, `ω×h + h′`;
   a released part leaves at `v_O + ω×c`, falls under a drag area the user gives; a pod is one
   stack of body components repeated around the axis; `.ork` pods at OpenRocket's measured
   distance, a tail cone a transition, a tube of no length weightless; a pod's parts Barrowman's,
   once per pod, on the axis, interference left out and sized; single-pod moments #213; pods
-  against OR on six probes, listed apart; a rod as OR records it, vertical too, on four more.
+  against OR on six probes, listed apart; a rod as OR records it, vertical too, on four more;
+  M2.2e6 split by reading (e6 to e9), the old override flag as OR reads it, the later tag winning.
 - ADR-077 to ADR-080 (M1.10): peaks on the dense output, no margin past κ = √10; flutter by TN 4197
   eq. 18, the lower reading; exports as core text, GeoJSON on the ellipsoid; Parquet by hand.
 - ADR-071 to ADR-076: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private

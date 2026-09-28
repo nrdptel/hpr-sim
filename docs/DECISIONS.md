@@ -100,6 +100,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-092 | A pod's parts are Barrowman's, once per pod, on the axis | accepted |
 | ADR-093 | Pod probes flown as the public designs are, and listed apart | accepted |
 | ADR-094 | A tilted launch rod flown as OpenRocket records it | accepted |
+| ADR-095 | The single pre-1.9 override flag read as OpenRocket reads it | accepted |
 
 ---
 
@@ -8090,3 +8091,47 @@ the horizon.
   with the rocket: hpr's vertical flights of three designs drift 1.7 to 10.5 m by apogee where
   OpenRocket's go straight up, which the new positions show (issue #219).
 - Not tested: wind with a tilted rod, a rod longer than 1 m on the probes, and roll on the rod.
+
+## ADR-095: The single pre-1.9 override flag read as OpenRocket reads it (2026-09-27)
+
+**Context.** Before schema 1.9 a `.ork` said once, with `overridesubcomponents`, whether a
+part's overrides cover the parts inside it; later files say it per quantity, with
+`overridesubcomponentsmass`, `...cg` and `...cd`. hpr read the old flag as setting all three, and
+warned, so any design carrying it was held as "an airframe not read exactly as written" and not
+flown (ADR-055). That held back two private designs, `C05` (six elements, one `true`, on a
+stage's mass override) and `C10` (three, all `false`), of the five issue #174 lists. M2.2's bar is
+20 designs with the five spreads (ADR-072); after M2.2e5 the two reports held 15. The old M2.2e6
+("Twenty designs", blocked on #174 and #133) is too big for one increment, so it is split by
+reading: M2.2e6 the old flag, M2.2e7 fin fillets and an inner tube's automatic radius (the rest
+of #174), M2.2e8 tube fins whose radius OpenRocket works out (#133), and M2.2e9 the bar,
+unchanged.
+
+**Decision.**
+
+1. **Measured, not assumed.** `conventions.py` gained eight probes: the old flag alone on a
+   stage's mass and centre overrides and on a tube's mass override, in schema 1.4, 1.8 and 1.10
+   files; `false` as well as `true`; and beside a per-quantity mass or centre flag, in both
+   orders. It records the structure and, through OpenRocket's public getters, the three flags it
+   read each part with. OpenRocket 24.12 reads the old flag as setting all three, in every schema
+   version, and where both forms are written **the later one wins**, quantity by quantity. The
+   75 earlier probes' answers are unchanged.
+2. **hpr reads it so.** `Values::overrides` takes, for each quantity, whichever of its own flag
+   and the old one comes later among the element's children, and raises no warning. hpr's old
+   rule (the per-quantity flag wins) differed only where the old flag comes second, which no
+   file in the corpus does.
+3. **Held to the probes.** `hpr_validate::openrocket` holds hpr to OpenRocket on all eight: the
+   three flags part by part, the mass, no warning, and the centre of mass, which is OpenRocket's
+   but for ADR-061's departure (a mass override covering the parts inside that states no centre:
+   3.686 mm, as on the per-quantity probe). Making the per-quantity flag win again fails it.
+
+**Consequences.**
+
+- `C05` flies all five configurations: apogee −0.03% to +0.26%, largest speed within 0.61%,
+  margin within 0.0113 calibres, mass at launch +0.000%. The two reports hold 16 designs.
+- `C10` now reads as written, but its one configuration separates an unpowered stage that can
+  come before apogee, which `ork-flights` does not fly (#184). It moves from one reason to the
+  other.
+- The corpus survey's warnings fall from 31 to 21: the 10 were this flag.
+- Not measured: an old flag that is neither `true` nor `false` (hpr drops it, out loud, and the
+  file is not flown), and a part writing the same tag twice.
+

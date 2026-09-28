@@ -254,9 +254,13 @@ whether each covers the components inside it with three more, all read independe
 **Observed** override tags: `overridemass` 118, `overridesubcomponentsmass` 95,
 `overridesubcomponents` 20, `overridecg` 16, `overridesubcomponentscg` 9, `overridecd` 2,
 `overridesubcomponentscd` 2. The third of those is the single flag that the three per-quantity ones
-replaced before schema 1.9. **Policy:** it is read as setting all three — which is what it meant —
-and says so in a warning. No element in the corpus carries it beside a per-quantity flag, so the
-reading cannot contradict a file.
+replaced before schema 1.9. **Policy:** it is read as OpenRocket 24.12 reads it, measured on probe
+designs ([M2.2e6](../decisions-and-roadmap.md#m2-2e6)): as setting all three, in files of schema
+1.4, 1.8 and 1.10 alike. Where a part writes both forms, the one written later wins, quantity by
+quantity: `<overridesubcomponents>true</overridesubcomponents>` then
+`<overridesubcomponentsmass>false</overridesubcomponentsmass>` covers the parts inside for the
+centre of gravity and the drag but not the mass. No element in the corpus carries both forms. Read
+so, the flag is read as written, and nothing is warned of.
 
 ## Warnings, not failures
 
@@ -268,7 +272,7 @@ departs from [F] but leaves the file readable is a warning that travels with the
 |---|---|---|
 | `Skipped` | a whole part was left out | a **component** this reader cannot give an honest shape ([below](#what-is-left-out-and-why)); an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
 | `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace; a tag whose text is not the number, count or flag it should be; two names for one value that disagree; a dimension the file does not give, read as zero; a fin's fillets or a rail button's screw head, whose mass hpr does not model |
-| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a part inside an inner tube set off the body's axis, placed from the body's axis ([below](#clusters)); a `<rocket>` holding nothing |
+| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a part inside an inner tube set off the body's axis, placed from the body's axis ([below](#clusters)); a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
 file that opens is ordinary. Building a *rocket* from those documents raises 31 warnings over 73
@@ -1238,8 +1242,9 @@ so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 31 warnings are.** Every one is a reading this page explains, and none of them means a
-file is broken. Before [M1.13b](../decisions-and-roadmap.md#m1-13b) read pods there were 35, before
+**What the 21 warnings are.** Every one is a reading this page explains, and none of them means a
+file is broken. Before [M2.2e6](../decisions-and-roadmap.md#m2-2e6) read the old override flag as
+OpenRocket does there were 31, before [M1.13b](../decisions-and-roadmap.md#m1-13b) read pods 35, before
 [M1.9b](../decisions-and-roadmap.md#m1-9b) read clusters 39, and
 before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) 57: 5 more for a
 `packedradius` the file does not give, read as zero, which hpr now reads as OpenRocket's 12.5 mm
@@ -1247,7 +1252,6 @@ before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) 57: 5 more for a
 
 | kind | count | what raised it |
 |---|---|---|
-| `Unusual` | 10 | the single pre-1.9 subcomponent-override flag, read as setting all three |
 | `Unusual` | 1 | a part with no axial offset |
 | `Unusual` | 7 | automatic radii with nothing along their chains to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
@@ -2238,7 +2242,7 @@ This section compares hpr's flights of the 12 private designs with OpenRocket's
 ([M2.2e3](../decisions-and-roadmap.md#m2-2e3), hpr's flights of the corpus), as
 [the public comparison](#hprs-flights-against-openrockets) does for OpenRocket's examples, by the
 same definitions. **It is a [code-to-code](../glossary.md#code-to-code-comparison) comparison with
-no target, and hpr flies only 7 of the 12 designs.** On three of them hpr's stability margin is
+no target, and hpr flies only 8 of the 12 designs.** On three of them hpr's stability margin is
 clearly larger than OpenRocket's, so it calls those rockets more stable than OpenRocket does
 ([#172](https://github.com/nrdptel/hpr-sim/issues/172) for two,
 [#186](https://github.com/nrdptel/hpr-sim/issues/186) for the third). Nobody without the private library can
@@ -2246,24 +2250,28 @@ fly them again: CI checks only that the report adds up and names nothing of a de
 
 **How far it gets.** [M2.2](../decisions-and-roadmap.md#m2-2), the OpenRocket comparison, asks for
 at least 20 designs compared in five ways: apogee, largest speed, stability margin, mass and centre
-of mass. With the public report's 8, these make 15. Staging and clusters
+of mass. With the public report's 8, these make 16. Staging and clusters
 ([M1.9](../decisions-and-roadmap.md#m1-9)) added one of these private designs and three public
-ones. The three public designs whose stages hpr can't separate yet
-([#183](https://github.com/nrdptel/hpr-sim/issues/183),
-[#184](https://github.com/nrdptel/hpr-sim/issues/184)) and the private one with a motor hpr can't
-light as written could add four more. A tilted launch rod
-([M2.2e5](../decisions-and-roadmap.md#m2-2e5)) added one private design, counted in the 15, so
-that makes 19 at most. The last design can come from two places:
+ones, a tilted launch rod ([M2.2e5](../decisions-and-roadmap.md#m2-2e5)) one private design, and
+reading the old override flag as OpenRocket does ([M2.2e6](../decisions-and-roadmap.md#m2-2e6))
+another. The four more the bar needs can come from:
 
-- the airframes hpr reads simpler than written
-  ([#174](https://github.com/nrdptel/hpr-sim/issues/174), four designs, two of them by the old
-  override flag alone);
+- the airframes hpr still reads simpler than written
+  ([#174](https://github.com/nrdptel/hpr-sim/issues/174)): fin fillets on two private designs, one
+  of which also has an inner tube whose automatic radius has nothing to take;
+- stages hpr can't separate yet: three public designs
+  ([#183](https://github.com/nrdptel/hpr-sim/issues/183),
+  [#184](https://github.com/nrdptel/hpr-sim/issues/184)), and the private design the old override
+  flag held back, which now waits on an unpowered separation that can come before apogee (#184);
+- the private design with a motor hpr can't light as written;
 - the four public designs held back by parts hpr leaves out: parallel stages, tube fins
   ([#133](https://github.com/nrdptel/hpr-sim/issues/133)), and the freeform fin and the rail
   buttons' screw heads of OpenRocket's two pod examples. The pods themselves fly since
   [M1.13c1](../decisions-and-roadmap.md#m1-13c1).
 
-That bar is now [M2.2e6](../decisions-and-roadmap.md#m2-2e6).
+[M2.2e7](../decisions-and-roadmap.md#m2-2e7) takes on the fillets and the inner tube,
+[M2.2e8](../decisions-and-roadmap.md#m2-2e8) the tube fins, and the bar itself is now
+[M2.2e9](../decisions-and-roadmap.md#m2-2e9).
 
 **What is published.** The designs are other people's, so the
 [report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-library-flights.md)
@@ -2284,16 +2292,16 @@ record of OpenRocket's run must show it loading exactly those curves. One config
 because hpr's curve came from its own catalog, found by the motor's name. A tilted rod is flown
 as recorded, as in [A tilted launch rod](#a-tilted-launch-rod).
 
-The 26 flights (from the committed report, 2026-09-27):
+The 31 flights (from the committed report, 2026-09-27):
 
 | metric | flights | median | from | to |
 |---|---:|---:|---:|---:|
-| apogee, no named cause | 20 | −0.75% | −4.84% | +1.17% |
+| apogee, no named cause | 25 | −0.49% | −4.84% | +1.17% |
 | apogee, OpenRocket's parachute open before apogee | 6 | −0.32% | −3.09% | +2.15% |
-| largest speed | 26 | +0.24% | −0.65% | +2.28% |
-| margin at rod clearance | 26 | +0.0391 cal | −0.0008 cal | +0.1108 cal |
-| mass at launch | 26 | +0.000% | +0.000% | +0.004% |
-| centre of mass at rod clearance | 26 | −0.0006 cal | −0.1102 cal | +0.0042 cal |
+| largest speed | 31 | +0.24% | −0.65% | +2.28% |
+| margin at rod clearance | 31 | +0.0350 cal | −0.0008 cal | +0.1108 cal |
+| mass at launch | 31 | +0.000% | +0.000% | +0.004% |
+| centre of mass at rod clearance | 31 | −0.0004 cal | −0.1102 cal | +0.0042 cal |
 
 For example, `C09/9` reads −4.84% in apogee: hpr's rocket peaks 4.84% lower than OpenRocket's on
 the same design and motor. Its largest speed is +0.26%, so the two agree on the climb under thrust
@@ -2305,9 +2313,10 @@ and part on the coast, where drag matters most.
   with the parachute 0.55 s early, and `C02/2`, which reads +2.15% with the parachute 1.45 s
   early, the longest of the six; how much of either it explains is not measured.
 - The 14 flights launched above sea level (designs `C03` and `C09`) all read low in apogee. Of
-  the 12 at sea level, the 4 of `C07`, `C08` and `C11` read high; `C02`, flown since pods fly,
-  reads high once and low four times; and `C12`, flown since a tilted rod flies, high once and
-  low twice. Most of the public report's flights with no
+  the 17 at sea level, the 4 of `C07`, `C08` and `C11` read high; `C02`, flown since pods fly,
+  reads high once and low four times; `C05`, flown since the old override flag is read as
+  OpenRocket reads it, high four times and low once, all within 0.26%; and `C12`, flown since a
+  tilted rod flies, high once and low twice. Most of the public report's flights with no
   named cause read low as well (16 of 21), and every public flight launches at sea level (its
   [record](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/ork/openrocket-flights.json)
   gives a launch altitude of 0 m throughout). So altitude does not yet explain the sign.
@@ -2317,7 +2326,7 @@ and part on the coast, where drag matters most.
   direction to worry about. `C03` reads +0.056 to +0.073 calibres: on every flight hpr's CP sits
   0.061 calibres further aft than OpenRocket's, and the CG accounts for the rest. `C09` reads about +0.04, half from its CP (+0.020) and half from
   its CG, which hpr puts forward of OpenRocket's by 0.0145 to 0.0273 calibres. The reference
-  diameters agree on all 26 flights, so the calibres are the same. On the public designs the
+  diameters agree on all 31 flights, so the calibres are the same. On the public designs the
   margin gap is at most 0.0151 calibres, and the largest (−0.0151) has hpr calling the rocket *less*
   stable. No milestone covers it yet: it is
   [#172](https://github.com/nrdptel/hpr-sim/issues/172). A third design, `C08`, a two-stage rocket
@@ -2333,14 +2342,15 @@ and part on the coast, where drag matters most.
   OpenRocket's rocket clears the rod at an angle of attack, as on
   [the probes](#a-tilted-launch-rod). With hpr's CP taken at that angle (the report's *at OR's
   α*), `C12` reads +0.0033 to +0.0074, so most of its gap is the angle each program looks at.
-- hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 11
+- hpr's [design checks](../physics/design.md#checks) find an inner part wider than its parent on 12
   of the flights, all of `C03`'s among them. That puts mass in a slightly different place, not
   lift, so it cannot move the CP, and `C03`'s CG agrees within 0.013 calibres.
-- The 5 designs hpr does not fly wait on: a motor hpr can't light as written (1 design); an
-  airframe hpr reads simpler than written (4: fin fillets 1, the single override flag older OpenRocket files use for a part and everything inside it 2, and an inner
-  tube whose [automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)
-  1). The report lists each configuration with its coarse reason; the
-  breakdown is in [ADR-072][adr-072] and #174.
+- The 4 designs hpr does not fly wait on: a motor hpr can't light as written (1 design); stages
+  hpr can't separate as written (1: an unpowered separation that can come before apogee, #184); an
+  airframe hpr reads simpler than written (2: fin fillets on both, and on one of them an inner
+  tube whose [automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
+  The report lists each configuration with its coarse reason; the breakdown is in
+  [ADR-072][adr-072] and #174.
 
 To repeat it, you need the private library, OpenRocket's flights of it and the motor record, as
 [above](#openrockets-flights-of-the-private-designs). Then:

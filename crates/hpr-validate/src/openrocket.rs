@@ -549,6 +549,92 @@ mod tests {
         }
     }
 
+    /// The single subcomponent-override flag written before schema 1.9, and how far hpr's centre
+    /// of mass is from OpenRocket's, in metres, on each probe of it.
+    const OLD_FLAG: [(&str, f64); 8] = [
+        (
+            "the old flag on both of a stage's overrides, schema 1.4",
+            0.0,
+        ),
+        (
+            "the old flag on a tube's mass override, schema 1.4",
+            -0.003686,
+        ),
+        (
+            "the old flag, false, on a tube's mass override, schema 1.8",
+            0.0,
+        ),
+        (
+            "the old flag on a tube's mass override, schema 1.10",
+            -0.003686,
+        ),
+        ("the old flag after a mass flag that says false", -0.003686),
+        ("the old flag before a mass flag that says false", 0.0),
+        (
+            "the old flag, false, after a centre flag that says true",
+            0.0,
+        ),
+        (
+            "the old flag, false, before a centre flag that says true",
+            0.0,
+        ),
+    ];
+
+    /// The element of `document` whose `<id>` is `id`.
+    fn with_id<'a>(element: &'a ork::Element, id: &str) -> Option<&'a ork::Element> {
+        if element
+            .child("id")
+            .is_some_and(|own| own.text().trim() == id)
+        {
+            return Some(element);
+        }
+        element.elements().find_map(|child| with_id(child, id))
+    }
+
+    /// OpenRocket 24.12 reads the single flag the three per-quantity ones replaced before schema
+    /// 1.9 as setting all three, in schema 1.4, 1.8 and 1.10 alike, and where a part writes both
+    /// forms the later one wins, quantity by quantity. hpr reads it so (M2.2e6): part by part, the
+    /// three flags are OpenRocket's, nothing is warned of, the mass is OpenRocket's, and the centre
+    /// is OpenRocket's but where a mass override covering the parts inside states no centre, which
+    /// is ADR-061's departure, the same 3.686 mm as the per-quantity flag's probe above.
+    #[test]
+    fn the_old_subcomponent_flag_reads_as_openrocket_reads_it() {
+        let record = record();
+        for (question, apart_m) in OLD_FLAG {
+            let probe = probe(&record, question);
+            let (ours, theirs, warnings) = both(probe);
+            assert!(
+                relative(ours[0], theirs[0]).abs() < 1e-9,
+                "{question}: mass {ours:?} {theirs:?}"
+            );
+            assert!(
+                (ours[1] - theirs[1] - apart_m).abs() < 1e-6,
+                "{question}: centre {} m apart, not {apart_m}",
+                ours[1] - theirs[1]
+            );
+            assert!(warnings.is_empty(), "{question}: {warnings:?}");
+
+            let document = probe["document"].as_str().expect("the probe's document");
+            let read = ork::read(document.as_bytes()).expect("a probe reads");
+            let flags = probe["override_flags"].as_object().expect("the flags");
+            assert!(flags.len() >= 3, "{question}: {flags:?}");
+            for (id, theirs) in flags {
+                let element = with_id(&read.value.document.root, id).expect("the part");
+                let mut warnings = Vec::new();
+                let read = ork::Values::new(element, "probe", &mut warnings).overrides();
+                let ours = [
+                    read.subcomponents_mass,
+                    read.subcomponents_cg,
+                    read.subcomponents_cd,
+                ]
+                .map(Option::unwrap_or_default);
+                let theirs = ["mass", "cg", "cd"].map(|k| theirs[k].as_bool().expect("a flag"));
+                assert_eq!(ours, theirs, "{question}: {id}");
+                assert!(warnings.is_empty(), "{question}: {warnings:?}");
+            }
+        }
+    }
+
     /// The probes whose inertias are compared, with hpr's roll and pitch relative to OpenRocket's.
     const INERTIA: [(&str, [f64; 2]); 11] = [
         ("a mass override on a nose with a shoulder", [0.0, 0.0]),
@@ -1600,6 +1686,7 @@ mod tests {
         read.extend(DISAGREEING.iter().map(|(question, _)| *question));
         read.extend(INERTIA.iter().map(|(question, _)| *question));
         read.extend(ALONE.iter().map(|(question, _)| *question));
+        read.extend(OLD_FLAG.iter().map(|(question, _)| *question));
         let probes: Vec<&str> = record["probes"]
             .as_object()
             .expect("probes")
