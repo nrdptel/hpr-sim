@@ -1828,8 +1828,9 @@ mod tests {
     /// around the body for three tubes or more and the body's radius for one or two; a wall thicker
     /// than it is cut to it; more than 8 tubes are 8; and the tubes weigh what OpenRocket's do,
     /// centred where its are (ADR-098). A written radial offset moves nothing in OpenRocket, and
-    /// hpr does not read one. Its roll inertia departs: OpenRocket's exceeds what any mass inside
-    /// the ring can have, `(R_b + 2r)²` a unit of mass, so hpr keeps its hollow tubes.
+    /// hpr does not read one. Two inertias depart, and hpr keeps its hollow tubes at `R_b + r`:
+    /// OpenRocket's roll exceeds what any mass inside the ring can have, `(R_b + 2r)²` a unit of
+    /// mass, and its pitch is `N` times one tube's own, with no term for the ring's spread.
     #[test]
     fn a_tube_fin_sets_automatic_radius_reads_as_openrocket_does() {
         let record = record();

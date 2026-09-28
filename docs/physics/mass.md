@@ -618,9 +618,9 @@ mass could have it. Either way it is not what tubes at `R + r` weigh, so hpr kee
 single tube the two agree.
 
 **On the example.** On OpenRocket's *Tube fin rocket*, hpr's roll inertia is 98.7% below
-OpenRocket's, and its pitch inertia 1.98% below. The pitch gap is sized: OpenRocket's pitch rule for
-its six tubes accounts for −1.9822% of the survey's −1.9800%, and its nose cone the other
-+0.0023%. The survey
+OpenRocket's, and its pitch inertia 1.98% below. The pitch gap is sized: `cargo xtask ork` swaps
+OpenRocket's pitch rule into hpr's structure for each tube fin set and prints the result, and the
+gap goes from −1.9800% to +0.0023%, well inside the survey's 0.1%. The survey
 [above](#checked-against-openrocket) names tube fins as the cause of the roll gap. OpenRocket's fin
 shortcut, which the survey swaps in for flat fins, is not given OpenRocket's mass for tube fins,
 so it cannot close this one.

@@ -8356,8 +8356,9 @@ to 1e-14, its roll past the ring's bound. `hpr_design`'s
 `cargo xtask ork` now reads both copies of the *Tube fin rocket*: its mass is within 5.0e-6 of
 OpenRocket's and its centre within 2.4e-6. Designs within 1% of OpenRocket's mass go from 66 to 68
 of 71, and within 1% of its centre from 66 to 68; reduced designs go from 6 to 4. Its pitch
-inertia is 1.9800% below OpenRocket's; OpenRocket's pitch rule for its six tubes accounts for
-−1.9822% of that, the other +0.0023% its nose cone.
+inertia is 1.9800% below OpenRocket's. `cargo xtask ork` swaps OpenRocket's pitch rule into hpr's
+structure for each tube fin set (`tube_fin_pitch_shift_kg_m2`, tested on three probes to 1e-12) and
+prints the gap left: +0.0023%.
 
 **Consequences.**
 
