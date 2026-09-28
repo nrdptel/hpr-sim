@@ -1012,7 +1012,7 @@
  ],
  "generated": "2026-09-28",
  "inputs_sha256": {
-  "base_drag.py": "78e95e411dd1e5d84e409f6c0c6771521f31abf2be10ee4947a64416cfb99be1",
+  "base_drag.py": "a8f58cc678cc25ce3bd7ccf36c1fb6e1f462019171d961b7d13dde41feecefa0",
   "events.py": "313b72db4daae061e476be01cd429db7c2f34432ae45d314f1bbb1586e1f585d",
   "flights.py": "73b0dd1fd62bcaca0803fd5634b569cffc34a6172e964c8e97be3a24c61a4c82"
  },

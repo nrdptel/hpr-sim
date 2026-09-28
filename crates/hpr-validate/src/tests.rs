@@ -1990,7 +1990,7 @@ fn a_real_flight_explanation_that_stops_holding_fails() {
 }
 
 /// OpenRocket 24.12 keeps the whole base's drag while a motor burns (ADR-097): on every example
-/// design's flight of one branch (one stage flown, no separation), its base-drag column over
+/// design's flight of one data branch (nothing separating), its base-drag column over
 /// Niskanen's whole-base coefficient (eq. 3.94) is the same while a motor burns as while none
 /// does, to 1e-12. Taking the motors' cross-section off the base would drop that ratio by about
 /// `motor_area_fraction` while they all burn: at least 5% of the reference area on every flight
@@ -2036,7 +2036,7 @@ fn openrocket_keeps_the_whole_base_drag_under_power() {
     let mut pods = 0;
     for flight in record["flights"].as_array().expect("flights") {
         assert!(flight["refused"].is_null(), "{flight}");
-        if !flight["sum_residual"].is_null() {
+        if flight["burning"]["rows"] != 0 {
             assert!(number(&flight["sum_residual"]) <= 1e-12, "{flight}");
         }
         let (burning, coasting) = (&flight["burning"], &flight["coasting"]);

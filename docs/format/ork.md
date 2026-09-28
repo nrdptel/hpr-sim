@@ -2485,12 +2485,12 @@ two ways, and they pull opposite ways:
   - The measurement: a committed probe, `validation/oracles/openrocket/base_drag.py`, records
     OpenRocket's base drag on its own example designs, the rows while a motor burns against the
     rows after, in `validation/fixtures/ork/openrocket-base-drag.json`. On all 42 of its
-    single-stage flights (one data branch each, nothing separating), OpenRocket's base drag while
+    flights of one data branch (nothing separating), OpenRocket's base drag while
     a motor burns is exactly what the whole base gives, to 1e-12. It does not subtract the motor,
     even where the motor covers 94% of the reference area, and the drag it flies is the sum that
     includes that base drag. A test in `hpr-validate` holds it ([ADR-097][adr-097], the decision
     on sizing a drag cause).
-  - Motors in [pods](#pods) are among them: the one single-stage flight of OpenRocket's
+  - Motors in [pods](#pods) are among them: the one such flight of OpenRocket's
     powered-pods example that burns pod motors keeps its base whole too, and hpr's opt-in treats a
     pod's motors the same way.
 - **Supersonic pressure drag.** This is the drag from the pressure on the nose, the fins' edges and

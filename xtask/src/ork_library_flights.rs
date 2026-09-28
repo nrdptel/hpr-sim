@@ -924,7 +924,7 @@ pub(crate) fn page(report: &Value) -> String {
         };
         let on_drag = with("on_openrocket_s_drag");
         if on_drag.is_some() || !row["whole_base_under_power"].is_null() {
-            let sized = |key: &str| drag_sizes(row["on_openrocket_s_drag"][key].as_f64());
+            let sized = |key: &str| row_cause(row, key) == OWN_DRAG;
             let label = match (sized("apogee_percent"), sized("max_speed_percent")) {
                 (true, true) => OWN_DRAG.to_owned(),
                 (true, false) => format!("{OWN_DRAG} for the apogee"),

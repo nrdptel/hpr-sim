@@ -10,8 +10,9 @@ the jar, flown as `flights.py` flies them with nothing deployed, and records, la
 - the base-drag column (`TYPE_BASE_DRAG_COEFF`) over the whole base's coefficient at the row's
   Mach number, `0.12 + 0.13 M^2` below Mach 1 and `0.25/M` above (Niskanen eq. 3.94): its
   smallest and largest on the rows with thrust, and on the rows without;
-- the configuration's motors' cross-section over the reference area, `motor_area_fraction`: about
-  what the ratio would drop by while they all burn if OpenRocket took their area off the base, and
+- the configuration's motors' cross-section over the reference area, `motor_area_fraction`, one
+  motor per mount (a clustered mount counts once, so this is a floor): about what the ratio would
+  drop by at least while they all burn if OpenRocket took their area off the base, and
   `pod_motors`, how many of those motors sit in a pod;
 - the largest difference, on the rows with thrust, between the drag coefficient
   (`TYPE_DRAG_COEFF`) and the sum of its friction, pressure and base columns, `sum_residual`:

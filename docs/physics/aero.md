@@ -3120,8 +3120,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     `validation/oracles/openrocket/base_drag.py` records OpenRocket's base drag on its own
     example designs, the rows while a motor burns against the rows after, in
     `validation/fixtures/ork/openrocket-base-drag.json`, and a test in `hpr-validate` holds it
-    ([ADR-097][adr-097], the decision on sizing a drag cause). On all 42 of its single-stage
-    flights (one data branch each, nothing separating), the base drag while a motor burns is
+    ([ADR-097][adr-097], the decision on sizing a drag cause). On all 42 of its flights of one
+    data branch (nothing separating), the base drag while a motor burns is
     exactly the whole base's, to 1e-12, where the motors cover 9% to 94% of the reference area,
     one flight's motors in pods. On a rocket whose motor fills most of the base, the rule is a
     large difference under power. On `C06/1`, switching hpr to OpenRocket's base rule alone lowers

@@ -8237,7 +8237,7 @@ The two pull in opposite directions. So neither can be named a cause by being pr
    OpenRocket's base-drag column over Niskanen's whole-base coefficient (`0.12 + 0.13 M²` below
    Mach 1, `0.25/M` above), with thrust and without, and the burning motors' area over the
    reference area. It is committed as `validation/fixtures/ork/openrocket-base-drag.json`. Of its
-   56 flights, the 42 of one branch (one stage flown, no separation) are compared; on each, the
+   56 flights, the 42 of one data branch (nothing separating) are compared; on each, the
    ratio while a motor burns equals the ratio after, to 1e-12. The motors there cover 9% to 94%
    of the reference area, and one flight burns motors in pods. Taking the area off would drop
    the ratio by about that much. On every flight the drag coefficient is the sum of the
@@ -8278,8 +8278,8 @@ The two pull in opposite directions. So neither can be named a cause by being pr
 - **`C06/1`'s breakdown** (this record):
   - On OpenRocket's drag: apogee +1.11%, largest speed +1.04%, within the bar.
   - With only OpenRocket's base rule: −10.71% and −3.43%. That switch alone lowers the apogee by
-    24.3 points; it is measured by its own flight.
-  - Switching the rest of the drag to OpenRocket's then raises it 11.8 points. That number is by
+    24.3 percentage points; it is measured by its own flight.
+  - Switching the rest of the drag to OpenRocket's then raises it 11.8 percentage points. That number is by
     subtraction, and the split depends on which change is made first.
   - A look at OpenRocket's per-component columns on this flight, not kept as a record, points
     the rest to the supersonic pressure drag, with the friction and base close. It is a lead for

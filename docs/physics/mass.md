@@ -618,8 +618,10 @@ digits: at most 2 for a fillet 1% of the body radius or larger. A test checks al
 numerical integration to 1e-11 (`fillet_section_is_its_region_by_quadrature` in
 `hpr_design::fins`). Far from real fillets the subtraction cancels away, so hpr weighs a fillet
 under a millionth of the body radius as nothing, refuses one over a thousand times it
-(`FILLET_RATIO_MAX`), and gives a body of no radius no fillet. At those bounds the area keeps 10
-and 12 significant digits against 60-digit arithmetic.
+(`FILLET_RATIO_MAX`), and gives a body of no radius no fillet. Against 60-digit arithmetic, the
+area keeps 10 significant digits at a millionth of the body radius and 12 at a thousand times it,
+checked once while writing the code; the thousand is a cautious limit, not where the digits run
+out (at ten thousand times it still keeps 10).
 
 **A worked example.** An invented 5 mm fillet on a tube 30 mm in radius. Then
 `c = √(30² + 2 × 30 × 5)` = 34.64 mm and `θ = atan(5/34.64)` = 0.1433 rad (8.21°).
