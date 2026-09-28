@@ -12,6 +12,8 @@ summary beside the quantities of its own time series that the summary could mean
   velocity can be taken at the event itself and each recovery device's deployment told apart;
 - the total velocity and time of the last row, the mass at the first, and the peaks of the total
   acceleration and Mach number columns;
+- the position east and north of the launch at the row of the largest altitude, which says where a
+  tilted rod sent the rocket;
 - whether OpenRocket aborted the run (a `SIM_ABORT` event), and why;
 - the peak total acceleration before the first deployment, a candidate for `maxacceleration`;
 - the same configuration flown again with nothing deployed: its apogee event, last burnout and
@@ -30,12 +32,14 @@ summary beside the quantities of its own time series that the summary could mean
 One more flight, `no_deployment`, is the simple example with its parachute set never to open: a
 complete flight whose deployment never happened.
 
-It also records the stability margin at launch rod clearance with the centres of pressure and mass
-and the reference length it is taken from, so hpr's margin can be compared on the same instant.
+It also records the stability margin at launch rod clearance with the centres of pressure and mass,
+the reference length it is taken from and the angle of attack there, so hpr's margin can be
+compared on the same instant.
 
 The public designs are the example designs inside the OpenRocket jar and the seven Loft demos in
 `validation/fixtures/ork/loft-demo/`; the pod probes `pod_probes.py` writes to
-`validation/fixtures/ork/pod-flights/` (M1.13c2) are flown the same way. Each configuration is
+`validation/fixtures/ork/pod-flights/` (M1.13c2) and the tilted-rod probes `rod_probes.py` writes
+to `validation/fixtures/ork/rod-flights/` (M2.2e5) are flown the same way. Each configuration is
 flown in a new simulation that takes the launch conditions of the design's first stored simulation
 (OpenRocket's defaults when there is none), in calm air: no wind and no turbulence, so the flight
 is repeatable and hpr can fly the same one. The conditions used are recorded with each flight.
@@ -48,7 +52,7 @@ designs' public file names are recorded. OpenRocket 24.12 needs Java 17 exactly;
 
     refs/venv/bin/python validation/oracles/openrocket/flights.py \\
         validation/fixtures/ork/openrocket-flights.json validation/fixtures/ork/loft-demo \\
-        validation/fixtures/ork/pod-flights --jar
+        validation/fixtures/ork/pod-flights validation/fixtures/ork/rod-flights --jar
 
 The record is written to the path given, not to standard output, which OpenRocket logs to.
 """
@@ -162,6 +166,10 @@ def flight(document, configuration, base):
     mach = column(branch, FlightDataType.TYPE_MACH_NUMBER)
     mass = column(branch, FlightDataType.TYPE_MASS)
     acceleration = column(branch, FlightDataType.TYPE_ACCELERATION_TOTAL)
+    attack = column(branch, FlightDataType.TYPE_AOA)
+    east = column(branch, FlightDataType.TYPE_POSITION_X)
+    north = column(branch, FlightDataType.TYPE_POSITION_Y)
+    highest = altitude.index(peak(altitude)) if peak(altitude) is not None else None
     deployments = [
         float(e.getTime())
         for e in branch.getEvents()
@@ -178,9 +186,9 @@ def flight(document, configuration, base):
             a for t, a in zip(times, acceleration) if t <= first_deployment + 1e-9
         ),
         "max_mach": peak(mach),
-        "time_of_max_altitude_s": (
-            times[altitude.index(peak(altitude))] if peak(altitude) is not None else None
-        ),
+        "time_of_max_altitude_s": times[highest] if highest is not None else None,
+        "east_at_max_altitude_m": finite(east[highest]) if highest is not None else None,
+        "north_at_max_altitude_m": finite(north[highest]) if highest is not None else None,
         "last_total_velocity_m_s": finite(speed[-1]),
         "last_time_s": finite(times[-1]),
         "launch_mass_kg": finite(mass[0]),
@@ -219,6 +227,7 @@ def flight(document, configuration, base):
             "reference_length_m": finite(reference[row]),
             "mach": finite(mach[row]),
             "mass_kg": finite(mass[row]),
+            "angle_of_attack_rad": finite(attack[row]),
         }
     return record
 

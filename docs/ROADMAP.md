@@ -579,20 +579,24 @@
     - [x] **M2.2d2 hpr's flights against the record.** Met (ADR-069), bars kept: 21 flown; margin
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
-    Split into e1 to e5 (ADR-070, ADR-072).
+    Split into e1 to e6 (ADR-070, ADR-072, ADR-094).
     - [x] **M2.2e1 Mass and CG in the flight report.** Met (ADR-070), bars kept: launch and
       rod-clearance mass and CG against OR's, tested, on all 21; within 0.22% and 0.016 cal.
-    - [x] **M2.2e2 OR's flights of the corpus.** *Done when:* `flights.py` flies every corpus
-      configuration OR can into `corpus-out/`; only counts committed. *Result:* met (ADR-071): the
-      27 `.ork` designs' 88 of 89 flown, none aborted; OR loads no motor for the 89th.
-    - [x] **M2.2e3 hpr's flights of the corpus.** Bar moved unchanged to e5 (ADR-072). *Done when:*
-      `ork-flights --library` reports it by anonymised id, differences only, curves checked as OR's,
-      a test holding its words and sums. *Result:* met: 17 flights, 4 of 12 private designs, 9 in all.
+    - [x] **M2.2e2 OR's flights of the corpus.** Met (ADR-071), bars kept: 88 of the 27 `.ork`
+      designs' 89 configurations flown into `corpus-out/` (OR loads no motor for the 89th).
+    - [x] **M2.2e3 hpr's flights of the corpus.** Met (ADR-072), bars kept (anonymised ids,
+      differences only, curves checked as OR's, a test on its words and sums), the 20 designs
+      moved to e6 (ADR-094): 17 flights, 4 of 12 private designs, 9 in all.
     - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
       *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
-    - [ ] [blocked] **M2.2e5 Twenty designs** (on #173, #174, #133; M1.13 done). *Done when:*
+    - [x] **M2.2e5 A tilted rod** (#173; split from the old e5, whose bar is now e6; ADR-094).
+      *Done when:* `ork-flights` flies a rod as OR records it, pinned by a test against OR's
+      landings and by public probes (within 5% of OR's apogee and speed, bearing at apogee within
+      0.1°); the tilted design's flights have the five spreads, e4's bar on them. *Result:* met:
+      bearings within 0.03°, apogee loss within 0.27 points; `C12` within 0.53%; 15 designs.
+    - [ ] [blocked] **M2.2e6 Twenty designs** (on #174, #133; M1.13 done). *Done when:*
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
-      bar on the flights added. 13 since M1.9c (ADR-076); the rest wait on the three above.
+      bar on the flights added. 15 since M2.2e5 (ADR-094); the rest wait on the two above.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts
@@ -683,15 +687,10 @@
   numbers, that they are negligible. *Done when (met by M1.12a and b):* mass properties before,
   during and after a change match hand-computed values, and a release conserves mass and momentum;
   a test shows a moving mass shifting the stability margin as the hand calculation predicts.
-  - [x] **M1.12a A mass that moves along the airframe** (ADR-087). *Done when:* the mass properties
-    before, during and after a shift match hand-computed values, the static margin moves as the
-    hand calculation predicts, and a part moving off the axis keeps both momenta in free flight
-    (the relative-motion terms). *Result:* met: 1e-15 m and kg·m², 1e-12 cal (4.30 to 3.00 cal
-    for 200 g moved 0.3 m), momenta to 6.9e-12 against a 1.8% relative angular momentum.
-  - [x] **M1.12b Mass released in flight** (ADR-088). Ballast or a payload that leaves while the
-    rest flies on in six degrees of freedom. *Done when:* the mass properties after a release match
-    hand-computed values, and a release conserves mass and momentum. *Result:* met: 1e-15 m, kg,
-    kg·m²; momentum to 1.5e-13, angular momentum 7.3e-12, the part leaving at 0.146 m/s across.
+  - [x] **M1.12a A mass that moves along the airframe.** Met (ADR-087), bars kept: a shift's mass
+    properties to 1e-15, the margin to 1e-12 cal (4.30 to 3.00), momenta off the axis to 6.9e-12.
+  - [x] **M1.12b Mass released in flight.** Met (ADR-088), bars kept: after a release, mass
+    properties to 1e-15, momentum to 1.5e-13 and angular momentum to 7.3e-12, the rest in 6-DOF.
 
 - [x] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19). Split a to c (ADR-089).
   - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.

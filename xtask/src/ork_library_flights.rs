@@ -32,7 +32,8 @@ use serde_json::{Value, json};
 
 use crate::ork_flights::{
     DRAG_OVERRIDE, EARLY_CHUTE, METRICS, NO_NAMED_CAUSE, fixed, fly_design,
-    mass_and_cg_differences, read_json, same, signed, spread, summarise,
+    margin_at_openrocket_alpha_cal, mass_and_cg_differences, read_json, same, signed, spread,
+    summarise,
 };
 use crate::ork_supply::sha256;
 
@@ -81,7 +82,7 @@ pub(crate) const MASS_DIGITS: i32 = 3;
 pub(crate) const CHUTE_DIGITS: i32 = 2;
 
 /// The keys a flight's row holds, and nothing else.
-const ROW_KEYS: [&str; 20] = [
+const ROW_KEYS: [&str; 21] = [
     "flight",
     "aborted",
     "termination",
@@ -93,6 +94,7 @@ const ROW_KEYS: [&str; 20] = [
     "max_speed_outcome",
     "margin_cal",
     "margin_outcome",
+    "margin_at_openrocket_alpha_cal",
     "launch_mass_percent",
     "rod_clearance_mass_percent",
     "rod_clearance_cg_cal",
@@ -535,6 +537,12 @@ pub(crate) fn anonymised(flight: &Value) -> Value {
         "max_speed_outcome": outcome("max_speed_m_s"),
         "margin_cal": rounded(metrics["rod_clearance_margin_cal"]["difference"].as_f64(), DIGITS),
         "margin_outcome": outcome("rod_clearance_margin_cal"),
+        "margin_at_openrocket_alpha_cal": rounded(
+            kept(margin_at_openrocket_alpha_cal(flight).zip(
+                metrics["rod_clearance_margin_cal"]["openrocket"].as_f64(),
+            ).map(|(hpr, openrocket)| hpr - openrocket)),
+            DIGITS,
+        ),
         "launch_mass_percent": rounded(kept(launch), MASS_DIGITS),
         "rod_clearance_mass_percent": rounded(kept(clearance), MASS_DIGITS),
         "rod_clearance_cg_cal": rounded(kept(cg), DIGITS),
@@ -813,7 +821,9 @@ pub(crate) fn page(report: &Value) -> String {
          of OpenRocket's; the stability margin, the centre of mass (CG) and the centre of \
          pressure (CP) at rod clearance in OpenRocket's calibres (its reference diameter), the CG \
          and CP positive when hpr's is further aft. A positive margin Δ means hpr calls the \
-         rocket more stable; margin Δ = CP Δ − CG Δ when the reference diameters agree. The \
+         rocket more stable; margin Δ = CP Δ − CG Δ when the reference diameters agree. *At \
+         OR's α* is the margin Δ with hpr's CP taken at the angle of attack OpenRocket's rocket \
+         had at rod clearance, not at none: a tilted rod gives it one ([M2.2e5][m2-2e5]). The \
          *five spreads* are apogee, largest speed, margin, mass and CG.\n\
          - A flight is *scored* in a spread when both programs have the number; a *named cause* \
          is a known difference in how the two flights were set up that can move a number, and \
@@ -829,15 +839,16 @@ pub(crate) fn page(report: &Value) -> String {
          [m2-2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2\n\
          [m2-2e3]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e3\n\
          [m2-2e2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e2\n\
+         [m2-2e5]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e5\n\
          [adr-072]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-072-hprs-flights-of-the-private-library-under-anonymised-ids-2026-09-25\n\
          [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-of-the-private-designs\n\n",
     ));
     out.push_str(&summary_lines(report));
     out.push_str(
-        "\n| flight | Mach | site | apogee Δ | max speed Δ | margin Δ (cal) | CG Δ (cal) \
-         | CP Δ (cal) | launch mass Δ | rod-clearance mass Δ | named cause |\n",
+        "\n| flight | Mach | site | apogee Δ | max speed Δ | margin Δ (cal) | at OR's α (cal) \
+         | CG Δ (cal) | CP Δ (cal) | launch mass Δ | rod-clearance mass Δ | named cause |\n",
     );
-    out.push_str("|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|\n");
+    out.push_str("|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|\n");
     for row in rows {
         let mut causes = Vec::new();
         if let Some(early) = row["chute_early_s"].as_f64() {
@@ -858,13 +869,14 @@ pub(crate) fn page(report: &Value) -> String {
             causes.push(cause);
         }
         out.push_str(&format!(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
             row["flight"].as_str().unwrap_or_default(),
             row["mach"].as_str().unwrap_or_default(),
             row["site"].as_str().unwrap_or_default().replace('_', " "),
             cell(row, "apogee_percent", Some("apogee_outcome"), 2, "%"),
             cell(row, "max_speed_percent", Some("max_speed_outcome"), 2, "%"),
             cell(row, "margin_cal", Some("margin_outcome"), 4, ""),
+            cell(row, "margin_at_openrocket_alpha_cal", None, 4, ""),
             cell(row, "rod_clearance_cg_cal", None, 4, ""),
             cell(row, "rod_clearance_cp_cal", None, 4, ""),
             cell(row, "launch_mass_percent", None, 3, "%"),
@@ -1005,7 +1017,7 @@ mod tests {
     fn the_count_toward_twenty_designs_is_the_two_reports() {
         // M2.2's *done when* asks for at least 20 designs with an error distribution of apogee,
         // largest speed, margin, mass and centre of mass. The report counts them from both
-        // reports and says whether the bar is met; M2.2e5 is met only when it is (ADR-072).
+        // reports and says whether the bar is met; M2.2e6 is met only when it is (ADR-072).
         let root = crate::ork::root().unwrap();
         let report = committed();
         let public = public_designs(&root).unwrap();
@@ -1069,7 +1081,7 @@ mod tests {
                     .chain(
                         [
                             NO_SUCH_CONFIGURATION,
-                            ROD_NOT_VERTICAL,
+                            ROD_NOT_TAKEN,
                             WIND,
                             NOT_STANDARD_AIR,
                             CURVE_BY_NAME,
@@ -1196,13 +1208,16 @@ mod tests {
                 "openrocket": {"mass_kg": 1.0, "cg_from_nose_m": 0.5, "cp_from_nose_m": 0.7,
                                "reference_length_m": 0.1},
                 "hpr": {"mass_kg": 0.99, "cg_from_nose_m": 0.51, "cp_from_nose_m": 0.72,
-                        "reference_length_m": 0.1},
+                        "reference_length_m": 0.1,
+                        "cp_from_nose_m_at_openrocket_angle_of_attack": 0.715},
             },
         });
         let row = anonymised(&flight);
         assert_eq!(row["mach"], "transonic");
         assert_eq!(row["apogee_percent"], -10.0);
         assert_eq!(row["margin_cal"], -0.1);
+        // hpr's margin at OpenRocket's angle, (0.715 − 0.51) / 0.1, less OpenRocket's 2.
+        assert_eq!(row["margin_at_openrocket_alpha_cal"], 0.05);
         assert_eq!(row["launch_mass_percent"], 1.0);
         assert_eq!(row["rod_clearance_mass_percent"], -1.0);
         assert_eq!(row["rod_clearance_cg_cal"], 0.1);
