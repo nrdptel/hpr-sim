@@ -1113,10 +1113,10 @@ A short open tube glued along the airframe in place of a flat fin. A *tube fin s
 them around the body. hpr weighs each tube as a hollow cylinder beside the body. A `.ork` file can
 leave the tubes' radius to OpenRocket. With three tubes or more, OpenRocket makes them just wide
 enough to touch the body and each other; one or two take the body's radius. hpr reads that radius
-as OpenRocket does. The aerodynamics refuses tube fins until a cited
-method exists ([M2.2e9](decisions-and-roadmap.md#m2-2e9)). See
-[`.ork` design files](format/ork.md#tube-fins-sized-from-the-body) and
-[Mass properties](physics/mass.md#tube-fins).
+as OpenRocket does. The aerodynamics flies each tube as a ring wing, below Mach 0.8
+([M2.2e9](decisions-and-roadmap.md#m2-2e9)). See
+[`.ork` design files](format/ork.md#tube-fins-sized-from-the-body),
+[Mass properties](physics/mass.md#tube-fins) and [Aerodynamics](physics/aero.md#tube-fins).
 
 ## Tumble recovery
 

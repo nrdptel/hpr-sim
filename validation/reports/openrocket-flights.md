@@ -9,22 +9,25 @@ Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against Op
 [adr-070]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-070-m22e-split-mass-and-centre-of-mass-first-then-the-corpus-2026-09-25
 [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-against-openrockets
 
-- configurations flown: 33 (24 the record holds are not flown by hpr); apogee more than 5% from OpenRocket's: 6
+- configurations flown: 34 (23 the record holds are not flown by hpr); apogee more than 5% from OpenRocket's: 7
 - fastest: Dual parachute deployment [J570W-P], OpenRocket's largest Mach number 1.147
 - apogee, a part's drag override not applied: 3 scored, median -16.77%, mean absolute 17.12%, from -19.13% to -15.47%
+- apogee, hpr's own drag coefficient: 1 scored, median +6.95%, mean absolute 6.95%, from +6.95% to +6.95%
 - apogee, no named cause: 21 scored, median -0.63%, mean absolute 1.27%, from -4.34% to +1.03%
 - apogee, reference parachute open before apogee: 9 scored, median -0.08%, mean absolute 4.20%, from -0.71% to +13.80%
 - largest speed, a part's drag override not applied: 3 scored, median -9.55%, mean absolute 8.52%, from -12.33% to -3.69%
+- largest speed, hpr's own drag coefficient: 1 scored, median +6.40%, mean absolute 6.40%, from +6.40% to +6.40%
 - largest speed, no named cause: 30 scored, median +0.29%, mean absolute 0.47%, from -0.69% to +0.92%
-- margin at rod clearance, no named cause: 33 scored, median -0.0007 cal, mean absolute 0.0037 cal, from -0.0151 cal to +0.0037 cal
+- margin at rod clearance, no named cause: 34 scored, median -0.0007 cal, mean absolute 0.0352 cal, from -1.0768 cal to +0.0037 cal
 - apogee against OpenRocket's own flights with the named causes removed, over the flights with a named cause, each counting its largest difference from them: 12 scored, median -0.52%, mean absolute 1.64%, from -1.07% to +7.80%
-- apogees more than 5% off: 6, 6 with their named causes sized; within 5% of every flight of OpenRocket's without the causes: 5 of 6
+- apogees more than 5% off: 7, 6 with their named causes sized; within 5% of every flight of OpenRocket's without the causes: 5 of 7
+- apogees more than 5% off sized instead by hpr flying OpenRocket's drag, within 5% on it, and so put down to hpr's own drag coefficient: 1
 
 hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR-070][adr-070]), over the flights not aborted: the masses in per cent of OpenRocket's, the centre of mass in OpenRocket's calibres, positive when hpr's is further aft, which shortens the margin by as much.
 
-- mass at launch: 33 compared, median +0.015%, mean absolute 0.030%, from +0.000% to +0.209%
-- mass at rod clearance: 33 compared, median +0.014%, mean absolute 0.078%, from -0.010% to +1.650%
-- centre of mass at rod clearance: 33 compared, median +0.0007 cal, mean absolute 0.0036 cal, from -0.0028 cal to +0.0159 cal
+- mass at launch: 34 compared, median +0.015%, mean absolute 0.029%, from +0.000% to +0.209%
+- mass at rod clearance: 34 compared, median +0.014%, mean absolute 0.077%, from -0.010% to +1.650%
+- centre of mass at rod clearance: 34 compared, median +0.0007 cal, mean absolute 0.0036 cal, from -0.0028 cal to +0.0159 cal
 
 | design | motors | apogee OR (m) | hpr (m) | Δ | max speed OR (m/s) | hpr (m/s) | Δ | max Mach OR | margin OR (cal) | hpr (cal) | Δ (cal) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -59,12 +62,17 @@ hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR
 | Dual parachute deployment | [H999N-P] | 897.8 | 871.7 | -2.91% | 190.83 | 190.91 | +0.04% | 0.561 | 4.206 | 4.193 | -0.0133 |
 | Dual parachute deployment | [I1299N-P] | 1159.0 | 1120.7 | -3.30% | 242.76 | 242.89 | +0.06% | 0.714 | 3.934 | 3.921 | -0.0130 |
 | Dual parachute deployment | [G64W-P] | 227.4 | 226.0 | -0.63% | 58.54 | 58.48 | -0.11% | 0.172 | 4.877 | 4.862 | -0.0151 |
+| Tube fin rocket | [D12-7] | 282.8 | 302.5 | +6.95% (+0.03% on OpenRocket's drag) (+4.61% with the whole base under power) | 119.42 | 127.07 | +6.40% (+0.03% on OpenRocket's drag) (+3.01% with the whole base under power) | 0.351 | 1.871 | 0.795 | -1.0768 |
 | Two stage high power rocket | [H148R-0; H148R-0] | 678.5 | 666.3 | -1.79% | 158.96 | 158.10 | -0.54% | 0.468 | 2.173 | 2.171 | -0.0028 |
 | Two stage high power rocket | [I59WN-P; I357T-14] | 1384.2 | 1382.4 | -0.13% | 175.88 | 175.81 | -0.04% | 0.519 | 2.166 | 2.167 | +0.0004 |
 
 *Chute s early*: OpenRocket's parachute opened that long before the apogee of the same flight with nothing deployed, which the record also holds; hpr flies no parachute from a `.ork` yet. *Without the part set to no drag*: the same flight by hpr with the parts OpenRocket is told have no drag removed, which takes their mass, lift and shape away too, so it is a probe, not the override ([#165][i165]).
 
 [i165]: https://github.com/nrdptel/hpr-sim/issues/165
+
+*On OpenRocket's drag*: the same flight by hpr on OpenRocket's drag coefficient along OpenRocket's own flight (power on while a motor burns, power off after). *With the whole base under power*: hpr's own drag, but with OpenRocket's base drag under power, the whole base's while a motor burns, where hpr takes the motor's cross-section off it. hpr flies both for an apogee more than 5% off with no other named cause. Within 5% on OpenRocket's drag, the metric's cause is *hpr's own drag coefficient*: the net gap is in the drag, though parts of it could cancel, and it does not say which drag is right, so each such flight has a written breakdown ([ADR-097][adr-097]).
+
+[adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
 
 The named causes, sized ([M2.2e4][m2-2e4], decision [ADR-073][adr-073]). OpenRocket flew each flight with a named cause again without it. *Nothing deployed*: the same flight with no parachute opening. *Drag settings cleared too*: also with every part's stated drag coefficient cleared, so each part has the drag of its shape, as in hpr, which reads the setting but can't apply it yet. *The parts removed*: nothing deployed and the parts set to no drag taken off, in OpenRocket and in hpr alike, which also takes away their lift. Each Δ is hpr's apogee less that flight's, in per cent of it. *Within 5% after*, for an apogee more than 5% off: whether every one of these flights with all its causes taken out is within 5% of hpr's.
 
@@ -121,6 +129,7 @@ At the rod-clearance step, the parts of the margin (m from the nose tip, and kg)
 | Dual parachute deployment | [H999N-P] | 0.9658 | 0.9666 | 1.2040 | 1.2041 | 0.0566 | 0.0566 | 1.6422 | 1.6421 |
 | Dual parachute deployment | [I1299N-P] | 0.9813 | 0.9821 | 1.2041 | 1.2042 | 0.0566 | 0.0566 | 1.7253 | 1.7253 |
 | Dual parachute deployment | [G64W-P] | 0.9274 | 0.9283 | 1.2037 | 1.2037 | 0.0566 | 0.0566 | 1.4940 | 1.4940 |
+| Tube fin rocket | [D12-7] | 0.4503 | 0.4503 | 0.4966 | 0.4700 | 0.0248 | 0.0248 | 0.0744 | 0.0744 |
 | Two stage high power rocket | [H148R-0; H148R-0] | 1.3194 | 1.3198 | 1.5403 | 1.5403 | 0.1016 | 0.1016 | 2.4920 | 2.5332 |
 | Two stage high power rocket | [I59WN-P; I357T-14] | 1.3203 | 1.3203 | 1.5403 | 1.5404 | 0.1016 | 0.1016 | 2.7492 | 2.7492 |
 
@@ -165,7 +174,6 @@ Configurations OpenRocket flew that hpr does not fly yet:
 | Three stage low power rocket | [A8-5; B6-0; B6-0] | stages hpr can't separate as written |
 | Three stage low power rocket | [C6-5; B6-0; B6-0] | stages hpr can't separate as written |
 | Three stage low power rocket | [C6-7; C6-0; C6-0] | stages hpr can't separate as written |
-| Tube fin rocket | [D12-7] | tube fins, which hpr has no aerodynamic model for yet |
 
 ## Pod probes
 

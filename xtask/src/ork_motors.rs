@@ -265,7 +265,6 @@ pub(crate) fn not_flown(why: NotFlown) -> &'static str {
         NotFlown::NoSize => "a motor with no size",
         NotFlown::IgnitionNotFlown => "a motor hpr can't light as written",
         NotFlown::AirframeNotAsWritten => "an airframe not read exactly as written",
-        NotFlown::NoAerodynamicModel => "tube fins, which hpr has no aerodynamic model for yet",
         NotFlown::SeparationNotFlown => "stages hpr can't separate as written",
         _ => "other",
     }

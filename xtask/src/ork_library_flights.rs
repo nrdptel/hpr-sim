@@ -1170,7 +1170,6 @@ mod tests {
                     NotFlown::NoSize,
                     NotFlown::IgnitionNotFlown,
                     NotFlown::AirframeNotAsWritten,
-                    NotFlown::NoAerodynamicModel,
                     NotFlown::SeparationNotFlown,
                 ]
                 .map(crate::ork_motors::not_flown);

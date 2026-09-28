@@ -403,14 +403,6 @@ pub enum NotFlown {
     /// as a cone). Flying it would fly a
     /// rocket the design may not be.
     AirframeNotAsWritten,
-    /// The airframe holds a part hpr's aerodynamics refuses: tube fins, until it has a cited method
-    /// for them ([M2.2e9][m2-2e9], tube fin aerodynamics). Their size and mass are read as
-    /// OpenRocket reads them ([ADR-098][adr-098], a tube fin set's automatic radius); a flight
-    /// would stop at the first aerodynamic call.
-    ///
-    /// [m2-2e9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e9
-    /// [adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
-    NoAerodynamicModel,
     /// Its stages come apart in a way hpr doesn't fly: more than one separation; one that can
     /// come before apogee with no motor ahead of it still burning or yet to light when it fires,
     /// or with a motor behind it not yet spent; a negative delay; or an event hpr has no trigger
@@ -1108,8 +1100,6 @@ fn embedded(
 pub(super) struct Airframe<'a> {
     /// What was not read exactly as written, if anything: then no configuration flies.
     pub(super) incomplete: Option<&'a str>,
-    /// A part the aerodynamics refuses, if any: then no configuration flies either.
-    pub(super) aero_refused: Option<&'a str>,
     /// The stages' separations.
     pub(super) separations: &'a [StageSeparation],
 }
@@ -1143,15 +1133,6 @@ fn flyable(
         return Err(LeftOut {
             why: NotFlown::AirframeNotAsWritten,
             message: format!("the airframe was not read exactly as written: {what}"),
-        });
-    }
-    if let Some(what) = airframe.aero_refused {
-        return Err(LeftOut {
-            why: NotFlown::NoAerodynamicModel,
-            message: format!(
-                "the airframe holds {what}, which hpr's aerodynamics refuses until it has a cited \
-                 method for them"
-            ),
         });
     }
     let staging = staging::staging(

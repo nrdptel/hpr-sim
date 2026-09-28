@@ -30,6 +30,8 @@
 //! - [`table`]: override tables from another tool: the drag coefficient against Mach number, and
 //!   the normal force and centre of pressure against Mach number and angle of attack, read from
 //!   RASAero II's export.
+//! - [`tube_fins`]: tube fins, each tube an annular wing: Weissinger's slope with Göthert's rule,
+//!   Fletcher's measured aerodynamic centre, below Mach 0.8.
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
 //! A rocket's centre of pressure is [`NormalForce::cp_station_m`], in metres aft of the nose tip,
@@ -64,6 +66,7 @@ pub mod nose_drag;
 pub mod shock_expansion;
 pub mod supersonic_boattail;
 pub mod table;
+pub mod tube_fins;
 
 pub use afterbody::Boattail;
 pub use body::{BODY_LIFT_K, BodyGeometry};
@@ -87,6 +90,7 @@ pub use table::{
     DragTable, NormalForceColumn, NormalForceLookup, NormalForceTable, TableReference,
     parse_mach_csv,
 };
+pub use tube_fins::TubeFinSetAero;
 
 #[cfg(test)]
 mod testing;

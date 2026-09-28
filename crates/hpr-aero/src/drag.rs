@@ -35,14 +35,17 @@
 //! [adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 
 use hpr_core::interp::Lookup;
-use hpr_design::{FinCrossSection, FinSet, LaunchLug, NoseShape, PlacedComponent, RailButton};
+use hpr_design::{
+    FinCrossSection, FinSet, LaunchLug, NoseShape, PlacedComponent, RailButton, TubeFinSet,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::afterbody::Boattail;
 use crate::body::BodyGeometry;
-use crate::error::{AeroError, check_dimension};
+use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::FinGeometry;
 use crate::nose_drag::PressureDragCurve;
+use crate::tube_fins::TUBE_FIN_MACH_LIMIT;
 
 /// Reynolds number below which the friction formulas no longer hold and the coefficient is held
 /// at its value there (Niskanen 2009 p. 44).
@@ -1005,6 +1008,10 @@ pub struct ComponentDragTerms {
     /// builds, so the normal force and a drag table work; [`crate::AeroModel::drag`] without a
     /// table returns [`AeroError::Unsupported`] for it.
     pub unsupported: Option<String>,
+    /// The top of the component's own Mach range, and its model's name, where it has one below
+    /// the buildup's: tube fins' ([`crate::tube_fins::TUBE_FIN_MACH_LIMIT`]). The buildup returns
+    /// [`AeroError::Mach`] for this component at it and above.
+    pub mach_limit: Option<(f64, &'static str)>,
     /// A step down in radius at the fore end: its decrease in area, a boattail of no length
     /// (eq. 3.88 at `γ = 0`), times the base drag coefficient.
     pub boattail_area_ratio: f64,
@@ -1020,7 +1027,7 @@ pub struct ComponentDragTerms {
     /// only parts between that leave some: the base drag's factor
     /// ([`Boattail::base_pressure_ratio`], [`BaseBehindBoattail`]).
     pub base_behind: Option<BaseBehindBoattail>,
-    /// A fin set's pressure-drag inputs.
+    /// A fin set's pressure-drag inputs, or a tube fin set's walls as square-edged fins'.
     pub fins: Option<FinPressureTerms>,
     /// Launch lugs' and rail buttons' areas (a lug's times its length factor), times the
     /// stagnation drag coefficient (eq. 3.95–3.96).
@@ -1050,6 +1057,7 @@ impl ComponentDragTerms {
             step: None,
             shoulder: None,
             unsupported: None,
+            mach_limit: None,
             boattail_area_ratio: 0.0,
             boattail: None,
             in_wake_of: None,
@@ -1165,6 +1173,35 @@ impl ComponentDragTerms {
         Ok(terms)
     }
 
+    /// A tube fin set's terms: friction inside and outside every tube, `2π L (r_o + r_i)` each
+    /// with no form factor, and pressure drag on the walls' frontal annulus `π (r_o² − r_i²)`,
+    /// as a square-edged fin's (eq. 3.90 at the leading edge, eq. 3.92 at the trailing edge), up to
+    /// the tube-fin model's Mach limit.
+    pub(crate) fn tube_fins(
+        component: &PlacedComponent,
+        set: &TubeFinSet,
+        length_m: f64,
+        reference_area_m2: f64,
+    ) -> Result<Self, AeroError> {
+        let mut terms = Self::empty(component, length_m)?;
+        check_dimension("tube fin length", set.length_m, false)?;
+        check_dimension("tube fin outer radius", set.outer_radius_m, false)?;
+        check_dimension("tube fin thickness", set.thickness_m, true)?;
+        let (outer, inner) = (set.outer_radius_m, set.outer_radius_m - set.thickness_m);
+        check_dimension("tube fin inner radius", inner, false)?;
+        let count = f64::from(set.count);
+        let wetted = 2.0 * std::f64::consts::PI * set.length_m * (outer + inner);
+        terms.friction_area_ratio = count * wetted / reference_area_m2;
+        terms.fins = Some(FinPressureTerms {
+            cross_section: FinCrossSection::Square,
+            leading_edge_sweep_rad: 0.0,
+            frontal_area_ratio: count * std::f64::consts::PI * (outer * outer - inner * inner)
+                / reference_area_m2,
+        });
+        terms.mach_limit = Some((TUBE_FIN_MACH_LIMIT, "the tube-fin model"));
+        Ok(terms)
+    }
+
     /// A row of launch lugs (eq. 3.95–3.96).
     pub(crate) fn launch_lugs(
         component: &PlacedComponent,
@@ -1216,6 +1253,12 @@ impl ComponentDragTerms {
                 id: self.id.clone(),
                 source: Box::new(AeroError::Unsupported(why.clone())),
             });
+        }
+        if let Some((limit, model)) = self.mach_limit {
+            check_mach(mach, limit, model).map_err(|e| AeroError::InComponent {
+                id: self.id.clone(),
+                source: Box::new(e),
+            })?;
         }
         let friction = if self.friction_area_ratio > 0.0 {
             skin_friction_coefficient(reynolds, self.relative_roughness, mach)?

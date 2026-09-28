@@ -12,7 +12,8 @@
 - **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970), the basis of
   [Barrowman's method](../glossary.md#barrowmans-method); supersonic linear theory for fins past
   Mach 1; for drag, mainly Niskanen's 2009 OpenRocket thesis, with Stoney's 1961 NASA measurements
-  of noses through Mach 1, and MIL-HDBK-762 (1990) for boattails faster than sound.
+  of noses through Mach 1, and MIL-HDBK-762 (1990) for boattails faster than sound; for tube
+  fins, Weissinger's ring-wing formula and Fletcher's 1957 NACA measurements.
 - **How well it is validated:**
   - *Faster than sound, drag is only partly validated, and it misses both ways.* It reads high
     against a wind tunnel, most of all for thin, sharp fins; the body alone reads a little low
@@ -108,6 +109,13 @@
     0.81% of its apogee below Mach 0.81. No measured flight checks them. Both codes leave out the
     pods' and the body's effect on each other's flow, and hpr a single pod's off-axis moments
     ([Pods](#pods)).
+  - *[Tube fins](../glossary.md#tube-fin)*, each tube a ring wing below Mach 0.8: the slope is
+    within 3% of five rings measured in a wind tunnel. No tube fin rocket has been checked against
+    a measurement. On OpenRocket's example, hpr's apogee is 6.95% higher, a net gap in the drag,
+    and OpenRocket's tube-fin drag was refined against real flights, so hpr's probably reads low.
+    The centre of pressure rests on a judgement that moves that example's margin from 0.29 to
+    0.79 calibres, against OpenRocket's 1.87
+    ([Tube fins](#tube-fins), [#228](https://github.com/nrdptel/hpr-sim/issues/228)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
   ([transonic and supersonic](../glossary.md#transonic-and-supersonic)), a steep boattail's drag
@@ -149,7 +157,8 @@ Code: [`hpr_aero::body`](../api/hpr_aero/body/index.html) (bodies of revolution)
 [`hpr_aero::shock_expansion`](../api/hpr_aero/shock_expansion/index.html) (the body faster than
 sound), [`hpr_aero::blunt_tip`](../api/hpr_aero/blunt_tip/index.html) (a blunt tip's cap and its
 handover),
-[`hpr_aero::table`](../api/hpr_aero/table/index.html) (tables from other programs) and
+[`hpr_aero::table`](../api/hpr_aero/table/index.html) (tables from other programs),
+[`hpr_aero::tube_fins`](../api/hpr_aero/tube_fins/index.html) (tube fins) and
 [`hpr_aero::model`](../api/hpr_aero/model/index.html) (a whole rocket's terms, built from its
 [`Layout`](../api/hpr_design/tree/struct.Layout.html)). Decisions: [ADR-008][adr-008] (normal force
 and centre of pressure) and [ADR-009][adr-009] (drag). The milestone [M1.5a](../decisions-and-roadmap.md#m1-5a) covers the
@@ -232,6 +241,13 @@ Sources:
   Coefficient (CD) Wind Tunnel Data*, Rogers Aeroscience, 2022 (slides).
 - **[RAS]** C. E. Rogers and D. Cooper, *Rogers Aeroscience RASAero II Aerodynamic Analysis and
   Flight Simulation Program Users Manual*, version 1.0.2.0, 2019.
+- **[F57]** H. S. Fletcher, *Experimental Investigation of Lift, Drag, and Pitching Moment of Five
+  Annular Airfoils*, NACA TN 4117, 1957 (`naca-tn-4117-fletcher-1957-annular-airfoils`).
+- **[H65]** S. F. Hoerner, *Fluid-Dynamic Drag*, 1965, p. 7-13, *Ring Foil*
+  (`hoerner-1965-fluid-dynamic-drag`).
+- **[W21]** N. Wagner, *Theoretical and Experimental Investigation into the Flight of an X-Zylo*,
+  arXiv:2102.02647, 2021, eq. 15, quoting J. Weissinger, *Zur Aerodynamik des Ringflügels*, 1955
+  (`arxiv-2102.02647-x-zylo-ring-wing`).
 - **[PNK57]** W. C. Pitts, J. N. Nielsen and G. E. Kaattari, *Lift and Center of Pressure of
   Wing-Body-Tail Combinations at Subsonic, Transonic, and Supersonic Speeds*, NACA Report 1307,
   1957 (`naca-report-1307-pitts-nielsen-kaattari-1957-wing-body-tail-lift`).
@@ -2416,10 +2432,8 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
       slope is negative, so it takes some away.
     - Body tubes give none at small angles. Their own slope is 0, and their body lift grows with
       `sin² α`, so it adds nothing there.
-  - Tube fins, which are refused until a cited method exists
-    ([issue #15](https://github.com/nrdptel/hpr-sim/issues/15);
-    [M2.2e9](../decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, is the milestone for it). Any part kind the model doesn't
-    know is refused too. [Pods](../glossary.md#pod) have their own section ([Pods](#pods)).
+  - Tube fins, which have their own section ([Tube fins](#tube-fins)). Any part kind the model
+    doesn't know is refused. [Pods](../glossary.md#pod) have their own section ([Pods](#pods)).
   - Launch lugs and rail buttons add drag only.
 
 ### Fins through Mach 1
@@ -2826,6 +2840,152 @@ and neither code's roll is compared.
 - **Canted fins on a pod** are refused: their roll forcing about the rocket's axis is not
   modelled. So is a pod's tube of no length with a radius, a flat disc the drag buildup has no
   term for.
+
+## Tube fins
+
+A [tube fin](../glossary.md#tube-fin) set is a ring of short open tubes around the airframe, in
+place of flat fins. hpr flies each tube as an **annular wing** (a ring wing): a wing bent round
+into a tube, which lifts when the air meets it at an angle. **Only its parts are validated: no
+tube fin rocket has been checked against a wind tunnel or a measured flight.** The ring wing's
+slope is within 3% of five rings measured in a wind tunnel, which were thick and cambered, not
+paper tubes. What the tubes do to each other and to the body is not modelled, because no source
+measures it. [M2.2e9](../decisions-and-roadmap.md#m2-2e9) added it ([ADR-099][adr-099], tube fins
+flown as ring wings).
+
+**The normal force.** A ring wing of diameter `d` and length `L` lifts about twice as much as a
+flat wing of span `d` and chord `L`. A long, thin ring lifts twice what a solid body of its diameter
+would, because it turns the air inside it as well as the air around it (Hoerner 1965, p. 7-13:
+`L = q d² π α` for a ring of small aspect ratio). hpr takes Weissinger's formula for a thin ring
+(1955, as quoted by Wagner 2021, eq. 15), which runs from the short-ring limit to that long-ring
+limit. With `λ = L/d`, its lift slope reads as below. At small angles that is its
+[normal-force slope](../glossary.md#normal-force-slope), here on the area `d L`, not the
+reference area:
+
+`C_Lα = π² / (1 + πλ/2 + λ arctan(1.2 λ))` per radian.
+
+`d` is the tube's mean diameter, its outer and inner radii added; for a paper tube it is within
+a few per cent of the inner diameter the other choice would give. Fletcher's rings run from
+`λ = 1/3` to 3. A longer tube rests on the formula alone, which the tests hold to its long-ring
+limit. A set of `N` tubes takes `N`
+times one tube's slope, on the rocket's [reference area](../glossary.md#reference-area).
+Faster than Mach 0, it takes Göthert's rule, the same idea as the fins' Prandtl–Glauert factor:
+the slope is the one a ring `1/β` times longer would have, over `β = √(1 − M²)`. That leaves the
+long-ring limit unchanged and scales the short-ring limit by `1/β`.
+
+**The centre of pressure.** Fletcher measured where the lift of five rings acts (NACA TN 4117,
+1957, Fig. 8, at Mach 0.13). hpr reads it against the ring's aspect ratio `A = d/L`, interpolated
+in straight lines:
+
+| `A = d/L` | 0 | 1/3 (thick ring) | 2/3 | 1 | 1.5 | 3 |
+|---|---|---|---|---|---|---|
+| aerodynamic centre, fraction of `L` aft of the leading edge | 0 (theory) | −0.11 (left out) | 0.143 | 0.203 | 0.253 | 0.355 |
+
+The table ends at `A = 3`, Fletcher's shortest ring; a shorter ring is refused. Below
+`A = 2/3` the line runs to the leading edge at `A = 0`. That end point is hpr's own derivation
+from [slender-body theory](../glossary.md#slender-body-theory), in which a long, thin ring's lift
+all appears at its front edge; no source states it for a ring.
+
+Fletcher's `A = 1/3` ring is left out, and that is a judgement. Its centre sits ahead of its
+leading edge. Fletcher puts that down to its low aspect ratio: such a ring behaves more like a
+slender body of revolution than the others (p. 4). That this would not carry over to a paper
+tube is hpr's inference, untested. His rings had a Clark Y section 11.7% of the chord thick,
+all of it outside a straight bore. At a chord of three bores that wall is 0.35 of the bore
+thick, so about two thirds of the ring's frontal disc is wall, against a few per cent for a
+paper tube. His thinner rings may carry some of the same forward shift. The choice matters. On
+the worked example below, the margin at rod clearance is:
+
+| centre rule | margin (calibres) |
+|---|---|
+| Fletcher's `A = 1/3` point taken | 0.29 |
+| the line to the leading edge (hpr's) | 0.79 |
+| OpenRocket | 1.87 |
+
+The 0.29 holds Fletcher's −0.11 below `A = 1/3`, as a first version of this model did; it comes
+from a one-off run, not kept in the report.
+
+**The drag.** Friction takes the inside and the outside of every tube, `2π L (r_o + r_i)` per
+tube,
+at the rocket's skin-friction coefficient ([Drag](#drag)). The wall's front ring,
+`π (r_o² − r_i²)` per tube, takes a square fin edge's pressure drag: a blunt face at the front and
+base drag behind ([Drag](#drag), eqs. 3.90 and 3.92).
+
+**Refused.** hpr refuses these cases rather than guess:
+
+- Mach 0.8 and faster. No source covers tube fins near the speed of sound, where the flow through
+  a tube can choke. A flight that reaches it stops with the tube-fin model's error, even on an
+  override table, which still takes the tubes' stations and roll from the model.
+- Fewer than three tubes. The body's own flow around three or more evenly spaced tubes cancels in
+  the sum, but around one or two it doesn't.
+- Solid tubes, with a wall as thick as the radius.
+- Tube fins on a pod.
+- A ring shorter than a third of its diameter (`A > 3`), past Fletcher's rings.
+- Tubes that overlap each other.
+
+A tumbling airframe with tube fins stays refused too ([Recovery](recovery.md)).
+
+**Worked example.** OpenRocket's *Tube fin rocket* has six tubes 76.2 mm long, of radius
+12.395 mm with a 0.330 mm wall, on a body of the same radius. Its tubes are just longer than
+Fletcher's longest ring, and their centre falls on the line below his `A = 2/3`, the judgement
+above.
+
+| quantity | value |
+|---|---|
+| mean diameter `d` | 24.46 mm |
+| `λ = L/d` | 3.115 |
+| Weissinger's `C_Lα` on `d L` | 0.990 per radian, 98.1% of the long-ring limit `π/λ` |
+| one tube's slope, on the reference area 4.827 cm² | 3.82 per radian |
+| the set's, six tubes, at Mach 0 | 22.93 per radian |
+| at Mach 0.35, its fastest | 22.96 per radian |
+| centre, at `A = 1/λ = 0.321` | 0.0689 `L`, 5.2 mm aft of the leading edge |
+| friction area, six tubes inside and out | 145.6 times the reference area |
+| wall area | 0.315 times the reference area |
+| drag at Mach 0.2, friction and wall | 0.741 and 0.310, of the rocket's 1.654 |
+
+**Against OpenRocket.** The *Tube fin rocket* is in the
+[flight report](../format/ork.md#hprs-flights-against-openrockets). Flown on hpr's own drag, its
+apogee is 6.95% above OpenRocket's, 302.5 m against 282.8 m. On OpenRocket's recorded drag, hpr's
+apogee is within 0.03% of OpenRocket's ([ADR-097][adr-097]). So the net gap is the drag's,
+though parts of it could cancel, and the rest of the flight agrees. OpenRocket's per-component
+drag, read through its public API but not kept as a record, points to where. These are leads
+for [#228](https://github.com/nrdptel/hpr-sim/issues/228), not measurements the repository
+reproduces:
+
+- The nose, the body and the lug agree within 0.005.
+- The tube fins take 1.18 in OpenRocket's total and 1.05 in hpr's.
+- Keeping the whole base while the motor burns, as OpenRocket does, closes 2.3 of the 6.95
+  points. This one is in the report: hpr flew it. That rule is not specific to tube fins
+  ([#222](https://github.com/nrdptel/hpr-sim/issues/222)).
+
+**hpr's tube-fin drag probably reads low.** OpenRocket refined its tube-fin drag against
+measured flights of two tube-fin rockets. A table in a comment on the change that last revised
+it ([openrocket#2066](https://github.com/openrocket/openrocket/pull/2066)) has seven flights in
+five motor cases: OpenRocket's apogee is within −2% to +5.2% of the measured one, and high in
+four of the five. hpr has checked itself
+against no measured flight, and a code-to-code gap is not a measurement. Still, that is evidence
+OpenRocket's drag is the nearer of the two here. What hpr's leaves out is listed below, and
+[#228](https://github.com/nrdptel/hpr-sim/issues/228) holds the search for a measured source.
+
+The [stability margin](../glossary.md#stability-margin) differs more. At rod clearance hpr gives
+0.79 [calibres](../glossary.md#calibre-caliber) and OpenRocket 1.87. The next two points come
+from the same look, and are leads too:
+
+- OpenRocket's tube fins take a slope of 37.8 per radian, 1.62 times the 23.4 that six isolated
+  thin rings reach at their long-ring limit. hpr takes 22.9.
+- OpenRocket's centre is a quarter of the tube's length aft of the leading edge, hpr's 0.069 of it.
+  The quarter length alone would add about 0.51 calibres to hpr's margin.
+
+Which is right is open: nothing measured separates them.
+
+**What it leaves out:**
+
+- How the body and the tubes change each other's flow: no interference factor is applied.
+- The gaps between tubes and body, and the drag where they meet.
+- How the flow through a tube develops, or chokes.
+- A thin tube's measured centre of pressure.
+
+The rocket's own crossflow, `R²/s²` around a tube `s` from its axis, turns with twice the roll
+angle. It sums to zero over three or more tubes evenly spaced, which is why the model takes three
+or more. That is a derivation, not a measurement.
 
 ## The normal force from RASAero II
 
@@ -3638,7 +3798,7 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
     tip cone that crosses the root; outlines of each planform; where linear theory starts.
   - A proptest (a rule checked on many random inputs): scaling every length leaves slopes
     unchanged and scales the CP; the reference diameter scales slopes only.
-  - Refusals: tube fins, nine fins, Mach 5 for the normal force and Mach 1 for the drag buildup,
+  - Refusals: nine fins, Mach 5 for the normal force and Mach 1 for the drag buildup,
     angles out of range.
 
 ### Normal force through Mach 1
@@ -4509,3 +4669,4 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
 [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
+[adr-099]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-099-tube-fins-flown-as-ring-wings-2026-09-28

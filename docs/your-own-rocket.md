@@ -724,11 +724,17 @@ The example leaves out several kinds of part and setting that a design can have:
   [`released_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/released_ballast.rs)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
-- **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
-  are open tubes that run along the body, touching it, in place of flat fins. A design can hold
-  them, and they are weighed, but a flight or a CP can't be worked out with them.
-  [M2.2e9](decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, is the milestone that adds a
-  method.
+- **Tube fins fly as ring wings, below Mach 0.8, with three tubes or more.** Tube fins are open
+  tubes that run along the body, touching it, in place of flat fins. Each tube's slope comes from
+  a cited ring-wing formula. Its centre of pressure comes from Fletcher's wind-tunnel rings for
+  short tubes and from hpr's own derivation for tubes longer than 1.5 diameters, a judgement.
+  The drag applies the flat fins' rules. No tube fin rocket has been checked against a
+  measurement. hpr's tube-fin drag probably reads low, so treat an apogee as high. On
+  OpenRocket's example hpr's margin is 0.79 calibres against OpenRocket's 1.87; nothing measured
+  says which is right. A flight that reaches Mach 0.8 stops with the tube-fin model's error. Also
+  refused: fewer than three tubes, solid tubes, tubes that overlap each other, a tube shorter
+  than a third of its diameter, tube fins on a pod, and a tumbling airframe with tube fins
+  ([aerodynamics: Tube fins](physics/aero.md#tube-fins)).
 - **Pods fly on Barrowman's rules, without their interference with the body.** A
   [pod set](physics/design.md#pods) gives each pod's parts their own normal force and drag, once
   per pod, as if the airframe did not disturb the air around them. Nothing measured checks it yet,
