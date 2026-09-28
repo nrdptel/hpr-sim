@@ -924,10 +924,15 @@ pub(crate) fn page(report: &Value) -> String {
         };
         let on_drag = with("on_openrocket_s_drag");
         if on_drag.is_some() || !row["whole_base_under_power"].is_null() {
-            let sized = drag_sizes(row["on_openrocket_s_drag"]["apogee_percent"].as_f64());
+            let sized = |key: &str| drag_sizes(row["on_openrocket_s_drag"][key].as_f64());
+            let label = match (sized("apogee_percent"), sized("max_speed_percent")) {
+                (true, true) => OWN_DRAG.to_owned(),
+                (true, false) => format!("{OWN_DRAG} for the apogee"),
+                (false, true) => format!("{OWN_DRAG} for the largest speed"),
+                (false, false) => NO_NAMED_CAUSE.to_owned(),
+            };
             let mut cause = format!(
-                "{} (on OR's drag {}",
-                if sized { OWN_DRAG } else { NO_NAMED_CAUSE },
+                "{label} (on OR's drag {}",
                 on_drag
                     .as_deref()
                     .unwrap_or(if row["on_openrocket_s_drag"]["failed"] == true {
@@ -938,6 +943,8 @@ pub(crate) fn page(report: &Value) -> String {
             );
             if let Some(whole) = with("whole_base_under_power") {
                 cause.push_str(&format!("; with OR's base drag alone {whole}"));
+            } else if row["whole_base_under_power"]["failed"] == true {
+                cause.push_str("; with OR's base drag alone failed");
             }
             cause.push(')');
             causes.push(cause);
@@ -1414,6 +1421,44 @@ mod tests {
                     assert!(on.abs() <= 5.0, "{} {on}", row["flight"]);
                 }
             }
+        }
+    }
+
+    /// Each flight with a metric put down to hpr's own drag, and the decision that writes its
+    /// breakdown: flying on OpenRocket's drag says the gap is in the drag, not which drag is
+    /// right, so each one needs its parts sized in writing (ADR-097).
+    const DRAG_CAUSES_WRITTEN: [(&str, &str); 1] = [("C06/1", "ADR-097")];
+
+    #[test]
+    fn every_flight_put_down_to_the_drag_has_a_written_breakdown() {
+        let report = committed();
+        let caused: BTreeSet<&str> = report["flights"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| {
+                ["apogee_percent", "max_speed_percent"]
+                    .iter()
+                    .any(|key| row_cause(row, key) == OWN_DRAG)
+            })
+            .map(|row| row["flight"].as_str().unwrap())
+            .collect();
+        let written: BTreeSet<&str> = DRAG_CAUSES_WRITTEN.iter().map(|(f, _)| *f).collect();
+        assert_eq!(
+            caused, written,
+            "a flight put down to the drag needs a written breakdown"
+        );
+        let decisions =
+            fs::read_to_string(crate::ork::root().unwrap().join("docs/DECISIONS.md")).unwrap();
+        for (flight, adr) in DRAG_CAUSES_WRITTEN {
+            let start = decisions.find(&format!("\n## {adr}: ")).unwrap();
+            let end = decisions[start + 1..]
+                .find("\n## ")
+                .map_or(decisions.len(), |e| start + 1 + e);
+            assert!(
+                decisions[start..end].contains(&format!("`{flight}`'s breakdown")),
+                "{adr} writes no breakdown of {flight}"
+            );
         }
     }
 
