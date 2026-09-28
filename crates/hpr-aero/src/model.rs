@@ -945,6 +945,9 @@ pub struct AeroModel {
     drag_terms: Vec<ComponentDragTerms>,
     drag_table: Option<DragTable>,
     normal_force_table: Option<NormalForceTable>,
+    /// Whether the aft base keeps its whole drag while a motor burns
+    /// ([`AeroModel::with_full_base_drag_under_power`]).
+    full_base_drag_under_power: bool,
 }
 
 impl AeroModel {
@@ -1435,6 +1438,7 @@ impl AeroModel {
             drag_terms,
             drag_table: None,
             normal_force_table: None,
+            full_base_drag_under_power: false,
         })
     }
 
@@ -1449,6 +1453,43 @@ impl AeroModel {
     /// The drag override table, if any.
     pub fn drag_table(&self) -> Option<&DragTable> {
         self.drag_table.as_ref()
+    }
+
+    /// This model with the aft base's drag kept whole while a motor burns: the thrusting motors'
+    /// cross-section is not taken off the base ([`DragConditions::thrusting_motor_area_m2`] and
+    /// the pods' are read as zero), and a burning motor still selects a table's power-on curve.
+    ///
+    /// hpr's own buildup takes it off, as Niskanen describes (2009, p. 50: "if the base is the
+    /// same size as the motor itself, no base drag"). OpenRocket 24.12 does not: it keeps the
+    /// whole base's coefficient, as its own output shows on a minimum-diameter rocket
+    /// ([ADR-097][adr-097]). This is how a comparison with OpenRocket sizes that
+    /// difference; it is not a better model.
+    ///
+    /// [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
+    #[must_use]
+    pub fn with_full_base_drag_under_power(mut self) -> Self {
+        self.full_base_drag_under_power = true;
+        self
+    }
+
+    /// Whether the aft base keeps its whole drag while a motor burns
+    /// ([`AeroModel::with_full_base_drag_under_power`]).
+    pub fn full_base_drag_under_power(&self) -> bool {
+        self.full_base_drag_under_power
+    }
+
+    /// `conditions` as this model reads them: with no motor area under power when the base keeps
+    /// its whole drag.
+    fn read(&self, conditions: &DragConditions) -> DragConditions {
+        if self.full_base_drag_under_power {
+            DragConditions {
+                thrusting_motor_area_m2: 0.0,
+                thrusting_pod_motor_area_m2: 0.0,
+                ..*conditions
+            }
+        } else {
+            *conditions
+        }
     }
 
     /// This model with `table` replacing the whole rocket's normal force and centre of pressure
@@ -1513,6 +1554,7 @@ impl AeroModel {
     ///   finite.
     pub fn drag(&self, flow: &Flow, conditions: &DragConditions) -> Result<Drag, AeroError> {
         conditions.validate()?;
+        let conditions = &self.read(conditions);
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
         let mut drag = if let Some(table) = &self.drag_table {
             flow.validate_angles()?;
@@ -1569,6 +1611,7 @@ impl AeroModel {
     ) -> Result<Vec<ComponentDrag>, AeroError> {
         flow.validate_for_buildup()?;
         conditions.validate()?;
+        let conditions = &self.read(conditions);
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
         let reynolds = conditions.reynolds_per_m * self.length_m;
         self.drag_terms
@@ -2593,6 +2636,49 @@ mod tests {
             matches!(&err, AeroError::Unsupported(what) if what.starts_with("motor mounts in more than one pod set")),
             "{err}"
         );
+    }
+
+    /// With the base's drag kept whole under power (OpenRocket's rule, ADR-097), neither the
+    /// airframe's nor a pod's base loses its burning motor's area, in the whole rocket's drag or
+    /// by component; without it both do. Coasting is the same either way.
+    #[test]
+    fn a_whole_base_under_power_keeps_the_motors_area() {
+        let mach = 0.4;
+        let mut rocket = podded_rocket(2);
+        let pods = rocket.stages[0].components[1].children.last_mut().unwrap();
+        pods.children[1].motor_mount = Some(hpr_design::MotorMount::default());
+        let relieved = model(&rocket);
+        assert!(!relieved.full_base_drag_under_power());
+        let whole = relieved.clone().with_full_base_drag_under_power();
+        assert!(whole.full_base_drag_under_power());
+        let flow = Flow::axial(mach);
+        let coasting = DragConditions::coasting(5e6);
+        let thrusting = DragConditions::thrusting(5e6, 1e-4).with_pod_motors(2e-4);
+        let base =
+            |m: &AeroModel, conditions: &DragConditions| m.drag(&flow, conditions).unwrap().base;
+        assert_eq!(base(&whole, &thrusting), base(&whole, &coasting));
+        assert_eq!(base(&whole, &coasting), base(&relieved, &coasting));
+        assert!(base(&relieved, &thrusting) < base(&relieved, &coasting));
+        for id in ["tail", "pod-tube"] {
+            let part = |m: &AeroModel, conditions: &DragConditions| {
+                m.buildup_components(&flow, conditions)
+                    .unwrap()
+                    .into_iter()
+                    .find(|c| c.id == id)
+                    .unwrap()
+                    .drag
+                    .base
+            };
+            assert_eq!(part(&whole, &thrusting), part(&whole, &coasting), "{id}");
+            assert!(
+                part(&relieved, &thrusting) < part(&relieved, &coasting),
+                "{id}"
+            );
+        }
+        // Bad conditions are still refused before they are read.
+        let bad = DragConditions::thrusting(5e6, -1e-4);
+        assert!(whole.drag(&flow, &bad).is_err());
+        assert!(whole.buildup_components(&flow, &bad).is_err());
     }
 
     /// A pod's fins turn with it: two pods at π/4 and 5π/4, each holding one fin pointing out,
