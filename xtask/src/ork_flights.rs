@@ -1572,7 +1572,8 @@ fn rod_probes_table(report: &Value) -> String {
          | probe | rod | apogee OR (m) | hpr (m) | Δ | rod's change OR | hpr \
          | max speed OR (m/s) | hpr (m/s) | Δ | α OR (°) | margin OR (cal) | hpr (cal) \
          | at OR's α (cal) | at apogee OR (E, N m) | hpr (E, N m) | bearing OR | hpr |\n\
-         |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n",
+         |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:\
+         |---:|\n",
     );
     for probe in std::iter::once(without).chain(rods) {
         let m = &probe["metrics"];
@@ -2298,10 +2299,11 @@ mod tests {
     /// within 0.006 calibres of OpenRocket's. The bounds were set after the measurement (0.03
     /// degrees, 0.64%, 0.27 points and 0.0048 calibres at most); a bearing read anticlockwise
     /// turns the east probes 180 degrees, and an angle read from the horizon makes the vertical
-    /// rod a horizontal rail, which hpr refuses. The bearing's 0.03 degrees is Earth's rotation,
-    /// which the two codes apply differently to eastward motion (0.18 m across 370 m at 20
-    /// degrees), and the distance's 0.64% is partly that OpenRocket's position is its highest
-    /// 0.05 s row and hpr's its apogee event: a longer flight would take more of both bounds.
+    /// rod a horizontal rail, which hpr refuses. The bearing's 0.03 degrees is motion across the
+    /// tilt (0.18 m across 370 m at 20 degrees): hpr's fits Earth's rotation, OpenRocket's goes
+    /// the other way, cause unmeasured. The distance's 0.64% is partly that OpenRocket's position
+    /// is its highest 0.05 s row and hpr's its apogee event: a longer flight would take more of
+    /// both bounds.
     /// The census leaves the probes out (ADR-093), so these bounds are what holds them in CI.
     #[test]
     fn tilted_rods_fly_as_openrocket_flies_them() {

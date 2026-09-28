@@ -2109,7 +2109,7 @@ OpenRocket's flight of the same configuration with nothing deployed. All three d
 hpr flies a tilted launch rod the way OpenRocket records it
 ([M2.2e5](../decisions-and-roadmap.md#m2-2e5), issue
 [#173](https://github.com/nrdptel/hpr-sim/issues/173)). This is checked only against OpenRocket,
-on one small airframe, from a 1 m rod in calm air. A tilted rod in wind (or with OpenRocket's
+on one small probe airframe and one private design, from a 1 m rod in calm air. A tilted rod in wind (or with OpenRocket's
 *launch into wind* setting), a longer rod and the rocket's roll on the rod are not tested.
 
 OpenRocket stores the rod's angle from the vertical and the compass bearing it leans toward, as
@@ -2117,7 +2117,8 @@ OpenRocket stores the rod's angle from the vertical and the compass bearing it l
 the same bearing and an elevation of 90 degrees less the tilt, so a rod 10 degrees from the
 vertical is a rail at 80 degrees. Like the vertical rod before it, the rail has no friction. The
 conversion is in the comparison tool (`cargo xtask ork-flights`), which takes the conditions from
-OpenRocket's record; the `.ork` reader itself reads the angles in radians, as the table above says.
+OpenRocket's record. The `.ork` reader stores the file's degrees as radians, as the table above
+says, but loading a design does not set up a rail: a program that flies it gives its own.
 
 **How it was checked.** Four small probe designs fly the airframe of the
 [pod probes](../physics/aero.md#pods) (a 0.2 m cone, a 0.6 m tube 60 mm across, three fins and an
@@ -2139,9 +2140,10 @@ at most 0.64% nearer. In calm air, the direction of the tilt changes only where 
 not how high: the two 10° rods lose the same apogee. The test
 `tilted_rods_fly_as_openrocket_flies_them` (in `xtask/src/ork_flights.rs`) holds each probe within
 0.1 degrees of OpenRocket's bearing, 1% of its distance and 0.5 percentage points of the apogee it
-loses ([ADR-094][adr-094]). The small differences left are Earth's rotation, which the two
-programs apply differently to eastward motion, and OpenRocket's position being read from its
-highest recorded step rather than the apogee itself.
+loses ([ADR-094][adr-094]). The small differences left are partly OpenRocket's position being
+read from its highest recorded step rather than the apogee itself, and partly sideways motion
+across the tilt: hpr's fits Earth's rotation in sign and size, and OpenRocket's, the other way,
+has no measured cause.
 
 **What differs: the margin.** OpenRocket's rocket reaches its first step past the rod's end
 ([rail exit](../glossary.md#rail-exit-and-rail-exit-velocity)) at a small
@@ -2238,7 +2240,8 @@ This section compares hpr's flights of the 12 private designs with OpenRocket's
 same definitions. **It is a [code-to-code](../glossary.md#code-to-code-comparison) comparison with
 no target, and hpr flies only 7 of the 12 designs.** On three of them hpr's stability margin is
 clearly larger than OpenRocket's, so it calls those rockets more stable than OpenRocket does
-([#172](https://github.com/nrdptel/hpr-sim/issues/172)). Nobody without the private library can
+([#172](https://github.com/nrdptel/hpr-sim/issues/172) for two,
+[#186](https://github.com/nrdptel/hpr-sim/issues/186) for the third). Nobody without the private library can
 fly them again: CI checks only that the report adds up and names nothing of a design.
 
 **How far it gets.** [M2.2](../decisions-and-roadmap.md#m2-2), the OpenRocket comparison, asks for

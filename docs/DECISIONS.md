@@ -8063,8 +8063,9 @@ the horizon.
    set after measuring 0.03 degrees, 0.64%, 0.27 points and 0.0048 calibres; a bearing read
    anticlockwise fails them by far, and an angle read from the horizon makes a vertical rod a
    horizontal rail, which hpr refuses. A test also points the rail at the bearings
-   `conditions.py` measured OpenRocket's rocket landing on. The bearing's residue is Earth's
-   rotation, which the codes apply differently to eastward motion (hpr's 10-degree east rod
+   `conditions.py` measured OpenRocket's rocket landing on. The bearing's residue is motion
+   across the tilt: hpr's fits Earth's rotation on eastward motion in sign and size, and
+   OpenRocket's goes the other way with no measured cause (hpr's 10-degree east rod
    peaks 0.17 m above its south-west one, OpenRocket's 0.02 m below; at 20 degrees east hpr's
    rocket is 0.09 m south at apogee, OpenRocket's 0.09 m north), and
    part of the distance's is that OpenRocket's position is its highest 0.05 s row, hpr's its
