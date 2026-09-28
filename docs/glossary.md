@@ -775,6 +775,15 @@ only on the Mach number and the angle turned (the Prandtl–Meyer function). hpr
 after such a turn as the upper limit of a boattail's [wave drag](#wave-drag). See
 [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
 
+## Probe design
+
+A small design made only to ask an [oracle](#oracle) one question, such as "what radius does
+OpenRocket give four tubes written `auto`?". It is usually a single body tube carrying the one part
+being asked about. hpr's probe designs for OpenRocket are written by scripts under
+`validation/oracles/openrocket/`, and OpenRocket's answers are committed under
+`validation/fixtures/ork/`, where tests hold hpr to them. See
+[`.ork` design files](format/ork.md#tube-fins-sized-from-the-body) for one set of them.
+
 ## Product of inertia
 
 An off-diagonal term of the inertia tensor, such as `I_yz = −∫ y z dm`. It is zero when the mass is balanced about the axes, as in a rocket that is symmetric about its centre line, and not zero when mass sits off the axis on one side, like a single side pod. Its sign follows the positive convention in [Mass properties](physics/mass.md). A rocket with products of inertia turns a little about one axis when pushed about another.
@@ -1097,6 +1106,17 @@ Niskanen's semi-empirical method, with the [wave drag](#wave-drag) of noses and 
 closed forms and from Stoney's 1961 NASA measurements. See
 [Aerodynamics](physics/aero.md#fins-through-mach-1) and
 [Aerodynamics](physics/aero.md#drag-through-mach-1).
+
+## Tube fin
+
+A short open tube glued along the airframe in place of a flat fin. A *tube fin set* is a ring of
+them around the body. hpr weighs each tube as a hollow cylinder beside the body. A `.ork` file can
+leave the tubes' radius to OpenRocket. With three tubes or more, OpenRocket makes them just wide
+enough to touch the body and each other; one or two take the body's radius. hpr reads that radius
+as OpenRocket does. The aerodynamics refuses tube fins until a cited
+method exists ([M2.2e9](decisions-and-roadmap.md#m2-2e9)). See
+[`.ork` design files](format/ork.md#tube-fins-sized-from-the-body) and
+[Mass properties](physics/mass.md#tube-fins).
 
 ## Tumble recovery
 

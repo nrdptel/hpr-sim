@@ -1801,6 +1801,194 @@ mod tests {
         );
     }
 
+    /// M2.2e8's probes: tube fin sets on a 50 mm or a 20 mm tube, most written `auto` (ADR-098).
+    const TUBE_FINS: [&str; 19] = [
+        "a tube and 1 tube fins of automatic radius",
+        "a tube and 2 tube fins of automatic radius",
+        "a tube and 3 tube fins of automatic radius",
+        "a tube and 4 tube fins of automatic radius",
+        "a tube and 5 tube fins of automatic radius",
+        "a tube and 6 tube fins of automatic radius",
+        "a tube and 8 tube fins of automatic radius",
+        "a tube and 9 tube fins of automatic radius",
+        "a tube and 12 tube fins of automatic radius",
+        "a tube and 20 tube fins of automatic radius",
+        "a tube and 6 tube fins of a stated radius",
+        "a tube and 6 tube fins of automatic radius and a wall thicker than it",
+        "a tube and 6 tube fins of a stated radius, offset from the body",
+        "a tube of automatic radius and 4 tube fins of automatic radius",
+        "a tube and 12 tube fins of a stated radius",
+        "a tube and 100 tube fins of automatic radius",
+        "a 20 mm tube and 1 tube fins of automatic radius",
+        "a 20 mm tube and 2 tube fins of automatic radius",
+        "a 20 mm tube and 5 tube fins of automatic radius",
+    ];
+
+    /// A tube fin set written `auto` has the radius OpenRocket 24.12 works out, the ring closed
+    /// around the body for three tubes or more and the body's radius for one or two; a wall thicker
+    /// than it is cut to it; more than 8 tubes are 8; and the tubes weigh what OpenRocket's do,
+    /// centred where its are (ADR-098). A written radial offset moves nothing in OpenRocket, and
+    /// hpr does not read one. Two inertias depart, and hpr keeps its hollow tubes at `R_b + r`:
+    /// OpenRocket's roll exceeds what any mass inside the ring can have, `(R_b + 2r)²` a unit of
+    /// mass, and its pitch is `N` times one tube's own, with no term for the ring's spread.
+    #[test]
+    fn a_tube_fin_sets_automatic_radius_reads_as_openrocket_does() {
+        let record = record();
+        for question in TUBE_FINS {
+            let probe = probe(&record, question);
+            let (layout, warnings) = hpr(probe);
+            // More than 8 tubes are read as 8 out loud; an offset from the body is read as none,
+            // out loud, which is also what OpenRocket's numbers show.
+            let capped = ["9", "12", "20", "100"]
+                .iter()
+                .any(|n| question.contains(&format!(" and {n} tube fins")));
+            let offset = question.contains("offset");
+            assert_eq!(
+                warnings.len(),
+                usize::from(capped || offset),
+                "{question}: {warnings:?}"
+            );
+            let said = if offset {
+                "read sitting on it"
+            } else {
+                "reads at most 8"
+            };
+            assert!(
+                warnings.iter().all(|w| w.contains(said)),
+                "{question}: {warnings:?}"
+            );
+            for part in probe["parts"].as_array().expect("parts") {
+                let class = part["class"].as_str().expect("a class");
+                if matches!(class, "Rocket" | "AxialStage") {
+                    continue;
+                }
+                let id = part["id"].as_str().expect("an id");
+                let (_, placed) = layout
+                    .find(id)
+                    .unwrap_or_else(|| panic!("{question}: no part {id} in hpr"));
+                // A nose cone's shell is the bore probes' bound (the nose is only on one probe).
+                let (mass_bound, station_bound) = match class {
+                    "NoseCone" => (5e-5, 5e-6),
+                    _ => (1e-14, 1e-15),
+                };
+                let mass = part["mass_kg"].as_f64().expect("a mass");
+                let found = relative(placed.own.mass_kg, mass);
+                assert!(
+                    found.abs() <= mass_bound,
+                    "{question}: {class} is {found:e} from OpenRocket's mass"
+                );
+                let apart_m = -placed.own.cg_m.z - part["cm_x_m"].as_f64().expect("a station");
+                assert!(
+                    apart_m.abs() <= station_bound,
+                    "{question}: {class} is {apart_m:e} m from OpenRocket's"
+                );
+            }
+            let (id, theirs) = probe["tube_fins"]
+                .as_object()
+                .and_then(|sets| sets.iter().next())
+                .expect("one tube fin set");
+            let (_, placed) = layout.find(id).expect("the tube fin set");
+            let Part::TubeFinSet(ours) = &placed.part else {
+                panic!("{question}: {:?}", placed.part);
+            };
+            let number = |key: &str| theirs[key].as_f64().expect(key);
+            assert_eq!(
+                theirs["automatic"].as_bool(),
+                Some(!question.contains("stated"))
+            );
+            assert_eq!(
+                Some(u64::from(ours.count)),
+                theirs["count"].as_u64(),
+                "{question}"
+            );
+            let r = number("outer_radius_m");
+            assert!(
+                relative(ours.outer_radius_m, r).abs() <= 1e-15,
+                "{question}: radius {} against OpenRocket's {r}",
+                ours.outer_radius_m
+            );
+            assert!(
+                relative(ours.thickness_m, number("thickness_m")).abs() <= 1e-15,
+                "{question}: wall {} against {}",
+                ours.thickness_m,
+                number("thickness_m")
+            );
+            let body_radius_m = number("body_radius_m");
+            assert_eq!(placed.body_radius_m, Some(body_radius_m), "{question}");
+            // Per unit mass, about the set's centre: one tube's own inertias, across and about its
+            // axis, and how far its axis is from the body's.
+            let (r_i, length_m) = (number("inner_radius_m"), 0.1);
+            let across = (r * r + r_i * r_i) / 4.0 + length_m * length_m / 12.0;
+            let about = (r * r + r_i * r_i) / 2.0;
+            let d2 = (body_radius_m + r).powi(2);
+            let unit = |i: f64| i / placed.own.mass_kg;
+            let inertia = &placed.own.inertia_kg_m2;
+            // OpenRocket's pitch is each tube's own inertia across it, times the count, with no term
+            // for the tubes' distance from the axis: a second departure (ADR-098).
+            let their_pitch = number("longitudinal_unit_inertia_m2");
+            let n = f64::from(ours.count);
+            assert!(
+                relative(their_pitch, n * across).abs() <= 1e-14,
+                "{question}: {their_pitch}"
+            );
+            if ours.count == 1 {
+                // One tube: its centre `R_b + r` off the axis, and its own roll, in both codes.
+                let [_, y, z] =
+                    [0, 1, 2].map(|k| theirs["component_cg_xyz_m"][k].as_f64().expect("a centre"));
+                let off = y.hypot(z);
+                assert!(
+                    (off - (body_radius_m + r)).abs() <= 1e-15,
+                    "{question}: {off}"
+                );
+                let ours_off = placed.own.cg_m.x.hypot(placed.own.cg_m.y);
+                assert!(
+                    (ours_off - off).abs() <= 1e-15,
+                    "{question}: hpr's centre {ours_off}"
+                );
+                let roll = number("rotational_unit_inertia_m2");
+                assert!(relative(roll, about).abs() <= 1e-15, "{question}: {roll}");
+                assert!(
+                    relative(unit(inertia.z_axis.z), roll).abs() <= 1e-14,
+                    "{question}"
+                );
+                // And its own pitch, about its own centre: the one count where the two agree.
+                assert!(
+                    relative(unit(inertia.x_axis.x), across).abs() <= 1e-13,
+                    "{question}"
+                );
+                assert!(relative(their_pitch, across).abs() <= 1e-14, "{question}");
+            } else {
+                // A ring: hpr's tubes at `R_b + r`, which OpenRocket's roll exceeds past any mass
+                // inside `R_b + 2r`.
+                assert!(
+                    relative(unit(inertia.z_axis.z), about + d2).abs() <= 1e-13,
+                    "{question}"
+                );
+                let bound = (body_radius_m + 2.0 * r).powi(2);
+                let roll = number("rotational_unit_inertia_m2");
+                assert!(
+                    roll > bound,
+                    "{question}: OpenRocket's {roll} within {bound}"
+                );
+                if ours.count >= 3 {
+                    let pitch = unit(inertia.x_axis.x);
+                    assert!(
+                        relative(pitch, across + d2 / 2.0).abs() <= 1e-13,
+                        "{question}: {pitch}"
+                    );
+                    assert!(
+                        relative(unit(inertia.y_axis.y), pitch).abs() <= 1e-13,
+                        "{question}"
+                    );
+                    assert!(
+                        their_pitch > pitch * 1.2,
+                        "{question}: {their_pitch} against hpr's {pitch}"
+                    );
+                }
+            }
+        }
+    }
+
     /// The record was written by the script it names, from OpenRocket 24.12 with no default
     /// materials saved in its preferences, and every probe it holds is one a test here reads: a
     /// probe added to the script and not to a test would be a question nobody checks the answer
@@ -1822,6 +2010,7 @@ mod tests {
         read.extend(OLD_FLAG.iter().map(|(question, _)| *question));
         read.extend(BORES);
         read.push(BORE_REFUSED);
+        read.extend(TUBE_FINS);
         let probes: Vec<&str> = record["probes"]
             .as_object()
             .expect("probes")

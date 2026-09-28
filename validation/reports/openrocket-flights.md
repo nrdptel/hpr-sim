@@ -165,7 +165,7 @@ Configurations OpenRocket flew that hpr does not fly yet:
 | Three stage low power rocket | [A8-5; B6-0; B6-0] | stages hpr can't separate as written |
 | Three stage low power rocket | [C6-5; B6-0; B6-0] | stages hpr can't separate as written |
 | Three stage low power rocket | [C6-7; C6-0; C6-0] | stages hpr can't separate as written |
-| Tube fin rocket | [D12-7] | an airframe not read exactly as written |
+| Tube fin rocket | [D12-7] | tube fins, which hpr has no aerodynamic model for yet |
 
 ## Pod probes
 

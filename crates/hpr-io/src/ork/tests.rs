@@ -1577,7 +1577,7 @@ fn a_part_inside_an_off_axis_tube_is_said_out_loud() {
 /// guessed at or silently dropped. Each of these is a real shape in the reference corpus.
 #[test]
 fn a_part_that_cannot_be_read_honestly_is_left_out_with_its_reason() {
-    let cases: [(&str, &str, &str); 3] = [
+    let cases: [(&str, &str, &str); 2] = [
         // Fins on a nose cone: hpr attaches an external part to a body tube and nothing else.
         (
             "<finish>smooth</finish>",
@@ -1601,16 +1601,6 @@ fn a_part_that_cannot_be_read_honestly_is_left_out_with_its_reason() {
              <trapezoidfinset>",
             "does not run from the root leading edge",
         ),
-        // A tube fin set sized from the body, which hpr has no rule for yet.
-        (
-            "<trapezoidfinset>",
-            "<tubefinset><name>Tubes</name><axialoffset method=\"bottom\">0.0</axialoffset>\
-             <instancecount>6</instancecount><length>0.1</length><radius>auto</radius>\
-             <thickness>0.001</thickness>\
-             <material type=\"bulk\" density=\"680.0\">Cardboard</material></tubefinset>\
-             <trapezoidfinset>",
-            "hpr does not resolve that yet",
-        ),
     ];
     for (from, to, says) in cases {
         let xml = with_parts([0, 1, 2, 3, 4]).replacen(from, to, 1);
@@ -1628,6 +1618,55 @@ fn a_part_that_cannot_be_read_honestly_is_left_out_with_its_reason() {
         assert_eq!(imported.count(WarningKind::Skipped), 1, "{said:?}");
         // The rest of the design still opens, and still lays out.
         imported.value.layout().expect("a design that lays out");
+    }
+}
+
+/// A tube fin set written `auto` is read with its radius left to the layout, which closes the ring
+/// around the body tube, and nothing is said: it is the file's meaning. More than 8 tubes are
+/// read as 8, out loud, as OpenRocket 24.12 reads them ([ADR-098][adr-098]; the probes are
+/// `hpr_validate::openrocket`'s).
+///
+/// [adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
+#[test]
+fn a_tube_fin_set_of_automatic_radius_closes_the_ring() {
+    let tubes = |count: u32| {
+        format!(
+            "<tubefinset><name>Tubes</name><id>tubes</id>\
+             <axialoffset method=\"bottom\">0.0</axialoffset><instancecount>{count}</instancecount>\
+             <length>0.1</length><radius>auto</radius><thickness>0.001</thickness>\
+             <material type=\"bulk\" density=\"680.0\">Cardboard</material></tubefinset>\
+             <trapezoidfinset>"
+        )
+    };
+    let whole = with_parts([0, 1, 2, 3, 4]);
+    assert_eq!(whole.matches("<trapezoidfinset>").count(), 1);
+    for (count, read_as, said) in [(6, 6, 0), (4, 4, 0), (12, 8, 1)] {
+        let xml = whole.replacen("<trapezoidfinset>", &tubes(count), 1);
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let imported = component::rocket(&read.value.document);
+        let about: Vec<_> = imported
+            .warnings
+            .iter()
+            .filter(|warning| warning.message.contains("tube fin"))
+            .collect();
+        assert_eq!(about.len(), said, "{count}: {about:?}");
+        assert!(
+            about.iter().all(|w| w.kind == WarningKind::Dropped),
+            "{about:?}"
+        );
+        let layout = imported.value.layout().expect("a design that lays out");
+        let (body, placed) = layout.find("tubes").expect("the tube fin set");
+        let hpr_design::tree::Part::TubeFinSet(set) = &placed.part else {
+            panic!("{:?}", placed.part);
+        };
+        assert_eq!(set.count, read_as);
+        let body_radius_m = placed.body_radius_m.expect("a body tube");
+        assert_eq!(
+            set.outer_radius_m,
+            hpr_design::TubeFinSet::closing_radius_m(body_radius_m, read_as),
+            "{count} on {body}"
+        );
+        assert!(set.outer_radius_m > 0.0);
     }
 }
 
@@ -2717,6 +2756,37 @@ fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
         Some(NotFlown::AirframeNotAsWritten)
     );
     assert!(design.rocket.configurations.is_empty());
+}
+
+/// Nor is one whose airframe holds tube fins: they are read and weighed (ADR-098), but the
+/// aerodynamics refuses them until it has a cited method (M2.2e9). The same design without them
+/// flies.
+#[test]
+fn a_configuration_with_tube_fins_is_weighed_but_not_flown() {
+    let with = |inside: &str| {
+        motor_design(
+            r#"<motorconfiguration configid="a" default="true"/>"#,
+            "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+             <manufacturer>Estes</manufacturer><designation>F15</designation>\
+             <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+            inside,
+        )
+    };
+    let tubes = "<tubefinset><name>Tubes</name><id>tubes</id>\
+                 <axialoffset method=\"bottom\">0.0</axialoffset><instancecount>6</instancecount>\
+                 <length>0.1</length><radius>auto</radius><thickness>0.001</thickness>\
+                 <material type=\"bulk\" density=\"680.0\">Cardboard</material></tubefinset>";
+    let design = read_design(with(tubes).as_bytes());
+    let a = &design.motors.configurations[0];
+    assert_eq!(
+        a.left_out.as_ref().map(|l| l.why),
+        Some(NotFlown::NoAerodynamicModel)
+    );
+    assert!(design.rocket.configurations.is_empty());
+    assert!(design.rocket.layout().is_ok());
+    let design = read_design(with("").as_bytes());
+    assert!(design.motors.configurations[0].left_out.is_none());
+    assert_eq!(design.rocket.configurations.len(), 1);
 }
 
 /// Nor is one whose airframe rests on an assumption: a nose shape hpr does not know is read as a

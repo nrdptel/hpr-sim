@@ -447,8 +447,12 @@ pub enum AutoDimension {
     /// narrower end of the part less the parent's wall, and never below zero, as OpenRocket 24.12
     /// reads it ([ADR-096][adr-096]). An inner tube whose resolved radius is less than its wall
     /// is laid out solid (its wall is cut to its radius), as OpenRocket weighs it; a stated radius
-    /// with too thick a wall is still refused.
+    /// with too thick a wall is still refused. A tube fin set's outer radius: the radius at which
+    /// its tubes close the ring around the body tube they sit on,
+    /// [`TubeFinSet::closing_radius_m`](crate::TubeFinSet::closing_radius_m), its wall cut to that
+    /// radius when thicker, as OpenRocket 24.12 reads it ([ADR-098][adr-098]).
     ///
+    /// [adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
     /// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
     OuterRadius,
     /// A transition's forward radius: the previous body component's aft radius.
@@ -492,7 +496,10 @@ impl AutoDimension {
             (A::BaseRadius | A::ShoulderRadius, Part::NoseCone(_))
                 | (
                     A::OuterRadius,
-                    Part::BodyTube(_) | Part::CenteringRing(_) | Part::InnerTube(_)
+                    Part::BodyTube(_)
+                        | Part::CenteringRing(_)
+                        | Part::InnerTube(_)
+                        | Part::TubeFinSet(_)
                 )
                 | (
                     A::ForeRadius | A::AftRadius | A::ForeShoulderRadius | A::AftShoulderRadius,
@@ -1549,6 +1556,20 @@ fn finish(
                     tube.outer_radius_m = bore_over(&child.id, station)?;
                     tube.thickness_m = tube.thickness_m.min(tube.outer_radius_m);
                 }
+                // Tubes that close the ring around the body tube they sit on, a wall thicker than
+                // that radius cut to it, as OpenRocket 24.12 reads both (ADR-098). An external part
+                // on anything but a body tube is refused before this, so the error is a backstop.
+                Part::TubeFinSet(tubes) => {
+                    let body_radius_m = p_tube_radius.ok_or_else(|| {
+                        tree(
+                            &child.id,
+                            "an automatic tube fin radius needs a body tube to ring",
+                        )
+                    })?;
+                    tubes.outer_radius_m =
+                        crate::TubeFinSet::closing_radius_m(body_radius_m, tubes.count);
+                    tubes.thickness_m = tubes.thickness_m.min(tubes.outer_radius_m);
+                }
                 _ => {}
             }
         }
@@ -2005,6 +2026,58 @@ mod tests {
             panic!()
         };
         assert_eq!(r.inner_radius_m, 0.0);
+    }
+
+    /// A tube fin set written `auto` closes the ring around the 27 mm airframe it sits on: six
+    /// tubes as wide as the body, four `1 + √2` times it, and a wall thicker than that cut to it
+    /// (ADR-098). It weighs what the same set of a stated radius weighs.
+    #[test]
+    fn an_automatic_tube_fin_radius_closes_the_ring_around_its_body() {
+        let tubes = |count: u32, thickness_m: f64| {
+            Part::TubeFinSet(crate::TubeFinSet {
+                count,
+                length_m: 0.1,
+                outer_radius_m: 0.0,
+                thickness_m,
+                base_angle_rad: 0.0,
+                material: crate::Material::bulk("cardboard", 680.0),
+            })
+        };
+        let with = |part: Part, auto: bool, on: usize| {
+            let mut design = three_fin_rocket();
+            let mut child = attached("tubes", part, bottom(0.0));
+            if auto {
+                child.auto = vec![AutoDimension::OuterRadius];
+            }
+            design.stages[0].components[on].children.push(child);
+            design.layout()
+        };
+        let resolved = |layout: &Layout| match &layout.find("tubes").unwrap().1.part {
+            Part::TubeFinSet(set) => (set.outer_radius_m, set.thickness_m),
+            other => panic!("{other:?}"),
+        };
+        let layout = with(tubes(6, 0.001), true, 1).unwrap();
+        let (r, t) = resolved(&layout);
+        close(r, 0.027, 1e-15, "six");
+        assert_eq!(t, 0.001);
+        let mut stated = tubes(6, 0.001);
+        if let Part::TubeFinSet(set) = &mut stated {
+            set.outer_radius_m = r;
+        }
+        let same = with(stated, false, 1).unwrap();
+        assert_eq!(
+            layout.find("tubes").unwrap().1.own,
+            same.find("tubes").unwrap().1.own
+        );
+        let (r, _) = resolved(&with(tubes(4, 0.001), true, 1).unwrap());
+        close(r, 0.027 * (1.0 + 2f64.sqrt()), 1e-15, "four");
+        let (r, _) = resolved(&with(tubes(2, 0.001), true, 1).unwrap());
+        assert_eq!(r, 0.027);
+        let (r, t) = resolved(&with(tubes(6, 0.05), true, 1).unwrap());
+        assert_eq!(t, r);
+        // On the nose cone there is no body tube to ring, and the layout says so before it looks.
+        let error = with(tubes(6, 0.001), true, 0).unwrap_err().to_string();
+        assert!(error.contains("attaches to a body tube"), "{error}");
     }
 
     /// Inside a hollow nose cone or transition, an automatic outer radius is the parent's bore at

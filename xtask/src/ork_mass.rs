@@ -139,6 +139,33 @@ pub(crate) fn roll_under_openrocket_fins(
     })
 }
 
+/// How much hpr's pitch inertia moves when each tube fin set is weighed by OpenRocket 24.12's pitch
+/// rule in place of hpr's: `N` times one tube's own inertia across its axis,
+/// `N m ((r² + rᵢ²)/4 + L²/12)` for a set of mass `m`, about the set's centre, with no term for the
+/// tubes' distance from the body's axis (ADR-098, measured on 19 probes). hpr's own is the mean of
+/// its two transverse inertias about the set's centre; the set's distance from the structure's
+/// centre is the same in both, so only this term moves. `None` for a design with no tube fins, and
+/// for one whose tube fins are repeated (in pods or a cluster), where hpr's own inertia holds the
+/// copies' spread too; no design in the library has that.
+pub(crate) fn tube_fin_pitch_shift_kg_m2(layout: &Layout) -> Option<f64> {
+    let mut shift = None;
+    for placed in &layout.components {
+        if let Part::TubeFinSet(set) = &placed.part {
+            if placed.copies.len() != 1 {
+                return None;
+            }
+            let (r, length) = (set.outer_radius_m, set.length_m);
+            let r_i = (r - set.thickness_m).max(0.0);
+            let across = (r * r + r_i * r_i) / 4.0 + length * length / 12.0;
+            let theirs = placed.own.mass_kg * f64::from(set.count) * across;
+            let inertia = &placed.own.inertia_kg_m2;
+            let ours = (inertia.x_axis.x + inertia.y_axis.y) / 2.0;
+            *shift.get_or_insert(0.0) += theirs - ours;
+        }
+    }
+    shift
+}
+
 /// How far the roll inertia may be from OpenRocket's, once OpenRocket's fin rule is in hpr's place,
 /// before a design needs a cause: 1%, as for the mass (ADR-062).
 pub(crate) const ROLL_WITHIN: f64 = 0.01;
@@ -389,6 +416,9 @@ pub(crate) struct MassTally {
     /// Designs whose roll inertia is outside [`ROLL_WITHIN`] even so, each with its causes, of
     /// [`ROLL_CAUSES`].
     roll_outside: Vec<RollOutside>,
+    /// Designs with tube fins: the pitch inertia's difference, and the same with OpenRocket's
+    /// tube-fin pitch rule in hpr's place (ADR-098).
+    pitch_under_tube_fins: Vec<(String, f64, f64)>,
     seen: BTreeSet<String>,
     /// Differences for designs hpr reads reduced (pods and parallel stages kept, not modelled).
     reduced: Vec<[f64; 4]>,
@@ -496,6 +526,14 @@ impl MassTally {
             apart: f64::NAN,
             unpaired_fins: false,
         });
+        let pitch_under_tube_fins = tube_fin_pitch_shift_kg_m2(layout)
+            .zip(design["structure"]["iyy"].as_f64())
+            .zip(design["structure"]["izz"].as_f64())
+            .map(|((shift, iyy), izz)| found[3] + shift / ((iyy + izz) / 2.0));
+        if let Some(after) = pitch_under_tube_fins {
+            self.pitch_under_tube_fins
+                .push((named.clone(), found[3], after));
+        }
         self.all.push(found);
         self.roll_under_rule[0].push(under_rule.apart);
         if self.seen.insert(digest.clone()) {
@@ -542,6 +580,7 @@ impl MassTally {
             "differences": QUANTITIES.iter().zip(found).map(|(q, d)| (q.to_string(), json!(d)))
                 .collect::<BTreeMap<_, _>>(),
             "roll_inertia_with_openrocket_fins": under_rule.apart,
+            "pitch_inertia_with_openrocket_tube_fins": pitch_under_tube_fins,
             "openrocket": design["structure"],
         })
     }
@@ -631,6 +670,18 @@ impl MassTally {
                 } else {
                     outside.causes.join("; ")
                 }
+            );
+        }
+        println!(
+            "    pitch inertia with OpenRocket's tube-fin rule in hpr's place (ADR-098), on the {} \
+             design(s) with tube fins:",
+            self.pitch_under_tube_fins.len()
+        );
+        for (label, before, after) in &self.pitch_under_tube_fins {
+            println!(
+                "      {label}: pitch inertia {:+.4}%, {:+.4}% with OpenRocket's rule",
+                100.0 * before,
+                100.0 * after
             );
         }
         let distinct: BTreeSet<&str> = self.outside.iter().map(|o| o.hash.as_str()).collect();
@@ -1108,6 +1159,28 @@ mod tests {
         let rocket = ork::design(&read.value).value.rocket;
         let layout = rocket.layout().unwrap();
         (rocket, layout, probe)
+    }
+
+    /// OpenRocket's tube-fin pitch rule in hpr's place closes the pitch gap on its probes of three
+    /// tubes or more, and moves nothing on a design with none (ADR-098).
+    #[test]
+    fn openrockets_tube_fin_pitch_rule_closes_its_probes() {
+        for question in [
+            "a tube and 6 tube fins of a stated radius",
+            "a tube and 3 tube fins of automatic radius",
+            "a tube and 8 tube fins of automatic radius",
+        ] {
+            let (_, layout, probe) = conventions_probe(question);
+            let structure = &probe["structure"];
+            let found = differences(&layout, structure).unwrap();
+            let pitch =
+                (structure["iyy"].as_f64().unwrap() + structure["izz"].as_f64().unwrap()) / 2.0;
+            let after = found[3] + tube_fin_pitch_shift_kg_m2(&layout).unwrap() / pitch;
+            assert!(found[3] < -0.01, "{question}: {}", found[3]);
+            assert!(after.abs() < 1e-12, "{question}: {after:e}");
+        }
+        let (_, layout, _) = conventions_probe("a tube and a fin set of airfoil section");
+        assert_eq!(tube_fin_pitch_shift_kg_m2(&layout), None);
     }
 
     /// The roll causes are measured on OpenRocket's probes, not assumed: which overrides cover the

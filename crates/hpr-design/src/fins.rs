@@ -819,6 +819,29 @@ pub struct TubeFinSet {
 }
 
 impl TubeFinSet {
+    /// The outer radius of `count` tubes that close the ring around a body of radius
+    /// `body_radius_m`, each touching the body and its two neighbours, which is the radius
+    /// OpenRocket 24.12 gives a tube fin set written `auto` ([ADR-098][adr-098]).
+    ///
+    /// The axes of `N` tubes of radius `r` sit on a circle of radius `R + r`, `2π/N` apart, so
+    /// neighbouring axes are a chord `2(R + r) sin(π/N)` apart. Touching means that chord is `2r`:
+    ///
+    /// `r = R sin(π/N) / (1 − sin(π/N))`.
+    ///
+    /// For one or two tubes `sin(π/N)` is 0 or 1 and no finite ring closes; OpenRocket 24.12 gives
+    /// those the body's radius, measured on its probes on 20 and 50 mm bodies, and so does this;
+    /// so does a count of none, which [`Self::mass_properties`] refuses. On a 50 mm body, six
+    /// tubes are 50 mm (`sin(π/6) = 1/2`), four are 120.7 mm and eight are 31.0 mm.
+    ///
+    /// [adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28
+    pub fn closing_radius_m(body_radius_m: f64, count: u32) -> f64 {
+        if count < 3 {
+            return body_radius_m;
+        }
+        let s = (PI / f64::from(count)).sin();
+        body_radius_m * s / (1.0 - s)
+    }
+
     /// Mass properties in the set's frame (origin on the body axis at the tubes' forward end), on
     /// a body of radius `body_radius_m`. Each tube is a hollow cylinder,
     /// `I_a = m(R² + r²)/2` and `I_t = m((R² + r²)/4 + L²/12)`, with its axis at `R_b + R`.
@@ -1240,6 +1263,33 @@ mod tests {
         let product = rho * t * mrx - m * (mr / area) * (mx / area);
         close(fin.inertia_kg_m2.z_axis.x, product, 1e-11, "I_xz");
         close(fin.inertia_kg_m2.x_axis.z, product, 1e-11, "I_zx");
+    }
+
+    #[test]
+    fn a_closing_ring_of_tubes_touches_the_body_and_its_neighbours() {
+        let body = 0.05;
+        for count in 3..=12 {
+            let r = TubeFinSet::closing_radius_m(body, count);
+            assert!(r > 0.0 && r.is_finite(), "{count}: {r}");
+            // Neighbouring axes, on the circle of radius R + r, are 2r apart: the tubes touch.
+            let step = 2.0 * PI / f64::from(count);
+            let (a, b) = (
+                DVec3::new(body + r, 0.0, 0.0),
+                DVec3::new((body + r) * step.cos(), (body + r) * step.sin(), 0.0),
+            );
+            close(a.distance(b), 2.0 * r, 1e-14, "neighbours touch");
+        }
+        // Six tubes are as wide as the body; four much wider, eight narrower.
+        close(TubeFinSet::closing_radius_m(body, 6), body, 1e-15, "six");
+        close(
+            TubeFinSet::closing_radius_m(body, 4),
+            body * (1.0 + 2f64.sqrt()),
+            1e-15,
+            "four",
+        );
+        // No finite ring closes with one or two: the body's radius, as OpenRocket 24.12 gives.
+        assert_eq!(TubeFinSet::closing_radius_m(body, 1), body);
+        assert_eq!(TubeFinSet::closing_radius_m(body, 2), body);
     }
 
     #[test]
