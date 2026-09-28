@@ -570,7 +570,7 @@
     - [x] **M2.2d2 hpr's flights against the record.** Met (ADR-069), bars kept: 21 flown; margin
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
-    Split into e1 to e10 (ADR-070, ADR-072, ADR-094, ADR-095, ADR-098).
+    Split into e1 to e10 (ADR-070, ADR-072, ADR-094, ADR-095, ADR-098, ADR-099).
     - [x] **M2.2e1 Mass and CG in the flight report.** Met (ADR-070), bars kept: launch and
       rod-clearance mass and CG against OR's, tested, on all 21; within 0.22% and 0.016 cal.
     - [x] **M2.2e2 OR's flights of the corpus.** Met (ADR-071), bars kept: 88 of the 27 `.ork`
@@ -592,10 +592,11 @@
       e9 and whose bar is e10; ADR-098). *Done when:* an `auto` tube-fin radius resolves as OR 24.12
       does, on probes, with a test. *Result:* 19 probes, radius within 1e-15; the example's mass
       within 5e-6; roll (past any ring's bound) and pitch (no spread term) OR departures.
-    - [ ] **M2.2e9 Tube fin aerodynamics.** *Done when:* tube fins have a cited normal-force and drag
-      method, pinned by tests; the tube fin example flies, e4's bar on it.
+    - [x] **M2.2e9 Tube fin aerodynamics.** *Done when:* tube fins have a cited normal-force and drag
+      method, pinned by tests; the tube fin example flies, e4's bar on it. *Result:* met (ADR-099):
+      ring wings (Weissinger, Fletcher), 9 tests; the example +6.95%, +0.03% on OR's drag (#228).
     - [ ] **M2.2e10 Twenty designs.** *Done when:* anonymised ids beside the public report make at
-      least 20 designs with the five spreads; e4's bar on the flights added. 18 since e7.
+      least 20 designs with the five spreads; e4's bar on the flights added. 19 since e9.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts

@@ -317,8 +317,6 @@ fn read_design(
         [one] => Some((*one).to_owned()),
         [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
     };
-    // Tube fins are read and weighed (ADR-098), but `hpr-aero` refuses them until M2.2e9.
-    let aero_refused = holds_tube_fins(&rocket).then_some("tube fins");
     let mut design = Design {
         rocket,
         motors: Motors::default(),
@@ -336,7 +334,6 @@ fn read_design(
             &mut design.rocket,
             motors::Airframe {
                 incomplete: incomplete.as_deref(),
-                aero_refused,
                 separations: &design.recovery.separations,
             },
             &walked.mounts,
@@ -377,17 +374,6 @@ pub fn read(bytes: &[u8]) -> Result<Imported<OrkFile>, OrkError> {
         },
         warnings,
     })
-}
-
-/// Whether any part of the rocket, at any depth, is a tube fin set.
-fn holds_tube_fins(rocket: &hpr_design::Rocket) -> bool {
-    fn any(components: &[hpr_design::Component]) -> bool {
-        components.iter().any(|component| {
-            matches!(component.part, hpr_design::tree::Part::TubeFinSet(_))
-                || any(&component.children)
-        })
-    }
-    rocket.stages.iter().any(|stage| any(&stage.components))
 }
 
 #[cfg(test)]

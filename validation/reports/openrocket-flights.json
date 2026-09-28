@@ -3257,6 +3257,165 @@
       "aborted": false,
       "apogee_position_m": {
         "hpr": {
+          "east": -0.07198723908109059,
+          "north": 0.922673215826025
+        },
+        "openrocket": {
+          "east": -0.06688790629174568,
+          "north": -0.0020953278775311538
+        }
+      },
+      "at_rod_clearance": {
+        "hpr": {
+          "cg_from_nose_m": 0.4503002515600345,
+          "cp_from_nose_m": 0.4699963495542749,
+          "cp_from_nose_m_at_openrocket_angle_of_attack": 0.46999631896147315,
+          "mass_kg": 0.07443514784925512,
+          "reference_length_m": 0.024790399999999997
+        },
+        "mach": 0.055503733970803326,
+        "openrocket": {
+          "angle_of_attack_rad": 1.8491854736195318e-7,
+          "cg_from_nose_m": 0.45025037883272423,
+          "cp_from_nose_m": 0.4966396169500249,
+          "mass_kg": 0.07439648898312543,
+          "reference_length_m": 0.024790399999999997
+        },
+        "time_s": 0.19513857784079633
+      },
+      "configuration": "f58f38e4-0cb4-45b3-9899-8b5e561d1b73",
+      "deployed_before_apogee_s": null,
+      "design": "Tube fin rocket",
+      "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Tube fin rocket.ork",
+      "launch_mass_kg": {
+        "hpr": 0.07640159755083761,
+        "openrocket": 0.07640142820160639
+      },
+      "max_mach_openrocket": 0.35138992130993607,
+      "metrics": {
+        "apogee_m": {
+          "difference": 19.658729835377017,
+          "hpr": 302.478199929628,
+          "openrocket": 282.81947009425096,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 302.478199929628,
+            "outcome": "scored",
+            "reference": 282.81947009425096
+          },
+          "relative_percent": 6.950981779587399
+        },
+        "max_speed_m_s": {
+          "difference": 7.645656413718086,
+          "hpr": 127.06643133101188,
+          "openrocket": 119.4207749172938,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 127.06643133101188,
+            "outcome": "scored",
+            "reference": 119.4207749172938
+          },
+          "relative_percent": 6.4022833707227
+        },
+        "rod_clearance_margin_cal": {
+          "difference": -1.076753102937439,
+          "hpr": 0.7945050501097353,
+          "openrocket": 1.8712581530471744,
+          "outcome": {
+            "definition": {
+              "event": "rod_clearance",
+              "kind": "stability_at_event"
+            },
+            "measured": 0.7945050501097353,
+            "outcome": "scored",
+            "reference": 1.8712581530471744
+          },
+          "relative_percent": -57.54166527926915
+        }
+      },
+      "motors": "[D12-7]",
+      "on_openrocket_s_drag": {
+        "apogee_m": {
+          "difference": 0.07093112283757819,
+          "hpr": 282.89040121708854,
+          "openrocket": 282.81947009425096,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 282.89040121708854,
+            "outcome": "scored",
+            "reference": 282.81947009425096
+          },
+          "relative_percent": 0.0250799999073402
+        },
+        "max_speed_m_s": {
+          "difference": 0.039322437518265474,
+          "hpr": 119.46009735481206,
+          "openrocket": 119.4207749172938,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 119.46009735481206,
+            "outcome": "scored",
+            "reference": 119.4207749172938
+          },
+          "relative_percent": 0.03292763553535695
+        }
+      },
+      "rod": {
+        "angle_from_vertical_rad": 0.0,
+        "direction_rad": 1.5707963267948966
+      },
+      "rod_length_m": 1.0,
+      "termination": "ground_hit",
+      "with_the_whole_base_under_power": {
+        "apogee_m": {
+          "difference": 13.039006530574966,
+          "hpr": 295.8584766248259,
+          "openrocket": 282.81947009425096,
+          "outcome": {
+            "definition": {
+              "kind": "peak_height",
+              "point": "unstated"
+            },
+            "measured": 295.8584766248259,
+            "outcome": "scored",
+            "reference": 282.81947009425096
+          },
+          "relative_percent": 4.610363821921331
+        },
+        "max_speed_m_s": {
+          "difference": 3.592855506756578,
+          "hpr": 123.01363042405038,
+          "openrocket": 119.4207749172938,
+          "outcome": {
+            "definition": {
+              "kind": "peak_speed",
+              "point": "unstated"
+            },
+            "measured": 123.01363042405038,
+            "outcome": "scored",
+            "reference": 119.4207749172938
+          },
+          "relative_percent": 3.008568240530051
+        }
+      }
+    },
+    {
+      "aborted": false,
+      "apogee_position_m": {
+        "hpr": {
           "east": -0.45498801350599966,
           "north": 0.9062303917999095
         },
@@ -3799,14 +3958,6 @@
       "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[C6-7; C6-0; C6-0]",
       "why": "stages hpr can't separate as written"
-    },
-    {
-      "aborted": false,
-      "configuration": "f58f38e4-0cb4-45b3-9899-8b5e561d1b73",
-      "design": "Tube fin rocket",
-      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Tube fin rocket.ork",
-      "motors": "[D12-7]",
-      "why": "tube fins, which hpr has no aerodynamic model for yet"
     }
   ],
   "probes": [
@@ -4768,9 +4919,9 @@
     "version": "24.12"
   },
   "summary": {
-    "apogee_over_5_percent": 6,
+    "apogee_over_5_percent": 7,
     "apogee_with_the_causes_removed": {
-      "over_5_percent": 6,
+      "over_5_percent": 7,
       "over_5_percent_sized": 6,
       "over_5_percent_within_5_percent_after": 5,
       "remaining_percent": {
@@ -4781,26 +4932,26 @@
         "min": -1.0749827451855707
       }
     },
-    "flown": 33,
+    "flown": 34,
     "mass_and_cg": {
       "launch_mass_percent": {
-        "count": 33,
+        "count": 34,
         "max": 0.20858652070791828,
-        "mean_absolute": 0.030082883324738373,
-        "median": 0.014955839123536678,
+        "mean_absolute": 0.02920461196676988,
+        "median": 0.014515091924732066,
         "min": 0.0
       },
       "rod_clearance_cg_cal": {
-        "count": 33,
+        "count": 34,
         "max": 0.015882095871440054,
-        "mean_absolute": 0.003643467386643179,
+        "mean_absolute": 0.0035954764582387714,
         "median": 0.0006757222103437321,
         "min": -0.0028373891460418466
       },
       "rod_clearance_mass_percent": {
-        "count": 33,
+        "count": 34,
         "max": 1.650221736772437,
-        "mean_absolute": 0.0778633413336013,
+        "mean_absolute": 0.07710157522898027,
         "median": 0.014419195763444593,
         "min": -0.010417464264358838
       }
@@ -4813,7 +4964,7 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 33
+          "scored": 34
         },
         "scored_by_cause": {
           "a part's drag override not applied": {
@@ -4822,6 +4973,13 @@
             "mean_absolute": 17.12288858294484,
             "median": -16.76520972694855,
             "min": -19.130560539286694
+          },
+          "hpr's own drag coefficient": {
+            "count": 1,
+            "max": 6.950981779587399,
+            "mean_absolute": 6.950981779587399,
+            "median": 6.950981779587399,
+            "min": 6.950981779587399
           },
           "no named cause": {
             "count": 21,
@@ -4846,7 +5004,7 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 33
+          "scored": 34
         },
         "scored_by_cause": {
           "a part's drag override not applied": {
@@ -4855,6 +5013,13 @@
             "mean_absolute": 8.522988593268213,
             "median": -9.553717537023843,
             "min": -12.329738560936592
+          },
+          "hpr's own drag coefficient": {
+            "count": 1,
+            "max": 6.4022833707227,
+            "mean_absolute": 6.4022833707227,
+            "median": 6.4022833707227,
+            "min": 6.4022833707227
           },
           "no named cause": {
             "count": 30,
@@ -4872,19 +5037,19 @@
         },
         "difference_unit": "calibres",
         "outcomes": {
-          "scored": 33
+          "scored": 34
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 33,
+            "count": 34,
             "max": 0.003707101548488856,
-            "mean_absolute": 0.0036530198662033764,
+            "mean_absolute": 0.035214787015357366,
             "median": -0.0006849146655585336,
-            "min": -0.015088959942811009
+            "min": -1.076753102937439
           }
         }
       }
     },
-    "not_flown": 24
+    "not_flown": 23
   }
 }

@@ -1,6 +1,6 @@
 # hpr against OpenRocket 24.12's flights of the private design library
 
-This report compares hpr's flights of 10 of the library's 12 private designs with OpenRocket 24.12's, and publishes only the differences. It is a code-to-code comparison with no target: agreeing with OpenRocket is not agreeing with a real flight. hpr's stability margin is larger than OpenRocket's by up to 0.1108 calibres, so it can call a rocket more stable than OpenRocket does (open leads: [#172](https://github.com/nrdptel/hpr-sim/issues/172) and [#186](https://github.com/nrdptel/hpr-sim/issues/186)). With the [public report](openrocket-flights.md) it covers 18 designs of the 20 that [M2.2][m2-2] (the OpenRocket comparison) asks for: not met. Nobody without the private library can fly these again; CI checks only that this report adds up and names nothing of a design.
+This report compares hpr's flights of 10 of the library's 12 private designs with OpenRocket 24.12's, and publishes only the differences. It is a code-to-code comparison with no target: agreeing with OpenRocket is not agreeing with a real flight. hpr's stability margin is larger than OpenRocket's by up to 0.1108 calibres, so it can call a rocket more stable than OpenRocket does (open leads: [#172](https://github.com/nrdptel/hpr-sim/issues/172) and [#186](https://github.com/nrdptel/hpr-sim/issues/186)). With the [public report](openrocket-flights.md) it covers 19 designs of the 20 that [M2.2][m2-2] (the OpenRocket comparison) asks for: not met. Nobody without the private library can fly these again; CI checks only that this report adds up and names nothing of a design.
 
 - Written by `cargo xtask ork-flights --library` ([M2.2e3][m2-2e3], hpr's flights of the library; decision [ADR-072][adr-072]) from OpenRocket's flights of it ([M2.2e2][m2-2e2]), flown and compared as in the public report, by the same definitions. The explanation is on the [documentation site][site].
 - A design is an id, `C01` onwards, in the order of its file's SHA-256 hash, and a flight is the design's id and the configuration's place in the file: `C09/2` is the second configuration of `C09`. The ids hold while the library's files do; `ids_sha256` in the report's JSON changes when they would move.
@@ -17,7 +17,7 @@ This report compares hpr's flights of 10 of the library's 12 private designs wit
 [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-of-the-private-designs
 
 - designs: 27 files in the library; 0 OpenRocket did not open, 15 public designs (the same file, or an edited copy of the same rocket) left to the public report, 0 found twice; 12 private designs, 10 with a flight compared in all five spreads
-- with the public report's 8, 18 designs in all, against [M2.2][m2-2]'s bar of 20 (not met)
+- with the public report's 9, 19 designs in all, against [M2.2][m2-2]'s bar of 20 (not met)
 - configurations flown: 34 (3 OpenRocket flew are not flown by hpr); apogee more than 5% from OpenRocket's: 1; the same reference diameter as OpenRocket's: 34
 - apogee, hpr's own drag coefficient: 1 scored, median +13.60%, mean absolute 13.60%, from +13.60% to +13.60%
 - apogee, no named cause: 27 scored, median -0.36%, mean absolute 1.33%, from -4.84% to +1.17%

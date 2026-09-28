@@ -58,6 +58,7 @@ use crate::shock_expansion::{
 };
 use crate::supersonic_boattail::{wp_centre_fraction, wp_slope};
 use crate::table::{DragTable, NormalForceLookup, NormalForceTable, TableReference};
+use crate::tube_fins::{TubeFinSetAero, check_tube_fin_mach};
 
 /// The largest fin cant the roll model takes, 15°: past it a fin stalls, where its lift stops
 /// growing with the angle, a judgement ([`AeroModel::roll`]).
@@ -942,6 +943,7 @@ pub struct AeroModel {
     #[serde(skip)]
     supersonic: SupersonicTable,
     fin_sets: Vec<FinSetAero>,
+    tube_fin_sets: Vec<TubeFinSetAero>,
     drag_terms: Vec<ComponentDragTerms>,
     drag_table: Option<DragTable>,
     normal_force_table: Option<NormalForceTable>,
@@ -999,6 +1001,7 @@ impl AeroModel {
         let form_factor = body_friction_form_factor(fineness)?;
         let mut bodies = Vec::new();
         let mut fin_sets = Vec::new();
+        let mut tube_fin_sets = Vec::new();
         let mut drag_terms = Vec::new();
         let mut previous_aft_area: Option<f64> = None;
         let mut body_terms_at = Vec::new();
@@ -1133,10 +1136,20 @@ impl AeroModel {
                     fin_sets.push(terms);
                     None
                 }
-                Part::TubeFinSet(_) => {
-                    return Err(in_component(AeroError::Unsupported(
-                        "tube fins (no cited normal-force method yet)".to_owned(),
-                    )));
+                Part::TubeFinSet(set) => {
+                    if pod.is_some() {
+                        return Err(in_component(AeroError::Unsupported(
+                            "tube fins on a pod".to_owned(),
+                        )));
+                    }
+                    let terms = TubeFinSetAero::new(component, set, reference_area_m2)
+                        .map_err(in_component)?;
+                    drag_terms.push(
+                        ComponentDragTerms::tube_fins(component, set, length_m, reference_area_m2)
+                            .map_err(in_component)?,
+                    );
+                    tube_fin_sets.push(terms);
+                    None
                 }
                 // A pod set that holds nothing adds no force.
                 Part::PodSet(_) if !layout.components.iter().any(|c| c.parent == Some(index)) => {
@@ -1435,6 +1448,7 @@ impl AeroModel {
             supersonic_run,
             supersonic: SupersonicTable::default(),
             fin_sets,
+            tube_fin_sets,
             drag_terms,
             drag_table: None,
             normal_force_table: None,
@@ -1679,6 +1693,10 @@ impl AeroModel {
                 roll.damping -= 2.0 * body.slope_per_rad * pod.offset_squares_m2 / (d * d);
             }
         }
+        // Each tube likewise, about its own axis's distance ([`TubeFinSetAero::roll_damping`]).
+        for set in &self.tube_fin_sets {
+            roll.damping += set.roll_damping(mach, d)?;
+        }
         Ok(roll)
     }
 
@@ -1829,13 +1847,28 @@ impl AeroModel {
         &self.fin_sets
     }
 
+    /// The tube fin sets' terms.
+    pub fn tube_fin_sets(&self) -> &[TubeFinSetAero] {
+        &self.tube_fin_sets
+    }
+
+    /// Checks `mach` against the tube-fin model's range when the rocket has tube fins.
+    fn check_tube_fins(&self, mach: f64) -> Result<(), AeroError> {
+        if self.tube_fin_sets.is_empty() {
+            Ok(())
+        } else {
+            check_tube_fin_mach(mach)
+        }
+    }
+
     /// The pod sets' terms: those whose pods hold a body component with a size.
     pub fn pod_sets(&self) -> &[PodSetAero] {
         &self.pods
     }
 
-    /// Each component's id and contributions at a validated `flow`: the airframe's bodies first,
-    /// then the pods' bodies, then fin sets, in layout order.
+    /// Each component's id and contributions at a validated `flow`, and a Mach number the tube
+    /// fins take ([`Self::check_tube_fins`]): the airframe's bodies first, then the pods' bodies,
+    /// then fin sets, then tube fin sets, in layout order.
     fn terms<'a>(&'a self, flow: &Flow) -> impl Iterator<Item = (&'a str, Term)> + 'a {
         let (potential, lift) = self.body_factors(flow);
         let (mach, roll) = (flow.mach, flow.roll_rad);
@@ -1854,7 +1887,11 @@ impl AeroModel {
             .fin_sets
             .iter()
             .map(move |set| (set.id.as_str(), fin_term(set, mach, roll)));
-        bodies.chain(pods).chain(fins)
+        let tubes = self
+            .tube_fin_sets
+            .iter()
+            .map(move |set| (set.id.as_str(), tube_fin_term(set, mach)));
+        bodies.chain(pods).chain(fins).chain(tubes)
     }
 
     /// A pod body's contribution at `flow`, over every pod: slender-body theory's slope at every
@@ -1872,8 +1909,14 @@ impl AeroModel {
     }
 
     /// The number of components with a normal-force term: the airframe's bodies, the pods'
-    /// bodies, then the fin sets, in the order of [`Self::components`].
+    /// bodies, the fin sets, then the tube fin sets, in the order of [`Self::components`].
     pub fn component_count(&self) -> usize {
+        self.tube_fin_set_start() + self.tube_fin_sets.len()
+    }
+
+    /// The index of the first tube fin set among the components ([`Self::components`]): the
+    /// bodies and the fin sets come before.
+    pub fn tube_fin_set_start(&self) -> usize {
         self.fin_set_start() + self.fin_sets.len()
     }
 
@@ -1905,6 +1948,9 @@ impl AeroModel {
             self.pod_body_term(pod, body, flow)
         } else if let Some(set) = self.fin_sets.get(index - self.fin_set_start()) {
             fin_term(set, flow.mach, flow.roll_rad)
+        } else if let Some(set) = self.tube_fin_sets.get(index - self.tube_fin_set_start()) {
+            check_tube_fin_mach(flow.mach)?;
+            tube_fin_term(set, flow.mach)
         } else {
             return Err(AeroError::Domain {
                 what: "component index",
@@ -1932,7 +1978,8 @@ impl AeroModel {
     ///
     /// # Errors
     ///
-    /// [`AeroError::Mach`] outside `[0, 5)`, and [`AeroError::Domain`] for an index past
+    /// [`AeroError::Mach`] outside `[0, 5)`, or `[0, 0.8)` for a tube fin set
+    /// ([`crate::tube_fins::TUBE_FIN_MACH_LIMIT`]), and [`AeroError::Domain`] for an index past
     /// [`Self::component_count`].
     pub fn component_station_m(&self, index: usize, mach: f64) -> Result<f64, AeroError> {
         check_mach(mach, NORMAL_FORCE_MACH_LIMIT, "the normal force")?;
@@ -1956,15 +2003,18 @@ impl AeroModel {
             })
         } else if let Some((_, body)) = self.pod_body(index - self.bodies.len()) {
             Ok(slender_station_m(body, self.reference_area_m2))
+        } else if let Some(set) = self.fin_sets.get(index - self.fin_set_start()) {
+            Ok(set.fore_station_m + set.fin.loading_at(mach).cp_m)
         } else {
             let set = self
-                .fin_sets
-                .get(index - self.fin_set_start())
+                .tube_fin_sets
+                .get(index - self.tube_fin_set_start())
                 .ok_or(AeroError::Domain {
                     what: "component index",
                     value: index as f64,
                 })?;
-            Ok(set.fore_station_m + set.fin.loading_at(mach).cp_m)
+            check_tube_fin_mach(mach)?;
+            Ok(set.loading_at(mach).1)
         }
     }
 
@@ -2004,6 +2054,7 @@ impl AeroModel {
             });
         }
         flow.validate()?;
+        self.check_tube_fins(flow.mach)?;
         let total = self
             .terms(flow)
             .fold(Term::default(), |sum, (_, term)| sum.add(term));
@@ -2022,6 +2073,7 @@ impl AeroModel {
     /// As [`Flow::validate`].
     pub fn components(&self, flow: &Flow) -> Result<Vec<ComponentNormalForce>, AeroError> {
         flow.validate()?;
+        self.check_tube_fins(flow.mach)?;
         Ok(self
             .terms(flow)
             .map(|(id, term)| ComponentNormalForce {
@@ -2075,6 +2127,19 @@ fn fin_term(set: &FinSetAero, mach: f64, roll: f64) -> Term {
         moment: slope * station,
         side,
         side_moment: side * station,
+        scale: slope.abs(),
+    }
+}
+
+/// A tube fin set's contribution at a checked `mach`, per radian of `α`: a ring wing lifts the
+/// same whichever way the flow crosses it, so the set has no roll dependence and no side force.
+fn tube_fin_term(set: &TubeFinSetAero, mach: f64) -> Term {
+    let (slope, station) = set.loading_at(mach);
+    Term {
+        slope,
+        moment: slope * station,
+        side: 0.0,
+        side_moment: 0.0,
         scale: slope.abs(),
     }
 }
@@ -3149,27 +3214,187 @@ mod tests {
 
     /// Refusals: tube fins, pods, nine fins, Mach 5, angles outside `[0, π]`. Lugs add no normal
     /// force.
-    #[test]
-    fn unsupported_inputs_are_refused() {
+    /// `finned_rocket(4)` with `count` tube fins at the foot of its tail, 22 mm in radius:
+    /// `length_m` long, of outer radius `outer_radius_m` and wall `thickness_m`.
+    fn tube_finned_rocket(
+        count: u32,
+        length_m: f64,
+        outer_radius_m: f64,
+        thickness_m: f64,
+    ) -> hpr_design::Rocket {
         let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0].components[3].children.push(component(
             "tube-fins",
             Part::TubeFinSet(TubeFinSet {
-                count: 6,
-                length_m: 0.1,
-                outer_radius_m: 0.01,
-                thickness_m: 0.001,
-                base_angle_rad: 0.0,
+                count,
+                length_m,
+                outer_radius_m,
+                thickness_m,
+                base_angle_rad: 0.3,
                 material: material(),
             }),
             Some(Position::Bottom { aft_offset_m: 0.0 }),
         ));
-        let err = AeroModel::new(&rocket.layout().unwrap()).unwrap_err();
-        assert!(
-            matches!(&err, AeroError::InComponent { id, source } if id == "tube-fins"
-                && matches!(**source, AeroError::Unsupported(_))),
-            "{err}"
-        );
+        rocket
+    }
+
+    #[test]
+    fn tube_fins_add_their_rings_slopes_at_fletcher_s_centre() {
+        let plain = model(&crate::testing::finned_rocket(4));
+        let (count, length, outer, wall) = (6_u32, 0.1, 0.022, 0.0005);
+        let m = model(&tube_finned_rocket(count, length, outer, wall));
+        let a_ref = m.reference_area_m2();
+        let d = 2.0 * outer - wall;
+        // The tubes' leading edges: the tail's foot, 1.3 m aft of the tip, less their length.
+        let fore = 1.3 - length;
+        assert_eq!(m.component_count(), plain.component_count() + 1);
+        assert_eq!(m.tube_fin_set_start(), plain.component_count());
+        for (mach, roll) in [(0.0_f64, 0.0), (0.3, 0.4), (0.7, 1.1)] {
+            let beta = (1.0 - mach * mach).sqrt();
+            let lambda = length / d;
+            // Weissinger's slope at `λ/β`, over `β`, and Fletcher's centre at `β d/L`, by hand.
+            let slope = f64::from(count)
+                * (PI * PI
+                    / (1.0
+                        + 0.5 * PI * lambda / beta
+                        + lambda / beta * (1.2 * lambda / beta).atan()))
+                / beta
+                * d
+                * length
+                / a_ref;
+            // On the line from the leading edge at A = 0 to Fletcher's 0.143 at A = 2/3.
+            let a = beta * d / length;
+            assert!(a < 2.0 / 3.0);
+            let centre = 0.143 * a / (2.0 / 3.0);
+            let station = fore + centre * length;
+            let flow = Flow::new(mach, 0.05, roll);
+            let (with, without) = (
+                m.normal_force(&flow).unwrap(),
+                plain.normal_force(&flow).unwrap(),
+            );
+            close(
+                with.slope_per_rad - without.slope_per_rad,
+                slope,
+                1e-12,
+                "slope",
+            );
+            close(
+                with.moment_slope_m - without.moment_slope_m,
+                slope * station,
+                1e-12,
+                "moment",
+            );
+            // A ring lifts the same whichever way the flow crosses it.
+            close(
+                with.side_coefficient,
+                without.side_coefficient,
+                1e-12,
+                "side",
+            );
+            let index = m.tube_fin_set_start();
+            let own = m.component_normal_force(index, &flow).unwrap();
+            close(own.slope_per_rad, slope, 1e-12, "component slope");
+            close(
+                m.component_station_m(index, mach).unwrap(),
+                station,
+                1e-12,
+                "station",
+            );
+            let listed = m.components(&flow).unwrap();
+            assert_eq!(listed[index].id, "tube-fins");
+            close(
+                listed[index].normal_force.slope_per_rad,
+                slope,
+                1e-12,
+                "listed",
+            );
+            // Each tube damps the roll about its axis's distance, 22 mm + 22 mm.
+            let rho = 0.022 + outer;
+            let damping = -2.0 * slope * rho * rho / (0.054 * 0.054);
+            close(
+                m.roll(mach).unwrap().damping - plain.roll(mach).unwrap().damping,
+                damping,
+                1e-12,
+                "roll damping",
+            );
+            assert_eq!(m.roll(mach).unwrap().forcing, 0.0);
+        }
+    }
+
+    #[test]
+    fn tube_fins_drag_inside_and_out_and_on_their_walls() {
+        let (count, length, outer, wall) = (6_u32, 0.1, 0.022, 0.0005);
+        let m = model(&tube_finned_rocket(count, length, outer, wall));
+        let a_ref = m.reference_area_m2();
+        let n = f64::from(count);
+        let inner = outer - wall;
+        let (mach, reynolds_per_m) = (0.5, 4e6);
+        let conditions = DragConditions::coasting(reynolds_per_m);
+        let parts = m
+            .buildup_components(&Flow::axial(mach), &conditions)
+            .unwrap();
+        let tubes = parts.iter().find(|c| c.id == "tube-fins").unwrap().drag;
+        // `C_fc` at the rocket's Reynolds number and the tubes' finish on its length.
+        let terms = m.drag_terms.iter().find(|t| t.id == "tube-fins").unwrap();
+        let cf = crate::drag::skin_friction_coefficient(
+            reynolds_per_m * m.length_m,
+            terms.relative_roughness,
+            mach,
+        )
+        .unwrap();
+        let wetted = n * 2.0 * PI * length * (outer + inner);
+        close(tubes.friction, cf * wetted / a_ref, 1e-12, "friction");
+        // Stagnation on the leading edge and base drag behind the trailing edge, on the walls.
+        let annulus = n * PI * (outer * outer - inner * inner);
+        let square = crate::drag::stagnation_drag_coefficient(mach).unwrap()
+            + base_drag_coefficient(mach).unwrap();
+        close(tubes.pressure, square * annulus / a_ref, 1e-12, "pressure");
+        assert_eq!((tubes.base, tubes.parasitic), (0.0, 0.0));
+    }
+
+    #[test]
+    fn tube_fins_refuse_mach_0_8() {
+        let m = model(&tube_finned_rocket(6, 0.1, 0.022, 0.0005));
+        let refused = |e: AeroError| match e {
+            AeroError::Mach { mach, limit, model } => {
+                mach == 0.8 && limit == 0.8 && model == "the tube-fin model"
+            }
+            AeroError::InComponent { id, source } => {
+                id == "tube-fins"
+                    && matches!(*source, AeroError::Mach { limit, model, .. }
+                        if limit == 0.8 && model == "the tube-fin model")
+            }
+            _ => false,
+        };
+        let flow = Flow::new(0.8, 0.05, 0.0);
+        let index = m.tube_fin_set_start();
+        assert!(refused(m.normal_force(&flow).unwrap_err()));
+        assert!(refused(m.components(&flow).unwrap_err()));
+        assert!(refused(m.component_normal_force(index, &flow).unwrap_err()));
+        assert!(refused(m.component_station_m(index, 0.8).unwrap_err()));
+        assert!(refused(m.roll(0.8).unwrap_err()));
+        let coasting = DragConditions::coasting(4e6);
+        assert!(refused(m.drag(&Flow::axial(0.8), &coasting).unwrap_err()));
+        // The other components still answer faster than that.
+        assert!(m.component_normal_force(0, &flow).is_ok());
+        // Just below, every one answers.
+        let below = Flow::new(0.8 - 1e-9, 0.05, 0.0);
+        assert!(m.normal_force(&below).is_ok());
+        assert!(m.drag(&below, &coasting).is_ok());
+    }
+
+    #[test]
+    fn unsupported_inputs_are_refused() {
+        // Two tube fins, around which the body's flow doesn't cancel, and solid ones.
+        for (count, thickness_m, why) in [(2, 0.001, "2 tube fins"), (6, 0.01, "solid tube fins")] {
+            let rocket = tube_finned_rocket(count, 0.1, 0.01, thickness_m);
+            let err = AeroModel::new(&rocket.layout().unwrap()).unwrap_err();
+            assert!(
+                matches!(&err, AeroError::InComponent { id, source } if id == "tube-fins"
+                    && matches!(&**source, AeroError::Unsupported(what) if what.starts_with(why))),
+                "{err}"
+            );
+        }
 
         // Pods: canted fins on a pod, whose roll forcing about the rocket's axis isn't modelled,
         // and a pod's tube of no length with a radius, a flat disc.

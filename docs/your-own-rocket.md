@@ -724,11 +724,12 @@ The example leaves out several kinds of part and setting that a design can have:
   [`released_ballast.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/released_ballast.rs)).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
-- **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
-  are open tubes that run along the body, touching it, in place of flat fins. A design can hold
-  them, and they are weighed, but a flight or a CP can't be worked out with them.
-  [M2.2e9](decisions-and-roadmap.md#m2-2e9), tube fin aerodynamics, is the milestone that adds a
-  method.
+- **Tube fins fly as ring wings, below Mach 0.8, with three tubes or more.** Tube fins are open
+  tubes that run along the body, touching it, in place of flat fins. Each tube's slope, centre of
+  pressure and drag come from cited ring-wing sources, but no tube fin rocket has been checked
+  against a measurement. hpr's tube-fin drag probably reads low, so treat an apogee as high. Its
+  stability margin is well below OpenRocket's on OpenRocket's example. A tumbling airframe with
+  tube fins is refused ([aerodynamics: Tube fins](physics/aero.md#tube-fins)).
 - **Pods fly on Barrowman's rules, without their interference with the body.** A
   [pod set](physics/design.md#pods) gives each pod's parts their own normal force and drag, once
   per pod, as if the airframe did not disturb the air around them. Nothing measured checks it yet,
