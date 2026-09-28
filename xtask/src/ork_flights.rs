@@ -34,9 +34,10 @@ use std::f64::consts::FRAC_PI_2;
 use std::fs;
 use std::path::Path;
 
-use hpr_aero::Flow;
+use hpr_aero::{DragTable, Flow};
 use hpr_core::DVec3;
 use hpr_core::geodesy::Geodetic;
+use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 use hpr_io::ork;
 use hpr_sim::recovery::{Device, DeviceDrag, Trigger};
 use hpr_sim::{
@@ -196,7 +197,7 @@ fn fly_all(root: &Path, record: &Value) -> Result<Value, String> {
         let name = design_name(file);
         let label =
             |_: usize, flight: &Value| flight["name"].as_str().unwrap_or_default().to_owned();
-        let flown = fly_design(file, &name, &bytes, recorded, &supply, label, false)?;
+        let flown = fly_design(file, &name, &bytes, recorded, &supply, label, &Mode::Public)?;
         if probe {
             // A probe is not a design: it is listed apart, out of the designs' statistics, and
             // it exists to be flown.
@@ -268,8 +269,8 @@ pub(crate) struct Flown {
 /// saying so in the flight record when a digest is not in its database.
 ///
 /// A record that lacks what a comparison needs is an error. So is a flight hpr fails, unless
-/// `list_failures`, when the configuration is listed as [`FLIGHT_FAILED`] and the detail, which can
-/// name a part, is printed on this machine only.
+/// flying the library ([`Mode::Library`]), when the configuration is listed as [`FLIGHT_FAILED`]
+/// and the detail, which can name a part, is printed on this machine only.
 pub(crate) fn fly_design(
     file: &str,
     name: &str,
@@ -277,11 +278,20 @@ pub(crate) fn fly_design(
     recorded: &[Value],
     supply: &crate::ork_supply::Supply,
     label: impl Fn(usize, &Value) -> String,
-    list_failures: bool,
+    mode: &Mode,
 ) -> Result<Flown, String> {
+    let list_failures = matches!(mode, Mode::Library { .. });
     let read = ork::read(bytes).map_err(|error| format!("{name}: {error}"))?;
     let design = ork::design_with(&read.value, supply.curves()).value;
     let sha = crate::ork_supply::sha256(bytes);
+    let curves = match mode {
+        Mode::Library { drag_curves } => drag_curves["designs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|entry| entry["sha256"].as_str() == Some(sha.as_str())),
+        Mode::Public => None,
+    };
     let overrides = drag_overrides(&read.value.document.root);
     let powered: Vec<(usize, &Value)> = recorded
         .iter()
@@ -362,14 +372,16 @@ pub(crate) fn fly_design(
         };
         recorded_enough(flight).map_err(|error| format!("{motors}: {error}"))?;
         let staging = matched.and_then(|matched| matched.staging.as_ref());
-        let flew = |rocket: &hpr_design::Rocket| {
-            fly(name, rocket, &configuration.id, staging, &motors, flight).map_err(|error| {
+        let flew_as = |rocket: &hpr_design::Rocket, drag: Drag| {
+            let flown = (name, rocket, &configuration.id[..], staging);
+            fly(flown, drag, &motors, flight).map_err(|error| {
                 if list_failures {
                     eprintln!("{motors}: {FLIGHT_FAILED}: {error}");
                 }
                 error
             })
         };
+        let flew = |rocket: &hpr_design::Rocket| flew_as(rocket, Drag::Own);
         let mut entry = match flew(&design.rocket) {
             Ok(entry) => entry,
             Err(_) if list_failures => {
@@ -417,6 +429,44 @@ pub(crate) fn fly_design(
             causes_removed(flight, &entry, &overrides).map_err(|e| format!("{motors}: {e}"))?
         {
             entry["apogee_with_the_causes_removed"] = sized;
+        }
+        let off = entry["metrics"]["apogee_m"]["relative_percent"]
+            .as_f64()
+            .is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT);
+        if off && entry["aborted"] != true && cause(&entry, FlightMetric::Apogee) == NO_NAMED_CAUSE
+        {
+            // An apogee off by more than the bar with neither cause above: hpr flies it again on
+            // OpenRocket's own drag, where the library's record has it (ADR-097). Within the bar,
+            // the drag is its named cause. Flown also with only OpenRocket's base drag under
+            // power, which says how much of it that one rule is.
+            let table = curves
+                .map(|curves| openrocket_drag(curves, id))
+                .transpose()
+                .map_err(|error| format!("{motors}: {error}"))?
+                .flatten()
+                .filter(|_| staging.is_none());
+            let probes = [
+                (WHOLE_BASE_PROBE, Some(Drag::WholeBase)),
+                (OPENROCKET_DRAG_PROBE, table.map(Drag::OpenRocket)),
+            ];
+            let mut failed = false;
+            for (key, drag) in probes {
+                let Some(drag) = drag else { continue };
+                match flew_as(&design.rocket, drag) {
+                    Ok(probe) => {
+                        entry[key] = json!({
+                            "apogee_m": probe["metrics"]["apogee_m"],
+                            "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
+                        });
+                    }
+                    Err(_) if list_failures => failed = true,
+                    Err(error) => return Err(error),
+                }
+            }
+            if failed {
+                out.not_flown.push(not_flown(FLIGHT_FAILED));
+                continue;
+            }
         }
         out.flights.push(entry);
     }
@@ -659,13 +709,21 @@ fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[DragOverri
 /// The centre of mass's height and place at the start, and its largest speed up to apogee, from
 /// the dense output. hpr flies no recovery from a `.ork`, so its fall is unbraked and is left out:
 /// the reference's peak speed is on the way up, and a free fall could outrun it.
+///
+/// Apogee is the highest sample, and the largest speed is taken over every sample up to it. An
+/// earlier rule stopped at the first sample whose vertical speed was not positive after one that
+/// was, and a rocket held on the pad can show a vertical speed of a few µm/s either way (the
+/// held state in Earth's frame): on one private flight it stopped before liftoff, and the
+/// largest speed read 100% low.
 #[derive(Default)]
 struct Peaks {
     start_height_m: Option<f64>,
     start_enu_m: Option<DVec3>,
+    /// The largest speed up to the highest sample so far, m/s.
     max_speed_m_s: Option<f64>,
-    climbed: bool,
-    past_apogee: bool,
+    /// The largest speed so far, m/s.
+    running_speed_m_s: f64,
+    highest_m: Option<f64>,
 }
 
 impl Observer for Peaks {
@@ -677,23 +735,21 @@ impl Observer for Peaks {
             self.start_enu_m = Some(sample.cg_enu_m);
         }
         for k in 1..=4 {
-            if self.past_apogee {
-                break;
-            }
             let t = if k == 4 {
                 end
             } else {
                 start + (end - start) * f64::from(k) / 4.0
             };
             let sample = step.sample(t)?;
-            if sample.vertical_speed_m_s > 0.0 {
-                self.climbed = true;
-            } else if self.climbed {
-                self.past_apogee = true;
-            }
-            let speed = sample.cg_velocity_enu_m_s.length();
-            if self.max_speed_m_s.is_none_or(|max| speed > max) {
-                self.max_speed_m_s = Some(speed);
+            self.running_speed_m_s = self
+                .running_speed_m_s
+                .max(sample.cg_velocity_enu_m_s.length());
+            if self
+                .highest_m
+                .is_none_or(|highest| sample.height_above_ground_m > highest)
+            {
+                self.highest_m = Some(sample.height_above_ground_m);
+                self.max_speed_m_s = Some(self.running_speed_m_s);
             }
         }
         Ok(())
@@ -721,13 +777,98 @@ fn staged(simulation: Simulation, staging: &ork::Staging) -> Result<Simulation, 
         .with_separation(separation)
 }
 
-/// Flies one configuration in the recorded conditions, with its powered separation if it has
-/// one, and compares it with the record.
+/// How [`fly_design`] flies: the public designs, where a flight hpr fails stops the report, or the
+/// private library, where it is listed, with OpenRocket's drag curves ([`DRAG_CURVES`]) to size a
+/// cause in the drag.
+pub(crate) enum Mode<'a> {
+    /// The public designs.
+    Public,
+    /// The private library, with the record `drag_curves.py` wrote of it.
+    Library {
+        /// That record.
+        drag_curves: &'a Value,
+    },
+}
+
+/// Where `drag_curves.py` writes OpenRocket's drag along its flights of the private library.
+pub(crate) const DRAG_CURVES: &str = "corpus-out/openrocket-drag-curves.json";
+
+/// The drag hpr flies a configuration on.
+enum Drag {
+    /// Its own buildup.
+    Own,
+    /// Its own buildup with the base's whole drag kept while a motor burns, as OpenRocket's
+    /// ([`Simulation::with_full_base_drag_under_power`]).
+    WholeBase,
+    /// OpenRocket's drag coefficient along its own flight ([`openrocket_drag`]).
+    OpenRocket(DragTable),
+}
+
+/// OpenRocket's drag along its flight of `configuration`, from the design's entry in
+/// [`DRAG_CURVES`], as a table hpr can fly: power on while a motor burns, power off after, each
+/// linear in Mach number and held at its ends, on OpenRocket's reference diameter. `None` when the
+/// record has no such flight, or OpenRocket refused or aborted it, or it has more than one branch
+/// (a separation: the curves would join two shapes), or a curve has fewer than two points.
+fn openrocket_drag(design: &Value, configuration: &str) -> Result<Option<DragTable>, String> {
+    let Some(flight) = design["flights"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|flight| {
+            flight["configuration"]
+                .as_str()
+                .is_some_and(|id| id.eq_ignore_ascii_case(configuration))
+        })
+    else {
+        return Ok(None);
+    };
+    if !flight["refused"].is_null() || flight["aborted"] != false || flight["branches"] != 1 {
+        return Ok(None);
+    }
+    let curve = |key: &str| -> Result<Option<Table1D>, String> {
+        let points = flight[key]
+            .as_array()
+            .ok_or_else(|| format!("{DRAG_CURVES} has no {key} curve"))?;
+        if points.len() < 2 {
+            return Ok(None);
+        }
+        let mut xs = Vec::with_capacity(points.len());
+        let mut ys = Vec::with_capacity(points.len());
+        for point in points {
+            let (Some(mach), Some(cd)) = (point[0].as_f64(), point[1].as_f64()) else {
+                return Err(format!(
+                    "{DRAG_CURVES} has a {key} point that is not two numbers"
+                ));
+            };
+            xs.push(mach);
+            ys.push(cd);
+        }
+        Table1D::new(xs, ys, Interpolation::Linear, Extrapolation::Clamp)
+            .map(Some)
+            .map_err(|error| format!("{DRAG_CURVES}'s {key} curve: {error}"))
+    };
+    let (Some(off), Some(on)) = (curve("power_off")?, curve("power_on")?) else {
+        return Ok(None);
+    };
+    let reference = flight["reference_length_m"]
+        .as_f64()
+        .ok_or_else(|| format!("{DRAG_CURVES} has no reference length"))?;
+    Ok(Some(
+        DragTable::new(off, Some(on)).with_reference_diameter_m(reference),
+    ))
+}
+
+/// Flies one configuration (the design's name, its rocket, the configuration's id and its
+/// staging) in the recorded conditions, with its powered separation if it has one, on `drag`, and
+/// compares it with the record.
 fn fly(
-    design: &str,
-    rocket: &hpr_design::Rocket,
-    configuration: &str,
-    staging: Option<&ork::Staging>,
+    (design, rocket, configuration, staging): (
+        &str,
+        &hpr_design::Rocket,
+        &str,
+        Option<&ork::Staging>,
+    ),
+    drag: Drag,
     motors: &str,
     recorded: &Value,
 ) -> Result<Value, String> {
@@ -770,6 +911,11 @@ fn fly(
     let simulation = match staging {
         Some(staging) => staged(simulation, staging).map_err(|error| format!("{at}: {error}"))?,
         None => simulation,
+    };
+    let simulation = match drag {
+        Drag::Own => simulation,
+        Drag::WholeBase => simulation.with_full_base_drag_under_power(),
+        Drag::OpenRocket(table) => simulation.with_drag_table(table),
     };
     let mut peaks = Peaks::default();
     let result = simulation
@@ -1251,12 +1397,26 @@ pub(crate) const DRAG_OVERRIDE: &str = "a part's drag override not applied";
 /// A reference parachute open before its apogee.
 pub(crate) const EARLY_CHUTE: &str = "reference parachute open before apogee";
 
-/// Neither.
+/// hpr's drag coefficient, not OpenRocket's: flown on OpenRocket's, hpr's apogee comes within 5%
+/// of OpenRocket's (ADR-097).
+pub(crate) const OWN_DRAG: &str = "hpr's own drag coefficient";
+
+/// None of these.
 pub(crate) const NO_NAMED_CAUSE: &str = "no named cause";
+
+/// Where a flight holds hpr's flight again with only OpenRocket's base drag under power: its
+/// apogee and largest speed against OpenRocket's.
+pub(crate) const WHOLE_BASE_PROBE: &str = "with_the_whole_base_under_power";
+
+/// Where a flight holds hpr's flight again on OpenRocket's drag coefficient along OpenRocket's
+/// flight ([`DRAG_CURVES`]): its apogee and largest speed against OpenRocket's.
+pub(crate) const OPENROCKET_DRAG_PROBE: &str = "on_openrocket_s_drag";
 
 /// The named cause a flight's difference in `metric` is summarised under. A drag override moves
 /// every metric but the margin; an early parachute only the apogee. A flight with both is put
-/// under the drag override.
+/// under the drag override. A flight with neither whose apogee hpr brings within 5% of
+/// OpenRocket's by flying OpenRocket's drag has hpr's own drag as its cause, for the apogee and the
+/// largest speed.
 pub(crate) fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
     if metric == FlightMetric::RodClearanceStability {
         NO_NAMED_CAUSE
@@ -1264,9 +1424,17 @@ pub(crate) fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
         DRAG_OVERRIDE
     } else if metric == FlightMetric::Apogee && !flight["deployed_before_apogee_s"].is_null() {
         EARLY_CHUTE
+    } else if drag_sizes(flight[OPENROCKET_DRAG_PROBE]["apogee_m"]["relative_percent"].as_f64()) {
+        OWN_DRAG
     } else {
         NO_NAMED_CAUSE
     }
+}
+
+/// Whether hpr's apogee on OpenRocket's drag, `percent` from OpenRocket's, is within the bar that
+/// sizes a cause.
+pub(crate) fn drag_sizes(percent: Option<f64>) -> bool {
+    percent.is_some_and(|p| p.abs() <= APOGEE_CAUSE_PERCENT)
 }
 
 /// How many, the median, the mean, and the smallest and largest of `values`.
@@ -2095,18 +2263,69 @@ mod tests {
         assert_eq!(page_now.replace("\r\n", "\n"), page(&report));
     }
 
+    /// OpenRocket's drag curves become a table on its reference diameter, power on while burning;
+    /// a flight that can't stand for one gives none, and a malformed record is an error.
+    #[test]
+    fn openrocket_s_drag_is_a_table_of_its_two_curves() {
+        let flight = json!({
+            "configuration": "ABC",
+            "branches": 1,
+            "aborted": false,
+            "reference_length_m": 0.1,
+            "power_on": [[0.1, 0.5], [0.5, 0.4], [1.5, 0.6]],
+            "power_off": [[0.2, 0.7], [1.0, 0.9]],
+        });
+        let design = |flight: &Value| json!({ "flights": [flight] });
+        let table = openrocket_drag(&design(&flight), "abc").unwrap().unwrap();
+        assert_eq!(table.reference_diameter_m, Some(0.1));
+        let at = |mach: f64, thrusting: bool| table.lookup(mach, thrusting).unwrap().value;
+        assert!((at(1.0, true) - 0.5).abs() < 1e-15);
+        assert!((at(0.6, false) - 0.8).abs() < 1e-15);
+        // Held at the ends.
+        assert_eq!(at(3.0, true), 0.6);
+        assert_eq!(at(0.0, false), 0.7);
+        assert!(
+            openrocket_drag(&design(&flight), "other")
+                .unwrap()
+                .is_none()
+        );
+        for (key, value) in [
+            ("branches", json!(2)),
+            ("aborted", json!(true)),
+            ("refused", json!("no")),
+            ("power_off", json!([[0.2, 0.7]])),
+        ] {
+            let mut changed = flight.clone();
+            changed[key] = value;
+            assert!(
+                openrocket_drag(&design(&changed), "ABC").unwrap().is_none(),
+                "{key}"
+            );
+        }
+        for (key, value) in [
+            ("power_on", Value::Null),
+            ("power_on", json!([[0.1, "x"], [0.5, 0.4]])),
+            ("power_on", json!([[0.5, 0.5], [0.1, 0.4]])),
+            ("reference_length_m", Value::Null),
+        ] {
+            let mut changed = flight.clone();
+            changed[key] = value;
+            assert!(openrocket_drag(&design(&changed), "ABC").is_err(), "{key}");
+        }
+    }
+
     #[test]
     fn every_apogee_more_than_5_percent_off_has_a_named_cause() {
         // M2.2's parent asks a written cause for each. This report has two: a reference parachute
         // open before apogee, which hpr does not fly from a `.ork`, and a part whose drag
-        // OpenRocket is told is zero, which hpr cannot yet be told.
+        // OpenRocket is told is zero, which hpr cannot yet be told. The third, hpr's own drag,
+        // needs OpenRocket's drag curves, which are recorded only for the private library.
         let (_, report) = committed();
         for flight in report["flights"].as_array().unwrap() {
             let percent = flight["metrics"]["apogee_m"]["relative_percent"].as_f64();
             if percent.is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT) {
                 assert!(
-                    !flight["deployed_before_apogee_s"].is_null()
-                        || !flight["drag_overrides_not_applied"].is_null(),
+                    cause(flight, FlightMetric::Apogee) != NO_NAMED_CAUSE,
                     "{} {} is {percent:?}% off with no cause written",
                     flight["design"],
                     flight["motors"]

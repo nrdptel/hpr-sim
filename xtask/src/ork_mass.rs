@@ -11,6 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use hpr_core::DVec3;
 use hpr_design::MassProperties;
+use hpr_design::fins::FinCrossSection;
+use hpr_design::material::Density;
 use hpr_design::tree::{Component, Layout, Part, Rocket};
 use hpr_validate::openrocket::openrocket_fin_set_roll_kg_m2;
 use serde_json::{Value, json};
@@ -227,23 +229,26 @@ fn spread(values: &[f64]) -> String {
     )
 }
 
-/// The causes a design outside a threshold is traced to, each by what hpr says when it reads the
-/// file, in the order they are printed. M2.2a's first two, a shoulder written with no wall and a
-/// part written with no material, are gone: hpr now reads both as OpenRocket does (ADR-061). So is
-/// a cluster of motor tubes read as one tube: hpr reads every tube of a cluster since M1.9b
-/// (ADR-075).
+/// The causes a design outside a threshold is traced to, in the order they are printed. M2.2a's
+/// first two, a shoulder written with no wall and a part written with no material, are gone: hpr
+/// now reads both as OpenRocket does (ADR-061). So is a cluster of motor tubes read as one tube:
+/// hpr reads every tube of a cluster since M1.9b (ADR-075), and fin fillets, left out: hpr weighs
+/// them as OpenRocket does since M2.2e7 (ADR-096). The first is sized, not only present: it is
+/// named only when the design is within both thresholds with its fin sections weighed as
+/// OpenRocket weighs them ([`under_openrocket_sections`]).
 pub(crate) const CAUSES: [&str; 3] = [
-    "fin fillets, left out",
+    "fin sections, which OpenRocket weighs by a factor (ADR-062)",
     "parts hpr keeps unread (a reduced design)",
     "a stage OpenRocket's configuration switches off",
 ];
 
-/// The causes a design shows, from the warnings hpr raised reading it, whether it is reduced, and
-/// whether OpenRocket weighs fewer stages than hpr. The words are the importer's; a test holds
-/// them to what it says.
-fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static str> {
-    let said = |words: &str| warnings.iter().any(|warning| warning.contains(words));
-    let found = [said(FILLETS), reduced, stages_apart];
+/// The causes a design shows: whether its fin sections, weighed as OpenRocket weighs them, bring
+/// it within both thresholds; whether it is reduced; and whether OpenRocket weighs fewer stages
+/// than hpr.
+fn causes(sections: Option<[f64; 2]>, reduced: bool, stages_apart: bool) -> Vec<&'static str> {
+    let within =
+        sections.is_some_and(|[mass, cg]| mass.abs() <= MASS_WITHIN && cg.abs() <= CG_WITHIN);
+    let found = [within, reduced, stages_apart];
     CAUSES
         .iter()
         .zip(found)
@@ -297,8 +302,50 @@ struct RollOutside {
     causes: Vec<&'static str>,
 }
 
-/// How `hpr_io::ork` words the warnings `causes` looks for.
-const FILLETS: &str = "the fillets along the fin roots were dropped";
+/// How OpenRocket 24.12 weighs a fin of a rounded or an airfoil section: its outline times its
+/// thickness times a factor, 0.99 and 0.85, read from its output on probes and pinned by
+/// `hpr_validate::openrocket`'s `a_fin_section_is_weighed_as_pinned` ([ADR-062][adr-062]). hpr
+/// integrates the section instead.
+///
+/// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+const SECTION_FACTORS: [(FinCrossSection, f64); 2] = [
+    (FinCrossSection::Rounded, 0.99),
+    (FinCrossSection::Airfoil, 0.85),
+];
+
+/// hpr's mass and centre of mass against OpenRocket's, as [`differences`] gives them, with every
+/// rounded or airfoil fin set weighed as OpenRocket weighs it: square, its material's density
+/// times [`SECTION_FACTORS`]'s factor (its fillets, in their own material, unchanged). `None` for
+/// a design with no such fin set, or one that no longer lays out.
+fn under_openrocket_sections(rocket: &Rocket, openrocket: &Value) -> Option<[f64; 2]> {
+    fn visit(components: &mut [Component], changed: &mut bool) {
+        for component in components {
+            if let Part::FinSet(fins) = &mut component.part
+                && let Some((_, factor)) = SECTION_FACTORS
+                    .iter()
+                    .find(|(section, _)| *section == fins.cross_section)
+                && let Density::Bulk { kg_m3 } = fins.material.density
+            {
+                fins.cross_section = FinCrossSection::Square;
+                fins.material.density = Density::Bulk {
+                    kg_m3: kg_m3 * factor,
+                };
+                *changed = true;
+            }
+            visit(&mut component.children, changed);
+        }
+    }
+    let mut rocket = rocket.clone();
+    let mut changed = false;
+    for stage in &mut rocket.stages {
+        visit(&mut stage.components, &mut changed);
+    }
+    if !changed {
+        return None;
+    }
+    let found = differences(&rocket.layout().ok()?, openrocket)?;
+    Some([found[0], found[1]])
+}
 
 /// How a design is named in print: by its file when it is public (the jar's examples, Loft's own
 /// repository, the parts catalogue, and the repository's own fixtures), and otherwise only by the
@@ -393,7 +440,6 @@ impl MassTally {
     }
 
     /// Compares one design the survey laid out, when the record holds it, and returns the detail.
-    /// `warnings` are what hpr said reading it, which name the cause of a difference.
     pub(crate) fn add(
         &mut self,
         name: &str,
@@ -401,7 +447,6 @@ impl MassTally {
         rocket: &Rocket,
         layout: &Layout,
         reduced: bool,
-        warnings: &[&str],
     ) -> Value {
         let Some(designs) = &mut self.record else {
             return Value::Null;
@@ -483,7 +528,11 @@ impl MassTally {
                 label: named,
                 hash: digest,
                 found,
-                causes: causes(warnings, reduced, stages_apart),
+                causes: causes(
+                    under_openrocket_sections(rocket, &design["structure"]),
+                    reduced,
+                    stages_apart,
+                ),
                 parts: parts.clone(),
             });
         }
@@ -916,18 +965,12 @@ mod tests {
             let read = ork::read(&bytes).unwrap();
             let whole = ork::design(&read.value);
             let layout = whole.value.rocket.layout().unwrap();
-            let said: Vec<&str> = whole
-                .warnings
-                .iter()
-                .map(|warning| warning.message.as_str())
-                .collect();
             tally.add(
                 file,
                 &bytes,
                 &whole.value.rocket,
                 &layout,
                 whole.value.is_reduced(),
-                &said,
             );
         }
         tally
@@ -991,6 +1034,29 @@ mod tests {
                 assert!(row["apart_kg"].as_f64().unwrap().abs() < 3e-4, "{row}");
             }
         }
+    }
+
+    /// With OpenRocket's factors for a rounded and an airfoil section, the section probes weigh
+    /// what OpenRocket weighs them, fillets or not: the cause [`under_openrocket_sections`] sizes
+    /// is OpenRocket's rule, not a fit to the corpus.
+    #[test]
+    fn fin_sections_under_openrocket_s_factors_are_its_structure() {
+        for question in [
+            "a tube and a fin set of airfoil section",
+            "a tube and a thicker fin set of airfoil section",
+            "a tube and a fin set of rounded section",
+            "a tube and four fins of rounded section with fillets",
+        ] {
+            let (rocket, _, probe) = conventions_probe(question);
+            let [mass, cg] =
+                under_openrocket_sections(&rocket, &probe["structure"]).expect("a section");
+            assert!(
+                mass.abs() < 1e-14 && cg.abs() < 1e-14,
+                "{question}: {mass:e}, {cg:e}"
+            );
+        }
+        let (rocket, _, probe) = conventions_probe("a tube and a fin set of square section");
+        assert!(under_openrocket_sections(&rocket, &probe["structure"]).is_none());
     }
 
     /// A tube whose override covers everything on it: OpenRocket reports the override as the
@@ -1158,7 +1224,7 @@ mod tests {
         let whole = ork::design(&read.value);
         let layout = whole.value.rocket.layout().unwrap();
         let mut tally = MassTally::of(&stale);
-        tally.add(file, &bytes, &whole.value.rocket, &layout, false, &[]);
+        tally.add(file, &bytes, &whole.value.rocket, &layout, false);
         assert!(
             tally
                 .failure()
@@ -1167,14 +1233,14 @@ mod tests {
         );
 
         let mut tally = MassTally::of(&json!({ "probe": record()["probe"], "designs": [] }));
-        tally.add(file, &bytes, &whole.value.rocket, &layout, false, &[]);
+        tally.add(file, &bytes, &whole.value.rocket, &layout, false);
         assert!(tally.failure().unwrap().contains("is not in"));
 
         let mut swapped = record();
         swapped["probe"]["openrocket"]["ixx"] = swapped["probe"]["openrocket"]["iyy"].clone();
         assert!(!probe_mismatches(&swapped["probe"]).is_empty());
 
-        assert_eq!(causes(&[], false, false), Vec::<&str>::new());
+        assert_eq!(causes(None, false, false), Vec::<&str>::new());
         let tally = MassTally {
             record: Some(BTreeMap::new()),
             outside: vec![Outside {
@@ -1187,13 +1253,10 @@ mod tests {
             ..MassTally::default()
         };
         assert!(tally.failure().unwrap().contains("no cause hpr warned of"));
-        assert_eq!(
-            causes(
-                &["the fillets along the fin roots were dropped, so their mass is too"],
-                false,
-                false
-            ),
-            [CAUSES[0]]
-        );
+        // Sized, not only present: a design whose sections leave it outside is not explained.
+        assert_eq!(causes(Some([0.009, -0.01]), false, false), [CAUSES[0]]);
+        assert!(causes(Some([0.011, 0.0]), false, false).is_empty());
+        assert!(causes(Some([0.0, 0.0101]), false, false).is_empty());
+        assert!(causes(None, false, false).is_empty());
     }
 }

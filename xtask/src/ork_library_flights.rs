@@ -31,9 +31,9 @@ use std::path::Path;
 use serde_json::{Value, json};
 
 use crate::ork_flights::{
-    DRAG_OVERRIDE, EARLY_CHUTE, METRICS, NO_NAMED_CAUSE, fixed, fly_design,
-    margin_at_openrocket_alpha_cal, mass_and_cg_differences, read_json, same, signed, spread,
-    summarise,
+    DRAG_CURVES, DRAG_OVERRIDE, EARLY_CHUTE, METRICS, Mode, NO_NAMED_CAUSE, OPENROCKET_DRAG_PROBE,
+    OWN_DRAG, WHOLE_BASE_PROBE, drag_sizes, fixed, fly_design, margin_at_openrocket_alpha_cal,
+    mass_and_cg_differences, read_json, same, signed, spread, summarise,
 };
 use crate::ork_supply::sha256;
 
@@ -50,6 +50,9 @@ pub(crate) const REPORT_JSON: &str = "validation/reports/openrocket-library-flig
 pub(crate) const REPORT_MD: &str = "validation/reports/openrocket-library-flights.md";
 
 /// The oracle scripts the record must have been written by, as its `inputs_sha256` names them.
+/// The oracle that writes [`DRAG_CURVES`].
+const DRAG_CURVES_SCRIPT: &str = "validation/oracles/openrocket/drag_curves.py";
+
 const SCRIPTS: [(&str, &str); 3] = [
     ("flights.py", "validation/oracles/openrocket/flights.py"),
     ("events.py", "validation/oracles/openrocket/events.py"),
@@ -82,7 +85,7 @@ pub(crate) const MASS_DIGITS: i32 = 3;
 pub(crate) const CHUTE_DIGITS: i32 = 2;
 
 /// The keys a flight's row holds, and nothing else.
-const ROW_KEYS: [&str; 21] = [
+const ROW_KEYS: [&str; 23] = [
     "flight",
     "aborted",
     "termination",
@@ -103,6 +106,8 @@ const ROW_KEYS: [&str; 21] = [
     "chute_early_s",
     "drag_overrides_not_applied",
     "without_the_overridden_parts",
+    "whole_base_under_power",
+    "on_openrocket_s_drag",
     "design_checks",
 ];
 
@@ -312,6 +317,28 @@ fn fly_library(root: &Path) -> Result<Value, String> {
     if record["jar_sha256"].as_str() != Some(&sha256(&jar_bytes)) {
         return Err(format!("{RECORD} was not written with {jar}; run it again"));
     }
+    let drag_curves = read_json(&root.join(DRAG_CURVES)).map_err(|_| {
+        format!(
+            "{DRAG_CURVES} is missing or unreadable; write it with `refs/venv/bin/python \
+             validation/oracles/openrocket/drag_curves.py {DRAG_CURVES} refs`"
+        )
+    })?;
+    for (name, path) in SCRIPTS
+        .iter()
+        .chain(&[("drag_curves.py", DRAG_CURVES_SCRIPT)])
+    {
+        let bytes = fs::read(root.join(path)).map_err(|error| format!("{path}: {error}"))?;
+        if drag_curves["inputs_sha256"][name].as_str() != Some(&sha256(&bytes)) {
+            return Err(format!(
+                "{DRAG_CURVES} was not written by the current {path}; run it again"
+            ));
+        }
+    }
+    if drag_curves["jar_sha256"] != record["jar_sha256"] {
+        return Err(format!(
+            "{DRAG_CURVES} was not written with {jar}; run it again"
+        ));
+    }
     let supply = crate::ork_supply::Supply::load(root, true)?;
     if !supply.is_present() {
         return Err(format!(
@@ -377,7 +404,10 @@ fn fly_library(root: &Path) -> Result<Value, String> {
         let id = format!("C{:02}", index + 1);
         let (file, recorded, bytes) = &inputs[k];
         let label = |place: usize, _: &Value| format!("{id}/{place}");
-        let flown = fly_design(file, &id, bytes, recorded, &supply, label, true)?;
+        let mode = Mode::Library {
+            drag_curves: &drag_curves,
+        };
+        let flown = fly_design(file, &id, bytes, recorded, &supply, label, &mode)?;
         for flight in &flown.flights {
             let mut row = anonymised(flight);
             row["site"] = json!(site_class(recorded, &flight["configuration"]));
@@ -516,6 +546,18 @@ pub(crate) fn anonymised(flight: &Value) -> Value {
         .is_some_and(|(h, o)| (h - o).abs() <= 1e-9 * o.abs());
     let outcome = |key: &str| metrics[key]["outcome"]["outcome"].clone();
     let probe = &flight["without_the_overridden_parts"];
+    let probed = |key: &str| {
+        let probe = &flight[key];
+        if probe.is_null() {
+            Value::Null
+        } else {
+            json!({
+                "apogee_percent": rounded(probe["apogee_m"]["relative_percent"].as_f64(), DIGITS),
+                "max_speed_percent":
+                    rounded(probe["max_speed_m_s"]["relative_percent"].as_f64(), DIGITS),
+            })
+        }
+    };
     let aborted = flight["aborted"] == true;
     let kept = |value: Option<f64>| if aborted { None } else { value };
     let mut findings: Vec<&str> = flight["design_errors_accepted"]
@@ -561,6 +603,8 @@ pub(crate) fn anonymised(flight: &Value) -> Value {
                     rounded(probe["max_speed_m_s"]["relative_percent"].as_f64(), DIGITS),
             })
         },
+        "whole_base_under_power": probed(WHOLE_BASE_PROBE),
+        "on_openrocket_s_drag": probed(OPENROCKET_DRAG_PROBE),
         "design_checks": findings,
     })
 }
@@ -584,6 +628,8 @@ pub(crate) fn row_cause(row: &Value, key: &str) -> &'static str {
         DRAG_OVERRIDE
     } else if key == "apogee_percent" && !row["chute_early_s"].is_null() {
         EARLY_CHUTE
+    } else if drag_sizes(row["on_openrocket_s_drag"]["apogee_percent"].as_f64()) {
+        OWN_DRAG
     } else {
         NO_NAMED_CAUSE
     }
@@ -868,6 +914,26 @@ pub(crate) fn page(report: &Value) -> String {
             }
             causes.push(cause);
         }
+        let with = |key: &str| {
+            row[key]["apogee_percent"]
+                .as_f64()
+                .zip(row[key]["max_speed_percent"].as_f64())
+                .map(|(apogee, speed)| format!("{apogee:+.2}% and {speed:+.2}%"))
+        };
+        let on_drag = with("on_openrocket_s_drag");
+        if on_drag.is_some() || !row["whole_base_under_power"].is_null() {
+            let sized = drag_sizes(row["on_openrocket_s_drag"]["apogee_percent"].as_f64());
+            let mut cause = format!(
+                "{} (on OR's drag {}",
+                if sized { OWN_DRAG } else { NO_NAMED_CAUSE },
+                on_drag.as_deref().unwrap_or("not flown")
+            );
+            if let Some(whole) = with("whole_base_under_power") {
+                cause.push_str(&format!("; with OR's base drag alone {whole}"));
+            }
+            cause.push(')');
+            causes.push(cause);
+        }
         out.push_str(&format!(
             "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
             row["flight"].as_str().unwrap_or_default(),
@@ -903,6 +969,22 @@ pub(crate) fn page(report: &Value) -> String {
              does not apply ([#165](https://github.com/nrdptel/hpr-sim/issues/165)); where every \
              such part states zero, the same flight by hpr with those parts removed gives the \
              apogee and largest speed differences in brackets, a probe, not the override."
+                .to_owned(),
+        );
+    }
+    if rows
+        .iter()
+        .any(|row| !row["whole_base_under_power"].is_null())
+    {
+        legend.push(
+            "*hpr's own drag coefficient*: hpr flew the flight again on OpenRocket's drag \
+             coefficient along OpenRocket's own flight (power on while a motor burns, power off \
+             after), and again with its own drag but OpenRocket's base drag under power, the \
+             whole base's while a motor burns where hpr takes the motor's cross-section off it; \
+             the brackets give each one's apogee and largest speed differences. It names the \
+             cause when the first is within 5% \
+             ([ADR-097](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28)). \
+             hpr flies both for an apogee more than 5% off with no other named cause."
                 .to_owned(),
         );
     }
@@ -1238,6 +1320,78 @@ mod tests {
         let mut aborted = flight.clone();
         aborted["aborted"] = json!(true);
         assert!(anonymised(&aborted)["launch_mass_percent"].is_null());
+        // The drag probes: hpr's own drag is the cause when the flight on OpenRocket's is within
+        // 5%, for the apogee and the largest speed, and only with no cause named before it.
+        let mut probed = flight.clone();
+        for key in ["drag_overrides_not_applied", "deployed_before_apogee_s"] {
+            probed[key] = Value::Null;
+        }
+        let probe = |apogee: f64| {
+            json!({
+                "apogee_m": { "relative_percent": apogee },
+                "max_speed_m_s": { "relative_percent": 0.1234567 },
+            })
+        };
+        probed[WHOLE_BASE_PROBE] = probe(-10.7123456);
+        let row = anonymised(&probed);
+        assert_eq!(row["whole_base_under_power"]["apogee_percent"], -10.712346);
+        assert!(row["on_openrocket_s_drag"].is_null());
+        assert_eq!(row_cause(&row, "apogee_percent"), NO_NAMED_CAUSE);
+        for (apogee, cause) in [
+            (5.0, OWN_DRAG),
+            (-5.0, OWN_DRAG),
+            (5.000001, NO_NAMED_CAUSE),
+        ] {
+            probed[OPENROCKET_DRAG_PROBE] = probe(apogee);
+            let row = anonymised(&probed);
+            assert!(unpublishable(&row).is_none());
+            assert_eq!(row["on_openrocket_s_drag"]["max_speed_percent"], 0.123457);
+            for key in ["apogee_percent", "max_speed_percent"] {
+                assert_eq!(row_cause(&row, key), cause, "{apogee} {key}");
+                assert_eq!(
+                    crate::ork_flights::cause(&probed, metric_of(key)),
+                    cause,
+                    "{apogee} {key}"
+                );
+            }
+            assert_eq!(row_cause(&row, "margin_cal"), NO_NAMED_CAUSE);
+        }
+        probed["deployed_before_apogee_s"] = json!(0.5);
+        let row = anonymised(&probed);
+        assert_eq!(row_cause(&row, "apogee_percent"), EARLY_CHUTE);
+        assert_eq!(row_cause(&row, "max_speed_percent"), NO_NAMED_CAUSE);
+    }
+
+    fn metric_of(key: &str) -> hpr_validate::flight_metrics::FlightMetric {
+        use hpr_validate::flight_metrics::FlightMetric;
+        match key {
+            "apogee_percent" => FlightMetric::Apogee,
+            _ => FlightMetric::MaxSpeed,
+        }
+    }
+
+    /// M2.2e4's bar (ADR-073): an apogee more than 5% from OpenRocket's has a named cause, and a
+    /// cause in hpr's drag is sized by the flight on OpenRocket's drag within 5%.
+    #[test]
+    fn every_apogee_more_than_5_percent_off_has_a_sized_cause() {
+        let report = committed();
+        for row in report["flights"].as_array().unwrap() {
+            let percent = row["apogee_percent"].as_f64();
+            if percent.is_some_and(|p| p.abs() > 5.0) {
+                let cause = row_cause(row, "apogee_percent");
+                assert_ne!(
+                    cause, NO_NAMED_CAUSE,
+                    "{} is {percent:?}% off",
+                    row["flight"]
+                );
+                if cause == OWN_DRAG {
+                    let on = row["on_openrocket_s_drag"]["apogee_percent"]
+                        .as_f64()
+                        .unwrap();
+                    assert!(on.abs() <= 5.0, "{} {on}", row["flight"]);
+                }
+            }
+        }
     }
 
     #[test]
