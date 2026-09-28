@@ -10,14 +10,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e4, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-27; M1.13c2 pods against OR (ADR-093); M1.13 done.
+- **Last updated:** 2026-09-27; M1.13 done; run stopped at its deadline, nothing in flight.
 
 ## Handoff (overwrite each session)
 
-- **Next:** M2.2e5 waits on #173 (tilted rod), #174 and #133, each fixable here: take one as an
-  increment (it unblocks designs), else start M4.1. Pod probes (ADR-093): `pod_probes.py`, then
-  `flights.py` (its docstring's command) and `motor_database.py ... refs validation/fixtures/ork/
-  pod-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
+- **Next (resume here):** nothing in flight (the 2026-09-27 run stopped at its deadline). Split
+  #173 (tilted rod) off M2.2e5 as an increment; else #174, #133, else M4.1. Pod probes (ADR-093):
+  `pod_probes.py`, then `flights.py` (its docstring's command) and `motor_database.py ... refs
+  validation/fixtures/ork/pod-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
   **Census (ADR-084):** a regenerated report that moves a row needs `cargo xtask census --accept
   --reason "<why>"` in the same PR, or `validate --check` fails. #200: Linux's reproduction bound.
   M2.3c (ADR-083): fly a pair with `hpr_validate::real_flight`, commit only statistics; `xtask
