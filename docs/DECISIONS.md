@@ -6106,7 +6106,7 @@ each rests on what the reference corpus shows, counted by `cargo xtask ork`.
    per-quantity flags replaced; 20 elements of the corpus carry it and **none** of them carries a
    per-quantity flag beside it, so reading it as all three cannot contradict a file. It raises a
    warning, so the inference is never silent. *Amended by ADR-095:* OpenRocket 24.12's reading
-   was measured, and hpr now follows it without a warning.
+   was measured, and hpr now follows it without a warning; the survey now counts 10 such elements.
 
 **Consequences.** The value layer is settled before any component reads it, and its claims are
 counts anyone with the corpus can reproduce by running `cargo xtask ork`, which prints each one.
@@ -8109,7 +8109,7 @@ radius OpenRocket works out (#133), and M2.2e9 the bar, unchanged.
 
 **Decision.**
 
-1. **Measured, not assumed.** `conventions.py` gained ten probes: the old flag alone on a
+1. **Measured, not assumed.** `conventions.py` gained eleven probes: the old flag alone on a
    stage's mass and centre overrides and on a tube's mass override, in schema 1.4, 1.8 and 1.10
    files; `false` as well as `true`; and beside a per-quantity mass, centre or drag flag, in both
    orders. It records the structure and, through OpenRocket's public getters, the three flags it
@@ -8122,7 +8122,7 @@ radius OpenRocket works out (#133), and M2.2e9 the bar, unchanged.
    the corpus does. A flag tag written twice on one element is read at its first copy and warned
    of (`Dropped`), because which copy OpenRocket takes is not measured; no file in the corpus does
    that either.
-3. **Held to the probes.** `hpr_validate::openrocket` holds hpr to OpenRocket on all ten: the
+3. **Held to the probes.** `hpr_validate::openrocket` holds hpr to OpenRocket on all eleven: the
    three flags part by part, the mass, no warning, and the centre of mass. The centre is
    OpenRocket's except where a mass override covering the parts inside states no centre. That is
    ADR-061's departure: 3.686 mm, the same as on the per-quantity flag's probe. Making the
@@ -8140,6 +8140,7 @@ radius OpenRocket works out (#133), and M2.2e9 the bar, unchanged.
   apogee, and `ork-flights` does not fly that (#184). With the flag read, its reason for not
   flying changes from "an airframe not read exactly as written" to "stages hpr can't separate as
   written"; the report lists it so. It stays in M2.2e9's pool behind #184.
-- The corpus survey's warnings fall from 31 to 21: the 10 were this flag.
+- The corpus survey's warnings fall from 31 to 21: the 10 were this flag, 9 in `C05` and `C10`
+  and 1 in a Loft demo design outside both reports.
 - Not measured: an old flag that is neither `true` nor `false` (hpr drops it, out loud, and the
   file is not flown), and which copy of a tag written twice OpenRocket takes.

@@ -551,7 +551,7 @@ mod tests {
 
     /// The single subcomponent-override flag written before schema 1.9, and how far hpr's centre
     /// of mass is from OpenRocket's, in metres, on each probe of it.
-    const OLD_FLAG: [(&str, f64); 10] = [
+    const OLD_FLAG: [(&str, f64); 11] = [
         (
             "the old flag on both of a stage's overrides, schema 1.4",
             0.0,
@@ -575,6 +575,7 @@ mod tests {
         ("the old flag after a mass flag that says false", -0.003686),
         ("the old flag before a mass flag that says false", 0.0),
         ("the old flag before a drag flag that says false", -0.003686),
+        ("the old flag after a drag flag that says false", -0.003686),
         (
             "the old flag, false, after a centre flag that says true",
             0.0,

@@ -258,7 +258,7 @@ use in place of the three per-quantity ones. **Policy:** it is read as OpenRocke
 as setting all three, in files of schema 1.4, 1.8 and 1.10 alike. Where a part writes both forms,
 the one written later wins, quantity by quantity: `<overridesubcomponents>true</overridesubcomponents>`
 then `<overridesubcomponentsmass>false</overridesubcomponentsmass>` covers the parts inside for the
-centre of gravity and the drag but not the mass. No element in the corpus carries both forms. Ten
+centre of gravity and the drag but not the mass. No element in the corpus carries both forms. Eleven
 probe designs measured this ([M2.2e6](../decisions-and-roadmap.md#m2-2e6), the old override flag),
 and the tests in `hpr_validate::openrocket` hold hpr to them. hpr no longer warns about the flag.
 Not measured: a value other than `true` or `false`, which is dropped with a warning (so the design

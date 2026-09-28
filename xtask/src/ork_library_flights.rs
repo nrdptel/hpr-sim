@@ -1017,7 +1017,7 @@ mod tests {
     fn the_count_toward_twenty_designs_is_the_two_reports() {
         // M2.2's *done when* asks for at least 20 designs with an error distribution of apogee,
         // largest speed, margin, mass and centre of mass. The report counts them from both
-        // reports and says whether the bar is met; M2.2e6 is met only when it is (ADR-072).
+        // reports and says whether the bar is met; M2.2e9 is met only when it is (ADR-072, ADR-095).
         let root = crate::ork::root().unwrap();
         let report = committed();
         let public = public_designs(&root).unwrap();

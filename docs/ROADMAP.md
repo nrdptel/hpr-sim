@@ -590,7 +590,7 @@
     - [x] **M2.2e6 The old override flag** (#174; split from the old e6, whose bar is now e9;
       ADR-095). *Done when:* `overridesubcomponents` reads as OR 24.12 does, measured on probes and
       held by a test; the designs it held back fly with the five spreads, e4's bar on them.
-      *Result:* 10 probes, flags part by part; `C05` flies, within 0.26%: 16 designs. **Not met for
+      *Result:* 11 probes, flags part by part; `C05` flies, within 0.26%: 16 designs. **Not met for
       `C10`**: a second blocker, #184, not the flag (ADR-095); it stays in e9's pool.
     - [ ] **M2.2e7 Fin fillets and an inner tube's radius** (#174). *Done when:* both read as OR
       24.12 does, measured on probes and held by a test; `C01`, `C06` fly, e4's bar on them.

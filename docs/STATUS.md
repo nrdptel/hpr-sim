@@ -56,7 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-27: M2.2e6 Old override flag (ADR-095): 10 OR probes, later tag wins; `C05` flies; `C10` not met (#184).
+- 2026-09-27: M2.2e6 Old override flag (ADR-095): 11 OR probes, later tag wins; `C05` flies; `C10` not met (#184).
 - 2026-09-27: M2.2e5 Tilted rod (ADR-094): 4 OR probes, bearing at apogee within 0.03°; `C12` flies; 15 designs.
 - 2026-09-27: M1.13 Pods (a to c2, ADR-089 to ADR-093): mass and placement to 1e-15; aero to 1e-11 by hand; 6 OR probes within 0.81%.
 - 2026-09-26: M1.12 Moving and released mass (ADR-087, ADR-088): hand values to 1e-15; momenta to 7.3e-12.

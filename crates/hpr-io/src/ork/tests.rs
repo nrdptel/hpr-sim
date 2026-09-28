@@ -779,7 +779,8 @@ fn cd_and_cg_subcomponent_overrides_are_independent() {
 /// Before schema 1.9 the three subcomponent flags were one. OpenRocket 24.12 reads it, in schema
 /// 1.4, 1.8 and 1.10 files alike, as setting all three, and where both forms are written the later
 /// one wins, quantity by quantity (measured on probes, M2.2e6; `hpr_validate::openrocket` holds
-/// hpr's structure to OpenRocket's on them). hpr reads it the same way and warns of nothing.
+/// hpr's structure to OpenRocket's on them). hpr reads it the same way, and a well-formed file
+/// raises no warning.
 #[test]
 fn the_single_old_subcomponent_flag_reads_as_openrocket_reads_it() {
     let read = |text: &str| {
@@ -855,13 +856,21 @@ fn the_single_old_subcomponent_flag_reads_as_openrocket_reads_it() {
     let twice = component(&tube(old("true") + &own("mass", "false") + &old("false")));
     let mut warnings = Vec::new();
     let overrides = Values::new(&twice, AT, &mut warnings).overrides();
-    assert_eq!(overrides.subcomponents_mass, Some(false));
+    // The first copy, then the mass flag after it; the last copy would make all three false.
+    assert_eq!(
+        [
+            overrides.subcomponents_mass,
+            overrides.subcomponents_cg,
+            overrides.subcomponents_cd,
+        ],
+        [Some(false), Some(true), Some(true)]
+    );
     assert_eq!(warnings.len(), 1, "{warnings:?}");
     assert_eq!(warnings[0].kind, WarningKind::Dropped);
     assert!(
         warnings[0]
             .message
-            .contains("`overridesubcomponents` is written 2 times; the first was taken"),
+            .contains("`overridesubcomponents` is written 2 times; only the first is read"),
         "{warnings:?}"
     );
 }

@@ -264,8 +264,8 @@ impl<'a> Values<'a> {
     /// setting all three, and where a component writes it beside a per-quantity flag, the tag
     /// written later wins, quantity by quantity: measured on probe designs
     /// ([M2.2e6][m2-2e6], [ADR-095][adr-095]), whose answers `hpr_validate::openrocket` holds hpr
-    /// to. This reads it the same way. A flag tag written twice on one component is taken at its
-    /// first and warned of, since which copy OpenRocket takes is not measured.
+    /// to. This reads it the same way. A flag tag written twice on one component is read at its
+    /// first copy only, and warned of, since which copy OpenRocket takes is not measured.
     ///
     /// [m2-2e6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e6
     /// [adr-095]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-095-the-single-pre-19-override-flag-read-as-openrocket-reads-it-2026-09-27
@@ -304,7 +304,7 @@ impl<'a> Values<'a> {
         if copies > 1 {
             self.warn(
                 WarningKind::Dropped,
-                format!("`{name}` is written {copies} times; the first was taken"),
+                format!("`{name}` is written {copies} times; only the first is read"),
             );
         }
         let value = self.flag(&[name])?;
