@@ -19,6 +19,11 @@
     against a handbook's worked example; and a rocket with a short, steep boattail reads 5% to
     15% low against RASAero II. Treat a supersonic flight's drag, and its apogee, as rough. The
     bullets below give the numbers.
+  - *Against OpenRocket, faster than sound,* hpr's supersonic pressure drag (mostly
+    [wave drag](../glossary.md#wave-drag)) is about twice OpenRocket's, on the one supersonic
+    flight compared. Which is right is open
+    ([#222](https://github.com/nrdptel/hpr-sim/issues/222),
+    [a supersonic flight](../format/ork.md#a-supersonic-flight-and-a-cause-in-the-drag)).
   - *A boattail's own drag faster than sound* against 58 readings of 20 measured boattails of 3°
     to 10°, Mach 1.2 to 3.12: −21.9% to +28.3%, within 0.0123. Through Mach 1 it reads low, and
     under Niskanen's subsonic rule long boattails get almost nothing. Steeper ones in a thick
@@ -2676,7 +2681,7 @@ gives it, on the rocket's reference area `A_ref`. Each pod adds that once:
   every part ([N09] §3.4).
 - **Motors in pods.** A burning motor's cross-section comes off the base of the body it sits in:
   the airframe's motors off the airframe's base, and a pod's off its own pod's
-  ([N09] p. 50 for the base). Each pod takes an even share of the pods' motors, and a base smaller
+  ([N09] pp. 50–51 for the base). Each pod takes an even share of the pods' motors, and a base smaller
   than its motors has no base drag left, never less. Motor mounts in two different pod sets are
   refused.
 - **Roll.** In hpr a pod adds no rolling moment of its own (but see *A single pod's moments*
@@ -3094,24 +3099,37 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   speed, and from Mach 0.8 a boattail's drag rises to its supersonic wave drag
   ([Boattails faster than sound](#boattails-faster-than-sound)).
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
-  to zero ([N09] p. 50: "if the base is the same size as the motor itself, no base drag";
-  [Loft lesson L13](../decisions-and-roadmap.md#l13)).
+  to zero ([N09] pp. 50–51: eq. 3.94 on p. 50, and on p. 51, "if the base is the same size as
+  the motor itself, no base drag"; [Loft lesson L13](../decisions-and-roadmap.md#l13)). Neither this
+  rule nor OpenRocket's below has been checked against a measurement. Taking the motor's area off
+  the base is Niskanen's statement, not a tested result. On one private design's supersonic
+  flight, `C06/1`, the choice moves apogee by about 24 points, more than any other known cause
+  ([#222](https://github.com/nrdptel/hpr-sim/issues/222), open on both this and the supersonic
+  pressure drag).
   `DragConditions::thrusting(reynolds_per_m, motor_area_m2)` takes the cross-section of the
   burning motors from the flight engine (zero when unknown: no relief). The base belongs to the
   last body component.
   - **OpenRocket's rule, for comparisons.** OpenRocket 24.12 does not take the motor off. While a
-    motor burns, its base drag is the whole base's, as measured from its output
-    ([ADR-097][adr-097], the decision on sizing a drag cause). On a rocket whose motor fills most of
-    the base, that is a large difference under power: on one private design's supersonic flight,
-    flying OpenRocket's base rule moved hpr's apogee by about 24 percentage points
+    motor burns, its base drag is the whole base's. A committed probe measures this:
+    `validation/oracles/openrocket/base_drag.py` records OpenRocket's base-drag column on its own
+    example designs, the rows while a motor burns against the rows after, in
+    `validation/fixtures/ork/openrocket-base-drag.json`, and a test in `hpr_validate` holds it
+    ([ADR-097][adr-097], the decision on sizing a drag cause). On all 42 of its flights of one
+    branch the ratio to the whole base's coefficient is the same while a motor burns as after, to
+    1e-12, where the motors cover up to 94% of the reference area, powered pods included. On a rocket whose motor fills most of the base, the rule is a large difference
+    under power. On `C06/1`, switching hpr to OpenRocket's base rule alone lowers its apogee from
+    +13.60% to −10.71%, 24.3 points. Switching the rest of the drag to OpenRocket's then raises it
+    to +1.11%, 11.8 points. The second number is by subtraction, and the split depends on which
+    change is made first
     ([a supersonic flight](../format/ork.md#a-supersonic-flight-and-a-cause-in-the-drag)).
     `AeroModel::with_full_base_drag_under_power()` and
     `Simulation::with_full_base_drag_under_power()` fly OpenRocket's rule. A sustainer lit after a
     powered separation keeps it. They exist to size a difference from OpenRocket, not as a better
-    model: hpr keeps Niskanen's relief by default.
-  - **Supersonic pressure drag against OpenRocket.** On that flight hpr's supersonic pressure drag
-    is about twice OpenRocket's: OpenRocket gives the nose almost none well above Mach 1, and the
-    fins about a quarter of hpr's. Which is right is open, since neither has been checked against a
+    model: hpr keeps Niskanen's rule of taking the motor's area off the base by default.
+  - **Supersonic pressure drag against OpenRocket.** Faster than sound, the pressure on the nose,
+    the fins' edges and any step is mostly [wave drag](../glossary.md#wave-drag). On that flight
+    hpr's supersonic pressure drag is about twice OpenRocket's: OpenRocket gives the nose almost
+    none well above Mach 1, and the fins about a quarter of hpr's. Which is right is open, since neither has been checked against a
     measurement on that shape
     ([#222: hpr's supersonic pressure drag is about twice OpenRocket's](https://github.com/nrdptel/hpr-sim/issues/222)).
 - **Fins.** Each fin set is its own term with its own thickness, chord and cross-section, so their
@@ -4059,13 +4077,13 @@ readings' half a calibre: the short model at Mach 1.5 and 1.8, where the slope m
     fins gave Juno III +14.6% and the getting-started Calisto +10.7%. The check places hpr near
     RASAero's subsonic drag under a declared rule; without the inputs it can't show agreement to 10%.
   - **Power-on.** Separate power-on curves are compared (Cavour's and Valetudo's). Subtracting the
-    motor's area ([N09] p. 50) removes 42% of Cavour's base drag and 29% of Valetudo's at Mach 0.3.
+    motor's area ([N09] pp. 50–51) removes 42% of Cavour's base drag and 29% of Valetudo's at Mach 0.3.
     Cavour's power-on table is within its 0.001 rounding of power-off from Mach 0.16 up (0.0001 at
     0.3) and 0.001 to 0.013 lower below; Valetudo's is 0.004 lower, about a ninth of hpr's relief.
     The designs' motor diameter is the larger of the grain and nozzle exit diameters, since RocketPy
     gives no case, and Cavour's result depends on it: −8.3% with no relief, −14.8% at 54 mm,
     −18.3% at the design's 67 mm nozzle exit, −20.8% with the example's 75 mm motor. The cause of
-    that miss stays open: Niskanen's relief, a RASAero run with little or no nozzle exit diameter,
+    that miss stays open: Niskanen's rule of taking the motor's area off the base, a RASAero run with little or no nozzle exit diameter,
     or tables sampled along a flight (their uneven Mach spacing suggests it; unconfirmed).
   - **Valetudo.** Its table (1.05) is 1.44 times the OpenRocket export for the same rocket (0.728).
     With that file's own inputs (60 µm, two 14 mm × 30 mm lugs, 3 mm square fins), hpr gives

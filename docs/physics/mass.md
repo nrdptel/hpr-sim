@@ -16,7 +16,8 @@
   71 compared designs: the mass is within 1% on 66 and the centre of mass within 1% of the rocket's
   length on 66. Every file outside either has a named cause: parts hpr keeps unread, or, on one
   design, airfoil fins, which OpenRocket weighs by a factor. Fin fillets agree with OpenRocket's to
-  1e-15 in mass and centre of mass on nine probe designs ([below](#clusters-and-fillets)). The roll
+  1e-15 in mass and centre of mass on nine probe designs, with the probes' pitch inertia up to
+  0.638% apart ([below](#fin-fillets)). The roll
   inertia is a median 1.686% apart, and that is explained: OpenRocket takes a shortcut for fins that
   hpr does not, and hpr's figure is the exact one for the fin as drawn
   ([below](#fins-rail-buttons-and-roll-inertia)); on the four files with a cluster (two designs by content), OpenRocket
@@ -263,7 +264,9 @@ content as below, and fails if a file outside has none:
 The fin-section cause is sized, not only present. hpr gives no warning for it, since the section is
 hpr's own choice. So `cargo xtask ork` weighs the design again with its rounded and airfoil fins
 weighed OpenRocket's way: square, at 0.99 or 0.85 of their density. It names the cause only if the
-design then comes within both thresholds. The one design it names is a private one.
+design then comes within both thresholds. The one design it names is a private one: `C06` in hpr's
+flights of the private designs, where the same fins put its centre of mass forward of OpenRocket's
+([the format guide](../format/ork.md#hprs-flights-of-the-private-designs)).
 
 Three causes are gone. A cluster read as one tube went when
 [M1.9b](../decisions-and-roadmap.md#m1-9b) read every tube of a cluster: its two files by content
@@ -589,24 +592,29 @@ meets the tube. Since [M2.2e7](../decisions-and-roadmap.md#m2-2e7) hpr weighs fi
 and the 5 mm and 10 mm probes were 0.808% and 2.79% light ([ADR-064][adr-064]).
 
 **The shape.** A fillet fills the corner between the tube and the fin's side. Its concave face is a
-circle of the fillet's radius that touches both. Its section is bounded by three lines: the tube's
+circle of the fillet's radius that touches both. Its section is bounded by three edges: the tube's
 circle, the fin's plane and that circle. As in OpenRocket, the fin is taken as having no thickness
 there, so the section starts at the fin's middle plane, not its face. Two fillets run along each
 fin, one each side, as long as the root chord. So each is a prism of that section. It is made of the
-file's `filletmaterial`; a file that names none gets OpenRocket's cardboard, 680 kg/m³.
+file's `filletmaterial`; a file that names none gets OpenRocket's cardboard, 680 kg/m³. Most
+fillets are epoxy, which is heavier (hpr's `epoxy` is 1,180 kg/m³), so set `filletmaterial` in
+OpenRocket, or the fillet's material in hpr, to what you used.
 
-**The equation.** Take the body radius `R` and the fillet radius `r`. The fillet circle's centre
-sits `r` off the fin's plane and `c = √(R² + 2Rr)` out from the axis along it. There it is `R + r`
-from the axis, so the circle touches the tube. The section is the triangle `(0, 0)`, `(c, 0)`,
+**The equation.** Take the body radius `R` and the fillet radius `r`. Take `x` outward from the
+body's axis along the fin's mid-plane, and `y` square to it. The fillet circle's centre is at
+`(c, r)`, with `c = √(R² + 2Rr)`. That puts it `√(c² + r²) = R + r` from the axis, so the circle
+just touches the tube. The section is the triangle `(0, 0)`, `(c, 0)`,
 `(c, r)` less two circular sectors: the tube's, up to the angle `θ = atan(r/c)`, and the fillet
 circle's, whose angle is `π/2 − θ`:
 
 `A = c r/2 − R² θ/2 − r² (π/2 − θ)/2`
 
 On a flat body (`R` very large) this tends to `r² (1 − π/4)`: a square less a quarter circle. hpr
-works out the section's first and second moments the same way, in closed form, in a form that keeps
-its digits when `r` is much smaller than `R`. A test checks all four against numerical integration
-to 1e-11 (`fillet_section_is_its_region_by_quadrature` in `hpr_design::fins`).
+works out the section's first and second moments the same way, in closed form. The sectors' second
+moments are computed in a stable form, but the final subtraction still loses about `log10(R/r)`
+digits: at most 2 for real fillets, where `r/R` is at least 0.01. A test checks all four against
+numerical integration to 1e-11 (`fillet_section_is_its_region_by_quadrature` in
+`hpr_design::fins`).
 
 **A worked example.** An invented 5 mm fillet on a tube 30 mm in radius. Then
 `c = √(30² + 2 × 30 × 5)` = 34.64 mm and `θ = atan(5/34.64)` = 0.1433 rad (8.21°).
@@ -619,16 +627,29 @@ to 1e-11 (`fillet_section_is_its_region_by_quadrature` in `hpr_design::fins`).
 | the section | `A` | 4.253 mm² |
 
 That is 79% of the 5.365 mm² a flat body would give: the tube curves away from the fin, so the
-corner holds less. Three fins with a 100 mm root chord have six fillets. In cardboard they weigh
-`6 × 4.253 mm² × 100 mm × 680 kg/m³` = 1.735 g.
+corner holds less. Three fins with a 100 mm root chord have six fillets. Their volume is
+`6 × 4.253 mm² × 100 mm` = 2,552 mm³ = 2.55 cm³. In cardboard they weigh
+`2.552 cm³ × 0.680 g/cm³` = 1.735 g. A unit test pins these numbers
+(`the_worked_fillet_example_is_the_docs` in `hpr_design::fins`).
 
 **How well.** Nine probe designs measure it: the 5 mm and 10 mm probes of
-[M2.2b4](../decisions-and-roadmap.md#m2-2b4), and seven more. Those are fillets of 30 mm, in their
-own material, naming no material, on a single fin, on four fins of rounded section, on a freeform
-fin set and on a wider tube. On every one hpr's mass and centre of mass are OpenRocket's to 1e-15.
-The pitch inertia is apart by −0.008% to −0.638% on the eight with more than one fin, growing with
-the fillets' mass. On the single fin it is +0.425%, near the +0.406% a single fin reads without
-fillets. hpr's figure is the exact prism's; how OpenRocket works out a fin's pitch inertia has not
+[M2.2b4](../decisions-and-roadmap.md#m2-2b4), and seven new in
+[M2.2e7](../decisions-and-roadmap.md#m2-2e7):
+
+- fillets of 30 mm;
+- fillets in their own material;
+- fillets naming no material;
+- a single fin;
+- four fins of rounded section;
+- a freeform fin set;
+- a wider tube.
+
+On every one the fillets' mass and centre of mass are OpenRocket's to 1e-15, and the test holds
+them to 1e-12. On the rounded-section probe the whole fin set's mass is 1.79e-4 apart, from the fin
+section's factor ([below](#fins-rail-buttons-and-roll-inertia)), not from the fillets. The whole
+probe's pitch inertia is apart by −0.0077% to −0.638% on the eight with more than one fin, growing
+with the fillets' mass. On the single fin it is +0.425%, near the +0.406% a single fin reads
+without fillets. hpr's figure is the exact prism's; how OpenRocket works out a fin's pitch inertia has not
 been measured ([ADR-062][adr-062]). The roll rows use OpenRocket's fin shortcut, as every fin probe
 does. `each_part_alone_is_openrocket_s_or_pinned` pins every row.
 

@@ -107,7 +107,7 @@ Recruiter's slope is 2.87% high. See [Aerodynamics](physics/aero.md#verification
 
 ## Base drag
 
-The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). OpenRocket keeps the whole base's drag, and hpr can fly that rule for a comparison ([Aerodynamics](physics/aero.md#drag)). Behind a [boattail](#boattail), faster than sound, the base's pressure is higher and hpr lowers the base drag to match ([Boattails faster than sound](physics/aero.md#boattails-faster-than-sound)). See [Aerodynamics](physics/aero.md#drag).
+The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)), following Niskanen's statement that a base the size of the motor has no base drag. OpenRocket keeps the whole base's drag, and hpr can fly that rule for a comparison ([Aerodynamics](physics/aero.md#drag)). Neither rule has been checked against a measurement. Taking the motor's area off the base is Niskanen's statement, not a tested result. On one private design's supersonic flight, `C06/1`, the choice moves apogee by about 24 points, more than any other known cause ([#222](https://github.com/nrdptel/hpr-sim/issues/222)). Behind a [boattail](#boattail), faster than sound, the base's pressure is higher and hpr lowers the base drag to match ([Boattails faster than sound](physics/aero.md#boattails-faster-than-sound)). See [Aerodynamics](physics/aero.md#drag).
 
 ## BATES grain
 
@@ -760,9 +760,9 @@ A body mounted beside the airframe rather than on its axis: a side pod, or an ou
 
 ## Power-on and power-off drag
 
-Drag while a motor burns, and while the rocket coasts. Under power, the part of the base the
-burning motor covers has no base drag, so hpr subtracts the burning motors' cross-section from the
-base area, and a drag table can carry separate power-on and power-off curves. A flight uses
+Drag while a motor burns, and while the rocket coasts. Under power, hpr subtracts the burning
+motors' cross-section from the base area, as Niskanen does (a rule no measurement has checked; see
+[base drag](#base-drag)), and a drag table can carry separate power-on and power-off curves. A flight uses
 power-on drag while any motor burns. OpenRocket 24.12 keeps the whole base under power;
 `with_full_base_drag_under_power` flies its rule, for comparisons with OpenRocket. See [Aerodynamics](physics/aero.md#drag).
 

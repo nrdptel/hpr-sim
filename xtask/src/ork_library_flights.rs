@@ -49,10 +49,10 @@ pub(crate) const REPORT_JSON: &str = "validation/reports/openrocket-library-flig
 /// The report, as a page.
 pub(crate) const REPORT_MD: &str = "validation/reports/openrocket-library-flights.md";
 
-/// The oracle scripts the record must have been written by, as its `inputs_sha256` names them.
 /// The oracle that writes [`DRAG_CURVES`].
 const DRAG_CURVES_SCRIPT: &str = "validation/oracles/openrocket/drag_curves.py";
 
+/// The oracle scripts the record must have been written by, as its `inputs_sha256` names them.
 const SCRIPTS: [(&str, &str); 3] = [
     ("flights.py", "validation/oracles/openrocket/flights.py"),
     ("events.py", "validation/oracles/openrocket/events.py"),
@@ -550,6 +550,8 @@ pub(crate) fn anonymised(flight: &Value) -> Value {
         let probe = &flight[key];
         if probe.is_null() {
             Value::Null
+        } else if probe["failed"] == true {
+            json!({ "failed": true })
         } else {
             json!({
                 "apogee_percent": rounded(probe["apogee_m"]["relative_percent"].as_f64(), DIGITS),
@@ -628,7 +630,7 @@ pub(crate) fn row_cause(row: &Value, key: &str) -> &'static str {
         DRAG_OVERRIDE
     } else if key == "apogee_percent" && !row["chute_early_s"].is_null() {
         EARLY_CHUTE
-    } else if drag_sizes(row["on_openrocket_s_drag"]["apogee_percent"].as_f64()) {
+    } else if drag_sizes(row["on_openrocket_s_drag"][key].as_f64()) {
         OWN_DRAG
     } else {
         NO_NAMED_CAUSE
@@ -926,7 +928,13 @@ pub(crate) fn page(report: &Value) -> String {
             let mut cause = format!(
                 "{} (on OR's drag {}",
                 if sized { OWN_DRAG } else { NO_NAMED_CAUSE },
-                on_drag.as_deref().unwrap_or("not flown")
+                on_drag
+                    .as_deref()
+                    .unwrap_or(if row["on_openrocket_s_drag"]["failed"] == true {
+                        "failed"
+                    } else {
+                        "not flown"
+                    })
             );
             if let Some(whole) = with("whole_base_under_power") {
                 cause.push_str(&format!("; with OR's base drag alone {whole}"));
@@ -981,8 +989,9 @@ pub(crate) fn page(report: &Value) -> String {
              coefficient along OpenRocket's own flight (power on while a motor burns, power off \
              after), and again with its own drag but OpenRocket's base drag under power, the \
              whole base's while a motor burns where hpr takes the motor's cross-section off it; \
-             the brackets give each one's apogee and largest speed differences. It names the \
-             cause when the first is within 5% \
+             the brackets give each one's apogee and largest speed differences. The first names \
+             the cause of each metric within 5% on it; that says the gap is in the drag, not \
+             which drag is right, so each such flight also has a written breakdown \
              ([ADR-097](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28)). \
              hpr flies both for an apogee more than 5% off with no other named cause."
                 .to_owned(),
@@ -1326,27 +1335,30 @@ mod tests {
         for key in ["drag_overrides_not_applied", "deployed_before_apogee_s"] {
             probed[key] = Value::Null;
         }
-        let probe = |apogee: f64| {
+        let probe = |apogee: f64, speed: f64| {
             json!({
                 "apogee_m": { "relative_percent": apogee },
-                "max_speed_m_s": { "relative_percent": 0.1234567 },
+                "max_speed_m_s": { "relative_percent": speed },
             })
         };
-        probed[WHOLE_BASE_PROBE] = probe(-10.7123456);
+        probed[WHOLE_BASE_PROBE] = probe(-10.7123456, 0.1234567);
         let row = anonymised(&probed);
         assert_eq!(row["whole_base_under_power"]["apogee_percent"], -10.712346);
         assert!(row["on_openrocket_s_drag"].is_null());
         assert_eq!(row_cause(&row, "apogee_percent"), NO_NAMED_CAUSE);
-        for (apogee, cause) in [
-            (5.0, OWN_DRAG),
-            (-5.0, OWN_DRAG),
-            (5.000001, NO_NAMED_CAUSE),
+        // Each metric's cause is its own number on OpenRocket's drag.
+        for (apogee, speed, apogee_cause, speed_cause) in [
+            (5.0, 0.1234567, OWN_DRAG, OWN_DRAG),
+            (-5.0, 5.000001, OWN_DRAG, NO_NAMED_CAUSE),
+            (5.000001, -5.0, NO_NAMED_CAUSE, OWN_DRAG),
         ] {
-            probed[OPENROCKET_DRAG_PROBE] = probe(apogee);
+            probed[OPENROCKET_DRAG_PROBE] = probe(apogee, speed);
             let row = anonymised(&probed);
             assert!(unpublishable(&row).is_none());
-            assert_eq!(row["on_openrocket_s_drag"]["max_speed_percent"], 0.123457);
-            for key in ["apogee_percent", "max_speed_percent"] {
+            for (key, cause) in [
+                ("apogee_percent", apogee_cause),
+                ("max_speed_percent", speed_cause),
+            ] {
                 assert_eq!(row_cause(&row, key), cause, "{apogee} {key}");
                 assert_eq!(
                     crate::ork_flights::cause(&probed, metric_of(key)),
@@ -1356,6 +1368,17 @@ mod tests {
             }
             assert_eq!(row_cause(&row, "margin_cal"), NO_NAMED_CAUSE);
         }
+        assert_eq!(
+            anonymised(&probed)["on_openrocket_s_drag"]["max_speed_percent"],
+            -5.0
+        );
+        // A probe hpr failed to fly names no cause, and says so.
+        probed[OPENROCKET_DRAG_PROBE] = json!({ "failed": true });
+        let row = anonymised(&probed);
+        assert_eq!(row["on_openrocket_s_drag"], json!({ "failed": true }));
+        assert!(unpublishable(&row).is_none());
+        assert_eq!(row_cause(&row, "apogee_percent"), NO_NAMED_CAUSE);
+        assert!(page(&json!({ "flights": [row] })).contains("on OR's drag failed"));
         probed["deployed_before_apogee_s"] = json!(0.5);
         let row = anonymised(&probed);
         assert_eq!(row_cause(&row, "apogee_percent"), EARLY_CHUTE);

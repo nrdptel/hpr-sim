@@ -71,8 +71,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
-- **OpenRocket example outputs in fixtures** (no action if fine): `openrocket-automatic-radius.json`
-  and `openrocket-flights.json` commit radii and flight numbers OR computed for its 17 GPL examples.
+- **OpenRocket example outputs in fixtures** (no action if fine): `openrocket-automatic-radius.json`,
+  `-flights.json`, `-base-drag.json` commit radii, flight and drag numbers OR computed for its 17 GPL examples.
 - **A glance at GPL source** (no action if fine): M3.1d2's research read about 15 lines of
   `orhelper`'s (GPL-2.0) signatures before its licence was checked; nothing derived (ADR-059 §5).
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values

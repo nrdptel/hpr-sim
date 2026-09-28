@@ -440,7 +440,7 @@ pub(crate) fn fly_design(
             // the drag is its named cause. Flown also with only OpenRocket's base drag under
             // power, which says how much of it that one rule is.
             let table = curves
-                .map(|curves| openrocket_drag(curves, id))
+                .map(|curves| openrocket_drag(curves, id, renamed))
                 .transpose()
                 .map_err(|error| format!("{motors}: {error}"))?
                 .flatten()
@@ -449,23 +449,18 @@ pub(crate) fn fly_design(
                 (WHOLE_BASE_PROBE, Some(Drag::WholeBase)),
                 (OPENROCKET_DRAG_PROBE, table.map(Drag::OpenRocket)),
             ];
-            let mut failed = false;
+            // A probe hpr fails to fly is marked so, and the flight it probes stays compared: it
+            // then has no named cause, which the bar's test reports.
             for (key, drag) in probes {
                 let Some(drag) = drag else { continue };
-                match flew_as(&design.rocket, drag) {
-                    Ok(probe) => {
-                        entry[key] = json!({
-                            "apogee_m": probe["metrics"]["apogee_m"],
-                            "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
-                        });
-                    }
-                    Err(_) if list_failures => failed = true,
+                entry[key] = match flew_as(&design.rocket, drag) {
+                    Ok(probe) => json!({
+                        "apogee_m": probe["metrics"]["apogee_m"],
+                        "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
+                    }),
+                    Err(_) if list_failures => json!({ "failed": true }),
                     Err(error) => return Err(error),
-                }
-            }
-            if failed {
-                out.not_flown.push(not_flown(FLIGHT_FAILED));
-                continue;
+                };
             }
         }
         out.flights.push(entry);
@@ -710,7 +705,8 @@ fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[DragOverri
 /// the dense output. hpr flies no recovery from a `.ork`, so its fall is unbraked and is left out:
 /// the reference's peak speed is on the way up, and a free fall could outrun it.
 ///
-/// Apogee is the highest sample, and the largest speed is taken over every sample up to it. An
+/// The largest speed is taken over every sample up to the highest one (the apogee itself is the
+/// flight's apogee event). An
 /// earlier rule stopped at the first sample whose vertical speed was not positive after one that
 /// was, and a rocket held on the pad can show a vertical speed of a few µm/s either way (the
 /// held state in Earth's frame): on one private flight it stopped before liftoff, and the
@@ -808,18 +804,26 @@ enum Drag {
 /// [`DRAG_CURVES`], as a table hpr can fly: power on while a motor burns, power off after, each
 /// linear in Mach number and held at its ends, on OpenRocket's reference diameter. `None` when the
 /// record has no such flight, or OpenRocket refused or aborted it, or it has more than one branch
-/// (a separation: the curves would join two shapes), or a curve has fewer than two points.
-fn openrocket_drag(design: &Value, configuration: &str) -> Result<Option<DragTable>, String> {
-    let Some(flight) = design["flights"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|flight| {
-            flight["configuration"]
-                .as_str()
-                .is_some_and(|id| id.eq_ignore_ascii_case(configuration))
-        })
-    else {
+/// (a separation: the curves would join two shapes), or a curve has fewer than two points. A
+/// configuration OpenRocket `renamed` (its id is not a UUID, so each opening gives it a new one)
+/// is the record's only flight, as [`fly_design`] matches it.
+fn openrocket_drag(
+    design: &Value,
+    configuration: &str,
+    renamed: bool,
+) -> Result<Option<DragTable>, String> {
+    let flights: Vec<&Value> = design["flights"].as_array().into_iter().flatten().collect();
+    let found = flights.iter().find(|flight| {
+        flight["configuration"]
+            .as_str()
+            .is_some_and(|id| id.eq_ignore_ascii_case(configuration))
+    });
+    let only = if renamed && flights.len() == 1 {
+        flights.first()
+    } else {
+        None
+    };
+    let Some(flight) = found.or(only).copied() else {
         return Ok(None);
     };
     if !flight["refused"].is_null() || flight["aborted"] != false || flight["branches"] != 1 {
@@ -1414,9 +1418,10 @@ pub(crate) const OPENROCKET_DRAG_PROBE: &str = "on_openrocket_s_drag";
 
 /// The named cause a flight's difference in `metric` is summarised under. A drag override moves
 /// every metric but the margin; an early parachute only the apogee. A flight with both is put
-/// under the drag override. A flight with neither whose apogee hpr brings within 5% of
-/// OpenRocket's by flying OpenRocket's drag has hpr's own drag as its cause, for the apogee and the
-/// largest speed.
+/// under the drag override. A flight with neither whose apogee (or largest speed) hpr brings
+/// within 5% of OpenRocket's by flying OpenRocket's drag has hpr's own drag as that metric's
+/// cause. That says only that the gap is in the drag: which part of it, and whether hpr's or
+/// OpenRocket's is right, needs its own written breakdown (ADR-097).
 pub(crate) fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
     if metric == FlightMetric::RodClearanceStability {
         NO_NAMED_CAUSE
@@ -1424,15 +1429,22 @@ pub(crate) fn cause(flight: &Value, metric: FlightMetric) -> &'static str {
         DRAG_OVERRIDE
     } else if metric == FlightMetric::Apogee && !flight["deployed_before_apogee_s"].is_null() {
         EARLY_CHUTE
-    } else if drag_sizes(flight[OPENROCKET_DRAG_PROBE]["apogee_m"]["relative_percent"].as_f64()) {
+    } else if drag_sizes(
+        flight[OPENROCKET_DRAG_PROBE][if metric == FlightMetric::Apogee {
+            "apogee_m"
+        } else {
+            "max_speed_m_s"
+        }]["relative_percent"]
+            .as_f64(),
+    ) {
         OWN_DRAG
     } else {
         NO_NAMED_CAUSE
     }
 }
 
-/// Whether hpr's apogee on OpenRocket's drag, `percent` from OpenRocket's, is within the bar that
-/// sizes a cause.
+/// Whether hpr's apogee or largest speed on OpenRocket's drag, `percent` from OpenRocket's, is
+/// within the bar that sizes a cause.
 pub(crate) fn drag_sizes(percent: Option<f64>) -> bool {
     percent.is_some_and(|p| p.abs() <= APOGEE_CAUSE_PERCENT)
 }
@@ -2276,7 +2288,9 @@ mod tests {
             "power_off": [[0.2, 0.7], [1.0, 0.9]],
         });
         let design = |flight: &Value| json!({ "flights": [flight] });
-        let table = openrocket_drag(&design(&flight), "abc").unwrap().unwrap();
+        let table = openrocket_drag(&design(&flight), "abc", false)
+            .unwrap()
+            .unwrap();
         assert_eq!(table.reference_diameter_m, Some(0.1));
         let at = |mach: f64, thrusting: bool| table.lookup(mach, thrusting).unwrap().value;
         assert!((at(1.0, true) - 0.5).abs() < 1e-15);
@@ -2285,10 +2299,18 @@ mod tests {
         assert_eq!(at(3.0, true), 0.6);
         assert_eq!(at(0.0, false), 0.7);
         assert!(
-            openrocket_drag(&design(&flight), "other")
+            openrocket_drag(&design(&flight), "other", false)
                 .unwrap()
                 .is_none()
         );
+        // A renamed configuration is the record's only flight, and only then.
+        assert!(
+            openrocket_drag(&design(&flight), "other", true)
+                .unwrap()
+                .is_some()
+        );
+        let two = json!({ "flights": [flight.clone(), flight.clone()] });
+        assert!(openrocket_drag(&two, "other", true).unwrap().is_none());
         for (key, value) in [
             ("branches", json!(2)),
             ("aborted", json!(true)),
@@ -2298,7 +2320,9 @@ mod tests {
             let mut changed = flight.clone();
             changed[key] = value;
             assert!(
-                openrocket_drag(&design(&changed), "ABC").unwrap().is_none(),
+                openrocket_drag(&design(&changed), "ABC", false)
+                    .unwrap()
+                    .is_none(),
                 "{key}"
             );
         }
@@ -2310,7 +2334,10 @@ mod tests {
         ] {
             let mut changed = flight.clone();
             changed[key] = value;
-            assert!(openrocket_drag(&design(&changed), "ABC").is_err(), "{key}");
+            assert!(
+                openrocket_drag(&design(&changed), "ABC", false).is_err(),
+                "{key}"
+            );
         }
     }
 
