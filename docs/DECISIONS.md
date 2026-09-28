@@ -99,6 +99,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-091 | A pod of no length weighs nothing and holds its parts on its axis | accepted |
 | ADR-092 | A pod's parts are Barrowman's, once per pod, on the axis | accepted |
 | ADR-093 | Pod probes flown as the public designs are, and listed apart | accepted |
+| ADR-094 | A tilted launch rod flown as OpenRocket records it | accepted |
 
 ---
 
@@ -8025,3 +8026,54 @@ model, and its source is not to be read.
   are not tested.
 - With no `<finish>` stated, the probes flew 6.0% to 7.3% high in hpr: its reader gives such a part
   hpr's 20 µm default where OpenRocket reads 60 µm (issue #216).
+
+## ADR-094: A tilted launch rod flown as OpenRocket records it (2026-09-27)
+
+**Context.** `cargo xtask ork-flights` flew only a vertical rod, so one private design (`C12`,
+three configurations) launched from a tilted rod was listed, not compared (issue #173). M2.2's
+bar is 20 designs with the five spreads (ADR-072); with the old M2.2e5 blocked on three issues,
+the tilted rod is split off as M2.2e5 and the bar moves unchanged to M2.2e6. `conditions.py`
+had already measured OpenRocket 24.12's reading: the rod's angle is from the vertical, and its
+direction is a compass bearing (a rod tilted 10 degrees toward 0 lands the example north of the
+pad, toward 90 east). hpr's `Rail` takes a bearing clockwise from true north and an angle above
+the horizon.
+
+**Decision.**
+
+1. **The rail.** `rod_rail` builds hpr's rail from the recorded rod: the azimuth is OpenRocket's
+   direction, the elevation `π/2` less its angle, frictionless and unrolled as the vertical rod
+   was. A rod tilted below 0 or from 90 degrees is named (`ROD_NOT_TAKEN`) rather than flown.
+   A vertical rod keeps its recorded direction too (90 degrees by default), so the rule has no
+   jump as the tilt goes to zero; on a vertical rail it only turns the rocket about its axis on
+   the pad, which moved the public flights' apogees by under 0.001%.
+2. **Rod probes.** `rod_probes.py` writes `pods-none`'s airframe (ADR-093) with a stored
+   simulation, as OpenRocket 24.12 writes one, whose rod tilts 5 degrees toward north, 10 toward
+   east and toward south-west, and 20 toward east. `flights.py` flies them from each file's
+   stored conditions with the other public designs; they are listed apart as probes, as ADR-093's
+   are, and `pods-none` is their vertical control.
+3. **Where the rocket goes.** `flights.py` now records the position east and north of the pad
+   at the row of the largest altitude, and the angle of attack at the rod-clearance row. The
+   report gives hpr's position at apogee from where it started beside OpenRocket's, and hpr's
+   margin at OpenRocket's angle of attack beside its margin at none.
+4. **The bar.** Each probe within 5% of OpenRocket's apogee and largest speed (ADR-076); its
+   position at apogee within 0.1 degrees of OpenRocket's bearing and 1% of its distance; the
+   apogee the rod takes off, against `pods-none`, within 0.5 points of OpenRocket's; and hpr's
+   margin at OpenRocket's angle of attack within 0.006 calibres of OpenRocket's. The bounds were
+   set after measuring 0.03 degrees, 0.64%, 0.27 points and 0.0048 calibres; a bearing read
+   anticlockwise or an angle read from the horizon fails them by far. A test also points the
+   rail at the bearings `conditions.py` measured OpenRocket's rocket landing on.
+
+**Consequences.**
+
+- Met on the probes: the tilt takes 0.65%, 2.60% and 10.09% off OpenRocket's apogee at 5, 10 and
+  20 degrees, and 0.63%, 2.52% and 9.82% off hpr's; the bearing at apogee agrees within 0.03
+  degrees, and the distance within 0.64%. The south-west rod loses what the east one does.
+- OpenRocket's rocket reaches its rod-clearance row at an angle of attack that grows with the
+  tilt (0.116 degrees at 10, 0.228 at 20, none from a vertical rod), where hpr's margin is taken
+  at none. So the margins part by 0.017 calibres at 20 degrees; hpr's margin at OpenRocket's
+  angle leaves 0.005. The report's margin stays at no angle of attack, as ADR-069 defined it.
+- `C12`'s three configurations fly: apogee −0.53% to +0.14%, largest speed within 0.33%, margin
+  +0.013 to +0.037 calibres, nearly all from the CP. How much of that margin gap is the rod's
+  angle of attack is not measured. The two reports now hold 15 designs with the five spreads,
+  against M2.2e6's 20.
+- Not tested: wind with a tilted rod, a rod longer than 1 m on the probes, and roll on the rod.

@@ -30,9 +30,9 @@ hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 3D printable nose cone and fins | [A8-3] | 39.0 | 39.0 | -0.06% | 24.85 | 24.89 | +0.17% | 0.073 | 1.139 | 1.139 | -0.0006 |
 | 3D printable nose cone and fins | [B6-4] | 112.9 | 112.5 | -0.32% (chute 0.10 s early) | 48.64 | 48.77 | +0.26% | 0.143 | 1.071 | 1.071 | -0.0006 |
-| 3D printable nose cone and fins | [C6-3] | 244.5 | 274.3 | +12.19% (chute 2.59 s early) | 83.29 | 84.00 | +0.85% | 0.245 | 0.903 | 0.903 | -0.0003 |
-| 3D printable nose cone and fins | [C6-5] | 274.0 | 274.3 | +0.11% (chute 0.59 s early) | 83.29 | 84.00 | +0.85% | 0.245 | 0.903 | 0.903 | -0.0003 |
-| 3D printable nose cone and fins | [C6-7] | 274.7 | 274.3 | -0.16% | 83.29 | 84.00 | +0.85% | 0.245 | 0.903 | 0.903 | -0.0003 |
+| 3D printable nose cone and fins | [C6-3] | 244.5 | 274.2 | +12.18% (chute 2.59 s early) | 83.29 | 84.00 | +0.85% | 0.245 | 0.903 | 0.903 | -0.0003 |
+| 3D printable nose cone and fins | [C6-5] | 274.0 | 274.2 | +0.10% (chute 0.59 s early) | 83.29 | 84.00 | +0.85% | 0.245 | 0.903 | 0.903 | -0.0003 |
+| 3D printable nose cone and fins | [C6-7] | 274.7 | 274.2 | -0.16% | 83.29 | 84.00 | +0.85% | 0.245 | 0.903 | 0.903 | -0.0003 |
 | A simple model rocket | [A8-3] | 51.1 | 50.9 | -0.27% | 29.34 | 29.39 | +0.18% | 0.086 | 2.982 | 2.981 | -0.0008 |
 | A simple model rocket | [B4-4] | 136.4 | 135.5 | -0.64% (chute 0.37 s early) | 53.35 | 53.49 | +0.27% | 0.157 | 2.798 | 2.797 | -0.0008 |
 | A simple model rocket | [C6-3] | 280.2 | 318.9 | +13.80% (chute 2.99 s early) | 95.43 | 96.18 | +0.79% | 0.281 | 2.492 | 2.492 | -0.0007 |
@@ -57,7 +57,7 @@ hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR
 | Dual parachute deployment | [H242T-P] | 698.4 | 684.9 | -1.93% | 140.98 | 141.07 | +0.06% | 0.415 | 4.317 | 4.306 | -0.0114 |
 | Dual parachute deployment | [J570W-P] | 2224.7 | 2128.2 | -4.34% | 388.59 | 385.90 | -0.69% | 1.147 | 3.276 | 3.266 | -0.0097 |
 | Dual parachute deployment | [H999N-P] | 897.8 | 871.7 | -2.91% | 190.83 | 190.91 | +0.04% | 0.561 | 4.206 | 4.193 | -0.0133 |
-| Dual parachute deployment | [I1299N-P] | 1159.0 | 1120.7 | -3.30% | 242.76 | 242.89 | +0.05% | 0.714 | 3.934 | 3.921 | -0.0130 |
+| Dual parachute deployment | [I1299N-P] | 1159.0 | 1120.7 | -3.30% | 242.76 | 242.89 | +0.06% | 0.714 | 3.934 | 3.921 | -0.0130 |
 | Dual parachute deployment | [G64W-P] | 227.4 | 226.0 | -0.63% | 58.54 | 58.48 | -0.11% | 0.172 | 4.877 | 4.862 | -0.0151 |
 | Two stage high power rocket | [H148R-0; H148R-0] | 678.5 | 666.3 | -1.79% | 158.96 | 158.10 | -0.54% | 0.468 | 2.173 | 2.171 | -0.0028 |
 | Two stage high power rocket | [I59WN-P; I357T-14] | 1384.2 | 1382.4 | -0.13% | 175.88 | 175.81 | -0.04% | 0.519 | 2.166 | 2.167 | +0.0004 |
@@ -71,8 +71,8 @@ The named causes, sized ([M2.2e4][m2-2e4], decision [ADR-073][adr-073]). OpenRoc
 | design | motors | Δ apogee | chute early (s) | OR, nothing deployed (m) | Δ | OR, drag settings cleared too (m) | Δ | OR, the parts removed (m) | hpr, the parts removed (m) | Δ | within 5% after |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | 3D printable nose cone and fins | [B6-4] | -0.32% | 0.10 | 112.9 | -0.32% | — | — | — | — | — | — |
-| 3D printable nose cone and fins | [C6-3] | +12.19% | 2.59 | 274.7 | -0.16% | — | — | — | — | — | yes |
-| 3D printable nose cone and fins | [C6-5] | +0.11% | 0.59 | 274.7 | -0.16% | — | — | — | — | — | — |
+| 3D printable nose cone and fins | [C6-3] | +12.18% | 2.59 | 274.7 | -0.16% | — | — | — | — | — | yes |
+| 3D printable nose cone and fins | [C6-5] | +0.10% | 0.59 | 274.7 | -0.16% | — | — | — | — | — | — |
 | A simple model rocket | [B4-4] | -0.64% | 0.37 | 136.6 | -0.78% | — | — | — | — | — | — |
 | A simple model rocket | [C6-3] | +13.80% | 2.99 | 322.4 | -1.07% | — | — | — | — | — | yes |
 | A simple model rocket | [C6-5] | -0.08% | 0.99 | 322.4 | -1.07% | — | — | — | — | — | — |
@@ -181,3 +181,17 @@ Small designs written to test pods ([M1.13c2][m1-13c2]), not counted among the d
 | pods-fins-tail-4 | 533.3 | 535.5 | +0.41% | -31.28% | -31.56% | 202.24 | 203.43 | +0.59% | 0.595 | 2.470 | 2.471 | -0.2872 | -0.2875 |
 | pods-motors-2 | 876.9 | 881.5 | +0.53% | +12.98% | +12.66% | 274.13 | 277.52 | +1.24% | 0.807 | 2.990 | 2.991 | +0.2326 | +0.2322 |
 | pods-winglets-2 | 699.8 | 704.8 | +0.71% | -9.84% | -9.92% | 242.07 | 244.37 | +0.95% | 0.712 | 2.622 | 2.623 | -0.1357 | -0.1359 |
+
+## Tilted-rod probes
+
+The pod probes' airframe with no pods (`pods-none`, first, from OpenRocket's default vertical rod) launched from a 1 m rod tilted from the vertical toward a compass bearing ([M2.2e5][m2-2e5]), in calm air, not counted among the designs above. *Rod's change* is the apogee's change from `pods-none` in each code. *At apogee* is where the rocket is then, metres east and north of where it started, and *bearing* the direction of that place from the pad, clockwise from north: a rod read the wrong way round would send hpr's rocket another way than OpenRocket's. OpenRocket's rocket reaches its rod-clearance row at an angle of attack (*α OR*) that grows with the tilt, where hpr's margin is taken at none; *at OR's α* is hpr's margin at OpenRocket's angle, which says how much of the margins' difference that accounts for.
+
+[m2-2e5]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e5
+
+| probe | rod | apogee OR (m) | hpr (m) | Δ | rod's change OR | hpr | max speed OR (m/s) | hpr (m/s) | Δ | α OR (°) | margin OR (cal) | hpr (cal) | at OR's α (cal) | at apogee OR (E, N m) | hpr (E, N m) | bearing OR | hpr |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| pods-none | vertical | 776.1 | 782.4 | +0.81% | +0.00% | +0.00% | 254.00 | 256.78 | +1.09% | 0.000 | 2.757 | 2.759 | 2.759 | -0.4, 0.0 | -0.4, -0.0 | 270.6° | 270.0° |
+| rod-10-east | 10° toward 90° | 755.9 | 762.7 | +0.90% | -2.60% | -2.52% | 254.09 | 256.88 | +1.10% | 0.116 | 2.749 | 2.759 | 2.752 | 195.0, 0.0 | 194.3, -0.1 | 90.0° | 90.0° |
+| rod-10-southwest | 10° toward 225° | 755.9 | 762.5 | +0.87% | -2.60% | -2.54% | 254.10 | 256.88 | +1.09% | 0.116 | 2.749 | 2.759 | 2.752 | -138.5, -138.1 | -138.1, -137.6 | 225.1° | 225.1° |
+| rod-20-east | 20° toward 90° | 697.8 | 705.6 | +1.11% | -10.09% | -9.82% | 254.38 | 257.18 | +1.10% | 0.228 | 2.742 | 2.759 | 2.747 | 370.6, 0.1 | 369.6, -0.1 | 90.0° | 90.0° |
+| rod-5-north | 5° toward 0° | 771.1 | 777.5 | +0.83% | -0.65% | -0.63% | 254.02 | 256.81 | +1.09% | 0.058 | 2.753 | 2.759 | 2.756 | -0.4, 99.2 | -0.4, 98.5 | 359.8° | 359.8° |

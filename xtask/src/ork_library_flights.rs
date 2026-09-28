@@ -1005,7 +1005,7 @@ mod tests {
     fn the_count_toward_twenty_designs_is_the_two_reports() {
         // M2.2's *done when* asks for at least 20 designs with an error distribution of apogee,
         // largest speed, margin, mass and centre of mass. The report counts them from both
-        // reports and says whether the bar is met; M2.2e5 is met only when it is (ADR-072).
+        // reports and says whether the bar is met; M2.2e6 is met only when it is (ADR-072).
         let root = crate::ork::root().unwrap();
         let report = committed();
         let public = public_designs(&root).unwrap();
@@ -1069,7 +1069,7 @@ mod tests {
                     .chain(
                         [
                             NO_SUCH_CONFIGURATION,
-                            ROD_NOT_VERTICAL,
+                            ROD_NOT_TAKEN,
                             WIND,
                             NOT_STANDARD_AIR,
                             CURVE_BY_NAME,

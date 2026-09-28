@@ -10,7 +10,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.56449,
+      "apogee_percent": -0.564447,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -20,7 +20,7 @@
       "margin_cal": 0.004105,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.07502,
+      "max_speed_percent": 0.075018,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.00004,
       "rod_clearance_cp_cal": 0.004065,
@@ -32,7 +32,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": 2.151235,
+      "apogee_percent": 2.151293,
       "chute_early_s": 1.45,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -42,7 +42,7 @@
       "margin_cal": 0.004361,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.241008,
+      "max_speed_percent": 0.241031,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.000296,
       "rod_clearance_cp_cal": 0.004065,
@@ -54,7 +54,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.942128,
+      "apogee_percent": -0.942071,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -64,7 +64,7 @@
       "margin_cal": 0.004361,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.241008,
+      "max_speed_percent": 0.241031,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.000296,
       "rod_clearance_cp_cal": 0.004065,
@@ -76,7 +76,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.05397,
+      "apogee_percent": -0.053825,
       "chute_early_s": 0.55,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -86,7 +86,7 @@
       "margin_cal": 0.004105,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 1.180148,
+      "max_speed_percent": 1.180145,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.00004,
       "rod_clearance_cp_cal": 0.004065,
@@ -98,7 +98,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.577352,
+      "apogee_percent": -0.577143,
       "chute_early_s": 0.04,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -108,7 +108,7 @@
       "margin_cal": 0.004813,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.765283,
+      "max_speed_percent": 0.765316,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.000748,
       "rod_clearance_cp_cal": 0.004065,
@@ -120,7 +120,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -1.999068,
+      "apogee_percent": -1.998974,
       "chute_early_s": null,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -132,7 +132,7 @@
       "margin_cal": 0.058153,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 2.281841,
+      "max_speed_percent": 2.281658,
       "reference_same": true,
       "rod_clearance_cg_cal": 0.002509,
       "rod_clearance_cp_cal": 0.060662,
@@ -144,7 +144,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -4.091663,
+      "apogee_percent": -4.091599,
       "chute_early_s": null,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -156,7 +156,7 @@
       "margin_cal": 0.05637,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 1.003041,
+      "max_speed_percent": 1.00304,
       "reference_same": true,
       "rod_clearance_cg_cal": 0.004178,
       "rod_clearance_cp_cal": 0.060547,
@@ -168,7 +168,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -3.094355,
+      "apogee_percent": -3.09433,
       "chute_early_s": 0.08,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -180,7 +180,7 @@
       "margin_cal": 0.060422,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.302699,
+      "max_speed_percent": -0.302684,
       "reference_same": true,
       "rod_clearance_cg_cal": 0.000237,
       "rod_clearance_cp_cal": 0.060659,
@@ -192,7 +192,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -2.800623,
+      "apogee_percent": -2.80058,
       "chute_early_s": 0.4,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -204,7 +204,7 @@
       "margin_cal": 0.06046,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.129717,
+      "max_speed_percent": -0.129718,
       "reference_same": true,
       "rod_clearance_cg_cal": 0.000197,
       "rod_clearance_cp_cal": 0.060657,
@@ -216,7 +216,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -4.833534,
+      "apogee_percent": -4.833462,
       "chute_early_s": null,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -228,7 +228,7 @@
       "margin_cal": 0.072976,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.653208,
+      "max_speed_percent": -0.65326,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.012415,
       "rod_clearance_cp_cal": 0.06056,
@@ -240,7 +240,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": 0.6829,
+      "apogee_percent": 0.682838,
       "chute_early_s": 0.55,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -288,7 +288,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.486218,
+      "apogee_percent": -0.486136,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -298,7 +298,7 @@
       "margin_cal": 0.045475,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.059265,
+      "max_speed_percent": -0.05927,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.024942,
       "rod_clearance_cp_cal": 0.020533,
@@ -310,7 +310,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.175628,
+      "apogee_percent": -0.175474,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -320,7 +320,7 @@
       "margin_cal": 0.044561,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.006728,
+      "max_speed_percent": -0.006746,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.024009,
       "rod_clearance_cp_cal": 0.020552,
@@ -332,7 +332,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -0.250411,
+      "apogee_percent": -0.249837,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -342,7 +342,7 @@
       "margin_cal": 0.044143,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.059484,
+      "max_speed_percent": -0.0596,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.023589,
       "rod_clearance_cp_cal": 0.020554,
@@ -354,7 +354,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -1.479133,
+      "apogee_percent": -1.478756,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -364,7 +364,7 @@
       "margin_cal": 0.044398,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.035882,
+      "max_speed_percent": -0.035883,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.023874,
       "rod_clearance_cp_cal": 0.020523,
@@ -376,7 +376,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -1.899173,
+      "apogee_percent": -1.899477,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -386,7 +386,7 @@
       "margin_cal": 0.034974,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.027021,
+      "max_speed_percent": -0.027023,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.01447,
       "rod_clearance_cp_cal": 0.020503,
@@ -398,7 +398,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -2.570031,
+      "apogee_percent": -2.569524,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -408,7 +408,7 @@
       "margin_cal": 0.047777,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": -0.07128,
+      "max_speed_percent": -0.071295,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.027277,
       "rod_clearance_cp_cal": 0.0205,
@@ -420,7 +420,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -3.214881,
+      "apogee_percent": -3.214422,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -430,7 +430,7 @@
       "margin_cal": 0.040204,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.022938,
+      "max_speed_percent": 0.022934,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.019729,
       "rod_clearance_cp_cal": 0.020475,
@@ -442,7 +442,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -3.536048,
+      "apogee_percent": -3.535695,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -452,7 +452,7 @@
       "margin_cal": 0.039702,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.281541,
+      "max_speed_percent": 0.281536,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.019323,
       "rod_clearance_cp_cal": 0.020379,
@@ -464,7 +464,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": -4.844728,
+      "apogee_percent": -4.844469,
       "chute_early_s": null,
       "design_checks": [],
       "drag_overrides_not_applied": null,
@@ -474,7 +474,7 @@
       "margin_cal": 0.038474,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.261667,
+      "max_speed_percent": 0.261652,
       "reference_same": true,
       "rod_clearance_cg_cal": -0.018252,
       "rod_clearance_cp_cal": 0.020223,
@@ -486,7 +486,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": 1.167289,
+      "apogee_percent": 1.167295,
       "chute_early_s": null,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -498,7 +498,7 @@
       "margin_cal": 0.000226,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 1.217824,
+      "max_speed_percent": 1.217825,
       "reference_same": true,
       "rod_clearance_cg_cal": 0.000433,
       "rod_clearance_cp_cal": 0.000659,
@@ -510,7 +510,7 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
-      "apogee_percent": 0.940298,
+      "apogee_percent": 0.940299,
       "chute_early_s": null,
       "design_checks": [
         "internal_part_wider_than_parent"
@@ -522,11 +522,83 @@
       "margin_cal": -0.000849,
       "margin_outcome": "scored",
       "max_speed_outcome": "scored",
-      "max_speed_percent": 0.942593,
+      "max_speed_percent": 0.942606,
       "reference_same": true,
       "rod_clearance_cg_cal": 0.001506,
       "rod_clearance_cp_cal": 0.000657,
       "rod_clearance_mass_percent": 0.027,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": -0.256647,
+      "chute_early_s": null,
+      "design_checks": [
+        "internal_part_wider_than_parent"
+      ],
+      "drag_overrides_not_applied": null,
+      "flight": "C12/1",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_cal": 0.030809,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.271952,
+      "reference_same": true,
+      "rod_clearance_cg_cal": -0.000714,
+      "rod_clearance_cp_cal": 0.030095,
+      "rod_clearance_mass_percent": 0.0,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": 0.14455,
+      "chute_early_s": null,
+      "design_checks": [
+        "internal_part_wider_than_parent"
+      ],
+      "drag_overrides_not_applied": null,
+      "flight": "C12/2",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_cal": 0.036551,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.331778,
+      "reference_same": true,
+      "rod_clearance_cg_cal": 0.000027,
+      "rod_clearance_cp_cal": 0.036578,
+      "rod_clearance_mass_percent": 0.001,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
+      "apogee_percent": -0.532884,
+      "chute_early_s": null,
+      "design_checks": [
+        "internal_part_wider_than_parent"
+      ],
+      "drag_overrides_not_applied": null,
+      "flight": "C12/3",
+      "launch_mass_percent": 0.0,
+      "mach": "subsonic",
+      "margin_cal": 0.012458,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 0.238969,
+      "reference_same": true,
+      "rod_clearance_cg_cal": -0.000119,
+      "rod_clearance_cp_cal": 0.012339,
+      "rod_clearance_mass_percent": 0.004,
       "site": "sea_level",
       "termination": "ground_hit",
       "without_the_overridden_parts": null
@@ -589,21 +661,6 @@
       "aborted": false,
       "flight": "C11/4",
       "why": "a curve found by name, which OpenRocket may not fly"
-    },
-    {
-      "aborted": false,
-      "flight": "C12/1",
-      "why": "a launch rod not vertical"
-    },
-    {
-      "aborted": false,
-      "flight": "C12/2",
-      "why": "a launch rod not vertical"
-    },
-    {
-      "aborted": false,
-      "flight": "C12/3",
-      "why": "a launch rod not vertical"
     }
   ],
   "record": "corpus-out/openrocket-flights.json",
@@ -616,27 +673,27 @@
     "apogee_over_5_percent": 0,
     "bar": 20,
     "bar_met": false,
-    "designs_with_all_five": 6,
-    "flown": 23,
+    "designs_with_all_five": 7,
+    "flown": 26,
     "mass_and_cg": {
       "launch_mass_percent": {
-        "count": 23,
+        "count": 26,
         "max": 0.004,
-        "mean_absolute": 0.0010434782608695653,
+        "mean_absolute": 0.0009230769230769231,
         "median": 0.0,
         "min": 0.0
       },
       "rod_clearance_cg_cal": {
-        "count": 23,
+        "count": 26,
         "max": 0.004178,
-        "mean_absolute": 0.014310565217391305,
-        "median": -0.000748,
+        "mean_absolute": 0.012692423076923077,
+        "median": -0.000626,
         "min": -0.110245
       },
       "rod_clearance_mass_percent": {
-        "count": 23,
+        "count": 26,
         "max": 0.065,
-        "mean_absolute": 0.010869565217391304,
+        "mean_absolute": 0.009807692307692307,
         "median": 0.001,
         "min": -0.021
       }
@@ -649,22 +706,22 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 23
+          "scored": 26
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 17,
-            "max": 1.167289,
-            "mean_absolute": 1.9867387647058825,
-            "median": -1.479133,
-            "min": -4.844728
+            "count": 20,
+            "max": 1.167295,
+            "mean_absolute": 1.7352928000000003,
+            "median": -0.753259,
+            "min": -4.844469
           },
           "reference parachute open before apogee": {
             "count": 6,
-            "max": 2.151235,
-            "mean_absolute": 1.5600724999999998,
-            "median": -0.31566099999999997,
-            "min": -3.094355
+            "max": 2.151293,
+            "mean_absolute": 1.5600014999999996,
+            "median": -0.315484,
+            "min": -3.09433
           }
         }
       },
@@ -675,15 +732,15 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 23
+          "scored": 26
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 23,
-            "max": 2.281841,
-            "mean_absolute": 0.498048,
-            "median": 0.241008,
-            "min": -0.653208
+            "count": 26,
+            "max": 2.281658,
+            "mean_absolute": 0.47299530769230774,
+            "median": 0.241031,
+            "min": -0.65326
           }
         }
       },
@@ -694,22 +751,22 @@
         },
         "difference_unit": "calibres",
         "outcomes": {
-          "scored": 23
+          "scored": 26
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 23,
+            "count": 26,
             "max": 0.110841,
-            "mean_absolute": 0.03586908695652174,
-            "median": 0.040204,
+            "mean_absolute": 0.03480026923076923,
+            "median": 0.039088,
             "min": -0.000849
           }
         }
       }
     },
-    "not_flown": 14,
+    "not_flown": 11,
     "public_designs_with_all_five": 8,
-    "reference_same": 23,
-    "together": 14
+    "reference_same": 26,
+    "together": 15
   }
 }
