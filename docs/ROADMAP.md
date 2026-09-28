@@ -592,7 +592,7 @@
       `C10`**: a second blocker, #184, not the flag (ADR-095); it stays in e9's pool.
     - [x] **M2.2e7 Fin fillets and an inner tube's radius** (#174). *Done when:* both read as OR
       24.12 does, measured on probes and held by a test; `C01`, `C06` fly, e4's bar on them.
-      *Result (ADR-096):* 21 probes, mass and centre to 1e-15; both fly: 18 designs. `C06/1` +13.60%,
+      *Result (ADR-096):* 21 probes to 1e-15 (bore masses 1e-14); both fly: 18 designs. `C06/1` +13.60%,
       sized on OR's own drag, +1.11% (ADR-097); supersonic pressure drag twice OR's (#222).
     - [ ] **M2.2e8 Tube fins OpenRocket sizes** (#133). *Done when:* an `auto` tube-fin radius
       resolves as OR 24.12 does, on probes, with a test; the tube fin example flies, e4's bar on it.

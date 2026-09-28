@@ -8177,7 +8177,8 @@ OpenRocket's default, which is wrong there.
    OpenRocket does). hpr computes the section's area, first moment and second moments in closed
    form, the sectors' second moments in a stable form, and tests it by quadrature to 1e-11. The
    final subtraction still loses about `log10(R/r)` digits, at most 2 for a real fillet
-   (`r/R ≥ 0.01`); a fillet so wide that its section cancels away is refused.
+   (`r/R ≥ 0.01`). Past a thousand times the body radius it cancels away, so such a fillet is
+   refused; under a millionth of it, or on a body of no radius, a fillet weighs nothing.
    OpenRocket's mass and centre of mass agree to 1e-15 on every probe (the test holds them to
    1e-12). The pitch inertia is apart by −0.0077% to −0.638%, largest with the 30 mm fillets, and
    +0.425% on a single fin: hpr's is the exact prism, and OpenRocket's pitch rule for fins is not
@@ -8216,11 +8217,12 @@ OpenRocket's default, which is wrong there.
 **Context.** `C06/1` is the first supersonic flight in either OpenRocket report. Its apogee is
 +13.60% and its largest speed +7.98% from OpenRocket's, with neither named cause of ADR-073.
 M2.2e4's bar asks for a written, sized cause. The mass is within 0.77%. Taken per component at
-zero angle of attack through OpenRocket's public API, OpenRocket's drag differs from hpr's in two
-ways:
+zero angle of attack through OpenRocket's public API (a look not kept as a record), OpenRocket's
+drag differs from hpr's in two ways:
 
 - **Base drag while a motor burns.** hpr takes the burning motor's cross-section off the aft base
-  (Niskanen 2009, pp. 50–51, Loft lesson L13). OpenRocket 24.12 does not.
+  (Niskanen 2009, pp. 50–51, who cites Fleeman's *Tactical Missile Design* for it; Loft lesson
+  L13). OpenRocket 24.12 does not.
 - **Supersonic pressure drag.** hpr's is about twice OpenRocket's. OpenRocket gives the tangent
   ogive nose almost none well above Mach 1, and the airfoiled fins about a quarter of hpr's
   (#222).
@@ -8234,11 +8236,14 @@ The two pull in opposite directions. So neither can be named a cause by being pr
    every motor configuration of the jar's example designs with nothing deployed. It records
    OpenRocket's base-drag column over Niskanen's whole-base coefficient (`0.12 + 0.13 M²` below
    Mach 1, `0.25/M` above), with thrust and without, and the burning motors' area over the
-   reference area. It is committed as `validation/fixtures/ork/openrocket-base-drag.json`. On all
-   42 flights of one branch, the ratio while a motor burns equals the ratio after, to 1e-12. The
-   motors there cover up to 94% of the reference area, and the powered-pods example is among
-   them. Taking the area off would drop the ratio by that much. A test in `hpr_validate` holds
-   this.
+   reference area. It is committed as `validation/fixtures/ork/openrocket-base-drag.json`. Of its
+   56 flights, the 42 of one branch (one stage flown, no separation) are compared; on each, the
+   ratio while a motor burns equals the ratio after, to 1e-12. The motors there cover 9% to 94%
+   of the reference area, and one flight burns motors in pods. Taking the area off would drop
+   the ratio by about that much. On every flight the drag coefficient is the sum of the
+   friction, pressure and base columns while a motor burns, so the base column is what
+   OpenRocket flies. A test in `hpr_validate` holds all of this. The 14 flights left out
+   separate, which changes the base itself.
 2. **An opt-in flies OpenRocket's base rule.** `AeroModel::with_full_base_drag_under_power` and
    `Simulation::with_full_base_drag_under_power` keep the whole base while a motor burns, pods
    included; a sustainer lit after a separation keeps the rule. It is for comparisons with
@@ -8259,8 +8264,10 @@ The two pull in opposite directions. So neither can be named a cause by being pr
    the metric's cause is "hpr's own drag coefficient". The apogee and the largest speed are each
    judged by their own number. The label is weaker than ADR-073's causes. Those are things hpr
    knowingly does not do; this is the whole drag model. With mass within 1% and OpenRocket's own
-   thrust curves, it rules out causes other than the drag. It cannot tell a deliberate modelling
-   choice from a defect in hpr's drag, nor which code is right.
+   thrust curves, it bounds the net effect of every other cause on that flight by what is left,
+   though parts of it can cancel, and the table in Mach number leaves out OpenRocket's
+   dependence on the Reynolds number. It cannot tell a deliberate modelling choice from a defect
+   in hpr's drag, nor which code is right.
 5. **So each flight it names needs its own written breakdown.** The breakdown says which drag rule
    moves the flight, by how much, and what is left open. A list in the library report's tests
    (`DRAG_CAUSES_WRITTEN`) names each such flight with the record that breaks it down. A new flight
@@ -8274,8 +8281,9 @@ The two pull in opposite directions. So neither can be named a cause by being pr
     24.3 points; it is measured by its own flight.
   - Switching the rest of the drag to OpenRocket's then raises it 11.8 points. That number is by
     subtraction, and the split depends on which change is made first.
-  - Per component at supersonic speeds, the rest is the pressure drag. Friction agrees
-    within about 1%, and the base agrees exactly under one rule.
+  - A look at OpenRocket's per-component columns on this flight, not kept as a record, points
+    the rest to the supersonic pressure drag, with the friction and base close. It is a lead for
+    #222, not a measurement the repository reproduces.
 - Which supersonic pressure drag is right, and which base rule, is open (#222). Neither code has
   been checked against a measurement on this shape, and the public report has no supersonic
   flight.

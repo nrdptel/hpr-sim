@@ -21,9 +21,14 @@
     bullets below give the numbers.
   - *Against OpenRocket, faster than sound,* hpr's supersonic pressure drag (mostly
     [wave drag](../glossary.md#wave-drag)) is about twice OpenRocket's, on the one supersonic
-    flight compared. Which is right is open
+    flight compared, read from OpenRocket's per-component output but not kept as a record. Which
+    is right is open
     ([#222](https://github.com/nrdptel/hpr-sim/issues/222),
     [a supersonic flight](../format/ork.md#a-supersonic-flight-and-a-cause-in-the-drag)).
+  - *Base drag under power is unvalidated.* hpr takes the burning motor's area off the base
+    (Niskanen); OpenRocket keeps the whole base. Neither rule has been checked against a measured
+    flight. On one private supersonic flight the choice moves the apogee by about 24 percentage
+    points ([#222](https://github.com/nrdptel/hpr-sim/issues/222), [Drag](#drag)).
   - *A boattail's own drag faster than sound* against 58 readings of 20 measured boattails of 3°
     to 10°, Mach 1.2 to 3.12: −21.9% to +28.3%, within 0.0123. Through Mach 1 it reads low, and
     under Niskanen's subsonic rule long boattails get almost nothing. Steeper ones in a thick
@@ -3100,10 +3105,11 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   ([Boattails faster than sound](#boattails-faster-than-sound)).
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
   to zero ([N09] pp. 50–51: eq. 3.94 on p. 50, and on p. 51, "if the base is the same size as
-  the motor itself, no base drag"; [Loft lesson L13](../decisions-and-roadmap.md#l13)). Neither this
-  rule nor OpenRocket's below has been checked against a measurement. Taking the motor's area off
-  the base is Niskanen's statement, not a tested result. On one private design's supersonic
-  flight, `C06/1`, the choice moves apogee by about 24 points, more than any other known cause
+  the motor itself, no base drag", which Niskanen takes from Fleeman's *Tactical Missile Design*;
+  [Loft lesson L13](../decisions-and-roadmap.md#l13)). Neither this rule nor OpenRocket's below
+  has been checked against a measured flight. On one private design's supersonic flight, `C06/1`,
+  the choice moves hpr's apogee difference from OpenRocket's from +13.60% to −10.71%, about 24
+  percentage points, more than any other known cause
   ([#222](https://github.com/nrdptel/hpr-sim/issues/222), open on both this and the supersonic
   pressure drag).
   `DragConditions::thrusting(reynolds_per_m, motor_area_m2)` takes the cross-section of the
@@ -3111,16 +3117,17 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   last body component.
   - **OpenRocket's rule, for comparisons.** OpenRocket 24.12 does not take the motor off. While a
     motor burns, its base drag is the whole base's. A committed probe measures this:
-    `validation/oracles/openrocket/base_drag.py` records OpenRocket's base-drag column on its own
+    `validation/oracles/openrocket/base_drag.py` records OpenRocket's base drag on its own
     example designs, the rows while a motor burns against the rows after, in
-    `validation/fixtures/ork/openrocket-base-drag.json`, and a test in `hpr_validate` holds it
-    ([ADR-097][adr-097], the decision on sizing a drag cause). On all 42 of its flights of one
-    branch the ratio to the whole base's coefficient is the same while a motor burns as after, to
-    1e-12, where the motors cover up to 94% of the reference area, powered pods included. On a rocket whose motor fills most of the base, the rule is a large difference
-    under power. On `C06/1`, switching hpr to OpenRocket's base rule alone lowers its apogee from
-    +13.60% to −10.71%, 24.3 points. Switching the rest of the drag to OpenRocket's then raises it
-    to +1.11%, 11.8 points. The second number is by subtraction, and the split depends on which
-    change is made first
+    `validation/fixtures/ork/openrocket-base-drag.json`, and a test in `hpr-validate` holds it
+    ([ADR-097][adr-097], the decision on sizing a drag cause). On all 42 of its single-stage
+    flights (one data branch each, nothing separating), the base drag while a motor burns is
+    exactly the whole base's, to 1e-12, where the motors cover 9% to 94% of the reference area,
+    one flight's motors in pods. On a rocket whose motor fills most of the base, the rule is a
+    large difference under power. On `C06/1`, switching hpr to OpenRocket's base rule alone lowers
+    its apogee from +13.60% to −10.71%, 24.3 percentage points. Switching the rest of the drag to
+    OpenRocket's then raises it to +1.11%, 11.8 percentage points. The second number is by
+    subtraction, and the split depends on which change is made first
     ([a supersonic flight](../format/ork.md#a-supersonic-flight-and-a-cause-in-the-drag)).
     `AeroModel::with_full_base_drag_under_power()` and
     `Simulation::with_full_base_drag_under_power()` fly OpenRocket's rule. A sustainer lit after a

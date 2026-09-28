@@ -265,7 +265,9 @@ The fin-section cause is sized, not only present. hpr gives no warning for it, s
 hpr's own choice. So `cargo xtask ork` weighs the design again with its rounded and airfoil fins
 weighed OpenRocket's way: square, at 0.99 or 0.85 of their density. It names the cause only if the
 design then comes within both thresholds. The one design it names is a private one: `C06` in hpr's
-flights of the private designs, where the same fins put its centre of mass forward of OpenRocket's
+flights of the private designs. There hpr's centre of mass sits forward of OpenRocket's, and the
+same fins are a likely cause, but the survey's thresholds are coarser than that flight's gap, so
+they are a lead for it, not its size
 ([the format guide](../format/ork.md#hprs-flights-of-the-private-designs)).
 
 Three causes are gone. A cluster read as one tube went when
@@ -612,9 +614,12 @@ circle's, whose angle is `π/2 − θ`:
 On a flat body (`R` very large) this tends to `r² (1 − π/4)`: a square less a quarter circle. hpr
 works out the section's first and second moments the same way, in closed form. The sectors' second
 moments are computed in a stable form, but the final subtraction still loses about `log10(R/r)`
-digits: at most 2 for real fillets, where `r/R` is at least 0.01. A test checks all four against
+digits: at most 2 for a fillet 1% of the body radius or larger. A test checks all four against
 numerical integration to 1e-11 (`fillet_section_is_its_region_by_quadrature` in
-`hpr_design::fins`).
+`hpr_design::fins`). Far from real fillets the subtraction cancels away, so hpr weighs a fillet
+under a millionth of the body radius as nothing, refuses one over a thousand times it
+(`FILLET_RATIO_MAX`), and gives a body of no radius no fillet. At those bounds the area keeps 10
+and 12 significant digits against 60-digit arithmetic.
 
 **A worked example.** An invented 5 mm fillet on a tube 30 mm in radius. Then
 `c = √(30² + 2 × 30 × 5)` = 34.64 mm and `θ = atan(5/34.64)` = 0.1433 rad (8.21°).
