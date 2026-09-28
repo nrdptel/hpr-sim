@@ -445,7 +445,9 @@ pub enum AutoDimension {
     /// radius: its parent's inner radius, which is how a coupler or an engine block fills the tube
     /// it sits in; inside a hollow nose cone or transition, the parent's outer radius at the
     /// narrower end of the part less the parent's wall, and never below zero, as OpenRocket 24.12
-    /// reads it ([ADR-096][adr-096]).
+    /// reads it ([ADR-096][adr-096]). An inner tube whose resolved radius is less than its wall
+    /// is laid out solid (its wall is cut to its radius), as OpenRocket weighs it; a stated radius
+    /// with too thick a wall is still refused.
     ///
     /// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
     OuterRadius,

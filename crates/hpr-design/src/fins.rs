@@ -669,9 +669,17 @@ impl FinSet {
         };
         let density = fillet.material.bulk_kg_m3("fin fillet")?;
         let [area, sx, sxx, syy] = fillet_section(body_radius_m, fillet.radius_m);
+        // A fillet far wider than the body loses its section to cancellation (the triangle less
+        // two sectors of nearly its size): refused, not weighed as nothing or as NaN.
+        if !(area > 0.0 && [sx, sxx, syy].iter().all(|v| v.is_finite())) {
+            return Err(DesignError::Domain {
+                what: "fin fillet section area (a fillet radius far wider than the body)",
+                value: area,
+            });
+        }
         let l = self.planform.root_chord_m();
         let mass = 2.0 * density * area * l;
-        if mass <= 0.0 {
+        if mass == 0.0 {
             return Ok(None);
         }
         let ixz = density * sx * l * l;
@@ -1353,6 +1361,54 @@ mod tests {
             r * r * (1.0 - PI / 4.0),
             1e-6,
             "flat",
+        );
+    }
+
+    /// The worked example in `docs/physics/mass.md`: a 5 mm fillet on a 30 mm tube is 4.253 mm²
+    /// (the triangle 86.603 mm² less sectors of 64.506 and 17.843 mm²), and six of them along a
+    /// 100 mm root in cardboard, 680 kg/m³, weigh 1.735 g.
+    #[test]
+    fn the_worked_fillet_example_is_the_docs() {
+        let [a, ..] = fillet_section(0.030, 0.005);
+        assert!((a * 1e6 - 4.253).abs() < 5e-4, "{}", a * 1e6);
+        let mass_g = 6.0 * a * 0.1 * 680.0 * 1e3;
+        assert!((mass_g - 1.735).abs() < 5e-4, "{mass_g}");
+    }
+
+    /// A fillet far wider than the body loses its section to cancellation; it is refused, not
+    /// weighed as nothing or as NaN.
+    #[test]
+    fn a_fillet_far_wider_than_the_body_is_refused() {
+        let planform = FinPlanform::Trapezoidal {
+            root_chord_m: 0.1,
+            tip_chord_m: 0.05,
+            span_m: 0.05,
+            sweep_m: 0.05,
+        };
+        for radius_m in [1e10, 1e100] {
+            let mut fins = set(3, planform.clone(), 0.003);
+            fins.fillet = Some(FinFillet {
+                radius_m,
+                material: Material::bulk("epoxy", 1200.0),
+            });
+            let error = fins.single_fin(0.05).unwrap_err();
+            assert!(
+                matches!(error, DesignError::Domain { what, .. } if what.starts_with("fin fillet section")),
+                "{radius_m}: {error:?}"
+            );
+        }
+        // A fillet of a weightless material weighs nothing, and is no error.
+        let mut fins = set(3, planform, 0.003);
+        fins.fillet = Some(FinFillet {
+            radius_m: 0.005,
+            material: Material::bulk("air", 0.0),
+        });
+        assert_eq!(
+            fins.single_fin(0.05).unwrap().mass_kg,
+            set(3, fins.planform.clone(), 0.003)
+                .single_fin(0.05)
+                .unwrap()
+                .mass_kg
         );
     }
 

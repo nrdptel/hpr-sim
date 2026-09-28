@@ -188,7 +188,9 @@ fn one(
     // transition's bore narrows along it, and the layout takes an outer radius at the part's
     // narrower end, as OpenRocket 24.12 does (ADR-096); a packed radius in one, or anything
     // automatic in a solid one or any other part, has no bore to take. The layout would refuse the
-    // whole design over it, so the part goes instead. A ring's automatic *bore* is not in this
+    // whole design over it, so the part goes instead. A part in a hollow nose whose bore narrows
+    // to nothing at its end (at the tip) stays, and the layout refuses the design: OpenRocket
+    // weighs it as nothing, which hpr does not yet do (ADR-096). A ring's automatic *bore* is not in this
     // list: it comes from the ring's siblings, and is zero when none of them is a motor tube, so
     // it needs nothing of the parent.
     let hollow = |wall: &Wall| matches!(wall, Wall::Shell { .. });
@@ -599,12 +601,9 @@ fn inner_tube(tag: &str, values: &mut Values<'_>, auto: &mut Vec<AutoDimension>)
         stated_radius(values, &["outerradius"], AutoDimension::OuterRadius, auto);
     if tag == "innertube" && auto.contains(&AutoDimension::OuterRadius) {
         auto.retain(|dimension| *dimension != AutoDimension::OuterRadius);
+        // OpenRocket's own reading, measured, so no warning: one would keep the design from
+        // flying (ADR-055) for a part read exactly as OpenRocket reads it.
         (stated_m, outer_radius_m) = (Some(INNER_TUBE_UNRESOLVED_M), INNER_TUBE_UNRESOLVED_M);
-        values.warn_at(
-            WarningKind::Unusual,
-            "an inner tube's radius is written `auto`, which OpenRocket 24.12 does not resolve \
-             for an inner tube: it keeps its 9.5 mm, and so does hpr",
-        );
     }
     let thickness_m = tube_wall(values, stated_m)?;
     let angle_rad = roll_angle(values);

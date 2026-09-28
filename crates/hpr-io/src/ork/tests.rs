@@ -4484,7 +4484,8 @@ fn a_pod_set_with_no_known_distance_is_left_out_and_its_override_covers_its_pods
 /// designs. Fillets are read with their own material, cardboard when the file names none; an
 /// automatic radius inside a hollow nose cone is laid out from the cone's bore at the part's
 /// narrower end, where before the part was left out; and an `innertube` written `auto` keeps the
-/// 9.5 mm OpenRocket leaves it at, with a warning, where a coupler fills its tube.
+/// 9.5 mm OpenRocket leaves it at, where a coupler fills its tube. None of these raises a
+/// warning, so a design holding them flies (ADR-055).
 ///
 /// [adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28
 #[test]
@@ -4531,8 +4532,7 @@ fn fillets_a_nose_cone_s_bore_and_an_automatic_inner_tube_read_as_openrocket_rea
         "",
     ));
     let messages: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
-    assert_eq!(messages.len(), 1, "{messages:?}");
-    assert!(messages[0].contains("keeps its 9.5 mm"), "{messages:?}");
+    assert!(messages.is_empty(), "{messages:?}");
     let layout = spine.value.layout().expect("a design that lays out");
     let hpr_design::tree::Part::FinSet(fin_set) = resolved(&layout, "fins") else {
         panic!("a fin set");
