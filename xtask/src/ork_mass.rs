@@ -144,11 +144,16 @@ pub(crate) fn roll_under_openrocket_fins(
 /// `N m ((r² + rᵢ²)/4 + L²/12)` for a set of mass `m`, about the set's centre, with no term for the
 /// tubes' distance from the body's axis (ADR-098, measured on 19 probes). hpr's own is the mean of
 /// its two transverse inertias about the set's centre; the set's distance from the structure's
-/// centre is the same in both, so only this term moves. `None` for a design with no tube fins.
+/// centre is the same in both, so only this term moves. `None` for a design with no tube fins, and
+/// for one whose tube fins are repeated (in pods or a cluster), where hpr's own inertia holds the
+/// copies' spread too; no design in the library has that.
 pub(crate) fn tube_fin_pitch_shift_kg_m2(layout: &Layout) -> Option<f64> {
     let mut shift = None;
     for placed in &layout.components {
         if let Part::TubeFinSet(set) = &placed.part {
+            if placed.copies.len() != 1 {
+                return None;
+            }
             let (r, length) = (set.outer_radius_m, set.length_m);
             let r_i = (r - set.thickness_m).max(0.0);
             let across = (r * r + r_i * r_i) / 4.0 + length * length / 12.0;
@@ -1156,10 +1161,6 @@ mod tests {
         (rocket, layout, probe)
     }
 
-    /// The roll causes are measured on OpenRocket's probes, not assumed: which overrides cover the
-    /// parts inside; OpenRocket's fin rule on its own fin mass closes an airfoil probe, and a fin
-    /// set with nothing to pair keeps hpr's; and a weightless packed part under an override, once a
-    /// cause (a point mass in hpr), now leaves no gap (ADR-063).
     /// OpenRocket's tube-fin pitch rule in hpr's place closes the pitch gap on its probes of three
     /// tubes or more, and moves nothing on a design with none (ADR-098).
     #[test]
@@ -1182,6 +1183,10 @@ mod tests {
         assert_eq!(tube_fin_pitch_shift_kg_m2(&layout), None);
     }
 
+    /// The roll causes are measured on OpenRocket's probes, not assumed: which overrides cover the
+    /// parts inside; OpenRocket's fin rule on its own fin mass closes an airfoil probe, and a fin
+    /// set with nothing to pair keeps hpr's; and a weightless packed part under an override, once a
+    /// cause (a point mass in hpr), now leaves no gap (ADR-063).
     #[test]
     fn roll_causes_are_measured_not_assumed() {
         for (question, covering) in [

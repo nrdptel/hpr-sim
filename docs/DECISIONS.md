@@ -8340,8 +8340,8 @@ method exists, so the flight cannot follow from the radius alone.
    tubes of 20 mm radius). On the probes, whose tubes are 0.1 m long, it stays under the bound
    `(R + 2r)² + (L/2)²` for any mass inside the ring; on the *Tube fin rocket*'s longer tubes it is
    18% over it (3.352e-3 m² against 2.834e-3 m²), since `N L²/12` passes `L²/4` once `N > 3`. hpr
-   keeps its own. For one tube the two agree; for two, OpenRocket's lies between hpr's two
-   pitch values, across the pair and along it.
+   keeps its own. For one tube the two agree; for two, on the probes, OpenRocket's lies between
+   hpr's two pitch values, across the pair and along it.
 9. **A design with tube fins is weighed, not flown.** `hpr-aero` refuses tube fins, so `hpr-io`'s
    screen leaves every configuration of such a design out as `NotFlown::NoAerodynamicModel`, and its
    stored runs out of the reproduction screen as unflyable. M2.2e9 removes the screen.
