@@ -987,6 +987,43 @@ fn sim_refuses_what_it_cant_fly() {
             "the airframe was not read exactly as written: 1 `parallelstage` were left out",
         );
     }
+    // As a 0.1 document, which didn't record why, nothing shows whether the airframe was read as
+    // written, so no other motor flies it either.
+    let converted = folder.path().join("reduced.hpr");
+    let mut document: Value =
+        serde_json::from_str(&std::fs::read_to_string(&converted).unwrap()).unwrap();
+    let object = document.as_object_mut().unwrap();
+    object.insert("version".to_owned(), Value::from("0.1"));
+    let files = object.remove("source_files").unwrap();
+    object.insert("attachments".to_owned(), files);
+    let source = document["provenance"]["source"].as_object_mut().unwrap();
+    source.remove("airframe_not_as_written").unwrap();
+    let old = folder.path().join("reduced-0.1.hpr");
+    std::fs::write(&old, document.to_string()).unwrap();
+    refused(
+        &["sim", &old.to_string_lossy(), "--motor", "H54"],
+        "whether the airframe was read exactly as written is unknown: the document is from \
+         version 0.1",
+    );
+    // A document whose provenance says nothing flies another motor, with a note on the parts it
+    // keeps aside.
+    document["version"] = Value::from("0.2");
+    let object = document.as_object_mut().unwrap();
+    let files = object.remove("attachments").unwrap();
+    object.insert("source_files".to_owned(), files);
+    let edited = folder.path().join("edited.hpr");
+    std::fs::write(&edited, document.to_string()).unwrap();
+    let flown = json(
+        &["sim", &edited.to_string_lossy(), "--motor", "H54"],
+        0,
+        "sim.schema.json",
+    );
+    assert!(
+        flown["notes"].as_array().unwrap().iter().any(|note| note
+            == "the file has parts hpr keeps aside instead of flying, such as a parallel stage: \
+                the rocket flown is the rest of it"),
+        "{flown:#}"
+    );
 }
 
 /// A design flown past its failed checks says so in its notes.

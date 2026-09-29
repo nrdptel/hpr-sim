@@ -99,7 +99,8 @@ only the files each command really reads. "Not yet" commands exit with
 reads an [OpenRocket](glossary.md#openrocket) `.ork` file, a design in
 [the hpr design format](format/hpr.md) (`.hpr`, or a `.hprz` with its attachments), or a rocket's
 JSON (`.json`, the tree [Your own rocket](your-own-rocket.md) describes). A `.hpr` or `.hprz`
-flies exactly as the `.ork` it was converted from ([converting a design](#converting-a-design)).
+flies exactly as the `.ork` it was converted from ([converting a design](#converting-a-design)),
+though it doesn't print the `.ork` reader's warnings, which `hpr convert` printed.
 It runs the same simulation code as the
 Rust library, so a Rust program flying the same design gets the same numbers.
 
@@ -507,11 +508,18 @@ The document holds everything hpr read from the `.ork`, including what hpr doesn
 `hpr sim demo.hpr` flies it to the same flight as the `.ork`. A document of an older version of the
 format is migrated as it is read, and the output says from which version.
 
-`--attach` adds a file to a `.hprz`, under its file name, once for each file: a flight log, a
-photograph, anything. Converting a `.hprz` to a `.hpr` or a `.ork` leaves its attachments out, and
-a warning names each. `--json` prints the design's name, how many motor configurations it holds,
-the version it was migrated from, if it was, the attachments written and the warnings
-([`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json)).
+`--attach` adds a file to a `.hprz`, once for each file: a flight log, a photograph, anything, up
+to 256 MiB for the whole container. Each goes at the top of the container, under its file name.
+Converting a `.hprz` to a `.hpr` or a `.ork` leaves its attachments out, and a warning names each.
+With `--json`, the output
+([`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json))
+gives:
+
+- the files read and written, with their formats;
+- the rocket's name, and how many motor configurations the design holds;
+- the version of the format the input was migrated from, if it was;
+- the attachments written into a `.hprz`;
+- the warnings: the `.ork` reader's, the `.ork` writer's, and each attachment left out.
 
 ## `hpr validate`
 
@@ -756,8 +764,8 @@ you press Tab. Save it where your shell looks for completions:
 - **One log format.** `hpr analyze` reads PerfectFlite's `.pf2` so far; other loggers' files,
   and readings such as the drogue and main descent rates and the Mach number, come with
   [M7.1](decisions-and-roadmap.md#m7-1) and [M7.2](decisions-and-roadmap.md#m7-2).
-- **Two design formats.** `hpr convert` and `hpr sim` read OpenRocket's `.ork` and hpr's own
-  `.hpr` and `.hprz`, not RockSim's `.rkt` or RASAero's `.CDX1`
+- **Only OpenRocket's and hpr's own design files.** `hpr convert` and `hpr sim` read OpenRocket's
+  `.ork` and hpr's `.hpr` and `.hprz`, not RockSim's `.rkt` or RASAero's `.CDX1`
   ([how the formats compare](format/hpr.md#how-it-compares-with-other-design-formats)).
 - **`hpr validate` needs the repository.** The cases and their reference results are files in it,
   not part of the tool. It re-flies only the RocketPy comparisons.

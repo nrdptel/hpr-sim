@@ -4,13 +4,14 @@
 //! The archive holds the design as its first entry, [`DESIGN_ENTRY`], written exactly as a `.hpr`
 //! file ([`to_json`]), so unzipping a container gives a `.hpr` any reader of the
 //! format takes. Every other entry is an attachment, kept byte for byte under its name, in order.
-//! Every entry is deflated and dated 1980-01-01, zip's zero date, so a container's bytes depend
-//! only on what it holds.
+//! Every entry is deflated and dated 1980-01-01, zip's zero date, so with one build of this crate a
+//! container's bytes depend only on what it holds. (Another deflate implementation, chosen by a
+//! program's features, can compress the same files to other bytes, which read back the same.)
 //!
 //! An attachment's name is a relative path with `/` between folders, so an archive can't place a
-//! file outside the folder it is unpacked into ([`check_name`]). Reading is held to the same rules
-//! as writing, and to [`MAX_UNPACKED_BYTES`], so a hostile archive is refused with its reason
-//! rather than filling memory.
+//! file outside the folder it is unpacked into ([`check_name`]). A container holds at most
+//! [`MAX_UNPACKED_BYTES`], unpacked. Reading is held to the same rules as writing, so a hostile
+//! archive is refused with its reason rather than filling memory.
 //!
 //! ```
 //! use hpr_format::DesignFile;
@@ -36,14 +37,15 @@ use crate::{DesignFile, FormatError, Opened, read_json, shortened, to_json};
 /// The name of the design's entry, the first in every container this crate writes.
 pub const DESIGN_ENTRY: &str = "design.hpr";
 
-/// How many bytes [`read`] will decompress out of one container, over all its entries: 256 MiB.
+/// The most a container holds, unpacked, over all its entries, the design's included: 256 MiB.
+/// [`write`](fn@write) refuses more, and [`read`] decompresses no more.
 ///
 /// A deflate stream can expand by about a thousand to one, so a small archive could otherwise ask
-/// for more memory than a machine has. Use [`read_within`] to choose another.
+/// for more memory than a machine has. Use [`read_within`] to read with another limit.
 pub const MAX_UNPACKED_BYTES: u64 = 256 * 1024 * 1024;
 
 /// A design and its attachments.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub struct Hprz {
     /// The design.
@@ -63,7 +65,7 @@ impl Hprz {
 }
 
 /// A file in a container: its name, a relative path such as `logs/flight-1.csv`, and its bytes.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub struct Entry {
     /// Its name in the archive, with `/` between folders.
@@ -86,18 +88,22 @@ impl Entry {
 ///
 /// A name is a relative path: folders and a file name joined by `/`, none of them empty, `.` or
 /// `..`. It holds no `\`, no `:` and no control character, since each can reach outside the
-/// folder a container is unpacked into on some system, and it is not [`DESIGN_ENTRY`] in any case.
+/// folder a container is unpacked into on some system. No part ends in `.` or a space, and none is
+/// a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, with or
+/// without an extension), which Windows would drop or open as a device. And it is not
+/// [`DESIGN_ENTRY`] in any case.
 ///
 /// # Errors
 ///
-/// The reason, in words.
-pub fn check_name(name: &str) -> Result<(), String> {
+/// [`FormatError::Container`], with the reason.
+pub fn check_name(name: &str) -> Result<(), FormatError> {
     let quoted = shortened(name);
+    let refused = |why: String| Err(FormatError::Container(why));
     if name.is_empty() {
-        return Err("an attachment's name is empty".to_owned());
+        return refused("an attachment's name is empty".to_owned());
     }
     if name.eq_ignore_ascii_case(DESIGN_ENTRY) {
-        return Err(format!(
+        return refused(format!(
             "an attachment is named {quoted:?}, which is the design's entry"
         ));
     }
@@ -105,7 +111,7 @@ pub fn check_name(name: &str) -> Result<(), String> {
         .chars()
         .find(|c| *c == '\\' || *c == ':' || c.is_control())
     {
-        return Err(format!(
+        return refused(format!(
             "the attachment {quoted:?} has {bad:?} in its name, which a relative path with `/` \
              between folders doesn't"
         ));
@@ -114,28 +120,66 @@ pub fn check_name(name: &str) -> Result<(), String> {
         .split('/')
         .any(|part| part.is_empty() || part == "." || part == "..")
     {
-        return Err(format!(
+        return refused(format!(
             "the attachment {quoted:?} is not a relative path: it starts or ends with `/`, or has \
              an empty, `.` or `..` part"
+        ));
+    }
+    if name.split('/').any(|part| part.ends_with(['.', ' '])) {
+        return refused(format!(
+            "the attachment {quoted:?} has a part ending in `.` or a space, which Windows drops"
+        ));
+    }
+    if let Some(part) = name.split('/').find(|part| is_device(part)) {
+        return refused(format!(
+            "the attachment {quoted:?} has a part named {:?}, a Windows device's name",
+            shortened(part)
         ));
     }
     Ok(())
 }
 
-/// The names of `attachments` checked, each by [`check_name`], and no two the same, even by case,
-/// since a file system that ignores case would unpack them as one file.
-fn check_names<'a>(names: impl Iterator<Item = &'a str>) -> Result<(), FormatError> {
+/// Whether `part` of a path names a Windows device, with or without an extension.
+fn is_device(part: &str) -> bool {
+    let stem = part.split('.').next().unwrap_or(part).to_ascii_uppercase();
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || matches!(
+            stem.as_bytes(),
+            [b'C', b'O', b'M', b'1'..=b'9'] | [b'L', b'P', b'T', b'1'..=b'9']
+        )
+}
+
+/// The names of a container's attachments checked, each by [`check_name`]; no two the same,
+/// ignoring case, and none also a folder of another, since a file system that ignores case, or any
+/// file system, would unpack such a pair as one.
+fn check_names<'a>(names: impl Iterator<Item = &'a str> + Clone) -> Result<(), FormatError> {
     let mut seen = BTreeSet::new();
-    for name in names {
-        check_name(name).map_err(FormatError::Container)?;
-        if !seen.insert(name.to_lowercase()) {
+    let mut folders = BTreeSet::new();
+    for name in names.clone() {
+        check_name(name)?;
+        let folded = name.to_lowercase();
+        if !seen.insert(folded.clone()) {
             return Err(FormatError::Container(format!(
                 "two attachments are named {:?}, ignoring case",
                 shortened(name)
             )));
         }
+        folders.extend(
+            folded
+                .match_indices('/')
+                .map(|(at, _)| folded[..at].to_owned()),
+        );
     }
-    Ok(())
+    match names
+        .into_iter()
+        .find(|name| folders.contains(&name.to_lowercase()))
+    {
+        Some(name) => Err(FormatError::Container(format!(
+            "the attachment {:?} is also the folder of another",
+            shortened(name)
+        ))),
+        None => Ok(()),
+    }
 }
 
 /// The container's bytes: the design as [`DESIGN_ENTRY`], then each attachment, in order.
@@ -143,10 +187,17 @@ fn check_names<'a>(names: impl Iterator<Item = &'a str>) -> Result<(), FormatErr
 /// # Errors
 ///
 /// What [`to_json`] refuses in the design, and [`FormatError::Container`] for an attachment's name
-/// [`check_name`] refuses, or two of one name.
+/// [`check_name`] refuses, two of one name, or more than [`MAX_UNPACKED_BYTES`] in all.
 pub fn write(hprz: &Hprz) -> Result<Vec<u8>, FormatError> {
     let text = to_json(&hprz.design)?;
     check_names(hprz.attachments.iter().map(|entry| entry.name.as_str()))?;
+    let unpacked = hprz
+        .attachments
+        .iter()
+        .fold(text.len() as u64, |sum, entry| {
+            sum.saturating_add(entry.bytes.len() as u64)
+        });
+    within_the_limit(unpacked)?;
     let zip = |error: &dyn std::fmt::Display| FormatError::Container(error.to_string());
     // `SimpleFileOptions::DEFAULT` and a named date rather than `default()`, which reads the clock
     // when zip's `time` feature is on, and panics on `wasm32-unknown-unknown` (as `hpr-io` writes
@@ -166,6 +217,17 @@ pub fn write(hprz: &Hprz) -> Result<Vec<u8>, FormatError> {
         archive.write_all(&entry.bytes).map_err(|e| zip(&e))?;
     }
     Ok(archive.finish().map_err(|e| zip(&e))?.into_inner())
+}
+
+/// Refuses `unpacked` bytes past [`MAX_UNPACKED_BYTES`].
+fn within_the_limit(unpacked: u64) -> Result<(), FormatError> {
+    if unpacked > MAX_UNPACKED_BYTES {
+        return Err(FormatError::Container(format!(
+            "it would hold {unpacked} bytes unpacked, and a container holds at most \
+             {MAX_UNPACKED_BYTES} (256 MiB)"
+        )));
+    }
+    Ok(())
 }
 
 /// How many records a zip archive's central directory holds from `start`: each begins with the
@@ -198,19 +260,22 @@ pub fn read(bytes: &[u8]) -> Result<Opened<Hprz>, FormatError> {
     read_within(bytes, MAX_UNPACKED_BYTES)
 }
 
-/// Reads a container, decompressing at most `budget` bytes out of it, and says which version its
-/// design was written in.
+/// Reads a container, decompressing at most `max_unpacked_bytes` out of it, and says which version
+/// its design was written in.
 ///
 /// The design is read as a `.hpr` is ([`read_json`]). A folder's own entry, which some zip tools
 /// write, holds nothing and is passed over; every other entry is an attachment, held to the rules
-/// [`write`](fn@write) holds it to.
+/// [`write`](fn@write) holds it to. Every name is checked before anything is decompressed.
 ///
 /// # Errors
 ///
 /// [`FormatError::Container`] when the bytes are not a zip archive, an entry can't be read, the
-/// archive would decompress to more than `budget` bytes, it holds no [`DESIGN_ENTRY`] or the design
-/// isn't UTF-8, or an attachment's name is refused; and what [`read_json`] refuses in the design.
-pub fn read_within(bytes: &[u8], budget: u64) -> Result<Opened<Hprz>, FormatError> {
+/// central directory holds more entries than the zip reader keeps (two of one name), an entry is a
+/// symbolic link or its name isn't stored as UTF-8, an attachment's name is refused, the archive
+/// would decompress to more than `max_unpacked_bytes`, or it holds no [`DESIGN_ENTRY`] or the
+/// design isn't UTF-8; and what [`read_json`] refuses in the design.
+pub fn read_within(bytes: &[u8], max_unpacked_bytes: u64) -> Result<Opened<Hprz>, FormatError> {
+    let budget = max_unpacked_bytes;
     if !matches!(bytes, [b'P', b'K', 3, 4, ..] | [b'P', b'K', 5, 6, ..]) {
         return Err(FormatError::Container(
             "a .hprz is a zip archive, and these bytes don't start as one".to_owned(),
@@ -222,11 +287,47 @@ pub fn read_within(bytes: &[u8], budget: u64) -> Result<Opened<Hprz>, FormatErro
     // central directory's records are counted here: more records than entries means two share a
     // name, and one of them would be lost.
     let start = usize::try_from(archive.central_directory_start()).unwrap_or(usize::MAX);
-    if central_records(bytes, start) != archive.len() {
-        return Err(FormatError::Container(
-            "two of its entries have the same name, so one would be lost".to_owned(),
-        ));
+    let records = central_records(bytes, start);
+    if records != archive.len() {
+        return Err(FormatError::Container(format!(
+            "its central directory holds {records} entries, and the zip reader keeps {}: two \
+             have the same name, and one would be lost, or the directory is damaged",
+            archive.len()
+        )));
     }
+    // Every name, before anything is decompressed.
+    let mut names = Vec::new();
+    for index in 0..archive.len() {
+        let entry = archive.by_index_raw(index).map_err(|error| {
+            FormatError::Container(format!("entry {index} can't be opened: {error}"))
+        })?;
+        if entry.is_dir() {
+            continue;
+        }
+        let name = entry.name();
+        if entry.name_raw() != name.as_bytes() {
+            return Err(FormatError::Container(format!(
+                "the name of {:?} isn't stored as UTF-8",
+                shortened(name)
+            )));
+        }
+        if entry.is_symlink() {
+            return Err(FormatError::Container(format!(
+                "{:?} is a symbolic link, which a container doesn't hold",
+                shortened(name)
+            )));
+        }
+        names.push(name.to_owned());
+    }
+    // The first entry of the design's name is the design, as below; the central directory's count
+    // has already refused a second.
+    let Some(at) = names.iter().position(|name| name == DESIGN_ENTRY) else {
+        return Err(FormatError::Container(format!(
+            "it holds no {DESIGN_ENTRY:?}, the design"
+        )));
+    };
+    names.remove(at);
+    check_names(names.iter().map(String::as_str))?;
     let mut design = None;
     let mut attachments = Vec::new();
     let mut used = 0u64;
@@ -267,7 +368,6 @@ pub fn read_within(bytes: &[u8], budget: u64) -> Result<Opened<Hprz>, FormatErro
     let design = design.ok_or_else(|| {
         FormatError::Container(format!("it holds no {DESIGN_ENTRY:?}, the design"))
     })?;
-    check_names(attachments.iter().map(|entry| entry.name.as_str()))?;
     let text = String::from_utf8(design)
         .map_err(|_| FormatError::Container(format!("its {DESIGN_ENTRY:?} is not UTF-8 text")))?;
     let opened = read_json(&text)?;
@@ -275,4 +375,17 @@ pub fn read_within(bytes: &[u8], budget: u64) -> Result<Opened<Hprz>, FormatErro
         value: Hprz::new(opened.value, attachments),
         written_as: opened.written_as,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The limit itself is held, and one byte more is not: the writer's test refuses one past it
+    /// without compressing 256 MiB to show the limit is taken.
+    #[test]
+    fn a_container_may_hold_the_limit_and_no_more() {
+        assert!(within_the_limit(MAX_UNPACKED_BYTES).is_ok());
+        assert!(within_the_limit(MAX_UNPACKED_BYTES + 1).is_err());
+    }
 }

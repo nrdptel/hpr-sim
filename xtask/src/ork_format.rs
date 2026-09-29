@@ -37,9 +37,15 @@ pub(crate) struct FormatTally {
     /// for that reason.
     migrated: usize,
     /// Documents whose `.ork` airframe was not read exactly as written, and of them, those whose
-    /// migration from 0.1 recovers the reason.
+    /// migration from 0.1 recovers the reason, and those it marks unknown.
     not_as_written: usize,
     recovered: usize,
+    unknown: usize,
+    /// Documents read as written that the migration marks unknown, which refuses another motor in
+    /// them though it could fly.
+    unknown_as_written: usize,
+    /// Documents whose migration gives a wrong reason, or none where there is one: a failure.
+    wrong_reason: Vec<String>,
     /// Motor configurations the designs leave out of their rockets, as the `.ork` reader does:
     /// no curve, a size that disagrees, a part read simpler (ADR-055). None has a flight to compare.
     left_out: usize,
@@ -74,6 +80,9 @@ impl FormatTally {
             migrated: 0,
             not_as_written: 0,
             recovered: 0,
+            unknown: 0,
+            unknown_as_written: 0,
+            wrong_reason: Vec::new(),
             left_out: 0,
             flown: 0,
             largest_relative: 0.0,
@@ -157,10 +166,24 @@ impl FormatTally {
         if migrated {
             self.migrated += 1;
         }
-        if airframe.is_some() {
-            self.not_as_written += 1;
-            if recovered == Some(airframe.clone()) {
+        let unknown = Some(hpr_format::migrate::UNKNOWN);
+        match (
+            airframe.as_deref(),
+            recovered.as_ref().map(Option::as_deref),
+        ) {
+            (Some(truth), Some(Some(reason))) if reason == truth => {
+                self.not_as_written += 1;
                 self.recovered += 1;
+            }
+            (Some(_), Some(reason)) if reason == unknown => {
+                self.not_as_written += 1;
+                self.unknown += 1;
+            }
+            (None, Some(reason)) if reason == unknown => self.unknown_as_written += 1,
+            (None, Some(None)) => {}
+            _ => {
+                self.not_as_written += usize::from(airframe.is_some());
+                self.wrong_reason.push(name.to_owned());
             }
         }
         // The `.ork` M3.2a writes from the file itself, its other entries and all.
@@ -245,6 +268,9 @@ impl FormatTally {
             "migrated_from_0_1_the_same": self.migrated,
             "airframe_not_as_written": self.not_as_written,
             "airframe_recovered_by_the_migration": self.recovered,
+            "airframe_marked_unknown_by_the_migration": self.unknown,
+            "as_written_marked_unknown_by_the_migration": self.unknown_as_written,
+            "airframe_wrong_after_the_migration": self.wrong_reason.len(),
             "configurations_left_out": self.left_out,
             "configurations_flown": self.flown,
             "largest_relative_apogee_difference": self.largest_relative,
@@ -271,8 +297,13 @@ impl FormatTally {
         );
         println!(
             "    airframe not read exactly as written: {} design(s); the migration from 0.1 \
-             recovers the reason for {}",
-            self.not_as_written, self.recovered
+             recovers the reason for {} and marks {} unknown; of the others, it marks {} \
+             unknown; {} wrong",
+            self.not_as_written,
+            self.recovered,
+            self.unknown,
+            self.unknown_as_written,
+            self.wrong_reason.len()
         );
         println!(
             "    flown three ways (as read, from the document, from its .ork): {} configuration(s), apogees at most {:e} apart (relative; \
@@ -300,17 +331,19 @@ impl FormatTally {
             self.migrated,
         ];
         let short = counts.iter().any(|&count| count != self.designs);
-        (short || !self.apart.is_empty() || !self.failed.is_empty()).then(|| {
+        let wrong = !self.wrong_reason.is_empty();
+        (short || wrong || !self.apart.is_empty() || !self.failed.is_empty()).then(|| {
             format!(
                 "through the hpr design format, of {} design(s): {} valid, {} read back the same, \
                  {} write the same .ork, {} read back from it the same, {} migrate from 0.1 the \
-                 same; {} configuration(s) apart; {} failed",
+                 same, {} with a wrong airframe reason; {} configuration(s) apart; {} failed",
                 self.designs,
                 self.valid,
                 self.read_back,
                 self.same_ork,
                 self.same_design,
                 self.migrated,
+                self.wrong_reason.len(),
                 self.apart.len(),
                 self.failed.len()
             )

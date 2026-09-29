@@ -522,7 +522,8 @@ impl Read {
         }
         if design.is_reduced() {
             notes.push(
-                "the file has parts hpr keeps aside instead of flying, such as a parallel                  stage: the rocket flown is the rest of it"
+                "the file has parts hpr keeps aside instead of flying, such as a parallel \
+                 stage: the rocket flown is the rest of it"
                     .to_owned(),
             );
         }
@@ -631,9 +632,11 @@ impl Read {
     /// `LeftOut` names only its first reason, so each is asked of the file directly.
     fn no_motor_flies(&self, chosen: Option<&ork::MotorConfiguration>) -> Option<String> {
         if let Some(why) = &self.airframe {
-            return Some(format!(
-                "the airframe was not read exactly as written: {why}"
-            ));
+            return Some(if why == hpr_format::migrate::UNKNOWN {
+                format!("whether the airframe was read exactly as written is {why}")
+            } else {
+                format!("the airframe was not read exactly as written: {why}")
+            });
         }
         if let Some(chosen) = chosen {
             if let Some(staging) = &chosen.staging {

@@ -109,6 +109,11 @@ impl DesignFile {
     /// ([`Curve::Embedded`]): the file's own
     /// [`OrkFile::attachments`](hpr_io::ork::OrkFile::attachments) do. Without one, [`to_json`]
     /// refuses the document.
+    ///
+    /// A design read from a `.ork` should name, in its provenance's
+    /// [`Source::airframe_not_as_written`], why the file's airframe was not read exactly as written,
+    /// if it wasn't: without it, a program flies another motor in a rocket its `.ork` refuses.
+    /// [`DesignFile::from_ork`] sets it.
     pub fn new(design: Design, provenance: Provenance, source_files: &[Attachment]) -> Self {
         Self {
             format: Format::HprDesign,
@@ -477,17 +482,17 @@ pub enum FormatError {
 ///
 /// # Errors
 ///
-/// [`FormatError::Unsupported`] for a document of another version, which this crate doesn't
-/// write; [`FormatError::NotRepresentable`] when the text would not read back as `document`,
+/// [`FormatError::Invalid`] for a document of another version, which this crate doesn't write;
+/// [`FormatError::NotRepresentable`] when the text would not read back as `document`,
 /// including when [`from_json`] would refuse it (a rule of [`SourceFile`]): every
 /// document written is read again and compared, so a value JSON cannot carry (a number that is
 /// not finite) is refused here rather than lost.
 pub fn to_json(document: &DesignFile) -> Result<String, FormatError> {
     if document.version != VERSION {
-        return Err(FormatError::Unsupported {
-            found: document.version,
-            supported: VERSION,
-        });
+        return Err(FormatError::Invalid(format!(
+            "its \"version\" is {}, and this program writes only {VERSION}",
+            document.version
+        )));
     }
     let mut text = serde_json::to_string_pretty(document)
         .map_err(|error| FormatError::NotRepresentable(error.to_string()))?;
@@ -514,7 +519,7 @@ pub fn from_json(text: &str) -> Result<DesignFile, FormatError> {
 }
 
 /// A document read, and the version it was written in.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Opened<T> {
     /// What was read, in the current version.

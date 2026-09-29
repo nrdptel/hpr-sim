@@ -7,7 +7,7 @@
 //!
 //! | from | to | what changes |
 //! |---|---|---|
-//! | 0.1 | 0.2 | `attachments`, the source file's other files, is renamed `source_files`, leaving "attachment" to mean a file carried beside the design in a [`.hprz`](crate::container); a `.ork` source's `airframe_not_as_written`, which 0.1 didn't record, is taken from the first configuration left out for it |
+//! | 0.1 | 0.2 | `attachments`, the source file's other files, is renamed `source_files`, leaving "attachment" to mean a file carried beside the design in a [`.hprz`](crate::container); a `.ork` source's `airframe_not_as_written`, which 0.1 didn't record, is worked out from the configurations, or set to [`UNKNOWN`] when they don't show it |
 //!
 //! [adr-112]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-112-m33b-the-hprz-container-and-migrations-2026-09-29
 
@@ -59,13 +59,16 @@ pub(crate) fn migrate(document: &mut Map<String, Value>, version: Version) -> Re
 }
 
 /// 0.1 to 0.2: `attachments` becomes `source_files`, and a `.ork` source's
-/// `airframe_not_as_written` is recovered from the configurations.
+/// `airframe_not_as_written` is worked out from the configurations.
 ///
-/// 0.1 kept why a `.ork`'s airframe was not read exactly as written only where a configuration was
-/// left out for it, which the `.ork` reader asks after a configuration's motors and their ignition
-/// ([`hpr_io::ork::NotFlown::AirframeNotAsWritten`]). So the first such configuration's reason is
-/// taken; a document whose configurations were all left out for an earlier reason, or that has
-/// none, can't say, and is read as written.
+/// 0.1 kept why a `.ork`'s airframe was not read exactly as written only in a configuration left
+/// out for it. The `.ork` reader asks that after a configuration's motors and their ignition and
+/// before its stages' separation, and a rocket whose airframe it can't read flies no
+/// configuration ([`hpr_io::ork::NotFlown`]). So a configuration left out for the airframe gives
+/// the reason; one that flies, or is left out for its separation, shows the airframe was read as
+/// written; and when every configuration was left out for an earlier reason, or there is none, it
+/// can't be known, and the reason says so ([`UNKNOWN`]), so that nothing flies the rocket with a
+/// motor of another's choosing on a guess.
 fn source_files(document: &mut Map<String, Value>) -> Result<(), String> {
     if document.contains_key("source_files") {
         return Err("it has a \"source_files\", which 0.1 doesn't define".to_owned());
@@ -74,17 +77,20 @@ fn source_files(document: &mut Map<String, Value>) -> Result<(), String> {
         .remove("attachments")
         .ok_or_else(|| "it has no \"attachments\"".to_owned())?;
     document.insert("source_files".to_owned(), files);
-    let reason = document
+    let configurations = document
         .get("motors")
         .and_then(|motors| motors.get("configurations"))
         .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|configuration| configuration.get("left_out"))
-        .find(|left_out| left_out.get("why") == Some(&Value::from(AIRFRAME)))
-        .and_then(|left_out| left_out.get("message"))
-        .and_then(Value::as_str)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    let reason = configurations
+        .iter()
+        .find(|configuration| why(configuration) == Some(AIRFRAME))
+        .and_then(|configuration| configuration.get("left_out")?.get("message")?.as_str())
         .map(|message| message.strip_prefix(PREFIX).unwrap_or(message).to_owned());
+    let as_written = configurations
+        .iter()
+        .any(|configuration| matches!(why(configuration), None | Some(SEPARATION)));
     let source = document
         .get_mut("provenance")
         .and_then(|provenance| provenance.get_mut("source"))
@@ -96,19 +102,44 @@ fn source_files(document: &mut Map<String, Value>) -> Result<(), String> {
                     .to_owned(),
             );
         }
-        if let (Some(reason), Some("ork")) = (reason, source.get("format").and_then(Value::as_str))
-        {
-            source.insert("airframe_not_as_written".to_owned(), Value::String(reason));
+        if source.get("format").and_then(Value::as_str) == Some("ork") {
+            let reason = match (reason, as_written) {
+                (Some(reason), _) => Some(reason),
+                (None, true) => None,
+                (None, false) => Some(UNKNOWN.to_owned()),
+            };
+            if let Some(reason) = reason {
+                source.insert("airframe_not_as_written".to_owned(), Value::String(reason));
+            }
         }
     }
     Ok(())
 }
 
+/// Why a 0.1 configuration was left out, as 0.1 writes it; `None` if it flies, and `""` if its
+/// reason isn't a string, which the reader refuses once migrated.
+fn why(configuration: &Value) -> Option<&str> {
+    configuration
+        .get("left_out")
+        .filter(|left_out| !left_out.is_null())
+        .map(|left_out| left_out.get("why").and_then(Value::as_str).unwrap_or(""))
+}
+
 /// How 0.1 writes [`NotFlown::AirframeNotAsWritten`](hpr_io::ork::NotFlown::AirframeNotAsWritten).
 const AIRFRAME: &str = "airframe_not_as_written";
 
+/// How 0.1 writes [`NotFlown::SeparationNotFlown`](hpr_io::ork::NotFlown::SeparationNotFlown),
+/// the one reason the `.ork` reader asks after the airframe.
+const SEPARATION: &str = "separation_not_flown";
+
 /// What the `.ork` reader puts before the reason in such a configuration's message.
 const PREFIX: &str = "the airframe was not read exactly as written: ";
+
+/// The reason a 0.1 document migrates with when none of its configurations shows whether its
+/// `.ork` airframe was read exactly as written.
+pub const UNKNOWN: &str = "unknown: the document is from version 0.1 of the format, which \
+                           didn't record it, and none of its motor configurations shows it; \
+                           convert the .ork again to find out";
 
 #[cfg(test)]
 mod tests {
