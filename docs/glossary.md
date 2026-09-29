@@ -479,6 +479,13 @@ the attached flow would give. hpr blends a boattail's drag toward that value bet
 where measured boattails separate. Not the same as a [separation](#separation) of stages or
 recovery bodies. See [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
 
+## Flight log
+
+The record an [altimeter](#barometric-altimeter) or flight computer writes during a flight: a
+row per sample, each with its time and what the logger measured then, such as its altitude. Its
+format is the logger maker's. `hpr analyze` reads one and prints what it says, with no design file
+([Reading a flight log](reading-a-flight-log.md)).
+
 ## Flutter
 
 A fin shaking itself apart: above a certain speed, the air's push twists the fin, the twist changes
@@ -876,6 +883,14 @@ airspeed. See [Roll: forcing and damping](physics/aero.md#roll-forcing-and-dampi
 ## Roughness length
 
 The height above the ground at which the logarithmic wind law's wind falls to zero, written `z₀`. Rougher ground has a larger one: 0.03 m for open flat terrain with grass, and 0.001–0.01 m for mown grass. hpr's `LogLawWind` takes it as `roughness_length_m`. See [Wind](physics/wind.md#models).
+
+## Running median
+
+A filter that replaces each sample of a series with the median of the samples around it: the
+middle value once they are sorted. A short spike, fewer samples wide than half the window, is
+outvoted by its neighbours and disappears, while a steady climb or fall passes through unchanged.
+hpr reads a flight log's altitude after a 0.3 s running median, which removes the pressure pulse of
+an ejection charge ([Flight-log readings](physics/log-readings.md#the-running-median)).
 
 ## Same-drag and predicted mode
 

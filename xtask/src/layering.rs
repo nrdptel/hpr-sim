@@ -203,11 +203,17 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let manifest = root.join("crates/hpr-flightdata/Cargo.toml");
         let original = std::fs::read_to_string(&manifest).unwrap();
-        std::fs::write(
-            &manifest,
-            format!("{original}\n[dev-dependencies]\nhpr-sim.workspace = true\n"),
-        )
-        .unwrap();
+        // Into the crate's own `[dev-dependencies]` if it has one: a second table is refused.
+        let with_sim = if original.contains("\n[dev-dependencies]\n") {
+            original.replacen(
+                "\n[dev-dependencies]\n",
+                "\n[dev-dependencies]\nhpr-sim.workspace = true\n",
+                1,
+            )
+        } else {
+            format!("{original}\n[dev-dependencies]\nhpr-sim.workspace = true\n")
+        };
+        std::fs::write(&manifest, with_sim).unwrap();
         let loaded = workspace::load(root);
         std::fs::write(&manifest, &original).unwrap();
         assert_eq!(check(&loaded.unwrap()), Ok(()));

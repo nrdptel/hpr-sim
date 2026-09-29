@@ -3,7 +3,7 @@
 `hpr` is hpr-sim's command-line tool. This page is for anyone who wants to use it from a terminal
 or a script. It says what each command does, shows its output, and lists the exit codes.
 
-Today `hpr` does five things:
+Today `hpr` does six things:
 
 - It flies a design, read from an OpenRocket file or an hpr
   [design file](glossary.md#design-file), and prints how the flight went.
@@ -11,6 +11,8 @@ Today `hpr` does five things:
 - It converts motor files between the two common formats.
 - It re-runs hpr-sim's validation against RocketPy and checks the results against the
   published ones.
+- It reads a flight log from an altimeter and prints what it says about the flight, with no
+  design file and no simulation.
 - It writes shell completion scripts.
 
 Its other commands are registered but not available yet: each refuses and names the
@@ -82,7 +84,7 @@ only the files each command really reads. "Not yet" commands exit with
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](decisions-and-roadmap.md#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](decisions-and-roadmap.md#m7-3) |
-| `hpr analyze` | Read a flight log and print its readings, with no design file | - | - | not yet: [M4.2d](decisions-and-roadmap.md#m4-2d) |
+| `hpr analyze` | Read a flight log and print its readings, with no design file | a PerfectFlite `.pf2` flight log | text, JSON | available ([how to use it](cli.md#hpr-analyze)) |
 | `hpr diagnose` | Diagnose what went wrong in a flight from its log | - | - | not yet: [M7.4](decisions-and-roadmap.md#m7-4) |
 | `hpr completions` | Print a shell completion script for hpr | - | a bash, elvish, fish, powershell or zsh script, JSON | available ([how to use it](cli.md#hpr-completions)) |
 
@@ -529,6 +531,62 @@ their target, which never fail the run. When the check fails, the exit status is
 error lists each reason, the totals line ends in `FAILED` if a metric is outside its tolerance,
 and "the committed report reproduces" is not printed. The run takes a few seconds.
 
+## `hpr analyze`
+
+`hpr analyze` reads the log an altimeter recorded during a flight and prints what it says: when
+the rocket lifted off, how high it went, how fast it climbed, and when it landed. It needs only
+the log. It takes no design file and runs no simulation, so it answers "what did my rocket do?"
+for anyone who flew one, whatever they designed it in.
+
+It reads PerfectFlite's `.pf2` logs so far ([the format](format/pf2.md)). The one real file read
+is a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, but no
+file of theirs has been tried. Other loggers' files come with
+[M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats. It has no
+check yet for a barometer's errors near the speed of sound. If the flight may have come near Mach
+0.9, about 300 m/s (1,000 ft/s), treat the top speed and the heights near it with care: the
+barometer's error can pull the top speed down too.
+
+```bash
+hpr analyze flight.pf2
+```
+
+Each reading is either a value that says where it came from, or `withheld` with the reason the log
+can't support it. The text output gives the reason as a sentence; the JSON output adds its code,
+listed on [Flight-log readings](physics/log-readings.md#when-a-reading-is-withheld). A log read
+with readings withheld still exits with 0; a file hpr can't read exits with 1
+([Exit codes](#exit-codes)). A PerfectFlite has a barometer and no accelerometer, so the top acceleration is
+always withheld: working it out from the altitude would turn the altitude's one-foot steps into
+spikes of many g. What the file states about itself, such as the altimeter's own apogee, is
+printed beside hpr's readings, never in their place. Heights are metres above the altimeter's
+reading on the pad, with feet in brackets; times are seconds on the log's clock.
+
+This example log is invented, so every reading can be checked against the flight it was made
+from ([Reading a flight log](reading-a-flight-log.md) works through it). Its true apogee is
+390.3 m (1280.5 ft), at 10.26 s:
+
+<!-- cli: example `hpr analyze validation/fixtures/logs/synthetic-pnut.pf2`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr analyze validation/fixtures/logs/synthetic-pnut.pf2
+synthetic-pnut.pf2: PerfectFlite Pnut, serial 0, flight 1
+984 samples every 0.050 s, from 0.00 s to 49.15 s; heights from the altitude after a 0.30 s running median
+the logger states: apogee 390.4 m (1281 ft); ground elevation 182.9 m (600 ft) above sea level
+
+liftoff           0.55 s
+apogee            390.1 m (1280 ft) at 10.28 s, 9.72 s after liftoff
+                  highest sample 400.5 m (1314 ft) at 11.35 s, set aside by the median
+top speed         79.9 m/s (262 ft/s) at 2.10 s, 64.0 m (210 ft) up: the logger's own, from its barometer
+top acceleration  withheld: a PerfectFlite logger has no accelerometer; hpr doesn't difference the altitude twice to make one, as its one-foot steps would read as spikes of many g
+landing           45.85 s, 45.30 s after liftoff; 35.58 s from apogee, at 10.9 m/s (36 ft/s) on average
+```
+
+<!-- cli: end -->
+
+The highest sample in the file is 10.4 m above the apogee: the pressure pulse of the ejection
+charge that fired a second after it. The readings are taken from the altitude after a
+[running median](glossary.md#running-median), which sets that pulse aside.
+[Reading a flight log](reading-a-flight-log.md) explains each reading, and how far to trust it.
+
 ## JSON output
 
 With `--json`, a command prints exactly one [JSON](https://www.json.org) document on standard
@@ -544,6 +602,7 @@ a published [JSON Schema](https://json-schema.org), which describes its fields a
 | `hpr motors show` | [`motors-show.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/motors-show.schema.json) |
 | `hpr convert` | [`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json) |
 | `hpr validate` | [`validate.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/validate.schema.json) |
+| `hpr analyze` | [`analyze.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/analyze.schema.json) |
 | `hpr completions` | [`completions.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/completions.schema.json) |
 | any failure | [`error.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/error.schema.json) |
 
@@ -661,8 +720,9 @@ you press Tab. Save it where your shell looks for completions:
 
 - **Parachutes and stage separation.** `hpr sim` flies the stack whole and brings it down with
   no recovery device ([what it doesn't fly yet](#what-hpr-sim-doesnt-fly-yet)).
-- **Commands still to come.** Reading a flight log (`hpr analyze`) comes in
-  [M4.2d](decisions-and-roadmap.md#m4-2d).
+- **One log format.** `hpr analyze` reads PerfectFlite's `.pf2` so far; other loggers' files,
+  and readings such as the drogue and main descent rates and the Mach number, come with
+  [M7.1](decisions-and-roadmap.md#m7-1) and [M7.2](decisions-and-roadmap.md#m7-2).
 - **Design files aren't converted.** `hpr convert` converts motor files only. Writing a design
   as an OpenRocket file is [M3.2](decisions-and-roadmap.md#m3-2)'s work.
 - **`hpr validate` needs the repository.** The cases and their reference results are files in it,

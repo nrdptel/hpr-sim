@@ -52,7 +52,7 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-3) |
-| `hpr analyze` | Read a flight log and print its readings, with no design file | - | - | not yet: [M4.2d](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2d) |
+| `hpr analyze` | Read a flight log and print its readings, with no design file | a PerfectFlite `.pf2` flight log | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-analyze)) |
 | `hpr diagnose` | Diagnose what went wrong in a flight from its log | - | - | not yet: [M7.4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-4) |
 | `hpr completions` | Print a shell completion script for hpr | - | a bash, elvish, fish, powershell or zsh script, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-completions)) |
 

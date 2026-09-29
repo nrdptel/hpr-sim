@@ -690,6 +690,235 @@ pub struct CensusHeld {
     pub stale: Vec<String>,
 }
 
+/// `hpr analyze`: a flight log's readings, taken from the log alone, with no design file and no
+/// simulation. Heights are metres above the logger's own zero, which a PerfectFlite takes on the
+/// pad; times are seconds on the log's clock.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Analyze {
+    /// The log read.
+    pub log: AnalyzedLog,
+    /// What the file states about the flight: the logger's own figures, printed beside hpr's
+    /// readings and never in place of them.
+    pub stated: LoggerStated,
+    /// How the readings were taken.
+    pub method: AnalyzeMethod,
+    /// Liftoff.
+    pub liftoff: LogReading<LiftoffReading>,
+    /// The highest point.
+    pub apogee: LogReading<ApogeeReading>,
+    /// The top vertical speed from liftoff to apogee.
+    pub max_speed: LogReading<MaxSpeedReading>,
+    /// The top acceleration.
+    pub max_acceleration: LogReading<MaxAccelerationReading>,
+    /// Landing, and the descent before it.
+    pub landing: LogReading<LandingReading>,
+}
+
+/// The log `hpr analyze` read.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct AnalyzedLog {
+    /// The file, as given.
+    pub path: String,
+    /// Its format.
+    pub format: LogFormatName,
+    /// The logger, as the file names it.
+    pub logger: String,
+    /// The logger's serial number, as the file states it.
+    pub serial_number: Option<String>,
+    /// The logger's firmware version, as the file states it.
+    pub firmware: Option<String>,
+    /// The flight's number in the logger's memory, as the file states it.
+    pub flight_number: Option<u32>,
+    /// How many samples the file holds.
+    pub samples: usize,
+    /// The first sample's time, s.
+    pub first_time_s: f64,
+    /// The last sample's time, s.
+    pub last_time_s: f64,
+    /// What the reader noticed and worked around, such as a sample count that differs from the
+    /// one the file states.
+    pub notes: Vec<String>,
+}
+
+/// A flight log's format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LogFormatName {
+    /// PerfectFlite's `.pf2`: the Pnut, the StratoLogger and the StratoLoggerCF.
+    PerfectFlitePf2,
+    /// A format this build of `hpr` doesn't name.
+    Other,
+}
+
+/// What a flight log states about the flight.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct LoggerStated {
+    /// The apogee the logger computed, m above its own zero; `null` if the file states none, or
+    /// states something that isn't a height, such as a PerfectFlite's `PWRLOSS`.
+    pub apogee_m: Option<f64>,
+    /// The launch site's elevation, m above mean sea level, as the logger states it.
+    pub ground_elevation_msl_m: Option<f64>,
+}
+
+/// How the readings were taken. Every field but `altitude_resolution_m` is `null` for a log too
+/// short to read, or one withheld whole as `bad_record`; all but it and `sample_interval_s` for
+/// one withheld as `sampled_too_fast`; and `pad_altitude_m` for one withheld as `no_climb`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct AnalyzeMethod {
+    /// The median interval between samples, s.
+    pub sample_interval_s: Option<f64>,
+    /// The running median's span, s: every height and time is read from the altitude after it.
+    pub median_window_s: Option<f64>,
+    /// How far below its true peak the running median can read a peak bent by gravity alone, m.
+    pub peak_bound_m: Option<f64>,
+    /// The altitude's resolution in the log's format, m: a PerfectFlite writes whole feet.
+    pub altitude_resolution_m: f64,
+    /// The pad: the median of the altitude before it first rises 1 m, m.
+    pub pad_altitude_m: Option<f64>,
+}
+
+/// A reading, or why the log can't support it.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum LogReading<T> {
+    /// The reading.
+    Read(T),
+    /// The log can't support the reading.
+    Withheld(WithheldReading),
+}
+
+/// Why a reading was withheld.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct WithheldReading {
+    /// The reason, as a code.
+    pub reason: WithheldReason,
+    /// The reason in words, with the log's own numbers.
+    pub detail: String,
+}
+
+/// The reason a reading was withheld.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WithheldReason {
+    /// The log has fewer than three samples.
+    TooShort,
+    /// The altitude never climbs 3 m above where the log starts.
+    NoClimb,
+    /// The pad, the median altitude before the first metre of rise, is more than 3 m from the
+    /// logger's zero: the log didn't start on the pad.
+    StartsOffThePad,
+    /// The log ends before the rocket is seen to land.
+    EndsBeforeLanding,
+    /// The altitude reaches the ground sooner than a fall from rest at apogee in vacuum could.
+    FasterThanFreeFall,
+    /// The log has no speed column.
+    NoSpeedColumn,
+    /// The top speed is above 4,000 m/s.
+    ImplausibleSpeed,
+    /// The climb's speed swings negative by more than 20% of its top.
+    NoisySpeed,
+    /// The top speed falls on the liftoff sample itself.
+    SpeedPeakAtLiftoff,
+    /// The log has no accelerometer.
+    NoAccelerometer,
+    /// The reading needs another, which was withheld.
+    Needs,
+    /// The record breaks what every reader guarantees; only a record built by hand can.
+    BadRecord,
+    /// The samples come so often that the 0.3 s median would hold more than 1,000 either side.
+    SampledTooFast,
+    /// A reason this build of `hpr` doesn't name.
+    Other,
+}
+
+/// Where a reading's value came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ReadingSource {
+    /// The logger's barometric altitude, after the running median.
+    Barometer,
+    /// A speed column the logger computed from its own barometric altitude.
+    LoggerSpeedFromBarometer,
+    /// A source this build of `hpr` doesn't name.
+    Other,
+}
+
+/// Liftoff.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct LiftoffReading {
+    /// The last sample on the pad, s: the rocket had risen less than the altitude's resolution
+    /// then, and rose past it within one sample interval after.
+    pub time_s: f64,
+    /// Where it came from.
+    pub source: ReadingSource,
+}
+
+/// The highest point.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct ApogeeReading {
+    /// When, s.
+    pub time_s: f64,
+    /// When, s after liftoff; `null` if liftoff was withheld.
+    pub time_after_liftoff_s: Option<f64>,
+    /// The filtered altitude there, m.
+    pub altitude_m: f64,
+    /// Whether the log may have ended before the peak, so the altitude is a floor.
+    pub is_floor: bool,
+    /// The highest sample the log holds before the filter: above the apogee when the median set
+    /// a pulse aside.
+    pub highest_sample: HighestSample,
+    /// Where it came from.
+    pub source: ReadingSource,
+}
+
+/// The highest sample of the altitude.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct HighestSample {
+    /// When, s.
+    pub time_s: f64,
+    /// The altitude, m.
+    pub altitude_m: f64,
+}
+
+/// The top vertical speed from liftoff to apogee.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct MaxSpeedReading {
+    /// The speed, m/s, up.
+    pub speed_m_s: f64,
+    /// When, s.
+    pub time_s: f64,
+    /// The filtered altitude then, m.
+    pub altitude_m: f64,
+    /// Where it came from.
+    pub source: ReadingSource,
+}
+
+/// The top acceleration.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct MaxAccelerationReading {
+    /// The acceleration, m/s².
+    pub acceleration_m_s2: f64,
+    /// When, s.
+    pub time_s: f64,
+}
+
+/// Landing, and the descent before it.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct LandingReading {
+    /// The first sample within 2 m of the pad that stays under 5 m for a second, s: before
+    /// touchdown by the time the last 2 m took.
+    pub time_s: f64,
+    /// From liftoff to landing, s.
+    pub flight_time_s: f64,
+    /// From apogee to landing, s.
+    pub descent_time_s: f64,
+    /// The mean rate of descent from apogee to landing, m/s: the height lost over the time
+    /// taken, drogue and main together.
+    pub mean_descent_rate_m_s: f64,
+    /// Where it came from.
+    pub source: ReadingSource,
+}
+
 /// `hpr completions`: a shell completion script.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct Completions {
@@ -759,6 +988,7 @@ pub fn schemas() -> Vec<(&'static str, String)> {
         ("completions.schema.json", schema::<Completions>()),
         ("convert.schema.json", schema::<Convert>()),
         ("validate.schema.json", schema::<Validate>()),
+        ("analyze.schema.json", schema::<Analyze>()),
         ("error.schema.json", schema::<ErrorDocument>()),
     ];
     schemas.sort_by_key(|(name, _)| *name);

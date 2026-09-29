@@ -146,6 +146,15 @@ license = "US government work"
 mode = "fetched"
 
 [[file]]
+name = "pearson-2015-generalized-hampel"
+title = "R. K. Pearson, Y. Neuvo, J. Astola and M. Gabbouj, The Class of Generalized Hampel Filters, 23rd European Signal Processing Conference (EUSIPCO), 2015"
+url = "https://www.eurasip.org/Proceedings/Eusipco/Eusipco2015/papers/1570096433.pdf"
+sha256 = "f2e89b2eaa1a6abd2e64b719f3f4abcebbb89cc3548ed9a1af8494f325cacb09"
+dest = "refs/papers/pearson-2015-generalized-hampel.pdf"
+license = "unknown terms"
+mode = "fetched"
+
+[[file]]
 name = "nasa-tn-d-4013"
 title = "J. C. Ferris, Static stability investigation of a single-stage sounding rocket at Mach numbers from 0.60 to 1.20, NASA TN D-4013, 1967"
 url = "https://ntrs.nasa.gov/api/citations/19670020050/downloads/19670020050.pdf"

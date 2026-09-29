@@ -16,5 +16,36 @@
 //! measured, or clipped because the sensor saturated — and a reading the log cannot support is
 //! withheld with a reason rather than printed.
 //!
-//! Status: pre-alpha skeleton. The importers are planned for milestone [M7.1][roadmap] of the
-//! roadmap, and the readings and reconstruction for [M7.2][roadmap].
+//! Status: pre-alpha. One format is read so far, PerfectFlite's `.pf2` ([`perfectflite`]), into
+//! the record every reader produces ([`log::FlightLog`]), and [`readings`] takes a first set of
+//! readings from it: liftoff, apogee, the top speed, landing and the descent. The guide's
+//! [reading a flight log][guide-log] page shows them on a log. The other loggers' formats are
+//! planned for milestone [M7.1][roadmap] of the roadmap, and the rest of the readings, smoothing and
+//! reconstruction for [M7.2][roadmap].
+//!
+//! [guide-log]: https://nrdptel.github.io/hpr-sim/reading-a-flight-log.html
+//!
+//! ```
+//! use hpr_flightdata::{perfectflite, readings};
+//!
+//! // A few rows of an invented PerfectFlite log: feet and seconds.
+//! let mut text = String::from("PerfectFlite Pnut\nData: (Time, Altitude, Velocity)\n");
+//! for (i, feet) in [0, 0, 0, 40, 90, 120, 130, 130, 120, 90, 40, 5, 0, 0, 0, 0].iter().enumerate() {
+//!     text.push_str(&format!("{}, {feet}, 0\n", i as f64 * 0.5));
+//! }
+//! let log = perfectflite::read(&text)?;
+//! let read = readings::read(&log);
+//! let apogee = read.apogee.value().expect("the log climbs");
+//! assert_eq!(apogee.altitude_m, 130.0 * 0.3048);
+//! assert_eq!(apogee.time_s, 3.25); // midway between the two samples at the top
+//! # Ok::<(), hpr_flightdata::error::LogError>(())
+//! ```
+
+pub mod error;
+pub mod filter;
+pub mod log;
+pub mod perfectflite;
+pub mod readings;
+
+#[cfg(test)]
+mod synthetic;

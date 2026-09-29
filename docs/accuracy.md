@@ -39,7 +39,10 @@ What has been checked so far:
   ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)), and from Mach 0.5 to
   3.2 against a worked example in MIL-HDBK-762, the U.S. Army's handbook for designing unguided
   rockets
-  ([Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation)).
+  ([Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation));
+- the readings `hpr analyze` takes from a flight log, against an invented log whose every
+  reading is known, each within the bound its rounding and filter allow
+  ([Flight-log readings](physics/log-readings.md#checked-against)).
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
 shows how to follow one back to its source and its test, and
@@ -190,6 +193,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Released mass](physics/released-mass.md) | ✓ the mass properties after a release against hand calculations, and mass and both momenta kept across it in free flight | — | — | — |
 | [Flight metrics](physics/metrics.md) | ✓ the boost's peak, the margins of the page's finless rocket with a boattail (including where a margin is withheld) and the landing placement against hand calculations; max q and top Mach against a 1 ms record; the least margins against 1 ms steps and a scan of every step; the flight margin and the optimum delay against hpr's own models and a flight with no recovery | — | — | — |
 | [Fin flutter](physics/flutter.md) | ✓ the scaling in thickness, stiffness and pressure, and the margin at max q against a 1 ms record | ✓ Martin's formula and both of his worked examples reproduced, with his verdicts against his figure 3 band; not compared with flutter data | — | — |
+| [Flight-log readings](physics/log-readings.md) | ✓ each reading of an invented flight within the bound its rounding and filter allow | — | partial: one public altimeter log's apogee, read at 1,010 ft against the 1,009 ft the altimeter's software states from the same trace; checked only where the log is fetched, not in CI | — |
 | [Interpolation](physics/interpolation.md) | ✓ | — | — | — |
 | [Quadrature](physics/quadrature.md) | ✓ | — | — | — |
 

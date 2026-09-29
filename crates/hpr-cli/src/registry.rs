@@ -76,6 +76,10 @@ pub fn availability(name: &str) -> Option<Availability> {
                 "JSON".to_owned(),
             ],
         }),
+        "analyze" => Some(Availability::Available {
+            reads: vec!["a PerfectFlite `.pf2` flight log".to_owned()],
+            writes: text_or_json(),
+        }),
         "completions" => Some(Availability::Available {
             reads: Vec::new(),
             writes: vec![format!("a {} script", shells()), "JSON".to_owned()],
@@ -88,8 +92,7 @@ pub fn availability(name: &str) -> Option<Availability> {
 }
 
 /// The commands registered before their milestone, each with the milestone that brings it.
-pub const PLANNED: [(&str, &str); 6] = [
-    ("analyze", "M4.2d"),
+pub const PLANNED: [(&str, &str); 5] = [
     ("weather", "M5.2"),
     ("mc", "M6.1"),
     ("optimize", "M6.2"),
@@ -285,7 +288,7 @@ mod tests {
         let readme = command_table(Links::Readme);
         assert!(readme.contains("(https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)"));
         assert!(
-            readme.contains("(https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2d)")
+            readme.contains("(https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-3)")
         );
     }
 

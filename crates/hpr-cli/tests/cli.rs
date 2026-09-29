@@ -1985,3 +1985,181 @@ fn convert_refuses_what_it_cant_write() {
             .starts_with("<engine-database>")
     );
 }
+
+/// The invented log `hpr_flightdata`'s tests write, in PerfectFlite's `.pf2`.
+const SYNTHETIC_LOG: &str = "validation/fixtures/logs/synthetic-pnut.pf2";
+
+/// M4.2d's done-when: `hpr analyze` reads a log in a folder that holds nothing else, so no design
+/// file is present, and its JSON validates. Every reading is the library's.
+#[test]
+fn analyze_reads_a_log_with_no_design_file_present() {
+    use hpr::hpr_flightdata::{perfectflite, readings};
+
+    let folder = tempfile::tempdir().unwrap();
+    std::fs::copy(root().join(SYNTHETIC_LOG), folder.path().join("flight.pf2")).unwrap();
+    let files: Vec<_> = std::fs::read_dir(folder.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    assert_eq!(files, ["flight.pf2"]);
+    let run = |json: bool| {
+        let mut command = assert_cmd::cargo::cargo_bin_cmd!("hpr");
+        command
+            .current_dir(folder.path())
+            .args(["analyze", "flight.pf2"]);
+        if json {
+            command.arg("--json");
+        }
+        let output = command.output().unwrap();
+        assert_eq!(output.status.code(), Some(0), "{output:?}");
+        assert!(output.stderr.is_empty(), "{}", text(&output.stderr));
+        text(&output.stdout)
+    };
+    let document: Value = serde_json::from_str(&run(true)).unwrap();
+    validate("analyze.schema.json", &document);
+
+    let log =
+        perfectflite::read(&std::fs::read_to_string(root().join(SYNTHETIC_LOG)).unwrap()).unwrap();
+    let read = readings::read(&log);
+    assert_eq!(document["log"]["path"], "flight.pf2");
+    assert_eq!(document["log"]["format"], "perfect_flite_pf2");
+    assert_eq!(document["log"]["logger"], "PerfectFlite Pnut");
+    assert_eq!(document["log"]["samples"], log.time_s.len());
+    assert_eq!(document["stated"]["apogee_m"], log.stated.apogee_m.unwrap());
+    let apogee = read.apogee.value().unwrap();
+    assert_eq!(document["apogee"]["status"], "read");
+    assert_eq!(document["apogee"]["altitude_m"], apogee.altitude_m);
+    assert_eq!(document["apogee"]["time_s"], apogee.time_s);
+    assert_eq!(document["apogee"]["source"], "barometer");
+    assert_eq!(
+        document["apogee"]["highest_sample"]["altitude_m"],
+        apogee.highest_sample.altitude_m
+    );
+    let liftoff = read.liftoff.value().unwrap();
+    assert_eq!(document["liftoff"]["time_s"], liftoff.time_s);
+    let speed = read.max_speed.value().unwrap();
+    assert_eq!(document["max_speed"]["speed_m_s"], speed.speed_m_s);
+    assert_eq!(
+        document["max_speed"]["source"],
+        "logger_speed_from_barometer"
+    );
+    assert_eq!(document["max_acceleration"]["status"], "withheld");
+    assert_eq!(document["max_acceleration"]["reason"], "no_accelerometer");
+    let landing = read.landing.value().unwrap();
+    assert_eq!(document["landing"]["time_s"], landing.time_s);
+    assert_eq!(
+        document["landing"]["mean_descent_rate_m_s"],
+        landing.mean_descent_rate_m_s
+    );
+
+    // The text says the same, in metres and feet.
+    let printed = run(false);
+    for expected in [
+        "flight.pf2: PerfectFlite Pnut, serial 0, flight 1",
+        "the logger states: apogee 390.4 m (1281 ft)",
+        "apogee            390.1 m (1280 ft) at 10.28 s",
+        "set aside by the median",
+        "top speed         79.9 m/s (262 ft/s) at 2.10 s",
+        "top acceleration  withheld: a PerfectFlite logger has no accelerometer",
+    ] {
+        assert!(printed.contains(expected), "{expected:?} in\n{printed}");
+    }
+}
+
+/// What `hpr analyze` can't read is an input error that says why: a missing file, a file in
+/// another format, and a `.pf2` that goes wrong at a line.
+#[test]
+fn analyze_refuses_what_it_cannot_read() {
+    let folder = tempfile::tempdir().unwrap();
+    let missing = folder.path().join("none.pf2");
+    let document = json_error(&["analyze", missing.to_str().unwrap()], 1, "input");
+    let message = document["error"]["message"].as_str().unwrap();
+    // The operating system's own "not found", the same code on all three.
+    assert!(
+        message.contains("none.pf2: ") && message.contains("(os error 2)"),
+        "{message}"
+    );
+
+    let design = repo_file("validation/fixtures/ork/pod-flights/pods-none.ork");
+    let document = json_error(&["analyze", &design], 1, "input");
+    assert!(
+        document["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("reads PerfectFlite .pf2 logs so far, and this isn't one"),
+        "{document:#}"
+    );
+
+    let broken = folder.path().join("broken.pf2");
+    std::fs::write(&broken, "PerfectFlite Pnut\n0.00, 0, 0\n0.00, 1, 0\n").unwrap();
+    let output = hpr(&["analyze", broken.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(1));
+    let message = text(&output.stderr);
+    assert!(
+        message.contains(".pf2 line 3: the time 0 s doesn't come after"),
+        "{message}"
+    );
+
+    // A comment in another encoding than UTF-8 doesn't refuse the flight.
+    let latin = folder.path().join("latin.pf2");
+    let mut bytes = std::fs::read(root().join(SYNTHETIC_LOG)).unwrap();
+    let at = bytes.windows(9).position(|w| w == b"Comments:").unwrap() + 10;
+    bytes.splice(at..at, *b"caf\xe9 ");
+    std::fs::write(&latin, bytes).unwrap();
+    let document = json(
+        &["analyze", latin.to_str().unwrap()],
+        0,
+        "analyze.schema.json",
+    );
+    assert_eq!(document["apogee"]["status"], "read");
+
+    // A PerfectFlite log named otherwise is read by its first line.
+    let renamed = folder.path().join("flight.txt");
+    std::fs::copy(root().join(SYNTHETIC_LOG), &renamed).unwrap();
+    let document = json(
+        &["analyze", renamed.to_str().unwrap()],
+        0,
+        "analyze.schema.json",
+    );
+    assert_eq!(document["apogee"]["status"], "read");
+}
+
+/// The public Pnut log Debrief ships, where `refs/` has it (`cargo xtask refs fetch`): hpr reads
+/// the apogee the logger states to a foot, and sets aside the ejection pulse a Hampel filter keeps.
+/// The guide quotes these numbers. The file's upstream terms are unclear, so it is not committed
+/// and CI doesn't have it.
+#[test]
+fn analyze_reads_the_public_pnut_log_as_it_states() {
+    use hpr::hpr_flightdata::filter;
+    use hpr::hpr_flightdata::perfectflite::{self, FOOT_M};
+
+    let path =
+        root().join("refs/fusionspace-debrief/lib/parsers/__fixtures__/perfectflite-pnut.pf2");
+    if !path.is_file() {
+        eprintln!("skipped: {} isn't fetched", path.display());
+        return;
+    }
+    let document = json(
+        &["analyze", path.to_str().unwrap()],
+        0,
+        "analyze.schema.json",
+    );
+    let feet = |value: &Value| (value.as_f64().unwrap() / FOOT_M).round();
+    assert_eq!(feet(&document["stated"]["apogee_m"]), 1009.0);
+    assert_eq!(feet(&document["apogee"]["altitude_m"]), 1010.0);
+    assert_eq!(
+        feet(&document["apogee"]["highest_sample"]["altitude_m"]),
+        1028.0
+    );
+    assert_eq!(document["liftoff"]["time_s"], 0.15);
+    assert_eq!(feet(&document["max_speed"]["speed_m_s"]), 257.0);
+    assert_eq!(document["landing"]["status"], "read");
+
+    // Debrief's Hampel filter, 0.3 s at threshold 4, keeps the pulse: its highest is the pulse's.
+    let log = perfectflite::read(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let highest = |trace: &[f64]| trace.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    assert_eq!(
+        (highest(&filter::hampel(&log.altitude_m, 3, 4.0)) / FOOT_M).round(),
+        1028.0
+    );
+}
