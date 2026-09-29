@@ -19,7 +19,8 @@ pub const PYTHON_PATH: &str = "schema/format/python/hpr_design.py";
 const ROOT: &str = "DesignFile";
 
 /// The names the TypeScript module's own code takes, which no type may.
-const TYPESCRIPT_TAKEN: [&str; 17] = [
+const TYPESCRIPT_TAKEN: [&str; 18] = [
+    ROOT,
     "FORMAT",
     "VERSION",
     "SCHEMA",
@@ -40,7 +41,7 @@ const TYPESCRIPT_TAKEN: [&str; 17] = [
 ];
 
 /// The names the Python module's own code and imports take, which no type may.
-const PYTHON_TAKEN: [&str; 13] = [
+const PYTHON_TAKEN: [&str; 16] = [
     "FORMAT",
     "VERSION",
     "DesignFormatError",
@@ -54,6 +55,9 @@ const PYTHON_TAKEN: [&str; 13] = [
     "TypedDict",
     "Union",
     "cast",
+    "ValueError",
+    "RecursionError",
+    "UnicodeEncodeError",
 ];
 
 /// The TypeScript reader, which the generated module ends with.
@@ -200,7 +204,8 @@ pub fn python(schema: &Value) -> Result<String, String> {
 fn header(comment: &str) -> String {
     format!(
         "{comment} The hpr design format {version}: types for a document, and a reader that checks one.\n\
-         {comment} SPDX-License-Identifier: MIT OR Apache-2.0 (https://github.com/nrdptel/hpr-sim)\n\
+         {comment} SPDX-License-Identifier: MIT OR Apache-2.0\n\
+         {comment} From https://github.com/nrdptel/hpr-sim\n\
          {comment} Generated from schema/format/hpr-design-{version}.schema.json by `cargo xtask format`.\n\
          {comment} Don't edit by hand: the next run overwrites it, and CI fails while it is stale.\n",
         version = hpr_format::VERSION
@@ -283,11 +288,21 @@ fn check_keywords(node: &Value, path: &str) -> Result<(), String> {
             }
             "pattern" => {
                 let pattern = value.as_str().unwrap_or_default();
-                let class = pattern
-                    .as_bytes()
+                // `\d` and `.` match more in Python than in JavaScript, and Python's `$` also
+                // matches before a final newline: the reader turns a final `$` into `\Z`, so
+                // only that one is allowed.
+                let bytes = pattern.as_bytes();
+                let class = bytes
                     .windows(2)
                     .any(|w| w[0] == b'\\' && w[1].is_ascii_alphabetic());
-                if class || pattern.ends_with("\\$") {
+                let bare = |c: u8| {
+                    bytes
+                        .iter()
+                        .enumerate()
+                        .any(|(i, &b)| b == c && (i == 0 || bytes[i - 1] != b'\\'))
+                };
+                let inner_end = pattern[..pattern.len().saturating_sub(1)].contains('$');
+                if class || bare(b'.') || inner_end || pattern.ends_with("\\$") {
                     return Err(format!(
                         "{path}: the pattern `{pattern}` reads differently in JavaScript and Python"
                     ));
@@ -377,8 +392,8 @@ fn prose(node: &Value) -> Option<String> {
 }
 
 /// `text` with its links to Rust items, which mean nothing outside rustdoc, left as the code
-/// they show: `` [`Self::pods`] `` and `` [`pods`](crate::PodSet::pods) `` become `` `pods` ``
-/// and `` `Self::pods` ``. Links to web pages and reference links (`[ADR-074][adr-074]`) stay.
+/// they show: `` [`Self::pods`] `` becomes `` `Self::pods` `` and
+/// `` [`pods`](crate::PodSet::pods) `` becomes `` `pods` ``. Links to web pages and reference links (`[ADR-074][adr-074]`) stay.
 fn without_rust_links(text: &str) -> String {
     let mut out = String::new();
     let mut rest = text;
@@ -391,19 +406,23 @@ fn without_rust_links(text: &str) -> String {
         };
         let code = &after[..=end];
         let tail = &after[end + 2..];
-        if code[1..code.len() - 1].contains('`') {
+        if end == 0 || code[1..code.len() - 1].contains('`') {
             // Not one code span: leave the bracket.
             out.push('[');
             rest = after;
         } else if let Some(target) = tail.strip_prefix('(') {
-            let close = target.find(')').unwrap_or(target.len());
+            let Some(close) = target.find(')') else {
+                // Not a link after all: keep the rest as written.
+                out.push_str(&rest[start..]);
+                return out;
+            };
             let url = &target[..close];
             if url.starts_with("http") || url.starts_with('#') {
                 out.push_str(&rest[start..start + 1 + end + 2]);
                 rest = tail;
             } else {
                 out.push_str(code);
-                rest = target.get(close + 1..).unwrap_or_default();
+                rest = &target[close + 1..];
             }
         } else if tail.starts_with('[') {
             out.push_str(&rest[start..start + 1 + end + 2]);
@@ -1003,7 +1022,7 @@ pub fn typecheck(root: &std::path::Path) -> Result<(), String> {
             "--strict",
             "--noEmit",
             "--target",
-            "es2022",
+            "es2020",
             "--module",
             "nodenext",
             "--allowImportingTsExtensions",

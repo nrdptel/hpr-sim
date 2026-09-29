@@ -9506,8 +9506,9 @@ a document the way hpr's does.
    descriptions as comments. TypeScript: interfaces, unions and string literals. Python:
    `TypedDict`s (the functional form where a key isn't a Python name, `from` and `x-openrocket`),
    `Literal`s and `Union`s; an object written inline in the schema takes a name from where it sits
-   (`PartNoseCone`, `PositionTop`). A document stays plain JSON data, which hpr reads back as the
-   same design whatever JSON writer wrote it, though numbers may be spelled differently.
+   (`PartNoseCone`, `PositionTop`). A document stays plain JSON data; written back by
+   `JSON.stringify` or `json.dumps`, it reads in hpr as the same design, tested on the 18 public
+   documents, though numbers may be spelled differently.
    Only the current version gets types; an older document goes through `hpr convert`.
 3. **A reader in each**, `readDesign` and `read_design`, checks the format and version first, then
    the document against a copy of the schema embedded without its prose. It checks what the schema
@@ -9529,8 +9530,8 @@ a document the way hpr's does.
    `hpr_format::read_json`. A missing interpreter fails the tests rather than
    skipping them; CI's test job installs Node.js 24 and Python 3.12 on all three systems.
    `cargo xtask format --typecheck` writes the 18 documents as literals of type `DesignFile` and
-   checks them, and both examples, with TypeScript 7.0.2's `tsc --strict` and mypy 2.3.1's
-   `--strict`, fetched by `npx`
+   checks them, and both examples, with TypeScript 7.0.2's `tsc --strict --target es2020` and mypy
+   2.3.1's `--strict`, fetched by `npx`
    and `uvx`, and that each refuses a misspelt tag; CI runs it in its own `types` job, on Linux,
    and the gate as an extra step, `types`, since it needs the network the first time.
 

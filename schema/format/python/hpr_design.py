@@ -1,5 +1,6 @@
 # The hpr design format 0.2: types for a document, and a reader that checks one.
-# SPDX-License-Identifier: MIT OR Apache-2.0 (https://github.com/nrdptel/hpr-sim)
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# From https://github.com/nrdptel/hpr-sim
 # Generated from schema/format/hpr-design-0.2.schema.json by `cargo xtask format`.
 # Don't edit by hand: the next run overwrites it, and CI fails while it is stale.
 
@@ -2364,7 +2365,7 @@ def read_design(text: str) -> DesignFile:
     try:
         # A byte-order mark, which some Windows editors write at the start of UTF-8, is not JSON.
         value = json.loads(
-            text.removeprefix("﻿"),
+            text.removeprefix("\ufeff"),
             object_pairs_hook=_no_repeated_keys,
             parse_constant=_no_constants,
         )
@@ -2408,8 +2409,15 @@ def _version_message(version: Any) -> str:
 # The deepest nesting hpr reads: serde_json refuses a 128th level of arrays and objects.
 _MOST_LEVELS = 127
 
-# The largest finite 64-bit float.
-_LARGEST_FLOAT = 1.7976931348623157e308
+
+def _fits_a_float(number: int) -> bool:
+    """Whether `number` rounds to a finite 64-bit float, as hpr reads a number too long to hold
+    exactly."""
+    try:
+        float(number)
+    except OverflowError:
+        return False
+    return True
 
 
 def _no_repeated_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -2441,7 +2449,7 @@ def _scan(value: Any) -> str | None:
         item, level = stack.pop()
         if isinstance(item, float) and not math.isfinite(item):
             return "a number too large for a 64-bit float"
-        if isinstance(item, int) and not isinstance(item, bool) and abs(item) > _LARGEST_FLOAT:
+        if isinstance(item, int) and not isinstance(item, bool) and not _fits_a_float(item):
             return "a number too large for a 64-bit float"
         if isinstance(item, str) and not _is_text(item):
             return f"a lone UTF-16 surrogate in {_shown(item)}"
@@ -2496,9 +2504,9 @@ def _pattern(pattern: str) -> re.Pattern[str]:
     return _PATTERNS[pattern]
 
 
-# A problem: where in the document a check failed, and why; for a value that isn't a union's
-# constant, also the value and the constant, so a union can list every constant it allows.
-_Problem = tuple[str, str, Union[str, None], Union[str, None]]
+# A problem: where in the document a check failed, and why; for a value that isn't one of the
+# constants a union allows there, also the value and those constants, so the message can list them.
+_Problem = tuple[str, str, Union[str, None], Union[list[str], None]]
 
 
 def _member(path: str, key: str) -> str:
@@ -2524,11 +2532,12 @@ def _union(value: Any, forms: list[Any], path: str, exactly_one: bool) -> _Probl
         return None
     depth = max((len(p[0]) for p in problems), default=-1)
     deepest = [p for p in problems if len(p[0]) == depth]
-    wanted = [p[3] for p in deepest]
-    if len(deepest) > 1 and all(p[0] == deepest[0][0] for p in deepest) and None not in wanted:
-        choices = list(dict.fromkeys(w for w in wanted if w is not None))
-        listed = f"{', '.join(choices[:-1])} or {choices[-1]}"
-        return (deepest[0][0], f"is {deepest[0][2]}, not {listed}", None, None)
+    constants = [p for p in deepest if p[3] is not None]
+    if constants and all(p[0] == deepest[0][0] for p in deepest):
+        choices = list(dict.fromkeys(c for p in constants for c in p[3] or []))
+        listed = choices[0] if len(choices) == 1 else f"{', '.join(choices[:-1])} or {choices[-1]}"
+        found = constants[0][2]
+        return (deepest[0][0], f"is {found}, not {listed}", found, choices)
     if depth > len(path):
         return deepest[0]
     return (path, f"{_shown(value)} is none of the {len(forms)} forms allowed here", None, None)
@@ -2549,7 +2558,7 @@ def _check(value: Any, node: Any, path: str) -> _Problem | None:
             return (path, f"is {_shown(value)}, not {' or '.join(kinds)}", None, None)
     if "const" in node and value != node["const"]:
         found, expected = _shown(value), json.dumps(node["const"])
-        return (path, f"is {found}, not {expected}", found, expected)
+        return (path, f"is {found}, not {expected}", found, [expected])
     for keyword, exactly_one in (("oneOf", True), ("anyOf", False)):
         if keyword in node:
             problem = _union(value, node[keyword], path, exactly_one)

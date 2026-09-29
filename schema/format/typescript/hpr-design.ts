@@ -1,5 +1,6 @@
 // The hpr design format 0.2: types for a document, and a reader that checks one.
-// SPDX-License-Identifier: MIT OR Apache-2.0 (https://github.com/nrdptel/hpr-sim)
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// From https://github.com/nrdptel/hpr-sim
 // Generated from schema/format/hpr-design-0.2.schema.json by `cargo xtask format`.
 // Don't edit by hand: the next run overwrites it, and CI fails while it is stale.
 
@@ -1950,7 +1951,7 @@ export function readDesign(text: string): DesignFile {
   let value: unknown;
   try {
     // A byte-order mark, which some Windows editors write at the start of UTF-8, is not JSON.
-    value = JSON.parse(text.startsWith("﻿") ? text.slice(1) : text);
+    value = JSON.parse(text.startsWith("\uFEFF") ? text.slice(1) : text);
   } catch (error) {
     throw new DesignFormatError(`not JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -2006,21 +2007,21 @@ interface SchemaNode {
 }
 
 /**
- * Where in the document a check failed, and why; for a value that isn't a union's constant, the
- * value and the constant, so a union can list every constant it allows.
+ * Where in the document a check failed, and why; for a value that isn't one of the constants a
+ * union allows there, the value and those constants, so the message can list them all.
  */
 interface Problem {
   path: string;
   message: string;
   found?: string;
-  expected?: string;
+  expected?: string[];
 }
 
 /** The deepest nesting hpr reads: serde_json refuses a 128th level of arrays and objects. */
 const MOST_LEVELS = 127;
 
 /** A lone UTF-16 surrogate, which JSON can escape (`"\ud800"`) but hpr refuses. */
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 /** Why hpr couldn't read `value` as JSON although `JSON.parse` did, or `null`. */
 function scan(value: unknown): string | null {
@@ -2113,11 +2114,13 @@ function union(value: unknown, forms: SchemaNode[], path: string, exactlyOne: bo
   }
   const depth = Math.max(...problems.map((p) => p.path.length));
   const deepest = problems.filter((p) => p.path.length === depth);
-  const wanted = deepest.map((p) => p.expected);
-  if (deepest.length > 1 && deepest.every((p) => p.path === deepest[0].path) && !wanted.includes(undefined)) {
-    const choices = [...new Set(wanted)];
-    const listed = `${choices.slice(0, -1).join(", ")} or ${choices[choices.length - 1]}`;
-    return { path: deepest[0].path, message: `is ${deepest[0].found}, not ${listed}` };
+  const constants = deepest.filter((p) => p.expected !== undefined);
+  if (constants.length > 0 && deepest.every((p) => p.path === deepest[0].path)) {
+    const choices = [...new Set(constants.flatMap((p) => p.expected ?? []))];
+    const listed =
+      choices.length === 1 ? choices[0] : `${choices.slice(0, -1).join(", ")} or ${choices[choices.length - 1]}`;
+    const found = constants[0].found;
+    return { path: deepest[0].path, message: `is ${found}, not ${listed}`, found, expected: choices };
   }
   if (depth > path.length) {
     return deepest[0];
@@ -2146,7 +2149,7 @@ function check(value: unknown, node: SchemaNode, path: string): Problem | null {
   }
   if (node.const !== undefined && value !== node.const) {
     const [found, expected] = [shown(value), JSON.stringify(node.const)];
-    return { path, message: `is ${found}, not ${expected}`, found, expected };
+    return { path, message: `is ${found}, not ${expected}`, found, expected: [expected] };
   }
   if (node.oneOf !== undefined) {
     const problem = union(value, node.oneOf, path, true);

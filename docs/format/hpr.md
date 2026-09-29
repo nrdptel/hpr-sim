@@ -259,20 +259,21 @@ Three limits come first:
   them](#how-far-to-trust-the-readers)).
 - They read version 0.2 only, which is a draft, so copy the file again when hpr's format version
   changes.
-- They read designs; they don't fly them. Python bindings for flying come with
-  [M4.3](../decisions-and-roadmap.md#m4-3).
+- They read designs; they don't fly them. Python bindings for flying come in a later milestone,
+  [M4.3](../decisions-and-roadmap.md#m4-3), not started.
 
 | language | file | needs |
 |---|---|---|
 | TypeScript | [`schema/format/typescript/hpr-design.ts`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/typescript/hpr-design.ts) | Node.js 22.18 or later to run it as it is, or a TypeScript compiler with `target` ES2020 or later; tested with Node.js 24 and TypeScript 7.0.2 |
-| Python | [`schema/format/python/hpr_design.py`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/python/hpr_design.py) | Python 3.11 or later, nothing outside its standard library; tested with Python 3.12 and mypy 2.3.1 |
+| Python | [`schema/format/python/hpr_design.py`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/python/hpr_design.py) | Python 3.11 or later (macOS's own `python3` is 3.9: check `python3 --version`), nothing outside its standard library; tested with Python 3.12 and the type checker mypy 2.3.1 |
 
 **Using one in your project.** Neither is a package on npm or PyPI yet: copy the one file into your
 source tree. Both are `MIT OR Apache-2.0`, like the rest of hpr.
 
-- TypeScript: the file is an ES module, so your `package.json` needs `"type": "module"`. With the
-  compiler, import it as `./hpr-design.ts` with `allowImportingTsExtensions`, or as
-  `./hpr-design.js` under `module: nodenext`.
+- TypeScript: the file is an ES module, so your `package.json` needs `"type": "module"`. Where the
+  compiler only checks types (`noEmit`, as with a bundler or with Node.js running TypeScript as it
+  is), import `./hpr-design.ts` with `allowImportingTsExtensions`, as hpr's tests do. Where it
+  writes JavaScript, import `./hpr-design.js` under `module: nodenext`; hpr's tests don't try that.
 - Python: put `hpr_design.py` beside your code or on `PYTHONPATH`.
 - A reader takes a `.hpr` file's text. For a `.hprz`, unzip it and read the `design.hpr` inside
   ([the container](#the-container-hprz)).
@@ -280,10 +281,13 @@ source tree. Both are `MIT OR Apache-2.0`, like the rest of hpr.
 **What the file holds.** A type for every object in the schema, named as the schema names it, with
 the schema's descriptions as its comments: `DesignFile` for a whole document, `Rocket`, `Component`,
 `NoseCone` and so on. In TypeScript they are interfaces and unions; in Python, `TypedDict`s (typed
-dictionaries) and `Literal`s. A document stays plain JSON data, dictionaries and lists, so a program
-can write it back with its own JSON writer. hpr reads the result as the same design, but numbers
-may be spelled differently (`1850` for `1850.0`); `hpr convert my.hpr my.hpr` restores hpr's own
-spelling, so diffs in git stay small.
+dictionaries) and `Literal`s. A document stays plain JSON data, objects and arrays (dictionaries
+and lists in Python), so a program can write it back with its own JSON writer. hpr reads the
+result as the same design, but numbers may be spelled differently (`1850` for `1850.0`).
+`hpr convert edited.hpr tidy.hpr` writes it back in hpr's own spelling; replace the original with
+`tidy.hpr` so diffs in git stay small. To check a document your program built or changed, pass
+its text through the reader: `readDesign(JSON.stringify(design))` or
+`read_design(json.dumps(design))`.
 
 **The reader**, `readDesign` in TypeScript and `read_design` in Python, takes a document's text and
 checks it against the schema, which is copied into the file, before handing it back typed. It
@@ -362,10 +366,13 @@ Both are checked on every change:
   designs](#checked-on-real-designs)), plus the committed version 0.1 document after hpr migrates
   it to 0.2. They print the same counts of stages, parts and motor configurations as a count of the
   same JSON in Rust.
-- On 4,892 altered copies of two of those documents (a key added or removed, a value of another
-  type or a string with a final newline put in its place), of which the schema refuses 4,114, each
-  reader takes a copy exactly when a separate schema checker, the Rust `jsonschema` library, does.
-- The TypeScript compiler and the Python type checker mypy, both at their strictest, accept the 18
+- Each language's own JSON writer (`JSON.stringify`, Python's `json.dumps`) writes the 18
+  documents back out, and hpr reads each as the same design.
+- Tests make 4,892 altered copies of two of those documents: a key added or removed, or a value
+  replaced by one of another type or by a string with a final newline. The schema refuses 4,114 of
+  them. Each reader takes a copy exactly when a separate schema checker, the Rust `jsonschema`
+  library, does.
+- The TypeScript compiler (at `target` ES2020) and mypy, both at their strictest, accept the 18
   documents written out as values of type `DesignFile`, and the two examples, and refuse a
   document with a misspelt fixed word.
 - Like hpr, both refuse a number too large for a 64-bit float (`1e400`), a lone UTF-16 surrogate
@@ -378,11 +385,13 @@ readers also differ from hpr on three details of JSON:
 | in the text | hpr | TypeScript reader | Python reader |
 |---|---|---|---|
 | a key twice in one object | refused | takes the last | refused |
-| `2.0` where a whole number belongs | refused | taken as `2` | refused |
-| a stage or tube number of 2<sup>53</sup> or more | read exactly | refused, since JavaScript would round it | read exactly |
+| a whole number written with a point or an exponent (`2.0`, `3e0`) | refused | taken as `2`, `3` | refused |
+| a stage number, or a failed motor tube's index, of 2<sup>53</sup> or more | read exactly | refused, since JavaScript would round it | read exactly |
 
-The other way round, hpr reads one document the readers refuse: a `provenance.source.sha256` that
-isn't 64 hexadecimal digits, which the schema refuses ([#253](https://github.com/nrdptel/hpr-sim/issues/253)).
+The other way round, hpr reads one kind of document the readers refuse: one whose
+`provenance.source.sha256` isn't 64 hexadecimal digits, which the schema refuses. That is a bug in
+hpr's reader, open as [#253](https://github.com/nrdptel/hpr-sim/issues/253). Each row of the table,
+and each refusal in the list above, is tested against hpr's own reader.
 
 ## Checked on real designs
 

@@ -32,9 +32,89 @@ fn a_keyword_the_readers_do_not_check_is_refused() {
         let error = generated.unwrap_err();
         assert!(error.contains("`maxLength`"), "{error}");
     }
+    // Each change to the committed schema, and what the refusal names.
+    let refused: [(&str, Value, &str); 9] = [
+        (
+            "/$defs/Version/format",
+            serde_json::json!("date"),
+            "format `date`",
+        ),
+        (
+            "/$defs/Motors/properties/configurations/items",
+            serde_json::json!(true),
+            "a schema that is `true`",
+        ),
+        (
+            "/$defs/Motors/properties/configurations/items/maxItems",
+            serde_json::json!(3),
+            "`maxItems` beside `$ref`",
+        ),
+        (
+            "/$defs/Format/type",
+            serde_json::json!("string"),
+            "`type` beside `oneOf`",
+        ),
+        (
+            "/$defs/Version/pattern",
+            serde_json::json!("^\\d+$"),
+            "reads differently",
+        ),
+        (
+            "/$defs/Version/pattern",
+            serde_json::json!("^a.b$"),
+            "reads differently",
+        ),
+        (
+            "/$defs/Version/pattern",
+            serde_json::json!("^a$|^b$"),
+            "reads differently",
+        ),
+        (
+            "/$defs/Version/pattern",
+            serde_json::json!("^a\\$"),
+            "reads differently",
+        ),
+        (
+            "/$defs/ValueError",
+            serde_json::json!({"type": "string"}),
+            "ValueError",
+        ),
+    ];
+    for (pointer, value, says) in refused {
+        let mut schema = hpr_format::schema();
+        let (parent, key) = pointer.rsplit_once('/').unwrap();
+        schema.pointer_mut(parent).unwrap()[key] = value;
+        let error = python(&schema).unwrap_err();
+        assert!(error.contains(says), "{pointer}: {error}");
+    }
+    // A definition named as the TypeScript reader's own code.
     let mut schema = hpr_format::schema();
-    schema["$defs"]["Version"]["format"] = serde_json::json!("date");
-    assert!(typescript(&schema).unwrap_err().contains("format `date`"));
+    schema["$defs"]["SchemaNode"] = serde_json::json!({"type": "string"});
+    assert!(typescript(&schema).unwrap_err().contains("SchemaNode"));
+}
+
+/// Links to Rust items become the code they show; web and reference links, and text that only
+/// looks like a link, stay as written.
+#[test]
+fn rust_links_become_code() {
+    let cases = [
+        ("see [`Self::pods`].", "see `Self::pods`."),
+        ("see [`pods`](crate::PodSet::pods) here", "see `pods` here"),
+        (
+            "[`web`](https://example.com)",
+            "[`web`](https://example.com)",
+        ),
+        ("[`adr`][adr-074]", "[`adr`][adr-074]"),
+        ("a [`]` b", "a [`]` b"),
+        (
+            "see [`x`](crate::Y and more text",
+            "see [`x`](crate::Y and more text",
+        ),
+        ("[`a` and `b`]", "[`a` and `b`]"),
+    ];
+    for (text, plain) in cases {
+        assert_eq!(without_rust_links(text), plain, "{text}");
+    }
 }
 
 /// A command running the first of `candidates` that is new enough, as `probe` tells by its exit
@@ -55,11 +135,11 @@ fn interpreter(candidates: &[&str], probe: &[&str], needs: &str) -> Command {
     );
 }
 
-/// Succeeds under Node.js 22.18 or later, which runs TypeScript as it is.
+/// Succeeds under a Node.js that runs TypeScript as it is: 22.18 or later, 23.6 or later.
 const NODE_PROBE: &[&str] = &[
     "-e",
     "const [a, b] = process.versions.node.split('.').map(Number); \
-     process.exit(a > 22 || (a === 22 && b >= 18) ? 0 : 1)",
+     process.exit(a > 23 || (a === 23 && b >= 6) || (a === 22 && b >= 18) ? 0 : 1)",
 ];
 
 /// Succeeds under Python 3.11 or later, which has `typing.NotRequired`.
@@ -136,6 +216,60 @@ fn both_readers_read_every_public_document() {
     let (ts, py) = read_all(dir.path(), &names);
     assert_eq!(ts, expected, "the TypeScript reader");
     assert_eq!(py, expected, "the Python reader");
+    // Each language's JSON writer, given what its reader read, writes a document hpr reads as
+    // the same design, though it may spell numbers differently (`1850` for `1850.0`).
+    let rewrite = |mut program: Command, script: &str| {
+        let out = program
+            .args([
+                if script.contains("require") {
+                    "-e"
+                } else {
+                    "-c"
+                },
+                script,
+            ])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    };
+    rewrite(
+        interpreter(&["node"], NODE_PROBE, "Node.js 22.18 or later"),
+        "const fs = require('node:fs'); \
+         for (const f of fs.readdirSync('.').filter((f) => f.endsWith('.hpr'))) \
+         fs.writeFileSync(f + '.js.json', \
+         JSON.stringify(JSON.parse(fs.readFileSync(f, 'utf8')), null, 2));",
+    );
+    rewrite(
+        interpreter(&["python3", "python"], PYTHON_PROBE, "Python 3.11 or later"),
+        "import json, pathlib\n\
+         for f in pathlib.Path('.').glob('*.hpr'):\n    \
+         pathlib.Path(f'{f}.py.json').write_text(\
+         json.dumps(json.loads(f.read_text('utf-8')), indent=2), 'utf-8')",
+    );
+    let mut respelt = 0;
+    for name in &names {
+        let text = std::fs::read_to_string(dir.path().join(name)).unwrap();
+        let original = hpr_format::read_json(&text).unwrap().value;
+        for writer in ["js", "py"] {
+            let path = dir.path().join(format!("{name}.{writer}.json"));
+            let written = std::fs::read_to_string(path).unwrap();
+            let read = hpr_format::read_json(&written).unwrap().value;
+            assert!(
+                read == original,
+                "{name} written by {writer} reads as another design"
+            );
+            respelt += usize::from(written != text);
+        }
+    }
+    assert!(
+        respelt > 0,
+        "no writer spelt a number differently: the page's example is wrong"
+    );
     // The line the format's page shows, for the design it converts.
     let shown =
         std::fs::read_to_string(root().join("schema/format/read-design.output.txt")).unwrap();
@@ -451,6 +585,24 @@ fn both_readers_at_the_edges() {
             "read",
             None,
         ),
+        // The format's page shows this message.
+        (
+            "missing.hpr",
+            good.replacen("\"length_m\"", "\"lenght_m\"", 1),
+            "refused missing.hpr: $.rocket.stages[0].components[0].part.nose_cone: has no \"length_m\", \
+             which it needs",
+            "refused missing.hpr: $.rocket.stages[0].components[0].part.nose_cone: has no \"length_m\", \
+             which it needs",
+            Some(true),
+        ),
+        (
+            "exponent.hpr",
+            with(good, "count", serde_json::json!(123_456_789)).replacen("123456789", "3e0", 1),
+            // `JSON.parse` reads `3e0` as `3`.
+            "read",
+            "refused exponent.hpr: $.rocket",
+            Some(true),
+        ),
         (
             "u32-past.hpr",
             with(good, "count", past_u32),
@@ -463,7 +615,7 @@ fn both_readers_at_the_edges() {
             with(good, "stage", safe),
             "read",
             "read",
-            None,
+            Some(false),
         ),
         (
             "uint-unsafe.hpr",
@@ -471,7 +623,7 @@ fn both_readers_at_the_edges() {
             // JavaScript can't hold 2^53 apart from 2^53 + 1.
             "refused uint-unsafe.hpr: $.",
             "read",
-            None,
+            Some(false),
         ),
         (
             "tag.hpr",
@@ -511,8 +663,13 @@ fn both_readers_at_the_edges() {
         }
     }
     // hpr's reader stops at the same depth, for the same reason.
-    let deep = hpr_format::read_json(&cases[10].1).unwrap_err().to_string();
+    let case = |name: &str| &cases.iter().find(|c| c.0 == name).unwrap().1;
+    let deep = hpr_format::read_json(case("deep-128.hpr"))
+        .unwrap_err()
+        .to_string();
     assert!(deep.contains("recursion limit"), "{deep}");
-    let shallow = hpr_format::read_json(&cases[9].1).unwrap_err().to_string();
+    let shallow = hpr_format::read_json(case("deep-127.hpr"))
+        .unwrap_err()
+        .to_string();
     assert!(!shallow.contains("recursion limit"), "{shallow}");
 }
