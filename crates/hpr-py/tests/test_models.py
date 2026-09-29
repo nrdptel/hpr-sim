@@ -170,21 +170,24 @@ def test_an_environment_flies_again_and_in_threads_each_flight_raising_its_own()
     raising["on"] = False
     assert flight(site).apogee_m > 0.0
 
-    # Each thread's drag raises its own exception; the windy environment is shared.
+    # One windy environment flown by eight threads at once: its wind raises in each thread at a
+    # different height, and each flight raises its own thread's exception.
+    def shared_wind(height_m):
+        name = threading.current_thread().name
+        if height_m > 20.0 + 10.0 * int(name[1:]):
+            raise LookupError(name)
+        return (1.0, 0.0)
+
+    shared = hpr.Environment(0.0, 0.0, 0.0, wind=shared_wind)
     raised = {}
 
     def fly(name):
-        def drag(mach, thrusting):
-            if mach > 0.1:
-                raise LookupError(name)
-            return 0.5
-
         try:
-            flight(site, drag=drag)
+            flight(shared)
         except LookupError as error:
             raised[name] = str(error)
 
-    threads = [threading.Thread(target=fly, args=(f"t{i}",)) for i in range(8)]
+    threads = [threading.Thread(target=fly, args=(f"t{i}",), name=f"t{i}") for i in range(8)]
     for thread in threads:
         thread.start()
     for thread in threads:
