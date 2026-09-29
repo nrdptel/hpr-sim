@@ -46,6 +46,10 @@ use crate::log::{FlightLog, LogFormat};
 /// [`peak_bound_m`] low, 0.077 m at 20 Hz. The Pnut numbers are checked only where the log has been
 /// fetched into `refs/` (it isn't committed); CI checks an invented log of the same shape.
 pub const MEDIAN_WINDOW_S: f64 = 0.3;
+/// The most samples either side of its centre the running median takes: hpr's choice, the
+/// [`MEDIAN_WINDOW_S`] window at over 6 kHz, faster than any logger hpr reads. A log sampled
+/// faster is withheld ([`Reason::SampledTooFast`]): the median's cost grows with its window.
+pub const MAX_MEDIAN_HALF_WINDOW: usize = 1000;
 /// The climb above the pad that marks a flight, m (Debrief's 3 m).
 pub const LIFTOFF_HEIGHT_M: f64 = 3.0;
 /// The pad is the median of the samples before the altitude first rises this far above where the
@@ -58,7 +62,7 @@ pub const LANDING_HEIGHT_M: f64 = 2.0;
 pub const LANDED_CEILING_M: f64 = 5.0;
 /// …and for how long, s (Debrief's 1 s).
 pub const LANDED_FOR_S: f64 = 1.0;
-/// A top speed above this is refused, m/s: about twice the fastest amateur rocket (Debrief's).
+/// A top speed above this is refused, m/s (Debrief's ceiling).
 pub const IMPLAUSIBLE_SPEED_M_S: f64 = 4000.0;
 /// A top speed is refused when the climb's most negative speed is more than this share of it: a
 /// trace swinging that far has no usable sign (Debrief's 20%).
@@ -152,6 +156,9 @@ pub enum Reason {
     /// The record breaks what every reader guarantees: channels as long as the clock, and finite
     /// times that increase. Only a record built by hand can.
     BadRecord,
+    /// The samples come so often that the [`MEDIAN_WINDOW_S`] window would hold more than
+    /// [`MAX_MEDIAN_HALF_WINDOW`] either side.
+    SampledTooFast,
 }
 }
 
@@ -251,7 +258,8 @@ pub struct Landing {
 /// What was read from a flight log.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Readings {
-    /// The median interval between samples, s; `None` for a log too short to read.
+    /// The median interval between samples, s; `None` for a log too short to read, or withheld
+    /// whole as [`Reason::BadRecord`].
     pub sample_interval_s: Option<f64>,
     /// The running median's span, s, whole samples of the interval: [`MEDIAN_WINDOW_S`] rounded.
     pub median_window_s: Option<f64>,
@@ -259,7 +267,7 @@ pub struct Readings {
     /// ([`peak_bound_m`]).
     pub peak_bound_m: Option<f64>,
     /// The pad: the median of the altitude before it first rises [`PAD_RISE_M`], m above the
-    /// logger's zero.
+    /// logger's zero; `None` when every reading is withheld, [`Reason::NoClimb`] included.
     pub pad_altitude_m: Option<f64>,
     /// Liftoff.
     pub liftoff: Reading<Liftoff>,
@@ -299,9 +307,19 @@ pub fn read(log: &FlightLog) -> Readings {
             &format!("the log has {n} samples, too few to take a reading from"),
         );
     };
-    // No wider than the record: a clock stepping in fractions of a nanosecond would otherwise
-    // ask for a window of more samples than memory holds.
-    let half = half_window(interval).min(n);
+    let half = half_window(interval);
+    if half > MAX_MEDIAN_HALF_WINDOW {
+        let mut readings = every(
+            Reason::SampledTooFast,
+            &format!(
+                "the log's samples come every {interval:.3e} s, so a {MEDIAN_WINDOW_S} s running \
+                 median would take more than {MAX_MEDIAN_HALF_WINDOW} samples either side: faster \
+                 than any logger hpr reads"
+            ),
+        );
+        readings.sample_interval_s = Some(interval);
+        return readings;
+    }
     let filtered = running_median(&log.altitude_m, half);
     let bound = peak_bound_m(half, interval);
     #[expect(
@@ -407,6 +425,7 @@ pub fn read(log: &FlightLog) -> Readings {
         pad,
         (apogee_index, apogee_s),
         (liftoff, interval),
+        log.format.altitude_resolution_m(),
     );
     readings
 }
@@ -565,6 +584,7 @@ fn landing(
     pad: f64,
     (apogee, apogee_s): (usize, f64),
     (liftoff, interval): (usize, f64),
+    rounding: f64,
 ) -> Reading<Landing> {
     let end = time[filtered.len() - 1];
     let landed = (apogee + 1..filtered.len()).find(|&index| {
@@ -589,11 +609,12 @@ fn landing(
     };
     let descent_time_s = time[index] - apogee_s;
     let drop = filtered[apogee] - filtered[index];
-    // The quickest any fall from rest at apogee can lose that height: in vacuum. The apogee's
-    // time, the middle of its flat run, sits up to about half a sample from the true one, and
-    // the heights are rounded, so a sample is allowed: a test passes a vacuum fall in feet at 10
-    // to 100 samples a second wherever it falls between them, and fails one without it.
-    let quickest = (2.0 * drop.max(0.0) / STANDARD_GRAVITY_MPS2).sqrt();
+    // The quickest any fall from rest at apogee can lose that height: in vacuum. Both heights
+    // are rounded, so the drop can read up to one resolution long; and the apogee's time, the
+    // middle of its flat run, can sit about half a sample from the true one, so a sample is
+    // allowed. A test passes a vacuum fall in feet at 10 to 100 samples a second, wherever its
+    // apogee falls within a foot and its liftoff between samples, and fails without either.
+    let quickest = (2.0 * (drop - rounding).max(0.0) / STANDARD_GRAVITY_MPS2).sqrt();
     if descent_time_s + interval < quickest {
         return Reading::withheld(
             Reason::FasterThanFreeFall,
@@ -783,10 +804,17 @@ mod tests {
     /// heights rounded to feet, at 10 to 100 samples a second, and refuses one at 1.3 g.
     #[test]
     fn a_vacuum_fall_lands_and_a_faster_one_is_refused() {
+        let foot = crate::perfectflite::FOOT_M;
+        // Low hops, their apogees a fiftieth of a foot apart, where the rounding matters most;
+        // and higher ones.
+        let apogees: Vec<f64> = (0..50)
+            .map(|k| (16.0 + f64::from(k) / 50.0) * foot)
+            .chain([30.0, 300.0, 3000.0])
+            .collect();
         for dt in [0.01, 0.05, 0.1] {
-            for apogee_m in [5.0, 30.0, 300.0, 3000.0] {
-                for step in 0..7 {
-                    let t0 = 1.0 + f64::from(step) * dt / 7.0;
+            for &apogee_m in &apogees {
+                for step in 0..13 {
+                    let t0 = 1.0 + f64::from(step) * dt / 13.0;
                     let (flight, down) = hop(apogee_m, t0, 1.0);
                     let read = read(&log_every(dt, down + 3.0, flight));
                     assert!(
@@ -843,16 +871,32 @@ mod tests {
         assert_eq!(read.liftoff.value().unwrap().time_s, 21.0 * DT);
     }
 
-    /// A clock stepping in fractions of a nanosecond reads without asking for a window wider
-    /// than the record.
+    /// A clock too fine for the median's window is withheld whole, saying so, at the edge: 0.3 s
+    /// is 1,000 samples either side at 0.15 ms, and more just below it.
     #[test]
-    fn a_clock_too_fine_for_the_window_reads() {
-        let mut log = log(1.0, flight(10.0));
-        for (index, time) in log.time_s.iter_mut().enumerate() {
-            *time = index as f64 * 1e-30;
+    fn a_clock_too_fine_for_the_window_is_withheld() {
+        let with_interval = |interval: f64| {
+            let mut log = log(20.0, flight(10.0));
+            for (index, time) in log.time_s.iter_mut().enumerate() {
+                *time = f64::from(u32::try_from(index).unwrap()) * interval;
+            }
+            read(&log)
+        };
+        for interval in [1e-30, 1e-6, 0.000_149] {
+            let read = with_interval(interval);
+            assert_eq!(
+                reason(&read.apogee),
+                Some(Reason::SampledTooFast),
+                "{interval}"
+            );
+            assert_eq!(reason(&read.landing), Some(Reason::SampledTooFast));
+            assert_eq!(read.sample_interval_s.map(|s| s > 0.0), Some(true));
         }
-        let read = read(&log);
-        assert_eq!(read.median_window_s.map(|w| w > 0.0), Some(true));
+        // At 0.15 ms the window is exactly 1,000 samples either side, and the log is read.
+        let read = with_interval(0.000_15);
+        assert_ne!(reason(&read.apogee), Some(Reason::SampledTooFast));
+        let window_s = read.median_window_s.unwrap();
+        assert!((window_s - 0.3).abs() < 1e-12, "{window_s}");
     }
 
     /// The window's half-width at a rounding tie doesn't turn on the interval's last bit.
@@ -929,7 +973,7 @@ mod tests {
             (listed, codes.len())
         };
         let reasons = Reason::ALL.iter().map(|r| serde_json::json!(r)).collect();
-        assert_eq!(codes(reasons), (12, 12));
+        assert_eq!(codes(reasons), (13, 13));
         let sources = Source::ALL.iter().map(|s| serde_json::json!(s)).collect();
         assert_eq!(codes(sources), (2, 2));
     }

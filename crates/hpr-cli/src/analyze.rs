@@ -147,6 +147,7 @@ fn reading<A, B>(reading: &Reading<A>, value: impl FnOnce(&A) -> B) -> LogReadin
                 Reason::NoAccelerometer => WithheldReason::NoAccelerometer,
                 Reason::Needs => WithheldReason::Needs,
                 Reason::BadRecord => WithheldReason::BadRecord,
+                Reason::SampledTooFast => WithheldReason::SampledTooFast,
                 _ => WithheldReason::Other,
             },
             detail: withheld.detail.clone(),

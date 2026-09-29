@@ -761,7 +761,8 @@ pub struct LoggerStated {
 }
 
 /// How the readings were taken. Every field but `altitude_resolution_m` is `null` for a log too
-/// short to read, or one withheld whole as `bad_record`.
+/// short to read, or one withheld whole as `bad_record`; all but it and `sample_interval_s` for
+/// one withheld as `sampled_too_fast`; and `pad_altitude_m` for one withheld as `no_climb`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
 pub struct AnalyzeMethod {
     /// The median interval between samples, s.
@@ -824,6 +825,8 @@ pub enum WithheldReason {
     Needs,
     /// The record breaks what every reader guarantees; only a record built by hand can.
     BadRecord,
+    /// The samples come so often that the 0.3 s median would hold more than 1,000 either side.
+    SampledTooFast,
     /// A reason this build of `hpr` doesn't name.
     Other,
 }

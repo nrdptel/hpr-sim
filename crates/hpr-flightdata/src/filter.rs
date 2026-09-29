@@ -13,17 +13,33 @@
 /// ([`crate::readings::peak_bound_m`] gives the bound for a peak bent by gravity). With noise, the
 /// highest of the medians can read above the peak.
 pub fn running_median(values: &[f64], half: usize) -> Vec<f64> {
-    let mut window = Vec::with_capacity(window_len(half, values.len()));
+    // The window is kept sorted as it slides, one sample in and one out, so the cost is the
+    // record's length times the window's, not times a sort of it.
+    let mut window: Vec<f64> = Vec::with_capacity(window_len(half, values.len()));
+    let place =
+        |window: &[f64], value: f64| window.partition_point(|w| w.total_cmp(&value).is_lt());
+    for value in values.iter().take(half).copied().filter(|v| v.is_finite()) {
+        window.insert(place(&window, value), value);
+    }
     (0..values.len())
         .map(|index| {
-            let start = index.saturating_sub(half);
-            let end = index
-                .saturating_add(half)
-                .saturating_add(1)
-                .min(values.len());
-            window.clear();
-            window.extend(values[start..end].iter().copied().filter(|v| v.is_finite()));
-            median(&mut window).unwrap_or(f64::NAN)
+            if let Some(&value) = index.checked_add(half).and_then(|i| values.get(i))
+                && value.is_finite()
+            {
+                window.insert(place(&window, value), value);
+            }
+            if let Some(&value) = index
+                .checked_sub(half)
+                .and_then(|i| i.checked_sub(1))
+                .and_then(|i| values.get(i))
+                && value.is_finite()
+            {
+                let at = place(&window, value);
+                if window.get(at).is_some_and(|w| w.total_cmp(&value).is_eq()) {
+                    window.remove(at);
+                }
+            }
+            sorted_median(&window).unwrap_or(f64::NAN)
         })
         .collect()
 }
@@ -75,6 +91,11 @@ pub fn hampel(values: &[f64], half: usize, threshold: f64) -> Vec<f64> {
 /// mean of the middle two. The values must not be `NaN`.
 pub(crate) fn median(values: &mut [f64]) -> Option<f64> {
     values.sort_by(f64::total_cmp);
+    sorted_median(values)
+}
+
+/// The median of values already sorted by [`f64::total_cmp`]; `None` if there are none.
+fn sorted_median(values: &[f64]) -> Option<f64> {
     let middle = values.len() / 2;
     match values.len() {
         0 => None,
@@ -137,7 +158,44 @@ mod tests {
         assert_eq!(hampel(&spiked, 3, 4.0), expected);
     }
 
+    /// A window as wide as a `usize` can say is cut to the record, in both filters.
+    #[test]
+    fn the_widest_window_is_the_whole_record() {
+        let values = [3.0, 1.0, 4.0, 1.0, 5.0];
+        assert_eq!(running_median(&values, usize::MAX), [3.0; 5]);
+        assert_eq!(hampel(&values, usize::MAX, 0.0), [3.0; 5]);
+    }
+
     proptest::proptest! {
+        /// The sliding window gives what sorting each window afresh gives, bit for bit, gaps and
+        /// signed zeros included.
+        #[test]
+        fn the_sliding_median_is_each_windows_median(
+            values in proptest::collection::vec(
+                proptest::prop_oneof![
+                    -5.0..5.0_f64,
+                    proptest::strategy::Just(f64::NAN),
+                    proptest::strategy::Just(0.0),
+                    proptest::strategy::Just(-0.0),
+                    proptest::strategy::Just(1.0),
+                ],
+                0..60,
+            ),
+            half in 0_usize..8,
+        ) {
+            let slid = running_median(&values, half);
+            for (index, out) in slid.iter().enumerate() {
+                let end = (index + half + 1).min(values.len());
+                let mut window: Vec<f64> = values[index.saturating_sub(half)..end]
+                    .iter()
+                    .copied()
+                    .filter(|v| v.is_finite())
+                    .collect();
+                let expected = median(&mut window).unwrap_or(f64::NAN);
+                proptest::prop_assert_eq!(out.to_bits(), expected.to_bits());
+            }
+        }
+
         /// Each output lies between its window's least and greatest finite input.
         #[test]
         fn outputs_lie_within_their_windows(

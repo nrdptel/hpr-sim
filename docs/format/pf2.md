@@ -1,11 +1,11 @@
 # PerfectFlite `.pf2` flight logs
 
-A `.pf2` file is the flight log a PerfectFlite altimeter's software saves. The one read so far is
-a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, as Debrief's
-reader assumes, but no file of theirs has been read. It is plain text: a few lines about the
-altimeter and the flight, then one row per sample, about 20 a second, with the time, altitude,
-speed, temperature and battery voltage. A PerfectFlite has a barometer and no accelerometer, so every height and
-speed in it comes from air pressure.
+A `.pf2` file is the flight log a PerfectFlite altimeter's software saves. The one read so far is a
+Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, as the reader in
+Debrief (the project owner's earlier flight-log analyzer) assumes, but no file of theirs has been
+read. It is plain text: a few lines about the altimeter and the flight, then one row per sample,
+about 20 a second, with the time, altitude, speed, temperature and battery voltage. A PerfectFlite
+has a barometer and no accelerometer, so every height and speed in it comes from air pressure.
 
 **To read a flight from one**, run [`hpr analyze`](../cli.md#hpr-analyze) on it, or see
 [Flight-log readings](../physics/log-readings.md) for what is read and how.
@@ -84,7 +84,8 @@ A file is refused, with its line number, when:
 - a line after the rows began isn't a row.
 
 These are noted and read around. [`hpr analyze`](../cli.md#hpr-analyze) prints each note as a
-`note:` line, and its JSON output lists them in `log.notes`:
+`note:` line, and its JSON output lists them in `log.notes`. Past 20 notes, the last says how
+many more were left out:
 
 - no `Data:` line: the columns are taken to be the five above, in that order, as Debrief takes them;
 - a column the reader doesn't know: left out;

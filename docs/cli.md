@@ -542,8 +542,9 @@ It reads PerfectFlite's `.pf2` logs so far ([the format](format/pf2.md)). The on
 is a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, but no
 file of theirs has been tried. Other loggers' files come with
 [M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats. It has no
-check yet for a barometer's errors near the speed of sound, so if the top speed reads above about
-300 m/s (1,000 ft/s), roughly Mach 0.9, treat it and the heights near it with care.
+check yet for a barometer's errors near the speed of sound. If the flight may have come near Mach
+0.9, about 300 m/s (1,000 ft/s), treat the top speed and the heights near it with care: the
+barometer's error can pull the top speed down too.
 
 ```bash
 hpr analyze flight.pf2

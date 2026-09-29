@@ -9161,12 +9161,18 @@ upstream terms aren't recorded; ADR-046 said they "may appear in examples and do
    they are (3 m, 2 m and 5 m for a second, 4,000 m/s, 20%) and said to be corpus-set, with no
    citation. The landing adds one bound of hpr's, a fall from rest in vacuum, which only drag can
    slow: the height lost from apogee to the landing sample may not come down faster, allowing one
-   sample for the apogee's time. The pad is the median of the raw altitude before it first rises
+   step of the altitude's rounding in the height and one sample for the apogee's time. A test
+   sweeps a vacuum hop's apogee through a foot at 10 to 100 Hz and fails without either
+   allowance. The pad is the median of the raw altitude before it first rises
    `PAD_RISE_M` (1 m, hpr's choice), so one jittery first sample doesn't set it. A pad more than
    3 m from the logger's zero withholds liftoff (`starts_off_the_pad`), and with it the top speed
    and the landing (`needs`), which are read against the pad. A record whose channels differ in
    length from its clock, or whose times don't increase, is withheld whole (`bad_record`): the
-   reader never builds one, but a program can.
+   reader never builds one, but a program can. A log sampled so fast that the 0.3 s window would
+   hold more than 1,000 samples either side (`MAX_MEDIAN_HALF_WINDOW`, over about 6.7 kHz) is
+   withheld whole too (`sampled_too_fast`): the median, kept sorted as it slides, costs the
+   record's length times the window's, which a far finer clock would make grow with the square of
+   the file's length.
 3. **Heights after a running median, not a Hampel filter.** Debrief despikes with a Hampel filter
    (0.3 s, threshold 4). On the public Pnut log the trace dips just before the ejection pulse and
    stays lower after it, and those samples widen the pulse's own window's spread until the filter

@@ -198,8 +198,18 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
             log.time_s.len()
         ));
     }
+    if log.notes.len() > MAX_NOTES {
+        let more = log.notes.len() - (MAX_NOTES - 1);
+        log.notes.truncate(MAX_NOTES - 1);
+        log.notes.push(format!(
+            "and {more} more notes, left out so that a broken file's list stays short"
+        ));
+    }
     Ok(log)
 }
+
+/// The most notes a log keeps; past it, the last says how many more there were.
+const MAX_NOTES: usize = 20;
 
 /// Whether a line is a data row: it starts with a number and has a comma, as Debrief tells them.
 fn is_data_row(line: &str) -> bool {
@@ -472,6 +482,20 @@ mod tests {
         let log = read("PerfectFlite Pnut\nApogee: 1009 AGL\n0, 0, 0\n").unwrap();
         assert_eq!(log.stated.apogee_m, None);
         assert!(log.notes[0].contains("no unit"), "{:?}", log.notes);
+    }
+
+    /// A header of many unreadable lines keeps a short list of notes, saying how many it left out:
+    /// 1,000 skipped lines and the missing `Data:` line, less the 19 kept.
+    #[test]
+    fn notes_stay_few() {
+        let text = format!("PerfectFlite Pnut\n{}0, 0, 0\n", "x\n".repeat(1000));
+        let log = read(&text).unwrap();
+        assert_eq!(log.notes.len(), MAX_NOTES);
+        assert!(
+            log.notes[MAX_NOTES - 1].starts_with("and 982 more notes"),
+            "{:?}",
+            log.notes
+        );
     }
 
     /// A file that isn't text is refused with a short quote of it, not the whole of it.

@@ -16,8 +16,9 @@ within a quarter of a metre and one sample of the truth, and liftoff within a te
 The landing is read at the first sample within 2 m of the pad, so early by the time the last 2 m
 take: 0.33 s at 6 m/s, 0.5 s at 4 m/s. On one real flight, a public log that isn't committed here
 and so isn't checked in CI, hpr reads 1,010 ft where the altimeter states 1,009 ft. hpr has no
-check yet for a barometer's errors near the speed of sound, so if the top speed reads above about
-300 m/s (1,000 ft/s), roughly Mach 0.9, treat it and the heights near it with care. The rules behind each reading are on
+check yet for a barometer's errors near the speed of sound. If the flight may have come near Mach
+0.9, about 300 m/s (1,000 ft/s), treat the top speed and the heights near it with care: the
+barometer's error can pull the top speed down too, so a low reading doesn't clear it. The rules behind each reading are on
 [Flight-log readings](physics/log-readings.md), with what they were checked against. A reading
 the log can't support is left out and says why, rather than printed as a number.
 
@@ -167,8 +168,8 @@ start of the log, and a coast with no drag to 390.3 m (1,280.5 ft) at 10.26 s.
 
 - **Liftoff**, 0.55 s: the last sample before the altitude shows the rocket moving. The rocket
   left the pad at 0.50 s, but its first 0.15 m rounds to 0 ft.
-- **Apogee**, 390.1 m (1,280 ft) at 10.28 s (10.275 s, the middle of the samples that hold the
-  top, which falls between two): the top of the altitude after a 0.3 s
+- **Apogee**, 390.1 m (1,280 ft) at 10.28 s, which is 10.275 s rounded: the top is flat over
+  several samples, and hpr takes the middle. It is the top of the altitude after a 0.3 s
   [running median](glossary.md#running-median). It is 0.17 m below the true apogee: the file
   rounds to whole feet.
 - **The highest sample**, 400.5 m, a second after apogee, is the ejection charge's pressure

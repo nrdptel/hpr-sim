@@ -49,7 +49,7 @@
   ],
   "$defs": {
     "AnalyzeMethod": {
-      "description": "How the readings were taken. Every field but `altitude_resolution_m` is `null` for a log too\nshort to read, or one withheld whole as `bad_record`.",
+      "description": "How the readings were taken. Every field but `altitude_resolution_m` is `null` for a log too\nshort to read, or one withheld whole as `bad_record`; all but it and `sample_interval_s` for\none withheld as `sampled_too_fast`; and `pad_altitude_m` for one withheld as `no_climb`.",
       "type": "object",
       "properties": {
         "altitude_resolution_m": {
@@ -639,6 +639,11 @@
           "description": "The record breaks what every reader guarantees; only a record built by hand can.",
           "type": "string",
           "const": "bad_record"
+        },
+        {
+          "description": "The samples come so often that the 0.3 s median would hold more than 1,000 either side.",
+          "type": "string",
+          "const": "sampled_too_fast"
         },
         {
           "description": "A reason this build of `hpr` doesn't name.",
