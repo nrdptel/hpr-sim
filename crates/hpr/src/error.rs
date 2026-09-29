@@ -29,12 +29,13 @@ pub enum Error {
     /// No motor with a thrust curve in the bundled catalog matches the name.
     #[error("no motor with a bundled thrust curve matches `{0}`")]
     NoSuchMotor(String),
-    /// Several different motors match the name; the designations are listed.
+    /// Several different motors match the name. Each is listed by its designation, which finds
+    /// it alone, then its manufacturer: `I175WS (AeroTech)`.
     #[error("`{name}` matches several motors: {}", candidates.join(", "))]
     AmbiguousMotor {
         /// The name asked for.
         name: String,
-        /// The designations it matches.
+        /// The motors it matches.
         candidates: Vec<String>,
     },
     /// A motor with an empty designation, which the design would take as a duplicate id.
@@ -51,7 +52,11 @@ pub enum Error {
     NoSuchConfiguration(String),
     /// The design's checks ([`hpr_design::checks`]) found errors: every finding, errors and
     /// warnings, in the checks' order.
-    #[error("the design's checks found errors: {0:?}")]
+    #[error(
+        "the design's checks found {} finding(s), errors among them; the first is {:?}",
+        .0.len(),
+        .0.first()
+    )]
     DesignChecks(Vec<Finding>),
     /// From the design: its tree, parts and mass properties.
     #[error(transparent)]

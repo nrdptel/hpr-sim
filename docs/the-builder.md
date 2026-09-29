@@ -25,8 +25,8 @@ rail. The page runs two example programs and walks through them. It needs the se
 cargo run --example build_and_fly -p hpr
 ```
 
-This builds the small rocket of [Your own rocket](your-own-rocket.md), named after its 54 mm
-airframe, for 29 mm motors. It weighs the rocket, and finds its
+This builds the small rocket of [Your own rocket](your-own-rocket.md). Its airframe is 54 mm
+inside and 56.3 mm outside, and it takes 29 mm motors. It weighs the rocket, and finds its
 [centre of gravity](glossary.md#centre-of-gravity-cg) (CG), its
 [centre of pressure](glossary.md#centre-of-pressure-cp) (CP) and its
 [stability margin](glossary.md#stability-margin). Then it flies the rocket on a Cesaroni H54 from
@@ -59,12 +59,12 @@ What the lines say:
   [Mach](glossary.md#mach-number) 0.3, a typical subsonic speed, with the air straight along the
   rocket. It depends on the shape alone, so it doesn't move as the motor burns.
 - **The flight.** The [rail exit](glossary.md#rail-exit-and-rail-exit-velocity) speed is how fast the rocket leaves the
-  rail. The rail leans 5° west, into the wind, and the rocket turns further into it as it climbs,
-  a rocket's usual [weathercocking](glossary.md#weathercocking): its
-  [apogee](glossary.md#apogee) is 282 m west of the pad. Under the parachute the wind carries it
-  back, to land 877 m east.
-- **Heights** are the rocket's CG's above the launch site, so the apogee counts the CG's starting
-  height on the rail.
+  rail. The rail leans 5° west, into the wind, and the rocket turns further into the wind as it
+  climbs, a rocket's usual [weathercocking](glossary.md#weathercocking). The lean and the turn
+  together put its [apogee](glossary.md#apogee) 282 m west of the pad. Under the parachute the
+  wind carries it back, to land 877 m east of the pad.
+- **Heights** are the height of the rocket's CG above the launch site. The CG starts above the
+  ground, sitting on the rail, so the apogee includes that starting height.
 
 ## The program
 
@@ -92,7 +92,7 @@ body tube you added:
 
 | part | what it is | where it goes |
 |---|---|---|
-| `Nose::hollow`, `Nose::solid` | A nose cone of a shape and length, and its wall. `with_shoulder` or `with_capped_shoulder` adds the sleeve that fits inside the tube behind | First, at the tip. Its base takes the rocket's diameter |
+| `Nose::hollow`, `Nose::solid` | A nose cone of a shape and length, and its wall. `with_shoulder` adds the sleeve that fits inside the tube behind; `with_capped_shoulder` closes the sleeve's aft end with a disc | First, at the tip. Its base takes the rocket's diameter |
 | `Tube::new` | A body tube of a length and a wall. `with_diameter_m` gives it another diameter | Behind the last body part, at its diameter |
 | `Transition::conical` | A cone to a new diameter at its aft end: a [boattail](glossary.md#boattail), or a step up or down in the airframe | Behind the last body part, starting at its diameter |
 | `Fins::new` | A set of identical fins of a shape (`FinPlanform`, which names each dimension), square-edged unless `with_cross_section` says otherwise | On the last tube, flush with its aft end unless `at` places them |
@@ -103,8 +103,9 @@ A position (`Position`) is measured along the tube the part is on: `Top` places 
 a distance aft of the tube's, `Bottom` its aft end from the tube's aft end, `Middle` its middle
 from the tube's middle, `After` its fore end behind the part before it, and `Absolute` its fore end
 from the nose tip. So a `Mass` given a size with `packed` has its centre half that length from the
-point its position names. In the example, packing the recovery bay 15 cm long, its top 7 cm down
-the tube, moves the rocket's CG 22 mm aft of where a point mass there puts it.
+end its position names, or at the point itself when placed by its `Middle`. In the example,
+packing the recovery bay 15 cm long, its top 7 cm down the tube, moves the rocket's CG at liftoff
+22 mm aft of where a point mass at the top puts it.
 
 Every part names its material, and every hollow part its wall. `material("abs")` finds one of the
 built-in materials, each with the source of its density; the [mass page](physics/mass.md) explains
@@ -166,14 +167,18 @@ F52C           0.548    3.32       18.5    438.6        106         8.0
 168H54-10A     0.675    1.92       21.7   1134.6        186        10.5
 ```
 
-`set_motor` swaps the motor in the tube, so one rocket flies on all three. The H54's apogee here,
-1134.6 m, sits between the other two pages' because the rail is vertical: 1144.5 m on
-[Your own rocket](your-own-rocket.md), in calm air, and 1106.6 m above, from a leaning rail.
+`set_motor` swaps the motor in the tube, so one rocket flies on all three. The H54 reaches
+1134.6 m here, from a vertical rail in the wind. The same rocket reaches 1144.5 m on
+[Your own rocket](your-own-rocket.md), from a vertical rail in calm air, and 1106.6 m at the top of
+this page, from a leaning rail. The parachutes open at different times too: here at apogee, there
+at the motor's charge.
 
 The best delay is the time from [burnout](glossary.md#burnout), the end of the thrust curve, to
 apogee, so the charge fires at the top. It is 10.5 s on the H54, near the 10 s delay that motor's
-designation names. The F52 wants 8 s. The F15 leaves the rail at only 10 m/s, the slowest of the three,
-when its fins have the least air to steer with.
+designation names. The H54 burns out at 3.5 s, so on the leaning rail at the top of this page its
+10 s delay fires at 13.5 s, 0.2 s before its apogee. The F52 wants 8 s. The F15 leaves the rail
+at only 10 m/s, the slowest of the three. That is when the fins steer least, so the F15 is the
+one most turned by the wind.
 
 ## Beyond the builder
 
@@ -182,15 +187,19 @@ crates the builder is made of.
 
 - **Change the design.** A rocket's `design()` is its [design tree](physics/design.md), which a
   [design file](glossary.md#design-file) holds. Clone it, add what the builder can't with the
-  `hpr_design` crate (a cluster, pods, launch lugs, rail buttons, a stage), and fly it with
-  `Rocket::from_design(tree, configuration)`, which names the configuration, the motors, to fly.
-  `from_design` also flies a design file, or an OpenRocket file read as the
-  [`.ork` page](format/ork.md) shows.
+  `hpr_design` crate (a cluster, pods, launch lugs, rail buttons, a stage), and make a rocket of
+  it with `Rocket::from_design(tree, configuration)`, which names the configuration, the motors,
+  to fly. `from_design` also takes a design file, or an OpenRocket file read as the
+  [`.ork` page](format/ork.md) shows. A second stage also needs a separation, and a recovery
+  device on each part it makes, both added through `simulation()` below; the
+  [`ork_two_stage` example](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)
+  flies one.
 - **Change the flight.** A flight builder's `simulation()` hands over the simulation `fly()` would
-  run. The `motor_choice` example passes it to `hpr_sim::metrics::optimum_delays`. Its methods add
-  a separation, events of your own, moving or released masses, or another program's drag table
-  (`with_drag_table`, as [Getting started](getting-started.md#how-far-to-trust-it) uses one), and
-  its `run` flies it. A flight flown that way returns the simulation's own result, without the
+  run. The `motor_choice` example passes it to `hpr_sim::metrics::optimum_delays`. The
+  simulation's methods add a separation, events of your own, moving or released masses, or
+  another program's drag table (`with_drag_table`, as
+  [Getting started](getting-started.md#how-far-to-trust-it) uses one). `run(&mut ())` flies it,
+  with no observer watching. A flight flown that way returns the simulation's own result, without the
   builder's `Flight` methods; `hpr_sim::FlightMetrics` gives the same metrics
   ([Flight metrics](physics/metrics.md)).
 

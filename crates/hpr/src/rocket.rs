@@ -413,12 +413,14 @@ pub struct Rocket {
     design: hpr_design::Rocket,
     configuration_id: Option<String>,
     recovery: Vec<Device>,
-    /// Where the builder has got to; `None` for a rocket read from a design.
+    /// Where the builder has got to; `None` for a rocket read from a design. Not part of the
+    /// record.
+    #[serde(skip)]
     build: Option<Build>,
 }
 
 /// The builder's place in the tree.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 struct Build {
     /// The rocket's body diameter, m.
     diameter_m: f64,
@@ -729,8 +731,11 @@ impl Rocket {
     }
 
     /// The parts placed and the motor in its tube ([`hpr_design::Rocket::assemble`]), once the
-    /// design's checks ([`hpr_design::checks`]) find no errors: the same checks a flight runs, so
-    /// what this weighs is what [`crate::Flight`] would fly.
+    /// design's checks ([`hpr_design::checks`]) find no errors: the same checks a flight runs
+    /// with the default settings, so what this weighs is what [`crate::Flight`] would fly. A
+    /// flight told to accept a design's errors
+    /// ([`FlightSettings::accept_design_errors`](hpr_sim::FlightSettings::accept_design_errors))
+    /// flies what this refuses; `design().assemble(id)` weighs it.
     ///
     /// # Errors
     ///
@@ -782,8 +787,10 @@ impl Rocket {
     /// As [`Rocket::mass_properties`], [`Error::Aero`] for a rocket the aerodynamic model can't
     /// take, and [`Error::Sim`] for a Mach number out of its range.
     pub fn margin(&self, time_s: f64, mach: f64) -> Result<Margin, Error> {
-        let cg_station_m = -self.mass_properties(time_s)?.cg_m.z;
-        let aero = AeroModel::new(&self.assemble()?.layout)?;
+        let time_s = non_negative("time, s", time_s)?;
+        let assembly = self.assemble()?;
+        let cg_station_m = -assembly.mass_properties(time_s).cg_m.z;
+        let aero = AeroModel::new(&assembly.layout)?;
         Ok(metrics::margin(&aero, &Flow::axial(mach), cg_station_m)?)
     }
 

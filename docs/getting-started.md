@@ -574,7 +574,8 @@ If you propose a change to the program itself in a pull request, two more comman
 - [Your own rocket](your-own-rocket.md) builds a rocket of your own, with your dimensions and a
   bundled motor, and shows its centre of pressure, centre of gravity and
   [stability margin](glossary.md#stability-margin). [The builder](the-builder.md) does the same
-  in fewer lines, and [`.ork` design files](format/ork.md) reads a design from OpenRocket.
+  in fewer lines, and [`.ork` design files](format/ork.md) reads a design from OpenRocket, though
+  few of its motor configurations fly yet and its recovery settings are not flown.
 - [Accuracy](accuracy.md) gathers every validation result, and
   [Checking a claim](checking-a-claim.md) shows how to trace a number to its source and its test.
 - [The API reference](api.md) documents every type used here, and

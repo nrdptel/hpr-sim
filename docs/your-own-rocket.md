@@ -666,7 +666,8 @@ The example leaves out several kinds of part and setting that a design can have:
   lines; a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python
   ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
 - **Import from one other program.** [OpenRocket](glossary.md#openrocket) `.ork` files are read
-  ([`.ork` design files](format/ork.md)); RockSim `.rkt` files
+  ([`.ork` design files](format/ork.md)), though few of their motor configurations fly yet and
+  their recovery settings are not flown; RockSim `.rkt` files
   ([M3.4](decisions-and-roadmap.md#m3-4), RockSim import) can't be read yet.
 - **Drag near and past Mach 1 is lightly checked.** Since
   [M1.8b1](decisions-and-roadmap.md#m1-8b1) (drag through Mach 1), hpr's own drag, like its normal

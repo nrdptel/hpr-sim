@@ -34,8 +34,9 @@ impl FlightBuilder<'_> {
     /// The direction the rail leans toward, clockwise from true north, degrees: 0, the
     /// default, is north and 90 is east. A wind's direction is where it blows from, so a rail
     /// leaning into a west wind has both at 270. On a vertical rail the heading still turns the
-    /// rocket about its axis, which way its fins face: that matters to a rocket with one or two
-    /// fins in a set, hardly at all to one with three or more.
+    /// rocket about its axis, which way its fins face. That matters to a set of one or two fins,
+    /// whose lift depends on which way the air meets them; three or more equal fins lift nearly
+    /// the same whichever way they face.
     #[must_use]
     pub fn heading_deg(mut self, heading_deg: f64) -> Self {
         self.heading_deg = Some(heading_deg);
@@ -130,7 +131,8 @@ impl FlightBuilder<'_> {
 ///
 /// Heights are the rocket's centre of gravity's, above the launch site: the rocket stands on
 /// the rail at the start, so the first height is not zero. Speeds are relative to the ground.
-/// [`Flight::summary`] has every metric; the methods below are the ones most asked for.
+/// [`Flight::summary`] has every metric; the methods below are the ones most asked for. A flight
+/// serializes and reads back as a record; one read back isn't flown again or checked.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Flight {
     result: FlightResult,

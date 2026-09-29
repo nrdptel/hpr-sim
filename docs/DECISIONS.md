@@ -8797,7 +8797,9 @@ models a user can put in hpr's place.
    never read from the designation.
 6. **Weighing runs the flight's checks.** `Rocket::assemble`, and so the mass properties and the
    margin, refuse with `Error::DesignChecks` what `Simulation::new` refuses: a program never shows
-   a margin for a rocket the flight won't fly.
+   a margin for a rocket the flight won't fly. The same findings reach a flight as
+   `Error::Sim(SimError::DesignChecks)`, from the simulation beneath. A flight's settings can set
+   `accept_design_errors` to fly such a design anyway; the builder's weighing has no such switch.
 7. **Parachutes go on the rocket**, as RocketPy's `add_parachute` has it: a `Device`, drag only;
    its mass is a `Mass` the user adds.
 8. **An elevation is both heights.** `Environment::new` takes the site's elevation as its height

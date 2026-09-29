@@ -386,10 +386,15 @@ fn motors_come_from_the_catalog_or_a_file() {
         Err(Error::AmbiguousMotor { name, candidates }) => {
             assert_eq!(name, "I175");
             assert_eq!(candidates.len(), 2, "{candidates:?}");
-            assert!(
-                candidates.iter().any(|c| c.ends_with("I175WS")),
-                "{candidates:?}"
-            );
+            assert_eq!(candidates, ["I175WS (AeroTech)", "411I175-14A (Cesaroni)"]);
+            // Each is listed by a designation that finds it alone.
+            for candidate in &candidates {
+                let designation = candidate.split(' ').next().unwrap();
+                assert_eq!(
+                    Motor::from_catalog(designation).unwrap().designation(),
+                    designation
+                );
+            }
         }
         other => panic!("expected an ambiguous name, got {other:?}"),
     }
@@ -609,6 +614,14 @@ fn degenerate_designs_error_or_stay_finite() {
     // NaN tokens, wherever a number goes.
     let (what, value) = domain(rocket.add_nose(Nose::solid(ogive, f64::NAN, abs())));
     assert!(what == "nose length, m" && value.is_nan());
+    // A shape parameter out of its range: a tangent ogive's radius ratio is at least 1.
+    let short_arc = NoseShape::Ogive { radius_ratio: 0.1 };
+    let design_domain = |result: Result<&mut Rocket, Error>| match result {
+        Err(Error::Design(DesignError::Domain { what, .. })) => what,
+        other => panic!("expected the design's domain error, got {other:?}"),
+    };
+    let what = design_domain(rocket.add_nose(Nose::solid(short_arc, 0.2, abs())));
+    assert!(what.contains("ogive"), "{what}");
     let nan_wall = Nose::hollow(ogive, 0.2, f64::NAN, abs());
     assert_eq!(domain(rocket.add_nose(nan_wall)).0, "nose wall, m");
     let nan_tube = Tube::new(f64::INFINITY, 0.001, abs());
