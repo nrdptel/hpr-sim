@@ -8580,7 +8580,7 @@ answers: pods (ADR-089 to ADR-091), clusters (ADR-075), fillets (ADR-096) and tu
    |---|---|---|
    | a shoulder written with no wall | OpenRocket's rule: it weighs nothing | ADR-061 |
    | a part weighed by volume, with no material | OpenRocket's rule: 680 kg/m³ | ADR-061 |
-   | which override wins (L51) | OpenRocket's mass on every probe; the centre under a covering mass override that states no centre is a departure (3.7 mm; 19.7 mm when the part inside has its own override); flags that disagree are a limitation (4.7 mm) | ADR-061 |
+   | which override wins (L51) | OpenRocket's mass on every probe; the centre under a part's covering mass override that states no centre is a departure (3.7 mm; 19.7 mm when the part inside has its own override); flags that disagree are a limitation (4.7 mm) | ADR-061 |
    | inertia under a mass override | departure: hpr scales all it covers | ADR-061 |
    | rounded and airfoil fin sections | departure: hpr's cited sections | ADR-062 |
    | roll inertia | explained by OpenRocket's fin shortcut; hpr keeps its exact integral | ADR-062 |
@@ -8603,9 +8603,9 @@ answers: pods (ADR-089 to ADR-091), clusters (ADR-075), fillets (ADR-096) and tu
    met today. On the *Tube fin rocket* at rod clearance, hpr's margin is 0.79 calibres against
    OpenRocket's 1.87 (ADR-099). The two centres of mass there are 0.002 calibres apart
    (`validation/reports/openrocket-flights.json`), so the gap is the centre of pressure's:
-   hpr's is 1.07 calibres forward of OpenRocket's, further than Loft's 0.9. M2.2f is done when the test asserts L19's 0.25 calibres and passes. If that
-   cannot hold, an ADR gives the measurement, and the lesson's row names a test that pins the gap
-   and says so, as L18's row does.
+   hpr's is 1.07 calibres forward of OpenRocket's, further than Loft's 0.9. M2.2f is done when the
+   test asserts L19's 0.25 calibres and passes. If that cannot hold, an ADR gives the measurement,
+   and the lesson's row names a test that pins the gap and says so, as L18's row does.
 
 **Evidence.** `cargo xtask ork`, run on 2026-09-28 with OpenRocket's record unchanged, passes on
 71 files, 51 distinct by content:
