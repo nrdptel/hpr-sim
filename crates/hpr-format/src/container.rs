@@ -95,9 +95,10 @@ impl Entry {
 /// `..`. It holds no `\`, no `:` and no control character, since each can reach outside the
 /// folder a container is unpacked into on some system. No part is longer than [`MAX_PART_BYTES`],
 /// none ends in `.` or a space, and none is
-/// a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, with or
-/// without an extension), which Windows would drop or open as a device. And it is not
-/// [`DESIGN_ENTRY`] in any case.
+/// a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `CONIN$`, `CONOUT$`, `COM0` to `COM9`,
+/// `LPT0` to `LPT9`, `COM` or `LPT` with `¹`, `²` or `³`, with or without an extension or spaces
+/// before it), which Windows would drop or open as a device. And neither it nor its first folder
+/// is [`DESIGN_ENTRY`], ignoring case.
 ///
 /// # Errors
 ///
@@ -108,9 +109,14 @@ pub fn check_name(name: &str) -> Result<(), FormatError> {
     if name.is_empty() {
         return refused("an attachment's name is empty".to_owned());
     }
-    if name.eq_ignore_ascii_case(DESIGN_ENTRY) {
+    if name
+        .split('/')
+        .next()
+        .is_some_and(|first| folded(first) == DESIGN_ENTRY)
+    {
         return refused(format!(
-            "an attachment is named {quoted:?}, which is the design's entry"
+            "an attachment is named {quoted:?}, which is the design's entry or a folder of that \
+             name"
         ));
     }
     if let Some(bad) = name
@@ -205,7 +211,10 @@ fn check_names<'a>(names: impl Iterator<Item = &'a str> + Clone) -> Result<(), F
 }
 
 /// `name` with its case folded as a file system that ignores case compares it: upper case then
-/// lower, so that the two lower-case sigmas (`σ`, `ς`) and the Kelvin sign fold as one letter.
+/// lower, so that letters with one capital but two small forms fold as one, such as `σ` and `ς`,
+/// `s` and `ſ`, or `μ` and the micro sign `µ`. Unicode's full mapping also folds some letters
+/// into two (`ß` into `ss`), so a pair such as `straße` and `strasse` is refused too, though
+/// Windows would keep both: the rule errs towards refusing.
 fn folded(name: &str) -> String {
     name.to_uppercase().to_lowercase()
 }

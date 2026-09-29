@@ -9445,8 +9445,9 @@ used `attachments` for the source `.ork`'s other entries, which the brief's cont
    folders: none of its parts empty, `.` or `..`, longer than 255 bytes, ending in `.` or a space,
    or naming a Windows device with or without an extension (`CON`, `CONIN$`, `COM0` to `COM9`,
    `LPT¹` and the like), no `\`, `:` or control character, not `design.hpr` in any case; no two
-   names the same ignoring case (compared upper-cased then lower-cased, so `ς`, `σ` and `Σ` meet),
-   and none also another's folder, found by a sorted lookup that copies no name per folder. A container holds at most 256 MiB unpacked, which
+   names the same ignoring case (compared upper-cased then lower-cased, so `ς`, `σ` and `Σ` meet,
+   and `ß` meets `ss`, a conservative refusal), none also another's folder, and none in a folder
+   named `design.hpr`. A container holds at most 256 MiB unpacked, which
    the writer and the reader both hold to. The reader checks every name before it decompresses,
    passes over a folder's own entry if it is empty, refuses a symbolic link and a name beyond ASCII
    not marked as UTF-8, and
@@ -9473,8 +9474,8 @@ with another motor where its `.ork` is not.
 
 **Not chosen: reading a 0.1 document with no sign of its airframe as read as written.** The first
 draft of the migration did; review showed a rocket with a part left out flying another motor from
-its 0.1 document. Marking it unknown means 28 corpus designs that could fly another motor refuse
-one until their `.ork` is converted again; that is the cheaper mistake.
+its 0.1 document. Marking it unknown means `hpr sim` refuses another motor in 28 corpus designs
+that could fly one, until their `.ork` is converted again; that is the cheaper mistake.
 
 **Not chosen: the source's files as container entries.** A `.hprz` could store `source_files` as
 entries rather than inside the document. Keeping the document whole means the container's design

@@ -1043,12 +1043,30 @@ fn an_attachment_name_that_leaves_its_folder_is_refused() {
         message.contains("\"notes/\" is a folder's entry that is not an empty folder"),
         "{message}"
     );
-    // Names that differ only by a letter's case, where Rust's lower case alone keeps them apart:
-    // the Greek final sigma, and the Kelvin sign.
+    // So is one the zip reader takes for a folder by a `\` at its end.
+    let zip = zip_of(&[("design.hpr", design.as_bytes()), ("notes\\", b"")]);
+    let message = container::read(&zip).unwrap_err().to_string();
+    assert!(
+        message.contains("\"notes\\\\\" is a folder's entry that is not an empty folder"),
+        "{message}"
+    );
+    // The design's entry is neither an attachment's name nor its folder, in any case.
+    for name in ["design.hpr/x", "DESIGN.HPR/x", "de\u{17f}ign.hpr"] {
+        let message = container::check_name(name).unwrap_err().to_string();
+        assert!(message.contains("the design's entry"), "{name}: {message}");
+        let zip = zip_of(&[("design.hpr", design.as_bytes()), (name, b"1")]);
+        let message = container::read(&zip).unwrap_err().to_string();
+        assert!(message.contains("the design's entry"), "{name}: {message}");
+    }
+    // Names that differ only by a letter's case, some of which Rust's lower case alone keeps apart:
+    // the Greek final sigma, the long s and the micro sign. Full case mapping also takes `ß` for
+    // `ss`, which the rule refuses rather than risk.
     for (a, b) in [
         ("\u{3b1}\u{3c3}.txt", "\u{391}\u{3a3}.txt"),
         ("\u{3b1}\u{3c2}.txt", "\u{3b1}\u{3c3}.txt"),
-        ("\u{212a}.txt", "k.txt"),
+        ("\u{17f}.txt", "s.txt"),
+        ("\u{b5}.txt", "\u{3bc}.txt"),
+        ("stra\u{df}e.csv", "strasse.csv"),
     ] {
         let hprz = hprz_of(vec![
             container::Entry::new(a, vec![1]),
@@ -1069,8 +1087,9 @@ fn an_attachment_name_that_leaves_its_folder_is_refused() {
             .value,
         hprz
     );
-    // A name of 30,000 folders is checked in memory of its own size, not one copy per folder (which
-    // was about a gigabyte), whether it stands alone or beside its own first folder.
+    // A name of 30,000 folders is taken, and found to be the file of its own first folder. (Its
+    // check once copied the name for each folder, about a gigabyte; this test shows the answers,
+    // not the memory.)
     let deep = format!("{}x", "a/".repeat(30_000));
     let hprz = hprz_of(vec![container::Entry::new(deep.as_str(), vec![1])]);
     assert_eq!(
@@ -1097,6 +1116,19 @@ fn an_attachment_name_that_leaves_its_folder_is_refused() {
             .collect(),
     );
     assert!(container::write(&hprz).is_ok());
+    // Nor do they hide a file of the folder that sorts after them.
+    let names = ["logs", "logs-old", "logs.csv", "logs/a.csv"];
+    let hprz = hprz_of(
+        names
+            .iter()
+            .map(|name| container::Entry::new(*name, vec![1]))
+            .collect(),
+    );
+    let message = container::write(&hprz).unwrap_err().to_string();
+    assert!(
+        message.contains("\"logs\" is also the folder of another"),
+        "{message}"
+    );
     // A folder's own entry holds nothing and is passed over.
     let mut folders = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     folders
@@ -1361,7 +1393,23 @@ fn the_migration_is_never_wrong_about_a_public_designs_airframe() {
             .unwrap()
             .remove("airframe_not_as_written");
         let migrated = from_json(&value.to_string()).unwrap();
-        let reason = migrated.provenance.source.unwrap().airframe_not_as_written;
+        let reason = migrated
+            .provenance
+            .source
+            .as_ref()
+            .unwrap()
+            .airframe_not_as_written
+            .clone();
+        // All but that answer is the document first written.
+        let mut expected = document.clone();
+        expected
+            .provenance
+            .source
+            .as_mut()
+            .unwrap()
+            .airframe_not_as_written
+            .clone_from(&reason);
+        assert_eq!(migrated, expected, "{name}");
         match (truth.as_deref(), reason.as_deref()) {
             (truth, reason) if truth == reason => counts[0] += 1,
             (_, Some(migrate::UNKNOWN)) => counts[usize::from(truth.is_some()) + 1] += 1,

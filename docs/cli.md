@@ -506,7 +506,7 @@ wrote  demo.hpr: "Loft Demo 38mm — motor comparison", 2 motor configurations, 
 The document holds everything hpr read from the `.ork`, including what hpr doesn't model, so
 `hpr convert demo.hpr demo.ork` writes the `.ork` hpr would write from the original, byte for byte.
 `hpr sim demo.hpr` flies it to the same flight as the `.ork`, but without the `.ork` reader's
-warnings, which only `hpr convert` prints. A document of an older version of the format is migrated
+warnings, which hpr prints only when it reads the `.ork` itself. A document of an older version of the format is migrated
 as it is read, and the output says from which version. `hpr sim` may refuse `--motor` for a
 version 0.1 document, which didn't record whether the rocket was read exactly as written; converting
 the `.ork` again fixes that ([versions](format/hpr.md#versions)).

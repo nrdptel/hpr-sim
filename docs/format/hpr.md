@@ -15,8 +15,8 @@ A document of the older version 0.1 is migrated when it is read. Rust programs c
 through the `hpr_format` library. Generated TypeScript and Python types come with the format's next
 step, [M3.3c](../decisions-and-roadmap.md#m3-3c).
 
-**How far to trust it.** Converting keeps everything hpr read from the `.ork` but the reader's warnings. hpr's checks use 75
-`.ork` files and read 73. Each of the 73 goes `.ork` → `.hpr` → `.ork` and comes back as the same
+**How far to trust it.** Converting keeps everything hpr read from the `.ork` except the reader's
+warnings. hpr's checks use 75 `.ork` files and read 73. Each of the 73 goes `.ork` → `.hpr` → `.ork` and comes back as the same
 design, bit for bit, and as the `.ork` hpr writes from the original, byte for byte. That `.ork` is
 close to the original file but not the same: [what the writer changes](ork.md#writing-a-ork-back-out)
 says how. The 109 motor configurations that fly, spread over 30 of the designs, reach the same
@@ -118,12 +118,14 @@ an attachment, kept byte for byte, under its name, in its order.
 - **Names are relative paths**, with `/` between folders, such as `logs/flight-1.csv`. No part of a
   name may be empty, `.` or `..`, and a name holds no `\`, `:` or control character, so no name can
   climb out of the folder a container is unpacked into. No attachment may be named `design.hpr`, in
-  any mix of capitals.
+  any mix of capitals, nor sit in a folder of that name.
 - **Names that would unpack as one file are refused**: two names the same but for capitals, a name
   that is also another's folder (`logs` beside `logs/a.csv`), and, for Windows, a part ending in `.`
   or a space, or named as a device (`CON`, `NUL`, `COM1` and the like, with or without an
-  extension). No part of a name is longer than 255 bytes, the most common file systems' limit. Two spellings of one accented
-  letter, which macOS can merge, are not caught.
+  extension). No part of a name is longer than 255 bytes, the most common file systems' limit.
+  Capitals are compared as Unicode maps them, which also takes `ß` for `ss`, so `straße.csv` beside
+  `strasse.csv` is refused though Windows would keep both. Two spellings of one accented letter,
+  which macOS can merge, are not caught.
 - **At most 256 MiB, unpacked.** The design and its attachments together hold no more: hpr refuses
   to write a bigger container, and to read one, so a small, hostile archive can't fill memory.
 - **The same design and files give the same bytes.** Every entry is compressed with deflate, zip's
@@ -164,11 +166,12 @@ examples):
 | `container::write`, `container::read` | write and read a `.hprz` |
 
 **Editing a document by hand.** hpr flies what the document says, and the `.ork` written from it
-carries an edit to the airframe, the recovery or the simulations. The motors are the exception:
-they are held twice ([what is not there yet](#what-is-not-there-yet)). `hpr sim` flies the motors
-under `rocket.configurations`, and the `.ork` writer writes those under `motors.configurations`, so
-change a motor in both places, or convert the `.ork` again. Any program that checks JSON against a JSON
-Schema can check an edited document before hpr reads it ([the schema](#the-schema)). No other
+carries an edit to the airframe, the recovery or the simulations. (`hpr sim` flies no parachute or
+separation yet, so a recovery edit changes only the `.ork`.) The motors are the exception: they are
+held twice ([what is not there yet](#what-is-not-there-yet)). `hpr sim` flies the motors under
+`rocket.configurations`, and the `.ork` writer takes its motors from `motors.configurations`, so
+change a motor in both places, or convert the `.ork` again. Nothing warns when the two disagree.
+Any program that checks JSON against a JSON Schema can check an edited document before hpr reads it ([the schema](#the-schema)). No other
 design program reads `.hpr` or `.hprz` yet.
 
 The text is canonical, meaning there is exactly one way to write a given design: two-space indents,
@@ -211,8 +214,10 @@ the migration:
 
 - recovers 5 of the 8 reasons, and marks the other 3 unknown;
 - marks 28 of the 65 designs read as written unknown too, so 31 of 73 in all are unknown;
-- gives no wrong answer. Converting the `.ork` again gives a
-0.2 document that knows.
+- gives no wrong answer.
+
+Converting the `.ork` again gives a 0.2 document that knows. To see whether a 0.1 document was
+marked unknown, convert it to a `.hpr` and look at `provenance.source.airframe_not_as_written`.
 
 The reasons are in [ADR-111](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-111-m33-the-hpr-design-format-its-extensions-versions-and-crate-2026-09-29), which set the extensions and the first version policy, and
 [ADR-112](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-112-m33b-the-hprz-container-and-migrations-2026-09-29), which added the container and the first migration.
@@ -294,9 +299,12 @@ The tests also cover the rest of this page:
   `attachments` renamed. It is the document the current reader makes from the same `.ork`, flies
   on the curve it embeds, and writes that `.ork` back. Other tests migrate edited 0.1 documents:
   each way the airframe can be recovered, found read as written, or marked unknown, and old
-  documents that already hold a 0.2 key, which are refused. A last one migrates every public design
-  from its 0.1 shape and holds the answer to the `.ork` reader's: never wrong, though with no motor
-  catalog in the tests only the design with an embedded curve shows it, and the rest are unknown.
+  documents that already hold a 0.2 key, which are refused. A last one migrates each of the 17
+  public designs from its 0.1 shape, plus two made from them: one with a parallel stage hpr leaves
+  out, and one with an invented embedded curve. Each comes back as the document first written,
+  but for the airframe's answer, which is never wrong. With no motor catalog in these tests, no
+  public design's configuration flies, so all 17 come out unknown, and only the invented-curve
+  design's answer is recovered.
 - **The container**: a design with four attachments (a text file, an image, an empty file and a
   name in accents) reads back the same and writes the same bytes again. Each name rule above, two
   entries of one name, a symbolic link, a name not marked as UTF-8, a folder's entry that holds
