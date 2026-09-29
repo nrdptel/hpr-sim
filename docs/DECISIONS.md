@@ -8672,7 +8672,7 @@ author wrote that "we won't really know until we can find a wind tunnel" (openro
      OpenRocket's slope is 1.73 times the long-ring limit on the 6 mm probes, and 1.62 on the
      touching one. So it is below that estimate for three to five tubes, and above it for six,
      eight and the touching tubes. At five the two are close: a finer solve, at 0.0005 radii, gives
-     1.79, about 4% above OpenRocket. Nothing measured supports either code.
+     1.79, about 3.5% above OpenRocket. Nothing measured supports either code.
    - Its centre is a quarter of a tube's length aft of the leading edge up to Mach 0.5, and at the
      leading edge from Mach 0.6. So the *Tube fin rocket*'s own centre of pressure moves 0.73
      calibres forward between those two speeds in OpenRocket. OpenRocket's pull request #3235,

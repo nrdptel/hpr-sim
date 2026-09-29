@@ -3007,12 +3007,13 @@ reads the same probes with hpr and pins all 70 gaps. The record shows:
 - OpenRocket's tubes lift 1.26 to 1.86 times what hpr's ring wings do, at every Mach number.
 - Its lift per tube is the same whatever the number of tubes, so it models no interference that
   changes with the count. Slender-body theory with the body included predicts one, and it falls
-  as tubes are added: by an estimate not yet checked, at least 1.96 times as many isolated rings
-  for three 6 mm tubes, 1.57 for six, and 1.13 for six touching each other (taken 0.005 radii from
-  the body, and still rising as the gap closes;
-  [#234](https://github.com/nrdptel/hpr-sim/issues/234)). OpenRocket's lift is 1.73 times the
-  long-ring limit of isolated rings on the 6 mm probes: below the estimate for three tubes and
-  above it for six.
+  as tubes are added. An unchecked estimate, taken 0.005 radii from the body and still rising as
+  that gap closes, gives at least 1.96 times the lift of the same number of isolated rings for
+  three tubes of 6 mm radius, 1.57 for six, and 1.13 for six touching each other
+  ([#234](https://github.com/nrdptel/hpr-sim/issues/234)). OpenRocket's lift on the 6 mm probes
+  is 1.73 times the long-ring limit of isolated rings: below the estimate for three tubes. For
+  six, the same estimate taken closer, and carried on to contact, is about 1.65, a little below
+  OpenRocket's.
   hpr leaves the interference out.
 - OpenRocket puts the tubes' centre a quarter of their length aft of the leading edge up to Mach
   0.5. Its maintainers describe that as the subsonic rule its flat fins and tube fins share
@@ -3043,11 +3044,11 @@ Giving them OpenRocket's slope but keeping hpr's centre moves it 0.53 calibres a
 hpr keeps its model. Fletcher's measured centre moves forward, as a share of the ring's length,
 as a ring gets longer, and Hoerner and Borst assume an open tube's inner flow turns at its inlet.
 Nothing measured supports OpenRocket's quarter length or its extra lift. hpr's own centre for
-this rocket is unmeasured too: its tubes are longer for their diameter than Fletcher's `A = 2/3`
-ring (`A = 0.32`), so their centre comes from the line hpr draws from there to the leading edge. Placed as his
-thick `A = 1/3` ring's instead, it would give a margin of 0.29. Neither code has been checked against a measured tube-fin
-rocket, so which margin is nearer is open
-([#228](https://github.com/nrdptel/hpr-sim/issues/228)). Until then, check a tube-fin design in
+this rocket is unmeasured too: its tubes (`A = 0.32`) are longer than every ring Fletcher
+measured. With his `A = 1/3` ring left out, their centre comes from hpr's line from `A = 2/3` to
+the leading edge. Placed as his thick `A = 1/3` ring's instead, it would give a margin of 0.29.
+Neither code has been checked against a measured tube-fin rocket, so which margin is nearer is
+open ([#228](https://github.com/nrdptel/hpr-sim/issues/228)). Until then, check a tube-fin design in
 both programs and treat the smaller of the two margins as the more cautious estimate. It is not
 a bound: the thick-ring reading above gives a smaller one still.
 
