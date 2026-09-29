@@ -19,7 +19,8 @@ to turn) change.
 
 It is a Rust library first, meant to be built into other programs, as
 [RocketPy](glossary.md#rocketpy) is. RocketPy is an open-source rocket flight simulator, written in
-Python and used as a Python library. Python bindings and a graphical app are planned for hpr-sim.
+Python and used as a Python library. hpr-sim has a Python package too ([Python](python.md)), and a
+graphical app is planned.
 OpenRocket `.ork` design files are read today. The command-line tool, `hpr`, flies a `.ork` or a
 rocket's JSON, looks up and converts motor files, re-runs the validation, and reads an
 altimeter's flight log ([The command line](cli.md)).
@@ -47,6 +48,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
 | Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads the whole design: the stages and body components, the tubes, rings, fins, lugs and recovery gear on and inside them, the motor configurations, when parachutes open, and the simulations OpenRocket stored. The airframe's shape is cross-checked against a second reader and OpenRocket itself (positions against OpenRocket alone; mass and centre of gravity in [Mass properties](physics/mass.md#checked-against-openrocket)). Pods are read, weighed and flown, but no pod with bodies or fins has been checked against OpenRocket yet ([Pods](physics/aero.md#pods)), parallel stages are kept but not modelled, a part hpr cannot shape honestly is left out with a warning, and only a configuration whose motors all light at launch and have a thrust curve flies: 4 of the 170 in the reference library with the files' own curves and hpr's bundled catalog. A design is written back out as a `.ork` that reads back as the same design ([writing a `.ork`](format/ork.md#writing-a-ork-back-out)), and `hpr convert` or a Rust program can keep it as a `.hpr`, hpr's own format, and write the `.ork` back from that. TypeScript and Python programs can read a `.hpr` with generated types ([The hpr design format](format/hpr.md)) | [`.ork` design files](format/ork.md), [The hpr design format](format/hpr.md) |
 | Flight logs | Reads a PerfectFlite altimeter's `.pf2` log on its own, with no design file, and takes liftoff, apogee, the top speed, landing and the descent from it, each saying where it came from or why the log can't support it | [Reading a flight log](reading-a-flight-log.md), [Flight-log readings](physics/log-readings.md), [`.pf2` files](format/pf2.md) |
+| Python | The `hpr` package: the builder's rocket, motor, site and flight from Python, with the recording as NumPy arrays and a design read from a file. Built from source, not on PyPI; no staging; a design read from a file flies without its stored parachutes, and most `.ork` configurations are refused as they don't fly as written | [Python](python.md) |
 
 ## What doesn't work yet
 
@@ -132,8 +134,8 @@ out.
   design file and exports its recording ([The command line](cli.md#hpr-sim)), but it flies no
   recovery device or stage separation yet. A Rust program flies both:
   [Getting started](getting-started.md) flies a first rocket, and [The builder](the-builder.md)
-  builds and flies one of your own in a few calls. Python comes in
-  [M4.3](decisions-and-roadmap.md#m4-3).
+  builds and flies one of your own in a few calls. A Python program flies the parachutes of a
+  rocket it builds part by part, but no staging ([Python](python.md)).
 - **`.ork` files are read, but most don't fly with their own motors.** A `.ork` file is read
   ([`.ork` design files](format/ork.md)), but few of its motor configurations fly as written, as
   hpr has few motors' curves, and its recovery settings are not flown. `hpr sim --motor` flies one

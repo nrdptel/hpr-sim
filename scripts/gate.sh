@@ -15,6 +15,9 @@
 # Extra step, not in the default set: types (CI's `types` job: the design format's generated
 # TypeScript and Python types checked with tsc and mypy, fetched by npx and uvx; about 2 s once
 # fetched), for a change to the schema or the generator in xtask/src/format_types.rs.
+# Extra step, not in the default set: python (CI's `python` job: the Python package's wheel built
+# by maturin and its pytest suite run on CPython 3.10 and 3.13, fetched by uv; about 20 s once
+# fetched), for a change to crates/hpr-py or what it wraps.
 # The commands are CI's own (.github/workflows/ci.yml), `--locked` included, so a Cargo.lock that
 # needs updating fails here rather than on every CI job. `validate` is `--check`: every case,
 # compared with the committed report. Regenerating the report is a separate, deliberate step
@@ -46,12 +49,13 @@ cmd_for() {
     examples) echo "$XTASK examples --check --locked" ;;
     docs) echo "cargo test --locked -p xtask" ;;
     types) echo "$XTASK format --typecheck" ;;
+    python) echo "scripts/python-tests.sh" ;;
     *) return 1 ;;
   esac
 }
 
 for step in $STEPS; do
-  cmd_for "$step" >/dev/null || { echo "unknown step: $step (known: $ALL docs types)" >&2; exit 64; }
+  cmd_for "$step" >/dev/null || { echo "unknown step: $step (known: $ALL docs types python)" >&2; exit 64; }
 done
 mkdir -p "$LOGDIR"
 

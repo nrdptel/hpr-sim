@@ -55,6 +55,10 @@ jsonschema = { version = "0.58.0", default-features = false }
 # by hand. No default features: no Arrow, no compression codecs, just the file reader.
 parquet-reader = { package = "parquet", version = "60.0.0", default-features = false }
 proptest = "1.11.0"
+# `hpr-py`: the Python bindings. One abi3 wheel per operating system serves CPython 3.10 and later.
+pyo3 = { version = "0.29.2", default-features = false, features = ["macros", "abi3-py310"] }
+# `hpr-py`: a flight's recording and a motor's thrust curve handed to Python as NumPy arrays.
+numpy = "0.29.0"
 # The hpr design format carries a design file's binary attachments, such as a `.ork`'s decal images, as
 # base64 text (RFC 4648).
 base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }

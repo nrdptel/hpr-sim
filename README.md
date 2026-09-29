@@ -34,6 +34,12 @@ Scope for now: commercial off-the-shelf solid rocket motors.
 **Every figure this tool produces is an estimate from a model, not a measurement, and never a
 go/no-go verdict.** The motor's printed data and your RSO are authoritative.
 
+## Python
+
+`crates/hpr-py` builds `hpr`, a Python package over the library's builder: build a rocket part by
+part or read a design file, fly it, and get its recording as NumPy arrays. It isn't on PyPI yet;
+[Python](https://nrdptel.github.io/hpr-sim/python.html) says how to build and use it.
+
 ## The command line
 
 `hpr` is the command-line tool; [The command line](https://nrdptel.github.io/hpr-sim/cli.html)

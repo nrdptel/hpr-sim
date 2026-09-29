@@ -1,0 +1,36 @@
+# The `hpr` Python package, built from this crate by maturin: `maturin build --release` here, or
+# `maturin develop` into a virtual environment. One abi3 wheel per operating system serves CPython
+# 3.10 and later. Nothing is published (docs/STATUS.md, "Needs Neer").
+[build-system]
+requires = ["maturin>=1.9.4,<2"]
+build-backend = "maturin"
+
+[project]
+name = "hpr-sim"
+description = "A flight simulator for hobby and high-power rockets."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT OR Apache-2.0"
+dependencies = ["numpy>=1.22"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.urls]
+Documentation = "https://nrdptel.github.io/hpr-sim/python.html"
+Repository = "https://github.com/nrdptel/hpr-sim"
+
+[tool.maturin]
+module-name = "hpr._hpr"
+python-source = "python"
+# Bytecode caches from running the tests against `maturin develop` stay out of the wheel.
+exclude = ["python/**/__pycache__/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
