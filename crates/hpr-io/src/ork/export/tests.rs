@@ -980,3 +980,29 @@ fn a_kept_path_counting_past_anything_written_is_left_out() {
         }
     }
 }
+
+/// OpenRocket applies a part's catalogue preset where it reads the `<preset>` tag, over the sizes
+/// and material read before it. hpr keeps the tag unread, and written after the part's own sizes it
+/// had OpenRocket fly the catalogue's part instead: a design flew 11% low. So a kept preset is
+/// written first, after the part's name and id, where OpenRocket writes it.
+#[test]
+fn a_preset_is_written_before_the_parts_own_sizes() {
+    let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Probe</name><referencetype>maximum</referencetype>
+    <subcomponents><stage><name>Sustainer</name><subcomponents>
+      <bodytube><name>Tube</name><id>0f0e0d0c-0b0a-4900-8800-070605040302</id>
+        <preset type="BODY_TUBE" manufacturer="Invented" partno="IT-1" digest="0123abcd"/>
+        <material type="bulk" density="700.0">Invented paper</material>
+        <length>0.5</length><thickness>0.001</thickness><radius>0.02</radius></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#;
+    let original = design_of(xml);
+    let text = document(&original).value.to_xml();
+    let at = |tag: &str| text.find(tag).unwrap_or_else(|| panic!("{tag} in {text}"));
+    assert!(at("<id>") < at("<preset "), "{text}");
+    for own in ["<length>", "<thickness>", "<radius>", "<material "] {
+        assert!(at("<preset ") < at(own), "{own} in {text}");
+    }
+    assert_eq!(design_of(text.as_bytes()), original);
+}

@@ -23,6 +23,9 @@ use super::super::extensions::{OpenRocketExtension, tag_key};
 use super::super::warning::{Warning, WarningKind};
 use super::xml::{Build as _, element};
 
+/// A part's catalogue preset: the one tag whose place OpenRocket reads meaning into.
+const PRESET: &str = "preset";
+
 /// Puts everything in `kept` back into `document`, and says what could not be.
 pub(super) fn splice(document: &mut Document, kept: &OpenRocketExtension) -> Vec<Warning> {
     let mut warnings = Vec::new();
@@ -162,11 +165,23 @@ fn insert_tag(document: &mut Document, at: &str, tag: &Element) -> bool {
     if parent.elements().filter(|e| same(e)).count() != index {
         return false;
     }
-    let place = parent
-        .children
-        .iter()
-        .position(|child| matches!(child, Node::Element(e) if e.name == "subcomponents"))
-        .unwrap_or(parent.children.len());
+    let place = if tag.name == PRESET {
+        // OpenRocket applies a catalogue preset where it reads the tag, over the sizes and
+        // material read before it: after the part's own, the catalogue's would replace them.
+        parent
+            .children
+            .iter()
+            .position(
+                |child| matches!(child, Node::Element(e) if e.name != "name" && e.name != "id"),
+            )
+            .unwrap_or(parent.children.len())
+    } else {
+        parent
+            .children
+            .iter()
+            .position(|child| matches!(child, Node::Element(e) if e.name == "subcomponents"))
+            .unwrap_or(parent.children.len())
+    };
     parent.children.insert(place, Node::Element(tag.clone()));
     true
 }

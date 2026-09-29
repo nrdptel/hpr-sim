@@ -2909,6 +2909,11 @@ committed check.
   one of its own. A part the file gave no id reads back with the same id hpr made up for it.
 - OpenRocket reads an inner tube's roll angle, and a parachute's or a mass's, only under the older
   tag `radialdirection`. So they are written under that tag.
+- OpenRocket applies a part's catalogue preset (`<preset>`, a maker's part number) at the moment
+  it reads that tag, over the sizes and material it has read so far. hpr keeps the tag without
+  reading it, and writes it first, after the part's name and id, as OpenRocket does. Written
+  after the part's own sizes, it had OpenRocket fly the catalogue's part instead: one design flew
+  11% low.
 
 **What is still lost.** None of these happens in the reference library:
 
