@@ -10,6 +10,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use hpr::hpr_design::{self, Configuration, Ignition, MountedMotor, checks};
+use hpr::hpr_format::{self, container};
 use hpr::hpr_io::ork;
 use hpr::hpr_motor::text::{ParseWarning, WarningKind as ReadWarning};
 use hpr::hpr_motor::{eng, rse};
@@ -38,7 +39,8 @@ pub const MIN_INTERVAL_S: f64 = 0.001;
 /// `hpr sim`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct SimArgs {
-    /// The design: an OpenRocket .ork file, or a rocket's JSON (.json; not yet an .hpr document)
+    /// The design: an OpenRocket .ork file, an hpr design (.hpr, or .hprz with its attachments),
+    /// or a rocket's JSON (.json)
     pub design: String,
     /// The motor configuration to fly, by its id [default: the design's default, or its only one]
     #[arg(long, value_name = "ID")]
@@ -406,49 +408,71 @@ fn descent(recovery: &str) -> String {
 const WHOLE_STACK: &str =
     "the stages fly as one stack: hpr sim flies no separation yet, so none comes apart";
 
-/// Reads a `.ork` or a rocket's JSON, by its extension.
+/// Reads a `.ork`, an hpr design (`.hpr` or `.hprz`) or a rocket's JSON, by its extension.
 fn read_design(path: &str) -> Result<Read, Failure> {
     let extension = Path::new(path)
         .extension()
         .and_then(|extension| extension.to_str())
         .map(str::to_ascii_lowercase);
     let bytes = || std::fs::read(path).map_err(|error| Failure::Input(format!("{path}: {error}")));
+    let refused = |error: &dyn std::fmt::Display| Failure::Input(format!("{path}: {error}"));
     match extension.as_deref() {
         Some("ork") => {
-            let file =
-                ork::read(&bytes()?).map_err(|error| Failure::Input(format!("{path}: {error}")))?;
+            let file = ork::read(&bytes()?).map_err(|e| refused(&e))?;
             let design = ork::design(&file.value);
             let mut warnings = file.warnings;
             warnings.extend(design.warnings);
-            let design = design.value;
-            let devices = design.recovery.devices.len();
-            let mut notes = vec![if devices == 0 {
-                descent("the file has no recovery device")
+            Ok(Read::of(
+                DesignFormat::Ork,
+                design.value,
+                ork::airframe_not_as_written(&file.value),
+                Vec::new(),
+                warnings.iter().map(ork_warning).collect(),
+            ))
+        }
+        Some(kind @ ("hpr" | "hprz")) => {
+            let (document, written_as, attachments, format) = if kind == "hpr" {
+                let text = String::from_utf8(bytes()?)
+                    .map_err(|_| Failure::Input(format!("{path}: an .hpr file is UTF-8 text")))?;
+                let opened = hpr_format::read_json(&text).map_err(|e| refused(&e))?;
+                (opened.value, opened.written_as, 0, DesignFormat::Hpr)
             } else {
-                descent(&format!(
-                    "the file's {} {} not flown yet",
-                    count(devices, "recovery device"),
-                    if devices == 1 { "is" } else { "are" },
-                ))
-            }];
-            if design.rocket.stages.len() > 1 {
-                notes.push(WHOLE_STACK.to_owned());
+                let opened = container::read(&bytes()?).map_err(|e| refused(&e))?;
+                let attachments = opened.value.attachments.len();
+                (
+                    opened.value.design,
+                    opened.written_as,
+                    attachments,
+                    DesignFormat::Hprz,
+                )
+            };
+            let mut notes = Vec::new();
+            if written_as != hpr_format::VERSION {
+                notes.push(format!(
+                    "the design is version {written_as} of the hpr design format, read as version \
+                     {}",
+                    hpr_format::VERSION
+                ));
             }
-            if design.is_reduced() {
-                notes.push(
-                    "the file has parts hpr keeps aside instead of flying, such as a parallel \
-                     stage: the rocket flown is the rest of it"
-                        .to_owned(),
-                );
+            if attachments > 0 {
+                notes.push(format!(
+                    "the container's {} {} not read",
+                    count(attachments, "attachment"),
+                    if attachments == 1 { "is" } else { "are" },
+                ));
             }
-            Ok(Read {
-                format: DesignFormat::Ork,
-                rocket: design.rocket,
-                ork: Some(design.motors),
-                airframe: ork::airframe_not_as_written(&file.value),
+            let airframe = document
+                .provenance
+                .source
+                .as_ref()
+                .and_then(|source| source.airframe_not_as_written.clone());
+            Ok(Read::of(
+                format,
+                document.design(),
+                airframe,
                 notes,
-                warnings: warnings.iter().map(ork_warning).collect(),
-            })
+                Vec::new(),
+            ))
         }
         Some("json") => {
             let rocket: hpr_design::Rocket = serde_json::from_slice(&bytes()?)
@@ -467,12 +491,51 @@ fn read_design(path: &str) -> Result<Read, Failure> {
             })
         }
         _ => Err(Failure::Input(format!(
-            "{path}: hpr sim reads an OpenRocket .ork file or a rocket's JSON (.json), not yet an .hpr document"
+            "{path}: hpr sim reads an OpenRocket .ork file, an hpr design (.hpr or .hprz), or a \
+             rocket's JSON (.json)"
         ))),
     }
 }
 
 impl Read {
+    /// A design read as hpr's `.ork` reader models it, with the notes on what `hpr sim` doesn't
+    /// fly after `notes`.
+    fn of(
+        format: DesignFormat,
+        design: ork::Design,
+        airframe: Option<String>,
+        mut notes: Vec<String>,
+        warnings: Vec<InputWarning>,
+    ) -> Self {
+        let devices = design.recovery.devices.len();
+        notes.push(if devices == 0 {
+            descent("the file has no recovery device")
+        } else {
+            descent(&format!(
+                "the file's {} {} not flown yet",
+                count(devices, "recovery device"),
+                if devices == 1 { "is" } else { "are" },
+            ))
+        });
+        if design.rocket.stages.len() > 1 {
+            notes.push(WHOLE_STACK.to_owned());
+        }
+        if design.is_reduced() {
+            notes.push(
+                "the file has parts hpr keeps aside instead of flying, such as a parallel                  stage: the rocket flown is the rest of it"
+                    .to_owned(),
+            );
+        }
+        Self {
+            format,
+            rocket: design.rocket,
+            ork: Some(design.motors),
+            airframe,
+            notes,
+            warnings,
+        }
+    }
+
     /// Every configuration of the file, and whether it flies as the file has it.
     fn configurations(&self) -> Vec<DesignConfiguration> {
         match &self.ork {
@@ -899,7 +962,7 @@ fn motor_warning(file: &str, warning: &ParseWarning) -> InputWarning {
     }
 }
 
-fn ork_warning(warning: &ork::Warning) -> InputWarning {
+pub(crate) fn ork_warning(warning: &ork::Warning) -> InputWarning {
     InputWarning {
         at: warning.at.clone(),
         kind: match warning.kind {

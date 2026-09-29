@@ -28,6 +28,7 @@
 
 pub mod analyze;
 pub mod convert;
+mod convert_design;
 pub mod motors;
 pub mod output;
 pub mod registry;
@@ -101,11 +102,13 @@ pub struct Cli {
 /// The commands, in the order `hpr --help` lists them.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Fly a .ork or a rocket's .json from a rail and print its flight; export its recording
+    /// Fly a .ork, an .hpr or .hprz design, or a rocket's .json from a rail and print its flight;
+    /// export its recording
     Sim(sim::SimArgs),
     /// Run the validation cases and check them against the committed reports and the census
     Validate(validate::ValidateArgs),
-    /// Convert a motor file between .eng and .rse, or write a catalog motor as either
+    /// Convert a motor file between .eng and .rse, or a catalog motor to either; or a design
+    /// between .ork, .hpr and .hprz
     Convert(convert::ConvertArgs),
     /// Look up motors in the bundled catalog, or read a .eng or .rse motor file
     #[command(subcommand)]

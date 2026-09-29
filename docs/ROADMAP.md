@@ -720,14 +720,12 @@
   (Loft lesson P10). `hpr analyze <log>` reads a flight log and prints its readings; it takes no
   design and runs no simulation (ADR-046), which is how the analyzer reaches a user who only ever
   wants that.
-
   *Done when:* `assert_cmd` tests cover every implemented command and the JSON output validates
-  against the published schemas, and `hpr analyze` is tested on a log with no design file
-  present. Split into a to d (ADR-105).
-  Met, bars kept (ADR-105 to 108): M4.2a `motors`, `completions` and every refusal, schemas and a
-  stale-table check; M4.2b a public `.ork` flown bit for bit (the pod probe, `--motor H54`); M4.2c
-  a spoiled copy fails three ways, 32 curves round-trip; M4.2d the public Pnut log, 1,010 ft
-  against 1,009 ft.
+  against the published schemas, and `hpr analyze` is tested on a log with no design file present.
+  Split into a to d (ADR-105). Met, bars kept (ADR-105 to 108): M4.2a `motors`, `completions` and
+  every refusal, schemas and a stale-table check; M4.2b a public `.ork` flown bit for bit (the pod
+  probe, `--motor H54`); M4.2c a spoiled copy fails three ways, 32 curves round-trip; M4.2d the
+  public Pnut log, 1,010 ft against 1,009 ft.
   - [x] **M4.2a The command surface and `hpr motors`.**
   - [x] **M4.2b `hpr sim`.**
   - [x] **M4.2c `hpr validate` and `hpr convert`.**
@@ -759,10 +757,11 @@
   - [x] **M3.3a The document.** `DesignFile` as canonical JSON (`.hpr`), its schema in `schema/format/`.
     *Done when:* bullets 1, 2 and 4 above. *Result:* met (ADR-111): 73 of 73 round-trip, 109
     configurations fly three ways to the same apogee; 17 public designs, schema-checked, in CI.
-  - [ ] **M3.3b The container, migrations and the comparison.** *Done when:* a `.hprz` zip holds a
+  - [x] **M3.3b The container, migrations and the comparison.** *Done when:* a `.hprz` zip holds a
     design and its attachments and reads back the same; a migration test takes a document from an
     older version to the current one; the third bullet above; `hpr convert` writes and `hpr sim`
-    reads `.hpr`.
+    reads `.hpr`. *Result:* met (ADR-112): a `.hprz` reads back byte for byte; a committed 0.1
+    document migrates to 0.2, as do 73 of 73 corpus documents; the table in `hpr.md`; both commands.
   - [ ] **M3.3c Generated types.** *Done when:* TypeScript and Python types are generated from the
     schema, a check fails when they are stale, and each reads a public document.
 

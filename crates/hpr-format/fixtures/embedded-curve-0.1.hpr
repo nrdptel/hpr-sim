@@ -1,0 +1,371 @@
+{
+  "format": "hpr-design",
+  "version": "0.1",
+  "provenance": {
+    "tool": "hpr-sim",
+    "tool_version": "0.1.0",
+    "source": {
+      "format": "ork",
+      "sha256": "603f062950ef7cb41fca307ecfa2260d8eb27881c72b9b3053d5acde571d2489"
+    }
+  },
+  "rocket": {
+    "name": "rod-5-north",
+    "stages": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "Stage",
+        "components": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Nose",
+            "part": {
+              "nose_cone": {
+                "shape": {
+                  "kind": "conical"
+                },
+                "length_m": 0.2,
+                "base_radius_m": 0.03,
+                "wall": {
+                  "kind": "shell",
+                  "thickness_m": 0.002
+                },
+                "shoulder": null,
+                "material": {
+                  "name": "Probe",
+                  "density": {
+                    "kind": "bulk",
+                    "kg_m3": 1000.0
+                  }
+                }
+              }
+            },
+            "finish": {
+              "kind": "custom",
+              "roughness_m": 0.00006
+            },
+            "children": [
+              {
+                "id": "00000000-0000-4000-8000-000000000005",
+                "name": "Ballast",
+                "part": {
+                  "mass_component": {
+                    "mass_kg": 0.15,
+                    "packing": {
+                      "length_m": 0.02,
+                      "radius_m": 0.01,
+                      "radial_offset_m": 0.0,
+                      "angle_rad": 0.0
+                    }
+                  }
+                },
+                "position": {
+                  "from": "top",
+                  "aft_offset_m": 0.1
+                }
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "name": "Tube",
+            "part": {
+              "body_tube": {
+                "length_m": 0.6,
+                "outer_radius_m": 0.03,
+                "thickness_m": 0.001,
+                "material": {
+                  "name": "Probe",
+                  "density": {
+                    "kind": "bulk",
+                    "kg_m3": 1000.0
+                  }
+                }
+              }
+            },
+            "finish": {
+              "kind": "custom",
+              "roughness_m": 0.00006
+            },
+            "children": [
+              {
+                "id": "00000000-0000-4000-8000-000000000003",
+                "name": "Motor mount",
+                "part": {
+                  "inner_tube": {
+                    "length_m": 0.2,
+                    "outer_radius_m": 0.015,
+                    "thickness_m": 0.0005,
+                    "radial_offset_m": 0.0,
+                    "angle_rad": 0.0,
+                    "material": {
+                      "name": "Probe",
+                      "density": {
+                        "kind": "bulk",
+                        "kg_m3": 1000.0
+                      }
+                    }
+                  }
+                },
+                "position": {
+                  "from": "bottom",
+                  "aft_offset_m": 0.0
+                },
+                "motor_mount": {
+                  "overhang_m": 0.0
+                }
+              },
+              {
+                "id": "00000000-0000-4000-8000-000000000004",
+                "name": "Fins",
+                "part": {
+                  "fin_set": {
+                    "count": 3,
+                    "planform": {
+                      "kind": "trapezoidal",
+                      "root_chord_m": 0.12,
+                      "tip_chord_m": 0.06,
+                      "span_m": 0.08,
+                      "sweep_m": 0.06
+                    },
+                    "thickness_m": 0.003,
+                    "cross_section": "square",
+                    "tab": null,
+                    "cant_rad": 0.0,
+                    "base_angle_rad": 0.0,
+                    "material": {
+                      "name": "Probe",
+                      "density": {
+                        "kind": "bulk",
+                        "kg_m3": 1000.0
+                      }
+                    }
+                  }
+                },
+                "position": {
+                  "from": "bottom",
+                  "aft_offset_m": 0.0
+                },
+                "finish": {
+                  "kind": "custom",
+                  "roughness_m": 0.00006
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "reference_diameter": {
+      "kind": "maximum"
+    },
+    "configurations": [
+      {
+        "id": "00000000-0000-4000-8000-000000000097",
+        "name": "",
+        "motors": [
+          {
+            "mount": "00000000-0000-4000-8000-000000000003",
+            "designation": "H128W",
+            "diameter_m": 0.029,
+            "length_m": 0.194,
+            "motor": {
+              "curve": {
+                "times_s": [
+                  0.0,
+                  0.05,
+                  1.0,
+                  1.1
+                ],
+                "thrusts_n": [
+                  0.0,
+                  100.0,
+                  100.0,
+                  0.0
+                ]
+              },
+              "propellant": {
+                "model": "column",
+                "mass_kg": 0.06,
+                "center_m": 0.097,
+                "outer_radius_m": 0.0145,
+                "inner_radius_m": 0.0,
+                "length_m": 0.194
+              },
+              "dry": {
+                "mass_kg": 0.09,
+                "cg_m": 0.097,
+                "axial_inertia_kg_m2": 0.0000189225,
+                "transverse_inertia_kg_m2": 0.00029173125
+              },
+              "nozzle": null
+            },
+            "delay": {
+              "kind": "seconds",
+              "value": 0.0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "motors": {
+    "configurations": [
+      {
+        "id": "00000000-0000-4000-8000-000000000097",
+        "name": "",
+        "default": true,
+        "declared": true,
+        "inactive_stages": [],
+        "motors": [
+          {
+            "mount": "00000000-0000-4000-8000-000000000003",
+            "stage": 0,
+            "kind": "single",
+            "manufacturer": "AeroTech",
+            "designation": "H128W",
+            "digest": "501239de7374691072270406476cb243",
+            "diameter_m": 0.029,
+            "length_m": 0.194,
+            "delay": {
+              "kind": "seconds",
+              "value": 0.0
+            },
+            "ignition": {
+              "event": "automatic",
+              "delay_s": 0.0
+            },
+            "curve": {
+              "source": "embedded",
+              "entry": "thrustcurves/501239de7374691072270406476cb243.rse",
+              "motor": {
+                "curve": {
+                  "times_s": [
+                    0.0,
+                    0.05,
+                    1.0,
+                    1.1
+                  ],
+                  "thrusts_n": [
+                    0.0,
+                    100.0,
+                    100.0,
+                    0.0
+                  ]
+                },
+                "propellant": {
+                  "model": "column",
+                  "mass_kg": 0.06,
+                  "center_m": 0.097,
+                  "outer_radius_m": 0.0145,
+                  "inner_radius_m": 0.0,
+                  "length_m": 0.194
+                },
+                "dry": {
+                  "mass_kg": 0.09,
+                  "cg_m": 0.097,
+                  "axial_inertia_kg_m2": 0.0000189225,
+                  "transverse_inertia_kg_m2": 0.00029173125
+                },
+                "nozzle": null
+              }
+            }
+          }
+        ],
+        "unread": [],
+        "left_out": null,
+        "staging": null
+      }
+    ]
+  },
+  "recovery": {
+    "devices": [],
+    "separations": [],
+    "unread": [],
+    "unread_separations": []
+  },
+  "simulations": [
+    {
+      "name": "Tilted rod",
+      "status": "notsimulated",
+      "simulator": "RK4Simulator",
+      "calculator": "BarrowmanCalculator",
+      "conditions": {
+        "configuration": "00000000-0000-4000-8000-000000000097",
+        "rod_length_m": 1.0,
+        "rod_angle_rad": 0.08726646259971647,
+        "rod_direction_rad": 0.0,
+        "into_wind": false,
+        "wind_speed_m_s": 0.0,
+        "wind_turbulence": 0.0,
+        "wind_from_rad": 1.5707963267948966,
+        "wind_model": "Average",
+        "wind_levels": [],
+        "wind_levels_above": null,
+        "launch_altitude_m": 0.0,
+        "latitude_deg": 28.61,
+        "longitude_deg": -80.6,
+        "geodetic_method": "spherical",
+        "atmosphere": {
+          "model": "isa"
+        },
+        "time_step_s": 0.05,
+        "max_time_s": 1200.0
+      },
+      "results": null,
+      "parser_warnings": false
+    }
+  ],
+  "extensions": {
+    "x-openrocket": {
+      "parts": [],
+      "sections": [],
+      "tags": [
+        {
+          "at": "openrocket/rocket/@id[0]",
+          "element": {
+            "name": "id",
+            "attributes": [],
+            "children": [
+              {
+                "kind": "text",
+                "text": "00000000-0000-4000-8000-000000000098"
+              }
+            ]
+          }
+        }
+      ],
+      "attributes": [
+        {
+          "at": "openrocket/rocket/@motorconfiguration(00000000-0000-4000-8000-000000000097)[0]/@stage[0]",
+          "name": "number",
+          "value": "0"
+        },
+        {
+          "at": "openrocket/rocket/stage[0]/bodytube[1]/trapezoidfinset[1]/@radiusoffset[0]",
+          "name": "method",
+          "value": "surface"
+        },
+        {
+          "at": "openrocket/rocket/stage[0]/bodytube[1]/trapezoidfinset[1]/@angleoffset[0]",
+          "name": "method",
+          "value": "relative"
+        }
+      ]
+    }
+  },
+  "attachments": [
+    {
+      "name": "decals/invented.png",
+      "content": {
+        "base64": "iVBORw0KGgoA//6A"
+      }
+    },
+    {
+      "name": "thrustcurves/501239de7374691072270406476cb243.rse",
+      "content": {
+        "text": "<engine-database>\n  <engine-list>\n    <engine mfg=\"Nobody\" code=\"H128W\" Type=\"single-use\" dia=\"29\" len=\"194\" initWt=\"150.\"\n      propWt=\"60.\" delays=\"6\" Itot=\"102.5\" burn-time=\"1.1\">\n      <data>\n        <eng-data t=\"0.\" f=\"0.\" m=\"60.\"/>\n        <eng-data t=\"0.05\" f=\"100.\" m=\"58.\"/>\n        <eng-data t=\"1.\" f=\"100.\" m=\"3.\"/>\n        <eng-data t=\"1.1\" f=\"0.\" m=\"0.\"/>\n      </data>\n    </engine>\n  </engine-list>\n</engine-database>"
+      }
+    }
+  ]
+}

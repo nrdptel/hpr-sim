@@ -260,8 +260,12 @@ pub struct DesignConfiguration {
 pub enum DesignFormat {
     /// An OpenRocket `.ork` file.
     Ork,
-    /// An hpr design file: a `hpr_design::Rocket` as JSON.
+    /// A rocket's JSON (`.json`): a `hpr_design::Rocket` alone.
     HprJson,
+    /// A document of the hpr design format (`.hpr`).
+    Hpr,
+    /// A design in the hpr design format's zip container (`.hprz`).
+    Hprz,
 }
 
 /// One motor flown.
@@ -565,9 +569,19 @@ pub struct InputWarning {
     pub message: String,
 }
 
-/// `hpr convert`: the motors read, and the file they were written to.
+/// `hpr convert`: a motor file converted, which has `motors`, or a design, which has `rocket`.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
-pub struct Convert {
+#[serde(untagged)]
+pub enum Convert {
+    /// Motors, written as a `.eng` or `.rse` file.
+    Motors(ConvertMotors),
+    /// A design, written as a `.ork`, `.hpr` or `.hprz` file.
+    Design(ConvertDesign),
+}
+
+/// `hpr convert` of motors: the motors read, and the file they were written to.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct ConvertMotors {
     /// Where the motors came from: a motor file, or the bundled catalog.
     pub input: MotorSource,
     /// The file written.
@@ -577,6 +591,37 @@ pub struct Convert {
     /// What the reader flagged in the input, then what the conversion dropped or wrote
     /// differently, such as `.rse` figures a `.eng` file has no place for.
     pub warnings: Vec<Warning>,
+}
+
+/// `hpr convert` of a design: the design read, and the file it was written to.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct ConvertDesign {
+    /// The design file read.
+    pub input: DesignFilePath,
+    /// The design file written.
+    pub output: DesignFilePath,
+    /// The rocket's name, as the design writes it.
+    pub rocket: String,
+    /// How many motor configurations the design holds, flyable or not.
+    pub configurations: usize,
+    /// The version of the hpr design format a `.hpr` or `.hprz` input was written in, when it was
+    /// older than the version written and was migrated to it; `null` otherwise.
+    pub migrated_from: Option<String>,
+    /// The files written into a `.hprz` beside the design, by name, in order; empty for any other
+    /// output.
+    pub attachments: Vec<String>,
+    /// What the `.ork` reader flagged in the input, what the `.ork` writer flagged in the output,
+    /// and each attachment of a `.hprz` input that the output has no place for.
+    pub warnings: Vec<InputWarning>,
+}
+
+/// A design file `hpr convert` read or wrote.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct DesignFilePath {
+    /// The path as given.
+    pub path: String,
+    /// Its format: `ork`, `hpr` or `hprz`.
+    pub format: DesignFormat,
 }
 
 /// A motor file `hpr convert` wrote.

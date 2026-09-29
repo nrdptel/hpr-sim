@@ -25,6 +25,8 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
+# The `.hprz` container is a zip archive, written and read in memory.
+zip.workspace = true
 
 [dev-dependencies]
 hpr-core.workspace = true

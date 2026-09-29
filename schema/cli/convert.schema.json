@@ -1,39 +1,105 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Convert",
-  "description": "`hpr convert`: the motors read, and the file they were written to.",
-  "type": "object",
-  "properties": {
-    "input": {
-      "description": "Where the motors came from: a motor file, or the bundled catalog.",
-      "$ref": "#/$defs/MotorSource"
+  "description": "`hpr convert`: a motor file converted, which has `motors`, or a design, which has `rocket`.",
+  "anyOf": [
+    {
+      "description": "Motors, written as a `.eng` or `.rse` file.",
+      "$ref": "#/$defs/ConvertMotors"
     },
-    "motors": {
-      "description": "The motors written, by the names the file gives them, in its order.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "output": {
-      "description": "The file written.",
-      "$ref": "#/$defs/ConvertedFile"
-    },
-    "warnings": {
-      "description": "What the reader flagged in the input, then what the conversion dropped or wrote\ndifferently, such as `.rse` figures a `.eng` file has no place for.",
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/Warning"
-      }
+    {
+      "description": "A design, written as a `.ork`, `.hpr` or `.hprz` file.",
+      "$ref": "#/$defs/ConvertDesign"
     }
-  },
-  "required": [
-    "input",
-    "output",
-    "motors",
-    "warnings"
   ],
   "$defs": {
+    "ConvertDesign": {
+      "description": "`hpr convert` of a design: the design read, and the file it was written to.",
+      "type": "object",
+      "properties": {
+        "attachments": {
+          "description": "The files written into a `.hprz` beside the design, by name, in order; empty for any other\noutput.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configurations": {
+          "description": "How many motor configurations the design holds, flyable or not.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "input": {
+          "description": "The design file read.",
+          "$ref": "#/$defs/DesignFilePath"
+        },
+        "migrated_from": {
+          "description": "The version of the hpr design format a `.hpr` or `.hprz` input was written in, when it was\nolder than the version written and was migrated to it; `null` otherwise.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "output": {
+          "description": "The design file written.",
+          "$ref": "#/$defs/DesignFilePath"
+        },
+        "rocket": {
+          "description": "The rocket's name, as the design writes it.",
+          "type": "string"
+        },
+        "warnings": {
+          "description": "What the `.ork` reader flagged in the input, what the `.ork` writer flagged in the output,\nand each attachment of a `.hprz` input that the output has no place for.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InputWarning"
+          }
+        }
+      },
+      "required": [
+        "input",
+        "output",
+        "rocket",
+        "configurations",
+        "attachments",
+        "warnings"
+      ]
+    },
+    "ConvertMotors": {
+      "description": "`hpr convert` of motors: the motors read, and the file they were written to.",
+      "type": "object",
+      "properties": {
+        "input": {
+          "description": "Where the motors came from: a motor file, or the bundled catalog.",
+          "$ref": "#/$defs/MotorSource"
+        },
+        "motors": {
+          "description": "The motors written, by the names the file gives them, in its order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "output": {
+          "description": "The file written.",
+          "$ref": "#/$defs/ConvertedFile"
+        },
+        "warnings": {
+          "description": "What the reader flagged in the input, then what the conversion dropped or wrote\ndifferently, such as `.rse` figures a `.eng` file has no place for.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Warning"
+          }
+        }
+      },
+      "required": [
+        "input",
+        "output",
+        "motors",
+        "warnings"
+      ]
+    },
     "ConvertedFile": {
       "description": "A motor file `hpr convert` wrote.",
       "type": "object",
@@ -52,6 +118,49 @@
         "format"
       ]
     },
+    "DesignFilePath": {
+      "description": "A design file `hpr convert` read or wrote.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "Its format: `ork`, `hpr` or `hprz`.",
+          "$ref": "#/$defs/DesignFormat"
+        },
+        "path": {
+          "description": "The path as given.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "format"
+      ]
+    },
+    "DesignFormat": {
+      "description": "A design file format.",
+      "oneOf": [
+        {
+          "description": "An OpenRocket `.ork` file.",
+          "type": "string",
+          "const": "ork"
+        },
+        {
+          "description": "A rocket's JSON (`.json`): a `hpr_design::Rocket` alone.",
+          "type": "string",
+          "const": "hpr_json"
+        },
+        {
+          "description": "A document of the hpr design format (`.hpr`).",
+          "type": "string",
+          "const": "hpr"
+        },
+        {
+          "description": "A design in the hpr design format's zip container (`.hprz`).",
+          "type": "string",
+          "const": "hprz"
+        }
+      ]
+    },
     "FileFormat": {
       "description": "A motor file format.",
       "oneOf": [
@@ -65,6 +174,29 @@
           "type": "string",
           "const": "rse"
         }
+      ]
+    },
+    "InputWarning": {
+      "description": "Something a reader accepted with a caveat, or the design's checks found unusual.",
+      "type": "object",
+      "properties": {
+        "at": {
+          "description": "Where: in a `.ork` file, a path of element names from the root or a zip entry's name; in a\nmotor file, its name and line; `design checks` for a check's finding.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "How serious it is.",
+          "$ref": "#/$defs/WarningKind"
+        },
+        "message": {
+          "description": "What was found, and how it was read.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "kind",
+        "message"
       ]
     },
     "MotorSource": {
