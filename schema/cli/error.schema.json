@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ErrorDocument",
+  "description": "What `--json` prints when a command fails.",
+  "type": "object",
+  "properties": {
+    "error": {
+      "description": "The failure.",
+      "$ref": "#/$defs/ErrorBody"
+    }
+  },
+  "required": [
+    "error"
+  ],
+  "$defs": {
+    "ErrorBody": {
+      "description": "A failure.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command that failed; `null` for a usage error, where the command line may name none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "description": "What kind of failure it is; the exit status says the same.",
+          "$ref": "#/$defs/ErrorKind"
+        },
+        "message": {
+          "description": "What went wrong, for a person.",
+          "type": "string"
+        },
+        "milestone": {
+          "description": "For `not_available`, the milestone that brings the command, such as `M4.2b`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "message"
+      ]
+    },
+    "ErrorKind": {
+      "description": "What kind of failure an error document reports, with its exit status.",
+      "oneOf": [
+        {
+          "description": "Exit 1: an input was missing, unreadable or refused.",
+          "type": "string",
+          "const": "input"
+        },
+        {
+          "description": "Exit 2: the command line was wrong.",
+          "type": "string",
+          "const": "usage"
+        },
+        {
+          "description": "Exit 3: the command's milestone hasn't come yet.",
+          "type": "string",
+          "const": "not_available"
+        }
+      ]
+    }
+  }
+}

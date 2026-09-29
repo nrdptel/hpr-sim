@@ -19,8 +19,9 @@ to turn) change.
 
 It is a Rust library first, meant to be built into other programs, as
 [RocketPy](glossary.md#rocketpy) is. RocketPy is an open-source rocket flight simulator, written in
-Python and used as a Python library. A command-line tool, Python bindings, design-file import and a
-graphical app are planned for hpr-sim. None of them exists yet.
+Python and used as a Python library. Python bindings and a graphical app are planned for hpr-sim.
+OpenRocket `.ork` design files are read today, from Rust. The command-line tool, `hpr`, is under
+way: today it looks up motors ([The command line](cli.md)).
 
 It is also built to be checked. Every model cites a published source, and tests pin every model.
 The simulator is compared against RocketPy, [OpenRocket](https://openrocket.info/) and the logs
@@ -125,11 +126,14 @@ out.
   margin from the rail exit to apogee, the optimum ejection delay and its landing's latitude and
   longitude are in [Flight metrics](physics/metrics.md), and its fins' flutter speed and margin in
   [Fin flutter](physics/flutter.md).
-- **No way to use it without writing Rust.** A command-line tool
-  ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are
-  planned. Until then, [Getting started](getting-started.md) flies a first rocket with a short Rust
-  program, and [The builder](the-builder.md) builds and flies a rocket of your own in a few calls. Meanwhile, a `.ork` file is read today, from Rust ([`.ork` design files](format/ork.md)),
-  but few of its motor configurations fly yet and its recovery settings are not flown.
+- **No way to fly a rocket without writing Rust.** The command-line tool looks up motors and reads
+  motor files ([The command line](cli.md)). Flying a design from it (`hpr sim`,
+  [M4.2b](decisions-and-roadmap.md#m4-2b)) and from Python ([M4.3](decisions-and-roadmap.md#m4-3))
+  are planned. Until then, [Getting started](getting-started.md) flies a first rocket with a short Rust
+  program, and [The builder](the-builder.md) builds and flies a rocket of your own in a few calls.
+- **`.ork` files are read, from Rust, but most don't fly yet.** A `.ork` file is read today
+  ([`.ork` design files](format/ork.md)), but few of its motor configurations fly yet and its
+  recovery settings are not flown.
 - **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization or
   app.** They are on the [roadmap][roadmap].
 - **No flight-log analyzer yet — the crates are empty, and its milestones come after the file

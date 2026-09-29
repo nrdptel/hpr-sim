@@ -146,10 +146,13 @@ adds a source.
 
 | crate | license | used by | why |
 |---|---|---|---|
+| `assert_cmd` | MIT OR Apache-2.0 | `hpr-cli` (tests only) | runs the built `hpr` binary as a user would, with its exit status, standard output and standard error (ADR-105) |
 | `bytes` | MIT | `hpr-sim` (tests only) | the byte buffer `parquet` reads an exported file from (ADR-080) |
+| `clap` | MIT OR Apache-2.0 | `hpr-cli` | the `hpr` command line: arguments, help and usage errors, derived from the argument types (ADR-105) |
+| `clap_complete` | MIT OR Apache-2.0 | `hpr-cli` | `hpr completions`: shell completion scripts from the same argument types |
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `flate2` | MIT OR Apache-2.0 | `hpr-io` | gzip and deflate, with the pure-Rust `miniz_oxide` backend so that `hpr-io` still builds for wasm32 and links no C: one of the three containers a `.ork` design arrives in, and the compression inside the other |
-| `jsonschema` | MIT | `hpr-sim` (tests only) | checks exported GeoJSON against the published GeoJSON schema; no default features, so it fetches and reads nothing (ADR-079) |
+| `jsonschema` | MIT | `hpr-sim`, `hpr-cli` (tests only) | checks exported GeoJSON against the published GeoJSON schema, and each `hpr --json` output against its schema in `schema/cli/`; no default features, so it fetches and reads nothing (ADR-079) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `parquet` | Apache-2.0 | `hpr-sim` (tests only, as `parquet-reader`) | Apache's own Parquet implementation, the independent reader of the Parquet files `hpr-sim` writes by hand; no default features, so no Arrow and no compression codecs (ADR-080) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
@@ -157,12 +160,13 @@ adds a source.
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |
 | `rand_xoshiro` | MIT OR Apache-2.0 | `hpr-core` (tests only) | an independent xoshiro256++ and SplitMix64 that `hpr_core::random` is checked against, bit for bit |
 | `roxmltree` | MIT OR Apache-2.0 | `hpr-motor`, `hpr-io`; `hpr-sim` (tests only) | a strict, read-only XML 1.0 parser for `.rse` motor files and `.ork` designs |
-| `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-motor`, `hpr-sim` (JSON and GeoJSON exports); `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
-| `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-core`, `hpr-atmos`, `hpr-motor` | derives the `validation/refs.lock.toml` types and the public data types |
+| `schemars` | MIT | `hpr-cli` | generates the published JSON Schema of each `hpr --json` output from its output type (ADR-105) |
+| `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-cli`, `hpr-motor`, `hpr-sim` (JSON and GeoJSON exports); `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
+| `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-cli`, `hpr-core`, `hpr-atmos`, `hpr-motor` | derives the `validation/refs.lock.toml` types and the public data types |
 | `thiserror` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` | library error types |
 | `sha2` | MIT OR Apache-2.0 | `xtask`; `hpr-motor` (tests only) | SHA-256 of fetched references and of the bundled motor curves |
 | `toml` | MIT OR Apache-2.0 | `xtask` | reads `validation/refs.lock.toml` |
-| `tempfile` | MIT OR Apache-2.0 | `xtask` (tests only) | temporary directories for the `refs` tests |
+| `tempfile` | MIT OR Apache-2.0 | `xtask`, `hpr-cli` (tests only) | temporary directories for the `refs` tests and `hpr motors show`'s files |
 | `zip` | MIT | `hpr-io`, `xtask` | reads the zip archive a `.ork` design is packed in, and the example designs inside the OpenRocket jar. Read-only, with only the deflate method OpenRocket writes: the default features would pull bzip2, lzma, zstd and AES |
 
 ## Documentation site tools

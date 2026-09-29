@@ -20,6 +20,7 @@ hpr = { path = "crates/hpr", version = "0.1.0" }
 hpr-aero = { path = "crates/hpr-aero", version = "0.1.0" }
 hpr-analysis = { path = "crates/hpr-analysis", version = "0.1.0" }
 hpr-atmos = { path = "crates/hpr-atmos", version = "0.1.0" }
+hpr-cli = { path = "crates/hpr-cli", version = "0.1.0" }
 hpr-core = { path = "crates/hpr-core", version = "0.1.0" }
 hpr-design = { path = "crates/hpr-design", version = "0.1.0" }
 hpr-flightdata = { path = "crates/hpr-flightdata", version = "0.1.0" }
@@ -32,8 +33,14 @@ hpr-sim = { path = "crates/hpr-sim", version = "0.1.0" }
 hpr-validate = { path = "crates/hpr-validate", version = "0.1.0" }
 
 # Third-party crates. Each one needs a line of justification in the PR that adds it.
+# Tests only: runs the `hpr` binary as a user would, with its exit code, stdout and stderr.
+assert_cmd = "2.2.2"
 # Tests only: the byte buffer Apache's Parquet reader (`parquet-reader`) reads a file from.
 bytes = "1.12.1"
+# The `hpr` command line: parsing, help and usage errors, from derived argument types.
+clap = { version = "4.6.7", features = ["derive"] }
+# `hpr completions`: shell completion scripts generated from the same argument types.
+clap_complete = "4.6.11"
 # Benchmarks only: statistics and the cargo bench harness, without the plotting and rayon defaults.
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 glam = { version = "0.33.7", default-features = false, features = ["f64", "serde", "std"] }
@@ -57,6 +64,8 @@ rand_xoshiro = "0.8.1"
 # `.rse` motor files (and later `.ork` designs): a strict, read-only XML 1.0 parser with no
 # dependencies that refuses DTDs by default.
 roxmltree = "0.21.1"
+# The published JSON Schemas of the `hpr` command's `--json` output, from its output types.
+schemars = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }
 # `float_roundtrip` parses every float back to the exact f64 it was written from.
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
