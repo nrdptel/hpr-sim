@@ -113,7 +113,10 @@ fn list(args: &ListArgs, to: &mut Out<'_>) -> Result<(), Failure> {
         )));
     }
     let catalog = catalog()?;
-    let manufacturer = args.manufacturer.as_deref().map(str::to_lowercase);
+    let manufacturer = match &args.manufacturer {
+        Some(name) => Some(maker(&catalog, name)?),
+        None => None,
+    };
     let motors = catalog
         .motors
         .iter()
@@ -133,7 +136,7 @@ fn list(args: &ListArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             })
         })
         .map(listed)
-        .collect();
+        .collect::<Result<_, _>>()?;
     let list = MotorList {
         catalog: CatalogInfo {
             source: catalog.source.clone(),
@@ -147,46 +150,72 @@ fn list(args: &ListArgs, to: &mut Out<'_>) -> Result<(), Failure> {
 
 /// The class label `--class` names, as [`ImpulseClass::label`] writes it, or a refusal.
 fn class_label(class: &str) -> Result<String, Failure> {
-    let wanted = class.trim().to_ascii_uppercase();
-    // Every class from 1/8A to Z, by each one's top impulse.
-    let mut labels = (-2..=26).filter_map(|k| {
-        ImpulseClass::from_total_impulse(1.25 * 2f64.powi(k))
-            .ok()
-            .map(ImpulseClass::label)
-    });
-    labels
-        .find(|label| label.to_ascii_uppercase() == wanted)
-        .ok_or_else(|| {
+    class
+        .trim()
+        .parse::<ImpulseClass>()
+        .map(ImpulseClass::label)
+        .map_err(|_| {
             Failure::Input(format!(
                 "--class {class} is not an impulse class: use 1/8A, 1/4A, 1/2A or a letter A to Z"
             ))
         })
 }
 
+/// The lowercased maker `--manufacturer` names, or a refusal listing the catalog's makers: a
+/// name that matches no maker would otherwise list nothing, as if the maker had no motors.
+fn maker(catalog: &Catalog, name: &str) -> Result<String, Failure> {
+    let wanted = name.trim().to_lowercase();
+    let known = catalog.motors.iter().any(|motor| {
+        motor.manufacturer.to_lowercase() == wanted
+            || motor.manufacturer_abbrev.to_lowercase() == wanted
+    });
+    if known {
+        return Ok(wanted);
+    }
+    let mut makers: Vec<&str> = catalog
+        .motors
+        .iter()
+        .map(|motor| motor.manufacturer_abbrev.as_str())
+        .collect();
+    makers.sort_unstable();
+    makers.dedup();
+    Err(Failure::Input(format!(
+        "--manufacturer {name} is no maker in the bundled catalog: use one of {}, or a maker's \
+         full name",
+        makers.join(", ")
+    )))
+}
+
 /// One catalog motor, as listed.
-fn listed(motor: &CatalogMotor) -> ListedMotor {
-    ListedMotor {
+fn listed(motor: &CatalogMotor) -> Result<ListedMotor, Failure> {
+    Ok(ListedMotor {
         designation: motor.designation.clone(),
         common_name: motor.common_name.clone(),
         manufacturer: motor.manufacturer.clone(),
         manufacturer_abbrev: motor.manufacturer_abbrev.clone(),
         impulse_class: motor.impulse_class.label(),
-        motor_type: kind(motor.motor_type),
+        motor_type: kind(motor.motor_type)?,
         diameter_mm: motor.diameter_mm,
         length_mm: motor.length_mm,
         total_impulse_ns: motor.total_impulse_ns,
         average_thrust_n: motor.average_thrust_n,
         burn_time_s: motor.burn_time_s,
         delays: motor.delays.clone(),
-    }
+    })
 }
 
-fn kind(motor_type: MotorType) -> MotorKind {
+/// `hpr_motor`'s enums are non-exhaustive. A kind this build doesn't know is refused, not given
+/// the name of another.
+fn unknown(what: &str, value: impl std::fmt::Debug) -> Failure {
+    Failure::Input(format!("{what} {value:?} is new to this build of hpr"))
+}
+
+fn kind(motor_type: MotorType) -> Result<MotorKind, Failure> {
     match motor_type {
-        MotorType::SingleUse => MotorKind::SingleUse,
-        MotorType::Reload => MotorKind::Reload,
-        // `MotorType` is non-exhaustive; hybrids are the only other kind ThrustCurve lists.
-        _ => MotorKind::Hybrid,
+        MotorType::SingleUse => Ok(MotorKind::SingleUse),
+        MotorType::Reload => Ok(MotorKind::Reload),
+        MotorType::Hybrid => Ok(MotorKind::Hybrid),
+        other => Err(unknown("the motor type", other)),
     }
 }
 
@@ -310,7 +339,7 @@ fn from_catalog(name: &str) -> Result<MotorShow, Failure> {
         };
         let delays = motor.delays();
         show.warnings
-            .extend(delay_warnings(&motor.designation, &delays));
+            .extend(delay_warnings(&motor.designation, &delays)?);
         show.motors.push(figures(
             &motor.designation,
             &motor.manufacturer,
@@ -355,13 +384,13 @@ fn from_file(path: &str, format: MotorFile) -> Result<MotorShow, Failure> {
     match format {
         MotorFile::Eng => {
             let parsed = eng::parse(&text).map_err(refused)?;
-            show.warnings.extend(read_warnings(&parsed.warnings));
+            show.warnings.extend(read_warnings(&parsed.warnings)?);
             for entry in &parsed.value.entries {
                 let curve = entry
                     .thrust_curve()
                     .map_err(|error| Failure::Input(format!("{path}: {}: {error}", entry.name)))?;
                 let delays = entry.delays();
-                show.warnings.extend(delay_warnings(&entry.name, &delays));
+                show.warnings.extend(delay_warnings(&entry.name, &delays)?);
                 show.motors.push(figures(
                     &entry.name,
                     &entry.manufacturer,
@@ -380,13 +409,13 @@ fn from_file(path: &str, format: MotorFile) -> Result<MotorShow, Failure> {
         }
         MotorFile::Rse => {
             let parsed = rse::parse(&text).map_err(refused)?;
-            show.warnings.extend(read_warnings(&parsed.warnings));
+            show.warnings.extend(read_warnings(&parsed.warnings)?);
             for engine in &parsed.value.engines {
                 let curve = engine
                     .thrust_curve()
                     .map_err(|error| Failure::Input(format!("{path}: {}: {error}", engine.code)))?;
                 let delays = engine.delays();
-                show.warnings.extend(delay_warnings(&engine.code, &delays));
+                show.warnings.extend(delay_warnings(&engine.code, &delays)?);
                 show.motors.push(figures(
                     &engine.code,
                     engine.manufacturer.trim(),
@@ -449,45 +478,60 @@ fn figures(
         burn_start_s,
         burn_end_s,
         curve_end_s: curve.end_time_s(),
-        delays: delays.delays.iter().map(|&d| delay_out(d)).collect(),
+        delays: delays
+            .delays
+            .iter()
+            .map(|&d| delay_out(d))
+            .collect::<Result<_, _>>()?,
         stated,
     })
 }
 
-fn delay_out(delay: delay::Delay) -> Delay {
+fn delay_out(delay: delay::Delay) -> Result<Delay, Failure> {
     match delay {
-        delay::Delay::Seconds(s) => Delay::Seconds(s),
-        delay::Delay::Plugged => Delay::Plugged,
-        // `Delay` is non-exhaustive; the ambiguous `0` is its only other setting.
-        _ => Delay::ZeroOrPlugged,
+        delay::Delay::Seconds(s) => Ok(Delay::Seconds(s)),
+        delay::Delay::Plugged => Ok(Delay::Plugged),
+        delay::Delay::ZeroOrPlugged => Ok(Delay::ZeroOrPlugged),
+        other => Err(unknown("the delay", other)),
     }
 }
 
-fn warning_kind(kind: ReadWarning) -> WarningKind {
+fn warning_kind(kind: ReadWarning) -> Result<WarningKind, Failure> {
     match kind {
-        ReadWarning::Skipped => WarningKind::Skipped,
-        ReadWarning::Dropped => WarningKind::Dropped,
-        // `WarningKind` is non-exhaustive; `Unusual` is its only other kind.
-        _ => WarningKind::Unusual,
+        ReadWarning::Skipped => Ok(WarningKind::Skipped),
+        ReadWarning::Dropped => Ok(WarningKind::Dropped),
+        ReadWarning::Unusual => Ok(WarningKind::Unusual),
+        other => Err(unknown("the warning kind", other)),
     }
 }
 
-fn read_warnings(warnings: &[ParseWarning]) -> impl Iterator<Item = Warning> + '_ {
-    warnings.iter().map(|warning| Warning {
-        motor: None,
-        line: Some(warning.line),
-        kind: warning_kind(warning.kind),
-        message: warning.message.clone(),
-    })
+fn read_warnings(warnings: &[ParseWarning]) -> Result<Vec<Warning>, Failure> {
+    warnings
+        .iter()
+        .map(|warning| {
+            Ok(Warning {
+                motor: None,
+                line: Some(warning.line),
+                kind: warning_kind(warning.kind)?,
+                message: warning.message.clone(),
+            })
+        })
+        .collect()
 }
 
-fn delay_warnings<'a>(motor: &'a str, delays: &'a DelayList) -> impl Iterator<Item = Warning> + 'a {
-    delays.warnings.iter().map(move |warning| Warning {
-        motor: Some(motor.to_owned()),
-        line: None,
-        kind: warning_kind(warning.kind),
-        message: warning.message.clone(),
-    })
+fn delay_warnings(motor: &str, delays: &DelayList) -> Result<Vec<Warning>, Failure> {
+    delays
+        .warnings
+        .iter()
+        .map(|warning| {
+            Ok(Warning {
+                motor: Some(motor.to_owned()),
+                line: None,
+                kind: warning_kind(warning.kind)?,
+                message: warning.message.clone(),
+            })
+        })
+        .collect()
 }
 
 /// `hpr motors show` as text.

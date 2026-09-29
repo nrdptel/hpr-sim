@@ -37,11 +37,11 @@ hpr-validate = { path = "crates/hpr-validate", version = "0.1.0" }
 assert_cmd = "2.2.2"
 # Tests only: the byte buffer Apache's Parquet reader (`parquet-reader`) reads a file from.
 bytes = "1.12.1"
-# Benchmarks only: statistics and the cargo bench harness, without the plotting and rayon defaults.
 # The `hpr` command line: parsing, help and usage errors, from derived argument types.
 clap = { version = "4.6.7", features = ["derive"] }
 # `hpr completions`: shell completion scripts generated from the same argument types.
 clap_complete = "4.6.11"
+# Benchmarks only: statistics and the cargo bench harness, without the plotting and rayon defaults.
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 glam = { version = "0.33.7", default-features = false, features = ["f64", "serde", "std"] }
 # `.ork` designs are gzip streams, and the entries inside their zip container are deflated. The

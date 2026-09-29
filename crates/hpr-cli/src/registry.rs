@@ -47,11 +47,17 @@ pub fn availability(name: &str) -> Option<Availability> {
         }),
         "completions" => Some(Availability::Available {
             reads: Vec::new(),
-            writes: Shell::value_variants()
-                .iter()
-                .map(|shell| format!("{shell} script"))
-                .chain(["JSON".to_owned()])
-                .collect(),
+            writes: vec![
+                format!(
+                    "a script for {}",
+                    Shell::value_variants()
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                "JSON".to_owned(),
+            ],
         }),
         _ => PLANNED
             .iter()
@@ -133,7 +139,7 @@ pub fn command_table(links: Links) -> String {
         Links::Guide => name.to_owned(),
     };
     let mut table = String::from(
-        "| command | what it does | reads | writes | status |\n|---|---|---|---|---|\n",
+        "| command | what it does | reads | prints | status |\n|---|---|---|---|---|\n",
     );
     for command in commands() {
         let (reads, writes, status) = match &command.availability {

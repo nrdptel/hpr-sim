@@ -121,11 +121,10 @@ fn every_planned_command_refuses_with_its_milestone() {
         // `--json` first, before the command, works the same.
         let first = hpr(&["--json", name]);
         assert_eq!(first.status.code(), Some(3));
-        assert_eq!(serde_json::from_slice::<Value>(&first.stdout).unwrap(), {
-            let mut alone = document.clone();
-            alone["error"]["command"] = Value::from(name);
-            alone
-        });
+        assert_eq!(
+            serde_json::from_slice::<Value>(&first.stdout).unwrap(),
+            document
+        );
     }
 }
 
@@ -205,6 +204,8 @@ fn a_bad_filter_is_an_input_error() {
         ["motors", "list", "--class", "JJ"],
         ["motors", "list", "--diameter", "-3"],
         ["motors", "list", "--diameter", "NaN"],
+        ["motors", "list", "--manufacturer", "CTI"],
+        ["motors", "list", "--manufacturer", "ces"],
     ] {
         let document = json_error(&args, 1, "input");
         assert_eq!(document["error"]["command"], "motors");
@@ -213,6 +214,44 @@ fn a_bad_filter_is_an_input_error() {
         assert!(output.stdout.is_empty());
         assert!(text(&output.stderr).starts_with("error: --"));
     }
+}
+
+/// A maker is named as the catalog spells it, or by its full name, in any case: the guide's
+/// examples.
+#[test]
+fn a_maker_is_named_by_abbreviation_or_full_name() {
+    let listed = |maker: &str| {
+        let document = json(
+            &["motors", "list", "--manufacturer", maker],
+            0,
+            "motors-list.schema.json",
+        );
+        document["motors"].as_array().unwrap().clone()
+    };
+    let cesaroni = listed("cesaroni");
+    assert!(!cesaroni.is_empty());
+    assert!(
+        cesaroni
+            .iter()
+            .all(|m| m["manufacturer_abbrev"] == "Cesaroni")
+    );
+    assert_eq!(listed("Cesaroni Technology"), cesaroni);
+    assert_eq!(listed("AEROTECH").len(), listed("AeroTech").len());
+    let refused = hpr(&["motors", "list", "--manufacturer", "CTI"]);
+    let message = text(&refused.stderr);
+    assert!(
+        message.contains("use one of AMW, AeroTech, Cesaroni"),
+        "{message}"
+    );
+}
+
+/// After `--`, `--json` is an argument, such as a motor's name, and the output stays text.
+#[test]
+fn json_after_a_double_dash_is_an_argument() {
+    let output = hpr(&["motors", "show", "--", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    assert!(text(&output.stderr).contains("is called --json"));
 }
 
 /// `hpr motors show` reports the library's own figures for a catalog motor's bundled curve, and
@@ -439,6 +478,7 @@ fn the_committed_schemas_are_generated() {
     let mut committed: Vec<String> = std::fs::read_dir(root().join("schema/cli"))
         .unwrap()
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|name| name.ends_with(".schema.json"))
         .collect();
     committed.sort();
     let names: Vec<&str> = generated.iter().map(|(name, _)| *name).collect();

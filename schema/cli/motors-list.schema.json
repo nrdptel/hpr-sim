@@ -96,7 +96,7 @@
           "type": "string"
         },
         "motor_type": {
-          "description": "`single_use` or `reload`.",
+          "description": "`single_use`, `reload` or `hybrid`.",
           "$ref": "#/$defs/MotorKind"
         },
         "total_impulse_ns": {

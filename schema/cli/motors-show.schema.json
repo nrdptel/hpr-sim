@@ -326,7 +326,7 @@
       ]
     },
     "WarningKind": {
-      "description": "How serious a [`Warning`] is.",
+      "description": "How serious a warning is.",
       "oneOf": [
         {
           "description": "A whole motor had an error and was left out.",

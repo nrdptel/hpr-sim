@@ -18,7 +18,7 @@
       "type": "object",
       "properties": {
         "command": {
-          "description": "The command, when the command line named one.",
+          "description": "The command that failed; `null` for a usage error, where the command line may name none.",
           "type": [
             "string",
             "null"
@@ -46,7 +46,7 @@
       ]
     },
     "ErrorKind": {
-      "description": "What kind of failure an [`ErrorDocument`] reports, with its exit status.",
+      "description": "What kind of failure an error document reports, with its exit status.",
       "oneOf": [
         {
           "description": "Exit 1: an input was missing, unreadable or refused.",

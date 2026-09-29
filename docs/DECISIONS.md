@@ -8932,8 +8932,9 @@ facade (its parachutes are not flown yet), `hpr-flightdata` is empty (its reader
    (clap's own); 3 not available yet. `--help` and `--version` are answers, status 0.
 4. **`--json` prints exactly one document on standard output**, success or failure, and nothing
    on standard error; a failure is an `ErrorDocument` whose `kind` (`input`, `usage`,
-   `not_available`) matches the status. `--json` is looked for before parsing, so a usage error
-   is JSON too. clap's built-in `help` command takes no `--json`.
+   `not_available`) matches the status. `--json` is looked for before parsing, up to a `--`, so a
+   usage error is JSON too. clap's built-in `help` command takes no `--json`. The registry, not
+   the dispatch, decides which commands refuse.
 5. **The output types are the CLI's own** (`hpr_cli::output`), not the libraries', so a published
    schema changes only when the command's output does. Each derives `schemars::JsonSchema`
    (draft 2020-12); `cargo xtask cli` writes them to `schema/cli/`. Units are SI and named in the
@@ -8942,16 +8943,22 @@ facade (its parachutes are not flown yet), `hpr-flightdata` is empty (its reader
    `registry::availability` adds what a command reads and writes, or its milestone. A format
    listed is taken from the enum the command dispatches on (`MotorFile::ALL`,
    `clap_complete::Shell`), so the table can't list one the code doesn't read. `cargo xtask cli`
-   writes the table into `README.md` and `docs/cli.md`, and re-runs the page's examples in-process.
+   writes the table into `README.md` and `docs/cli.md`, and re-runs the page's examples in-process;
+   an example must exit as its marker says (`exits 3`, else 0), takes no quotes or paths, and a
+   block missing its end is refused rather than spliced up to the next block's.
 7. **`hpr motors show` works a motor's figures out from its curve** with `hpr_motor` (the curve
    the simulator flies), and for a catalog motor sets ThrustCurve.org's stated figures beside
-   them; `list` repeats the catalog's stated figures. A name several motors share shows each.
-8. **A closed pipe** (`hpr motors list | head`) ends with status 1 and says nothing.
+   them; `list` repeats the catalog's stated figures. A name several motors share shows each. A
+   `--manufacturer` the catalog doesn't know is refused, listing its makers: `CTI`, the files'
+   abbreviation, would otherwise list nothing, as if Cesaroni had no motors.
+8. **A closed pipe** (`hpr motors list | head`) ends with status 0 and says nothing: the reader
+   chose to stop, and whether the write fails depends on the pipe's buffer.
 
-**Evidence.** `cargo test -p hpr-cli`: 12 tests run the built binary with `assert_cmd` and check
+**Evidence.** `cargo test -p hpr-cli`: 14 tests run the built binary with `assert_cmd` and check
 every `--json` document against the committed schema. Every planned command refuses with 3 and
 its milestone, as text and as JSON, whatever its arguments; `motors list` is the catalog, and its
-three filters narrow it; a filter that can't mean anything is exit 1; `motors show` gives the
+three filters narrow it; a filter that can't mean anything, `--manufacturer CTI` among them, is
+exit 1; `--json` after `--` is an argument; `motors show` gives the
 library's own figures for a name, a shared name, each file format `MotorFile::ALL` lists, and a
 two-motor `.eng` with a `0` delay and its warning; missing, broken and non-UTF-8 files are exit 1;
 every shell's completions; six wrong command lines are exit 2. Unit tests hold the registry to

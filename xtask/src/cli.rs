@@ -24,8 +24,11 @@ const SCHEMAS: &str = "schema/cli";
 const PAGE: &str = "docs/cli.md";
 /// The start of a command table.
 const TABLE: &str = "<!-- cli: commands, written by `cargo xtask cli` from the registered commands; do not edit -->";
-/// The start of an example, before the command line in backticks.
+/// The start of an example, before the command line in backticks. After them, `exits N` names
+/// the exit status the example is meant to show; without it, the example must succeed.
 const EXAMPLE: &str = "<!-- cli: example `";
+/// What every generated block's markers start with.
+const MARKER: &str = "<!-- cli:";
 /// The end of a generated block.
 const END: &str = "<!-- cli: end -->";
 
@@ -95,7 +98,7 @@ fn outputs(root: &Path) -> Result<Vec<(PathBuf, String)>, String> {
     Ok(outputs)
 }
 
-/// Schema files no output type makes any more.
+/// Schema files (`*.schema.json`) no output type makes any more. Other files there are left be.
 fn extra_schemas(root: &Path) -> Result<Vec<PathBuf>, String> {
     let dir = root.join(SCHEMAS);
     let Ok(entries) = std::fs::read_dir(&dir) else {
@@ -106,7 +109,7 @@ fn extra_schemas(root: &Path) -> Result<Vec<PathBuf>, String> {
     for entry in entries {
         let entry = entry.map_err(|e| format!("{}: {e}", dir.display()))?;
         let name = entry.file_name().to_string_lossy().into_owned();
-        if !names.contains(&name.as_str()) {
+        if name.ends_with(".schema.json") && !names.contains(&name.as_str()) {
             extra.push(Path::new(SCHEMAS).join(name));
         }
     }
@@ -123,11 +126,23 @@ fn splice_table(text: &str, table: &str, file: &str) -> Result<String, String> {
         return Err(format!("{file} has two command tables"));
     }
     let body = start + TABLE.len();
+    let end = block_end(text, body, file, "the command table")?;
+    Ok(format!("{}\n\n{table}\n{}", &text[..body], &text[end..]))
+}
+
+/// Where the block whose body starts at `body` ends: its `END`, with no other marker before it,
+/// so that a lost `END` can't make a block swallow the page up to the next block's.
+fn block_end(text: &str, body: usize, file: &str, what: &str) -> Result<usize, String> {
     let end = text[body..]
         .find(END)
         .map(|at| body + at)
-        .ok_or_else(|| format!("{file}'s command table has no `{END}`"))?;
-    Ok(format!("{}\n\n{table}\n{}", &text[..body], &text[end..]))
+        .ok_or_else(|| format!("{file}: {what} has no `{END}`"))?;
+    if text[body..end].contains(MARKER) {
+        return Err(format!(
+            "{file}: {what} holds another `{MARKER}` marker before its `{END}`: an end is missing"
+        ));
+    }
+    Ok(end)
 }
 
 /// `page` with each example's output replaced by what the command prints now.
@@ -140,18 +155,36 @@ fn examples(page: &str) -> Result<String, String> {
             .map(|at| start + at)
             .ok_or_else(|| format!("{PAGE}: an example's opening line doesn't end"))?;
         let opening = &rest[start..line_end];
-        let command = opening[EXAMPLE.len()..]
-            .split('`')
-            .next()
-            .filter(|command| command.starts_with("hpr "))
+        let (command, after) = opening[EXAMPLE.len()..]
+            .split_once('`')
+            .filter(|(command, _)| command.starts_with("hpr "))
             .ok_or_else(|| format!("{PAGE}: `{opening}` names no `hpr` command"))?;
-        let end = rest[line_end..]
-            .find(END)
-            .map(|at| line_end + at)
-            .ok_or_else(|| format!("{PAGE}: the example `{command}` has no `{END}`"))?;
+        // Split on spaces, run in-process: quotes would be passed on as part of an argument, and a
+        // path would be read from wherever the xtask runs, the root or `xtask/` under the tests.
+        if command.contains(['"', '\'', '/', '\\']) {
+            return Err(format!(
+                "{PAGE}: the example `{command}` has a quote or a path, which examples can't take"
+            ));
+        }
+        let expected = match after.split_once("exits ") {
+            Some((_, code)) => code
+                .split(|c: char| !c.is_ascii_digit())
+                .next()
+                .and_then(|code| code.parse::<u8>().ok())
+                .ok_or_else(|| format!("{PAGE}: `{opening}` says `exits` without a status"))?,
+            None => 0,
+        };
+        let end = block_end(rest, line_end, PAGE, &format!("the example `{command}`"))?;
+        let (block, code) = example(command);
+        if code != expected {
+            return Err(format!(
+                "{PAGE}: the example `{command}` exits {code}, not {expected}: fix the command, or \
+                 say `exits {code}` after it if that is what it is meant to show"
+            ));
+        }
         result.push_str(&rest[..=line_end]);
         result.push('\n');
-        result.push_str(&example(command));
+        result.push_str(&block);
         result.push('\n');
         rest = &rest[end..];
     }
@@ -159,8 +192,9 @@ fn examples(page: &str) -> Result<String, String> {
     Ok(result)
 }
 
-/// A fenced block with the command line and what it printed, and its exit status if not 0.
-fn example(command: &str) -> String {
+/// A fenced block with the command line and what it printed, and its exit status if not 0; and
+/// that status.
+fn example(command: &str) -> (String, u8) {
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let exit = hpr_cli::run(command.split_whitespace(), &mut out, &mut err);
     let mut block = format!("```text\n$ {command}\n");
@@ -170,7 +204,7 @@ fn example(command: &str) -> String {
         block.push_str(&format!("$ echo $?\n{}\n", exit.code()));
     }
     block.push_str("```\n");
-    block
+    (block, exit.code())
 }
 
 #[cfg(test)]
@@ -210,11 +244,39 @@ mod tests {
     }
 
     #[test]
+    fn a_lost_end_is_refused_not_swallowed() {
+        let text = format!("{TABLE}\nold\n\n{EXAMPLE}hpr sim x`, exits 3 -->\nold\n{END}\n");
+        assert!(
+            splice_table(&text, "new\n", "f")
+                .unwrap_err()
+                .contains("an end is missing")
+        );
+        let page =
+            format!("{EXAMPLE}hpr sim x`, exits 3 -->\n\n{EXAMPLE}hpr mc`, exits 3 -->\n{END}\n");
+        assert!(examples(&page).unwrap_err().contains("an end is missing"));
+    }
+
+    #[test]
+    fn an_example_exits_as_its_marker_says() {
+        let unsaid = format!("{EXAMPLE}hpr sim x` -->\n{END}\n");
+        assert!(examples(&unsaid).unwrap_err().contains("exits 3, not 0"));
+        let wrong = format!("{EXAMPLE}hpr motors list`, exits 3 -->\n{END}\n");
+        assert!(examples(&wrong).unwrap_err().contains("exits 0, not 3"));
+        for command in ["hpr motors show \"J 760\"", "hpr motors show a/b.eng"] {
+            let page = format!("{EXAMPLE}{command}` -->\n{END}\n");
+            assert!(
+                examples(&page).unwrap_err().contains("a quote or a path"),
+                "{command}"
+            );
+        }
+    }
+
+    #[test]
     fn an_example_is_run_and_its_output_replaced() {
-        let page = format!("a\n{EXAMPLE}hpr sim x` -->\nstale\n{END}\nb\n");
+        let page = format!("a\n{EXAMPLE}hpr sim x`, exits 3 -->\nstale\n{END}\nb\n");
         let written = examples(&page).unwrap();
         assert!(written.starts_with(&format!(
-            "a\n{EXAMPLE}hpr sim x` -->\n\n```text\n$ hpr sim x\n"
+            "a\n{EXAMPLE}hpr sim x`, exits 3 -->\n\n```text\n$ hpr sim x\n"
         )));
         assert!(written.contains("error: hpr sim is not available yet"));
         assert!(written.ends_with("$ echo $?\n3\n```\n\n<!-- cli: end -->\nb\n"));

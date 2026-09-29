@@ -108,7 +108,7 @@ pub enum Command {
     Motors(motors::MotorsCommand),
     /// Fetch a launch day's weather as atmosphere and wind profiles (not available yet)
     Weather(Planned),
-    /// Fly a design many times with scattered inputs: Monte Carlo (not available yet)
+    /// Fly a design many times, each with randomly scattered inputs (not available yet)
     Mc(Planned),
     /// Search a design's parameters for a goal (not available yet)
     Optimize(Planned),
@@ -174,12 +174,6 @@ pub(crate) enum Failure {
     Output(io::Error),
 }
 
-impl From<io::Error> for Failure {
-    fn from(error: io::Error) -> Self {
-        Self::Output(error)
-    }
-}
-
 /// Where a command's output goes, and in which form.
 pub(crate) struct Out<'a> {
     /// Standard output.
@@ -189,18 +183,21 @@ pub(crate) struct Out<'a> {
 }
 
 impl Out<'_> {
-    /// Writes `value` as one JSON document, or `text` when `--json` wasn't given.
+    /// Writes `value` as one JSON document, or `text` when `--json` wasn't given, and flushes.
+    /// Only a failure to write standard output is a [`Failure::Output`].
     pub(crate) fn emit<T: Serialize>(
         &mut self,
         value: &T,
         text: impl FnOnce(&mut dyn Write) -> io::Result<()>,
     ) -> Result<(), Failure> {
-        if self.json {
-            write_json(self.out, value)?;
+        let written = if self.json {
+            write_json(self.out, value)
         } else {
-            text(self.out)?;
-        }
-        Ok(())
+            text(self.out)
+        };
+        written
+            .and_then(|()| self.out.flush())
+            .map_err(Failure::Output)
     }
 }
 
@@ -213,52 +210,57 @@ fn write_json<T: Serialize>(out: &mut dyn Write, value: &T) -> io::Result<()> {
 /// Runs `hpr` on a command line, `args[0]` being the program's name, writing to `out` (standard
 /// output) and `err` (standard error).
 ///
-/// With `--json` anywhere on the line, standard output gets exactly one JSON document, success or
-/// failure, and standard error stays empty; `--help` and `--version` still print text.
+/// With `--json` anywhere on the line before a `--`, standard output gets exactly one JSON
+/// document, success or failure, and standard error stays empty; `--help` and `--version` still
+/// print text. That scan decides, not [`Cli::json`]: a command that isn't available yet takes
+/// every argument after its name as its own, `--json` included.
 pub fn run<I, T>(args: I, out: &mut dyn Write, err: &mut dyn Write) -> Exit
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
     let args: Vec<OsString> = args.into_iter().map(Into::into).collect();
-    // Scanned before parsing so that a usage error can be reported as JSON too.
-    let json = args.iter().skip(1).any(|arg| arg == "--json");
+    // Scanned before parsing so that a usage error can be reported as JSON too. After `--`,
+    // `--json` is an argument, such as a file's name.
+    let json = args
+        .iter()
+        .skip(1)
+        .take_while(|arg| *arg != "--")
+        .any(|arg| arg == "--json");
     let cli = match Cli::try_parse_from(&args) {
         Ok(cli) => cli,
         Err(error) => return usage(&error, json, out, err),
     };
     let command = cli.command.name();
     let mut to = Out { out, json };
-    let outcome = match cli.command {
-        Command::Motors(motors) => motors::run(&motors, &mut to),
-        Command::Completions(args) => completions(args.shell, &mut to),
-        Command::Sim(_)
-        | Command::Validate(_)
-        | Command::Convert(_)
-        | Command::Weather(_)
-        | Command::Mc(_)
-        | Command::Optimize(_)
-        | Command::Compare(_)
-        | Command::Analyze(_)
-        | Command::Diagnose(_) => not_available(command),
+    // The registry decides what refuses, so the table and the tool can't disagree.
+    let outcome = match registry::availability(command) {
+        Some(Availability::Planned { milestone }) => {
+            Err(Failure::NotAvailable { command, milestone })
+        }
+        Some(Availability::Available { .. }) => match cli.command {
+            Command::Motors(motors) => motors::run(&motors, &mut to),
+            Command::Completions(args) => completions(args.shell, &mut to),
+            Command::Sim(_)
+            | Command::Validate(_)
+            | Command::Convert(_)
+            | Command::Weather(_)
+            | Command::Mc(_)
+            | Command::Optimize(_)
+            | Command::Compare(_)
+            | Command::Analyze(_)
+            | Command::Diagnose(_) => Err(Failure::Input(format!(
+                "hpr {command} is marked available in the command registry, but this build \
+                 has no code for it"
+            ))),
+        },
+        None => Err(Failure::Input(format!(
+            "hpr {command} has no entry in the command registry"
+        ))),
     };
     match outcome {
         Ok(()) => Exit::Success,
         Err(failure) => report(failure, command, json, out, err),
-    }
-}
-
-/// The refusal of a registered command whose milestone hasn't come.
-fn not_available(command: &'static str) -> Result<(), Failure> {
-    match registry::availability(command) {
-        Some(Availability::Planned { milestone, .. }) => {
-            Err(Failure::NotAvailable { command, milestone })
-        }
-        // `registry` tests that every registered command has an availability, and that the
-        // commands dispatched here are the planned ones.
-        _ => Err(Failure::Input(format!(
-            "hpr {command} has no entry in the command registry"
-        ))),
     }
 }
 
@@ -291,12 +293,14 @@ fn report(
                 Exit::NotAvailable,
             )
         }
-        // A closed pipe: the reader has gone, so there is nobody to tell. Anything else goes to
-        // standard error, as JSON can't be written to the stream that just failed.
+        // A closed pipe (`hpr motors list | head -1`): the reader stopped reading, which is its
+        // choice, not a failure, and whether it happens depends on the pipe's buffer. Anything
+        // else goes to standard error, as JSON can't be written to the stream that just failed.
         Failure::Output(error) => {
-            if error.kind() != io::ErrorKind::BrokenPipe {
-                let _ = writeln!(err, "error: couldn't write the output: {error}");
+            if error.kind() == io::ErrorKind::BrokenPipe {
+                return Exit::Success;
             }
+            let _ = writeln!(err, "error: couldn't write the output: {error}");
             return Exit::Failure;
         }
     };
@@ -363,16 +367,16 @@ mod tests {
         }
     }
 
-    /// A closed pipe ends the run with status 1 and says nothing: there is nobody to tell.
+    /// A closed pipe ends the run with status 0 and says nothing: the reader chose to stop.
     #[test]
-    fn a_closed_pipe_fails_quietly() {
+    fn a_closed_pipe_ends_quietly() {
         for json in [false, true] {
             let mut args = vec!["hpr", "motors", "list"];
             if json {
                 args.push("--json");
             }
             let mut err = Vec::new();
-            assert_eq!(run(args, &mut ClosedPipe, &mut err), Exit::Failure);
+            assert_eq!(run(args, &mut ClosedPipe, &mut err), Exit::Success);
             assert!(err.is_empty(), "{}", String::from_utf8_lossy(&err));
         }
     }

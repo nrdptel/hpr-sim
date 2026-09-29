@@ -5,22 +5,25 @@ or a script. It says what each command does, shows its output, and lists the exi
 
 Today `hpr` does two things. It looks up motors, from the catalog built into it or from a motor
 file of your own, and it writes shell completion scripts. Its other commands, starting with flying
-a design, are registered but not available yet: each refuses and names the milestone that brings
-it ([the table below](#the-commands)). Until then, flights are flown from Rust, as
+a design, are registered but not available yet: each refuses and names the
+[milestone](glossary.md#milestone), the step of the roadmap, that brings it
+([the table below](#the-commands)). Until then, flights are flown from Rust, as
 [Getting started](getting-started.md) shows.
 
-> **How far to trust it.** `hpr motors show` works a motor's figures out from its
-> [thrust curve](glossary.md#thrust-curve) with the code the simulator flies it with, so they are
-> as good as that code. [Solid motors](physics/motor.md) says how good: ThrustCurve.org's own
-> statistics code agrees with it on all 32 bundled curves. `hpr motors list` repeats the
-> catalog's figures as [ThrustCurve.org](glossary.md#thrustcurveorg) states them. Tests run every
-> command as a user would and check each `--json` output against its
+> **How far to trust it.** `hpr motors show` works out each figure from the motor's
+> [thrust curve](glossary.md#thrust-curve) with the same code a flight uses. On all 32 bundled
+> curves, that code matches ThrustCurve.org's own statistics code to 1.8e-15, relative
+> ([Solid motors](physics/motor.md#validation)). `hpr motors list` only repeats the catalog's
+> figures as [ThrustCurve.org](glossary.md#thrustcurveorg) states them. The tests in
+> [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
+> run every command as a user would, and check each `--json` document against its
 > [published schema](#json-output).
 
 ## Running it
 
-`hpr` needs the Rust setup from [Getting started](getting-started.md). From a copy of the
-repository, run it through Cargo:
+There is no ready-built download yet. `hpr` needs Rust and a copy of the repository, set up as
+[Getting started](getting-started.md#build-it-and-fly) shows. From that copy, run it through
+Cargo:
 
 ```bash
 cargo run -p hpr-cli -- motors list
@@ -36,23 +39,24 @@ hpr --help
 ## The commands
 
 This table is written from the tool's own list of commands, so it names only what `hpr` has, and
-only the files each command really reads. "Not yet" commands exit with status 3.
+only the files each command really reads. "Not yet" commands exit with
+[status 3](#exit-codes).
 
 <!-- cli: commands, written by `cargo xtask cli` from the registered commands; do not edit -->
 
-| command | what it does | reads | writes | status |
+| command | what it does | reads | prints | status |
 |---|---|---|---|---|
 | `hpr sim` | Fly a design and print its flight summary | - | - | not yet: [M4.2b](decisions-and-roadmap.md#m4-2b) |
 | `hpr validate` | Run the committed validation cases and report them | - | - | not yet: [M4.2c](decisions-and-roadmap.md#m4-2c) |
 | `hpr convert` | Convert motor and design files between formats | - | - | not yet: [M4.2c](decisions-and-roadmap.md#m4-2c) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
 | `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2](decisions-and-roadmap.md#m5-2) |
-| `hpr mc` | Fly a design many times with scattered inputs: Monte Carlo | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
+| `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](decisions-and-roadmap.md#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](decisions-and-roadmap.md#m7-3) |
 | `hpr analyze` | Read a flight log and print its readings, with no design file | - | - | not yet: [M4.2d](decisions-and-roadmap.md#m4-2d) |
 | `hpr diagnose` | Diagnose what went wrong in a flight from its log | - | - | not yet: [M7.4](decisions-and-roadmap.md#m7-4) |
-| `hpr completions` | Print a shell completion script for hpr | - | bash script, elvish script, fish script, powershell script, zsh script, JSON | available ([how to use it](cli.md#hpr-completions)) |
+| `hpr completions` | Print a shell completion script for hpr | - | a script for bash, elvish, fish, powershell, zsh, JSON | available ([how to use it](cli.md#hpr-completions)) |
 
 <!-- cli: end -->
 
@@ -61,17 +65,24 @@ only the files each command really reads. "Not yet" commands exit with status 3.
 `hpr motors` looks motors up. The catalog built into hpr holds 32 motors, from class B to class O,
 each with a public-domain thrust curve from ThrustCurve.org
 ([Solid motors](physics/motor.md#the-bundled-motors) says how they were chosen). For any other
-motor, download its `.eng` or `.rse` file from ThrustCurve.org and show that.
+motor, download its `.eng` or `.rse` file ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files))
+from ThrustCurve.org and show that.
 
 ### Listing the catalog
 
 `hpr motors list` lists the catalog. Three filters narrow it, and each one given must match:
 
 - `--class` takes an [impulse class](glossary.md#impulse-class), such as `J`.
-- `--diameter` takes a casing diameter in millimetres, such as `54`.
-- `--manufacturer` takes a name or abbreviation, in any case, such as `aerotech` or `CTI`.
+- `--diameter` takes a casing diameter in millimetres, such as `54`, and matches within 0.5 mm.
+- `--manufacturer` takes a maker as the `maker` column spells it (`AeroTech`, `Cesaroni`, `Loki`,
+  `Estes`, `Quest`, `AMW`) or its full name (`Cesaroni Technology`), in any case.
 
-The figures are ThrustCurve.org's, as the catalog states them.
+A class or diameter the catalog has no motor for lists none, and exits with 0. A class that
+doesn't exist, a diameter that isn't a positive number, or a maker the catalog doesn't know is
+refused with status 1: a misspelt maker would otherwise look like a maker with no motors.
+
+The figures are ThrustCurve.org's, as the catalog states them. In the `delays` column, `P` means
+plugged: the motor has no ejection charge ([ejection delay](glossary.md#ejection-delay)).
 
 <!-- cli: example `hpr motors list --class J`; written by `cargo xtask cli`; do not edit -->
 
@@ -89,9 +100,10 @@ J300LR        Loki      J          54     327       1208.0  297.0    4.10  P
 
 ### A motor's figures
 
-`hpr motors show` takes a motor's name or a file's path. A name can be the full designation
-(`1266J760-19A`) or the common name (`J760`), in any case, with or without spaces and hyphens.
-When several motors share a name, it shows each of them.
+`hpr motors show` takes a motor's name or a file's path. A name can be the full
+[designation](glossary.md#motor-designation) (`1266J760-19A`) or the common name (`J760`), in any
+case, with or without spaces and hyphens. When several motors share a name, it shows each of them.
+An argument ending in `.eng` or `.rse` is read as a file; anything else is looked up by name.
 
 It works each figure out from the thrust curve, the list of time and thrust points in the motor's
 file:
@@ -103,8 +115,10 @@ file:
 - The [average thrust](glossary.md#average-thrust) is the total impulse divided by that burn time.
 - The masses and the casing size are the catalog's, or the file's for a file.
 
-For a catalog motor, the last line sets ThrustCurve.org's stated figures beside hpr's. They come
-from the motor's certification, not from this curve file, so the two can differ slightly.
+For a catalog motor, the last line sets ThrustCurve.org's stated figures beside hpr's. Total
+impulse, average thrust and burn time agree within 1% for every catalog motor, because that is how
+the 32 were chosen ([Solid motors](physics/motor.md#the-bundled-motors)). Peak thrust is not held
+to that: for the AeroTech I175WS, hpr's is 3% below ThrustCurve.org's.
 
 <!-- cli: example `hpr motors show J760`; written by `cargo xtask cli`; do not edit -->
 
@@ -124,15 +138,17 @@ $ hpr motors show J760
 
 <!-- cli: end -->
 
-A motor file shows every motor in it:
+A motor file shows every motor in it, as one `.eng` or `.rse` file can hold several. The
+repository holds the 32 catalog motors' files to try, such as:
 
 ```bash
-hpr motors show my-motors.eng
+hpr motors show crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000724.eng
 ```
 
-A `.eng` file can hold several motors; a `.rse` file often does. If the reader had to make a
-choice, such as a delay of `0`, which can mean "at burnout" or "plugged", the output ends with a
-warning that says what it chose.
+Some motor data is ambiguous. A delay of `0` can mean an ejection charge at burnout, or a plugged
+motor with no charge. hpr shows it as "0 (at burnout, or plugged)" and ends the output with a
+warning; the Estes F15 in the catalog is one example. The warning's "RASP spec" is the `.eng`
+format's description ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)).
 
 ## JSON output
 
@@ -149,7 +165,11 @@ a published [JSON Schema](https://json-schema.org), which describes its fields a
 
 Units are SI, and each field's name says its unit: `total_impulse_ns` is in newton-seconds and
 `diameter_m` in metres. The one exception is `hpr motors list`, which keeps the catalog's
-millimetres, and says so in its field names.
+millimetres, and says so in its field names. Numbers are not rounded, so a converted value can
+end in digits such as `0.0036000000000000003`; they carry no more precision than the curve file.
+
+hpr is pre-alpha, so the fields may still change. The schemas are published beside the code, and a
+change to a document changes its schema in the same commit.
 
 <!-- cli: example `hpr motors show B4 --json`; written by `cargo xtask cli`; do not edit -->
 
@@ -204,7 +224,7 @@ $ hpr motors show B4 --json
 
 A failure prints an error document. Its `kind` matches the exit status:
 
-<!-- cli: example `hpr sim rocket.ork --json`; written by `cargo xtask cli`; do not edit -->
+<!-- cli: example `hpr sim rocket.ork --json`, exits 3; written by `cargo xtask cli`; do not edit -->
 
 ```text
 $ hpr sim rocket.ork --json
@@ -254,5 +274,7 @@ you press Tab. Save it where your shell looks for completions:
   flight log (`hpr analyze`) in [M4.2d](decisions-and-roadmap.md#m4-2d).
 - **Only 32 motors are built in.** Any other motor needs its `.eng` or `.rse` file. `hpr` never
   goes online to fetch one.
+- **No ready-built program.** `hpr` is built from source with Rust; downloads for macOS, Windows
+  and Linux wait until the project publishes releases.
 - **The text output is for people.** Its layout may change between versions; scripts should read
   `--json`, whose schemas are published.

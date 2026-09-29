@@ -43,7 +43,7 @@ pub struct ListedMotor {
     pub manufacturer_abbrev: String,
     /// The impulse class, such as `J`.
     pub impulse_class: String,
-    /// `single_use` or `reload`.
+    /// `single_use`, `reload` or `hybrid`.
     pub motor_type: MotorKind,
     /// Casing diameter, mm.
     pub diameter_mm: f64,
@@ -190,7 +190,7 @@ pub struct Warning {
     pub message: String,
 }
 
-/// How serious a [`Warning`] is.
+/// How serious a warning is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum WarningKind {
@@ -225,13 +225,13 @@ pub struct ErrorBody {
     pub kind: ErrorKind,
     /// What went wrong, for a person.
     pub message: String,
-    /// The command, when the command line named one.
+    /// The command that failed; `null` for a usage error, where the command line may name none.
     pub command: Option<String>,
     /// For `not_available`, the milestone that brings the command, such as `M4.2b`.
     pub milestone: Option<String>,
 }
 
-/// What kind of failure an [`ErrorDocument`] reports, with its exit status.
+/// What kind of failure an error document reports, with its exit status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorKind {

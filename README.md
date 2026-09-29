@@ -42,19 +42,19 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 
 <!-- cli: commands, written by `cargo xtask cli` from the registered commands; do not edit -->
 
-| command | what it does | reads | writes | status |
+| command | what it does | reads | prints | status |
 |---|---|---|---|---|
 | `hpr sim` | Fly a design and print its flight summary | - | - | not yet: [M4.2b](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2b) |
 | `hpr validate` | Run the committed validation cases and report them | - | - | not yet: [M4.2c](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2c) |
 | `hpr convert` | Convert motor and design files between formats | - | - | not yet: [M4.2c](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2c) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)) |
 | `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-2) |
-| `hpr mc` | Fly a design many times with scattered inputs: Monte Carlo | - | - | not yet: [M6.1](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-1) |
+| `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-3) |
 | `hpr analyze` | Read a flight log and print its readings, with no design file | - | - | not yet: [M4.2d](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2d) |
 | `hpr diagnose` | Diagnose what went wrong in a flight from its log | - | - | not yet: [M7.4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-4) |
-| `hpr completions` | Print a shell completion script for hpr | - | bash script, elvish script, fish script, powershell script, zsh script, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-completions)) |
+| `hpr completions` | Print a shell completion script for hpr | - | a script for bash, elvish, fish, powershell, zsh, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-completions)) |
 
 <!-- cli: end -->
 
