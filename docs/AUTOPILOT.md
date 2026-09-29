@@ -274,6 +274,15 @@ run says so once in `runs.log` and keeps going.
 it. A 48-hour run can exceed 60 cycles, so copy anything you want to keep out of
 `.autopilot/logs/` before starting one.
 
+**Build output is cleaned once it grows.** Cargo never deletes old build output: each change to a
+dependency, a feature or a compiler flag adds files to `target/` beside the old ones. By
+2026-09-28 the folder held 79 GB and the disk was 89% full. So before each cycle the run logs a
+line like `Build output: 12.3 GB in target/, 170 GB free on the disk.`, and if `target/` holds
+more than 40 GB it runs `cargo clean` first and logs the free disk before and after. The cycle
+after a clean builds everything from scratch, which is why it waits for the folder to grow instead
+of cleaning every cycle. `HPR_TARGET_MAX_GB` sets the 40, and `0` turns the cleaning off while
+keeping the line.
+
 ## Where the project lives
 
 If iCloud Drive's "Desktop & Documents Folders" is on, everything in `~/Documents` syncs to iCloud.
