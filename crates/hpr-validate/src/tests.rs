@@ -2115,25 +2115,46 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
             .unwrap_or_else(|| panic!("{group:?} {case} {metric} is not in the census"))
     };
 
-    // Every compared number is a row, with the report's own difference, and never withheld.
+    // Every compared number is a row, with the report's own difference, and never withheld; a
+    // per-cent one keeps its per cent, which the spreads below are taken over.
     let held = |group: Group, case: &str, metric: &str, value: f64| {
         let found = row(group, case, metric);
+        let close = |got: f64| (got - value).abs() <= 1e-12 * value.abs().max(1.0);
         assert!(
-            (found.difference - value).abs() <= 1e-12 * value.abs().max(1.0),
+            close(found.difference),
             "{case} {metric}: {} against the report's {value}",
             found.difference
         );
         assert_ne!(found.standing, Standing::Withheld, "{case} {metric}");
+        let in_percent = matches!(
+            metric,
+            "apogee" | "max_speed" | "launch_mass" | "rod_clearance_mass" | "climb"
+        );
+        match found.percent {
+            Some(percent) => assert!(in_percent && close(percent), "{case} {metric}: {percent}"),
+            None => assert!(!in_percent, "{case} {metric} has lost its per cent"),
+        }
         found
     };
     for comparison in &harness.comparisons {
         let group = crate::census::harness_group(&comparison.case).expect("a harness case");
         let found = row(group, &comparison.case, &comparison.metric);
+        let case = &comparison.case;
+        assert_eq!(found.difference, comparison.difference, "{case}");
         assert_eq!(
-            found.difference, comparison.difference,
-            "{}",
-            comparison.case
+            found.percent,
+            comparison.relative.map(|relative| 100.0 * relative),
+            "{case} {}",
+            comparison.metric
         );
+        let standing = match comparison.verdict {
+            Verdict::Pass => Standing::Pass,
+            Verdict::Fail => Standing::Fail,
+            Verdict::NotScored => Standing::NotScored,
+            Verdict::WithinTarget => Standing::WithinTarget,
+            Verdict::OutsideTarget => Standing::OutsideTarget,
+        };
+        assert_eq!(found.standing, standing, "{case} {}", comparison.metric);
     }
     let number = |value: &serde_json::Value| value.as_f64().expect("a number");
     let percent = |hpr: &serde_json::Value, openrocket: &serde_json::Value| {
