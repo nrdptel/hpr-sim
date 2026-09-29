@@ -267,14 +267,15 @@ fn example(command: &str, root: &Path) -> (String, u8) {
     });
     let exit = hpr_cli::run(args, &mut out, &mut err);
     let _ = std::fs::remove_dir_all(&scratch);
-    // A written file's path differs from run to run: the page may show its name only.
+    // A written file's path differs from run to run and by platform: the page shows it in the
+    // scratch folder, with `/`, as text and as JSON writes it (with `\\` escaped on Windows).
+    let folder = format!("{}{}", scratch.to_string_lossy(), std::path::MAIN_SEPARATOR);
     for printed in [&mut out, &mut err] {
-        let text = String::from_utf8_lossy(printed).into_owned();
-        if text.contains(&*scratch.to_string_lossy()) {
-            *printed = text
-                .replace(&*scratch.to_string_lossy(), "<the scratch folder>")
-                .into_bytes();
+        let mut text = String::from_utf8_lossy(printed).into_owned();
+        for spelled in [folder.clone(), folder.replace('\\', "\\\\")] {
+            text = text.replace(&spelled, "<the scratch folder>/");
         }
+        *printed = text.into_bytes();
     }
     let mut block = format!("```text\n$ {command}\n");
     block.push_str(&String::from_utf8_lossy(&out));

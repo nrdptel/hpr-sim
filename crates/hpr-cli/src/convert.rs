@@ -3,7 +3,9 @@
 //! The conversion is the library's own ([`hpr::hpr_motor::convert`]): `.eng` to `.rse` fills
 //! what `.eng` doesn't give the way RockSim's files do, and `.rse` to `.eng` drops what `.eng`
 //! can't hold, each named in a warning. The same format in and out rewrites the file in hpr's
-//! layout. What the reader flagged in the input is passed on.
+//! layout, with a `.eng` maker of several words joined by `_`. A catalog motor takes the
+//! catalog's size and masses, the ones hpr flies. What the reader flagged in the input is passed
+//! on.
 
 use std::io::{self, Write};
 use std::path::Path;
@@ -12,7 +14,7 @@ use hpr::hpr_motor::DelayList;
 use hpr::hpr_motor::catalog::{CatalogMotor, CurveFormat, bundled_curve_text};
 use hpr::hpr_motor::convert::{self, ConvertWarning};
 use hpr::hpr_motor::eng::{self, EngFile};
-use hpr::hpr_motor::rse::{self, RseFile};
+use hpr::hpr_motor::rse::{self, RseEngine, RseFile};
 use hpr::hpr_motor::text::WarningKind as ReadWarning;
 
 use crate::motors::{MotorFile, catalog, read_warnings, warning_kind};
@@ -89,19 +91,14 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
         }
     };
     if let Some(figures) = &figures {
-        warnings.extend(figures.apply(&mut motors));
+        warnings.extend(figures.apply(&mut motors, target == MotorFile::Rse));
     }
     // The engines a `.eng` header would have no delays for.
     let undelayed: Vec<String> = match &motors {
         Motors::Rse(file) if target == MotorFile::Eng => file
             .engines
             .iter()
-            .filter(|engine| {
-                engine
-                    .delays
-                    .as_deref()
-                    .is_none_or(|delays| DelayList::parse(delays).delays.is_empty())
-            })
+            .filter(|engine| needs_delays(engine))
             .map(|engine| engine.code.clone())
             .collect(),
         _ => Vec::new(),
@@ -129,11 +126,14 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
         ))
     };
     let (written, names, converted) = match (motors, target) {
-        (Motors::Eng(file), MotorFile::Eng) => (
-            eng::write(&file).map_err(unwritable)?,
-            eng_names(&file),
-            Vec::new(),
-        ),
+        (Motors::Eng(mut file), MotorFile::Eng) => {
+            let joined = join_makers(&mut file);
+            (
+                eng::write(&file).map_err(unwritable)?,
+                eng_names(&file),
+                joined,
+            )
+        }
         (Motors::Rse(file), MotorFile::Rse) => (
             rse::write(&file).map_err(unwritable)?,
             rse_names(&file),
@@ -150,7 +150,7 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
         (Motors::Rse(mut file), MotorFile::Eng) => {
             if let Some(delays) = &args.delays {
                 for engine in &mut file.engines {
-                    if undelayed.contains(&engine.code) {
+                    if needs_delays(engine) {
                         engine.delays = Some(delays.clone());
                     }
                 }
@@ -180,6 +180,45 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
     to.emit(&document, |out| text_output(&document, input, out))
 }
 
+/// Whether a `.rse` engine gives no delays a `.eng` header could take: none, or none
+/// [`DelayList`] reads. A hybrid is left to the conversion, which refuses it.
+fn needs_delays(engine: &RseEngine) -> bool {
+    let hybrid = engine
+        .motor_type
+        .as_deref()
+        .is_some_and(|kind| kind.trim().eq_ignore_ascii_case("hybrid"));
+    !hybrid
+        && engine
+            .delays
+            .as_deref()
+            .is_none_or(|delays| DelayList::parse(delays).delays.is_empty())
+}
+
+/// Joins a maker of several words with `_`, as [`convert::rse_to_eng`] does: a `.eng` header is
+/// seven fields, and OpenRocket refuses more.
+fn join_makers(file: &mut EngFile) -> Vec<ConvertWarning> {
+    let mut warnings = Vec::new();
+    for entry in &mut file.entries {
+        let joined = entry
+            .manufacturer
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join("_");
+        if joined != entry.manufacturer {
+            warnings.push(ConvertWarning {
+                motor: entry.name.clone(),
+                kind: hpr::hpr_motor::text::WarningKind::Unusual,
+                message: format!(
+                    "a .eng maker is one word, so {:?} is written {joined:?}",
+                    entry.manufacturer
+                ),
+            });
+            entry.manufacturer = joined;
+        }
+    }
+    warnings
+}
+
 /// What the bundled catalog gives a motor, which hpr flies in place of its curve file's header
 /// ([`CatalogMotor::motor`](hpr::hpr_motor::catalog::CatalogMotor::motor)).
 struct CatalogFigures {
@@ -190,9 +229,11 @@ struct CatalogFigures {
 }
 
 impl CatalogFigures {
-    /// Writes the catalog's figures over the file's, with a warning for each that differed.
-    fn apply(&self, motors: &mut Motors) -> Vec<Warning> {
+    /// Writes the catalog's figures over the file's, with a warning for each that differed, and
+    /// for a `.rse` file written as one, rescales the figures worked out from them ([`rescale`]).
+    fn apply(&self, motors: &mut Motors, to_rse: bool) -> Vec<Warning> {
         let mut warnings = Vec::new();
+        let mut rescaled = Vec::new();
         let mut set = |motor: &str, field: &mut f64, value: f64, what: &str, unit: &str| {
             if field.to_bits() != value.to_bits() {
                 warnings.push(Warning {
@@ -219,7 +260,10 @@ impl CatalogFigures {
                         "mm",
                     );
                     set(&name, &mut entry.length_mm, self.length_mm, "length", "mm");
-                    if let Some(g) = self.propellant_mass_g {
+                    // A header that is already the mass hpr flies keeps its digits.
+                    if let Some(g) = self.propellant_mass_g
+                        && entry.propellant_mass_kg.to_bits() != flown_kg(g).to_bits()
+                    {
                         let kg = convert::g_to_kg(g);
                         set(
                             &name,
@@ -229,7 +273,9 @@ impl CatalogFigures {
                             "kg",
                         );
                     }
-                    if let Some(g) = self.total_mass_g {
+                    if let Some(g) = self.total_mass_g
+                        && entry.total_mass_kg.to_bits() != flown_kg(g).to_bits()
+                    {
                         let kg = convert::g_to_kg(g);
                         set(&name, &mut entry.total_mass_kg, kg, "loaded mass", "kg");
                     }
@@ -238,6 +284,11 @@ impl CatalogFigures {
             Motors::Rse(file) => {
                 for engine in &mut file.engines {
                     let code = engine.code.clone();
+                    let (length, propellant, initial) = (
+                        engine.length_mm,
+                        engine.propellant_mass_g,
+                        engine.initial_mass_g,
+                    );
                     set(
                         &code,
                         &mut engine.diameter_mm,
@@ -258,11 +309,73 @@ impl CatalogFigures {
                     if let Some(g) = self.total_mass_g {
                         set(&code, &mut engine.initial_mass_g, g, "loaded mass", "g");
                     }
+                    if to_rse {
+                        rescaled.extend(rescale(engine, length, propellant, initial));
+                    }
                 }
             }
         }
+        warnings.extend(rescaled);
         warnings
     }
+}
+
+/// The mass hpr flies for a catalog mass of `g` grams ([`CatalogMotor::motor`]'s product).
+fn flown_kg(g: f64) -> f64 {
+    g * 1e-3
+}
+
+/// Rescales the `.rse` figures worked out from the masses and the length, once the catalog's
+/// have replaced the file's (`length`, `propellant` and `initial` are the file's): `massFrac =
+/// 100 propWt / initWt`; `Isp`, which goes as `1 / propWt`; each point's `m`, which goes as
+/// `propWt` ([`convert::eng_to_rse`]'s rule, `m₀ (1 − I / Itot)`); and each point's `cg`, which
+/// goes as the length. A figure the file doesn't give stays out.
+fn rescale(engine: &mut RseEngine, length: f64, propellant: f64, initial: f64) -> Option<Warning> {
+    let mut changed = Vec::new();
+    if (engine.initial_mass_g != initial || engine.propellant_mass_g != propellant)
+        && let Some(fraction) = &mut engine.mass_fraction_pct
+        && engine.initial_mass_g > 0.0
+    {
+        *fraction = 100.0 * engine.propellant_mass_g / engine.initial_mass_g;
+        changed.push("massFrac");
+    }
+    if engine.propellant_mass_g != propellant && propellant > 0.0 && engine.propellant_mass_g > 0.0
+    {
+        let ratio = engine.propellant_mass_g / propellant;
+        if let Some(isp) = &mut engine.isp_s {
+            *isp /= ratio;
+            changed.push("Isp");
+        }
+        let mut any = false;
+        for mass in engine.points.iter_mut().filter_map(|p| p.mass_g.as_mut()) {
+            *mass *= ratio;
+            any = true;
+        }
+        if any {
+            changed.push("m");
+        }
+    }
+    if engine.length_mm != length && length > 0.0 {
+        let ratio = engine.length_mm / length;
+        let mut any = false;
+        for cg in engine.points.iter_mut().filter_map(|p| p.cg_mm.as_mut()) {
+            *cg *= ratio;
+            any = true;
+        }
+        if any {
+            changed.push("cg");
+        }
+    }
+    (!changed.is_empty()).then(|| Warning {
+        motor: Some(engine.code.clone()),
+        line: None,
+        kind: WarningKind::Unusual,
+        message: format!(
+            "rescaled {} to the catalog's figures: they are worked out from the masses and the \
+             length",
+            changed.join(", ")
+        ),
+    })
 }
 
 /// The input's source, format and text, and for a catalog motor the figures hpr flies: a motor

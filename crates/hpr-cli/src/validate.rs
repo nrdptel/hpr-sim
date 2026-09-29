@@ -6,6 +6,7 @@
 //! hold to the accepted accuracy census. It writes nothing. It needs a copy of the repository:
 //! the cases, their references and the reports are files in it, not part of the tool.
 
+use std::io;
 use std::path::Path;
 
 use hpr_validate::committed::{self, CensusCheck};
@@ -62,10 +63,17 @@ pub(crate) fn run(args: &ValidateArgs, to: &mut Out<'_>) -> Result<(), Failure> 
     });
     // A failed check fails even when the output couldn't be written, such as to a closed pipe,
     // which is otherwise the reader's choice and no failure.
-    if document.passed {
-        emitted
-    } else {
-        Err(Failure::Checked(document.problems.join("; ")))
+    let problems = document.problems.join("; ");
+    match emitted {
+        _ if document.passed => emitted,
+        // The output never arrived, so its failure carries the check's reasons.
+        Err(Failure::Output(error)) if error.kind() != io::ErrorKind::BrokenPipe => {
+            Err(Failure::Output(io::Error::new(
+                error.kind(),
+                format!("{error}; and the check failed: {problems}"),
+            )))
+        }
+        _ => Err(Failure::Checked(problems)),
     }
 }
 

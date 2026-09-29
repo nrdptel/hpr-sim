@@ -46,7 +46,9 @@
 //! - the `.rse` figures `.eng` can't hold are dropped, said in a warning, and filled again by the
 //!   rules above.
 //!
-//! After one conversion, a file converts to the other format and back to the same bytes.
+//! After one conversion, a file converts to the other format and back to the same bytes, but for
+//! a `.eng` motor whose delays name none (`-`): its `.rse` file leaves them out, and a `.eng`
+//! header must give them, so converting it back needs them given again.
 
 use hpr_core::gravity::STANDARD_GRAVITY_MPS2;
 use serde::{Deserialize, Serialize};
@@ -714,6 +716,7 @@ mod tests {
         let mut respelled = Vec::new();
         let mut said = Vec::new();
         let mut makers = Vec::new();
+        let mut moved = Vec::new();
         for (name, text) in crate::bundled::CURVE_FILES {
             if name.ends_with(".eng") {
                 engs += 1;
@@ -733,9 +736,17 @@ mod tests {
                 assert_eq!(written.value, rse.value, "{name}");
                 let mut back = rse_to_eng(&written.value).unwrap().value;
                 for (back, eng) in back.entries.iter_mut().zip(&eng.entries) {
-                    // Said in a warning, pinned below.
-                    back.propellant_mass_kg = eng.propellant_mass_kg;
-                    back.total_mass_kg = eng.total_mass_kg;
+                    // The two files whose masses move, each said in a warning pinned below;
+                    // every other mass must come back bit for bit.
+                    if rse
+                        .warnings
+                        .iter()
+                        .any(|w| w.message.contains("more digits"))
+                    {
+                        moved.push(*name);
+                        back.propellant_mass_kg = eng.propellant_mass_kg;
+                        back.total_mass_kg = eng.total_mass_kg;
+                    }
                     if back.delays != eng.delays {
                         respelled.push(format!("{name}: {} as {}", eng.delays, back.delays));
                         assert_eq!(back.delays(), eng.delays(), "{name}");
@@ -797,6 +808,13 @@ mod tests {
             makers,
             [
                 "curves/5f923edb1bca5800041716ab.rse: Estes Industries, Inc. as Estes_Industries,_Inc."
+            ]
+        );
+        assert_eq!(
+            moved,
+            [
+                "curves/5f4294d20002e90000000884.eng",
+                "curves/5f4294d20002e9000000088e.eng"
             ]
         );
         // The two masses of 17 digits, each said, and the only values that move.

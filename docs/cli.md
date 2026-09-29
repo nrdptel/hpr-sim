@@ -32,15 +32,16 @@ Its other commands are registered but not available yet: each refuses and names 
 >   ([Solid motors](physics/motor.md#validation)). `hpr motors list` only repeats the catalog's
 >   figures as [ThrustCurve.org](glossary.md#thrustcurveorg) states them.
 > - `hpr convert` keeps the thrust curve, the size and the masses. On all 32 bundled motor files,
->   converting to the other format and back gives each of them again, bit for bit, except two
->   masses written with 17 digits, each flagged by a warning
+>   converting to the other format and back gives each of them again as hpr reads the file, bit
+>   for bit, except two masses written with 17 digits, each flagged by a warning
 >   ([test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-motor/src/convert.rs)).
->   OpenRocket 24.12 opens all 32 converted files and reads 31 as it reads the originals
->   ([what a conversion keeps](#what-a-conversion-keeps)). Whether RockSim opens them is not
->   checked.
+>   OpenRocket 24.12 opens all 32 converted files and reads 29 as it reads the originals; the
+>   other three differ only in the motor's type or a delay
+>   ([other programs](#what-a-conversion-keeps)). Whether RockSim opens them is not checked.
 > - `hpr validate` makes the check the project's automated tests make on every change, with the
 >   same code. It re-flies the 20 cases compared with RocketPy; the OpenRocket comparisons and the
->   real flights it only checks against the census ([what it checks](#hpr-validate)).
+>   real flights it only checks against the [census](glossary.md#accuracy-census), the accepted
+>   list of published accuracy numbers ([what it checks](#hpr-validate)).
 > - The tests in
 >   [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
 >   run every command as a user would, and check each `--json` document against its
@@ -388,7 +389,10 @@ hpr convert H170M H170M.eng
 ```
 
 A catalog motor is written with the size and masses the catalog gives, which are the ones hpr
-flies; where its curve file's header says otherwise, a warning says so. An existing file of the
+flies; where its curve file's header says otherwise, a warning says so. Written as `.rse`, the
+figures worked out from them (the mass fraction, the specific impulse, and the mass and centre of
+gravity at each point) are rescaled to match, and a warning says that too. The delays are the
+curve file's, which can differ from the ones `hpr motors show` lists. An existing file of the
 output's name is replaced, but never the file being read: to rewrite a `.eng` file in hpr's
 layout, convert it to a new `.eng` file name. Here the Estes F15's `.rse` file, from the catalog's
 curves, becomes a `.eng` file:
@@ -411,8 +415,8 @@ warning: F15: dropped Type, auto-calc-mass, auto-calc-cg, avgThrust, peakThrust,
 
 Both formats give a motor's name, maker, diameter and length, its loaded and propellant masses,
 its delays, and its [thrust curve](glossary.md#thrust-curve). The curve, the size and the masses
-are kept: converting a file and converting the result back gives each of them again, bit for bit.
-The formats write some things differently, and `hpr convert` translates:
+are kept: converting a file and converting the result back gives each of them again as hpr reads
+the file, bit for bit, but for a mass of 16 or 17 digits (below). The formats write some things differently, and `hpr convert` translates:
 
 | | `.eng` | `.rse` |
 |---|---|---|
@@ -425,14 +429,19 @@ The formats write some things differently, and `hpr convert` translates:
 Masses move between kilograms and grams by moving the decimal point, not by multiplying, which
 would round: `0.0041` kg times 1000 is `4.1000000000000005` in a computer's arithmetic, while
 moving the point gives `4.1`. A mass written with 16 or 17 digits may still change in its last
-digit; a warning says so.
+digit; a warning says so. A flight reads a `.rse` file's grams, and the catalog's, by multiplying,
+so the same motor flown from a `.eng` file and from its converted `.rse` can differ in a mass's
+last digit, a part in 10¹⁶.
 
 Some things come back written differently, though they mean the same:
 
 - Delays spelled `p`, `1000` or with spaces come back in the table's spelling. hpr reads them as
   the same delays.
-- A name or maker of several words comes back with `_` between the words. A `.eng` header is
-  seven fields split by spaces, and OpenRocket refuses more; a warning says so.
+- A name or maker of several words comes back with `_` between the words, in any `.eng` file
+  `hpr convert` writes. A `.eng` header is seven fields split by spaces, and OpenRocket 24.12
+  refuses one of eight ([the script](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motor_files.py) checks it); a warning says so.
+- A `.eng` motor whose delays are `-`, which names none, is written to `.rse` without delays, so
+  converting it back to `.eng` needs `--delays`.
 - Comments lose their blank lines and the spaces ending their lines, and comments after the last
   motor of a `.eng` file are dropped; a warning says so.
 
@@ -450,14 +459,24 @@ are in the [`.rse` format notes](format/rse.md#writer-policy-strict-round-trip-s
 
 `hpr convert` refuses to write a hybrid motor as `.eng`, which couldn't mark it as a hybrid (hpr
 models solid motors only). A `.eng` header must give delays, so a `.rse` motor without them is
-refused until `--delays` gives them, such as `--delays P` for a plugged motor.
+refused until `--delays` gives them, such as `--delays P` for a plugged motor. `--delays` fills
+only the motors that give none.
 
 **Other programs.** OpenRocket 24.12 opens all 32 files `hpr convert` writes from the bundled
-curves, and reads 31 of them as it reads the originals. The other is a `.eng` file whose delay
-is written `1000`: OpenRocket reads no delay from it, and a plugged motor from the converted
-`.rse`, as hpr reads both. A [script](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motor_files.py)
-repeats the check; the project's automated tests don't run it, as they have no OpenRocket.
-Whether RockSim opens the files is not checked.
+curves. A [script](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motor_files.py) compares what OpenRocket reads from each converted file with what it
+reads from the original: the name, the maker as OpenRocket names it, the type, the diameter and
+length, the launch and burnout masses, the curve's points, and the delays. 29 of the 32 read the
+same.
+
+- Two are `.rse` files that say the motor is reloadable or single-use. A `.eng` file can't say
+  it, so OpenRocket reads the converted files' type as unknown. hpr flies both types alike.
+- The third is the Aerotech G69N's `.eng` file, which writes its plugged delay as `1000`.
+  OpenRocket reads no delay from that original, but a plugged motor from the converted `.rse`.
+  hpr reads both as plugged, so the difference is in OpenRocket's reading of the original, not
+  in what `hpr convert` wrote.
+
+The project's automated tests don't run the script, as they have no OpenRocket. Whether RockSim
+opens the files is not checked.
 
 ## `hpr validate`
 
@@ -477,10 +496,13 @@ The census also holds the comparisons with OpenRocket and with real flights on t
 private files; it checks that their published numbers still match the census.
 
 It is the check the project's automated tests make on every change, `cargo xtask validate
---check`, run by the same code, so the two pass and fail together. It writes nothing. It needs a
+--check`, run by the same code, so the two pass and fail together
+([test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)). It writes nothing. It needs a
 copy of the repository, as the cases, their references and the reports are files in it. Run it
 from the copy's folder, or name the folder with `--root`, with `hpr` built from the same commit as
-the copy: a newer copy's reports can differ from what an older `hpr` computes.
+the copy: a newer copy's reports can differ from what an older `hpr` computes. If it fails on
+your machine but the project's checks pass on the same commit, rebuild `hpr` from that commit
+first.
 
 ```bash
 cargo run -p hpr-cli -- validate

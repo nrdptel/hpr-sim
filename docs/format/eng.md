@@ -178,8 +178,11 @@ Round-trip stable: a file hpr writes reads back to exactly the values it was wri
   [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line conversion) is described with
   that format's [writer policy](rse.md#writer-policy-strict-round-trip-stable). From `.rse`, a
   code or maker of several words joins them with `_`, as no real file has more than seven header
-  fields and OpenRocket 24.12 refuses more; a leading `(0, 0)` point is dropped when the next is
-  after ignition; and the comment text becomes one comment per non-blank line.
+  fields and OpenRocket 24.12 refuses eight
+  ([`motor_files.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motor_files.py)
+  checks it), and `hpr convert` joins a maker read from a `.eng` file the same way. A leading
+  `(0, 0)` point is dropped when the next is after ignition, and the comment text becomes one
+  comment per non-blank line.
 
 ## Checked against real files
 

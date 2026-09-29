@@ -177,18 +177,20 @@ Round-trip stable: a file hpr writes reads back to exactly the values it was wri
   A literal one would read back as a space [X §3.3.3]. Escape `<comments>` text as
   `&amp; &lt; &gt;` with CR as `&#13;`, without CDATA, and write it verbatim (no trimming).
 - Flags are written `1` or `0`. The rendering attributes are not kept, so they are not written.
-- Converting from `.eng`, which the writer itself never does, is `hpr_motor::convert` and
-  `hpr convert` (since [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line
-  conversion). It fills what `.eng` lacks the way the observed files do:
+- The writer adds nothing by itself. Converting from `.eng` is a separate step,
+  `hpr_motor::convert` or `hpr convert` (since [M4.2c](../decisions-and-roadmap.md#m4-2c), the
+  command-line conversion), and it fills what `.eng` lacks the way the observed files do. The
+  counts are out of the files that give each attribute: 715 engines, of which 710 give `massFrac`
+  and `Isp`, and 700 have a propellant mass above zero for `m`'s shape:
 
   | attribute | filled as | observed in |
   |---|---|---|
   | a `(0, 0)` first point | added when the curve's first point is after ignition | 715 of 715 |
   | `Itot` | the trapezoidal integral of the curve | within 0.1% in 712 |
   | `peakThrust` | the largest `f` | all but 9 |
-  | `burn-time` | the last `t` | equal, or rounded from it in 281 |
+  | `burn-time` | the last `t` | the last `t`, or in 281 of 715 a rounding of it |
   | `avgThrust` | `Itot` / `burn-time` | within 0.1% in 712 |
-  | `m` | m₀ (1 − I(t)/`Itot`), m₀ = `propWt` | 698 of 700 |
+  | `m` | m₀ (1 − I(t)/`Itot`), m₀ = `propWt` | m₀ = `propWt` in 696 of 715; the shape in 698 of 700 |
   | `cg` | `len`/2 | 685 of 715 |
   | `auto-calc-mass`, `auto-calc-cg` | `1` | every file |
   | `massFrac` | 100 m₀/`initWt` | 703 of 710 |
@@ -197,7 +199,8 @@ Round-trip stable: a file hpr writes reads back to exactly the values it was wri
 
   Delays trade `-` for `,` and `P` for `1000`. Masses move from kg to g by moving the decimal
   point in their shortest digits, not by multiplying. Converting to `.eng` drops the attributes
-  above, each named in a warning, and refuses a hybrid and an engine without delays it can read.
+  above, plus `throatDia` and `exitDia`, each named in a warning. It refuses a hybrid, and a
+  motor with no delays hpr can read until `--delays` gives them.
   OpenRocket 24.12 opens every file converted from the bundled curves
   ([`motor_files.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motor_files.py));
   whether RockSim does is unverified.

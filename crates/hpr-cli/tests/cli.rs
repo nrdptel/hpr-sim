@@ -1426,12 +1426,13 @@ fn the_guides_launch_figures_hold() {
     );
 }
 
-/// A writer whose reader has gone, as `hpr validate | head -1` leaves standard output.
-struct ClosedPipe;
+/// A writer that fails with its error: `BrokenPipe` for a reader that has gone, as
+/// `hpr validate | head -1` leaves standard output, or `StorageFull` for a full disk.
+struct Failing(std::io::ErrorKind);
 
-impl std::io::Write for ClosedPipe {
+impl std::io::Write for Failing {
     fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
-        Err(std::io::ErrorKind::BrokenPipe.into())
+        Err(self.0.into())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -1585,17 +1586,33 @@ fn validate_fails_where_the_check_fails() {
         problems.contains(&"1 metric(s) outside tolerance".to_owned()),
         "{problems:?}"
     );
-    // A reader that stops reading doesn't turn the failure into a success.
-    for json in [false, true] {
+    // A reader that stops reading doesn't turn the failure into a success, and output that can't
+    // be written says the check's reasons with its own.
+    for (kind, json) in [
+        (std::io::ErrorKind::BrokenPipe, false),
+        (std::io::ErrorKind::BrokenPipe, true),
+        (std::io::ErrorKind::StorageFull, true),
+    ] {
         let mut args = vec!["hpr", "validate", "--root", &at];
         if json {
             args.push("--json");
         }
         let mut err = Vec::new();
         assert_eq!(
-            hpr_cli::run(args, &mut ClosedPipe, &mut err),
+            hpr_cli::run(args, &mut Failing(kind), &mut err),
             hpr_cli::Exit::Failure
         );
+        let err = text(&err);
+        if kind == std::io::ErrorKind::StorageFull {
+            assert!(
+                err.starts_with("error: couldn't write the output: "),
+                "{err}"
+            );
+            assert!(
+                err.contains("; and the check failed: 1 metric(s) outside tolerance"),
+                "{err}"
+            );
+        }
     }
     // As text, the lines go to standard output and the reasons to standard error.
     let output = hpr(&["validate", "--root", &at]);
@@ -1763,10 +1780,121 @@ fn convert_writes_a_catalog_motor_and_rewrites_a_file() {
         written.solid_motor().propellant_initial_mass_kg(),
         catalog.solid_motor().propellant_initial_mass_kg()
     ));
+    // A header that is already the mass hpr flies (`g × 1e-3`) keeps its digits, with no warning.
+    let document = json(
+        &["convert", "411I175-14A", &path("i.eng")],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(document["warnings"], serde_json::json!([]));
+    let header = std::fs::read_to_string(dir.path().join("i.eng")).unwrap();
+    assert!(
+        header
+            .lines()
+            .any(|line| line.split_whitespace().nth(4) == Some("0.22890000000000002")),
+        "{header}"
+    );
+    assert_eq!(0.228_900_000_000_000_02, 228.9 * 1e-3);
+    // In a `.rse` file, the figures worked out from a replaced mass are worked out again.
+    let document = json(&["convert", "D5", &path("d.rse")], 0, "convert.schema.json");
+    let messages: Vec<&str> = document["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|warning| warning["message"].as_str().unwrap())
+        .collect();
+    assert!(
+        messages.contains(
+            &"rescaled massFrac to the catalog's figures: they are worked out from \
+                            the masses and the length"
+        ),
+        "{messages:?}"
+    );
+    let written =
+        hpr::hpr_motor::rse::parse(&std::fs::read_to_string(dir.path().join("d.rse")).unwrap())
+            .unwrap()
+            .value;
+    let engine = &written.engines[0];
+    assert_eq!(engine.initial_mass_g, 44.1);
+    assert_eq!(
+        engine.mass_fraction_pct,
+        Some(100.0 * engine.propellant_mass_g / 44.1)
+    );
     let text = text_ok(&["convert", &curve_file(ENG_CURVE), &path("same.eng")]);
     assert_eq!(
         text,
         "read   5f4294d20002e90000000724.eng\nwrote  same.eng: 131-G84-GR-10A\n"
+    );
+}
+
+/// What `hpr convert` changes and what it leaves: `--delays` fills only the engines without
+/// delays, a hybrid is refused as a hybrid, and a `.eng` maker of several words is joined.
+#[test]
+fn convert_fills_only_what_a_file_lacks() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let engine = |code: &str, extra: &str| {
+        format!(
+            "<engine mfg=\"M\" code=\"{code}\" dia=\"29\" len=\"100\" initWt=\"80\" \
+             propWt=\"40\"{extra}><data><eng-data t=\"0\" f=\"0\"/><eng-data t=\"0.5\" \
+             f=\"20\"/><eng-data t=\"1\" f=\"0\"/></data></engine>"
+        )
+    };
+    let file = |engines: &[String]| {
+        format!(
+            "<engine-database><engine-list>{}</engine-list></engine-database>\n",
+            engines.concat()
+        )
+    };
+    std::fs::write(
+        dir.path().join("two.rse"),
+        file(&[engine("X1", " delays=\"4,6\""), engine("X1", "")]),
+    )
+    .unwrap();
+    text_ok(&[
+        "convert",
+        &path("two.rse"),
+        &path("two.eng"),
+        "--delays",
+        "P",
+    ]);
+    let delays: Vec<String> = std::fs::read_to_string(dir.path().join("two.eng"))
+        .unwrap()
+        .lines()
+        .filter(|line| line.starts_with("X1 "))
+        .map(|line| line.split_whitespace().nth(3).unwrap().to_owned())
+        .collect();
+    assert_eq!(delays, ["4-6", "P"]);
+    std::fs::write(
+        dir.path().join("hybrid.rse"),
+        file(&[engine("X2", " Type=\"hybrid\"")]),
+    )
+    .unwrap();
+    let document = json_error(
+        &["convert", &path("hybrid.rse"), &path("hybrid.eng")],
+        1,
+        "input",
+    );
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(message.contains("X2 is a hybrid"), "{message}");
+    std::fs::write(
+        dir.path().join("maker.eng"),
+        "X3 29 100 P 0.04 0.08 Some Maker\n 0.5 20\n 1 0\n",
+    )
+    .unwrap();
+    let document = json(
+        &["convert", &path("maker.eng"), &path("joined.eng")],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(
+        document["warnings"][1]["message"],
+        "a .eng maker is one word, so \"Some Maker\" is written \"Some_Maker\""
+    );
+    let header = std::fs::read_to_string(dir.path().join("joined.eng")).unwrap();
+    assert!(
+        header.starts_with("X3 29 100 P 0.04 0.08 Some_Maker\n"),
+        "{header}"
     );
 }
 

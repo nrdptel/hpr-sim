@@ -9097,11 +9097,13 @@ binary for about a quarter of four-decimal masses (`0.0041 × 1000 = 4.100000000
    half the length, the flags, `massFrac`, `Isp`), and `Type="unspecified"`, which RockSim's
    guide requires. To `.eng` it drops those, named in a warning; hpr uses none of them for a
    solid motor. Delays trade `-` for `,` and `P` for `1000`. A name or maker of several words is
-   joined by `_`: OpenRocket 24.12 refuses a `.eng` header of more than seven fields (the
-   reviewer's probe), and no real file has one. A hybrid and an engine without delays it can
-   read are refused, the latter until `--delays` gives them. A catalog motor converts from its
-   bundled curve with the catalog's size and masses, the ones hpr flies, warned where the
-   curve's header differs (10 of the 32 differ by over 0.1%). The output is replaced if it
+   joined by `_`, also when rewriting `.eng`: OpenRocket 24.12 refuses a `.eng` header of eight
+   fields (`motor_files.py` checks it), and no real file has one. A hybrid and an engine without delays it can
+   read are refused, the latter until `--delays` gives them, which fills only those. A catalog
+   motor converts from its bundled curve with the catalog's size and masses, the ones hpr flies,
+   warned where the curve's header differs (10 of the 32 differ by over 0.1%); a header that is
+   already the mass hpr flies (`g × 1e-3`) keeps its digits, and in a `.rse` file `massFrac`,
+   `Isp`, `m` and `cg` are rescaled to the replaced figures. The delays stay the curve's. The output is replaced if it
    exists, never when it is the input. Design files are not converted (M3.2).
 4. **Masses move by the decimal point.** A mass is printed in its shortest digits, its exponent
    shifted by three and read back, so a mass of up to 15 significant digits in a double's normal
@@ -9111,17 +9113,20 @@ binary for about a quarter of four-decimal masses (`0.0041 × 1000 = 4.100000000
 5. **What "round-trips" means, measured.** The thrust curve, the size and the masses come back
    bit for bit both ways. Other text may come back respelled (delays, names and makers of
    several words, the origin point, comments), each read the same or warned. After one
-   conversion a file is a fixed point, byte for byte. Over the 32 bundled curves: all 29 `.eng`
+   conversion a file is a fixed point, byte for byte, but for `.eng` delays of `-`, which name
+   none: `.rse` leaves them out, and converting back needs `--delays`. Over the 32 bundled curves: all 29 `.eng`
    files come back whole except two whose delays are respelled (`p`, `1000` to `P`) and two with
    a 17-digit mass, each warned; the 3 `.rse` files keep every shared value but one maker,
    joined by `_`.
 6. **Checked by another reader.** `validation/oracles/openrocket/motor_files.py` converts the 32
    bundled curves with `hpr convert` and loads both files in OpenRocket 24.12: it opens all 32
-   and reads 31 as it reads the originals. The other's `.eng` delay `1000` reads as no delay
-   there and as plugged from the `.rse`, as hpr reads both. RockSim is not checked.
+   and reads 29 as it reads the originals, comparing name, maker, type, size, masses, curve and
+   delays. Two `.rse` files' type (reloadable, single-use) reads as unknown from `.eng`, which
+   can't say it; one `.eng` delay `1000` reads as no delay there and as plugged from the `.rse`,
+   as hpr reads both. RockSim is not checked.
 7. **The guide's examples may write files.** An argument with no `/` ending in an extension of
    letters (`F15.eng`) goes to a scratch folder of the call's own, so `cargo xtask cli` never
-   writes into the repository, and the page shows that folder as `<the scratch folder>`.
+   writes into the repository, and the page shows that folder as `<the scratch folder>/`.
 
 **Consequences.** M4.2c's two commands leave `registry::PLANNED`; the README's and the guide's
 tables list them as available; `schema/cli/` gains `convert.schema.json` and

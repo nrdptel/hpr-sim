@@ -4,9 +4,12 @@
 own output back exactly; this script asks the other program that reads both formats. For each of
 the 32 bundled curve files it converts the file to the other format with `hpr convert`, loads the
 original and the converted file with OpenRocket 24.12's own motor loaders, and compares what
-OpenRocket reads from each: designation, maker, diameter, length, launch and burnout mass, the
-thrust curve's points, and the delays, as a set: OpenRocket sorts a `.eng` file's delays, not a
-`.rse` file's.
+OpenRocket reads from each: designation, maker, type, diameter, length, launch and burnout mass,
+the thrust curve's points, and the delays, as a set: OpenRocket sorts a `.eng` file's delays, not
+a `.rse` file's. The maker is the name OpenRocket's maker registry gives it, which is shared by
+every file one run loads, so a maker first read as `Estes Industries, Inc.` keeps that name when
+`Estes_Industries,_Inc.` is read later: it shows that OpenRocket takes both for one maker, not
+that the text is the same.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API that `javap` prints for the jar (`RASPMotorLoader`,
@@ -18,7 +21,9 @@ then run from the repository root:
 
     refs/venv/bin/python validation/oracles/openrocket/motor_files.py
 
-It prints one line per file that OpenRocket reads differently, and a summary; it writes nothing.
+It prints one line per file that OpenRocket reads differently, and a summary; then whether
+OpenRocket reads a `.eng` header of eight fields, a maker of two words, which is why `hpr convert`
+joins such a maker with `_`. It writes nothing.
 """
 
 import math
@@ -79,6 +84,7 @@ def load(path):
         {
             "designation": str(motor.getDesignation()),
             "maker": str(motor.getManufacturer().getSimpleName()),
+            "type": str(motor.getMotorType()),
             "diameter": float(motor.getDiameter()),
             "length": float(motor.getLength()),
             "launch mass": float(motor.getLaunchMass()),
@@ -158,6 +164,14 @@ def main():
             else ""
         )
     )
+    with tempfile.TemporaryDirectory() as scratch:
+        eight = Path(scratch) / "eight.eng"
+        eight.write_text("X1 29 100 P 0.04 0.08 Some Maker\n 0.5 20\n 1 0\n", encoding="utf-8")
+        joined = Path(scratch) / "joined.eng"
+        joined.write_text("X1 29 100 P 0.04 0.08 Some_Maker\n 0.5 20\n 1 0\n", encoding="utf-8")
+        for what, path in [("eight fields", eight), ("the maker joined, seven", joined)]:
+            read = load(path)
+            print(f"a .eng header of {what}: " + (read if isinstance(read, str) else "read"))
 
 
 if __name__ == "__main__":
