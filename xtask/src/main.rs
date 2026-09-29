@@ -26,6 +26,7 @@ mod aero_mach;
 mod aero_override;
 mod aero_roll;
 mod census;
+mod cli;
 mod designs;
 #[cfg(test)]
 mod docs;
@@ -63,6 +64,7 @@ Commands:
 {AERO}
 {VALIDATE}
 {CENSUS}
+{CLI}
 {SITE}
 {EXAMPLES}
 {ORK}
@@ -77,6 +79,7 @@ fn usage() -> String {
         .replace("{AERO}", aero::USAGE)
         .replace("{VALIDATE}", validate::USAGE)
         .replace("{CENSUS}", census::USAGE)
+        .replace("{CLI}", cli::USAGE)
         .replace("{SITE}", site::USAGE)
         .replace("{EXAMPLES}", examples::USAGE)
         .replace("{ORK}", ork::USAGE)
@@ -93,6 +96,7 @@ fn main() -> ExitCode {
         Some("aero") => aero::run(&args.collect::<Vec<_>>()),
         Some("validate") => validate::run(&args.collect::<Vec<_>>()),
         Some("census") => census::run(&args.collect::<Vec<_>>()),
+        Some("cli") => cli::run(&args.collect::<Vec<_>>()),
         Some("site") => site::run(&args.collect::<Vec<_>>()),
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
         Some("ork") => ork::run(&args.collect::<Vec<_>>()),

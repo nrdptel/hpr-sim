@@ -55,8 +55,8 @@ One already holds some code, `hpr_io`, as its row says:
 | [`hpr_ffi`](api/hpr_ffi/index.html) | A C interface, for other languages | [M4.4](decisions-and-roadmap.md#m4-4) |
 | [`hpr_wasm`](api/hpr_wasm/index.html) | WebAssembly bindings, for the browser | [M4.4](decisions-and-roadmap.md#m4-4) |
 
-The command-line tool, `hpr-cli`, is a program rather than a library, so it has no reference here.
-It is planned in [M4.2](decisions-and-roadmap.md#m4-2).
+The command-line tool, `hpr-cli`, is a program rather than a library, so it has no reference here:
+[The command line](cli.md) documents its commands, output and exit codes.
 
 ## Using it from your own program
 

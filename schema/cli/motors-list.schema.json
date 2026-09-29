@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MotorList",
+  "description": "`hpr motors list`: the bundled catalog's motors, as ThrustCurve.org states them.",
+  "type": "object",
+  "properties": {
+    "catalog": {
+      "description": "Where the catalog comes from.",
+      "$ref": "#/$defs/CatalogInfo"
+    },
+    "motors": {
+      "description": "The motors that pass the filters, in catalog order (by impulse class).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ListedMotor"
+      }
+    }
+  },
+  "required": [
+    "catalog",
+    "motors"
+  ],
+  "$defs": {
+    "CatalogInfo": {
+      "description": "Where the bundled catalog comes from.",
+      "type": "object",
+      "properties": {
+        "captured": {
+          "description": "The date the catalog was captured, `YYYY-MM-DD`.",
+          "type": "string"
+        },
+        "selection": {
+          "description": "Which motors were taken, and why.",
+          "type": "string"
+        },
+        "source": {
+          "description": "The source, such as `ThrustCurve.org API v1`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "captured",
+        "selection"
+      ]
+    },
+    "ListedMotor": {
+      "description": "One motor in the catalog, with ThrustCurve.org's stated figures.",
+      "type": "object",
+      "properties": {
+        "average_thrust_n": {
+          "description": "Average thrust, N, as stated.",
+          "type": "number",
+          "format": "double"
+        },
+        "burn_time_s": {
+          "description": "Burn time, s, as stated.",
+          "type": "number",
+          "format": "double"
+        },
+        "common_name": {
+          "description": "The common name, such as `J760`.",
+          "type": "string"
+        },
+        "delays": {
+          "description": "The delays as the catalog writes them, such as `6,8,10` or `P` (plugged).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "designation": {
+          "description": "The manufacturer's full designation, such as `1266J760-19A`.",
+          "type": "string"
+        },
+        "diameter_mm": {
+          "description": "Casing diameter, mm.",
+          "type": "number",
+          "format": "double"
+        },
+        "impulse_class": {
+          "description": "The impulse class, such as `J`.",
+          "type": "string"
+        },
+        "length_mm": {
+          "description": "Casing length, mm.",
+          "type": "number",
+          "format": "double"
+        },
+        "manufacturer": {
+          "description": "The manufacturer.",
+          "type": "string"
+        },
+        "manufacturer_abbrev": {
+          "description": "The manufacturer's abbreviation, such as `CTI`.",
+          "type": "string"
+        },
+        "motor_type": {
+          "description": "`single_use` or `reload`.",
+          "$ref": "#/$defs/MotorKind"
+        },
+        "total_impulse_ns": {
+          "description": "Total impulse, N·s, as stated.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "designation",
+        "common_name",
+        "manufacturer",
+        "manufacturer_abbrev",
+        "impulse_class",
+        "motor_type",
+        "diameter_mm",
+        "length_mm",
+        "total_impulse_ns",
+        "average_thrust_n",
+        "burn_time_s"
+      ]
+    },
+    "MotorKind": {
+      "description": "Whether a motor is used once or reloaded into a reusable case.",
+      "oneOf": [
+        {
+          "description": "A single-use motor.",
+          "type": "string",
+          "const": "single_use"
+        },
+        {
+          "description": "A reload for a reusable case.",
+          "type": "string",
+          "const": "reload"
+        },
+        {
+          "description": "A hybrid: listed, but hpr models solid motors only.",
+          "type": "string",
+          "const": "hybrid"
+        }
+      ]
+    }
+  }
+}

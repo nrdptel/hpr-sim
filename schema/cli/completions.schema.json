@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Completions",
+  "description": "`hpr completions`: a shell completion script.",
+  "type": "object",
+  "properties": {
+    "script": {
+      "description": "The script.",
+      "type": "string"
+    },
+    "shell": {
+      "description": "The shell, such as `bash`.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "shell",
+    "script"
+  ]
+}

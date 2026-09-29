@@ -23,8 +23,9 @@ pub struct Package {
     /// so the rule is about what this crate pulls in, not about who pulls it in;
     /// `layering::check` enforces it.
     pub forbids: Vec<String>,
-    /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one, which is where
-    /// rustdoc writes its documentation (`target/doc/hpr_core/`).
+    /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one that rustdoc
+    /// documents, which is where rustdoc writes it (`target/doc/hpr_core/`). A library with
+    /// `doc = false`, as `hpr-cli`'s, is left out: it has no pages in the API reference.
     pub lib: Option<String>,
     /// The packages its library and programs depend on (normal and build dependencies, not
     /// dev-dependencies), by package name, in the order cargo lists them.
@@ -152,7 +153,10 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             })
         };
         // A library is `lib`, or a crate type named for how it is linked (`cdylib` for Python).
-        if has_kind(&["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"]) {
+        // `doc` is missing from older cargo's metadata, which documented every library.
+        if has_kind(&["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"])
+            && target["doc"].as_bool() != Some(false)
+        {
             lib = target["name"].as_str().map(str::to_owned);
         }
         if !has_kind(&["example"]) {
@@ -209,6 +213,7 @@ mod tests {
                 { "name": "pure", "kind": null }, { "name": "serde", "kind": "build" },
                 { "name": "other-py", "kind": "dev" }
             ], "targets": [
+                { "kind": ["lib"], "name": "tool", "doc": false, "src_path": "/work/hpr-sim/tool/src/lib.rs" },
                 { "kind": ["bin"], "name": "tool", "src_path": "/work/hpr-sim/tool/src/main.rs" }
             ] },
             { "name": "other-py", "metadata": { "docs": {} }, "targets": [

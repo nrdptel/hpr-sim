@@ -22,7 +22,6 @@
   stable, shared lints and dependencies); dual licenses and notices; `deny.toml` denying copyleft;
   `xtask wasm-check`; CI (fmt, clippy, test on three OSes, doc, wasm-check, deny) on **every** PR,
   no `paths-ignore`; README "pre-alpha"; `.gitignore` covers `refs/`, `.autopilot/`, `corpus/`.
-
   *Done when:* the local gate passes, CI is green on all three operating systems, `cargo deny
   check` passes, and ADR-001 records the license choice and workspace layout. *Met.*
 
@@ -32,7 +31,6 @@
   commit), ThrustCurve and motor.fusionspace.co snapshots, and `fusionspace-loft` plus the private
   `loft-fixtures` repo (skipped with a note when unavailable, as in CI); a `uv`-managed Python venv
   in `refs/venv` with `rocketpy==1.13.0` and JPype; a Java 17 check.
-
   *Done when:* `fetch` is idempotent, `verify` checks every hash, `doctor` prints which oracles are
   runnable, `git status` shows nothing from `refs/`, and `THIRD-PARTY-NOTICES.md` lists every
   source with its license and usage mode (bundled, fetched or run-only). *Met.*
@@ -49,10 +47,8 @@
   linking the other. Pages: *Start here*; *Getting started* (a runnable first flight); *How a
   flight is simulated*; one page per model, each opening with *In short*; *Accuracy* (every result,
   gaps included); *Glossary*; *Checking a claim*; the decisions; the roadmap.
-
   *Done when:* split on 2026-09-17 into M0.4a to M0.4e, which carry its four done-when bullets
   unchanged. Done 2026-09-18, with M0.4d's first deploy.
-
   - [x] **M0.4a The site and its link checks** (ADR-016 to ADR-018): CI builds the site on every PR,
     and a broken link or a bare internal label fails it. *Met.*
   - [x] **M0.4b Model pages, Accuracy, Glossary, Checking a claim**: a model page without *In short*
@@ -105,22 +101,18 @@
   composite test bodies matches hand calculations; mass, CG and inertia match RocketPy's example
   rockets where RocketPy exposes them; the OpenRocket stored-value comparison is deferred to M2.2
   and noted there.
-
   - [x] **M1.4a Shapes, materials and component mass properties:** every nose and transition shape
     above (clipped or not), solids of revolution filled or with a wall, fin planforms,
     cross-sections and tabs, and every other component listed, each with mass, CG and full inertia
     tensor from geometry in its own frame; cited materials; `MassProperties` with the parallel-axis
     theorem and rotations.
     - Loft lessons: L44, L45, L46, L48, L49, L91.
-
     *Done when:* analytic volume, area and CG tests pass for every shape, and the inertia tensor
     of composite test bodies matches hand calculations.
-
   - [x] **M1.4b Design tree, configurations and checks:** stages and component placement,
     configurations with motors, overrides, reference diameter, structural checks with typed
     warnings, and `validation/designs/`.
     - Loft lessons: L47, L50.
-
     *Done when:* mass, CG and inertia match RocketPy's example rockets where RocketPy exposes
     them, and the OpenRocket stored-value comparison is deferred to M2.2 and noted there.
 
@@ -134,18 +126,14 @@
   *Result:* see M1.5a (the Recruiter's six-fin slopes, ADR-008) and M1.5b (Valetudo, ADR-009).
   Skin friction is fully turbulent with roughness, as in Niskanen; laminar and transitional
   friction were not built (ADR-009).
-
   - [x] **M1.5a Normal force and centre of pressure:** Barrowman CNα and CP for every component
     with Prandtl–Glauert, body lift at angle of attack, fin–body interference, and the `aero.md`
     sections for them.
     - Loft lessons: L8, L9, L10, L89.
-
     *Done when:* CNα and CP reproduce Barrowman's worked example(s) within 1%.
-
   - [x] **M1.5b Drag and override tables:** the drag buildup, Cd at angle of attack, Cd-vs-Mach
     override tables from CSV, and the `aero.md` sections for them.
     - Loft lessons: L11, L12, L13, L14, L15, L16, L90.
-
     *Done when:* subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs
     at Mach 0.3 (tighten this later), and unit tests cover every drag term's limits.
     *Result (ADR-009):* not met for Valetudo (−47% power-off, −50% power-on; its table is 1.44 times
@@ -159,7 +147,6 @@
   output and event root-finding (liftoff, rail exit, burnout, apogee, ground hit, user events), a
   fixed-step RK4 option; a recorder with a configurable channel set, an observer trait and a
   `criterion` benchmark. *Done when:* its four bullets, which M1.6a and M1.6b carry word for word.
-
   - [x] **M1.6a Integrator and events:** adaptive Dormand–Prince 5(4) with dense output, event
     root-finding and stop times that put discontinuities on step boundaries; the fixed-step RK4
     option; `docs/physics/integration.md`. *Done when:* step-halving convergence shows the
@@ -176,7 +163,6 @@
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
   independently, landing detection. *Done when:* M1.7a's, word for word. *Result:* met by M1.7a;
   M1.7b and M1.7c add the streamers, tumble and separation (ADR-012, ADR-013, ADR-014).
-
   - [x] **M1.7a Parachutes and descent:** parachutes (Cd·S, inflation time or area-growth model),
     drogue and main with deployment triggers (apogee, altitude, timer, motor delay), drogue
     release, descent with wind drift and landing detection.
@@ -720,12 +706,8 @@
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
   - Loft lessons: L95.
-  *Done when:*
-  - The examples run in CI.
-  - rustdoc has zero warnings.
-  - A "custom aero model" example overrides a built-in model through the trait.
-
-  Split into a and b (ADR-103).
+  *Done when:* the examples run in CI; rustdoc has zero warnings; a "custom aero model" example
+  overrides a built-in model through the trait. Split into a and b (ADR-103).
   - [x] **M4.1a The builder.** `Environment`, `Motor`, `Rocket` (parts from the nose back, one
     motor tube, parachutes) and `Flight`, over the crates' own types.
     - Loft lessons: L95.
@@ -747,6 +729,21 @@
   *Done when:* `assert_cmd` tests cover every implemented command and the JSON output validates
   against the published schemas, and `hpr analyze` is tested on a log with no design file
   present.
+
+  Split into a to d (ADR-105).
+  - [x] **M4.2a The command surface and `hpr motors`.** Every command registered, the rest refusing
+    with their milestone (exit 3); `--json`, schemas generated from the output types, exit codes,
+    completions, and the README's command table generated from the registry. *Done when:*
+    `assert_cmd` tests cover `motors`, `completions` and every refusal, each JSON output validating
+    against its committed schema; a test fails when the table, a schema or a page's example is
+    stale, or when the table lists a command clap doesn't register. *Result:* met (ADR-105).
+  - [ ] **M4.2b `hpr sim`.** A `.ork` or hpr design flown with a catalog motor or a motor file, its
+    summary printed and its recording exported. *Done when:* a public `.ork` flown by `hpr sim`
+    gives the library's flight bit for bit, and its JSON validates.
+  - [ ] **M4.2c `hpr validate` and `hpr convert`.** *Done when:* `hpr validate` fails where `cargo
+    xtask validate --check` does, and `hpr convert` round-trips `.eng` and `.rse` motor files.
+  - [ ] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*
+    `hpr analyze` is tested on a log with no design file present, its JSON validating.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
   - Loft lessons: L67, L68.

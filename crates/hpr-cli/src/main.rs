@@ -1,20 +1,18 @@
-//! The `hpr` command-line tool.
-//!
-//! Status: pre-alpha skeleton. The commands arrive in M4.2.
+//! The `hpr` command-line tool. The commands are in the `hpr_cli` library; this hands them the
+//! process's arguments and exits with the status they return.
 
-#![allow(
-    clippy::print_stdout,
-    reason = "a command-line tool reports on standard output"
-)]
 #![allow(
     clippy::disallowed_methods,
-    clippy::disallowed_types,
-    reason = "the command-line tool reads and writes files; it is not part of the pure core"
+    reason = "the command-line tool reads its arguments; it is not part of the pure core"
 )]
 
-fn main() {
-    println!(
-        "hpr {}: pre-alpha, no commands are available yet",
-        env!("CARGO_PKG_VERSION")
+use std::process::ExitCode;
+
+fn main() -> ExitCode {
+    let exit = hpr_cli::run(
+        std::env::args_os(),
+        &mut std::io::stdout().lock(),
+        &mut std::io::stderr().lock(),
     );
+    ExitCode::from(exit.code())
 }
