@@ -399,7 +399,12 @@ fn report(
                     &read.value.attachments,
                     supply.curves(),
                 );
-                let format_here = format_tally.add(name, bytes, &whole.value, supply.curves());
+                let format_here = format_tally.add(
+                    name,
+                    (bytes, &read.value.attachments),
+                    &whole.value,
+                    supply.curves(),
+                );
                 let mut defaulted_here = 0usize;
                 for warning in &spine.warnings {
                     if warning.message.starts_with(DEFAULT_RADIUS) {

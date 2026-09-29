@@ -16,6 +16,7 @@ workspace = true
 wasm = true
 
 [dependencies]
+base64.workspace = true
 hpr-design.workspace = true
 # The document holds a design as `hpr_io::ork` reads it (ADR-111).
 hpr-io.workspace = true

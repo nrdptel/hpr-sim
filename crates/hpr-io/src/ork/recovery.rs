@@ -165,6 +165,8 @@ impl SeparationEvent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
 #[serde(deny_unknown_fields)]
+// One name per event type in the design format's schema.
+#[schemars(rename = "EventSetting_for_{E}")]
 pub struct EventSetting<E> {
     /// The event.
     pub event: Option<E>,

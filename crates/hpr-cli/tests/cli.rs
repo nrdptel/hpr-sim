@@ -907,14 +907,11 @@ fn sim_refuses_what_it_cant_fly() {
     refused(&["sim", "missing.ork"], "missing.ork");
     refused(
         &["sim", "design.rkt"],
-        "reads an OpenRocket .ork file or an hpr design file",
+        "reads an OpenRocket .ork file or a rocket's JSON",
     );
     let not_json = folder.path().join("design.json");
     std::fs::write(&not_json, "{}").unwrap();
-    refused(
-        &["sim", &not_json.to_string_lossy()],
-        "not an hpr design file",
-    );
+    refused(&["sim", &not_json.to_string_lossy()], "not a rocket's JSON");
     refused(
         &[
             "sim",

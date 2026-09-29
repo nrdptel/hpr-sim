@@ -94,6 +94,7 @@ pub struct Nozzle {
     /// Motors read from `.eng` or `.rse` files, or from the catalog, carry no nozzle and so no
     /// correction.
     #[serde(deserialize_with = "Option::deserialize")]
+    #[schemars(required)]
     pub reference_pressure_pa: Option<f64>,
 }
 

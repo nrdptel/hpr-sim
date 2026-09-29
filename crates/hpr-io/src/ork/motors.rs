@@ -59,9 +59,6 @@ pub enum Curve {
     Embedded {
         /// The archive entry, such as `thrustcurves/<digest>.rse`.
         entry: String,
-        /// The entry's text, as the archive holds it: what a `.ork` written from the design
-        /// puts back (`hpr_format::DesignFile::to_ork`), so the curve travels with the design.
-        text: String,
         /// The motor built from it.
         motor: Box<SolidMotor>,
     },
@@ -279,6 +276,8 @@ impl IgnitionEvent {
 /// When a motor ignites: an event and a delay after it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
+// Named apart from `hpr_design::Ignition` in the design format's schema.
+#[schemars(rename = "OrkIgnition")]
 pub struct Ignition {
     /// The event.
     pub event: IgnitionEvent,
@@ -889,8 +888,6 @@ fn curve(
                 Ok(solid) => {
                     return Curve::Embedded {
                         entry,
-                        // `embedded` read it as UTF-8, so nothing is replaced.
-                        text: String::from_utf8_lossy(&attachment.bytes).into_owned(),
                         motor: Box::new(solid),
                     };
                 }

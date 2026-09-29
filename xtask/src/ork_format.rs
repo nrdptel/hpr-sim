@@ -5,8 +5,8 @@
 use std::collections::BTreeMap;
 
 use hpr_core::geodesy::Geodetic;
-use hpr_format::{DesignFile, Provenance, Source, SourceFormat};
-use hpr_io::ork::{self, Design, SuppliedCurves, export};
+use hpr_format::{Content, DesignFile, Provenance, Source, SourceFormat};
+use hpr_io::ork::{self, Attachment, Design, SuppliedCurves, export};
 use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation};
 use serde_json::{Value, json};
 
@@ -25,8 +25,11 @@ pub(crate) struct FormatTally {
     valid: usize,
     /// Documents that read back as the document written.
     read_back: usize,
-    /// Designs whose `.ork` written from the document is the `.ork` written from the design.
+    /// Designs whose `.ork` written from the document is the `.ork` hpr writes from the file
+    /// itself, with the archive's other entries (M3.2a).
     same_ork: usize,
+    /// The archive's other entries the documents carry, as text and as base64.
+    attachments: BTreeMap<String, usize>,
     /// Designs that read back from that `.ork` as first read.
     same_design: usize,
     /// Motor configurations the designs leave out of their rockets, as the `.ork` reader does:
@@ -58,6 +61,7 @@ impl FormatTally {
             valid: 0,
             read_back: 0,
             same_ork: 0,
+            attachments: BTreeMap::new(),
             same_design: 0,
             left_out: 0,
             flown: 0,
@@ -69,18 +73,25 @@ impl FormatTally {
         })
     }
 
-    /// Takes `design`, read from `bytes` with `curves`, through the format and back; returns the
-    /// per-file detail.
+    /// Takes `design`, read with `curves` from `bytes`, whose archive's other entries are
+    /// `attachments`, through the format and back; returns the per-file detail.
     pub(crate) fn add(
         &mut self,
         name: &str,
-        bytes: &[u8],
+        (bytes, attachments): (&[u8], &[Attachment]),
         design: &Design,
         curves: &SuppliedCurves,
     ) -> Value {
         self.designs += 1;
         let provenance = Provenance::hpr(Some(Source::of(SourceFormat::Ork, bytes)));
-        let document = DesignFile::new(design.clone(), provenance);
+        let document = DesignFile::new(design.clone(), provenance, attachments);
+        for file in &document.attachments {
+            let key = match file.content {
+                Content::Text(_) => "text",
+                _ => "base64",
+            };
+            *self.attachments.entry(key.to_owned()).or_default() += 1;
+        }
         let text = match hpr_format::to_json(&document) {
             Ok(text) => text,
             Err(error) => {
@@ -114,10 +125,8 @@ impl FormatTally {
         if read_back {
             self.read_back += 1;
         }
-        let (Ok(through), Ok(direct)) = (
-            back.to_ork(),
-            export::write(design, &document.attachments()),
-        ) else {
+        // The `.ork` M3.2a writes from the file itself, its other entries and all.
+        let (Ok(through), Ok(direct)) = (back.to_ork(), export::write(design, attachments)) else {
             self.failed.push(name.to_owned());
             return json!({ "error": "a .ork was not written" });
         };
@@ -192,6 +201,7 @@ impl FormatTally {
             "valid": self.valid,
             "read_back_the_same": self.read_back,
             "ork_same_as_the_designs_own": self.same_ork,
+            "attachments": self.attachments,
             "design_read_back_the_same": self.same_design,
             "configurations_left_out": self.left_out,
             "configurations_flown": self.flown,
@@ -207,7 +217,7 @@ impl FormatTally {
     pub(crate) fn print(&self) {
         println!(
             "  through the hpr design format: {} design(s); {} valid against {SCHEMA}, {} read \
-             back the same, {} write the .ork the design writes, {} read back from it the same; \
+             back the same, {} write the .ork hpr writes from the file, {} read back from it the same; \
              {} failed",
             self.designs,
             self.valid,
@@ -224,6 +234,7 @@ impl FormatTally {
             self.apart.len(),
             self.left_out
         );
+        crate::ork::print_counts("archive entries carried", &self.attachments);
         crate::ork::print_counts(
             "configurations not flown, the same from both ends",
             &self.not_flown,

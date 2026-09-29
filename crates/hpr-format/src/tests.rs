@@ -99,6 +99,20 @@ fn document(bytes: &[u8]) -> DesignFile {
     DesignFile::from_ork(bytes).unwrap().value
 }
 
+fn file_design(file: &ork::OrkFile) -> Design {
+    ork::design(file).value
+}
+
+/// The document of `design`, read from `bytes`, with the file's own attachments.
+fn document_of(design: Design, bytes: &[u8]) -> DesignFile {
+    let provenance = Provenance::hpr(Some(Source::of(SourceFormat::Ork, bytes)));
+    DesignFile::new(
+        design,
+        provenance,
+        &ork::read(bytes).unwrap().value.attachments,
+    )
+}
+
 #[test]
 fn the_committed_schema_is_the_generated_one() {
     // `cargo xtask format` rewrites it.
@@ -125,9 +139,10 @@ fn every_public_design_round_trips_through_the_document() {
         let back = from_json(&text).unwrap();
         assert_eq!(back, read, "{name}");
         assert_eq!(to_json(&back).unwrap(), text, "{name}");
-        // `.ork` → document → `.ork` writes the `.ork` the design itself writes, and that `.ork`
-        // reads back as the design first read.
-        let direct = ork::export::write(&read.design(), &read.attachments())
+        // `.ork` → document → `.ork` writes the `.ork` hpr writes from the file itself, its
+        // archive's other entries and all, and that `.ork` reads back as the design first read.
+        let file = ork::read(bytes).unwrap().value;
+        let direct = ork::export::write(&file_design(&file), &file.attachments)
             .unwrap()
             .value;
         let through = back.to_ork().unwrap().value;
@@ -183,7 +198,8 @@ fn the_text_is_canonical() {
             "motors",
             "recovery",
             "simulations",
-            "extensions"
+            "extensions",
+            "attachments"
         ]
     );
     // The same design always writes the same bytes.
@@ -312,11 +328,17 @@ fn flyable(bytes: &[u8]) -> Design {
 
 #[test]
 fn a_design_read_from_its_document_flies_to_the_same_apogee() {
+    let validator = validator();
     let mut flown = 0;
     for (name, bytes) in PUBLIC {
         let design = flyable(bytes);
-        let provenance = Provenance::hpr(Some(Source::of(SourceFormat::Ork, bytes)));
-        let text = to_json(&DesignFile::new(design.clone(), provenance)).unwrap();
+        let text = to_json(&document_of(design.clone(), bytes)).unwrap();
+        // Supplied curves and whole motors: the schema covers them too.
+        assert_eq!(
+            schema_errors(&validator, &text),
+            Vec::<String>::new(),
+            "{name}"
+        );
         let back = from_json(&text).unwrap();
         let before = apogees(&design);
         // Read from the document, the design flies the same flight, bit for bit.
@@ -358,10 +380,14 @@ const INVENTED_RSE: &str = r#"<engine-database>
   </engine-list>
 </engine-database>"#;
 
-/// Loft lesson L57's trap, one step on: a `.ork` that embeds its motor's curve, taken through the
-/// document and written back out, still carries the curve, and flies on it with no curve supplied.
-#[test]
-fn an_embedded_curve_travels_with_the_document() {
+/// Bytes that are not UTF-8, standing in for a decal image: a PNG's signature and a few more.
+const IMAGE: &[u8] = &[
+    0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff, 0xfe, 0x80,
+];
+
+/// A public design with an embedded thrust curve and a decal, archived: the design, the curve's
+/// entry name and text.
+fn with_attachments() -> (Vec<u8>, String, String) {
     let (_, bytes) = PUBLIC[13];
     let design = ork::design(&ork::read(bytes).unwrap().value).value;
     let motor = &design.motors.configurations[0].motors[0];
@@ -369,26 +395,122 @@ fn an_embedded_curve_travels_with_the_document() {
     let rse = INVENTED_RSE
         .replace("{DIA}", &format!("{}", motor.diameter_m.unwrap() * 1e3))
         .replace("{LEN}", &format!("{}", motor.length_m.unwrap() * 1e3));
-    let attachment = Attachment {
-        name: entry.clone(),
-        bytes: rse.clone().into_bytes(),
-    };
-    let archive = ork::export::write(&design, &[attachment]).unwrap().value;
+    let attachments = [
+        Attachment {
+            name: "decals/invented.png".to_owned(),
+            bytes: IMAGE.to_vec(),
+        },
+        Attachment {
+            name: entry.clone(),
+            bytes: rse.clone().into_bytes(),
+        },
+    ];
+    let archive = ork::export::write(&design, &attachments).unwrap().value;
+    (archive, entry, rse)
+}
+
+/// Loft lesson L57's trap, one step on: a `.ork` that embeds its motor's curve and a decal, taken
+/// through the document and written back out, still carries both, and flies on the curve with none
+/// supplied.
+#[test]
+fn a_files_other_entries_travel_with_the_document() {
+    let (archive, entry, rse) = with_attachments();
     let read = document(&archive);
-    let Curve::Embedded { text, .. } = &read.motors.configurations[0].motors[0].curve else {
-        panic!("{:?}", read.motors.configurations[0].motors[0].curve);
-    };
-    assert_eq!(*text, rse);
-    assert_eq!(read.attachments().len(), 1);
-    let back = from_json(&to_json(&read).unwrap()).unwrap();
+    assert!(matches!(
+        read.motors.configurations[0].motors[0].curve,
+        Curve::Embedded { .. }
+    ));
+    assert_eq!(
+        read.attachments,
+        [
+            AttachedFile {
+                name: "decals/invented.png".to_owned(),
+                content: Content::Base64("iVBORw0KGgoA//6A".to_owned()),
+            },
+            AttachedFile {
+                name: entry.clone(),
+                content: Content::Text(rse.clone()),
+            },
+        ]
+    );
+    let text = to_json(&read).unwrap();
+    assert_eq!(schema_errors(&validator(), &text), Vec::<String>::new());
+    let back = from_json(&text).unwrap();
     let written = back.to_ork().unwrap().value;
+    // The `.ork` hpr writes from the archive itself, byte for byte.
+    let file = ork::read(&archive).unwrap().value;
+    let direct = ork::export::write(&file_design(&file), &file.attachments)
+        .unwrap()
+        .value;
+    assert_eq!(written, direct);
     let file = ork::read(&written).unwrap().value;
     assert_eq!(file.attachment(&entry).unwrap().bytes, rse.as_bytes());
+    assert_eq!(file.attachment("decals/invented.png").unwrap().bytes, IMAGE);
     let again = ork::design(&file).value;
     assert_eq!(again, read.design());
     let before = apogees(&read.design());
     assert_eq!(before.len(), 1);
     assert_eq!(apogees(&again), before);
+}
+
+/// What the attachments must hold to, beyond their types: base64 that decodes, one name each, and
+/// every embedded curve's entry.
+#[test]
+fn attachments_that_do_not_hold_together_are_refused() {
+    let (archive, entry, _) = with_attachments();
+    let text = to_json(&document(&archive)).unwrap();
+    let swap = |from: &str, to: &str| {
+        assert!(text.contains(from), "{from}");
+        from_json(&text.replacen(from, to, 1))
+            .unwrap_err()
+            .to_string()
+    };
+    assert!(swap("iVBORw0KGgoA//6A", "iVBORw0KGgoA//6").contains("decals/invented.png"));
+    assert!(swap("decals/invented.png", &entry).contains("two attachments are named"));
+    assert!(
+        swap(
+            &format!("\"name\": \"{entry}\""),
+            "\"name\": \"elsewhere.rse\""
+        )
+        .contains("which the attachments don't hold")
+    );
+}
+
+/// The schema and the reader agree on which keys a document can leave out: each key of two rich
+/// documents is taken out in turn, and the schema takes the document if and only if the reader
+/// does.
+#[test]
+fn the_schema_and_the_reader_agree_on_every_key() {
+    let validator = validator();
+    let (archive, _, _) = with_attachments();
+    let dual_deploy = to_json(&document_of(flyable(PUBLIC[1].1), PUBLIC[1].1)).unwrap();
+    let mut checked = 0;
+    for text in [to_json(&document(&archive)).unwrap(), dual_deploy] {
+        let whole: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let mut objects = vec![String::new()];
+        while let Some(pointer) = objects.pop() {
+            let Some(serde_json::Value::Object(object)) = whole.pointer(&pointer) else {
+                if let Some(serde_json::Value::Array(items)) = whole.pointer(&pointer) {
+                    objects.extend((0..items.len()).map(|index| format!("{pointer}/{index}")));
+                }
+                continue;
+            };
+            for key in object.keys() {
+                let at = format!("{pointer}/{}", key.replace('~', "~0").replace('/', "~1"));
+                objects.push(at.clone());
+                let mut without = whole.clone();
+                if let Some(serde_json::Value::Object(parent)) = without.pointer_mut(&pointer) {
+                    parent.remove(key);
+                }
+                let spoiled = serde_json::to_string(&without).unwrap();
+                let schema_takes = validator.is_valid(&without);
+                let reader_takes = from_json(&spoiled).is_ok();
+                assert_eq!(schema_takes, reader_takes, "without {at}");
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 500, "{checked} keys");
 }
 
 #[test]
@@ -474,6 +596,59 @@ fn a_value_json_cannot_carry_is_refused_when_written() {
 }
 
 #[test]
+fn a_document_of_another_version_is_not_written() {
+    let (_, bytes) = PUBLIC[0];
+    let mut read = document(bytes);
+    read.version = Version { major: 0, minor: 2 };
+    assert!(matches!(
+        to_json(&read),
+        Err(FormatError::Unsupported { found, .. }) if found == read.version
+    ));
+}
+
+#[test]
+fn other_json_is_refused_as_what_it_is() {
+    for (text, found) in [
+        ("[]", "absent: the JSON is an array, not an object"),
+        ("42", "absent: the JSON is a number, not an object"),
+        ("{\"format\": 7}", "7"),
+    ] {
+        assert_eq!(
+            from_json(text),
+            Err(FormatError::NotADesign {
+                found: found.to_owned()
+            }),
+            "{text}"
+        );
+    }
+    // A long value is quoted cut short.
+    let long = format!("{{\"format\": \"{}\"}}", "x".repeat(1000));
+    let Err(FormatError::NotADesign { found }) = from_json(&long) else {
+        panic!("{long}");
+    };
+    assert_eq!(found.chars().count(), 41, "{found}");
+    // A byte-order mark before the document is not an error.
+    let (_, bytes) = PUBLIC[0];
+    let text = to_json(&document(bytes)).unwrap();
+    assert_eq!(
+        from_json(&format!("\u{feff}{text}")).unwrap(),
+        from_json(&text).unwrap()
+    );
+}
+
+/// The schema's names become type names in generated code (M3.3c), so none is a name schemars
+/// made up by numbering a clash.
+#[test]
+fn every_schema_name_is_chosen() {
+    let schema: serde_json::Value = serde_json::from_str(COMMITTED_SCHEMA).unwrap();
+    let names: Vec<_> = schema["$defs"].as_object().unwrap().keys().collect();
+    assert!(names.len() > 50, "{names:?}");
+    for name in names {
+        assert!(!name.ends_with(|c: char| c.is_ascii_digit()), "{name}");
+    }
+}
+
+#[test]
 fn a_version_reads_as_it_writes() {
     for (text, version) in [
         ("0.1", Version { major: 0, minor: 1 }),
@@ -489,4 +664,16 @@ fn a_version_reads_as_it_writes() {
         assert_eq!(String::from(version), text);
     }
     assert!(Version::try_from("4294967296.0".to_owned()).is_err());
+}
+
+/// The format page's example is the start of the stable trainer's document, as written today.
+#[test]
+fn the_pages_example_is_the_document() {
+    let page = include_str!("../../../docs/format/hpr.md");
+    let (_, after) = page.split_once("```json\n").unwrap();
+    let (example, _) = after.split_once("```").unwrap();
+    let (_, bytes) = PUBLIC[6];
+    let text = to_json(&document(bytes)).unwrap();
+    assert!(text.starts_with(example), "{example}");
+    assert!(example.lines().count() > 20);
 }

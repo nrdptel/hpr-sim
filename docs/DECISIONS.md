@@ -9362,20 +9362,25 @@ while the crate map had `hpr-io` depend on `hpr-format` (a stub nothing used).
    number that is not finite, which `serde_json` would write as `null`) is refused, not lost.
 7. **Provenance** names the program, its version, and the source file's format and SHA-256, never
    its path or name, which can name a person or a private design.
-8. **An embedded curve travels with the design.** `Curve::Embedded` keeps its archive entry's text,
-   and a `.ork` written from a document puts it back. The corpus round trip found the need: one
-   design's two configurations flew on a curve its archive embedded, and without the entry its
-   export could not fly them.
+8. **The source file's other files travel with the design.** A top-level `attachments` list holds
+   each archive entry besides the design, in order: UTF-8 text as text, other bytes (decal images)
+   as base64 (RFC 4648). A `.ork` written from the document puts them all back. The first corpus
+   run, without them, lost one design's two configurations, which flew on a curve its archive
+   embedded. The reader refuses base64 that doesn't decode, two entries of one name, and an
+   embedded curve whose entry is missing.
 9. **Checked two ways.** `cargo xtask ork` takes every corpus design through the format: the
-   document must follow the committed schema, read back the same, write the `.ork` the design
-   writes, and read back from it as first read; each configuration that flies is flown from both
-   ends, calm and standard at sea level off a 1.5 m rail, its stages separating if they do, and
-   must agree within 1e-9. In CI, `hpr-format`'s tests do the same on the 17 public designs, with
-   bundled motors standing in for OpenRocket's database, and hold the committed schema to the
-   generated one.
+   document must follow the committed schema, read back the same, write the `.ork` M3.2a writes
+   from the file itself (its other entries included) byte for byte, and read back from it as
+   first read; each configuration that flies is flown three ways (as read, from the document, from
+   its `.ork`), calm and standard at sea level off a 1.5 m rail, its stages separating if they do,
+   and must agree within 1e-9. In CI, `hpr-format`'s tests do the same on the 17 public designs,
+   with bundled motors standing in for OpenRocket's database; hold the committed schema to the
+   generated one; and take each key out of two documents in turn, the schema and the reader having
+   to agree on whether it is still valid.
 
 **Measured** (2026-09-29): the 73 designs of M3.2a's corpus are all valid against the schema, read
-back the same, write the same `.ork`, and read back from it as first read. 109 configurations fly
+back the same, write M3.2a's `.ork` byte for byte, and read back from it as first read; they carry
+55 other archive entries, 3 as text and 52 as base64. 109 configurations fly
 from both ends to the same apogee bit for bit (largest relative difference 0); the other 61 of the
 170 are left out of their rockets as the `.ork` reader leaves them (ADR-055), the same both ways.
 In CI the 17 public designs fly 18 configurations, the same from the document bit for bit and
@@ -9384,6 +9389,11 @@ within 1e-9 through the written `.ork`.
 **Not chosen: moving the `.ork` design's types into `hpr-format`.** About 30 types would move and
 every reader, writer and check would change, with no change in behaviour; it can come with a
 version that renames them.
+
+**Not chosen: the schema derives behind a feature.** `schemars` is now a dependency of `hpr-motor`,
+`hpr-design` and `hpr-io`, compiled by every program that uses them; a `cfg_attr` on some 90
+derives would spare them. The facade re-exports `hpr-format`, which needs them all, so it is left
+until a program asks.
 
 **Not chosen: keeping unknown keys.** A reader that drops what it doesn't know loses data without
 a word; one that keeps it needs a place for it in every type. Refusing is honest until then.
