@@ -101,7 +101,6 @@
   parachutes, streamers, shock cords; cited clean-room materials; stages and configurations; mass,
   CG and full inertia tensor from geometry, with overrides; structural checks with typed warnings; a
   small public test-design set, `validation/designs/`, so tests never snapshot the private corpus.
-
   *Done when:* analytic volume, area and CG tests pass for every shape; the inertia tensor of
   composite test bodies matches hand calculations; mass, CG and inertia match RocketPy's example
   rockets where RocketPy exposes them; the OpenRocket stored-value comparison is deferred to M2.2
@@ -131,9 +130,7 @@
   and power-off, fin profile and thickness, protuberances — and Cd at angle of attack; Cd-vs-Mach
   override tables (power-on/off) from CSV, including RocketPy/RASAero exports, so the dynamics are
   validated on the oracle's drag first. `docs/physics/aero.md` cites each term.
-
   *Done when:* split below into M1.5a and M1.5b, which carry its three bullets unchanged.
-
   *Result:* see M1.5a (the Recruiter's six-fin slopes, ADR-008) and M1.5b (Valetudo, ADR-009).
   Skin friction is fully turbulent with roughness, as in Niskanen; laminar and transitional
   friction were not built (ADR-009).
@@ -436,8 +433,9 @@
       *Done when:* #87 closed or narrowed to the step alone, its measured size in an ADR and the
       guide. *Result:* met (ADR-049): no source gives a step's supersonic normal force, so the size
       is published: bisected thresholds 2.7e-11 m and 1.3e-13 m, −8.65% and 1.03 cal there, −12.55%
-      and 1.36 at 2 mm down, −4.75% and 0.71 up; stopping the march at the step rejected (ADR-034's
-      mixture). #87 is narrowed to the step; #120 and #121 split off it.
+      and 1.36 at 2 mm down, −4.75% and 0.71 at 2 mm up, −11.34% and 1.10 on a boattail; stopping
+      the march at the step rejected (ADR-034's mixture), and it does not close the boattail's
+      band. #87 is narrowed to the step; #120 and #121 split off it.
     - [x] **M1.8e19 The near-flat flare the march refuses** (#81, #117). Met (ADR-050), bars kept:
       the region's edges derived, not bisected (the corner's crossing and balance); the reduction
       read there, so both switches (−4.6%, −8.3%) go; a test pins the sizes on both sides.
@@ -453,7 +451,6 @@
   stages, and stored simulation results; unknown content is kept in `extensions.x-openrocket` for a
   lossless round trip, and warnings are graceful, never failures.
   - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66.
-
   *Done when:* every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero
   errors; committed `insta` snapshots use only public files (the Loft demo fixtures and synthetic
   designs), and private-corpus results go to a gitignored `corpus-out/`, as counts only; the
@@ -530,7 +527,7 @@
   second reference; the deferred M1.4 mass/CG checks run against OR values. *Done when:* at least
   20 designs are in the report with an error distribution (apogee, max velocity, stability margin,
   mass, CG); every design with apogee error above 5% has a written hypothesis; private designs
-  appear only as anonymised ids. Split into M2.2a to M2.2e (ADR-060): mass first.
+  appear only as anonymised ids. Split into M2.2a to M2.2f (ADR-060, ADR-101): mass first.
   - Loft lessons: L19, L51, L80, L81, L82, L87.
   - [x] **M2.2a Structure mass, CG and inertia** (the M1.4 deferral). Met (ADR-060), its done-when
     bars kept: `cargo xtask ork` holds every design OpenRocket opens to its structure's mass, CG and
@@ -539,7 +536,7 @@
   - [x] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
     convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
     Split into b1 to b5 (ADR-061 to ADR-065). *Result:* met (ADR-101): each is OR's rule or a
-    pinned departure; the rerun has mass and CG within 1% on 68 of 71, each file outside a cause.
+    pinned departure; the rerun has mass and CG within 1% on 68 of 71, each file outside with a cause.
     - Loft lessons: L51, L87.
     - [x] **M2.2b1 What a `.ork` leaves unsaid, and overrides** (L51). Met (ADR-061), bars kept:
       walls, shoulders, materials as OR's on probes; two override departures pinned; L51 live.
@@ -549,8 +546,11 @@
       override on a weightless one are OR's on probes, to 1e-12; roll within 1% on 57 of 74.
     - [x] **M2.2b4 Clusters, fillets and unread parts.** Met (ADR-064), bars kept: cluster, fillets
       pinned, unread parts kept; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1%.
-    - [x] **M2.2b5 Stored results as found** (L87). Met (ADR-065), bars kept (L87 live; the
-      reference and reproduction screens apart, each with stable reasons): 91 of 174 runs pass.
+    - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain
+      readable, but only current, provenance-bearing, structurally plausible results pass the
+      stored-reference screen; hpr reproduction is a separate screen and both report stable reasons
+      (ADR-065). *Result:* met (ADR-065): 91 of 174 pass, 83 excluded by stable reason; 1 of the 91
+      is reproducible by hpr (79 unflyable configurations, 11 reduced designs).
   - [x] **M2.2c The motors OpenRocket flies.** Met (ADR-066, ADR-067), its done-when bars kept:
     every configuration held back only for want of a curve flies or is named with its reason, each
     curve's impulse within 0.1% of OR's. Split into c1 and c2.
@@ -565,7 +565,7 @@
       - Loft lessons: L80, L81.
     - [x] **M2.2d2 hpr's flights against the record.** Met (ADR-069), bars kept: 21 flown; margin
       within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
-  - [x] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
+  - [x] **M2.2e The corpus** (L19, L82: moved to M2.2f, ADR-101). *Done when:* the parent's *done when* is met, unchanged.
     Split into e1 to e10 (ADR-070, ADR-072, ADR-094, ADR-095, ADR-098 to ADR-100). Met in e10.
     - [x] **M2.2e1 Mass and CG in the flight report.** Met (ADR-070), bars kept: launch and
       rod-clearance mass and CG against OR's, tested, on all 21; within 0.22% and 0.016 cal.
@@ -594,9 +594,10 @@
     - [x] **M2.2e10 Twenty designs.** *Done when:* anonymised ids beside the public report make at
       least 20 designs with the five spreads; e4's bar on the flights added. *Result:* met
       (ADR-100): a motor whose ignition never comes flies unlit, as 5 OR probes show; `C04` +0.88%.
-  - [ ] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live; a bar that cannot
-    hold has an ADR with its measurement, the gap left visible. L19's is 0.25 cal of OR's CP: the
-    *Tube fin rocket*'s margin is 0.79 cal against OR's 1.87 (ADR-099).
+  - [ ] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live, L19's asserting
+    tube fins' CP within 0.25 cal of OR's; if that cannot hold, an ADR measures it and L19's row
+    names a test pinning the gap, by a name saying so. Missed today: the *Tube fin rocket*'s CP is
+    1.07 cal forward of OR's, margin 0.79 against 1.87 (ADR-099, ADR-101).
     - Loft lessons: L19, L82.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
