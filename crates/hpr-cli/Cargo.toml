@@ -27,7 +27,8 @@ doc = false
 workspace = true
 
 [dependencies]
-hpr.workspace = true
+# `parquet`: `hpr sim --export` writes Parquet; the writer adds no dependency.
+hpr = { workspace = true, features = ["parquet"] }
 clap.workspace = true
 clap_complete.workspace = true
 schemars.workspace = true

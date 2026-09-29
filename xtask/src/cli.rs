@@ -4,7 +4,9 @@
 //! - `schema/cli/*.schema.json`: the JSON Schema of each `--json` output (`hpr_cli::schemas`);
 //! - the command table in `README.md` and `docs/cli.md`, from the registered commands
 //!   (`hpr_cli::registry::command_table`);
-//! - each example in `docs/cli.md`: the command run in-process, with what it printed.
+//! - each example in `docs/cli.md`: the command run in-process, with what it printed. An argument
+//!   with a `/` in it is a file of the repository, given from its root, as a reader who runs the
+//!   example from a copy of it types it.
 //!
 //! `--check` (and the test below, which the gate runs) fails when a committed copy differs.
 
@@ -94,7 +96,7 @@ fn outputs(root: &Path) -> Result<Vec<(PathBuf, String)>, String> {
         splice_table(&readme, &command_table(Links::Readme), "README.md")?,
     ));
     let page = splice_table(&read(PAGE)?, &command_table(Links::Guide), PAGE)?;
-    outputs.push((PathBuf::from(PAGE), examples(&page)?));
+    outputs.push((PathBuf::from(PAGE), examples(&page, root)?));
     Ok(outputs)
 }
 
@@ -145,8 +147,9 @@ fn block_end(text: &str, body: usize, file: &str, what: &str) -> Result<usize, S
     Ok(end)
 }
 
-/// `page` with each example's output replaced by what the command prints now.
-fn examples(page: &str) -> Result<String, String> {
+/// `page` with each example's output replaced by what the command prints now; the repository's
+/// root is at `root`.
+fn examples(page: &str, root: &Path) -> Result<String, String> {
     let mut result = String::new();
     let mut rest = page;
     while let Some(start) = rest.find(EXAMPLE) {
@@ -160,11 +163,25 @@ fn examples(page: &str) -> Result<String, String> {
             .filter(|(command, _)| command.starts_with("hpr "))
             .ok_or_else(|| format!("{PAGE}: `{opening}` names no `hpr` command"))?;
         // Split on spaces, run in-process: quotes would be passed on as part of an argument, and a
-        // path would be read from wherever the xtask runs, the root or `xtask/` under the tests.
-        if command.contains(['"', '\'', '/', '\\']) {
+        // backslash is a path only on Windows.
+        if command.contains(['"', '\'', '\\']) {
             return Err(format!(
-                "{PAGE}: the example `{command}` has a quote or a path, which examples can't take"
+                "{PAGE}: the example `{command}` has a quote or a backslash, which examples can't \
+                 take"
             ));
+        }
+        // A path is a file of the repository, from its root: the xtask runs from the root, or
+        // from `xtask/` under the tests, so it is given to the command whole.
+        for path in command.split_whitespace().filter(|arg| arg.contains('/')) {
+            if path.starts_with('/')
+                || path.split('/').any(|part| part == "..")
+                || !root.join(path).is_file()
+            {
+                return Err(format!(
+                    "{PAGE}: the example `{command}` names `{path}`, which isn't a file of the \
+                     repository given from its root"
+                ));
+            }
         }
         let expected = match after.split_once("exits ") {
             Some((_, code)) => code
@@ -175,7 +192,7 @@ fn examples(page: &str) -> Result<String, String> {
             None => 0,
         };
         let end = block_end(rest, line_end, PAGE, &format!("the example `{command}`"))?;
-        let (block, code) = example(command);
+        let (block, code) = example(command, root);
         if code != expected {
             return Err(format!(
                 "{PAGE}: the example `{command}` exits {code}, not {expected}: fix the command, or \
@@ -193,10 +210,17 @@ fn examples(page: &str) -> Result<String, String> {
 }
 
 /// A fenced block with the command line and what it printed, and its exit status if not 0; and
-/// that status.
-fn example(command: &str) -> (String, u8) {
+/// that status. The command's paths are read from `root`.
+fn example(command: &str, root: &Path) -> (String, u8) {
     let (mut out, mut err) = (Vec::new(), Vec::new());
-    let exit = hpr_cli::run(command.split_whitespace(), &mut out, &mut err);
+    let args = command.split_whitespace().map(|arg| {
+        if arg.contains('/') {
+            root.join(arg).into_os_string()
+        } else {
+            arg.into()
+        }
+    });
+    let exit = hpr_cli::run(args, &mut out, &mut err);
     let mut block = format!("```text\n$ {command}\n");
     block.push_str(&String::from_utf8_lossy(&out));
     block.push_str(&String::from_utf8_lossy(&err));
@@ -245,45 +269,79 @@ mod tests {
 
     #[test]
     fn a_lost_end_is_refused_not_swallowed() {
-        let text = format!("{TABLE}\nold\n\n{EXAMPLE}hpr sim x`, exits 3 -->\nold\n{END}\n");
+        let text = format!("{TABLE}\nold\n\n{EXAMPLE}hpr mc x`, exits 3 -->\nold\n{END}\n");
         assert!(
             splice_table(&text, "new\n", "f")
                 .unwrap_err()
                 .contains("an end is missing")
         );
         let page =
-            format!("{EXAMPLE}hpr sim x`, exits 3 -->\n\n{EXAMPLE}hpr mc`, exits 3 -->\n{END}\n");
-        assert!(examples(&page).unwrap_err().contains("an end is missing"));
+            format!("{EXAMPLE}hpr mc x`, exits 3 -->\n\n{EXAMPLE}hpr mc`, exits 3 -->\n{END}\n");
+        assert!(
+            examples(&page, &crate::designs::root().unwrap())
+                .unwrap_err()
+                .contains("an end is missing")
+        );
     }
 
     #[test]
     fn an_example_exits_as_its_marker_says() {
-        let unsaid = format!("{EXAMPLE}hpr sim x` -->\n{END}\n");
-        assert!(examples(&unsaid).unwrap_err().contains("exits 3, not 0"));
+        let unsaid = format!("{EXAMPLE}hpr mc x` -->\n{END}\n");
+        assert!(
+            examples(&unsaid, &crate::designs::root().unwrap())
+                .unwrap_err()
+                .contains("exits 3, not 0")
+        );
         let wrong = format!("{EXAMPLE}hpr motors list`, exits 3 -->\n{END}\n");
-        assert!(examples(&wrong).unwrap_err().contains("exits 0, not 3"));
-        for command in ["hpr motors show \"J 760\"", "hpr motors show a/b.eng"] {
+        assert!(
+            examples(&wrong, &crate::designs::root().unwrap())
+                .unwrap_err()
+                .contains("exits 0, not 3")
+        );
+        let root = crate::designs::root().unwrap();
+        for (command, why) in [
+            ("hpr motors show \"J 760\"", "a quote or a backslash"),
+            ("hpr motors show a\\b.eng", "a quote or a backslash"),
+            (
+                "hpr motors show a/b.eng",
+                "`a/b.eng`, which isn't a file of the repository",
+            ),
+            ("hpr motors show /etc/hosts", "`/etc/hosts`, which isn't"),
+            (
+                "hpr motors show xtask/../README.md",
+                "which isn't a file of the repository",
+            ),
+            ("hpr motors show xtask/", "`xtask/`, which isn't"),
+        ] {
             let page = format!("{EXAMPLE}{command}` -->\n{END}\n");
             assert!(
-                examples(&page).unwrap_err().contains("a quote or a path"),
+                examples(&page, &root).unwrap_err().contains(why),
                 "{command}"
             );
         }
+        // A file of the repository is read from the root wherever the xtask runs, and the page
+        // shows the path as given.
+        let command =
+            "hpr motors show crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000735.eng";
+        let page = format!("{EXAMPLE}{command}` -->\n{END}\n");
+        let written = examples(&page, &root).unwrap();
+        assert!(written.contains(&format!("$ {command}\n")), "{written}");
+        assert!(written.contains("H54"), "{written}");
     }
 
     #[test]
     fn an_example_is_run_and_its_output_replaced() {
-        let page = format!("a\n{EXAMPLE}hpr sim x`, exits 3 -->\nstale\n{END}\nb\n");
-        let written = examples(&page).unwrap();
+        let page = format!("a\n{EXAMPLE}hpr mc x`, exits 3 -->\nstale\n{END}\nb\n");
+        let written = examples(&page, &crate::designs::root().unwrap()).unwrap();
         assert!(written.starts_with(&format!(
-            "a\n{EXAMPLE}hpr sim x`, exits 3 -->\n\n```text\n$ hpr sim x\n"
+            "a\n{EXAMPLE}hpr mc x`, exits 3 -->\n\n```text\n$ hpr mc x\n"
         )));
-        assert!(written.contains("error: hpr sim is not available yet"));
+        assert!(written.contains("error: hpr mc is not available yet"));
         assert!(written.ends_with("$ echo $?\n3\n```\n\n<!-- cli: end -->\nb\n"));
         assert!(!written.contains("stale"));
         let bad = format!("{EXAMPLE}ls` -->\n{END}\n");
         assert!(
-            examples(&bad)
+            examples(&bad, &crate::designs::root().unwrap())
                 .unwrap_err()
                 .contains("names no `hpr` command")
         );

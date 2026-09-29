@@ -410,6 +410,17 @@ fn motors_come_from_the_catalog_or_a_file() {
     assert_eq!(file.delay(), None);
     let two = format!("{text}\n{text}");
     assert!(matches!(Motor::from_eng(&two), Err(Error::MotorCount(2))));
+
+    let text = include_str!("../../hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000719.rse");
+    // Its engine: `code="H170M" dia="38." len="191."`, millimetres read as metres.
+    let file = Motor::from_rse(text).unwrap();
+    assert_eq!(file.designation(), "H170M");
+    assert_eq!((file.diameter_m(), file.length_m()), (0.038, 0.191));
+    assert_eq!(file.delay(), None);
+    let engine = text.find("<engine ").unwrap();
+    let end = text.find("</engine>").unwrap() + "</engine>".len();
+    let two = format!("{}{}{}", &text[..end], &text[engine..end], &text[end..]);
+    assert!(matches!(Motor::from_rse(&two), Err(Error::MotorCount(2))));
     assert!(matches!(
         Motor::new(" ", catalog.solid_motor().clone(), 0.029, 0.1),
         Err(Error::EmptyDesignation)

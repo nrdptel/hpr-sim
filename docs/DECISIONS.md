@@ -111,6 +111,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-103 | The builder API wraps the crates' own types, with no default materials | accepted |
 | ADR-104 | A drag model replaces the zero-lift drag only, as a drag table does | accepted |
 | ADR-105 | The command line's surface: every command registered, JSON by schema, a generated table | accepted |
+| ADR-106 | `hpr sim` flies the library's flight, the stack whole, from a stated launch | accepted |
 
 ---
 
@@ -8971,3 +8972,63 @@ a schema, a table or an example is stale.
 for tests. A command's milestone makes it available by moving its name out of
 `registry::PLANNED`, adding its output type to `output::schemas`, and running `cargo xtask cli`.
 `ARCHITECTURE.md`'s `hpr-cli` row lists `analyze` and `completions`.
+
+## ADR-106: `hpr sim` flies the library's flight, the stack whole, from a stated launch (2026-09-29)
+
+**Context.** M4.2b asks for a `.ork` or hpr design flown with a catalog motor or a motor file,
+its summary printed and its recording exported, and is done when a public `.ork` flown by
+`hpr sim` gives the library's flight bit for bit, with its JSON valid. No public `.ork` in the
+repository flies with hpr's own motors: the Loft demos and the pod and rod probes name AeroTech
+motors the bundled catalog doesn't hold. The library flies a `.ork`'s powered separation only
+through `hpr_sim` (`crates/hpr/examples/ork_two_stage.rs`), and flies none of its recovery
+devices (ADR-056). A configuration left out of a `.ork` (`LeftOut`) names only the first reason
+on `NotFlown`'s list, and a missing curve comes before an incomplete airframe.
+
+**Decision.**
+
+1. **The flight is the facade's.** The design becomes `hpr::Rocket::from_design`, and
+   `hpr::Flight::builder` flies it. The rail's angles are set only when given, so a default
+   launch is the builder's own rail, bit for bit. A recording is a `Recorder` of every channel
+   every `--interval` s (0.01 by default) and at each event; it samples the steps' dense output,
+   so recording doesn't change the flight.
+2. **The launch is stated, and printed.** Without options the site is at 0° N, 0° E and 0 m, the
+   rail vertical and 1.5 m long (the builder examples' rail), the air calm and the 1976 standard
+   atmosphere. No site is neutral; every output states the one used, and the options set each.
+   `--wind` is one speed at every height. Real weather is `hpr weather` (M5.2).
+3. **The stack flies whole, with no recovery device.** Notes in the output say so: a `.ork`'s
+   devices are read and not flown, an hpr design file holds none, and a design of several stages
+   flies as one. A `.ork` configuration with a powered separation (`MotorConfiguration::staging`),
+   or a motor lit at its stage's separation, is refused rather than flown without it. Issue #240
+   holds both.
+4. **`--motor` puts one motor in one mount, lit at launch**: a catalog name through
+   `Motor::from_catalog`, a `.eng` through `Motor::from_eng`, or a `.rse` through the new
+   `Motor::from_rse`. It goes into the chosen configuration's one mount, or `--mount`, or the
+   design's only mount. It refuses a configuration of several motors, and a `.ork` configuration
+   left out for its airframe, a stage or a separation. It also refuses a `.ork` rocket not read
+   exactly as written, asked of the new `hpr_io::ork::airframe_not_as_written`: that rule stood
+   inside `ork::design`, where a missing curve hid it.
+5. **The output mirrors the library's summary field for field.** `sim.schema.json` holds every
+   field of `FlightSummary`, each event's time, height and speed, the exports, the notes and the
+   reader's warnings. A design's failed checks are refused and listed; `--accept-design-errors`
+   flies them and lists them in the notes. Paths are shown by file name, so an output doesn't
+   depend on where it ran.
+6. **An example may name a file of the repository** (amending ADR-105 §6), given from the root.
+   `cargo xtask cli` reads it from the root wherever it runs, and refuses an absolute path, a
+   `..`, or a path that isn't a file. The page shows the path as a reader types it from a copy of
+   the repository.
+
+**Evidence.** `cargo test -p hpr-cli`: `sim_flies_a_public_ork_as_the_library_does` flies
+`validation/fixtures/ork/pod-flights/pods-none.ork` (the repository's own probe) with
+`--motor H54`. It flies the same rocket through the facade as a program would, and finds every
+summary field and every event's time, height and speed equal to the bit (`to_bits`). The
+`--export`ed CSV equals the library's `export::csv` byte for byte, and the document validates
+against `sim.schema.json`. The F15's `.rse` and the H54's `.eng` fly the same way, with all
+five export formats written and the Parquet equal to the library's. The synthetic 54 mm design
+flies from Spaceport America's site on an 85° rail in a 5 m/s west wind as the library flies it.
+`sim_refuses_what_it_cant_fly` pins 15 refused command lines by their messages. `hpr-io`'s
+`an_incomplete_airframe_is_found_behind_a_missing_curve` pins the airframe check behind a
+`NoCurve`.
+
+**Consequences.** `hpr-cli` enables `hpr`'s `parquet` feature, which adds no dependency. The
+README's and guide's tables list `hpr sim` as available. `hpr sim`'s own reference is the guide's
+page, `docs/cli.md#hpr-sim`.

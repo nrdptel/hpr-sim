@@ -126,11 +126,12 @@ out.
   margin from the rail exit to apogee, the optimum ejection delay and its landing's latitude and
   longitude are in [Flight metrics](physics/metrics.md), and its fins' flutter speed and margin in
   [Fin flutter](physics/flutter.md).
-- **No way to fly a rocket without writing Rust.** The command-line tool looks up motors and reads
-  motor files ([The command line](cli.md)). Flying a design from it (`hpr sim`,
-  [M4.2b](decisions-and-roadmap.md#m4-2b)) and from Python ([M4.3](decisions-and-roadmap.md#m4-3))
-  are planned. Until then, [Getting started](getting-started.md) flies a first rocket with a short Rust
-  program, and [The builder](the-builder.md) builds and flies a rocket of your own in a few calls.
+- **The command line flies a design without its parachutes.** `hpr sim` flies a `.ork` or hpr
+  design file and exports its recording ([The command line](cli.md#hpr-sim)), but it flies no
+  recovery device or stage separation yet. A Rust program flies both:
+  [Getting started](getting-started.md) flies a first rocket, and [The builder](the-builder.md)
+  builds and flies one of your own in a few calls. Python comes in
+  [M4.3](decisions-and-roadmap.md#m4-3).
 - **`.ork` files are read, from Rust, but most don't fly yet.** A `.ork` file is read today
   ([`.ork` design files](format/ork.md)), but few of its motor configurations fly yet and its
   recovery settings are not flown.

@@ -202,6 +202,333 @@ pub enum WarningKind {
     Unusual,
 }
 
+/// `hpr sim`: what was flown, from where, and how the flight went.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct SimFlight {
+    /// The design and the configuration flown.
+    pub design: SimDesign,
+    /// The motors flown.
+    pub motors: Vec<SimMotor>,
+    /// The launch site, rail and wind.
+    pub launch: Launch,
+    /// The flight's metrics.
+    pub summary: Summary,
+    /// The flight's events, in order.
+    pub events: Vec<SimEvent>,
+    /// The recording files written, in the order given.
+    pub exports: Vec<Export>,
+    /// What the flight leaves out of the design, such as its parachutes.
+    pub notes: Vec<String>,
+    /// What the design's reader accepted with a caveat, in file order.
+    pub warnings: Vec<DesignWarning>,
+}
+
+/// The design flown.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct SimDesign {
+    /// The file's name, without its folder.
+    pub file: String,
+    /// The file's format.
+    pub format: DesignFormat,
+    /// The rocket's name, as the file writes it.
+    pub name: String,
+    /// The id of the motor configuration flown.
+    pub configuration: String,
+}
+
+/// A design file format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DesignFormat {
+    /// An OpenRocket `.ork` file.
+    Ork,
+    /// An hpr design file: a `hpr_design::Rocket` as JSON.
+    HprJson,
+}
+
+/// One motor flown.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct SimMotor {
+    /// Its designation, such as `168H54-10A`.
+    pub designation: String,
+    /// The id of the motor mount it is in.
+    pub mount: String,
+    /// Where it comes from.
+    pub source: SimMotorSource,
+    /// When it lights: `launch`, or how the design says.
+    pub ignition: String,
+}
+
+/// Where a flown motor comes from.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SimMotorSource {
+    /// The design file's own configuration.
+    Design,
+    /// The bundled catalog, named with `--motor`.
+    Catalog,
+    /// A motor file named with `--motor`.
+    File {
+        /// The file's name, without its folder.
+        file: String,
+        /// The file's format: `eng` or `rse`.
+        format: FileFormat,
+    },
+}
+
+/// Where and how the rocket was launched.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Launch {
+    /// The site's latitude, degrees north.
+    pub latitude_deg: f64,
+    /// The site's longitude, degrees east.
+    pub longitude_deg: f64,
+    /// The site's elevation above sea level, m.
+    pub elevation_m: f64,
+    /// The rail's length, m, from the rocket's aft end at the start to the rail's top.
+    pub rail_length_m: f64,
+    /// The rail's angle above the horizon, degrees: 90 is vertical.
+    pub inclination_deg: f64,
+    /// The direction the rail leans toward, clockwise from true north, degrees.
+    pub heading_deg: f64,
+    /// The wind's speed, m/s, the same at every height; 0 for calm air.
+    pub wind_speed_m_s: f64,
+    /// The direction the wind blows from, clockwise from true north, degrees.
+    pub wind_from_deg: f64,
+    /// The atmosphere: always `standard`, the 1976 US Standard Atmosphere.
+    pub atmosphere: String,
+}
+
+/// A flight's metrics, as the library's `hpr_sim::metrics::FlightSummary` gives them. Heights are
+/// the centre of gravity's above the launch site; speeds are relative to the ground.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Summary {
+    /// Why the flight ended.
+    pub termination: Termination,
+    /// The centre of gravity's height above the launch site at launch, m: not zero, as the rocket
+    /// stands on the rail.
+    pub launch_height_m: Option<f64>,
+    /// The speed as the rocket left the rail, m/s.
+    pub rail_exit_speed_m_s: Option<Peak>,
+    /// The highest point.
+    pub apogee: Option<Apogee>,
+    /// The top speed, m/s.
+    pub max_speed_m_s: Option<Peak>,
+    /// The top Mach number.
+    pub max_mach: Option<Peak>,
+    /// The top dynamic pressure, Pa.
+    pub max_dynamic_pressure_pa: Option<Peak>,
+    /// The top acceleration of the nose tip from liftoff until a recovery device opens, m/s².
+    pub max_acceleration_m_s2: Option<Peak>,
+    /// The top acceleration under the recovery devices, m/s²: the opening shock.
+    pub max_descent_acceleration_m_s2: Option<Peak>,
+    /// The least static stability margin, calibres, from the rail exit to apogee or the first
+    /// deployment.
+    pub min_static_margin_cal: Option<Peak>,
+    /// The least stability margin at the flight's angle of attack, calibres, over the same span.
+    pub min_flight_margin_cal: Option<Peak>,
+    /// The stability as the rocket left the rail.
+    pub rail_exit_stability: Option<Stability>,
+    /// Where and how fast the rocket landed.
+    pub landing: Option<Landing>,
+    /// Where each part that came apart from the rocket landed, if any did.
+    pub body_landings: Vec<Landing>,
+}
+
+/// Why a flight ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Termination {
+    /// The centre of mass reached the ground.
+    GroundHit,
+    /// Every motor burned out before the rocket lifted off.
+    NoLiftoff,
+    /// The rocket lifted off but stopped on the rail after every motor burned out.
+    StalledOnRail,
+    /// The time cap was reached.
+    TimeCap,
+    /// The integrator's step limit was reached.
+    StepLimit,
+    /// The stack separated, and each part flew on as its own descent.
+    Separated,
+    /// A way of ending this build of `hpr` doesn't name.
+    Other,
+}
+
+/// A metric's extreme and when it came.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct Peak {
+    /// The value, in the unit the field's name gives.
+    pub value: f64,
+    /// When, s after launch.
+    pub time_s: f64,
+    /// The height above the launch site then, m.
+    pub height_above_ground_m: f64,
+}
+
+/// The highest point.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct Apogee {
+    /// When, s after launch.
+    pub time_s: f64,
+    /// The height above the launch site, m.
+    pub height_above_ground_m: f64,
+    /// The height gained from where the centre of gravity stood at launch, m, as OpenRocket's
+    /// altitude counts.
+    pub gain_m: Option<f64>,
+}
+
+/// The rocket's stability at one instant.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct Stability {
+    /// When, s after launch.
+    pub time_s: f64,
+    /// The height above the launch site, m.
+    pub height_above_ground_m: f64,
+    /// The dynamic pressure, Pa.
+    pub dynamic_pressure_pa: f64,
+    /// The centre of gravity, m aft of the nose tip.
+    pub cg_station_m: f64,
+    /// The reference diameter the margins are counted in, m.
+    pub reference_diameter_m: f64,
+    /// The margin at zero angle of attack.
+    pub static_margin: Margin,
+    /// The margin at the flight's angle of attack.
+    pub flight_margin: Margin,
+}
+
+/// A stability margin and what it rests on.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct Margin {
+    /// The Mach number.
+    pub mach: f64,
+    /// The total angle of attack, rad.
+    pub angle_of_attack_rad: f64,
+    /// The normal-force slope `C_Nα` on the reference area, per radian.
+    pub normal_force_slope_per_rad: f64,
+    /// The sum of the parts' slope magnitudes, per radian: the scale the net slope is judged by.
+    pub slope_magnitude_sum_per_rad: f64,
+    /// The pitch-moment slope about the centre of mass, per radian; negative restores.
+    pub pitch_moment_slope_per_rad: f64,
+    /// The centre of pressure, m aft of the nose tip; `null` when the margin is.
+    pub cp_station_m: Option<f64>,
+    /// The margin, calibres: positive with the centre of pressure aft of the centre of mass;
+    /// `null` when the net slope is too small for the quotient to mean anything.
+    pub margin_cal: Option<f64>,
+}
+
+/// Where and how fast a body landed.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct Landing {
+    /// The body: `null` for the rocket, or the index of a part that came apart from it.
+    pub body: Option<usize>,
+    /// When, s after launch.
+    pub time_s: f64,
+    /// Latitude, degrees north.
+    pub latitude_deg: f64,
+    /// Longitude, degrees east.
+    pub longitude_deg: f64,
+    /// Distance east of the launch site, m.
+    pub east_m: f64,
+    /// Distance north of the launch site, m.
+    pub north_m: f64,
+    /// Distance from the launch site, m.
+    pub distance_m: f64,
+    /// The speed at the ground, m/s.
+    pub ground_hit_speed_m_s: f64,
+    /// The rate of descent at the ground, m/s.
+    pub descent_rate_m_s: f64,
+}
+
+/// One event of a flight.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct SimEvent {
+    /// What happened.
+    pub kind: EventKind,
+    /// The device, part or motor it is about, by its index, for the kinds that have one.
+    pub index: Option<usize>,
+    /// When, s after launch.
+    pub time_s: f64,
+    /// The centre of gravity's height above the launch site, m.
+    pub height_above_ground_m: f64,
+    /// The speed relative to the ground, m/s.
+    pub speed_m_s: f64,
+}
+
+/// What happened at an event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EventKind {
+    /// The rocket started to move along the rail.
+    Liftoff,
+    /// The rocket left the rail.
+    RailExit,
+    /// Every motor lit so far has burned out.
+    Burnout,
+    /// The highest point.
+    Apogee,
+    /// The centre of mass reached the ground.
+    GroundHit,
+    /// A recovery device's charge fired.
+    Trigger,
+    /// A recovery device deployed.
+    Deployment,
+    /// A recovery device was released.
+    Release,
+    /// The stack came apart.
+    Separation,
+    /// A piece left the airframe at an ejection.
+    Ejection,
+    /// A part started to move along the airframe.
+    Shift,
+    /// A part left the airframe.
+    MassRelease,
+    /// A user event.
+    User,
+    /// A motor lit after launch.
+    Ignition,
+    /// An event this build of `hpr` doesn't name.
+    Other,
+}
+
+/// A recording file written.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct Export {
+    /// The path as given.
+    pub path: String,
+    /// The file's format.
+    pub format: ExportFormat,
+    /// The rows recorded: one every `--interval` seconds and one at every event.
+    pub rows: usize,
+}
+
+/// A recording file's format, from its extension.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExportFormat {
+    /// `.csv`: a header of column names with their units, then one line per row.
+    Csv,
+    /// `.json`: `{"columns": [...], "rows": [[...], ...]}`.
+    Json,
+    /// `.parquet`: Apache Parquet.
+    Parquet,
+    /// `.geojson`: the centre of mass's path on the Earth, with the flight's landmarks.
+    Geojson,
+    /// `.kml`: the same path, for Google Earth.
+    Kml,
+}
+
+/// Something the design's reader accepted with a caveat.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct DesignWarning {
+    /// Where in the file: a path of element names from the root, or a zip entry's name.
+    pub at: String,
+    /// How serious it is.
+    pub kind: WarningKind,
+    /// What was found, and how it was read.
+    pub message: String,
+}
+
 /// `hpr completions`: a shell completion script.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct Completions {
@@ -267,6 +594,7 @@ pub fn schemas() -> Vec<(&'static str, String)> {
     let mut schemas = vec![
         ("motors-list.schema.json", schema::<MotorList>()),
         ("motors-show.schema.json", schema::<MotorShow>()),
+        ("sim.schema.json", schema::<SimFlight>()),
         ("completions.schema.json", schema::<Completions>()),
         ("error.schema.json", schema::<ErrorDocument>()),
     ];

@@ -537,3 +537,422 @@ fn the_committed_schemas_are_generated() {
         assert_eq!(file, text, "{name} is stale: run `cargo xtask cli`");
     }
 }
+
+/// The repository's own pod probe with no pods: a single-stage `.ork`, public, with a 29 mm mount
+/// and an AeroTech H128W that the bundled catalog doesn't hold.
+const PROBE: &str = "validation/fixtures/ork/pod-flights/pods-none.ork";
+
+/// A repository file's path, as a string for the command line.
+fn repo_file(path: &str) -> String {
+    root().join(path).to_string_lossy().into_owned()
+}
+
+/// `a` and `b` hold the same keys and the same numbers, bit for bit (`float_roundtrip` reads the
+/// printed numbers back exactly).
+fn same_bits(a: &Value, b: &Value, at: &str) {
+    match (a, b) {
+        (Value::Number(x), Value::Number(y)) => {
+            let (x, y) = (x.as_f64().unwrap(), y.as_f64().unwrap());
+            assert_eq!(x.to_bits(), y.to_bits(), "{at}: {x} != {y}");
+        }
+        (Value::Object(x), Value::Object(y)) => {
+            let keys = |o: &serde_json::Map<String, Value>| o.keys().cloned().collect::<Vec<_>>();
+            assert_eq!(keys(x), keys(y), "{at}");
+            for (key, value) in x {
+                same_bits(value, &y[key], &format!("{at}.{key}"));
+            }
+        }
+        (Value::Array(x), Value::Array(y)) => {
+            assert_eq!(x.len(), y.len(), "{at}");
+            for (i, (x, y)) in x.iter().zip(y).enumerate() {
+                same_bits(x, y, &format!("{at}[{i}]"));
+            }
+        }
+        _ => assert_eq!(a, b, "{at}"),
+    }
+}
+
+/// The library's flight of a design with `motor` put in the configuration `id`'s one mount, from
+/// `builder`'s rail, recorded every 0.01 s as `hpr sim` records it.
+fn library_flight(
+    mut design: hpr::hpr_design::Rocket,
+    id: &str,
+    mount: &str,
+    motor: Option<&hpr::Motor>,
+    environment: &hpr::Environment,
+    launch: impl Fn(hpr::FlightBuilder<'_>) -> hpr::FlightBuilder<'_>,
+) -> (hpr::Flight, hpr::hpr_sim::Recorder) {
+    use hpr::hpr_design::{Configuration, Ignition, MountedMotor};
+    if let Some(motor) = motor {
+        design.configurations.retain(|c| c.id != id);
+        design.configurations.push(Configuration {
+            id: id.to_owned(),
+            name: String::new(),
+            motors: vec![MountedMotor {
+                mount: mount.to_owned(),
+                designation: motor.designation().to_owned(),
+                diameter_m: motor.diameter_m(),
+                length_m: motor.length_m(),
+                motor: motor.solid_motor().clone(),
+                delay: motor.delay(),
+                ignition: Ignition::Launch,
+                failed_tubes: Vec::new(),
+            }],
+        });
+    }
+    let rocket = hpr::Rocket::from_design(design, id).unwrap();
+    let mut recorder = hpr::hpr_sim::Recorder::new(
+        hpr::hpr_sim::Channel::ALL.to_vec(),
+        Some(hpr_cli::sim::DEFAULT_INTERVAL_S),
+    )
+    .unwrap();
+    let flight = launch(hpr::Flight::builder(
+        &rocket,
+        environment,
+        hpr_cli::sim::DEFAULT_RAIL_LENGTH_M,
+    ))
+    .fly_with(&mut recorder)
+    .unwrap();
+    (flight, recorder)
+}
+
+/// The probe read as the library reads it, with its default configuration's id and mount.
+fn probe_design() -> (hpr::hpr_design::Rocket, String, String) {
+    let bytes = std::fs::read(repo_file(PROBE)).unwrap();
+    let file = hpr::hpr_io::ork::read(&bytes).unwrap().value;
+    let design = hpr::hpr_io::ork::design(&file).value;
+    let configuration = design.motors.default_configuration().unwrap();
+    let id = configuration.id.clone();
+    let mount = configuration.motors[0].mount.clone();
+    (design.rocket, id, mount)
+}
+
+/// Checks `document`'s summary and events against the library's flight, bit for bit.
+fn same_flight(document: &Value, flight: &hpr::Flight) {
+    let mut summary = serde_json::to_value(flight.summary()).unwrap();
+    // The library names its variants as Rust does; the command's schema, in snake case.
+    summary["termination"] = "ground_hit".into();
+    assert_eq!(
+        flight.result().termination,
+        hpr::hpr_sim::Termination::GroundHit
+    );
+    same_bits(&document["summary"], &summary, "summary");
+    let events = document["events"].as_array().unwrap();
+    assert_eq!(events.len(), flight.result().events.len());
+    for (printed, event) in events.iter().zip(&flight.result().events) {
+        let sample = &event.sample;
+        for (key, value) in [
+            ("time_s", sample.time_s),
+            ("height_above_ground_m", sample.height_above_ground_m),
+            ("speed_m_s", sample.cg_velocity_enu_m_s.length()),
+        ] {
+            assert_eq!(
+                printed[key].as_f64().unwrap().to_bits(),
+                value.to_bits(),
+                "{key}"
+            );
+        }
+    }
+}
+
+/// M4.2b's bullet: a public `.ork` flown by `hpr sim` gives the library's flight bit for bit,
+/// and its JSON validates. The probe's own motor has no bundled curve, so the catalog's H54 flies
+/// in its mount, as `--motor H54` asks; the library is called as a program would call it.
+#[test]
+fn sim_flies_a_public_ork_as_the_library_does() {
+    let folder = tempfile::tempdir().unwrap();
+    let csv = folder.path().join("flight.csv");
+    let csv_arg = csv.to_string_lossy().into_owned();
+    let design = repo_file(PROBE);
+    let document = json(
+        &["sim", &design, "--motor", "H54", "--export", &csv_arg],
+        0,
+        "sim.schema.json",
+    );
+
+    let (rocket, id, mount) = probe_design();
+    let motor = hpr::Motor::from_catalog("H54").unwrap();
+    let environment = hpr::Environment::new(0.0, 0.0, 0.0).unwrap();
+    let (flight, recorder) = library_flight(rocket, &id, &mount, Some(&motor), &environment, |b| b);
+    same_flight(&document, &flight);
+    // The recording, every value printed to its last bit.
+    let written = std::fs::read_to_string(&csv).unwrap();
+    assert_eq!(written, hpr::hpr_sim::export::csv(&recorder).unwrap());
+    assert_eq!(document["exports"][0]["rows"], recorder.rows().len());
+    assert_eq!(document["exports"][0]["format"], "csv");
+
+    assert_eq!(document["design"]["file"], "pods-none.ork");
+    assert_eq!(document["design"]["format"], "ork");
+    assert_eq!(document["design"]["configuration"], id.as_str());
+    assert_eq!(document["motors"][0]["designation"], "168H54-10A");
+    assert_eq!(document["motors"][0]["mount"], mount.as_str());
+    assert_eq!(document["motors"][0]["source"]["kind"], "catalog");
+    assert_eq!(document["launch"]["rail_length_m"], 1.5);
+    let notes = document["notes"].as_array().unwrap();
+    assert!(
+        notes[0].as_str().unwrap().contains("no recovery device"),
+        "{notes:?}"
+    );
+    // The apogee is well above the rail, and the text says what the JSON says.
+    let apogee = flight.apogee_m().unwrap();
+    assert!(apogee > 100.0, "{apogee}");
+    let text = text_ok(&["sim", &design, "--motor", "H54"]);
+    assert!(
+        text.contains(&format!("apogee            {apogee:.1} m")),
+        "{text}"
+    );
+    assert!(
+        text.contains("168H54-10A (from the bundled catalog)"),
+        "{text}"
+    );
+}
+
+/// A motor file flies as the library reads it: the F15's `.rse` and the H54's `.eng`, each in
+/// the probe's mount, and every recording format is written.
+#[test]
+fn sim_flies_a_motor_file_as_the_library_does() {
+    let (rocket, id, mount) = probe_design();
+    let environment = hpr::Environment::new(0.0, 0.0, 0.0).unwrap();
+    for (file, format) in [
+        ("curves/5f923edb1bca5800041716ab.rse", "rse"),
+        ("curves/5f4294d20002e90000000735.eng", "eng"),
+    ] {
+        let path = curve_file(file);
+        let text = std::fs::read_to_string(&path).unwrap();
+        let motor = match format {
+            "rse" => hpr::Motor::from_rse(&text).unwrap(),
+            _ => hpr::Motor::from_eng(&text).unwrap(),
+        };
+        let folder = tempfile::tempdir().unwrap();
+        let exports: Vec<String> = ["f.csv", "f.json", "f.parquet", "f.geojson", "f.kml"]
+            .iter()
+            .map(|name| folder.path().join(name).to_string_lossy().into_owned())
+            .collect();
+        let design = repo_file(PROBE);
+        let mut args = vec!["sim", design.as_str(), "--motor", path.as_str()];
+        for export in &exports {
+            args.extend(["--export", export.as_str()]);
+        }
+        let document = json(&args, 0, "sim.schema.json");
+        let (flight, recorder) = library_flight(
+            rocket.clone(),
+            &id,
+            &mount,
+            Some(&motor),
+            &environment,
+            |b| b,
+        );
+        same_flight(&document, &flight);
+        assert_eq!(document["motors"][0]["source"]["kind"], "file", "{file}");
+        assert_eq!(document["motors"][0]["source"]["format"], format, "{file}");
+        assert_eq!(document["motors"][0]["designation"], motor.designation());
+        let written: Vec<&str> = document["exports"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["format"].as_str().unwrap())
+            .collect();
+        assert_eq!(written, ["csv", "json", "parquet", "geojson", "kml"]);
+        assert_eq!(
+            std::fs::read(&exports[2]).unwrap(),
+            hpr::hpr_sim::export::parquet(&recorder).unwrap()
+        );
+        for export in &exports {
+            assert!(!std::fs::read(export).unwrap().is_empty(), "{export}");
+        }
+    }
+}
+
+/// An hpr design file flies with its own motor, from a site, a leaning rail and a wind given on
+/// the command line, as the library flies it with the same.
+#[test]
+fn sim_flies_an_hpr_design_from_a_given_launch() {
+    let path = repo_file("validation/designs/synthetic-54mm-three-fin.json");
+    let document = json(
+        &[
+            "sim",
+            &path,
+            "--latitude",
+            "32.99",
+            "--longitude",
+            "-106.97",
+            "--elevation",
+            "1400",
+            "--rail-length",
+            "1.5",
+            "--inclination",
+            "85",
+            "--heading",
+            "90",
+            "--wind",
+            "5",
+            "--wind-from",
+            "270",
+        ],
+        0,
+        "sim.schema.json",
+    );
+    let design: hpr::hpr_design::Rocket =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let environment = hpr::Environment::new(32.99, -106.97, 1400.0)
+        .unwrap()
+        .with_constant_wind(5.0, 270.0)
+        .unwrap();
+    let (flight, _) = library_flight(design, "i175", "", None, &environment, |b| {
+        b.inclination_deg(85.0).heading_deg(90.0)
+    });
+    same_flight(&document, &flight);
+    assert_eq!(document["design"]["format"], "hpr_json");
+    assert_eq!(document["motors"][0]["source"]["kind"], "design");
+    assert_eq!(document["motors"][0]["ignition"], "launch");
+    assert_eq!(document["launch"]["longitude_deg"], -106.97);
+    assert_eq!(document["launch"]["wind_from_deg"], 270.0);
+    // The wind blows the rocket east of the pad: it leans into a west wind and drifts with it.
+    assert!(flight.landing().unwrap().east_m.abs() > 1.0);
+}
+
+/// What `hpr sim` refuses, each with status 1 and an error document naming the reason.
+#[test]
+fn sim_refuses_what_it_cant_fly() {
+    let folder = tempfile::tempdir().unwrap();
+    let probe = repo_file(PROBE);
+    let refused = |args: &[&str], reason: &str| {
+        let document = json_error(args, 1, "input");
+        let message = document["error"]["message"].as_str().unwrap().to_owned();
+        assert!(message.contains(reason), "{args:?}: {message}");
+        assert_eq!(document["error"]["command"], "sim");
+        let output = hpr(args);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stdout.is_empty());
+        assert!(text(&output.stderr).contains(reason));
+    };
+    // The file's own motor has no curve in the bundled catalog.
+    refused(&["sim", &probe], "no thrust curve for H128W");
+    refused(&["sim", &probe], "give a motor with --motor");
+    refused(
+        &["sim", &probe, "--config", "nope"],
+        "no motor configuration `nope`",
+    );
+    refused(
+        &["sim", &probe, "--motor", "H54", "--mount", "nope"],
+        "no motor mount `nope`",
+    );
+    refused(
+        &["sim", &probe, "--motor", "Z9999"],
+        "no motor with a bundled thrust curve",
+    );
+    refused(
+        &["sim", &probe, "--motor", "I175"],
+        "matches several motors",
+    );
+    let text_export = folder.path().join("f.txt");
+    refused(
+        &[
+            "sim",
+            &probe,
+            "--motor",
+            "H54",
+            "--export",
+            &text_export.to_string_lossy(),
+        ],
+        "--export writes",
+    );
+    assert!(!text_export.exists());
+    refused(&["sim", "missing.ork"], "missing.ork");
+    refused(
+        &["sim", "design.rkt"],
+        "reads an OpenRocket .ork file or an hpr design file",
+    );
+    let not_json = folder.path().join("design.json");
+    std::fs::write(&not_json, "{}").unwrap();
+    refused(
+        &["sim", &not_json.to_string_lossy()],
+        "not an hpr design file",
+    );
+    refused(
+        &[
+            "sim",
+            &repo_file("validation/fixtures/ork/loft-demo/demo-multi-config.ork"),
+            "--motor",
+            "H54",
+        ],
+        "--accept-design-errors",
+    );
+
+    // The two-stage design with its sustainer lit by the separation, which never comes.
+    let path = repo_file("validation/designs/synthetic-two-stage-75mm-54mm.json");
+    let mut design: hpr::hpr_design::Rocket =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    for motor in &mut design.configurations[0].motors {
+        if motor.mount == "sustainer-motor-mount" {
+            motor.ignition = hpr::hpr_design::Ignition::Separation { delay_s: 1.0 };
+        }
+    }
+    let separated = folder.path().join("separated.json");
+    std::fs::write(&separated, serde_json::to_string(&design).unwrap()).unwrap();
+    refused(
+        &["sim", &separated.to_string_lossy()],
+        "at its stage's separation",
+    );
+
+    // The staging example's rocket: its booster drops away under power, which the library
+    // flies and `hpr sim` doesn't yet, with its own motors or another.
+    let example =
+        std::fs::read_to_string(root().join("crates/hpr/examples/ork_two_stage.rs")).unwrap();
+    let start = example.find("r#\"").unwrap() + 3;
+    let end = example[start..].find("\"#").unwrap() + start;
+    let staged = folder.path().join("two-stage.ork");
+    std::fs::write(&staged, &example[start..end]).unwrap();
+    let staged = staged.to_string_lossy().into_owned();
+    refused(&["sim", &staged], "separates under power");
+    refused(&["sim", &staged, "--motor", "F15"], "separates under power");
+
+    // The probe with a parallel stage hpr doesn't read: its airframe isn't the file's, so no
+    // motor flies it, though its configuration's first reason is the missing curve.
+    let xml = std::fs::read_to_string(&probe).unwrap();
+    let at = xml.find("<bodytube>").unwrap();
+    let inside = xml[at..].find("<subcomponents>").unwrap() + at + "<subcomponents>".len();
+    let boosters = format!(
+        "{}<parallelstage><name>Boosters</name><id>boosters</id>\
+         <instancecount>2</instancecount></parallelstage>{}",
+        &xml[..inside],
+        &xml[inside..]
+    );
+    let reduced = folder.path().join("reduced.ork");
+    std::fs::write(&reduced, boosters).unwrap();
+    let reduced = reduced.to_string_lossy().into_owned();
+    refused(&["sim", &reduced], "no thrust curve for H128W");
+    refused(
+        &["sim", &reduced, "--motor", "H54"],
+        "not read exactly as written",
+    );
+}
+
+/// A design flown past its failed checks says so in its notes.
+#[test]
+fn sim_notes_accepted_design_errors() {
+    let path = repo_file("validation/fixtures/ork/loft-demo/demo-multi-config.ork");
+    let document = json(
+        &["sim", &path, "--motor", "H54", "--accept-design-errors"],
+        0,
+        "sim.schema.json",
+    );
+    let notes: Vec<&str> = document["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|note| note.as_str().unwrap())
+        .collect();
+    assert!(
+        notes
+            .iter()
+            .any(|note| note.contains("motor_wider_than_mount")),
+        "{notes:?}"
+    );
+    assert!(
+        notes
+            .iter()
+            .any(|note| note.contains("recovery device is not flown")),
+        "{notes:?}"
+    );
+}
