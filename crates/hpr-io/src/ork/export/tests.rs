@@ -112,6 +112,15 @@ fn a_bare_rocket_round_trips() {
     assert_eq!(file.design_entry.as_deref(), Some(DESIGN_ENTRY));
     assert_eq!(file.document.version, SCHEMA);
     assert_eq!(design(&file).value, original);
+    // The entry is stamped with zip's zero date, 1980-01-01, never the clock's: the same design
+    // is the same bytes whenever it is written.
+    let mut archive = zip::ZipArchive::new(Cursor::new(&written)).expect("a zip archive");
+    let stamp = archive
+        .by_index(0)
+        .expect("an entry")
+        .last_modified()
+        .expect("a date");
+    assert_eq!(stamp, zip::DateTime::DEFAULT);
 }
 
 /// An Estes F15 for configuration `config`, with `delay` as its `<delay>`.
