@@ -2896,8 +2896,9 @@ The table ends at `A = 3`, Fletcher's shortest ring; a shorter ring is refused. 
 `A = 2/3` the line runs to the leading edge at `A = 0`. That end point comes from
 [slender-body theory](../glossary.md#slender-body-theory), in which a long, thin ring's lift all
 appears at its front edge. Hoerner and Borst assume the same of the air turned inside an open
-tube: that it turns "at or near the rim of the inlet" (Hoerner and Borst 1985, p. 19-16). They had
-no measurement of an open tube.
+tube: that it turns "at or near the rim of the inlet" (Hoerner and Borst 1985, p. 19-16). They
+write that they "do not have suitable experimental results at hand" on how an axial duct changes a
+slender body's lift and moment.
 
 Fletcher's `A = 1/3` ring is left out, and that is a judgement. Its centre sits ahead of its
 leading edge. Fletcher puts that down to its low aspect ratio: such a ring behaves more like a
@@ -3008,7 +3009,9 @@ reads the same probes with hpr and pins all 70 gaps. The record shows:
   changes with the count. Slender-body theory with the body included predicts one, and it falls
   as tubes are added: by an estimate not yet checked, 1.96 times as many isolated rings for three
   6 mm tubes, 1.57 for six, and 1.13 for six touching each other
-  ([#234](https://github.com/nrdptel/hpr-sim/issues/234)). hpr leaves that out too.
+  ([#234](https://github.com/nrdptel/hpr-sim/issues/234)). OpenRocket's lift is 1.73 times that
+  of isolated rings on the 6 mm probes, below the estimate for three tubes and above it for six.
+  hpr leaves the interference out.
 - OpenRocket puts the tubes' centre a quarter of their length aft of the leading edge up to Mach
   0.5. Its maintainers describe that as the subsonic rule its flat fins and tube fins share
   ([openrocket#3262](https://github.com/openrocket/openrocket/pull/3262)).
@@ -3027,8 +3030,8 @@ From Mach 0.6 the gap shrinks only because OpenRocket 24.12 moves the tubes' cen
 leading edge. Its maintainers call that jump a bug and fixed it after 24.12
 ([openrocket#3235](https://github.com/openrocket/openrocket/pull/3235)). The jump moves
 OpenRocket's own centre of pressure on the *Tube fin rocket* 0.73 calibres forward between Mach
-0.5 and 0.6, and it probably accounts for the five probe results from Mach 0.6 that come within
-the lesson's quarter calibre.
+0.5 and 0.6. It probably accounts for the five probe results, of 28 from Mach 0.6, that come
+within the lesson's quarter calibre.
 
 What each of OpenRocket's two terms is worth: on that probe at Mach 0.05, giving hpr's tubes
 OpenRocket's centre but keeping hpr's slope moves hpr's centre of pressure 0.50 calibres aft.
@@ -3038,16 +3041,19 @@ Giving them OpenRocket's slope but keeping hpr's centre moves it 0.53 calibres a
 hpr keeps its model. Fletcher's measured centre moves forward, as a share of the ring's length,
 as a ring gets longer, and Hoerner and Borst assume an open tube's inner flow turns at its inlet.
 Nothing measured supports OpenRocket's quarter length or its extra lift. hpr's own centre for
-this rocket is unmeasured too: it lies on the line below Fletcher's `A = 2/3`, and his thick ring
-would give a margin of 0.29 instead. Neither code has been checked against a measured tube-fin
+this rocket is unmeasured too: its tubes are shorter for their diameter than Fletcher's `A = 2/3`
+ring, so their centre comes from the line hpr draws from there to the leading edge. Placed as his
+thick `A = 1/3` ring's instead, it would give a margin of 0.29. Neither code has been checked against a measured tube-fin
 rocket, so which margin is nearer is open
 ([#228](https://github.com/nrdptel/hpr-sim/issues/228)). Until then, check a tube-fin design in
-both programs and design to the smaller of the two margins.
+both programs and treat the smaller of the two margins as the more cautious estimate. It is not
+a bound: the thick-ring reading above gives a smaller one still.
 
 **What it leaves out:**
 
-- How the body and the tubes change each other's flow: no interference factor is applied, though
-  slender-body theory predicts one ([#234](https://github.com/nrdptel/hpr-sim/issues/234)).
+- How the body and the tubes change each other's flow. Slender-body theory predicts that they
+  raise each other's lift, but hpr applies no interference factor
+  ([#234](https://github.com/nrdptel/hpr-sim/issues/234)).
 - The gaps between tubes and body, and the drag where they meet.
 - How the flow through a tube develops, or chokes.
 - A thin tube's measured centre of pressure.

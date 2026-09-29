@@ -8660,15 +8660,18 @@ author wrote that "we won't really know until we can find a wind tunnel" (openro
    - The tubes' slope is the same at every Mach number and grows with the count, the length and
      the bore.
    - On every probe it is 1.26 to 1.86 times hpr's, and 1.20 to 1.86 times `N π d²/A_ref`. That is
-     the long-ring limit of `N` isolated thin rings (Hoerner 1965, p. 7-13), which Weissinger's
+     the long-ring limit of `N` isolated thin rings of mean diameter `d` (Hoerner 1965, p. 7-13),
+     which Weissinger's
      formula approaches from below as a ring lengthens.
    - Its slope per tube is the same, to 1e-15, for 3, 4, 5, 6 and 8 tubes of 6 mm. So it
      models no interference that changes with the count. Slender-body theory with the body
      included does predict one, and it falls as the count rises. A 2D apparent-mass solve run
-     during review, not kept here (#234), puts three such tubes at 1.96 times as many isolated
-     rings, six at 1.57, and six touching each other at 1.13. On the sparse probes, then,
-     OpenRocket's slope is below what that theory gives, and on the touching ones above it.
-     Nothing measured supports either.
+     during review, not kept here and not checked (#234), puts three such tubes at 1.96 times as
+     many isolated rings, four at 1.86, five at 1.72, six at 1.57, eight at 1.30, and six touching
+     each other at 1.13, each at a gap of 0.005 radii and still rising as the gap closes.
+     OpenRocket's slope is 1.73 times the long-ring limit on the 6 mm probes, and 1.62 on the
+     touching one. So it is below that estimate for three and four tubes, about level at five,
+     and above it for six, eight and the touching tubes. Nothing measured supports either code.
    - Its centre is a quarter of a tube's length aft of the leading edge up to Mach 0.5, and at the
      leading edge from Mach 0.6. So the *Tube fin rocket*'s own centre of pressure moves 0.73
      calibres forward between those two speeds in OpenRocket. OpenRocket's pull request #3235,
@@ -8682,14 +8685,16 @@ author wrote that "we won't really know until we can find a wind tunnel" (openro
    - Hoerner and Borst (*Fluid-Dynamic Lift*, 1985, p. 19-16) take the lift of the air turned
      inside an open tube as `2α` on its frontal area, "assuming that the turning takes place at or
      near the rim of the inlet". That assumption is the leading edge hpr's line runs to, which
-     ADR-099 derived. They had no measurement of an open tube; on the same page they treat
-     Fletcher's thick `A = 1/3` ring as a ducted body, find its measured slope "practically the
-     same" as that treatment gives. Fletcher measured that ring's centre ahead of its leading
+     ADR-099 derived. They write that they "do not have suitable experimental results at hand"
+     on the influence of an axial duct on a slender body's lift and moment. On the same page they
+     treat Fletcher's thick `A = 1/3` ring as a ducted body, and find its measured slope
+     "practically the same" as that treatment gives. Fletcher measured that ring's centre ahead of its leading
      edge.
    - hpr leaves out the body's interference that slender-body theory predicts (#234). With it,
-     hpr's slope would rise, and the gap on the three-tube probe would all but close; on the
-     touching tubes it would fall from 1.04 to about 0.86 calibres. That is not measured either,
-     and it is a separate change.
+     hpr's slope would rise. On the three-tube probe the gap would all but close, but only by
+     cancellation: a larger slope placed at hpr's centre, 0.03 of the length, not OpenRocket's
+     0.25. On the touching tubes it would fall from 1.04 to about 0.89 calibres. That is not
+     measured either, and it is a separate change.
    - OpenRocket's pull request #1413 says its tube-fin method comes from "a paper cited in the
      code". hpr cannot see which without reading GPL source, and no measurement supports its
      numbers. Taking them to pass a code-to-code bar is what the first hard rule forbids.
@@ -8708,13 +8713,15 @@ author wrote that "we won't really know until we can find a wind tunnel" (openro
    have to change.
 5. **L82's test is live:**
    `hpr_validate::tests::excused_cases_stay_in_the_census_statistics_against_both_references`.
-   - Every number the reports compare is a census row, with the report's own difference. A scored
-     OpenRocket apogee is never withheld, the flights with written causes (ADR-073) among them,
-     and a real flight with a written explanation stays a miss.
+   - Every number the reports compare is a census row, with the report's own difference: the
+     harness's metrics, the six OpenRocket metrics of every example and library flight, and each
+     log's apogee and climb. A scored one is never withheld, the flights with written causes
+     (ADR-073) among them, and a real flight with a written explanation stays a miss.
    - Every group's apogee spread and bar counts are over all its compared rows.
    - A harness rocket that RocketPy flew, and whose team logged it, counts against both. On a
      flight whose miss is explained, the two references are more than 5% apart.
-   - Three mutations of the census each fail the test: withholding OpenRocket's apogee misses,
+   - Mutations of the census each fail the test: withholding the misses of any one scored
+     metric (apogee, max speed, margin, climb), withholding any one mass or centre-of-mass metric,
      dropping misses from the spread, and dropping them from the bar counts.
    - The results stored inside `.ork` files, which M2.2 also names as a reference, never enter the
      census (ADR-065), so this test does not cover them.

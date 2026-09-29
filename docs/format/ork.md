@@ -2517,17 +2517,18 @@ flight, so that fault does not show there; no committed check holds it.
 ([M2.2f](../decisions-and-roadmap.md#m2-2f)). [L82](../decisions-and-roadmap.md#l82) passes;
 [L19](../decisions-and-roadmap.md#l19) does not, and its gap is measured instead:
 
-- [L19](../decisions-and-roadmap.md#l19): a tube fin set's centre of pressure should be within a quarter
-  [calibre](../glossary.md#calibre-caliber) of OpenRocket's. It is not. On the *Tube fin rocket*
-  hpr's is 1.07 calibres forward, which is most of the 1.08 calibres between the two margins,
-  hpr's 0.79 and OpenRocket's 1.87. A test measures and pins the gap on 14 probe designs, and
-  nothing measured says which code is nearer
+- [L19](../decisions-and-roadmap.md#l19): a tube fin set's centre of pressure should be within a
+  quarter [calibre](../glossary.md#calibre-caliber) of OpenRocket's. It is not. On the *Tube fin
+  rocket* hpr's is 1.07 calibres forward, which is nearly all of the 1.08 calibres between the two
+  margins, hpr's 0.79 and OpenRocket's 1.87. A test measures and pins the gap on 14 probe designs,
+  and nothing measured says which code is nearer
   ([tube fins](../physics/aero.md#tube-fins-against-openrocket)).
-- [L82](../decisions-and-roadmap.md#l82): a case let off a pass-or-fail bar still counts in the error statistics. A test holds the
-  [accuracy census](../glossary.md#accuracy-census) to it. Every number the reports compare is
-  counted, the misses that have a written cause or explanation among them. And a rocket with two
-  references counts against both: RocketPy's flight of Juno III, for one, and its team's
-  altimeter log.
+- [L82](../decisions-and-roadmap.md#l82): a case let off a pass-or-fail bar still counts in the
+  error statistics. A test holds the [accuracy census](../glossary.md#accuracy-census) to it. Every
+  number the reports compare is counted, including the misses that have a written cause or
+  explanation. A rocket with two references counts against both: RocketPy's flight of Juno III,
+  for one, and its team's altimeter log. The results stored inside `.ork` files never enter the
+  census, so this does not cover them.
 
 Still not flown:
 

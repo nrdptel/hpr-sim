@@ -2115,14 +2115,19 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
             .unwrap_or_else(|| panic!("{group:?} {case} {metric} is not in the census"))
     };
 
-    // Every compared number is a row, with the report's own difference.
+    // Every compared number is a row, with the report's own difference, and never withheld.
+    let held = |group: Group, case: &str, metric: &str, value: f64| {
+        let found = row(group, case, metric);
+        assert!(
+            (found.difference - value).abs() <= 1e-12 * value.abs().max(1.0),
+            "{case} {metric}: {} against the report's {value}",
+            found.difference
+        );
+        assert_ne!(found.standing, Standing::Withheld, "{case} {metric}");
+        found
+    };
     for comparison in &harness.comparisons {
-        let group = census
-            .rows
-            .iter()
-            .find(|row| row.case == comparison.case)
-            .map(|row| row.group)
-            .expect("the case's group");
+        let group = crate::census::harness_group(&comparison.case).expect("a harness case");
         let found = row(group, &comparison.case, &comparison.metric);
         assert_eq!(
             found.difference, comparison.difference,
@@ -2131,6 +2136,9 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
         );
     }
     let number = |value: &serde_json::Value| value.as_f64().expect("a number");
+    let percent = |hpr: &serde_json::Value, openrocket: &serde_json::Value| {
+        100.0 * (number(hpr) - number(openrocket)) / number(openrocket)
+    };
     let mut caused = 0;
     for flight in examples["flights"]
         .as_array()
@@ -2141,20 +2149,41 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
             flight["design"].as_str().expect("a design"),
             flight["configuration"].as_str().expect("a configuration")
         );
-        let apogee = &flight["metrics"]["apogee_m"];
-        if apogee["outcome"]["outcome"] != "scored" {
+        let group = Group::OpenRocketExamples;
+        for (key, metric, field) in [
+            ("apogee_m", "apogee", "relative_percent"),
+            ("max_speed_m_s", "max_speed", "relative_percent"),
+            ("rod_clearance_margin_cal", "margin", "difference"),
+        ] {
+            let entry = &flight["metrics"][key];
+            if entry["outcome"]["outcome"] != "scored" {
+                continue;
+            }
+            let found = held(group, &case, metric, number(&entry[field]));
+            if metric == "apogee" && flight["apogee_with_the_causes_removed"].is_object() {
+                caused += usize::from(found.standing == Standing::OverBar);
+            }
+        }
+        if flight["aborted"] == true {
             continue;
         }
-        let found = row(Group::OpenRocketExamples, &case, "apogee");
-        assert_eq!(
-            found.percent,
-            Some(number(&apogee["relative_percent"])),
-            "{case}"
+        let (launch, at) = (&flight["launch_mass_kg"], &flight["at_rod_clearance"]);
+        let (ours, theirs) = (&at["hpr"], &at["openrocket"]);
+        held(
+            group,
+            &case,
+            "launch_mass",
+            percent(&launch["hpr"], &launch["openrocket"]),
         );
-        assert_ne!(found.standing, Standing::Withheld, "{case}");
-        if flight["apogee_with_the_causes_removed"].is_object() {
-            caused += usize::from(found.standing == Standing::OverBar);
-        }
+        held(
+            group,
+            &case,
+            "rod_clearance_mass",
+            percent(&ours["mass_kg"], &theirs["mass_kg"]),
+        );
+        let cg = (number(&ours["cg_from_nose_m"]) - number(&theirs["cg_from_nose_m"]))
+            / number(&theirs["reference_length_m"]);
+        held(group, &case, "rod_clearance_cg", cg);
     }
     assert!(
         caused > 0,
@@ -2165,25 +2194,40 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
         .expect("the library's flights")
     {
         let case = flight["flight"].as_str().expect("an id");
-        if flight["apogee_outcome"] != "scored" {
+        let group = Group::OpenRocketLibrary;
+        for (metric, field, outcome) in [
+            ("apogee", "apogee_percent", "apogee_outcome"),
+            ("max_speed", "max_speed_percent", "max_speed_outcome"),
+            ("margin", "margin_cal", "margin_outcome"),
+        ] {
+            if flight[outcome] == "scored" {
+                held(group, case, metric, number(&flight[field]));
+            }
+        }
+        if flight["aborted"] == true {
             continue;
         }
-        let found = row(Group::OpenRocketLibrary, case, "apogee");
-        assert_eq!(
-            found.percent,
-            Some(number(&flight["apogee_percent"])),
-            "{case}"
-        );
-        assert_ne!(found.standing, Standing::Withheld, "{case}");
+        for (metric, field) in [
+            ("launch_mass", "launch_mass_percent"),
+            ("rod_clearance_mass", "rod_clearance_mass_percent"),
+            ("rod_clearance_cg", "rod_clearance_cg_cal"),
+        ] {
+            held(group, case, metric, number(&flight[field]));
+        }
     }
     let mut explained = 0;
     for flight in &real.flights {
-        let found = row(Group::FlightLogs, &flight.id, "apogee");
-        assert_eq!(
-            found.percent,
-            Some(flight.apogee_error_percent),
-            "{}",
-            flight.id
+        let found = held(
+            Group::FlightLogs,
+            &flight.id,
+            "apogee",
+            flight.apogee_error_percent,
+        );
+        held(
+            Group::FlightLogs,
+            &flight.id,
+            "climb",
+            flight.trace_rms_percent,
         );
         if !flight.explanation.is_empty() {
             assert_eq!(found.standing, Standing::OverBar, "{}", flight.id);
@@ -2229,6 +2273,7 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
             .filter(|row| matches!(row.standing, Standing::WithinBar | Standing::OverBar))
             .map(|row| row.metric.as_str())
             .collect();
+        assert_eq!(summary.bars.len(), judged.len(), "{:?}", summary.group);
         for metric in judged {
             let bar = summary
                 .bars
@@ -2263,13 +2308,11 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
             .iter()
             .filter(|case| case.flight.design() == flight.design)
         {
-            let Some(rocketpy) = census.rows.iter().find(|row| {
-                row.case == case.id
-                    && row.metric == "apogee_agl_m"
-                    && matches!(row.group, Group::SameDrag | Group::Predicted)
-            }) else {
+            let group = crate::census::harness_group(&case.id).expect("a harness case");
+            if group == Group::Descent {
                 continue;
-            };
+            }
+            let rocketpy = row(group, &case.id, "apogee_agl_m");
             assert!(rocketpy.percent.is_some(), "{}", case.id);
             let reference = harness
                 .comparisons

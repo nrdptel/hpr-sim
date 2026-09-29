@@ -46,8 +46,8 @@
 //! model refuses fewer than three. That is a first-order derivation, not a measurement: it takes
 //! the body's flow at each tube's centre and leaves out the images and the lift carried onto the
 //! body. Slender-body theory with the body included gives the set more lift than `N` isolated
-//! rings, by an unchecked estimate 1.13 to 1.96 times on OpenRocket probes
-//! ([#234](https://github.com/nrdptel/hpr-sim/issues/234);
+//! rings, by an unchecked estimate 1.13 to 1.96 times on three OpenRocket probes, at a gap of
+//! 0.005 radii and still rising as it closes ([#234](https://github.com/nrdptel/hpr-sim/issues/234);
 //! `docs/physics/aero.md`, *Tube fins*).
 
 use std::f64::consts::PI;
