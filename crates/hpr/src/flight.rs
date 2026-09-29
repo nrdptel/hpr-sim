@@ -68,9 +68,11 @@ impl FlightBuilder<'_> {
     /// Flies `model`'s drag in place of hpr's drag buildup: a model of your own, from a wind
     /// tunnel, another tool or your flights, or hpr's own adjusted
     /// ([`hpr_aero::custom`], [`Simulation::with_drag_model`]). The model gives the zero-lift
-    /// drag coefficient on the rocket's reference area, the area of a circle of its diameter;
-    /// the normal force, centre of pressure and damping stay hpr's, so the stability margin a
-    /// [`Rocket`] reports doesn't change. The last model set is the one flown.
+    /// drag coefficient on the rocket's reference area, by default a circle of its largest body
+    /// diameter; unlike a drag table's, a model's number isn't rescaled, so a curve measured on
+    /// another area is converted before it is returned. The normal force, centre of pressure,
+    /// roll and damping stay hpr's, so the stability margin a [`Rocket`] reports doesn't change.
+    /// The last model set is the one flown, and every flight of this builder shares it.
     ///
     /// ```
     /// # use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
@@ -102,10 +104,10 @@ impl FlightBuilder<'_> {
     /// #     .set_motor(Motor::from_catalog("H54")?)?;
     /// let environment = Environment::new(32.99, -106.97, 1400.0)?;
     /// let launch = Flight::builder(&rocket, &environment, 1.8);
-    /// let own = launch.fly()?;
-    /// let rougher = launch.drag_model(Rougher).fly()?;
-    /// assert!(rougher.apogee_m() < own.apogee_m());
-    /// # Ok::<(), hpr::Error>(())
+    /// let own = launch.fly()?.apogee_m().ok_or("no apogee")?;
+    /// let rougher = launch.drag_model(Rougher).fly()?.apogee_m().ok_or("no apogee")?;
+    /// assert!(rougher < own);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
     pub fn drag_model(mut self, model: impl DragModel + 'static) -> Self {
@@ -148,7 +150,7 @@ impl FlightBuilder<'_> {
             self.settings,
         )?;
         if let Some(model) = &self.drag_model {
-            simulation = simulation.with_drag_model(Arc::clone(model));
+            simulation = simulation.with_shared_drag_model(Arc::clone(model));
         }
         if self.rocket.recovery().is_empty() {
             Ok(simulation)

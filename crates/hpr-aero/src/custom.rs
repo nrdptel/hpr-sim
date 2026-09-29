@@ -1,23 +1,30 @@
 //! Drag models of your own, flown in place of hpr's drag buildup.
 //!
-//! A [`DragModel`] gives the whole rocket's zero-lift drag coefficient `C_D0` at a flow, on the
-//! rocket's reference area ([`AeroModel::reference_area_m2`]). [`AeroModel::with_drag_model`]
-//! puts one in place of the buildup, and of any drag table ([`crate::table`]); a flight takes one
-//! through `hpr_sim::Simulation::with_drag_model`.
+//! A [`DragModel`] gives the whole rocket's zero-lift drag coefficient `C_D0`, its drag with the
+//! air along its axis over the dynamic pressure and the reference area, at a flow.
+//! [`AeroModel::with_drag_model`] puts one in place of hpr's drag buildup (its sum of friction,
+//! pressure, base and parasitic drag, part by part) and of any drag table ([`crate::table`]); a
+//! flight takes one through `hpr_sim::Simulation::with_drag_model`.
 //!
 //! The model replaces the zero-lift drag only, as a drag table does. The rest stays hpr's:
 //!
-//! - At an angle of attack the axial coefficient is `C_A = C_D0 f(α)`, with hpr's
-//!   [`crate::drag::axial_drag_alpha_factor`].
+//! - At an angle of attack `α` the axial coefficient is `C_A = C_D0 f(α)`, with hpr's factor `f`
+//!   ([`crate::drag::axial_drag_alpha_factor`]): 1 along the axis, 1.3 at 17°, 0 at 90°.
 //! - The normal force, the centre of pressure, the roll and the pitch and yaw damping are hpr's
 //!   own, from [`AeroModel::normal_force`] and [`AeroModel::roll`].
+//!
+//! The coefficient is on the rocket's reference area ([`DragQuery::reference_area_m2`]), which is
+//! the design's: by default a circle of the largest body diameter. Unlike a drag table, which
+//! can carry the diameter it was measured on, a model's number is not rescaled: a curve measured
+//! on another area `S` is multiplied by `S` over the reference area before it is returned.
 //!
 //! A model is asked a [`DragQuery`]: the flow (Mach number and angles), the drag conditions
 //! (Reynolds number per metre, whether a motor is thrusting) and hpr's own buildup at that flow,
 //! so a model can adjust hpr's number instead of replacing it.
 //!
-//! **How far to trust it:** as far as the model. hpr checks only that the coefficient it returns
-//! is finite and not negative; it can't know whether the number is right.
+//! **How far to trust it:** as far as the model, and no further than hpr's other models, which
+//! still fly the rest of the rocket. hpr refuses a coefficient that is negative or not finite; it
+//! can't know whether the number is right.
 //!
 //! ```
 //! use hpr_aero::{AeroError, AeroModel, DragConditions, DragModel, DragQuery, Flow};
@@ -48,39 +55,43 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::drag::{Drag, DragConditions};
+use crate::drag::{ComponentDrag, Drag, DragConditions};
 use crate::error::AeroError;
 use crate::model::{AeroModel, Flow};
 
 /// A rocket's zero-lift drag, given by a program in place of hpr's drag buildup.
 ///
-/// Implement [`DragModel::zero_lift_drag`] and hand the model to
-/// [`AeroModel::with_drag_model`] or `hpr_sim::Simulation::with_drag_model`. The flight asks it
-/// at every evaluation of the equations of motion, several times a step, so it should be quick
-/// and give the same answer to the same question: a flight's determinism is only as good as its
-/// model's.
+/// Implement [`DragModel::zero_lift_drag`] and hand the model to [`AeroModel::with_drag_model`]
+/// or `hpr_sim::Simulation::with_drag_model`. The flight asks it at every evaluation of the
+/// equations of motion, several times a step, so it should be quick and give the same answer to
+/// the same question: a flight's determinism is only as good as its model's. The integrator's
+/// trial evaluations can reach a little past the speeds the flight itself reaches, so a model
+/// that refuses past the end of its data wants some margin beyond the top speed.
 ///
 /// A model is shared, not copied: it is kept behind an [`Arc`], so a model that holds a large
-/// table costs nothing to fly many times, and an `Arc<dyn DragModel>` is itself a model.
+/// table costs nothing to fly many times. [`AeroModel::with_shared_drag_model`] takes an
+/// `Arc<dyn DragModel>` that is already shared.
+///
+/// A model must not ask for the drag of an [`AeroModel`] that holds it, which would ask the model
+/// again, without end; [`DragQuery::buildup`] is hpr's own drag without the model.
 pub trait DragModel: fmt::Debug + Send + Sync {
     /// The whole rocket's zero-lift drag coefficient `C_D0` at `query`'s flow, on the rocket's
-    /// reference area ([`DragQuery::reference_area_m2`]).
+    /// reference area ([`DragQuery::reference_area_m2`]). From hpr's buildup that is
+    /// [`Drag::zero_lift_coefficient`], not [`Drag::axial_coefficient`], which is already scaled
+    /// for the angle of attack.
     ///
     /// # Errors
     ///
-    /// Whatever the model can't answer, such as a Mach number past its data. An
-    /// [`AeroError`] from [`DragQuery::buildup`] can be passed on as it is.
+    /// Whatever the model can't answer, such as a Mach number past its data. The flight wraps
+    /// the error in [`AeroError::DragModel`], so it says where it came from; an error from
+    /// [`DragQuery::buildup`] can be passed on as it is.
     fn zero_lift_drag(&self, query: &DragQuery<'_>) -> Result<f64, AeroError>;
 }
 
-impl<T: DragModel + ?Sized> DragModel for Arc<T> {
-    fn zero_lift_drag(&self, query: &DragQuery<'_>) -> Result<f64, AeroError> {
-        (**self).zero_lift_drag(query)
-    }
-}
-
-/// What a [`DragModel`] is asked: the flow, the drag conditions, and the rocket's own model.
-#[derive(Debug, Clone, Copy)]
+/// What a [`DragModel`] is asked: the flow and the drag conditions, with the rocket's reference
+/// area, its length and hpr's own drag buildup at hand. Made by [`AeroModel::drag`]; to try a
+/// model on its own, give it to an [`AeroModel`] and ask that for its drag.
+#[derive(Clone, Copy)]
 pub struct DragQuery<'a> {
     flow: &'a Flow,
     conditions: &'a DragConditions,
@@ -88,9 +99,13 @@ pub struct DragQuery<'a> {
 }
 
 impl<'a> DragQuery<'a> {
-    /// A question about `model`'s rocket at `flow` and `conditions`, for trying a
-    /// [`DragModel`] on its own; a flight makes its own.
-    pub fn new(flow: &'a Flow, conditions: &'a DragConditions, model: &'a AeroModel) -> Self {
+    /// A question about `model`'s rocket at `flow` and `conditions`, the conditions already read
+    /// as the buildup reads them (`AeroModel::read`) and the Mach number checked.
+    pub(crate) fn new(
+        flow: &'a Flow,
+        conditions: &'a DragConditions,
+        model: &'a AeroModel,
+    ) -> Self {
         Self {
             flow,
             conditions,
@@ -110,7 +125,8 @@ impl<'a> DragQuery<'a> {
     }
 
     /// The drag conditions: the Reynolds number per metre, and whether a motor is thrusting,
-    /// which a model with a power-on curve reads.
+    /// which a model with a power-on curve reads. They are as hpr's buildup reads them: under
+    /// [`AeroModel::with_full_base_drag_under_power`] the thrusting motors' areas are zero.
     pub fn conditions(&self) -> &DragConditions {
         self.conditions
     }
@@ -120,11 +136,10 @@ impl<'a> DragQuery<'a> {
         self.model.reference_area_m2()
     }
 
-    /// The rocket's own aerodynamic model, for what else a drag model needs of it, such as its
-    /// length ([`AeroModel::length_m`]) or its drag buildup by component
-    /// ([`AeroModel::buildup_components`]).
-    pub fn model(&self) -> &AeroModel {
-        self.model
+    /// The rocket's length, nose tip to the aft end of its last body component, m: the length
+    /// hpr's buildup takes the Reynolds number on.
+    pub fn length_m(&self) -> f64 {
+        self.model.length_m()
     }
 
     /// hpr's own drag buildup at this flow and these conditions ([`AeroModel::buildup_drag`]):
@@ -137,10 +152,31 @@ impl<'a> DragQuery<'a> {
     pub fn buildup(&self) -> Result<Drag, AeroError> {
         self.model.buildup_drag(self.flow, self.conditions)
     }
+
+    /// hpr's own drag buildup at this flow, component by component
+    /// ([`AeroModel::buildup_components`]).
+    ///
+    /// # Errors
+    ///
+    /// As [`AeroModel::buildup_components`].
+    pub fn buildup_components(&self) -> Result<Vec<ComponentDrag>, AeroError> {
+        self.model.buildup_components(self.flow, self.conditions)
+    }
+}
+
+impl fmt::Debug for DragQuery<'_> {
+    /// The question, without the rocket's whole model.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DragQuery")
+            .field("flow", self.flow)
+            .field("conditions", self.conditions)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A [`DragModel`] held by an [`AeroModel`]. Two are equal when they are the same model, so an
-/// [`AeroModel`] and its clone stay equal.
+/// [`AeroModel`] and its clone stay equal. It serializes as its `Debug` text, to show which model
+/// an inspected [`AeroModel`] flies.
 #[derive(Clone)]
 pub(crate) struct SharedDragModel(pub(crate) Arc<dyn DragModel>);
 
@@ -153,6 +189,12 @@ impl PartialEq for SharedDragModel {
 impl fmt::Debug for SharedDragModel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl serde::Serialize for SharedDragModel {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(&format_args!("{:?}", self.0))
     }
 }
 
@@ -228,13 +270,16 @@ mod tests {
                 }
             }
         }
-        // The buildup ends at Mach 5; the model passes its refusal on.
+        // The buildup ends at Mach 5; the model passes its refusal on, and the flight says it
+        // came through the model.
         let past = Flow::axial(5.0);
         let conditions = DragConditions::coasting(5.0e6);
-        assert!(matches!(
-            custom.drag(&past, &conditions),
-            Err(AeroError::Mach { .. })
-        ));
+        let error = custom.drag(&past, &conditions).unwrap_err();
+        assert!(
+            matches!(&error, AeroError::DragModel { source }
+                if matches!(**source, AeroError::Mach { mach, .. } if mach == 5.0)),
+            "{error:?}"
+        );
     }
 
     #[test]
@@ -283,7 +328,7 @@ mod tests {
         let conditions = DragConditions::thrusting(1.0e6, 0.0005).with_pod_motors(0.0002);
         let flow = Flow::axial(0.5);
         model()
-            .with_drag_model(Arc::clone(&spy))
+            .with_shared_drag_model(spy.clone())
             .drag(&flow, &conditions)
             .unwrap();
         assert_eq!(asked(), conditions);
@@ -291,7 +336,7 @@ mod tests {
         // buildup; it still hears that a motor burns.
         model()
             .with_full_base_drag_under_power()
-            .with_drag_model(Arc::clone(&spy))
+            .with_shared_drag_model(spy.clone())
             .drag(&flow, &conditions)
             .unwrap();
         let read = asked();
@@ -332,10 +377,12 @@ mod tests {
                 "{error:?}"
             );
         }
+        let error = custom
+            .drag(&Flow::new(0.5, -0.1, 0.0), &conditions)
+            .unwrap_err();
         assert!(
-            custom
-                .drag(&Flow::new(0.5, -0.1, 0.0), &conditions)
-                .is_err()
+            matches!(error, AeroError::Domain { value, .. } if value == -0.1),
+            "{error:?}"
         );
     }
 
@@ -356,24 +403,63 @@ mod tests {
             .drag(&Flow::axial(0.5), &DragConditions::coasting(1.0e6))
             .unwrap_err();
         assert!(
-            matches!(error, AeroError::Domain { what, value }
-                if what == "Mach number past the model's data" && value == 0.5),
+            matches!(&error, AeroError::DragModel { source }
+            if **source == AeroError::Domain {
+                what: "Mach number past the model's data",
+                value: 0.5,
+            }),
             "{error:?}"
+        );
+        assert_eq!(
+            error.to_string(),
+            "drag model: Mach number past the model's data is outside its domain: 0.5"
         );
     }
 
     #[test]
-    fn a_clone_is_equal_and_another_model_is_not() {
+    fn models_holding_the_same_drag_model_are_equal() {
         let custom = model().with_drag_model(Constant(0.5));
         assert_eq!(custom.clone(), custom);
         assert_ne!(model().with_drag_model(Constant(0.5)), custom);
         assert_ne!(model(), custom);
-        let query_model = model();
-        let (flow, conditions) = (Flow::axial(0.2), DragConditions::coasting(1.0e6));
-        let query = DragQuery::new(&flow, &conditions, &query_model);
+        let shared: Arc<dyn DragModel> = Arc::new(Constant(0.5));
+        assert_eq!(
+            model().with_shared_drag_model(Arc::clone(&shared)),
+            model().with_shared_drag_model(Arc::clone(&shared))
+        );
+        assert!(Arc::ptr_eq(
+            model()
+                .with_shared_drag_model(Arc::clone(&shared))
+                .drag_model()
+                .unwrap(),
+            &shared
+        ));
+    }
+
+    #[test]
+    fn a_query_says_what_the_flight_asks() {
+        let rocket = model();
+        let (flow, conditions) = (Flow::new(0.2, 0.1, 0.3), DragConditions::coasting(1.0e6));
+        let query = DragQuery::new(&flow, &conditions, &rocket);
         assert_eq!(query.mach(), 0.2);
-        assert_eq!(query.reference_area_m2(), query_model.reference_area_m2());
         assert_eq!(*query.flow(), flow);
-        assert_eq!(query.model(), &query_model);
+        assert_eq!(*query.conditions(), conditions);
+        assert_eq!(query.reference_area_m2(), rocket.reference_area_m2());
+        assert_eq!(query.length_m(), rocket.length_m());
+        assert_eq!(
+            query.buildup_components().unwrap(),
+            rocket.buildup_components(&flow, &conditions).unwrap()
+        );
+        // Its debug text leaves the rocket's whole model out.
+        let text = format!("{query:?}");
+        assert!(text.starts_with("DragQuery { flow: Flow {") && text.ends_with(", .. }"));
+    }
+
+    #[test]
+    fn an_inspected_model_names_its_drag_model() {
+        let text = serde_json::to_string(&model().with_drag_model(Constant(0.45))).unwrap();
+        assert!(text.contains(r#""drag_model":"Constant(0.45)""#), "{text}");
+        let own = serde_json::to_string(&model()).unwrap();
+        assert!(!own.contains("drag_model"));
     }
 }

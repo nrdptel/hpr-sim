@@ -832,8 +832,9 @@ weather everywhere, not just where it was measured. [ERA5](#era5) is one. See
 
 The area every aerodynamic coefficient of the rocket is divided by, `A_ref = π d²/4`. By default
 `d` is the largest body diameter; it can be set to the nose's base diameter or to a given value,
-and a drag table with its own reference diameter is rescaled to the rocket's. Coefficients from two
-programs compare only on the same reference area. See
+and a drag table with its own reference diameter is rescaled to the rocket's. A drag model of your
+own is not ([Models of your own](custom-models.md)). Coefficients from two programs compare only on
+the same reference area. See
 [The design tree](physics/design.md#reference-diameter).
 
 

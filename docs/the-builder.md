@@ -183,7 +183,9 @@ steer with.
 ## Sizing fins
 
 The third example builds the same rocket with fins of five spans, the fin's height from the body
-tube to its tip, and flies each from a vertical rail in 5 m/s of wind from the west:
+tube to its tip, and flies each from a vertical rail, in calm air and in 5 m/s of wind from the
+west. The parachute opens at apogee here, not at the motor's charge, so the charge doesn't cut
+the climb short:
 
 ```bash
 cargo run --example fin_sizing -p hpr
@@ -191,28 +193,31 @@ cargo run --example fin_sizing -p hpr
 
 <!-- quote: crates/hpr/examples/fin_sizing.output.txt -->
 ```text
-My 54 mm rocket on an H54, fins of five spans, in 5 m/s of wind from the west
+My 54 mm rocket on an H54, fins of five spans, in calm air and a 5 m/s west wind
 Not yet validated: see the Accuracy page before trusting these numbers.
 
-fin span  liftoff  margin   apogee  apogee drift  landing drift
-    (mm)     (kg)   (cal)      (m)   upwind (m)  downwind (m)
+fin span  liftoff  margin   apogee (m)       in the wind: drift (m)
+    (mm)     (kg)   (cal)   calm   wind   apogee upwind  landing downwind
       25    0.666   -2.11   too little margin to fly
       35    0.671    0.33   too little margin to fly
-      45    0.675    1.92   1133.9          117           1071
-      55    0.680    2.97   1109.8          154           1004
-      65    0.684    3.67   1088.0          175            957
+      45    0.675    1.92   1145   1135             119              1068
+      55    0.680    2.97   1126   1110             156              1001
+      65    0.684    3.67   1107   1088             176               954
 ```
 
 Because a rocket is a value built by a function, a design study is a loop. The example's
 `rocket(span_m)` builds the rocket with fins of that span, and the loop weighs and flies each.
 
-- **The margin** grows fast with the span: from −2.11 calibres, a CP ahead of the CG, to 3.67.
-  The usual rule of thumb asks for at least one calibre, so the program doesn't fly the two
+- **The margin**, at liftoff and at Mach 0.3, grows fast with the span: from −2.11 calibres, a CP
+  ahead of the CG, to 3.67. The usual rule of thumb asks for at least one calibre
+  ([stability margin](glossary.md#stability-margin)), so the program doesn't fly the two
   smallest; the example's own fins are the 45 mm ones.
-- **Bigger fins cost height**: 45.9 m of apogee from the 45 mm fins to the 65 mm. They add drag and
-  a few grams, and they turn the rocket further into the wind, as the apogee drift shows: 117 m
-  upwind with the smallest fins flown, 175 m with the largest.
-- **The landing** is closer with bigger fins, since the parachute opens further upwind.
+- **Bigger fins cost height.** In calm air the 65 mm fins reach 38 m less than the 45 mm ones:
+  that is their drag and their extra mass, about 9 g. In the wind they lose 47 m, since they also
+  turn the rocket further into it, as the apogee drift shows: 119 m upwind with the 45 mm fins,
+  176 m with the 65 mm.
+- **The landing** is closer with bigger fins, 114 m closer from the 45 mm to the 65 mm: the
+  parachute opens further upwind, and lower, so it drifts for less time.
 
 ## Beyond the builder
 

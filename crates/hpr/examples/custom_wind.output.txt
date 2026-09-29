@@ -3,5 +3,5 @@ Not yet validated: see the Accuracy page before trusting these numbers.
 
 wind                    apogee   landing east  landing south  descent
                            (m)            (m)            (m)    (m/s)
-steady, from the west   1137.3            855              0      4.6
-veering                 1135.0           1397            834      4.6
+steady, from the west   1138.0            853              0      4.6
+veering                 1135.7           1395            835      4.6

@@ -34,6 +34,7 @@
 
 use std::fmt;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use hpr_aero::{AeroModel, DragModel, DragTable, NormalForceTable};
 use hpr_core::DVec3;
@@ -411,9 +412,10 @@ impl Simulation {
     }
 
     /// Flies a drag model of your own instead of the drag buildup, and instead of any drag table
-    /// ([`hpr_aero::custom`]). The model gives the zero-lift drag coefficient; the flight scales
-    /// it for the angle of attack, and the normal force, centre of pressure, roll and damping
-    /// stay hpr's. Like a table, the model is the whole stack's: a flight with a powered
+    /// ([`hpr_aero::custom`]). The model gives the zero-lift drag coefficient on the rocket's
+    /// reference area, not rescaled; the flight scales it for the angle of attack, and the
+    /// normal force, centre of pressure, roll and damping stay hpr's. A model's own errors reach
+    /// the caller as [`SimError::Aero`] around [`hpr_aero::AeroError::DragModel`]. Like a table, the model is the whole stack's: a flight with a powered
     /// separation refuses it at the separation, since the sustainer would fly on without it.
     ///
     /// # Examples
@@ -457,8 +459,15 @@ impl Simulation {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn with_drag_model(mut self, model: impl DragModel + 'static) -> Self {
-        self.vehicle.aero = self.vehicle.aero.clone().with_drag_model(model);
+    pub fn with_drag_model(self, model: impl DragModel + 'static) -> Self {
+        self.with_shared_drag_model(Arc::new(model))
+    }
+
+    /// As [`Simulation::with_drag_model`], with a model already shared, as when one model flies
+    /// many simulations.
+    #[must_use]
+    pub fn with_shared_drag_model(mut self, model: Arc<dyn DragModel>) -> Self {
+        self.vehicle.aero = self.vehicle.aero.clone().with_shared_drag_model(model);
         self.aero_overridden = true;
         self
     }

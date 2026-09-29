@@ -1,8 +1,8 @@
 //! A guide to the `hpr` crate, in the API reference: what to read first, and how the pieces fit.
 //!
-//! This module has no code, only chapters. Each is short and runs its own examples, which CI
-//! compiles and runs, so they stay true. The documentation site says the same things at more
-//! length, with the numbers the examples print; each chapter links its page.
+//! This module has no code, only chapters. Each is short, and the code in it is compiled and run
+//! by CI, so it stays true. The documentation site says the same things at more length, with the
+//! numbers the example programs print; each of the first four chapters links its page.
 //!
 //! 1. [`building`]: a rocket, part by part from the nose back.
 //! 2. [`flying`]: where it flies, from what rail, and what a flight tells you.
@@ -29,7 +29,8 @@ pub mod building {
     //! - [`add_fins`](crate::Rocket::add_fins), [`add_motor_tube`](crate::Rocket::add_motor_tube)
     //!   and [`add_mass`](crate::Rocket::add_mass): parts on or in the last tube added.
     //! - [`set_motor`](crate::Rocket::set_motor): a [`Motor`](crate::Motor) in the motor tube,
-    //!   from the built-in catalog or a RASP `.eng` file.
+    //!   from the built-in catalog or a RASP `.eng` file, the thrust-curve format ThrustCurve.org
+    //!   serves.
     //! - [`add_parachute`](crate::Rocket::add_parachute): a recovery device and what opens it.
     //!
     //! Every part names its material ([`material`](crate::rocket::material) finds a built-in one
@@ -152,7 +153,7 @@ pub mod custom_models {
     //!
     //! | Trait | What it gives | Where it goes |
     //! | --- | --- | --- |
-    //! | [`DragModel`](crate::hpr_aero::DragModel) | the rocket's zero-lift drag coefficient at a Mach number | [`FlightBuilder::drag_model`](crate::FlightBuilder::drag_model) |
+    //! | [`DragModel`](crate::hpr_aero::DragModel) | the rocket's zero-lift drag coefficient at a flow | [`FlightBuilder::drag_model`](crate::FlightBuilder::drag_model) |
     //! | [`Wind`](crate::hpr_atmos::Wind) | the wind's velocity at a height | [`Environment::with_wind`](crate::Environment::with_wind) |
     //! | [`Atmosphere`](crate::hpr_atmos::Atmosphere) | the air's pressure, temperature and density at a height | [`Environment::with_atmosphere`](crate::Environment::with_atmosphere) |
     //!
@@ -162,7 +163,10 @@ pub mod custom_models {
     //! asked a [`DragQuery`](crate::hpr_aero::DragQuery): the Mach number and angles, the
     //! Reynolds number, whether a motor burns, and hpr's own drag at that flow
     //! ([`DragQuery::buildup`](crate::hpr_aero::DragQuery::buildup)), so a model can adjust hpr's
-    //! number instead of replacing it.
+    //! number instead of replacing it. The coefficient is on the rocket's reference area, by
+    //! default a circle of its largest body diameter, and unlike a drag table's it isn't
+    //! rescaled: a curve measured on another area is converted before it is returned
+    //! ([`DragQuery::reference_area_m2`](crate::hpr_aero::DragQuery::reference_area_m2)).
     //!
     //! ```
     //! # use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
@@ -183,7 +187,8 @@ pub mod custom_models {
     //! use hpr::hpr_aero::{AeroError, DragModel, DragQuery};
     //! use hpr::{Environment, Flight};
     //!
-    //! /// hpr's own drag below Mach 0.5, and 0.6 from there: a made-up rule, to show the idea.
+    //! /// hpr's own drag below Mach 0.5, and 0.6 from there: a made-up rule, to show the idea. It
+    //! /// jumps at Mach 0.5, which a real model would smooth.
     //! #[derive(Debug)]
     //! struct Mine;
     //!
@@ -205,11 +210,14 @@ pub mod custom_models {
     //! # Ok::<(), hpr::Error>(())
     //! ```
     //!
-    //! **How far to trust it:** as far as the model. hpr refuses a drag coefficient that is
-    //! negative or not finite, and a wind that isn't finite stops the flight (the error names
-    //! the Reynolds number, the first check the air's speed reaches); it can't know whether a
-    //! model is right. A model is asked many times a step, so keep it quick, and give the same
-    //! answer to the same question: a flight is only as repeatable as its models.
+    //! **How far to trust it:** as far as the model, and no further than hpr's other models,
+    //! which still fly the rest of the rocket and are not yet validated against real flights.
+    //! hpr refuses a drag coefficient that is negative or not finite; it can't know whether a
+    //! model is right. It doesn't check a wind's value where it reads it: a wind that isn't
+    //! finite is caught while the rocket climbs when the drag's Reynolds number comes out
+    //! non-finite, so the error names that, not the wind. A model is asked many times a step, so
+    //! keep it quick, and give the same answer to the same question: a flight is only as
+    //! repeatable as its models.
     //!
     //! The site's page [Models of your own][custom] runs the `custom_drag` and `custom_wind`
     //! examples.

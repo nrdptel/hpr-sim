@@ -5,9 +5,9 @@
 //! cargo run --example custom_wind -p hpr
 //! ```
 //!
-//! The documentation site's page *Custom models* (`docs/custom-models.md`) walks through it. What
-//! it prints is kept next to it in `custom_wind.output.txt`, and CI checks that the two still
-//! agree (`cargo xtask examples --check`).
+//! The documentation site's page *Models of your own* (`docs/custom-models.md`) walks through
+//! it. What it prints is kept next to it in `custom_wind.output.txt`, and CI checks that the two
+//! still agree (`cargo xtask examples --check`).
 
 #![allow(
     clippy::print_stdout,
@@ -69,7 +69,8 @@ fn metres(x: f64) -> f64 {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // The rocket of the `build_and_fly` example, with an H54 and a 10 s delay.
+    // The rocket of the `build_and_fly` example on an H54, with its parachute opened at apogee
+    // rather than by the motor's charge, so the charge doesn't cut the climb short.
     let mut rocket = Rocket::new("My 54 mm rocket", 0.0563)?;
     rocket
         .add_nose(
@@ -104,11 +105,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .packed(0.15, 0.05)
                 .named("recovery bay"),
         )?
-        .set_motor(Motor::from_catalog("H54")?.with_delay_s(10.0)?)?
+        .set_motor(Motor::from_catalog("H54")?)?
         .add_parachute(Device::new(
             "parachute",
             DeviceDrag::canopy(CanopyType::FlatCircular, 0.9),
-            Trigger::MotorDelay { motor: 0 },
+            Trigger::Apogee,
         ));
 
     // Spaceport America, 1,400 m up. A steady 4 m/s from the west, and a wind that starts the
