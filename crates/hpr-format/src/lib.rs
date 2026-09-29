@@ -110,8 +110,9 @@ impl DesignFile {
     /// The document of `design`, with its provenance and the source file's other files.
     ///
     /// `attachments` must hold each thrust curve the design's motors name as embedded
-    /// ([`Curve::Embedded`]): the file's own [`OrkFile::attachments`](hpr_io::ork::OrkFile)
-    /// do. Without one, [`to_json`] refuses the document.
+    /// ([`Curve::Embedded`]): the file's own
+    /// [`OrkFile::attachments`](hpr_io::ork::OrkFile::attachments) do. Without one, [`to_json`]
+    /// refuses the document.
     pub fn new(design: Design, provenance: Provenance, attachments: &[Attachment]) -> Self {
         Self {
             format: Format::HprDesign,
@@ -202,7 +203,8 @@ impl DesignFile {
                 )));
             }
             // The design's own entry, and a directory's name, don't come back from a `.ork`.
-            if file.name.is_empty() || file.name == "rocket.ork" || file.name.ends_with('/') {
+            if file.name.is_empty() || file.name == "rocket.ork" || file.name.ends_with(['/', '\\'])
+            {
                 return Err(FormatError::Invalid(format!(
                     "an attachment is named {:?}, which a .ork can't hold besides its design",
                     shortened(&file.name)
@@ -233,9 +235,9 @@ impl DesignFile {
 /// One of the source file's other files: its name, and its contents as text where they are UTF-8,
 /// or else as base64 ([RFC 4648][rfc-4648], section 4).
 ///
-/// Beyond the schema, the reader holds a document's attachments to three rules: base64 decodes,
-/// no two share a name, and each thrust curve a motor names as embedded is among them. A name is
-/// not empty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/`.
+/// Beyond the schema, the reader holds a document's attachments to four rules: base64 decodes; no
+/// two share a name; each thrust curve a motor names as embedded is among them; and a name is not
+/// empty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/` or `\`.
 ///
 /// [rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -270,7 +272,7 @@ impl AttachedFile {
         match &self.content {
             Content::Text(text) => Ok(text.clone().into_bytes()),
             Content::Base64(encoded) => BASE64.decode(encoded).map_err(|error| {
-                FormatError::Invalid(format!("attachment {:?}: {error}", self.name))
+                FormatError::Invalid(format!("attachment {:?}: {error}", shortened(&self.name)))
             }),
         }
     }
@@ -458,7 +460,8 @@ pub enum FormatError {
 /// # Errors
 ///
 /// [`FormatError::Unsupported`] for a document of another version, which this crate doesn't
-/// write; [`FormatError::NotRepresentable`] when the text would not read back as `document`: every
+/// write; [`FormatError::NotRepresentable`] when the text would not read back as `document`,
+/// including when [`from_json`] would refuse it (an attachment rule of [`AttachedFile`]): every
 /// document written is read again and compared, so a value JSON cannot carry (a number that is
 /// not finite) is refused here rather than lost.
 pub fn to_json(document: &DesignFile) -> Result<String, FormatError> {

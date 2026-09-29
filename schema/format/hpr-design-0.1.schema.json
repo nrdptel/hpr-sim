@@ -70,7 +70,7 @@
     },
     "AttachedFile": {
       "additionalProperties": false,
-      "description": "One of the source file's other files: its name, and its contents as text where they are UTF-8,\nor else as base64 ([RFC 4648][rfc-4648], section 4).\n\nBeyond the schema, the reader holds a document's attachments to three rules: base64 decodes,\nno two share a name, and each thrust curve a motor names as embedded is among them. A name is\nnot empty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/`.\n\n[rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4",
+      "description": "One of the source file's other files: its name, and its contents as text where they are UTF-8,\nor else as base64 ([RFC 4648][rfc-4648], section 4).\n\nBeyond the schema, the reader holds a document's attachments to four rules: base64 decodes; no\ntwo share a name; each thrust curve a motor names as embedded is among them; and a name is not\nempty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/` or `\\`.\n\n[rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4",
       "properties": {
         "content": {
           "$ref": "#/$defs/Content",

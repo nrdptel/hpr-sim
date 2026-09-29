@@ -104,7 +104,8 @@ The API reference has a worked example
 
 The text is canonical, meaning there is exactly one way to write a given design: two-space indents,
 keys in the order above, and a final newline. So the same design always gives the same bytes.
- Before it returns, the writer reads its own text back and
+
+Before it returns, the writer reads its own text back and
 compares it with the design. A value JSON can't carry, such as an infinite number, is refused with
 an error rather than written as something else.
 
@@ -148,7 +149,9 @@ document's keys and types, which many languages can check a file against; this o
 standard's 2020-12 edition. It is generated from the Rust types by `cargo xtask format` (one of the
 repository's development commands), and a test fails if the committed file is stale. Its
 descriptions are the types' documentation. It refuses every key the version doesn't define, as
-the reader does.
+the reader does. A few rules it can't express, so a document can pass the schema and still be
+refused by hpr: an attachment's base64 must decode, no two attachments share a name, a name can't
+be `rocket.ork` or a folder's, and every embedded thrust curve must be among the attachments.
 
 ## Checked on real designs
 
@@ -176,7 +179,7 @@ format's first step, [M3.3a](../decisions-and-roadmap.md#m3-3a), asked for 1 par
 These 109 fly because the check supplies OpenRocket's own motor database for the curves the files
 name but don't carry. With only the files' own curves and hpr's bundled motors, 4 fly
 ([motors in the reference library](ork.md#motors-in-the-reference-library)). The other 61 have no
-flight to compare: the `.ork` reader leaves them out of the rocket all three ways, 24 for want of a
+flight to compare: the `.ork` reader leaves them out of the rocket all three ways, by the first reason it finds: 24 for want of a
 thrust curve, 19 for stages hpr can't separate as written, and 18 for other reasons
 ([which configurations fly](ork.md#which-configurations-the-rocket-flies)).
 

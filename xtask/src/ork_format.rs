@@ -40,7 +40,7 @@ pub(crate) struct FormatTally {
     largest_relative: f64,
     /// Configurations that could not be flown, by why, the same all three ways.
     not_flown: BTreeMap<String, usize>,
-    /// Configurations whose two ends disagree: flown on one and not the other, or apart by more
+    /// Configurations whose three flights disagree: flown one way and not another, or apart by more
     /// than [`APOGEE_RELATIVE`].
     apart: Vec<String>,
     /// Schema errors, by message.

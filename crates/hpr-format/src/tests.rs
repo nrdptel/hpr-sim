@@ -467,7 +467,7 @@ fn attachments_that_do_not_hold_together_are_refused() {
     };
     assert!(swap("iVBORw0KGgoA//6A", "iVBORw0KGgoA//6").contains("decals/invented.png"));
     assert!(swap("decals/invented.png", &entry).contains("two attachments are named"));
-    for name in ["rocket.ork", "decals/", ""] {
+    for name in ["rocket.ork", "decals/", "decals\\", ""] {
         let refused = swap("\"decals/invented.png\"", &format!("{name:?}"));
         assert!(refused.contains("which a .ork can't hold"), "{refused}");
     }
@@ -706,8 +706,7 @@ fn the_pages_example_is_the_document() {
     assert!(example.lines().count() > 20);
 }
 
-/// The attachments are checked in time that grows with their number, not its square: a forged
-/// document with 30,000 reads.
+/// A smoke test of many attachments: a forged document with 30,000 reads back whole.
 #[test]
 fn many_attachments_are_read() {
     let mut read = document(PUBLIC[0].1);
