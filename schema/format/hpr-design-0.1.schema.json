@@ -70,7 +70,7 @@
     },
     "AttachedFile": {
       "additionalProperties": false,
-      "description": "One of the source file's other files: its name, and its contents as text where they are UTF-8,\nor else as base64 ([RFC 4648][rfc-4648], section 4).\n\n[rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4",
+      "description": "One of the source file's other files: its name, and its contents as text where they are UTF-8,\nor else as base64 ([RFC 4648][rfc-4648], section 4).\n\nBeyond the schema, the reader holds a document's attachments to three rules: base64 decodes,\nno two share a name, and each thrust curve a motor names as embedded is among them. A name is\nnot empty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/`.\n\n[rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4",
       "properties": {
         "content": {
           "$ref": "#/$defs/Content",
@@ -325,7 +325,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "Any other bytes, in standard base64 with padding.",
+          "description": "Any other bytes, in standard base64 with padding, which must decode.",
           "properties": {
             "base64": {
               "type": "string"
@@ -2342,7 +2342,10 @@
         "reference_pressure_pa": {
           "description": "The ambient pressure the thrust curve was measured at, Pa: the static test site's. The\nthrust is then corrected to the ambient pressure in flight.\n\n`None` flies the curve as it is at every ambient pressure, with no correction. That is\nRocketPy's default (`Motor(reference_pressure=None)`, whose `pressure_thrust` is then zero,\n`motor.py:1188-1189`), so a RocketPy input transcribed into hpr says `None`.\n\nWhich to give: motor files don't record where the curve was measured. For a motor tested\nnear sea level, [`STANDARD_SEA_LEVEL_PRESSURE_PA`] adds the thrust a higher site gains\n(16 kPa × `A_e` at 1,400 m); `None` leaves it out. A design must say which: the field is\nrequired, as `null` for `None`, so leaving it out is an error rather than a silent choice.\nMotors read from `.eng` or `.rse` files, or from the catalog, carry no nozzle and so no\ncorrection.",
           "format": "double",
-          "type": "number"
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "throat_radius_m": {
           "description": "Throat radius, m, when known (informational: the thrust curve already carries its effect).",

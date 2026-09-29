@@ -12,7 +12,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Handoff (overwrite each session)
 
 - **Next (resume here):** M3.3b (ROADMAP). Format (ADR-111): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change
-  needs `cargo xtask format` (the schema) and `cargo xtask ork` (73 designs through the format, flown both ends). `.ork` export (ADR-109, 110): writers mirror readers; after a writer change, rerun ork.md's three commands and commit the report. Logs (ADR-108): `synthetic-pnut.pf2` is rewritten by `HPR_WRITE_SYNTHETIC_LOG=1`; the public Pnut test
+  needs `cargo xtask format` (the schema) and `cargo xtask ork` (73 designs through the format, flown three ways). `.ork` export (ADR-109, 110): writers mirror readers; after a writer change, rerun ork.md's three commands and commit the report. Logs (ADR-108): `synthetic-pnut.pf2` is rewritten by `HPR_WRITE_SYNTHETIC_LOG=1`; the public Pnut test
   runs only where `refs/` has Debrief. CLI (ADR-105 to 108): a command goes live by leaving `registry::PLANNED`, adding its output type to `output::schemas`,
   then `cargo xtask cli`; examples name repo files from the root, and write bare names to scratch. `hpr sim`'s recovery, staging: #240. Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
   (`tube_fin_aero.py`, ADR-102); a new OR with #3235 moves its centre past Mach 0.5; body

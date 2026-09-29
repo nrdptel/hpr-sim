@@ -467,6 +467,10 @@ fn attachments_that_do_not_hold_together_are_refused() {
     };
     assert!(swap("iVBORw0KGgoA//6A", "iVBORw0KGgoA//6").contains("decals/invented.png"));
     assert!(swap("decals/invented.png", &entry).contains("two attachments are named"));
+    for name in ["rocket.ork", "decals/", ""] {
+        let refused = swap("\"decals/invented.png\"", &format!("{name:?}"));
+        assert!(refused.contains("which a .ork can't hold"), "{refused}");
+    }
     assert!(
         swap(
             &format!("\"name\": \"{entry}\""),
@@ -474,6 +478,26 @@ fn attachments_that_do_not_hold_together_are_refused() {
         )
         .contains("which the attachments don't hold")
     );
+}
+
+/// A document whose rocket is RocketPy's Bella Lui, one of the validation designs: its motor has a
+/// nozzle, whose reference pressure is required and `null`, and BATES grains.
+fn with_a_nozzle() -> DesignFile {
+    let rocket: Rocket = serde_json::from_str(include_str!(
+        "../../../validation/designs/rocketpy-bella-lui.json"
+    ))
+    .unwrap();
+    let mut read = document(PUBLIC[0].1);
+    read.rocket = rocket;
+    read
+}
+
+#[test]
+fn a_nozzle_follows_the_schema() {
+    let text = to_json(&with_a_nozzle()).unwrap();
+    assert_eq!(schema_errors(&validator(), &text), Vec::<String>::new());
+    assert!(text.contains("\"reference_pressure_pa\": null"));
+    assert!(text.contains("\"model\": \"grains\""));
 }
 
 /// The schema and the reader agree on which keys a document can leave out: each key of two rich
@@ -485,7 +509,11 @@ fn the_schema_and_the_reader_agree_on_every_key() {
     let (archive, _, _) = with_attachments();
     let dual_deploy = to_json(&document_of(flyable(PUBLIC[1].1), PUBLIC[1].1)).unwrap();
     let mut checked = 0;
-    for text in [to_json(&document(&archive)).unwrap(), dual_deploy] {
+    for text in [
+        to_json(&document(&archive)).unwrap(),
+        dual_deploy,
+        to_json(&with_a_nozzle()).unwrap(),
+    ] {
         let whole: serde_json::Value = serde_json::from_str(&text).unwrap();
         let mut objects = vec![String::new()];
         while let Some(pointer) = objects.pop() {
@@ -676,4 +704,19 @@ fn the_pages_example_is_the_document() {
     let text = to_json(&document(bytes)).unwrap();
     assert!(text.starts_with(example), "{example}");
     assert!(example.lines().count() > 20);
+}
+
+/// The attachments are checked in time that grows with their number, not its square: a forged
+/// document with 30,000 reads.
+#[test]
+fn many_attachments_are_read() {
+    let mut read = document(PUBLIC[0].1);
+    read.attachments = (0..30_000)
+        .map(|index| AttachedFile {
+            name: format!("decals/{index}.png"),
+            content: Content::Base64("AA==".to_owned()),
+        })
+        .collect();
+    let text = to_json(&read).unwrap();
+    assert_eq!(from_json(&text).unwrap().attachments.len(), 30_000);
 }

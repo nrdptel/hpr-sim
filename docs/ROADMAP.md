@@ -758,7 +758,7 @@
   Split into a to c (ADR-111).
   - [x] **M3.3a The document.** `DesignFile` as canonical JSON (`.hpr`), its schema in `schema/format/`.
     *Done when:* bullets 1, 2 and 4 above. *Result:* met (ADR-111): 73 of 73 round-trip, 109
-    configurations fly both ends to the same apogee; 17 public designs, schema-checked, in CI.
+    configurations fly three ways to the same apogee; 17 public designs, schema-checked, in CI.
   - [ ] **M3.3b The container, migrations and the comparison.** *Done when:* a `.hprz` zip holds a
     design and its attachments and reads back the same; a migration test takes a document from an
     older version to the current one; the third bullet above; `hpr convert` writes and `hpr sim`

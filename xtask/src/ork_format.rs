@@ -35,10 +35,10 @@ pub(crate) struct FormatTally {
     /// Motor configurations the designs leave out of their rockets, as the `.ork` reader does:
     /// no curve, a size that disagrees, a part read simpler (ADR-055). None has a flight to compare.
     left_out: usize,
-    /// Configurations flown from both ends, and the largest relative apogee difference.
+    /// Configurations flown three ways, and the largest relative apogee difference.
     flown: usize,
     largest_relative: f64,
-    /// Configurations that could not be flown, by why, the same from both ends.
+    /// Configurations that could not be flown, by why, the same all three ways.
     not_flown: BTreeMap<String, usize>,
     /// Configurations whose two ends disagree: flown on one and not the other, or apart by more
     /// than [`APOGEE_RELATIVE`].
@@ -227,7 +227,7 @@ impl FormatTally {
             self.failed.len()
         );
         println!(
-            "    flown from both ends: {} configuration(s), apogees at most {:e} apart (relative; \
+            "    flown three ways (as read, from the document, from its .ork): {} configuration(s), apogees at most {:e} apart (relative; \
              {APOGEE_RELATIVE:e} allowed); {} apart; {} left out of the rockets, as read",
             self.flown,
             self.largest_relative,
@@ -236,7 +236,7 @@ impl FormatTally {
         );
         crate::ork::print_counts("archive entries carried", &self.attachments);
         crate::ork::print_counts(
-            "configurations not flown, the same from both ends",
+            "configurations not flown, the same all three ways",
             &self.not_flown,
         );
         crate::ork::print_counts("schema errors", &self.schema_errors);

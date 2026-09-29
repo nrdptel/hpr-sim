@@ -9380,9 +9380,10 @@ while the crate map had `hpr-io` depend on `hpr-format` (a stub nothing used).
 
 **Measured** (2026-09-29): the 73 designs of M3.2a's corpus are all valid against the schema, read
 back the same, write M3.2a's `.ork` byte for byte, and read back from it as first read; they carry
-55 other archive entries, 3 as text and 52 as base64. 109 configurations fly
-from both ends to the same apogee bit for bit (largest relative difference 0); the other 61 of the
-170 are left out of their rockets as the `.ork` reader leaves them (ADR-055), the same both ways.
+55 other archive entries, 3 as text and 52 as base64. 109 configurations, in 30 designs, fly all
+three ways to the same apogee bit for bit (largest relative difference 0), most on OpenRocket's
+motor database; the other 61 of the 170 are left out of their rockets as the `.ork` reader leaves
+them (ADR-055), the same all three ways.
 In CI the 17 public designs fly 18 configurations, the same from the document bit for bit and
 within 1e-9 through the written `.ork`.
 

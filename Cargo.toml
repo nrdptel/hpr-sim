@@ -55,11 +55,11 @@ jsonschema = { version = "0.58.0", default-features = false }
 # by hand. No default features: no Arrow, no compression codecs, just the file reader.
 parquet-reader = { package = "parquet", version = "60.0.0", default-features = false }
 proptest = "1.11.0"
-# xtask only: reads the documentation site's Markdown with the parser mdBook itself uses, to check
-# its links and labels. Parser only: no HTML renderer, no command-line tool.
 # The hpr design format carries a design file's binary attachments, such as a `.ork`'s decal images, as
 # base64 text (RFC 4648).
 base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
+# xtask only: reads the documentation site's Markdown with the parser mdBook itself uses, to check
+# its links and labels. Parser only: no HTML renderer, no command-line tool.
 pulldown-cmark = { version = "0.13.4", default-features = false }
 # Tests only: an independent xoshiro256++ and SplitMix64 to check `hpr_core::random` against.
 rand_core = "0.10"

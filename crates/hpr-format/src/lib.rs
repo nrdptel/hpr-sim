@@ -10,7 +10,8 @@
 //! simulations stored with it, and what the source file holds that hpr does not model, kept under
 //! a namespaced extension (`x-openrocket`) — and every other entry of the source file's archive,
 //! such as an embedded thrust curve or a decal image. A `.ork` written from a document is the
-//! `.ork` hpr writes from the file it was read from, byte for byte ([ADR-111][adr-111]).
+//! `.ork` hpr writes from the file it was read from, byte for byte, as checked on the 73 designs
+//! hpr's `.ork` checks read ([ADR-111][adr-111]).
 //!
 //! [`to_json`] writes the canonical text: two-space indents, keys in the order the types declare
 //! them, and a final newline, so the same design always gives the same bytes and a change shows as
@@ -40,6 +41,7 @@
 //! [m3-3b]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-3b
 //! [m3-3c]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-3c
 
+use std::collections::BTreeSet;
 use std::fmt;
 
 use base64::Engine as _;
@@ -106,6 +108,10 @@ pub struct DesignFile {
 
 impl DesignFile {
     /// The document of `design`, with its provenance and the source file's other files.
+    ///
+    /// `attachments` must hold each thrust curve the design's motors name as embedded
+    /// ([`Curve::Embedded`]): the file's own [`OrkFile::attachments`](hpr_io::ork::OrkFile)
+    /// do. Without one, [`to_json`] refuses the document.
     pub fn new(design: Design, provenance: Provenance, attachments: &[Attachment]) -> Self {
         Self {
             format: Format::HprDesign,
@@ -182,18 +188,24 @@ impl DesignFile {
             .map_err(|error| FormatError::Ork(error.to_string()))
     }
 
-    /// What in a document read from JSON the types alone don't hold to: every attachment decodes
-    /// and has its own name, and every thrust curve embedded in the source file is among them.
+    /// What in a document read from JSON the types alone don't hold to: every attachment decodes,
+    /// has its own name, and is a file a `.ork` can hold besides its design, and every thrust curve
+    /// embedded in the source file is among them.
     fn check(&self) -> Result<(), FormatError> {
-        for (index, file) in self.attachments.iter().enumerate() {
+        let mut names = BTreeSet::new();
+        for file in &self.attachments {
             file.bytes()?;
-            if self.attachments[..index]
-                .iter()
-                .any(|other| other.name == file.name)
-            {
+            if !names.insert(file.name.as_str()) {
                 return Err(FormatError::Invalid(format!(
                     "two attachments are named {:?}",
-                    file.name
+                    shortened(&file.name)
+                )));
+            }
+            // The design's own entry, and a directory's name, don't come back from a `.ork`.
+            if file.name.is_empty() || file.name == "rocket.ork" || file.name.ends_with('/') {
+                return Err(FormatError::Invalid(format!(
+                    "an attachment is named {:?}, which a .ork can't hold besides its design",
+                    shortened(&file.name)
                 )));
             }
         }
@@ -207,9 +219,10 @@ impl DesignFile {
                 _ => None,
             });
         for entry in entries {
-            if !self.attachments.iter().any(|file| file.name == *entry) {
+            if !names.contains(entry.as_str()) {
                 return Err(FormatError::Invalid(format!(
-                    "a motor's curve is embedded as {entry:?}, which the attachments don't hold"
+                    "a motor's curve is embedded as {:?}, which the attachments don't hold",
+                    shortened(entry)
                 )));
             }
         }
@@ -220,9 +233,14 @@ impl DesignFile {
 /// One of the source file's other files: its name, and its contents as text where they are UTF-8,
 /// or else as base64 ([RFC 4648][rfc-4648], section 4).
 ///
+/// Beyond the schema, the reader holds a document's attachments to three rules: base64 decodes,
+/// no two share a name, and each thrust curve a motor names as embedded is among them. A name is
+/// not empty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/`.
+///
 /// [rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct AttachedFile {
     /// Its name in the source file, such as `thrustcurves/<digest>.rse`.
     pub name: String,
@@ -261,10 +279,11 @@ impl AttachedFile {
 /// A file's contents: text, or base64 for bytes that are not UTF-8.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
+#[non_exhaustive]
 pub enum Content {
     /// UTF-8 text, as the file holds it.
     Text(String),
-    /// Any other bytes, in standard base64 with padding.
+    /// Any other bytes, in standard base64 with padding, which must decode.
     Base64(String),
 }
 

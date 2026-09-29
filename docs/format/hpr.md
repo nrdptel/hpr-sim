@@ -12,13 +12,15 @@ diff.
 library reads a `.ork` into a document, writes it as text, reads it back, and writes the `.ork`
 again ([reading and writing one](#reading-and-writing-one)). The command line doesn't read or write
 `.hpr` yet. That comes with the format's next step,
-[M3.3b](../decisions-and-roadmap.md#m3-3b), with a zip container for a design and its flight logs,
+[M3.3b](../decisions-and-roadmap.md#m3-3b), with a zip container for a design with its flight logs and other files,
 migrations from older versions, and a comparison with the other design formats. Generated
 TypeScript and Python types follow in [M3.3c](../decisions-and-roadmap.md#m3-3c), the step after.
 
 **How far to trust it.** Nothing is lost on the way through. hpr's checks use 75 `.ork` files and
 read 73. Each of the 73 goes `.ork` → `.hpr` → `.ork` and comes back as the same design, bit for
-bit, and as the `.ork` hpr writes from the original, byte for byte, and flies to the same apogee
+bit, and as the `.ork` hpr writes from the original, byte for byte. The 109 motor configurations
+among them that fly, in 30 of the designs, reach the same apogee every way, bit for bit, with
+OpenRocket's motor database supplying most of their curves
 ([checked on real designs](#checked-on-real-designs)).
 
 **Keep your `.ork`.** The format is version 0.1, a draft: until hpr's first release it can change
@@ -101,7 +103,8 @@ The API reference has a worked example
 ([`hpr_format`](https://nrdptel.github.io/hpr-sim/api/hpr_format/index.html)).
 
 The text is canonical, meaning there is exactly one way to write a given design: two-space indents,
-keys in the order above, and a final newline. So the same design always gives the same bytes. Before it returns, the writer reads its own text back and
+keys in the order above, and a final newline. So the same design always gives the same bytes.
+ Before it returns, the writer reads its own text back and
 compares it with the design. A value JSON can't carry, such as an infinite number, is refused with
 an error rather than written as something else.
 
@@ -160,7 +163,8 @@ only counts are published. `cargo xtask ork` takes each one through the format:
 | the `.ork` written from it is the `.ork` hpr writes from the file itself, other files and all, byte for byte | 73 of 73 |
 | that `.ork` reads back as the design first read, bit for bit | 73 of 73 |
 
-Between them, the documents carry the files' 55 other files: 3 as text and 52 as base64.
+Between them, the documents carry the files' 55 other files: 3 as text, the thrust curves the
+designs embed, and 52 as base64, their images.
 
 Then each motor configuration that flies is flown three ways: the design first read, the design
 read back from its document, and the design read back from the `.ork` written from the document.
@@ -172,8 +176,9 @@ format's first step, [M3.3a](../decisions-and-roadmap.md#m3-3a), asked for 1 par
 These 109 fly because the check supplies OpenRocket's own motor database for the curves the files
 name but don't carry. With only the files' own curves and hpr's bundled motors, 4 fly
 ([motors in the reference library](ork.md#motors-in-the-reference-library)). The other 61 have no
-flight to compare: the `.ork` reader leaves them out of the rocket all three ways, most for want of
-a thrust curve ([which configurations fly](ork.md#which-configurations-the-rocket-flies)).
+flight to compare: the `.ork` reader leaves them out of the rocket all three ways, 24 for want of a
+thrust curve, 19 for stages hpr can't separate as written, and 18 for other reasons
+([which configurations fly](ork.md#which-configurations-the-rocket-flies)).
 
 **In CI**, the automatic checks run on every change, where the private designs aren't:
 `hpr-format`'s tests take the 17 public `.ork` designs under `validation/fixtures/ork/` through the
@@ -187,7 +192,7 @@ whether the document is still valid.
 
 ## What is not there yet
 
-- **The zip container** (`.hprz`), for a design with its attachments: [M3.3b](../decisions-and-roadmap.md#m3-3b).
+- **The zip container** (`.hprz`), for a design with its flight logs and other files: [M3.3b](../decisions-and-roadmap.md#m3-3b).
 - **Migrations** from older versions: [M3.3b](../decisions-and-roadmap.md#m3-3b), when there is an older version.
 - **A comparison** with `.ork`, RockSim's `.rkt`, RASAero's `.CDX1` and RocketPy's `.rpy`, and why
   hpr didn't adopt one of them: [M3.3b](../decisions-and-roadmap.md#m3-3b).
@@ -195,7 +200,7 @@ whether the document is still valid.
   and `hpr convert` doesn't write one: [M3.3b](../decisions-and-roadmap.md#m3-3b).
 - **Generated TypeScript and Python types**: [M3.3c](../decisions-and-roadmap.md#m3-3c).
 - **An embedded curve is held twice**: as the file's text under `attachments`, and as the motor
-  built from it in the configuration. Editing one doesn't change the other, and nothing checks
-  that they agree yet.
+  built from it in the configuration. A flight uses the motor; a `.ork` written from the document
+  uses the text. Editing one doesn't change the other, and nothing checks that they agree yet.
 - **Some type names come from `.ork`**, such as `OrkMotor`, because the document holds the design
   as hpr's `.ork` reader models it. A later version can rename them, with a migration.
