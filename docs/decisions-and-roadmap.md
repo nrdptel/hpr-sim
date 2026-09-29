@@ -131,6 +131,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-112: M3.3b: the `.hprz` container and migrations][adr-112] | Version 0.2 renames the source file's other files `source_files`, so "attachment" means a file in a `.hprz`, and records why a `.ork`'s airframe wasn't read as written, which the `.ork` written from a document can't say. A change that stops old documents reading takes a new version and a migration, tested on a committed older document. A `.hprz` is a zip whose first entry is the `.hpr`; attachment names are relative paths, refused otherwise. `hpr convert` and `hpr sim` take all three design formats ([The hpr design format](format/hpr.md)) |
 | [ADR-113: M3.3c: TypeScript and Python types][adr-113] | xtask generates the types and a reader for each language from the schema, not a third-party generator. A reader checks a document against the schema embedded in its file, and tests hold both readers to a separate schema checker on 4,892 altered documents. Not on npm or PyPI ([TypeScript and Python](format/hpr.md#typescript-and-python)) |
 | [ADR-114: M4.3: the Python package][adr-114] | [M4.3](#m4-3), the Python bindings, is split in three: the package, RocketPy's example flown from Python, and models written in Python. The package wraps the Rust builder and adds no physics; it keeps RocketPy's shape (a flight flies when it is made, its recording comes back as arrays) but the Rust API's unit-named arguments. One wheel per operating system serves CPython 3.10 on; nothing is published to PyPI | [Python](python.md) |
+| [ADR-115: M4.3b: a drag table, and Calisto from Python][adr-115] | The flight builder takes another program's drag table, and the Python package gains it with RocketPy's gravity formula and a parachute cut away when another opens. RocketPy's ways of measuring a flight (from the dry centre of mass, its rail exit at the forward button) stay in the Calisto example rather than the library; a test holds the example to 3% of RocketPy and to the validation suite's own numbers | [Python](python.md#rocketpys-example-flown-as-the-suite-flies-it) |
 
 ## The roadmap
 
@@ -327,7 +328,7 @@ missing or its status disagrees.
 | <a id="m3-3c"></a>[M3.3c][phase-2] | TypeScript and Python types generated from the schema, each with a reader that checks a document ([ADR-113][adr-113], [TypeScript and Python](format/hpr.md#typescript-and-python)) | done |
 | <a id="m4-3"></a>[M4.3][phase-2] | Python bindings | not yet done |
 | <a id="m4-3a"></a>[M4.3a][phase-2] | The `hpr` Python package: the builder's environment, motor, rocket and flight, designs read from files, recordings as NumPy arrays, and wheels built and tested on three operating systems ([ADR-114][adr-114], [Python](python.md)) | done |
-| <a id="m4-3b"></a>[M4.3b][phase-2] | A drag table on a flight, and RocketPy's example rocket, Calisto, flown from Python within 3% of RocketPy | not yet done |
+| <a id="m4-3b"></a>[M4.3b][phase-2] | A drag table on a flight, and RocketPy's example rocket, Calisto, flown from Python within 3% of RocketPy ([ADR-115][adr-115], [Python](python.md#rocketpys-example-flown-as-the-suite-flies-it)) | done |
 | <a id="m4-3c"></a>[M4.3c][phase-2] | Drag and wind models written as Python functions | not yet done |
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
@@ -564,6 +565,7 @@ is the milestone that added or will add that test.
 [adr-112]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-112-m33b-the-hprz-container-and-migrations-2026-09-29
 [adr-113]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-113-m33c-typescript-and-python-types-generated-from-the-schema-2026-09-29
 [adr-114]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-114-m43-the-python-package-and-its-split-2026-09-29
+[adr-115]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-115-m43b-a-drag-table-and-rocketpys-calisto-from-python-2026-09-29
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

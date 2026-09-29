@@ -697,6 +697,147 @@ fn a_drag_model_is_flown_in_place_of_hprs_drag() {
     );
 }
 
+/// A drag table is flown in hpr's place, as the simulation's own table is: a constant table
+/// flies as the same constant model, its power-on curve only while the motor burns, and one on
+/// another reference diameter rescaled by the areas. The last model or table set is flown.
+#[test]
+fn a_drag_table_is_flown_in_place_of_hprs_drag() {
+    let rocket = built();
+    let environment = environment();
+    let launch = Flight::builder(&rocket, &environment, 1.8);
+    let own = launch.fly().unwrap();
+    let half = hpr_aero::DragTable::from_csv("0,0.5\n1,0.5\n", None).unwrap();
+    let by_table = launch.clone().drag_table(half.clone()).fly().unwrap();
+    assert_eq!(
+        by_table,
+        launch.clone().drag_model(ConstantDrag(0.5)).fly().unwrap()
+    );
+    assert_eq!(
+        by_table.result(),
+        &launch
+            .simulation()
+            .unwrap()
+            .with_drag_table(half.clone())
+            .run(&mut ())
+            .unwrap()
+    );
+
+    // Whichever of a model and a table is set last is flown.
+    assert_eq!(
+        launch
+            .clone()
+            .drag_model(HprsOwn)
+            .drag_table(half.clone())
+            .fly()
+            .unwrap(),
+        by_table
+    );
+    assert_eq!(
+        launch
+            .clone()
+            .drag_table(half.clone())
+            .drag_model(HprsOwn)
+            .fly()
+            .unwrap(),
+        own
+    );
+
+    // Less drag while the motor burns, a higher apogee than power off's alone, and a lower one
+    // than with the power-on curve all the way.
+    let apogee = |table: hpr_aero::DragTable| {
+        launch
+            .clone()
+            .drag_table(table)
+            .fly()
+            .unwrap()
+            .apogee_m()
+            .unwrap()
+    };
+    let both =
+        apogee(hpr_aero::DragTable::from_csv("0,0.5\n1,0.5\n", Some("0,0.2\n1,0.2\n")).unwrap());
+    let low = apogee(hpr_aero::DragTable::from_csv("0,0.2\n1,0.2\n", None).unwrap());
+    let high = by_table.apogee_m().unwrap();
+    assert!(high < both && both < low, "{high} {both} {low}");
+
+    // A quarter of the coefficient on twice the diameter is the same drag.
+    // `built`'s body diameter, its largest and so its reference diameter.
+    let reference_diameter_m = 0.0563;
+    let wide = hpr_aero::DragTable::from_csv("0,0.125\n1,0.125\n", None)
+        .unwrap()
+        .with_reference_diameter_m(2.0 * reference_diameter_m);
+    let rescaled = apogee(wide);
+    assert!((rescaled - high).abs() <= 1e-9 * high, "{rescaled} {high}");
+
+    // Drag that pushes is refused where the flight meets it, in either curve, and past a table's
+    // rows where it extrapolates below zero.
+    use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+    let falling = Table1D::new(
+        vec![0.1, 0.2],
+        vec![0.1, 0.5],
+        Interpolation::Linear,
+        Extrapolation::Linear,
+    )
+    .unwrap();
+    let tables = [
+        hpr_aero::DragTable::from_csv("0,-0.01\n1,0.5\n", None).unwrap(),
+        hpr_aero::DragTable::from_csv("0,0.5\n1,0.5\n", Some("0,-0.2\n1,0.5\n")).unwrap(),
+        hpr_aero::DragTable::new(falling, None),
+    ];
+    for table in tables {
+        let error = launch.clone().drag_table(table).fly().unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                Error::Sim(hpr_sim::SimError::Aero(hpr_aero::AeroError::Domain { what, value }))
+                    if *what == "zero-lift drag coefficient from a drag table" && *value < 0.0
+            ),
+            "{error:?}"
+        );
+    }
+}
+
+/// A gravity model other than the default is flown, and the Earth's rotation kept with it.
+#[test]
+fn a_gravity_model_is_flown_in_place_of_the_default() {
+    use hpr_core::earth::GravityModel;
+    let rocket = built();
+    let taylor = environment()
+        .with_gravity(GravityModel::VerticalTaylor)
+        .unwrap();
+    assert_eq!(
+        taylor.sim().earth.gravity_model(),
+        GravityModel::VerticalTaylor
+    );
+    assert_eq!(
+        taylor.sim().earth.rotation(),
+        environment().sim().earth.rotation()
+    );
+    assert_eq!(taylor.sim().site(), environment().sim().site());
+    let own = Flight::builder(&rocket, &environment(), 1.8).fly().unwrap();
+    let by_taylor = Flight::builder(&rocket, &taylor, 1.8).fly().unwrap();
+    // The two formulas differ by about 1e-8 near the ground (docs/physics/gravity.md), not by
+    // nothing.
+    let (a, b) = (own.apogee_m().unwrap(), by_taylor.apogee_m().unwrap());
+    assert!(a != b && (a - b).abs() < 1e-6 * a, "{a} {b}");
+    // A weaker uniform field, a higher flight.
+    let light = environment()
+        .with_gravity(GravityModel::Constant { g_mps2: 9.0 })
+        .unwrap();
+    let lighter = Flight::builder(&rocket, &light, 1.8).fly().unwrap();
+    assert!(lighter.apogee_m().unwrap() > a);
+    let error = environment()
+        .with_gravity(GravityModel::Constant { g_mps2: -1.0 })
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Core(hpr_core::CoreError::Domain { what, value })
+                if what.starts_with("constant gravity magnitude") && value == -1.0
+        ),
+        "{error:?}"
+    );
+}
+
 /// Loft lesson L95: a degenerate design must be refused or fly to finite numbers, never to a NaN
 /// or a hang. The builder refuses each one as it is given, naming it. Put straight into a design
 /// the builder can't check, each is refused before the flight or flies finite.

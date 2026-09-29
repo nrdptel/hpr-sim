@@ -1616,8 +1616,8 @@ impl AeroModel {
     ///   ([`crate::drag::ComponentDragTerms::unsupported`]).
     /// - [`AeroError::Domain`] for an angle of attack outside `[0, π]` or a non-finite roll.
     /// - As [`DragConditions::validate`].
-    /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] if the drag isn't
-    ///   finite.
+    /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] for a table's
+    ///   coefficient that is negative at the flow's Mach number, or a drag that isn't finite.
     pub fn drag(&self, flow: &Flow, conditions: &DragConditions) -> Result<Drag, AeroError> {
         conditions.validate()?;
         let conditions = &self.read(conditions);
@@ -1649,6 +1649,15 @@ impl AeroModel {
         } else if let Some(table) = &self.drag_table {
             flow.validate_angles()?;
             let lookup = table.lookup(flow.mach, conditions.thrusting)?;
+            // A table's rows are finite, but one can hold a negative row, or give a negative
+            // value past its rows or between them (linear extrapolation, a cubic): drag that
+            // would push the rocket along (#257).
+            if lookup.value < 0.0 {
+                return Err(AeroError::Domain {
+                    what: "zero-lift drag coefficient from a drag table",
+                    value: lookup.value,
+                });
+            }
             let scale = match table.reference_diameter_m {
                 Some(d) => {
                     check_dimension("drag table reference diameter", d, false)?;

@@ -235,11 +235,9 @@ crates the builder is made of.
   flies one, building its simulation with `Simulation::new` rather than through the builder.
 - **Change the flight.** A flight builder's `simulation()` hands over the simulation `fly()` would
   run. The `motor_choice` example passes it to `hpr_sim::metrics::optimum_delays`. The
-  simulation's methods add a separation, events of your own, moving or released masses, or
-  another program's drag table (`with_drag_table`, as
-  [Getting started](getting-started.md#how-far-to-trust-it) uses one). A drag model of your own
-  needs no detour: the flight builder's `drag_model` takes it
-  ([Models of your own](custom-models.md)). `run(&mut ())` flies it,
+  simulation's methods add a separation, events of your own, or moving or released masses. A
+  drag model of your own, or another program's drag table, needs no detour: the flight builder's
+  `drag_model` and `drag_table` take them ([Models of your own](custom-models.md)). `run(&mut ())` flies it,
   with no observer watching. A flight flown that way returns the simulation's own result, without the
   builder's `Flight` methods; `hpr_sim::FlightMetrics` gives the same metrics
   ([Flight metrics](physics/metrics.md)).

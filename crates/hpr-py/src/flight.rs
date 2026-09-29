@@ -1,20 +1,28 @@
 //! `Environment` and `Flight`: where a rocket flies, and its flight.
 
+use hpr::hpr_aero::DragTable as RustDragTable;
+use hpr::hpr_core::earth::GravityModel;
+use hpr::hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 use hpr::hpr_sim::{Channel, Recorder};
 use numpy::{PyArray1, PyArrayMethods};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
 use crate::rocket::Rocket;
-use crate::{error, to_python};
+use crate::{error, key, to_python};
 
 /// Where a rocket flies: the launch site, the US Standard Atmosphere 1976, and a wind.
 ///
 /// `Environment(latitude_deg, longitude_deg, elevation_m, *, wind_speed_m_s=0.0,
-/// wind_from_deg=0.0)`: a launch site at `latitude_deg` and `longitude_deg` (positive east, so
-/// negative in the Americas), `elevation_m` above sea level, with no wind, or a wind of
-/// `wind_speed_m_s` blowing **from** `wind_from_deg`, clockwise from true north, the same at
-/// every height.
+/// wind_from_deg=0.0, gravity="ellipsoidal")`: a launch site at `latitude_deg` and
+/// `longitude_deg` (positive east, so negative in the Americas), `elevation_m` above sea level,
+/// with no wind, or a wind of `wind_speed_m_s` blowing **from** `wind_from_deg`, clockwise from
+/// true north, the same at every height.
+///
+/// `gravity` says how gravity is found along the flight: `"ellipsoidal"`, the default, is the
+/// full normal gravity vector at the rocket's position; `"vertical"` is its exact size along the
+/// launch site's vertical; and `"vertical_taylor"` is RocketPy's formula, a Taylor series in
+/// height along the vertical, for like-for-like comparisons with RocketPy.
 #[pyclass(module = "hpr", frozen, skip_from_py_object)]
 #[derive(Debug)]
 pub struct Environment {
@@ -24,16 +32,21 @@ pub struct Environment {
 #[pymethods]
 impl Environment {
     #[new]
-    #[pyo3(signature = (latitude_deg, longitude_deg, elevation_m, *, wind_speed_m_s = 0.0, wind_from_deg = 0.0))]
+    #[pyo3(signature = (latitude_deg, longitude_deg, elevation_m, *, wind_speed_m_s = 0.0, wind_from_deg = 0.0, gravity = "ellipsoidal"))]
     fn new(
         latitude_deg: f64,
         longitude_deg: f64,
         elevation_m: f64,
         wind_speed_m_s: f64,
         wind_from_deg: f64,
+        gravity: &str,
     ) -> PyResult<Self> {
         let mut environment =
             hpr::Environment::new(latitude_deg, longitude_deg, elevation_m).map_err(error)?;
+        let gravity = gravity_model(gravity)?;
+        if gravity != GravityModel::default() {
+            environment = environment.with_gravity(gravity).map_err(error)?;
+        }
         if wind_speed_m_s != 0.0 || wind_from_deg != 0.0 {
             environment = environment
                 .with_constant_wind(wind_speed_m_s, wind_from_deg)
@@ -53,15 +66,188 @@ impl Environment {
     }
 }
 
+/// A gravity model by its name: one of the library's `GravityModel`s that takes no number, read
+/// through its `serde` name so the two can't drift apart.
+fn gravity_model(name: &str) -> PyResult<GravityModel> {
+    let refused = || {
+        error(format!(
+            "no gravity `{name}`: \"ellipsoidal\", \"vertical\" or \"vertical_taylor\""
+        ))
+    };
+    if key(name) == "constant" {
+        return Err(refused());
+    }
+    serde_json::from_value(serde_json::json!({ "kind": key(name) })).map_err(|_| refused())
+}
+
+/// A drag table's curve from `(mach, cd)` rows: linear between them, held at the ends.
+fn curve(what: &str, rows: &[Vec<f64>]) -> PyResult<Table1D> {
+    let table = rows_to_curve(what, rows)?;
+    not_negative(what, &table)?;
+    Ok(table)
+}
+
+/// Refuses a curve with a negative coefficient: drag that would push the rocket along.
+fn not_negative(what: &str, curve: &Table1D) -> PyResult<()> {
+    match curve.ys().iter().position(|value| *value < 0.0) {
+        Some(index) => Err(error(format!(
+            "{what}'s row {index} has a drag coefficient of {}, and it can't be negative",
+            curve.ys()[index]
+        ))),
+        None => Ok(()),
+    }
+}
+
+/// The rows as a curve, before its coefficients are checked.
+fn rows_to_curve(what: &str, rows: &[Vec<f64>]) -> PyResult<Table1D> {
+    let mut machs = Vec::with_capacity(rows.len());
+    let mut coefficients = Vec::with_capacity(rows.len());
+    for (index, row) in rows.iter().enumerate() {
+        let &[mach, coefficient] = row.as_slice() else {
+            return Err(error(format!(
+                "{what}'s row {index} has {} values, not two: (mach, cd)",
+                row.len()
+            )));
+        };
+        machs.push(mach);
+        coefficients.push(coefficient);
+    }
+    Table1D::new(
+        machs,
+        coefficients,
+        Interpolation::Linear,
+        Extrapolation::Clamp,
+    )
+    .map_err(|problem| error(format!("{what}: {problem}")))
+}
+
+/// A zero-lift drag coefficient `C_D0` against Mach number, flown in place of hpr's own drag
+/// (`Flight(..., drag_table=...)`), as RocketPy's `power_off_drag` and `power_on_drag` are.
+///
+/// `DragTable(power_off, power_on=None, *, reference_diameter_m=None)`: each curve is a sequence
+/// of `(mach, cd)` rows, a list of pairs or a NumPy array of two columns, with Mach numbers that
+/// increase. The power-on curve is flown while a motor thrusts, and the power-off curve the rest
+/// of the time, or all of it when there is no power-on curve. Between rows the coefficient is
+/// interpolated linearly; past the ends it holds the end values. The coefficients are on the
+/// rocket's reference area, a circle of its largest body diameter, unless
+/// `reference_diameter_m` names another; then they are rescaled by the ratio of the two areas.
+/// Only the drag is replaced: the normal force, centre of pressure and damping stay hpr's.
+///
+/// `DragTable.from_csv(power_off, power_on=None, *, reference_diameter_m=None)` reads each curve
+/// from a CSV file of two columns, Mach number and `C_D0`, under an optional header row, as
+/// RocketPy's drag files are.
+#[pyclass(module = "hpr", frozen, skip_from_py_object)]
+#[derive(Debug)]
+pub struct DragTable {
+    table: RustDragTable,
+}
+
+impl DragTable {
+    fn with_reference(table: RustDragTable, reference_diameter_m: Option<f64>) -> PyResult<Self> {
+        let table = match reference_diameter_m {
+            Some(diameter_m) if diameter_m.is_finite() && diameter_m > 0.0 => {
+                table.with_reference_diameter_m(diameter_m)
+            }
+            Some(diameter_m) => {
+                return Err(error(format!(
+                    "the drag table's reference diameter is {diameter_m} m, and must be finite \
+                     and positive"
+                )));
+            }
+            None => table,
+        };
+        Ok(Self { table })
+    }
+}
+
+#[pymethods]
+impl DragTable {
+    #[new]
+    #[pyo3(signature = (power_off, power_on = None, *, reference_diameter_m = None))]
+    fn new(
+        power_off: Vec<Vec<f64>>,
+        power_on: Option<Vec<Vec<f64>>>,
+        reference_diameter_m: Option<f64>,
+    ) -> PyResult<Self> {
+        let power_off = curve("power_off", &power_off)?;
+        let power_on = power_on.map(|rows| curve("power_on", &rows)).transpose()?;
+        Self::with_reference(
+            RustDragTable::new(power_off, power_on),
+            reference_diameter_m,
+        )
+    }
+
+    /// A table read from CSV files: `power_off`'s path, and optionally `power_on`'s.
+    #[staticmethod]
+    #[pyo3(signature = (power_off, power_on = None, *, reference_diameter_m = None))]
+    fn from_csv(
+        power_off: std::path::PathBuf,
+        power_on: Option<std::path::PathBuf>,
+        reference_diameter_m: Option<f64>,
+    ) -> PyResult<Self> {
+        // Each file read and checked alone, so an error names the file.
+        let read = |path: &std::path::Path| {
+            let named =
+                |problem: &dyn std::fmt::Display| error(format!("{}: {problem}", path.display()));
+            let text = std::fs::read_to_string(path).map_err(|problem| named(&problem))?;
+            let curve = RustDragTable::from_csv(&text, None)
+                .map_err(|problem| named(&problem))?
+                .power_off;
+            not_negative(&path.display().to_string(), &curve)?;
+            Ok::<_, PyErr>(curve)
+        };
+        let off = read(&power_off)?;
+        let on = power_on.as_deref().map(read).transpose()?;
+        Self::with_reference(RustDragTable::new(off, on), reference_diameter_m)
+    }
+
+    /// `C_D0` at `mach`, from the power-on curve when `thrusting` and the table has one, on the
+    /// table's own reference diameter.
+    #[pyo3(signature = (mach, *, thrusting = false))]
+    fn cd0(&self, mach: f64, thrusting: bool) -> PyResult<f64> {
+        Ok(self.table.lookup(mach, thrusting).map_err(error)?.value)
+    }
+
+    /// Whether the table has a power-on curve.
+    #[getter]
+    fn has_power_on(&self) -> bool {
+        self.table.power_on.is_some()
+    }
+
+    /// The diameter the coefficients are on, m; `None` for the rocket's own.
+    #[getter]
+    fn reference_diameter_m(&self) -> Option<f64> {
+        self.table.reference_diameter_m
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "DragTable({} power-off rows{}, reference_diameter_m={})",
+            self.table.power_off.xs().len(),
+            self.table
+                .power_on
+                .as_ref()
+                .map_or_else(String::new, |on| format!(
+                    ", {} power-on rows",
+                    on.xs().len()
+                )),
+            self.table
+                .reference_diameter_m
+                .map_or_else(|| "None".to_owned(), |diameter_m| diameter_m.to_string())
+        )
+    }
+}
+
 /// A flight: `rocket` launched in `environment` from a rail `rail_length_m` long, flown to the
 /// ground as soon as it is made.
 ///
 /// `Flight(rocket, environment, rail_length_m, *, inclination_deg=90.0, heading_deg=0.0,
-/// interval_s=None)`: the rail is measured from the rocket's aft end to the rail's top, and leans
+/// interval_s=None, drag_table=None)`: the rail is measured from the rocket's aft end to the rail's top, and leans
 /// `inclination_deg` above the horizon (90 is vertical) toward `heading_deg`, clockwise from true
 /// north. The flight is recorded every `interval_s` seconds, at least 0.001 s, and at every event;
 /// or at every step of the integrator when that is left out. The rocket is copied as the flight
-/// starts, and a flight runs to its end: it can't be interrupted.
+/// starts, and a flight runs to its end: it can't be interrupted. A `DragTable` given as
+/// `drag_table` is flown in place of hpr's own drag.
 ///
 /// Heights are the rocket's centre of gravity's, above the launch site: it stands on the rail at
 /// the start, so the first height isn't zero. Speeds are relative to the ground.
@@ -81,7 +267,11 @@ const MIN_INTERVAL_S: f64 = 0.001;
 #[pymethods]
 impl Flight {
     #[new]
-    #[pyo3(signature = (rocket, environment, rail_length_m, *, inclination_deg = 90.0, heading_deg = 0.0, interval_s = None))]
+    #[pyo3(signature = (rocket, environment, rail_length_m, *, inclination_deg = 90.0, heading_deg = 0.0, interval_s = None, drag_table = None))]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "Python's keyword arguments, one per option of a flight"
+    )]
     fn new(
         py: Python<'_>,
         rocket: &Bound<'_, Rocket>,
@@ -90,6 +280,7 @@ impl Flight {
         inclination_deg: f64,
         heading_deg: f64,
         interval_s: Option<f64>,
+        drag_table: Option<&DragTable>,
     ) -> PyResult<Self> {
         if let Some(interval_s) = interval_s
             && (interval_s.is_nan() || interval_s < MIN_INTERVAL_S)
@@ -101,9 +292,12 @@ impl Flight {
         let mut recorder = Recorder::new(Channel::ALL.to_vec(), interval_s).map_err(error)?;
         // A copy, so the rocket isn't held borrowed while the flight runs without the GIL.
         let rocket = rocket.borrow().rocket.clone();
-        let builder = hpr::Flight::builder(&rocket, &environment.environment, rail_length_m)
+        let mut builder = hpr::Flight::builder(&rocket, &environment.environment, rail_length_m)
             .inclination_deg(inclination_deg)
             .heading_deg(heading_deg);
+        if let Some(drag_table) = drag_table {
+            builder = builder.drag_table(drag_table.table.clone());
+        }
         // The flight holds no Python object, so other Python threads run while it flies.
         let flight = py
             .detach(|| builder.fly_with(&mut recorder))
