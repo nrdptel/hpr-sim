@@ -17,6 +17,9 @@ use super::*;
 
 /// Reads `bytes` as a `.ork` and returns its design.
 fn design_of(bytes: &[u8]) -> Design {
+    // A design written by hand here names its parts; the ids become UUIDs, as OpenRocket's are.
+    let xml = std::str::from_utf8(bytes).map(super::rocket::tests::uuids);
+    let bytes = xml.as_ref().map_or(bytes, |xml| xml.as_bytes());
     let file = read(bytes).expect("a readable .ork").value;
     design(&file).value
 }
@@ -46,7 +49,19 @@ fn written_and_read(design: &Design) -> (Design, String, Vec<Warning>) {
 }
 
 /// The element anywhere under `root` whose `<id>` is `id`.
+/// The UUID a hand-written design's part named `name` is given ([`design_of`]).
+fn uuid_of(name: &str) -> String {
+    let tagged = super::rocket::tests::uuids(&format!("<id>{name}</id>"));
+    tagged["<id>".len()..tagged.len() - "</id>".len()].to_owned()
+}
+
+/// The component a hand-written design names `name`, in `design`.
+fn part<'a>(design: &'a Design, name: &str) -> &'a hpr_design::tree::Component {
+    component(design, &uuid_of(name))
+}
+
 fn by_id<'a>(root: &'a Element, id: &str) -> &'a Element {
+    let id = &uuid_of(id);
     fn find<'a>(element: &'a Element, id: &str) -> Option<&'a Element> {
         if element
             .child("id")
@@ -228,7 +243,7 @@ fn round_trip_keeps_delays_ignition_conditions_and_override_flags() {
             .configurations
             .iter()
             .find(|c| c.id == id)
-            .and_then(|c| c.motors.iter().find(|m| m.mount == mount))
+            .and_then(|c| c.motors.iter().find(|m| m.mount == uuid_of(mount)))
             .cloned()
             .expect("the motor")
     };
@@ -367,9 +382,9 @@ fn round_trip_keeps_delays_ignition_conditions_and_override_flags() {
     }
     assert_eq!(text.matches("<overridemass>").count(), 1, "{text}");
     assert_eq!(text.matches("<overridecg>").count(), 1, "{text}");
-    assert!(!component(&back, "nose").overrides_include_children);
-    assert!(component(&back, "upper-body").overrides_include_children);
-    assert!(component(&back, "lower-body").overrides.is_empty());
+    assert!(!part(&back, "nose").overrides_include_children);
+    assert!(part(&back, "upper-body").overrides_include_children);
+    assert!(part(&back, "lower-body").overrides.is_empty());
 }
 
 /// A freeform fin's outline, `[x, h]` from the root leading edge in metres: numbers whose
@@ -441,14 +456,14 @@ fn fin_points_clusters_and_floats_round_trip_exactly() {
     let original = design_of(xml.as_bytes());
 
     // The fin's points and the cluster's places, as a design holds them.
-    let outline_of = |design: &Design| match &component(design, "fins").part {
+    let outline_of = |design: &Design| match &part(design, "fins").part {
         Part::FinSet(fins) => match &fins.planform {
             FinPlanform::Freeform { points_m } => points_m.clone(),
             other => panic!("a freeform fin, not {other:?}"),
         },
         other => panic!("a fin set, not {other:?}"),
     };
-    let places_of = |design: &Design| match &component(design, "cluster").part {
+    let places_of = |design: &Design| match &part(design, "cluster").part {
         Part::InnerTube(tube) => tube.cluster_m.clone(),
         other => panic!("an inner tube, not {other:?}"),
     };
@@ -760,4 +775,43 @@ fn attachments_follow_the_design_and_one_named_like_it_is_skipped() {
     assert_eq!(file.design_entry.as_deref(), Some(DESIGN_ENTRY));
     assert_eq!(file.attachments, [curve, image, empty]);
     assert_eq!(design(&file).value, original);
+}
+
+/// OpenRocket 24.12 will not open a file holding an id that is not a UUID, so the export leaves
+/// such an id out and OpenRocket gives the part one of its own. A part the file gave no id reads
+/// with an id the reader invents, and reading the export invents the same one again; a part the
+/// file named some other way reads back under an invented id instead.
+#[test]
+fn ids_openrocket_would_refuse_are_left_out() {
+    let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Probe</name><referencetype>maximum</referencetype>
+    <subcomponents><stage><name>Sustainer</name><id>sustainer</id><subcomponents>
+      <nosecone><name>Nose</name>
+        <material type="bulk" density="1000.0">Invented plastic</material>
+        <length>0.2</length><thickness>0.002</thickness><shape>conical</shape>
+        <aftradius>0.02</aftradius></nosecone>
+      <bodytube><name>Tube</name><id>0f0e0d0c-0b0a-4900-8800-070605040302</id>
+        <material type="bulk" density="700.0">Invented paper</material>
+        <length>0.5</length><thickness>0.001</thickness><radius>0.02</radius></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#;
+    let file = read(xml).expect("readable").value;
+    let original = design(&file).value;
+    let text = document(&original).value.to_xml();
+    assert!(!text.contains("<id>sustainer</id>"), "{text}");
+    assert_eq!(text.matches("<id>").count(), 1, "{text}");
+    let back = design(&read(text.as_bytes()).expect("readable").value).value;
+    let (was, is) = (&original.rocket.stages[0], &back.rocket.stages[0]);
+    assert_eq!(was.id, "sustainer");
+    assert_ne!(is.id, was.id);
+    let ids = |stage: &hpr_design::tree::Stage| {
+        stage
+            .components
+            .iter()
+            .map(|c| c.id.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(ids(is), ids(was));
+    assert_eq!(ids(was)[1], "0f0e0d0c-0b0a-4900-8800-070605040302");
 }

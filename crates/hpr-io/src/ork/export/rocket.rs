@@ -127,6 +127,17 @@ impl<'a> Writer<'a> {
         self.known.contains(&format!("{parent}/{name}[{place}]"))
     }
 
+    /// Whether `component` was read from a `<name>`: the design keeps something at that path, or
+    /// its id is the one the reader invents for a `<name>` with none (`engineblock-7`).
+    fn was_tag(&self, component: &Component, parent: &str, place: usize, name: &str) -> bool {
+        self.was(parent, place, name)
+            || component
+                .id
+                .strip_prefix(name)
+                .and_then(|rest| rest.strip_prefix('-'))
+                .is_some_and(|count| !count.is_empty() && count.bytes().all(|b| b.is_ascii_digit()))
+    }
+
     /// The `<rocket>`: its name, how its reference diameter is chosen, the motors' tags, and its
     /// stages.
     fn rocket(&mut self) -> Element {
@@ -163,9 +174,8 @@ impl<'a> Writer<'a> {
     fn stage(&mut self, index: usize, stage: &Stage, at: &str) -> Element {
         let design = self.design;
         let mut element = xml::element("stage");
-        element
-            .leaf("name", stage.name.clone())
-            .leaf("id", stage.id.clone());
+        element.leaf("name", stage.name.clone());
+        id(&mut element, &stage.id);
         // A stage's override is the whole stage's, so it covers everything inside it.
         let covers = !stage.overrides.is_empty();
         self.overrides(&mut element, at, &stage.overrides, covers);
@@ -214,7 +224,9 @@ impl<'a> Writer<'a> {
             Part::NoseCone(_) => "nosecone",
             Part::BodyTube(_) => "bodytube",
             Part::Transition(transition) => {
-                if self.was(parent, place, "nosecone") && turned_nose(component, transition) {
+                if self.was_tag(component, parent, place, "nosecone")
+                    && turned_nose(component, transition)
+                {
                     "nosecone"
                 } else {
                     "transition"
@@ -227,7 +239,8 @@ impl<'a> Writer<'a> {
                 ["innertube", "tubecoupler", "engineblock"]
                     .into_iter()
                     .find(|name| {
-                        self.was(parent, place, name) && !(*name == "innertube" && automatic)
+                        self.was_tag(component, parent, place, name)
+                            && !(*name == "innertube" && automatic)
                     })
                     .unwrap_or(if automatic {
                         "tubecoupler"
@@ -237,7 +250,7 @@ impl<'a> Writer<'a> {
             }
             Part::CenteringRing(ring) => {
                 let bulkhead = ring.inner_radius_m == 0.0 && !auto(AutoDimension::InnerRadius);
-                if self.was(parent, place, "centeringring") || !bulkhead {
+                if self.was_tag(component, parent, place, "centeringring") || !bulkhead {
                     "centeringring"
                 } else {
                     "bulkhead"
@@ -266,9 +279,8 @@ impl<'a> Writer<'a> {
     fn component(&mut self, component: &Component, name: &str, at: &str) -> Element {
         let design = self.design;
         let mut element = xml::element(name);
-        element
-            .leaf("name", component.name.clone())
-            .leaf("id", component.id.clone());
+        element.leaf("name", component.name.clone());
+        id(&mut element, &component.id);
         let body = matches!(
             component.part,
             Part::NoseCone(_) | Part::BodyTube(_) | Part::Transition(_)
@@ -534,7 +546,8 @@ impl<'a> Writer<'a> {
             )
             .number("thickness", tube.thickness_m)
             .number("radialposition", tube.radial_offset_m);
-        self.angle(element, at, "angleoffset", tube.angle_rad);
+        // OpenRocket 24.12 reads an inner tube's roll angle only under its older name.
+        self.angle(element, at, "radialdirection", tube.angle_rad);
         self.material(element, at, "material", &tube.material, "bulk");
         if tube.cluster_m.is_empty() {
             return;
@@ -688,8 +701,7 @@ impl<'a> Writer<'a> {
     fn launch_lug(&mut self, element: &mut Element, at: &str, lug: &LaunchLug) {
         element
             .leaf("instancecount", lug.count.to_string())
-            .number("instanceseparation", lug.spacing_m)
-            .number("radiusoffset", 0.0);
+            .number("instanceseparation", lug.spacing_m);
         self.angle(element, at, "angleoffset", lug.angle_rad);
         self.material(element, at, "material", &lug.material, "bulk");
         element
@@ -702,8 +714,7 @@ impl<'a> Writer<'a> {
     fn rail_button(&mut self, element: &mut Element, at: &str, button: &RailButton) {
         element
             .leaf("instancecount", button.count.to_string())
-            .number("instanceseparation", button.spacing_m)
-            .number("radiusoffset", 0.0);
+            .number("instanceseparation", button.spacing_m);
         self.angle(element, at, "angleoffset", button.angle_rad);
         self.material(element, at, "material", &button.material, "bulk");
         element
@@ -741,7 +752,8 @@ impl<'a> Writer<'a> {
                 dimension(component, AutoDimension::PackedRadius, packing.radius_m),
             )
             .number("radialposition", packing.radial_offset_m);
-        self.angle(element, at, "angleoffset", packing.angle_rad);
+        // OpenRocket 24.12 reads a packed part's roll angle only under its older name.
+        self.angle(element, at, "radialdirection", packing.angle_rad);
     }
 
     /// An angle in radians, written as the degrees a `.ork` reader turns into exactly it.
@@ -1134,8 +1146,29 @@ fn preimage(target: f64, guess: f64, read: impl Fn(f64) -> f64) -> Option<f64> {
     None
 }
 
+/// Writes `id` as the element's `<id>` if it is a UUID, the only kind OpenRocket 24.12 opens a
+/// file with: it refuses the whole file over one that is not. Any other id is left out, and
+/// OpenRocket gives the part one of its own. The reader invents an id for a part that has none
+/// (`bodytube-3`), and reading the written file invents the same one again, since it counts the
+/// parts in the same order.
+fn id(element: &mut Element, id: &str) {
+    if is_uuid(id) {
+        element.leaf("id", id.to_owned());
+    }
+}
+
+/// Whether `text` is a UUID as OpenRocket writes one: 8, 4, 4, 4 and 12 hexadecimal digits,
+/// joined by hyphens.
+fn is_uuid(text: &str) -> bool {
+    let groups: Vec<&str> = text.split('-').collect();
+    groups.len() == 5
+        && groups.iter().zip([8, 4, 4, 4, 12]).all(|(group, length)| {
+            group.len() == length && group.bytes().all(|byte| byte.is_ascii_hexdigit())
+        })
+}
+
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::super::super::{Design, design, read};
     use super::super::document;
     use super::*;
@@ -1143,6 +1176,7 @@ mod tests {
     /// A design read from `xml`, written out, and read back: the design, the one read back, the
     /// written text, and the export's warnings.
     fn round_trip(xml: &str) -> (Design, Design, String, Vec<Warning>) {
+        let xml = uuids(xml);
         let file = read(xml.as_bytes()).expect("the test design reads").value;
         let original = design(&file).value;
         let written = document(&original);
@@ -1152,6 +1186,36 @@ mod tests {
             .value;
         let back = design(&file).value;
         (original, back, text, written.warnings)
+    }
+
+    /// `xml` with each `<id>name</id>` made a UUID, as OpenRocket writes ids: the export leaves
+    /// any other id out, since OpenRocket will not open a file holding one ([`id`]). The same name
+    /// always gives the same UUID, so the tests can name their parts.
+    pub(in super::super) fn uuids(xml: &str) -> String {
+        let mut out = String::with_capacity(xml.len());
+        let mut rest = xml;
+        while let Some(start) = rest.find("<id>") {
+            let (before, after) = rest.split_at(start + "<id>".len());
+            out.push_str(before);
+            let end = after.find("</id>").unwrap_or(after.len());
+            let name = &after[..end];
+            if is_uuid(name) {
+                out.push_str(name);
+            } else {
+                // FNV-1a: a fixed hash, so the UUID is the same on every run.
+                let hash = name.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+                    (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+                });
+                out.push_str(&format!(
+                    "{:08x}-0000-4000-8000-{:012x}",
+                    hash >> 32,
+                    hash & 0xffff_ffff_ffff
+                ));
+            }
+            rest = &after[end..];
+        }
+        out.push_str(rest);
+        out
     }
 
     /// `xml`'s design reads back the same, with nothing warned of, and is written the same again.
@@ -1597,6 +1661,7 @@ mod tests {
     /// times given, as the file wrote it, and it is written the same again. Returns the design and
     /// the text.
     fn kept_as_written(xml: &str, warning: Option<&str>, tags: &Holds<'_>) -> (Design, String) {
+        let xml = uuids(xml);
         let file = read(xml.as_bytes()).expect("the test design reads").value;
         let original = design(&file);
         match warning {
@@ -1909,13 +1974,13 @@ mod tests {
             (
                 rocket_of(
                     r#"
-      <bodytube><name>Tube</name><id>tube</id><length>0.3</length><thickness>0.001</thickness>
-        <radius>0.02</radius></bodytube>
-      <bodytube><name>Tube</name><id>tube</id><length>0.3</length><thickness>0.001</thickness>
-        <radius>0.02</radius></bodytube>"#,
+      <bodytube><name>Tube</name><id>00000000-0000-4000-8000-00000000000a</id>
+        <length>0.3</length><thickness>0.001</thickness><radius>0.02</radius></bodytube>
+      <bodytube><name>Tube</name><id>00000000-0000-4000-8000-00000000000a</id>
+        <length>0.3</length><thickness>0.001</thickness><radius>0.02</radius></bodytube>"#,
                 ),
                 "already the id of another component",
-                &[("<id>tube</id>", 2)],
+                &[("<id>00000000-0000-4000-8000-00000000000a</id>", 2)],
             ),
             (
                 rocket_of(
