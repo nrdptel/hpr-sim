@@ -97,7 +97,8 @@ as a real flight's apogee on its team's own drag.
 
 **The check.** The census accepted last is committed, with a page of its own
 ([census][census]). `cargo xtask validate --check`, which CI runs on macOS, Windows and Linux,
-holds every row of the committed reports to it. It fails when:
+holds every row of the committed reports to it; so does [`hpr validate`](cli.md#hpr-validate),
+with the same code. It fails when:
 
 - a row's difference moves by more than its slack, in either direction;
 - a row's standing changes, for instance a miss that starts meeting its target;

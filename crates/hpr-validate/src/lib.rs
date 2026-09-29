@@ -40,11 +40,13 @@
 
 pub mod case;
 pub mod census;
+pub mod committed;
 pub mod flight_metrics;
 pub mod metrics;
 pub mod report;
 pub mod rocketpy;
 pub mod run;
+pub mod summary;
 
 pub use case::{Case, CaseLock, DragMode, Metric, Tolerance, committed_cases};
 pub use metrics::{Measured, Reference, ReferenceValue};

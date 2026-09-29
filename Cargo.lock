@@ -697,6 +697,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "hpr",
+ "hpr-validate",
  "jsonschema",
  "schemars",
  "serde",

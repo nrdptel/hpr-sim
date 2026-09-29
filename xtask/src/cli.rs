@@ -6,11 +6,16 @@
 //!   (`hpr_cli::registry::command_table`);
 //! - each example in `docs/cli.md`: the command run in-process, with what it printed. An argument
 //!   with a `/` in it is a file of the repository, given from its root, as a reader who runs the
-//!   example from a copy of it types it.
+//!   example from a copy of it types it. One without a `/` that ends in a file extension of
+//!   letters, such as `F15.eng`, is a file the command writes: it goes to a scratch folder, so
+//!   running the page never writes into the repository, and the page shows that folder's path,
+//!   which changes from run to run, as `<the scratch folder>`.
 //!
 //! `--check` (and the test below, which the gate runs) fails when a committed copy differs.
 
 use std::path::{Path, PathBuf};
+
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use hpr_cli::registry::{Links, command_table};
 
@@ -228,18 +233,50 @@ fn tracked(root: &Path, path: &str) -> bool {
             .is_ok_and(|output| output.status.success())
 }
 
+/// Whether an argument without a `/` names a file the command writes: it ends in an extension of
+/// letters, as `F15.eng` does and `0.01` doesn't.
+fn written(arg: &str) -> bool {
+    !arg.contains('/')
+        && !arg.starts_with('-')
+        && Path::new(arg)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.chars().all(|c| c.is_ascii_alphabetic()))
+}
+
 /// A fenced block with the command line and what it printed, and its exit status if not 0; and
-/// that status. The command's paths are read from `root`.
+/// that status. The command's paths are read from `root`; the files it writes go to a scratch
+/// folder of this call's own, removed afterwards, whose path the block must not show.
 fn example(command: &str, root: &Path) -> (String, u8) {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
     let (mut out, mut err) = (Vec::new(), Vec::new());
+    let scratch = std::env::temp_dir().join(format!(
+        "hpr-cli-examples-{}-{}",
+        std::process::id(),
+        CALLS.fetch_add(1, Ordering::Relaxed)
+    ));
+    let _ = std::fs::create_dir_all(&scratch);
     let args = command.split_whitespace().map(|arg| {
         if arg.contains('/') {
             root.join(arg).into_os_string()
+        } else if written(arg) {
+            scratch.join(arg).into_os_string()
         } else {
             arg.into()
         }
     });
     let exit = hpr_cli::run(args, &mut out, &mut err);
+    let _ = std::fs::remove_dir_all(&scratch);
+    // A written file's path differs from run to run and by platform: the page shows it in the
+    // scratch folder, with `/`, as text and as JSON writes it (with `\\` escaped on Windows).
+    let folder = format!("{}{}", scratch.to_string_lossy(), std::path::MAIN_SEPARATOR);
+    for printed in [&mut out, &mut err] {
+        let mut text = String::from_utf8_lossy(printed).into_owned();
+        for spelled in [folder.clone(), folder.replace('\\', "\\\\")] {
+            text = text.replace(&spelled, "<the scratch folder>/");
+        }
+        *printed = text.into_bytes();
+    }
     let mut block = format!("```text\n$ {command}\n");
     block.push_str(&String::from_utf8_lossy(&out));
     block.push_str(&String::from_utf8_lossy(&err));
@@ -253,6 +290,16 @@ fn example(command: &str, root: &Path) -> (String, u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_written_file_is_a_name_with_a_letter_extension() {
+        assert!(written("F15.eng"));
+        assert!(written("flight.csv"));
+        assert!(!written("0.01"));
+        assert!(!written("H170M"));
+        assert!(!written("--json"));
+        assert!(!written("curves/x.rse"));
+    }
 
     #[test]
     fn the_cli_outputs_are_current() {

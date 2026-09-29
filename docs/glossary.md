@@ -818,7 +818,7 @@ force and centre of pressure from RASAero II's exported table
 
 ## RASP and RockSim files
 
-The two thrust-curve file formats [ThrustCurve.org](#thrustcurveorg) serves. A RASP `.eng` file is plain text, named after RASP, the rocket simulation program it comes from; a RockSim `.rse` file is XML, from the RockSim simulator. hpr reads and writes both. See [Solid motors](physics/motor.md#a-motor-from-a-file).
+The two thrust-curve file formats [ThrustCurve.org](#thrustcurveorg) serves. A RASP `.eng` file is plain text, named after RASP, the rocket simulation program it comes from; a RockSim `.rse` file is XML, from the RockSim simulator. hpr reads and writes both, and converts one to the other with [`hpr convert`](cli.md#hpr-convert). See [Solid motors](physics/motor.md#a-motor-from-a-file).
 
 ## Reanalysis
 

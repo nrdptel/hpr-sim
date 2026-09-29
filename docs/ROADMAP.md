@@ -741,8 +741,10 @@
     summary printed and its recording exported. *Done when:* a public `.ork` flown by `hpr sim`
     gives the library's flight bit for bit, and its JSON validates. *Result:* met (ADR-106): the
     pod probe with `--motor H54`, every summary field, event and CSV byte the library's; #240.
-  - [ ] **M4.2c `hpr validate` and `hpr convert`.** *Done when:* `hpr validate` fails where `cargo
+  - [x] **M4.2c `hpr validate` and `hpr convert`.** *Done when:* `hpr validate` fails where `cargo
     xtask validate --check` does, and `hpr convert` round-trips `.eng` and `.rse` motor files.
+    *Result:* met (ADR-107): one check for both, failing a spoiled copy three ways; 29 `.eng` and 3
+    `.rse` bundled curves round-trip, 4 differences warned or read the same.
   - [ ] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*
     `hpr analyze` is tested on a log with no design file present, its JSON validating.
 

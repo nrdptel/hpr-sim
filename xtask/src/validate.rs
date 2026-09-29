@@ -19,7 +19,7 @@
 
 use std::path::Path;
 
-use hpr_validate::{Report, run_lock};
+use hpr_validate::{Report, committed, run_lock, summary};
 
 pub const USAGE: &str = "  validate [--fast|--check]
                            Run the validation cases and write
@@ -79,41 +79,19 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
 }
 
-/// Fails unless every scored metric passed and the run reproduces the committed report.
+/// Fails unless every scored metric passed, the run reproduces the committed report, and the
+/// committed reports hold to the accepted census: `hpr_validate::committed::check`, which
+/// `hpr validate` makes too.
 fn check_committed(root: &Path, report: &Report) -> Result<(), String> {
-    let read = |name: &str| {
-        let path = root.join("validation/reports").join(name);
-        std::fs::read_to_string(&path)
-            .map_err(|error| format!("reading {}: {error}", path.display()))
-    };
-    let reproduced = report.reproduces(&read("latest.md")?, &read("latest.json")?);
-    // The census compares committed files, so it is checked whether or not this run reproduces
-    // them: a report that fails both says so on every platform.
-    let census = crate::census::check(root);
-    match (report.passed(), reproduced) {
-        (true, Ok(())) => {
-            println!("validate: the committed report reproduces");
-            census
-        }
-        (passed, reproduced) => {
-            let mut problems = Vec::new();
-            if let Err(what) = census {
-                problems.push(what);
-            }
-            if !passed {
-                problems.push(format!(
-                    "{} metric(s) outside tolerance",
-                    report.failures().len()
-                ));
-            }
-            if let Err(what) = reproduced {
-                problems.push(format!(
-                    "the committed report is not this run's ({what}); run `cargo xtask validate` \
-                     and commit validation/reports/latest.{{md,json}}"
-                ));
-            }
-            Err(problems.join("; "))
-        }
+    let checked = committed::check(root, report);
+    for line in checked.lines() {
+        println!("{line}");
+    }
+    let problems = checked.problems();
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(problems.join("; "))
     }
 }
 
@@ -138,105 +116,12 @@ fn write_reports(root: &Path, report: &Report) -> Result<&'static str, String> {
     Ok(stem)
 }
 
-/// Prints one line per case and a summary.
-///
-/// The worst figure is over the **scored** metrics: a metric a case declares not scored is
-/// counted and named separately, so a run cannot look green by leaving something out and cannot
-/// look alarming because a declared difference is large in percentage terms.
+/// Prints one line per case and a summary (`hpr_validate::summary`).
 fn print_summary(report: &Report) {
-    for case in &report.cases {
-        if let Some(gap) = report.gaps.iter().find(|gap| gap.case == *case) {
-            // A gap compares nothing, so "0 metrics, worst +0.00%" would read as a clean pass.
-            println!(
-                "{case}: known gap, {} metric(s) not scored: hpr {}",
-                gap.metric_count, gap.refusal
-            );
-            continue;
-        }
-        let metrics: Vec<&hpr_validate::Comparison> = report
-            .comparisons
-            .iter()
-            .filter(|comparison| comparison.case == *case)
-            .collect();
-        if metrics.iter().any(|comparison| comparison.targeted_row()) {
-            // Predicted mode reports against a target and never gates, so it has no "worst
-            // scored"; its largest difference is the headline.
-            let within = metrics
-                .iter()
-                .filter(|comparison| comparison.verdict == hpr_validate::Verdict::WithinTarget)
-                .count();
-            let largest = metrics
-                .iter()
-                .filter_map(|comparison| comparison.relative.map(|r| (r, &comparison.metric)))
-                .max_by(|(a, _), (b, _)| a.abs().total_cmp(&b.abs()));
-            println!(
-                "{case}: predicted, {} metric(s) reported, {within} within target{}",
-                metrics.len(),
-                largest.map_or_else(String::new, |(relative, metric)| format!(
-                    ", largest {metric} {:+.2}%",
-                    100.0 * relative
-                ))
-            );
-            continue;
-        }
-        let worst = metrics
-            .iter()
-            .filter(|comparison| comparison.scored())
-            .filter_map(|comparison| comparison.relative)
-            .fold(0.0_f64, |worst, relative| worst.max(relative.abs()));
-        let failed = metrics
-            .iter()
-            .filter(|comparison| comparison.verdict == hpr_validate::Verdict::Fail)
-            .count();
-        let unscored: Vec<&str> = metrics
-            .iter()
-            .filter(|comparison| !comparison.scored())
-            .map(|comparison| comparison.metric.as_str())
-            .collect();
-        println!(
-            "{case}: {} metric(s), worst scored {:+.2}%{}{}",
-            metrics.len(),
-            100.0 * worst,
-            if unscored.is_empty() {
-                String::new()
-            } else {
-                format!(", not scored: {}", unscored.join(", "))
-            },
-            if failed == 0 {
-                String::new()
-            } else {
-                format!(", {failed} OUT OF TOLERANCE")
-            }
-        );
+    for case in summary::cases(report) {
+        println!("{case}");
     }
-    let not_scored = report.not_scored().len();
-    let targeted = report
-        .comparisons
-        .iter()
-        .filter(|comparison| comparison.targeted_row())
-        .count();
-    let outside = report
-        .comparisons
-        .iter()
-        .filter(|comparison| comparison.verdict == hpr_validate::Verdict::OutsideTarget)
-        .count();
-    let predicted = format!("predicted, against a target, {outside} outside it");
-    let aside: Vec<String> = [(not_scored, "not scored"), (targeted, predicted.as_str())]
-        .into_iter()
-        .filter(|(count, _)| *count > 0)
-        .map(|(count, what)| format!("{count} {what}"))
-        .collect();
-    println!(
-        "validate: {} case(s), {} metric(s){}, {}",
-        report.cases.len(),
-        report.comparisons.len(),
-        if aside.is_empty() {
-            String::new()
-        } else {
-            format!(" ({})", aside.join(", "))
-        },
-        if report.passed() { "ok" } else { "FAILED" }
-    );
+    println!("{}", summary::totals(report));
 }
 
 #[cfg(test)]

@@ -4,17 +4,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.2c (`hpr
-  validate`, `convert`). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1, M4.2a-b.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.2d (`hpr
+  analyze`). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1, M4.2a-c.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-29; M4.2b shipped `hpr sim` (ADR-106).
+- **Last updated:** 2026-09-29; M4.2c shipped `hpr validate` and `hpr convert` (ADR-107).
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** M4.2c: `hpr validate` fails where `cargo xtask validate --check` does
-  (reuse `hpr_validate`), `hpr convert` round-trips `.eng`/`.rse`. CLI (ADR-105, 106): a command
-  goes live by leaving `registry::PLANNED`, adding its output type to `output::schemas`, then
-  `cargo xtask cli`; examples may name repo files from the root. `hpr sim`'s recovery, staging: #240. Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
+- **Next (resume here):** M4.2d: `hpr-flightdata`'s first log reader (`debrief-log-formats.md`;
+  Debrief's 12 public fixtures) and `hpr analyze` on a log with no design. CLI (ADR-105 to 107): a
+  command goes live by leaving `registry::PLANNED`, adding its output type to `output::schemas`,
+  then `cargo xtask cli`; examples name repo files from the root, and write bare names to scratch. `hpr sim`'s recovery, staging: #240. Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
   (`tube_fin_aero.py`, ADR-102); a new OR with #3235 moves its centre past Mach 0.5; body
   interference open (#234). #185: `unlit_motors.py`. Tube-fin drag likely low (#228); public drag
   curves: `PUBLIC_DRAG_CURVES`'s doc. Library runs need `drag_curves.py` (ADR-097). Probes (ADR-093,
@@ -60,8 +60,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-29: M4.2b `hpr sim` (ADR-106): a public `.ork` flown as the library flies it, bit for bit; 5 exports.
-- 2026-09-29: M4.2a The CLI's surface (ADR-105): 11 commands, 9 refusing with their milestone; `hpr motors`; schemas.
+- 2026-09-29: M4.2c `hpr validate`, `hpr convert` (ADR-107): xtask's check shared; 32 bundled curves round-trip.
+- 2026-09-29: M4.2a-b The CLI's surface, `hpr motors`, `hpr sim` (ADR-105, 106): schemas; a public `.ork` flown bit for bit.
 - 2026-09-29: M4.1b, M4.1 closed (ADR-104): `DragModel` flown bit for bit as hpr's own; 5 builder examples; `hpr::guide`.
 - 2026-09-28: M4.1a The builder (ADR-103): `own_rocket`'s rocket flown bit for bit; L95 pinned, 8 designs; 2 examples.
 - 2026-09-28: M2.2b, f; M2.2 closed (ADR-101, 102): OR mass conventions 68/71 within 1%; L82 live; L19 not met, pinned.
@@ -84,7 +84,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-103 to 106 (M4.1, M4.2a-b): builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m.
+- ADR-103 to 107 (M4.1, M4.2a-c): builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
 - ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings,
   8 at most; L19 left unmet, not bought with OR's unmeasured slope and centre.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights

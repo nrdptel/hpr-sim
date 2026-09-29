@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validate",
+  "description": "`hpr validate`: every validation case run, and the run held to the committed reports.\n\nPrinted whether or not the check passes; when it fails, the exit status is 1.",
+  "type": "object",
+  "properties": {
+    "cases": {
+      "description": "How each case came out, in the order the case lock runs them.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ValidateCase"
+      }
+    },
+    "census": {
+      "description": "The committed reports against the accepted census; `null` when it couldn't be taken,\nwhich `problems` says why.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CensusHeld"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "passed": {
+      "description": "Whether the check passed: every scored metric within its tolerance, the run reproducing\nthe committed report, and the committed reports holding to the accepted census. The\nsame as `cargo xtask validate --check`.",
+      "type": "boolean"
+    },
+    "problems": {
+      "description": "Why the check failed, one reason each; empty when it passed.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reproduced": {
+      "description": "Whether the run reproduces `validation/reports/latest.{md,json}` to the digits the\nplatforms share.",
+      "type": "boolean"
+    },
+    "totals": {
+      "description": "The whole run, counted.",
+      "$ref": "#/$defs/ValidateTotals"
+    }
+  },
+  "required": [
+    "passed",
+    "cases",
+    "totals",
+    "reproduced",
+    "problems"
+  ],
+  "$defs": {
+    "CensusHeld": {
+      "description": "The committed reports against the accepted accuracy census.",
+      "type": "object",
+      "properties": {
+        "changes": {
+          "description": "Each row that differs from it, in words.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "description": "The accepted census's rows.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "stale": {
+          "description": "Each file written from the census whose committed text isn't what it writes.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "worse": {
+          "description": "How many of those differ for the worse.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "rows",
+        "changes",
+        "worse",
+        "stale"
+      ]
+    },
+    "LargestDifference": {
+      "description": "A predicted case's largest difference.",
+      "type": "object",
+      "properties": {
+        "metric": {
+          "description": "The metric, such as `apogee_m`.",
+          "type": "string"
+        },
+        "relative": {
+          "description": "hpr's value against the reference's, as a signed fraction: 0.01 is 1% above it.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "metric",
+        "relative"
+      ]
+    },
+    "ValidateCase": {
+      "description": "How one validation case came out.",
+      "oneOf": [
+        {
+          "description": "A known gap: hpr refuses the flight, so nothing is compared.",
+          "type": "object",
+          "properties": {
+            "case": {
+              "description": "The case's id.",
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "gap"
+            },
+            "metrics": {
+              "description": "The metrics the case would compare.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "refusal": {
+              "description": "Why hpr refuses it.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "case",
+            "metrics",
+            "refusal"
+          ]
+        },
+        {
+          "description": "Predicted mode: every metric reported against a target, none gating.",
+          "type": "object",
+          "properties": {
+            "case": {
+              "description": "The case's id.",
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "predicted"
+            },
+            "largest": {
+              "description": "The metric furthest from its reference; `null` if none has a relative difference.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LargestDifference"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "metrics": {
+              "description": "The metrics reported.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "within_target": {
+              "description": "How many are within their target.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "case",
+            "metrics",
+            "within_target"
+          ]
+        },
+        {
+          "description": "Every metric held to its tolerance.",
+          "type": "object",
+          "properties": {
+            "case": {
+              "description": "The case's id.",
+              "type": "string"
+            },
+            "failed": {
+              "description": "How many metrics are outside their tolerance.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "scored"
+            },
+            "metrics": {
+              "description": "The metrics compared.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "not_scored": {
+              "description": "The metrics the case declares not scored.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "worst_scored": {
+              "description": "The largest relative difference among the scored metrics, as a fraction (0.01 is 1%),\nwithout its sign.",
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "required": [
+            "kind",
+            "case",
+            "metrics",
+            "worst_scored",
+            "not_scored",
+            "failed"
+          ]
+        }
+      ]
+    },
+    "ValidateTotals": {
+      "description": "A validation run, counted.",
+      "type": "object",
+      "properties": {
+        "cases": {
+          "description": "The cases run.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "failed": {
+          "description": "The scored metrics outside their tolerance.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "metrics": {
+          "description": "The metrics compared or reported.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "not_scored": {
+          "description": "The metrics their cases declare not scored.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "outside_target": {
+          "description": "How many of those are outside their target.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "predicted": {
+          "description": "The metrics reported against a target (predicted mode).",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "cases",
+        "metrics",
+        "not_scored",
+        "predicted",
+        "outside_target",
+        "failed"
+      ]
+    }
+  }
+}

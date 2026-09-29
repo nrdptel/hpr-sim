@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Convert",
+  "description": "`hpr convert`: the motors read, and the file they were written to.",
+  "type": "object",
+  "properties": {
+    "input": {
+      "description": "Where the motors came from: a motor file, or the bundled catalog.",
+      "$ref": "#/$defs/MotorSource"
+    },
+    "motors": {
+      "description": "The motors written, by the names the file gives them, in its order.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output": {
+      "description": "The file written.",
+      "$ref": "#/$defs/ConvertedFile"
+    },
+    "warnings": {
+      "description": "What the reader flagged in the input, then what the conversion dropped or wrote\ndifferently, such as `.rse` figures a `.eng` file has no place for.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Warning"
+      }
+    }
+  },
+  "required": [
+    "input",
+    "output",
+    "motors",
+    "warnings"
+  ],
+  "$defs": {
+    "ConvertedFile": {
+      "description": "A motor file `hpr convert` wrote.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "Its format: `eng` or `rse`.",
+          "$ref": "#/$defs/FileFormat"
+        },
+        "path": {
+          "description": "The path as given.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "format"
+      ]
+    },
+    "FileFormat": {
+      "description": "A motor file format.",
+      "oneOf": [
+        {
+          "description": "RASP `.eng`.",
+          "type": "string",
+          "const": "eng"
+        },
+        {
+          "description": "RockSim `.rse`.",
+          "type": "string",
+          "const": "rse"
+        }
+      ]
+    },
+    "MotorSource": {
+      "description": "Where a motor comes from.",
+      "oneOf": [
+        {
+          "description": "The bundled catalog, with a public-domain curve from ThrustCurve.org.",
+          "type": "object",
+          "properties": {
+            "curve_url": {
+              "description": "The curve file's ThrustCurve.org page.",
+              "type": "string"
+            },
+            "format": {
+              "description": "The curve's format: `eng` or `rse`.",
+              "$ref": "#/$defs/FileFormat"
+            },
+            "kind": {
+              "type": "string",
+              "const": "catalog"
+            }
+          },
+          "required": [
+            "kind",
+            "curve_url",
+            "format"
+          ]
+        },
+        {
+          "description": "A motor file named on the command line.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The file's format: `eng` or `rse`.",
+              "$ref": "#/$defs/FileFormat"
+            },
+            "kind": {
+              "type": "string",
+              "const": "file"
+            },
+            "path": {
+              "description": "The path as given.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "path",
+            "format"
+          ]
+        }
+      ]
+    },
+    "Warning": {
+      "description": "Something a reader accepted with a caveat.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "How serious it is.",
+          "$ref": "#/$defs/WarningKind"
+        },
+        "line": {
+          "description": "The 1-based line in the file, when it is about one.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "message": {
+          "description": "What was found, and how it was read.",
+          "type": "string"
+        },
+        "motor": {
+          "description": "The motor it is about, when it is about one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "message"
+      ]
+    },
+    "WarningKind": {
+      "description": "How serious a warning is.",
+      "oneOf": [
+        {
+          "description": "A whole motor had an error and was left out.",
+          "type": "string",
+          "const": "skipped"
+        },
+        {
+          "description": "A value was dropped or ignored.",
+          "type": "string",
+          "const": "dropped"
+        },
+        {
+          "description": "Something unusual was read as it stands.",
+          "type": "string",
+          "const": "unusual"
+        }
+      ]
+    }
+  }
+}
