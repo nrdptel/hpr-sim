@@ -50,7 +50,9 @@ A drag table read from another program's export (the flight builder's `drag_tabl
 [Getting started](getting-started.md#how-far-to-trust-it) uses) replaces the same number; a drag
 model is the same idea with your code in place of the table. The last one set is the one flown.
 One difference matters: a table can carry the diameter it was measured on, and hpr-sim rescales
-it to the rocket's reference area. **A model's number is not rescaled.** If your curve was measured
+it to the rocket's reference area. A negative coefficient is refused from either, where the
+flight meets it: a table can give one past its rows or between them if its curve extrapolates
+linearly or bends. **A model's number is not rescaled.** If your curve was measured
 on another area, multiply it by your area over `query.reference_area_m2()` before returning it.
 
 ## A drag model

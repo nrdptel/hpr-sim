@@ -9616,11 +9616,14 @@ that point is back at its starting height.
    rest are keyword arguments: `Flight(..., drag_table=)`, `Environment(..., gravity=)` and
    `add_parachute(..., released_by=)`. `gravity` names one of the three models that take no number,
    read through `GravityModel`'s `serde` tag. `released_by` is the other parachute's index, as in
-   Rust; a bad index is refused when the rocket flies, by the simulation's own check. A table with
-   a negative coefficient is refused: by the builder when a flight is built, and by the package
-   when the table is made. `Simulation::with_drag_table` itself still flies one, as it did before
-   (#257).
-3. **RocketPy's definitions stay in the example.** The library gains no RocketPy-shaped metrics.
+   Rust; a bad index is refused when the rocket flies, by the simulation's own check.
+3. **Drag that pushes is refused.** A drag table's negative coefficient, in a row or past or
+   between its rows (a curve that extrapolates linearly, a cubic), was flown as it was, as drag
+   pushing the rocket along (#257); a drag model's was already refused. The aerodynamics now
+   refuse a table's as they do a model's, where a flight meets it, and the package refuses a
+   negative row when a table is made. The corpus checks (`cargo xtask ork-flights --check`,
+   `--library --check`, `real-flights --check`) and the validation report reproduce unchanged.
+4. **RocketPy's definitions stay in the example.** The library gains no RocketPy-shaped metrics.
    `crates/hpr-py/examples/calisto.py` measures them on the flight's recording and events: the dry
    centre of mass is found by turning its body-frame position by each row's attitude. `h0` comes
    from a first flight of the rocket before its parachutes are added. The rail exit is found in
@@ -9631,10 +9634,10 @@ that point is back at its starting height.
    don't matter here: the builder's 3,600 s time limit (the suite's is 6,000 s; the flight takes
    261 s), and a table that holds its end values where the suite's refuses a Mach number past
    them (the flight stays below Mach 0.74, the table runs to 3).
-4. **Checked twice.** `test_calisto.py` runs the example on the built wheel. It takes the scored
+5. **Checked twice.** `test_calisto.py` runs the example on the built wheel. It takes the scored
    metrics from the committed report's rows for the case that carry a relative tolerance: 14 of
-   its 16, the other two being the trajectory's RMS rows, held to absolute bounds by the suite
-   alone. It holds each to 3% of RocketPy's value, and to 1e-5 of the suite's own measurement of
+   the 16 it scores, the other two being the trajectory's RMS rows, held to absolute bounds by the
+   suite alone. It holds each to 3% of RocketPy's value, and to 1e-5 of the suite's own measurement of
    the same flight. The guide's printed table must equal what the example prints.
 
 **Consequences.** Every metric scored in percent is within 3%; the largest difference is the

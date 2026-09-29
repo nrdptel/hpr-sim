@@ -157,12 +157,13 @@ acceleration = columns(
 events = {event["kind"]: event for event in flight.events}
 
 
-def crossing(values, what):
-    """The index of the last row before `values` goes from above zero to zero or below."""
+def crossing(values, what, last=False):
+    """The index of the row before `values` goes from above zero to zero or below: the first such
+    row, or the last."""
     found = np.flatnonzero((values[:-1] > 0.0) & (values[1:] <= 0.0))
     if len(found) == 0:
         raise RuntimeError(f"the flight never reached {what}")
-    return found[-1]
+    return found[-1] if last else found[0]
 
 
 # Rail exit: the travel along the rail reaches effective_1rl. The step of the integrator that
@@ -204,7 +205,7 @@ rail_exit_speed_m_s = speed_at(low)
 
 # Landing: the last time the dry centre of mass comes down through h0, by its height above the
 # ground (hpr's `height_above_ground_m`, which after burnout is that point's).
-last = crossing(flight["height_above_ground_m"] - h0, "h0 on the way down")
+last = crossing(flight["height_above_ground_m"] - h0, "h0 on the way down", last=True)
 height = flight["height_above_ground_m"][last : last + 2] - h0
 share = height[0] / (height[0] - height[1])
 
@@ -222,8 +223,11 @@ burnout = events["burnout"]["sample"]
 summary = flight.summary
 boost = summary["max_acceleration_m_s2"]  # liftoff until the drogue opens
 # The largest acceleration is the boost's, on the rail, so it is also the power-on one.
-assert boost["time_s"] <= events["rail_exit"]["time_s"] <= burnout["time_s"]
-assert boost["value"] >= summary["max_descent_acceleration_m_s2"]["value"]
+if not (
+    boost["time_s"] <= events["rail_exit"]["time_s"] <= burnout["time_s"]
+    and boost["value"] >= summary["max_descent_acceleration_m_s2"]["value"]
+):
+    raise RuntimeError("the largest acceleration isn't on the rail: measure it at the dry CG")
 landing_time_s = at_landing(time)
 metrics = {
     "apogee_agl_m": apogee["height_above_ground_m"] - h0,

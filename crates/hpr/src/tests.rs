@@ -768,18 +768,28 @@ fn a_drag_table_is_flown_in_place_of_hprs_drag() {
     let rescaled = apogee(wide);
     assert!((rescaled - high).abs() <= 1e-9 * high, "{rescaled} {high}");
 
-    // Drag that pushes is refused, in either curve.
-    for (off, on) in [
-        ("0,-0.01\n1,0.5\n", None),
-        ("0,0.5\n1,0.5\n", Some("0,0.5\n1,-0.2\n")),
-    ] {
-        let table = hpr_aero::DragTable::from_csv(off, on).unwrap();
+    // Drag that pushes is refused where the flight meets it, in either curve, and past a table's
+    // rows where it extrapolates below zero.
+    use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+    let falling = Table1D::new(
+        vec![0.1, 0.2],
+        vec![0.1, 0.5],
+        Interpolation::Linear,
+        Extrapolation::Linear,
+    )
+    .unwrap();
+    let tables = [
+        hpr_aero::DragTable::from_csv("0,-0.01\n1,0.5\n", None).unwrap(),
+        hpr_aero::DragTable::from_csv("0,0.5\n1,0.5\n", Some("0,-0.2\n1,0.5\n")).unwrap(),
+        hpr_aero::DragTable::new(falling, None),
+    ];
+    for table in tables {
         let error = launch.clone().drag_table(table).fly().unwrap_err();
         assert!(
             matches!(
-                error,
-                Error::Domain { what, value }
-                    if what == "zero-lift drag coefficient in a drag table" && value < 0.0
+                &error,
+                Error::Sim(hpr_sim::SimError::Aero(hpr_aero::AeroError::Domain { what, value }))
+                    if *what == "zero-lift drag coefficient from a drag table" && *value < 0.0
             ),
             "{error:?}"
         );

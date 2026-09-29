@@ -1649,6 +1649,15 @@ impl AeroModel {
         } else if let Some(table) = &self.drag_table {
             flow.validate_angles()?;
             let lookup = table.lookup(flow.mach, conditions.thrusting)?;
+            // A table's rows are finite, but one can hold a negative row, or give a negative
+            // value past its rows or between them (linear extrapolation, a cubic): drag that
+            // would push the rocket along (#257).
+            if lookup.value < 0.0 {
+                return Err(AeroError::Domain {
+                    what: "zero-lift drag coefficient from a drag table",
+                    value: lookup.value,
+                });
+            }
             let scale = match table.reference_diameter_m {
                 Some(d) => {
                     check_dimension("drag table reference diameter", d, false)?;
