@@ -297,6 +297,55 @@ fn motors_show_reports_the_librarys_figures() {
     assert!(lines.contains("  ThrustCurve.org  J class, 1265.7 N·s"));
 }
 
+/// The guide's numbers for how hpr's figures stand beside ThrustCurve.org's stated ones, over the
+/// whole catalog: total impulse, average thrust and burn time within 1% (the catalog's selection
+/// rule), and peak thrust from 16.7% below (Cesaroni 26E31-15A) to 2.1% above (Loki M1378LR).
+#[test]
+fn the_catalogs_stated_figures_are_as_the_guide_says() {
+    let catalog = Catalog::bundled().unwrap();
+    let mut peaks: Vec<(f64, String)> = Vec::new();
+    for motor in &catalog.motors {
+        let document = json(
+            &["motors", "show", &motor.designation],
+            0,
+            "motors-show.schema.json",
+        );
+        let shown = document["motors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["name"] == motor.designation.as_str())
+            .unwrap()
+            .clone();
+        let gap = |ours: &str, stated: &str| {
+            let (ours, stated) = (
+                shown[ours].as_f64().unwrap(),
+                shown["stated"][stated].as_f64().unwrap(),
+            );
+            (ours - stated) / stated
+        };
+        for (ours, stated) in [
+            ("total_impulse_ns", "total_impulse_ns"),
+            ("average_thrust_n", "average_thrust_n"),
+            ("burn_time_s", "burn_time_s"),
+        ] {
+            let gap = gap(ours, stated);
+            assert!(gap.abs() <= 0.01, "{}: {ours} {gap}", motor.designation);
+        }
+        peaks.push((
+            gap("peak_thrust_n", "max_thrust_n"),
+            motor.designation.clone(),
+        ));
+    }
+    assert_eq!(peaks.len(), 32);
+    peaks.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let (low, high) = (&peaks[0], &peaks[peaks.len() - 1]);
+    assert_eq!(low.1, "26E31-15A");
+    assert!((-0.1675..=-0.1665).contains(&low.0), "{low:?}");
+    assert_eq!(high.1, "M1378LR");
+    assert!((0.0205..=0.0215).contains(&high.0), "{high:?}");
+}
+
 /// A name several catalog motors share shows each of them.
 #[test]
 fn a_shared_name_shows_every_match() {

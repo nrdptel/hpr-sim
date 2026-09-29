@@ -47,17 +47,7 @@ pub fn availability(name: &str) -> Option<Availability> {
         }),
         "completions" => Some(Availability::Available {
             reads: Vec::new(),
-            writes: vec![
-                format!(
-                    "a script for {}",
-                    Shell::value_variants()
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-                "JSON".to_owned(),
-            ],
+            writes: vec![format!("a {} script", shells()), "JSON".to_owned()],
         }),
         _ => PLANNED
             .iter()
@@ -78,6 +68,19 @@ pub const PLANNED: [(&str, &str); 9] = [
     ("compare", "M7.3"),
     ("diagnose", "M7.4"),
 ];
+
+/// The shells `hpr completions` writes for: `bash, elvish, fish, powershell or zsh`.
+fn shells() -> String {
+    let names: Vec<String> = Shell::value_variants()
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    match names.split_last() {
+        Some((last, [])) => last.clone(),
+        Some((last, rest)) => format!("{} or {last}", rest.join(", ")),
+        None => String::new(),
+    }
+}
 
 /// One registered command.
 #[derive(Debug, Clone, PartialEq, Eq)]

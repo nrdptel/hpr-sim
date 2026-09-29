@@ -56,7 +56,7 @@ only the files each command really reads. "Not yet" commands exit with
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](decisions-and-roadmap.md#m7-3) |
 | `hpr analyze` | Read a flight log and print its readings, with no design file | - | - | not yet: [M4.2d](decisions-and-roadmap.md#m4-2d) |
 | `hpr diagnose` | Diagnose what went wrong in a flight from its log | - | - | not yet: [M7.4](decisions-and-roadmap.md#m7-4) |
-| `hpr completions` | Print a shell completion script for hpr | - | a script for bash, elvish, fish, powershell, zsh, JSON | available ([how to use it](cli.md#hpr-completions)) |
+| `hpr completions` | Print a shell completion script for hpr | - | a bash, elvish, fish, powershell or zsh script, JSON | available ([how to use it](cli.md#hpr-completions)) |
 
 <!-- cli: end -->
 
@@ -118,7 +118,9 @@ file:
 For a catalog motor, the last line sets ThrustCurve.org's stated figures beside hpr's. Total
 impulse, average thrust and burn time agree within 1% for every catalog motor, because that is how
 the 32 were chosen ([Solid motors](physics/motor.md#the-bundled-motors)). Peak thrust is not held
-to that: for the AeroTech I175WS, hpr's is 3% below ThrustCurve.org's.
+to that. hpr's peak is the curve file's highest point, and across the catalog it runs from 16.7%
+below ThrustCurve.org's (Cesaroni 26E31-15A) to 2.1% above (Loki M1378LR); a
+[test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs) pins that range.
 
 <!-- cli: example `hpr motors show J760`; written by `cargo xtask cli`; do not edit -->
 

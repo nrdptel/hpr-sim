@@ -54,7 +54,7 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-3) |
 | `hpr analyze` | Read a flight log and print its readings, with no design file | - | - | not yet: [M4.2d](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2d) |
 | `hpr diagnose` | Diagnose what went wrong in a flight from its log | - | - | not yet: [M7.4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-4) |
-| `hpr completions` | Print a shell completion script for hpr | - | a script for bash, elvish, fish, powershell, zsh, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-completions)) |
+| `hpr completions` | Print a shell completion script for hpr | - | a bash, elvish, fish, powershell or zsh script, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-completions)) |
 
 <!-- cli: end -->
 

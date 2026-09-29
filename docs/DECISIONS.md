@@ -8954,14 +8954,16 @@ facade (its parachutes are not flown yet), `hpr-flightdata` is empty (its reader
 8. **A closed pipe** (`hpr motors list | head`) ends with status 0 and says nothing: the reader
    chose to stop, and whether the write fails depends on the pipe's buffer.
 
-**Evidence.** `cargo test -p hpr-cli`: 14 tests run the built binary with `assert_cmd` and check
+**Evidence.** `cargo test -p hpr-cli`: 15 tests run the built binary with `assert_cmd` and check
 every `--json` document against the committed schema. Every planned command refuses with 3 and
 its milestone, as text and as JSON, whatever its arguments; `motors list` is the catalog, and its
 three filters narrow it; a filter that can't mean anything, `--manufacturer CTI` among them, is
 exit 1; `--json` after `--` is an argument; `motors show` gives the
 library's own figures for a name, a shared name, each file format `MotorFile::ALL` lists, and a
 two-motor `.eng` with a `0` delay and its warning; missing, broken and non-UTF-8 files are exit 1;
-every shell's completions; six wrong command lines are exit 2. Unit tests hold the registry to
+every shell's completions; six wrong command lines are exit 2. Over the whole catalog, `motors
+show`'s total impulse, average thrust and burn time are within 1% of the stated ones, and its
+peak thrust from 16.7% below to 2.1% above, the range the guide quotes. Unit tests hold the registry to
 clap both ways and pin the exit codes and the closed pipe. `cargo test -p xtask cli` fails when
 a schema, a table or an example is stale.
 
