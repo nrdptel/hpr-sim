@@ -432,19 +432,12 @@
       reads −1.9%, +7.0% and +13.4% at Mach 1.90, 2.30 and 2.96, then +51.5% and +50.4% at 3.95 and
       4.63, where the shadowgraphs show that flare separated (unflared, model 1 reads +29.7% and
       +32.1%). No reading below about Mach 1.5289.
-    - [x] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
-      outright, so unlike the flare it needs a model of its own rather than a decision about one
-      that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
-      ADR and the guide. *Result:* met (ADR-049). No source gives a step's normal force faster than
-      sound, so the size is published and the model left alone. The threshold is a **pair**, both
-      bisected: 2.7e-11 m (a billionth of the radius) between two tubes either way, and 1.3e-13 m
-      stepping **up** where the slope changes too, which is 1e-12 × the body's length × the change
-      of slope and so is not a property of the step at all. Worth −8.65% and 1.03 calibres at the
-      threshold wherever it sits and whichever way, −12.55% and 1.36 at 2 mm down, −4.75% and 0.71
-      at 2 mm up, and −11.34% and 1.10 on a boattailed body. Stopping the march *at* the step was
-      built and rejected: it re-opens ADR-034's mixture (the mixed reading's CP lands **forward of
-      both** pure models) and does not close the boattail's band. #87 is narrowed to the step; #120
-      and #121 split off it.
+    - [x] **M1.8e15 The step in radius.** Needs a model of its own, as the march refuses a step.
+      *Done when:* #87 closed or narrowed to the step alone, its measured size in an ADR and the
+      guide. *Result:* met (ADR-049): no source gives a step's supersonic normal force, so the size
+      is published: bisected thresholds 2.7e-11 m and 1.3e-13 m, −8.65% and 1.03 cal there, −12.55%
+      and 1.36 at 2 mm down, −4.75% and 0.71 up; stopping the march at the step rejected (ADR-034's
+      mixture). #87 is narrowed to the step; #120 and #121 split off it.
     - [x] **M1.8e19 The near-flat flare the march refuses** (#81, #117). Met (ADR-050), bars kept:
       the region's edges derived, not bisected (the corner's crossing and balance); the reduction
       read there, so both switches (−4.6%, −8.3%) go; a test pins the sizes on both sides.
@@ -543,9 +536,11 @@
     bars kept: `cargo xtask ork` holds every design OpenRocket opens to its structure's mass, CG and
     inertias, the Loft demo record is checked in CI, and 57 and 58 of 74 were within 1% in the
     original snapshot, the 17 outside five causes hpr warns of.
-  - [ ] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
+  - [x] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
     convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
-    Split into b1 to b5 (ADR-061 to ADR-063).
+    Split into b1 to b5 (ADR-061 to ADR-065). *Result:* met (ADR-101): each is OR's rule or a
+    pinned departure; the rerun has mass and CG within 1% on 68 of 71, each file outside a cause.
+    - Loft lessons: L51, L87.
     - [x] **M2.2b1 What a `.ork` leaves unsaid, and overrides** (L51). Met (ADR-061), bars kept:
       walls, shoulders, materials as OR's on probes; two override departures pinned; L51 live.
     - [x] **M2.2b2 Fins, rail buttons and roll inertia.** Met (ADR-062), bars kept: the roll gap is
@@ -554,7 +549,8 @@
       override on a weightless one are OR's on probes, to 1e-12; roll within 1% on 57 of 74.
     - [x] **M2.2b4 Clusters, fillets and unread parts.** Met (ADR-064), bars kept: cluster, fillets
       pinned, unread parts kept; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1%.
-    - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain readable, but only current, provenance-bearing, structurally plausible results pass the stored-reference screen; hpr reproduction is a separate screen and both report stable reasons (ADR-065). *Result:* met (ADR-065): 91 of 174 stored runs pass the stored-reference screen; 83 are excluded by stable reason (47 inconsistent, 17 external, 11 outdated, 7 not-simulated, 1 missing simulator). Hpr reproduction is reported separately: 1 of those 91 is reproducible and 90 are not (79 unflyable configurations, 11 reduced designs).
+    - [x] **M2.2b5 Stored results as found** (L87). Met (ADR-065), bars kept (L87 live; the
+      reference and reproduction screens apart, each with stable reasons): 91 of 174 runs pass.
   - [x] **M2.2c The motors OpenRocket flies.** Met (ADR-066, ADR-067), its done-when bars kept:
     every configuration held back only for want of a curve flies or is named with its reason, each
     curve's impulse within 0.1% of OR's. Split into c1 and c2.
@@ -598,6 +594,10 @@
     - [x] **M2.2e10 Twenty designs.** *Done when:* anonymised ids beside the public report make at
       least 20 designs with the five spreads; e4's bar on the flights added. *Result:* met
       (ADR-100): a motor whose ignition never comes flies unlit, as 5 OR probes show; `C04` +0.88%.
+  - [ ] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live; a bar that cannot
+    hold has an ADR with its measurement, the gap left visible. L19's is 0.25 cal of OR's CP: the
+    *Tube fin rocket*'s margin is 0.79 cal against OR's 1.87 (ADR-099).
+    - Loft lessons: L19, L82.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,
   altitude, time) and sustainer ignition; the booster tracked through recovery; clustered mounts

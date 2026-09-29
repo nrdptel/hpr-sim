@@ -106,6 +106,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-098 | A tube fin set's automatic radius read as OpenRocket reads it | accepted |
 | ADR-099 | Tube fins flown as ring wings | accepted |
 | ADR-100 | A motor whose ignition never comes flown unlit, as OpenRocket flies it | accepted |
+| ADR-101 | OpenRocket's mass conventions rolled up; M2.2 left open for two lessons | accepted |
 
 ---
 
@@ -8559,3 +8560,60 @@ stages and the pod examples' parts.
   as one in which no motor lights; hpr gives no warning for a motor it flies unlit.
 - M2.2e is met (its *done when* is M2.2's, unchanged). M2.2 stays open until M2.2b, whose five
   parts are met, is rolled up.
+
+## ADR-101: OpenRocket's mass conventions rolled up; M2.2 left open for two lessons (2026-09-28)
+
+**Context.** M2.2b asks that Loft lessons L51 and L87 be live, that each convention ADR-060 lists,
+and roll inertia, be hpr's rule or a written departure, and that M2.2a's survey be run again. Its
+five parts (ADR-061 to ADR-065) are met. Four later decisions changed some answers: clusters
+(ADR-075), pods (ADR-093), fillets (ADR-096) and tube fins (ADR-098). The roll-up says where each
+convention stands now. The status file expected M2.2 itself to close next; it cannot yet.
+
+**Decision.**
+
+1. **Each convention, where it stands.**
+
+   | convention | now | settled by |
+   |---|---|---|
+   | a shoulder written with no wall | OpenRocket's rule: it weighs nothing | ADR-061 |
+   | a part with no material | OpenRocket's rule: 680 kg/m³ | ADR-061 |
+   | which override wins (L51) | OpenRocket's rule, on every probe | ADR-061 |
+   | inertia under a mass override | departure: hpr scales all it covers | ADR-061 |
+   | rounded and airfoil fin sections | departure: hpr's cited sections | ADR-062 |
+   | roll inertia | explained by OpenRocket's fin shortcut; hpr keeps its exact integral | ADR-062 |
+   | packed parts with no size, overrides on weightless parts | OpenRocket's rule | ADR-063 |
+   | clusters | every tube weighed where it is; OpenRocket stacks them on the cluster's axis, so roll and pitch depart | ADR-075 |
+   | fin fillets | OpenRocket's rule | ADR-096 |
+   | tube fins | OpenRocket's radius and mass; roll and pitch are departures | ADR-098 |
+   | parts hpr keeps unread | departure: kept whole, design marked reduced | ADR-058, ADR-064 |
+   | stored results (L87) | references only when current and plausible | ADR-065 |
+
+2. **L51 and L87 are owned by M2.2b.** Their lesson rows named only M2.2, so the check that a
+   lesson's tests are live would wait for M2.2. Each row now names M2.2b first. Checking M2.2b
+   off makes `cargo test -p xtask` hold both tests live.
+3. **M2.2 stays open for M2.2f.** Its other lessons, L19 and L82, name tests that do not exist:
+   `tube_fin_cp_within_0_25_cal_of_oracle` and
+   `excused_cases_stay_in_the_census_statistics_against_both_references`. L19's bar is not met
+   today: the *Tube fin rocket*'s margin is 0.79 calibres against OpenRocket's 1.87 (ADR-099).
+   M2.2f owns both lessons. Its *done when* asks for both tests live, or an ADR with the
+   measurement for a bar that cannot hold.
+
+**Evidence.** `cargo xtask ork`, run on 2026-09-28 with OpenRocket's record unchanged, passes on
+71 designs (51 by content):
+
+| quantity | within 0.1% | within 1% | median |
+|---|---|---|---|
+| mass | 60 of 71 | 68 of 71 | 0.001% |
+| centre of mass (share of length) | 65 of 71 | 68 of 71 | 0.000% |
+| pitch inertia | 41 of 71 | 56 of 71 | 0.065% |
+| roll inertia, OpenRocket's fin shortcut in hpr's place | 57 of 71 | 57 of 71 | 0.001% |
+
+- Three files, two by content, are outside the mass or centre-of-mass threshold, each with a
+  cause: a parallel stage kept unread, and fins weighed by hpr's section. ADR-060 had 17 files,
+  12 by content.
+- Roll inertia is outside 1% on 14 files, 9 by content, even with OpenRocket's shortcut. Each has
+  a cause: a mass override (5), a cluster's tubes (2), a part kept unread (1), and tube fins (1).
+- The mass page's table is this run's, number for number.
+
+**Consequences.** M2.2b is checked off. The next increment is M2.2f, then M4.1. Every departure
+above has a test pinning it; replacing one means new probes, not a quiet change.

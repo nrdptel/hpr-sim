@@ -2492,8 +2492,10 @@ design.
 
 **How far it gets.** [M2.2](../decisions-and-roadmap.md#m2-2), the OpenRocket comparison, asks for
 at least 20 designs compared in five ways: apogee, largest speed, stability margin, mass and centre
-of mass. With the public report's 9, these make 20, so that count is met. The comparison itself
-stays open until its mass conventions ([M2.2b](../decisions-and-roadmap.md#m2-2b)) are rolled up.
+of mass. With the public report's 9, these make 20, so that count is met. Its mass conventions
+([M2.2b](../decisions-and-roadmap.md#m2-2b)) are rolled up too. The comparison stays open for two
+lessons from Loft, in [M2.2f](../decisions-and-roadmap.md#m2-2f): tube fins' centre of pressure
+against OpenRocket's, and a test that cases excused from a bar still count in the statistics.
 Staging and clusters
 ([M1.9](../decisions-and-roadmap.md#m1-9)) added one of these private designs and three public
 ones, a tilted launch rod ([M2.2e5](../decisions-and-roadmap.md#m2-2e5)) one private design, and
