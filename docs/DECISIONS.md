@@ -107,6 +107,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-099 | Tube fins flown as ring wings | accepted |
 | ADR-100 | A motor whose ignition never comes flown unlit, as OpenRocket flies it | accepted |
 | ADR-101 | OpenRocket's mass conventions rolled up; M2.2 left open for two lessons | accepted |
+| ADR-102 | Tube fins' centre of pressure measured against OpenRocket; L19's bar not met, the gap pinned | accepted |
 
 ---
 
@@ -8630,3 +8631,99 @@ answers: pods (ADR-089 to ADR-091), clusters (ADR-075), fillets (ADR-096) and tu
 
 **Consequences.** M2.2b is checked off. The next increment is M2.2f, then M4.1. Replacing any
 departure above takes new probes, not a quiet change.
+
+
+## ADR-102: Tube fins' centre of pressure measured against OpenRocket; L19's bar not met, the gap pinned (2026-09-28)
+
+**Context.** Loft lesson L19 asks that hpr put a tube fin set's centre of pressure within a quarter
+calibre of OpenRocket's; Loft's was about 0.9 calibres forward of it. M2.2f is done when a test
+asserts that bar and passes, or, if it cannot hold, when an ADR measures the gap and L19's row
+names a test that pins it, as L18's row does (ADR-101 §3). On OpenRocket's *Tube fin rocket* hpr's
+centre is 1.07 calibres forward of OpenRocket's (ADR-099). ADR-099's account of where that comes
+from, OpenRocket's slope and centre for the tubes, was a look at its per-component output that
+was never kept. A search for a measured tube-fin centre of pressure found none: not in NACA or NASA
+reports, Apogee's newsletters (issues 27, 119 and 335) or OpenRocket's own pull requests, whose
+author wrote that "we won't really know until we can find a wind tunnel" (openrocket#1413).
+
+**Decision.**
+
+1. **OpenRocket's answers are kept as a record.** `validation/oracles/openrocket/tube_fin_aero.py`
+   runs OpenRocket 24.12 as an external oracle. It writes 14 probe designs: one nose and body, with
+   a tube fin set at the foot that varies one thing at a time. The variations are the tubes'
+   length (25 to 300 mm), their count at a stated radius (3 to 8), their radius and their wall.
+   The script also reads the *Tube fin rocket* from the jar. It records the slope `C_Nα` and the
+   centre of pressure its Barrowman calculator gives each component at Mach 0.05, 0.3, 0.5, 0.6
+   and 0.75. Each answer comes from a new load and a new calculator, because a calculator asked
+   again after a part changes gives its cached answer. The record is
+   `validation/fixtures/ork/openrocket-tube-fin-aero.json`.
+2. **What OpenRocket does, from its output alone** (its source is GPL and was not read):
+   - The tubes' slope is the same at every Mach number and grows with the count, the length and
+     the bore.
+   - On every probe it is 1.26 to 1.86 times hpr's, and 1.20 to 1.86 times `N π d²/A_ref`. That is
+     the long-ring limit of `N` isolated thin rings (Hoerner 1965, p. 7-13), which Weissinger's
+     formula approaches from below as a ring lengthens. The excess is there for tubes that touch
+     only the body, not each other, so interference between the tubes does not account for it.
+     Nothing measured supports the excess.
+   - Its centre is a quarter of a tube's length aft of the leading edge up to Mach 0.5, and at the
+     leading edge from Mach 0.6. So the *Tube fin rocket*'s own centre of pressure moves 0.73
+     calibres forward between those two speeds in OpenRocket. OpenRocket's pull request #3235,
+     merged on 2026-08-11 after 24.12, calls that jump a bug and fixes it.
+   - Its pull request #3262 describes the quarter chord as the subsonic rule that conventional fins
+     and tube fins share: a flat fin's rule, not a ring's.
+3. **hpr keeps ADR-099's ring wing.** Both of OpenRocket's terms run against the evidence there is:
+   - Fletcher's measured centre moves forward as a ring gets longer (0.143 of the chord at
+     `A = 2/3`).
+   - Hoerner and Borst (*Fluid-Dynamic Lift*, 1985, p. 19-16) take the lift of the air turned
+     inside an open tube as `2α` on its frontal area, "assuming that the turning takes place at or
+     near the rim of the inlet", and call the moment of that duct flow destabilizing. That is
+     theory, and they say they had no measurement of it. It is the published form of the leading
+     edge that hpr's line runs to, which ADR-099 derived.
+   - A slope past the long-ring limit would need an interference that no source measures or
+     derives.
+   - Taking OpenRocket's numbers would put a model with no source into hpr to pass a code-to-code
+     bar. That is what the first hard rule forbids.
+4. **L19's row names the test that pins the gap:**
+   `hpr_validate::openrocket::tests::tube_fin_cp_against_the_oracle_measured_and_pinned`. The test
+   builds every probe with `hpr_io::ork` and `hpr_aero`, and holds three things to the record:
+   - the geometry, and the nose and body, which agree;
+   - OpenRocket's rule as listed above;
+   - each gap, to 5e-4 calibres.
+
+   It also shows that the whole gap is the tubes'. Given OpenRocket's slope and centre for the
+   tubes, hpr's rocket has OpenRocket's centre of pressure within 0.01 calibres, whatever the probe
+   or Mach number. A change in either code fails it. Meeting L19 would too, and the row would then
+   have to change.
+5. **L82's test is live:**
+   `hpr_validate::tests::excused_cases_stay_in_the_census_statistics_against_both_references`.
+   The census counts every compared row in its group's apogee spread and bar counts, whatever
+   explains a miss. Each real flight whose miss carries a written explanation stays a miss there.
+   A rocket that RocketPy flew as well as its team's log counts against both, and on at least one
+   rocket the two references are more than 5% apart. Two mutations of the census each fail the
+   test: dropping misses from the spread, or dropping them from the bar counts.
+6. **M2.2 closes.** Its *done when* was met in M2.2e10 (ADR-100), and its last two lessons are now
+   live.
+
+**Evidence.** `cargo test -p hpr-validate --lib tube_fin_cp_against_the_oracle` on the record.
+hpr's rocket centre less OpenRocket's, in calibres:
+
+| probe | Mach 0.05 | 0.3 | 0.5 | 0.6 | 0.75 |
+|---|---|---|---|---|---|
+| six tubes touching the body and each other, 75 mm long (the *Tube fin rocket*'s build) | −1.043 | −1.050 | −1.065 | −0.363 | −0.387 |
+
+- On that probe at Mach 0.05, OpenRocket's centre alone moves hpr's 0.495 calibres aft, and its
+  slope alone 0.532.
+- Up to Mach 0.5, no probe is within the bar: the gaps run from 0.420 to 2.998 calibres. From Mach
+  0.6, 5 of the 28 are within it: the 25 mm and 300 mm tubes at both speeds, and the 3 mm wall at
+  Mach 0.6. Those five meet the bar only because of the jump that #3235 fixes.
+- On the *Tube fin rocket* itself at rod clearance (Mach 0.056), hpr's centre is 1.075 calibres
+  forward of OpenRocket's (`openrocket-flights.json`). The record's own answer for the example is
+  1.4e-5 m from the flight record's.
+
+**Consequences.**
+
+- The flight report's 1.08-calibre margin gap on the *Tube fin rocket*, accepted in writing with
+  ADR-099, stands; the guide's tube-fin section now quotes the record.
+- [#228](https://github.com/nrdptel/hpr-sim/issues/228) stays open for a measured source.
+  Weissinger's lifting-surface coefficients for thin rings (Bagley, Kirby and Marcer, ARC R&M 3146,
+  1961) are a lead for a thin ring's centre down to `A = 1/2`; they are not checked here.
+- The next milestone is M4.1.

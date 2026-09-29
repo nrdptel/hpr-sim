@@ -522,12 +522,13 @@
     - [x] **M3.1d2 The cross-check.** Met (ADR-059), bars kept: every `.ork` (27, 17 OR examples)
       imports with 0 errors; of the first record's 1,212 numbers none is apart from both oracles.
 
-- [ ] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
+- [x] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
   flies the OR examples and the corpus; the stored results inside the `.ork` files are used as a
   second reference; the deferred M1.4 mass/CG checks run against OR values. *Done when:* at least
   20 designs are in the report with an error distribution (apogee, max velocity, stability margin,
   mass, CG); every design with apogee error above 5% has a written hypothesis; private designs
   appear only as anonymised ids. Split into M2.2a to M2.2f (ADR-060, ADR-101): mass first.
+  *Result:* met in M2.2e10 (ADR-100); its lessons live in M2.2f, L19's bar not met (ADR-102).
   - Loft lessons: L19, L51, L80, L81, L82, L87.
   - [x] **M2.2a Structure mass, CG and inertia** (the M1.4 deferral). Met (ADR-060), its done-when
     bars kept: `cargo xtask ork` holds every design OpenRocket opens to its structure's mass, CG and
@@ -546,11 +547,8 @@
       override on a weightless one are OR's on probes, to 1e-12; roll within 1% on 57 of 74.
     - [x] **M2.2b4 Clusters, fillets and unread parts.** Met (ADR-064), bars kept: cluster, fillets
       pinned, unread parts kept; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1%.
-    - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain
-      readable, but only current, provenance-bearing, structurally plausible results pass the
-      stored-reference screen; hpr reproduction is a separate screen and both report stable reasons
-      (ADR-065). *Result:* met (ADR-065): 91 of 174 pass, 83 excluded by stable reason; 1 of the 91
-      is reproducible by hpr (79 unflyable configurations, 11 reduced designs).
+    - [x] **M2.2b5 Stored results as found** (L87). Met (ADR-065), bars kept: L87 live; only current,
+      plausible stored runs are references, hpr reproduction screened apart; 91 of 174 pass.
   - [x] **M2.2c The motors OpenRocket flies.** Met (ADR-066, ADR-067), its done-when bars kept:
     every configuration held back only for want of a curve flies or is named with its reason, each
     curve's impulse within 0.1% of OR's. Split into c1 and c2.
@@ -574,8 +572,7 @@
     - [x] **M2.2e3 hpr's flights of the corpus.** Met (ADR-072), bars kept (anonymised ids,
       differences only, curves checked as OR's, a test on its words and sums), the 20 designs
       moved to e6 (ADR-094): 17 flights, 4 of 12 private designs, 9 in all.
-    - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
-      *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
+    - [x] **M2.2e4 The causes.** Met (ADR-073): all 5 apogees over 5% sized; 4 within 5%, 1 +7.80%.
     - [x] **M2.2e5 A tilted rod** (#173). Met (ADR-094), bars kept (a rod as OR records it, a test
       on OR's landings, probes within 5%, bearing 0.1°, the five spreads, e4's bar): bearings within
       0.03°, loss within 0.27 points; `C12` 0.53%.
@@ -594,10 +591,11 @@
     - [x] **M2.2e10 Twenty designs.** *Done when:* anonymised ids beside the public report make at
       least 20 designs with the five spreads; e4's bar on the flights added. *Result:* met
       (ADR-100): a motor whose ignition never comes flies unlit, as 5 OR probes show; `C04` +0.88%.
-  - [ ] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live, L19's asserting
+  - [x] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live, L19's asserting
     tube fins' CP within 0.25 cal of OR's; if that cannot hold, an ADR measures it and L19's row
-    names a test pinning the gap and says so, as L18's row does. Missed today: the *Tube fin
-    rocket*'s CP is 1.07 cal forward of OR's, margin 0.79 against 1.87 (ADR-099, ADR-101).
+    names a test pinning the gap and says so, as L18's row does. *Result:* L82 live; L19 not met
+    (ADR-102): on 14 OR probes hpr's CP is 0.42 to 3.0 cal forward to Mach 0.5, 1.07 on the *Tube
+    fin rocket*; OR's slope passes thin-ring theory's limit, its centre is a flat fin's. Pinned.
     - Loft lessons: L19, L82.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,

@@ -2027,4 +2027,259 @@ mod tests {
             assert!(probes.contains(question), "no probe asks {question:?}");
         }
     }
+
+    /// Where hpr puts a tube fin set, against OpenRocket 24.12 (Loft lesson L19, ADR-102).
+    struct TubeFinsSeen {
+        probe: String,
+        mach: f64,
+        /// OpenRocket's set slope over hpr's.
+        slope_ratio: f64,
+        /// OpenRocket's set slope over `N π d²/A_ref`, the long-ring limit of `N` isolated rings.
+        over_long_ring_limit: f64,
+        /// hpr's rocket centre of pressure less OpenRocket's, calibres.
+        gap_cal: f64,
+        /// How far hpr's centre moves, calibres, with the tubes at OpenRocket's centre alone, and
+        /// with OpenRocket's slope alone.
+        centre_only_cal: f64,
+        slope_only_cal: f64,
+    }
+
+    /// Every probe of `openrocket-tube-fin-aero.json` at each Mach number below the tube-fin
+    /// model's limit, with the checks that hold whatever the two codes' models: the same geometry,
+    /// the same nose and body, and OpenRocket's rule as its record shows it.
+    fn tube_fins_seen() -> Vec<TubeFinsSeen> {
+        let text = include_str!("../../../validation/fixtures/ork/openrocket-tube-fin-aero.json");
+        let record: Value = serde_json::from_str(text).expect("the committed record is JSON");
+        let number = |value: &Value| value.as_f64().expect("a number");
+        let mut seen = Vec::new();
+        let probes = record["probes"].as_object().expect("probes");
+        assert_eq!(probes.len(), 14);
+        for (name, probe) in probes {
+            let document = probe["document"].as_str().expect("the probe's document");
+            let read = ork::read(document.as_bytes()).expect("a probe reads");
+            let layout = ork::rocket(&read.value.document)
+                .value
+                .layout()
+                .expect("a probe lays out");
+            let model = hpr_aero::AeroModel::new(&layout).expect("hpr models the probe");
+            let set = &model.tube_fin_sets()[0];
+            let mut slopes = Vec::new();
+            for asked in probe["machs"].as_array().expect("machs") {
+                let mach = number(&asked["mach"]);
+                let cal = number(&asked["reference_length_m"]);
+                let components = asked["components"].as_object().expect("components");
+                let of = |class: &str| {
+                    let mut found = components.values().filter(|c| c["class"] == class);
+                    let one = found.next().expect("the component");
+                    assert!(found.next().is_none(), "{name}: two of {class}");
+                    one
+                };
+                let (tubes, rocket) = (of("TubeFinSet"), of("Rocket"));
+                // The same rocket: reference area, the tubes' count, leading edge and length.
+                assert!(
+                    (model.reference_area_m2() / number(&asked["reference_area_m2"]) - 1.0).abs()
+                        <= 1e-12,
+                    "{name}"
+                );
+                assert_eq!(
+                    tubes["count"].as_u64(),
+                    Some(u64::from(set.count)),
+                    "{name}"
+                );
+                let fore_m = number(&tubes["leading_edge_x_m"]);
+                let length_m = number(&tubes["length_m"]);
+                assert!((set.fore_station_m - fore_m).abs() <= 1e-12, "{name}");
+                assert!((set.length_m - length_m).abs() <= 1e-12, "{name}");
+                // OpenRocket's rule, as its record shows it: one slope at every Mach number, and
+                // the centre a quarter of the length aft of the leading edge up to Mach 0.5, at
+                // the leading edge from Mach 0.6.
+                let (theirs, their_x) = (number(&tubes["cna_per_rad"]), number(&tubes["cp_x_m"]));
+                slopes.push(theirs);
+                let quarter = if mach <= 0.5 { 0.25 } else { 0.0 };
+                assert!(
+                    ((their_x - fore_m) / length_m - quarter).abs() <= 1e-9,
+                    "{name} at Mach {mach}"
+                );
+                if mach >= hpr_aero::tube_fins::TUBE_FIN_MACH_LIMIT {
+                    continue;
+                }
+                let (ours, our_x) = set.loading(mach).expect("below the limit");
+                let whole = model
+                    .normal_force(&hpr_aero::Flow::new(mach, 0.0, 0.0))
+                    .expect("hpr's normal force");
+                let our_cp = whole.cp_station_m.expect("a centre of pressure");
+                let (their_whole, their_cp) =
+                    (number(&rocket["cna_per_rad"]), number(&rocket["cp_x_m"]));
+                // The rest of the rocket, the nose and the body, is nearly the same in both
+                // codes: OpenRocket gives the body tube a slope of 0.003 at its middle, hpr none,
+                // which puts their centre 0.015 calibres aft of hpr's nose's.
+                let rest = whole.slope_per_rad - ours;
+                let rest_moment = whole.moment_slope_m - ours * our_x;
+                let (their_rest, their_rest_moment) = (
+                    their_whole - theirs,
+                    their_whole * their_cp - theirs * their_x,
+                );
+                assert!(
+                    (rest - their_rest).abs() <= 0.005,
+                    "{name}: {rest} {their_rest}"
+                );
+                assert!(
+                    (rest_moment / rest - their_rest_moment / their_rest).abs() <= 0.02 * cal,
+                    "{name}"
+                );
+                let centre = |slope: f64, x: f64| (rest_moment + slope * x) / (rest + slope);
+                // So the gap is the tubes': hpr with OpenRocket's slope and centre for them is
+                // OpenRocket's rocket.
+                assert!(
+                    (centre(theirs, their_x) - their_cp).abs() <= 0.01 * cal,
+                    "{name} at Mach {mach}: {}",
+                    (centre(theirs, their_x) - their_cp) / cal
+                );
+                let pi_d2 = std::f64::consts::PI * set.mean_diameter_m * set.mean_diameter_m;
+                seen.push(TubeFinsSeen {
+                    probe: name.clone(),
+                    mach,
+                    slope_ratio: theirs / ours,
+                    over_long_ring_limit: theirs
+                        / (f64::from(set.count) * pi_d2 / model.reference_area_m2()),
+                    gap_cal: (our_cp - their_cp) / cal,
+                    centre_only_cal: (centre(ours, their_x) - our_cp) / cal,
+                    slope_only_cal: (centre(theirs, our_x) - our_cp) / cal,
+                });
+            }
+            assert!(
+                slopes.iter().all(|s| (s / slopes[0] - 1.0).abs() <= 1e-12),
+                "{name}: {slopes:?}"
+            );
+        }
+        seen
+    }
+
+    /// Loft lesson L19: Loft put a tube fin set's centre of pressure about 0.9 calibres forward of
+    /// OpenRocket's. hpr's is further forward still, and the lesson's bar, a quarter calibre, is
+    /// not met: this test measures the gap on OpenRocket 24.12's probes and on its *Tube fin
+    /// rocket*, and pins it, so a change to either code shows (ADR-102).
+    ///
+    /// The whole gap is the tubes': the probes' geometry, nose and body agree, and with
+    /// OpenRocket's slope and centre for the tubes hpr's rocket is OpenRocket's. Both of
+    /// OpenRocket's differ from hpr's cited ring wing (ADR-099). Its slope is 1.26 to 1.86 times
+    /// hpr's, and more than the long-ring limit of isolated rings, `N π d²/A_ref`, on every probe,
+    /// tubes that touch nothing but the body included; its centre is a quarter of the tube's
+    /// length aft of the leading edge up to Mach 0.5, a flat fin's rule, and the leading edge from
+    /// Mach 0.6, a jump its maintainers call a bug and fixed after 24.12 (openrocket#3235).
+    #[test]
+    fn tube_fin_cp_against_the_oracle_measured_and_pinned() {
+        let seen = tube_fins_seen();
+        assert_eq!(seen.len(), 14 * 5);
+        let close = |found: f64, pinned: f64, what: &str| {
+            assert!(
+                (found - pinned).abs() <= 5e-4,
+                "{what}: {found} against {pinned}"
+            );
+        };
+        let range = |values: Vec<f64>| {
+            let least = values.iter().copied().fold(f64::INFINITY, f64::min);
+            (
+                least,
+                values.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+            )
+        };
+        // OpenRocket's slope against hpr's, and against the most isolated rings can lift.
+        let (least, most) = range(seen.iter().map(|s| s.slope_ratio).collect());
+        close(least, 1.2631, "the least slope ratio");
+        close(most, 1.8638, "the largest slope ratio");
+        let (least, most) = range(seen.iter().map(|s| s.over_long_ring_limit).collect());
+        close(least, 1.2038, "the least share of the long-ring limit");
+        close(most, 1.8556, "the largest share of the long-ring limit");
+        // The probe built like the *Tube fin rocket*: the gap at each Mach number, and at Mach
+        // 0.05 what OpenRocket's centre alone and its slope alone would move hpr's by.
+        let touching: Vec<&TubeFinsSeen> = seen
+            .iter()
+            .filter(|s| s.probe == "six touching tubes")
+            .collect();
+        let pinned = [-1.0427, -1.0501, -1.0647, -0.3634, -0.3867];
+        assert_eq!(touching.len(), pinned.len());
+        for (s, gap) in touching.iter().zip(pinned) {
+            close(
+                s.gap_cal,
+                gap,
+                &format!("six touching tubes at Mach {}", s.mach),
+            );
+            assert!(
+                s.gap_cal.abs() > 0.25,
+                "L19's bar is met at Mach {}",
+                s.mach
+            );
+        }
+        close(
+            touching[0].centre_only_cal,
+            0.4952,
+            "OpenRocket's centre alone",
+        );
+        close(
+            touching[0].slope_only_cal,
+            0.5319,
+            "OpenRocket's slope alone",
+        );
+        // Up to Mach 0.5, where OpenRocket takes the quarter length, no probe is within L19's
+        // bar; from Mach 0.6, where it takes the leading edge, five of the 28 are. That jump is a
+        // bug in 24.12, fixed after it (openrocket#3235).
+        let (least, most) = range(
+            seen.iter()
+                .filter(|s| s.mach <= 0.5)
+                .map(|s| s.gap_cal.abs())
+                .collect(),
+        );
+        close(least, 0.4197, "the least gap to Mach 0.5");
+        close(most, 2.9984, "the largest gap to Mach 0.5");
+        let within: Vec<(&str, f64)> = seen
+            .iter()
+            .filter(|s| s.gap_cal.abs() <= 0.25)
+            .map(|s| (s.probe.as_str(), s.mach))
+            .collect();
+        assert_eq!(
+            within,
+            [
+                ("six touching tubes 0.025 m long", 0.6),
+                ("six touching tubes 0.025 m long", 0.75),
+                ("six touching tubes 0.3 m long", 0.6),
+                ("six touching tubes 0.3 m long", 0.75),
+                ("six touching tubes with a 0.003 m wall", 0.6),
+            ]
+        );
+        // OpenRocket's own *Tube fin rocket*: the probe record's example and the flight record's
+        // are the same OpenRocket answer, and hpr's centre, in the flight record, is 1.07
+        // calibres forward of it at rod clearance.
+        let probes: Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/ork/openrocket-tube-fin-aero.json"
+        ))
+        .expect("the probe record");
+        let flights: Value = serde_json::from_str(include_str!(
+            "../../../validation/reports/openrocket-flights.json"
+        ))
+        .expect("the flight record");
+        let flight = flights["flights"]
+            .as_array()
+            .and_then(|all| all.iter().find(|f| f["design"] == "Tube fin rocket"))
+            .expect("the Tube fin rocket's flight");
+        let at = &flight["at_rod_clearance"];
+        let number = |value: &Value| value.as_f64().expect("a number");
+        let example = &probes["example"]["machs"][0];
+        assert_eq!(number(&example["mach"]), 0.05);
+        let rocket = example["components"]
+            .as_object()
+            .and_then(|all| all.values().find(|c| c["class"] == "Rocket"))
+            .expect("the example's rocket");
+        let theirs = number(&at["openrocket"]["cp_from_nose_m"]);
+        // The flight record's is OpenRocket's flight data at rod clearance; it is 1.4e-5 m from
+        // its calculator's answer asked directly.
+        assert!((number(&rocket["cp_x_m"]) - theirs).abs() <= 1e-4);
+        assert!(
+            number(&at["mach"]) < 0.5,
+            "OpenRocket's quarter-length centre"
+        );
+        let gap = (number(&at["hpr"]["cp_from_nose_m"]) - theirs)
+            / number(&at["openrocket"]["reference_length_m"]);
+        close(gap, -1.0747, "the Tube fin rocket at rod clearance");
+    }
 }

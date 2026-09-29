@@ -27,7 +27,9 @@
 //! from `A = 2/3` to 3 ([`FLETCHER_AERODYNAMIC_CENTRE`], his Fig. 8); below `A = 2/3`, a straight
 //! line to the leading edge at `A = 0`. That end point is hpr's derivation from slender-body
 //! theory, in which a section's lift is the growth of its apparent mass along the body: a thin
-//! ring's appears whole at its leading edge and stays, so all its lift is there. Fletcher's fifth
+//! ring's appears whole at its leading edge and stays, so all its lift is there. Hoerner and Borst
+//! (*Fluid-Dynamic Lift*, 1985, p. 19-16) take the air turned inside an open tube as turning "at
+//! or near the rim of the inlet", in theory, with no measurement to hand. Fletcher's fifth
 //! ring, at `A = 1/3`, is left out, a judgement: its centre sits 0.11 of its chord ahead of its
 //! leading edge, which he puts down to its low aspect ratio making it act like a body of
 //! revolution (p. 4). hpr infers, beyond his text, that its thick section (a Clark Y 11.7% of a

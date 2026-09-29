@@ -2511,16 +2511,18 @@ before ([#185](https://github.com/nrdptel/hpr-sim/issues/185)). A check run loca
 file, not committed, found OpenRocket's mass falling by each burning motor's propellant along this
 flight, so that fault does not show there; no committed check holds it.
 
-<a id="m2-2-stays-open"></a>The comparison stays open for two checks carried over from
-[Loft](../glossary.md#loft-lesson),
-the project before hpr-sim ([M2.2f](../decisions-and-roadmap.md#m2-2f)):
+<a id="m2-2-stays-open"></a>Two checks carried over from [Loft](../glossary.md#loft-lesson),
+the project before hpr-sim, closed the comparison ([M2.2f](../decisions-and-roadmap.md#m2-2f)):
 
 - [L19](../decisions-and-roadmap.md#l19): a tube fin set's centre of pressure should be within a
-  quarter [calibre](../glossary.md#calibre-caliber) of OpenRocket's. It is not yet: on the *Tube fin
-  rocket* the two margins are 1.08 calibres apart, hpr's 0.79 and OpenRocket's 1.87
-  ([tube fins](../physics/aero.md#tube-fins)).
-- [L82](../decisions-and-roadmap.md#l82): a test that a case let off a pass-or-fail bar still
-  counts in the error statistics. That test is not written yet.
+  quarter [calibre](../glossary.md#calibre-caliber) of OpenRocket's. It is not: on the *Tube fin
+  rocket* hpr's is 1.07 calibres forward, and the two margins 1.08 calibres apart, hpr's 0.79 and
+  OpenRocket's 1.87. A test measures and pins the gap on 14 probe designs, and nothing measured
+  says which code is nearer ([tube fins](../physics/aero.md#tube-fins-against-openrocket)).
+- [L82](../decisions-and-roadmap.md#l82): a case let off a pass-or-fail bar still counts in the
+  error statistics. A test holds the census to it: every miss with a written cause or explanation
+  stays in its group's spread and bar counts, and a rocket with two references, RocketPy's flight
+  and its team's log, counts against both.
 
 Still not flown:
 
