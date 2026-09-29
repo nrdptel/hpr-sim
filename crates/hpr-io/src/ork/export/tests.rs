@@ -11,7 +11,7 @@ use hpr_motor::Delay;
 
 use super::super::document::Element;
 use super::super::motors::{Ignition, IgnitionEvent};
-use super::super::{Container, design, read};
+use super::super::{Container, Kept, KeptAttribute, design, read};
 use super::motors::tests::{assert_same, component};
 use super::*;
 
@@ -933,5 +933,50 @@ fn a_configurations_kept_tags_go_back_to_that_configuration() {
         assert_eq!(text_of(a, "delay").as_deref(), Some("none"));
         let a = for_configuration(mount, "ignitionconfiguration", "a");
         assert_eq!(text_of(a, "ignitiondelay").as_deref(), Some("0.5"));
+    }
+}
+
+/// A design edited or built by hand, or read from JSON, can hold a kept path whose count no file
+/// gave: a stage flag or a copy of a tag two million, or `usize::MAX`, places in. The export
+/// writes no more than it could fill; what is kept there is left out with the warning that it has
+/// no place, and nothing overflows.
+#[test]
+fn a_kept_path_counting_past_anything_written_is_left_out() {
+    let xml = configurations_listed_backwards("", "", "");
+    let xml = super::rocket::tests::uuids(&xml);
+    let original = design(&read(xml.as_bytes()).expect("readable").value).value;
+    let plain = document(&original).value.to_xml().len();
+    let tube = "openrocket/rocket/stage[0]/bodytube[1]";
+    for index in [2_000_000, usize::MAX] {
+        // A stage flag's number, and a second copy of the tube's length.
+        let flag = format!("openrocket/rocket/@motorconfiguration(a)[0]/@stage[{index}]");
+        let copy = format!("{tube}/@length[{index}]");
+        for (at, attribute) in [(flag, true), (copy, false)] {
+            let mut edited = original.clone();
+            let extension = &mut edited.extensions.x_openrocket;
+            if attribute {
+                extension.attributes.push(KeptAttribute {
+                    at: at.clone(),
+                    name: "number".to_owned(),
+                    value: "1".to_owned(),
+                });
+            } else {
+                extension.tags.push(Kept {
+                    at: at.clone(),
+                    element: xml::tag("length", "0.8"),
+                });
+            }
+            let written = document(&edited);
+            let size = written.value.to_xml().len();
+            assert!(size < plain + 200, "{at}: {size} bytes against {plain}");
+            assert!(
+                written
+                    .warnings
+                    .iter()
+                    .any(|w| w.at == at && w.message.contains("has no place")),
+                "{at}: {:?}",
+                written.warnings
+            );
+        }
     }
 }
