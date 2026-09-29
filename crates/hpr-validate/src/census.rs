@@ -501,7 +501,7 @@ impl Census {
     }
 }
 
-fn harness_group(case: &str) -> Result<Group, CensusError> {
+pub(crate) fn harness_group(case: &str) -> Result<Group, CensusError> {
     if case.starts_with("descent-") {
         Ok(Group::Descent)
     } else if case.starts_with("flight-") {

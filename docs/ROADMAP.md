@@ -522,12 +522,12 @@
     - [x] **M3.1d2 The cross-check.** Met (ADR-059), bars kept: every `.ork` (27, 17 OR examples)
       imports with 0 errors; of the first record's 1,212 numbers none is apart from both oracles.
 
-- [ ] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
+- [x] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
   flies the OR examples and the corpus; the stored results inside the `.ork` files are used as a
   second reference; the deferred M1.4 mass/CG checks run against OR values. *Done when:* at least
   20 designs are in the report with an error distribution (apogee, max velocity, stability margin,
   mass, CG); every design with apogee error above 5% has a written hypothesis; private designs
-  appear only as anonymised ids. Split into M2.2a to M2.2f (ADR-060, ADR-101): mass first.
+  appear only as anonymised ids. Split a to f (ADR-060, 101); met (ADR-100), L19 missed (ADR-102).
   - Loft lessons: L19, L51, L80, L81, L82, L87.
   - [x] **M2.2a Structure mass, CG and inertia** (the M1.4 deferral). Met (ADR-060), its done-when
     bars kept: `cargo xtask ork` holds every design OpenRocket opens to its structure's mass, CG and
@@ -594,10 +594,10 @@
     - [x] **M2.2e10 Twenty designs.** *Done when:* anonymised ids beside the public report make at
       least 20 designs with the five spreads; e4's bar on the flights added. *Result:* met
       (ADR-100): a motor whose ignition never comes flies unlit, as 5 OR probes show; `C04` +0.88%.
-  - [ ] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live, L19's asserting
+  - [x] **M2.2f Lessons L19 and L82.** *Done when:* both lessons' tests are live, L19's asserting
     tube fins' CP within 0.25 cal of OR's; if that cannot hold, an ADR measures it and L19's row
-    names a test pinning the gap and says so, as L18's row does. Missed today: the *Tube fin
-    rocket*'s CP is 1.07 cal forward of OR's, margin 0.79 against 1.87 (ADR-099, ADR-101).
+    names a test pinning the gap and says so, as L18's row does. *Result:* L82 live; L19 not met,
+    pinned (ADR-102): CP 0.42-3.0 cal ahead of OR's to Mach 0.5 on 14 probes, 1.07 on its example.
     - Loft lessons: L19, L82.
 
 - [x] **M1.9 Staging, clusters, airstarts (COTS).** Separation triggers (burnout plus delay,

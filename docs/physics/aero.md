@@ -114,7 +114,8 @@
     a measurement. On OpenRocket's example, hpr's apogee is 6.95% higher, a net gap in the drag,
     and OpenRocket's tube-fin drag was refined against real flights, so hpr's probably reads low.
     The centre of pressure rests on a judgement that moves that example's margin from 0.29 to
-    0.79 calibres, against OpenRocket's 1.87
+    0.79 calibres, against OpenRocket's 1.87. The gap to OpenRocket is measured on 14 probe
+    designs and pinned by a test; nothing measured says which code is nearer
     ([Tube fins](#tube-fins), [#228](https://github.com/nrdptel/hpr-sim/issues/228)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
@@ -245,6 +246,8 @@ Sources:
   Annular Airfoils*, NACA TN 4117, 1957 (`naca-tn-4117-fletcher-1957-annular-airfoils`).
 - **[H65]** S. F. Hoerner, *Fluid-Dynamic Drag*, 1965, p. 7-13, *Ring Foil*
   (`hoerner-1965-fluid-dynamic-drag`).
+- **[HB85]** S. F. Hoerner and H. V. Borst, *Fluid-Dynamic Lift*, 1985, p. 19-16, *Ducted Body*
+  (`hoerner-borst-1985-fluid-dynamic-lift`).
 - **[W21]** N. Wagner, *Theoretical and Experimental Investigation into the Flight of an X-Zylo*,
   arXiv:2102.02647, 2021, eq. 15, quoting J. Weissinger, *Zur Aerodynamik des Ringflügels*, 1955
   (`arxiv-2102.02647-x-zylo-ring-wing`).
@@ -2845,12 +2848,21 @@ and neither code's roll is compared.
 
 A [tube fin](../glossary.md#tube-fin) set is a ring of short open tubes around the airframe, in
 place of flat fins. hpr flies each tube as an **annular wing** (a ring wing): a wing bent round
-into a tube, which lifts when the air meets it at an angle. **Only its parts are validated: no
-tube fin rocket has been checked against a wind tunnel or a measured flight.** The ring wing's
-slope is within 3% of five rings measured in a wind tunnel, which were thick and cambered, not
-paper tubes. What the tubes do to each other and to the body is not modelled, because no source
-measures it. [M2.2e9](../decisions-and-roadmap.md#m2-2e9) added it ([ADR-099][adr-099], tube fins
+into a tube, which lifts when the air meets it at an angle.
+
+**Only its parts are validated: no tube fin rocket has been checked against a wind tunnel or a
+measured flight.** The ring wing's slope is within 3% of five rings measured in a wind tunnel,
+which were thick and cambered, not paper tubes. What the tubes do to each other and to the body is
+not modelled: nothing measures it, and theory predicts more lift than hpr gives
+([#234](https://github.com/nrdptel/hpr-sim/issues/234)).
+
+The model came with [M2.2e9](../decisions-and-roadmap.md#m2-2e9) ([ADR-099][adr-099], tube fins
 flown as ring wings).
+
+On OpenRocket's *Tube fin rocket* hpr's centre of pressure is 1.07
+[calibres](../glossary.md#calibre-caliber) forward of OpenRocket's. That misses the quarter calibre
+[Loft lesson L19](../decisions-and-roadmap.md#l19) asks for, and nothing measured says which code
+is nearer ([below](#tube-fins-against-openrocket)).
 
 **The normal force.** A ring wing of diameter `d` and length `L` lifts about twice as much as a
 flat wing of span `d` and chord `L`. A long, thin ring lifts twice what a solid body of its diameter
@@ -2881,9 +2893,12 @@ in straight lines:
 | aerodynamic centre, fraction of `L` aft of the leading edge | 0 (theory) | −0.11 (left out) | 0.143 | 0.203 | 0.253 | 0.355 |
 
 The table ends at `A = 3`, Fletcher's shortest ring; a shorter ring is refused. Below
-`A = 2/3` the line runs to the leading edge at `A = 0`. That end point is hpr's own derivation
-from [slender-body theory](../glossary.md#slender-body-theory), in which a long, thin ring's lift
-all appears at its front edge; no source states it for a ring.
+`A = 2/3` the line runs to the leading edge at `A = 0`. That end point comes from
+[slender-body theory](../glossary.md#slender-body-theory), in which a long, thin ring's lift all
+appears at its front edge. Hoerner and Borst assume the same of the air turned inside an open
+tube: that it turns "at or near the rim of the inlet" (Hoerner and Borst 1985, p. 19-16). They
+write that they "do not have suitable experimental results at hand" on how an axial duct changes a
+slender body's lift and moment.
 
 Fletcher's `A = 1/3` ring is left out, and that is a judgement. Its centre sits ahead of its
 leading edge. Fletcher puts that down to its low aspect ratio: such a ring behaves more like a
@@ -2940,6 +2955,8 @@ above.
 | friction area, six tubes inside and out | 145.6 times the reference area |
 | wall area | 0.315 times the reference area |
 | drag at Mach 0.2, friction and wall | 0.741 and 0.310, of the rocket's 1.654 |
+| OpenRocket 24.12's slope for the set, at every Mach number | 37.85 per radian |
+| OpenRocket's centre, to Mach 0.5 | 0.25 `L`, 19.05 mm aft of the leading edge |
 
 **Against OpenRocket.** The *Tube fin rocket* is in the
 [flight report](../format/ork.md#hprs-flights-against-openrockets). Flown on hpr's own drag, its
@@ -2965,27 +2982,89 @@ against no measured flight, and a code-to-code gap is not a measurement. Still, 
 OpenRocket's drag is the nearer of the two here. What hpr's leaves out is listed below, and
 [#228](https://github.com/nrdptel/hpr-sim/issues/228) holds the search for a measured source.
 
-The [stability margin](../glossary.md#stability-margin) differs more. At rod clearance hpr gives
-0.79 [calibres](../glossary.md#calibre-caliber) and OpenRocket 1.87. The next two points come
-from the same look, and are leads too:
+<a id="tube-fins-against-openrocket"></a>**The centre of pressure against OpenRocket.** The
+[stability margin](../glossary.md#stability-margin) differs more. At rod clearance, the moment the
+rocket leaves the launch rod, hpr's margin is 0.79 calibres and OpenRocket's 1.87. Almost all of
+that gap is the centre of pressure: hpr's is 1.07 calibres forward of OpenRocket's, and the two
+centres of mass differ by 0.002 calibres. [L19](../decisions-and-roadmap.md#l19) asks for a
+quarter calibre, and hpr does not meet it ([ADR-102][adr-102], tube fins' centre of pressure
+measured against OpenRocket).
 
-- OpenRocket's tube fins take a slope of 37.8 per radian, 1.62 times the 23.4 that six isolated
-  thin rings reach at their long-ring limit. hpr takes 22.9.
-- OpenRocket's centre is a quarter of the tube's length aft of the leading edge, hpr's 0.069 of it.
-  The quarter length alone would add about 0.51 calibres to hpr's margin.
+OpenRocket 24.12's answers for tube fins are kept as a
+[fixture](../glossary.md#reference-value-and-fixture),
+[`openrocket-tube-fin-aero.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/ork/openrocket-tube-fin-aero.json),
+written by
+[`tube_fin_aero.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/tube_fin_aero.py).
+It holds OpenRocket's slope and centre for the tubes and for the whole rocket, at five Mach
+numbers. It covers the *Tube fin rocket* and 14 [probe designs](../glossary.md#probe-design), each
+changing one thing: the tubes' length, count, radius or wall. The test
+[`tube_fin_cp_against_the_oracle_measured_and_pinned`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-validate/src/openrocket.rs)
+reads the same probes with hpr and pins all 70 gaps. The record shows:
 
-Which is right is open: nothing measured separates them.
+- The two codes agree on the probes' geometry and on the nose and body. Given OpenRocket's slope
+  and centre for the tubes, hpr's rocket has OpenRocket's centre of pressure within 0.01
+  calibres. So the whole gap is the tubes'.
+- OpenRocket's tubes lift 1.26 to 1.86 times what hpr's ring wings do, at every Mach number.
+- Its lift per tube is the same whatever the number of tubes, so it models no interference that
+  changes with the count. Slender-body theory with the body included predicts one, and it falls
+  as tubes are added. An unchecked estimate, taken 0.005 radii from the body and still rising as
+  that gap closes, gives at least 1.96 times the lift of the same number of isolated rings for
+  three tubes of 6 mm radius, 1.57 for six, and 1.13 for six touching each other
+  ([#234](https://github.com/nrdptel/hpr-sim/issues/234)). OpenRocket's lift on the 6 mm probes
+  is 1.73 times the long-ring limit of isolated rings: below the estimate for three tubes. For
+  six, the same estimate taken closer, and carried on to contact, is about 1.65, a little below
+  OpenRocket's.
+  hpr leaves the interference out.
+- OpenRocket puts the tubes' centre a quarter of their length aft of the leading edge up to Mach
+  0.5. Its maintainers describe that as the subsonic rule its flat fins and tube fins share
+  ([openrocket#3262](https://github.com/openrocket/openrocket/pull/3262)).
+
+On the probe built like the *Tube fin rocket*, six tubes 75 mm long touching the body and each
+other:
+
+| Mach | 0.05 | 0.3 | 0.5 | 0.6 | 0.75 |
+|---|---|---|---|---|---|
+| hpr's centre of pressure less OpenRocket's, calibres | −1.04 | −1.05 | −1.06 | −0.36 | −0.39 |
+
+The *Tube fin rocket* itself, at rod clearance (Mach 0.056), gives −1.07: its tubes are 76.2 mm
+long and its nose and body differ a little from the probe's.
+
+From Mach 0.6 the gap shrinks only because OpenRocket 24.12 moves the tubes' centre to the
+leading edge. Its maintainers call that jump a bug and fixed it after 24.12
+([openrocket#3235](https://github.com/openrocket/openrocket/pull/3235)). The jump moves
+OpenRocket's own centre of pressure on the *Tube fin rocket* 0.73 calibres forward between Mach
+0.5 and 0.6. It probably accounts for the five probe results, of 28 from Mach 0.6, that come
+within the lesson's quarter calibre.
+
+What each of OpenRocket's two terms is worth: on that probe at Mach 0.05, giving hpr's tubes
+OpenRocket's centre but keeping hpr's slope moves hpr's centre of pressure 0.50 calibres aft.
+Giving them OpenRocket's slope but keeping hpr's centre moves it 0.53 calibres aft. Up to Mach
+0.5, every probe's gap is between 0.42 and 3.0 calibres.
+
+hpr keeps its model. Fletcher's measured centre moves forward, as a share of the ring's length,
+as a ring gets longer, and Hoerner and Borst assume an open tube's inner flow turns at its inlet.
+Nothing measured supports OpenRocket's quarter length or its extra lift. hpr's own centre for
+this rocket is unmeasured too: its tubes (`A = 0.32`) are longer than every ring Fletcher
+measured. With his `A = 1/3` ring left out, their centre comes from hpr's line from `A = 2/3` to
+the leading edge. Placed as his thick `A = 1/3` ring's instead, it would give a margin of 0.29.
+Neither code has been checked against a measured tube-fin rocket, so which margin is nearer is
+open ([#228](https://github.com/nrdptel/hpr-sim/issues/228)). Until then, check a tube-fin design in
+both programs and treat the smaller of the two margins as the more cautious estimate. It is not
+a bound: the thick-ring reading above gives a smaller one still.
 
 **What it leaves out:**
 
-- How the body and the tubes change each other's flow: no interference factor is applied.
+- How the body and the tubes change each other's flow. Slender-body theory predicts that they
+  raise each other's lift, but hpr applies no interference factor
+  ([#234](https://github.com/nrdptel/hpr-sim/issues/234)).
 - The gaps between tubes and body, and the drag where they meet.
 - How the flow through a tube develops, or chokes.
 - A thin tube's measured centre of pressure.
 
 The rocket's own crossflow, `R²/s²` around a tube `s` from its axis, turns with twice the roll
 angle. It sums to zero over three or more tubes evenly spaced, which is why the model takes three
-or more. That is a derivation, not a measurement.
+or more. That is a first-order derivation, not a measurement: it takes the body's flow at each
+tube's centre and leaves out the rest of their effect on each other.
 
 ## The normal force from RASAero II
 
@@ -4670,3 +4749,4 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
 [adr-097]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-097-a-cause-in-the-drag-sized-by-hpr-flying-openrockets-drag-2026-09-28
 [adr-099]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-099-tube-fins-flown-as-ring-wings-2026-09-28
+[adr-102]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-102-tube-fins-centre-of-pressure-measured-against-openrocket-l19s-bar-not-met-the-gap-pinned-2026-09-28
