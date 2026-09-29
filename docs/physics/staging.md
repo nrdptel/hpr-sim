@@ -361,10 +361,10 @@ In `crates/hpr-sim/src/staging.rs` and `crates/hpr-design/src/config.rs`:
   to 1e-9 of it, launched 10° off vertical.
 - `an_air_start_lights_at_its_time_and_burns_on_its_own_clock`: a motor lit at 3 s, loaded until
   then, burns out at 3 s plus its burn time.
-- `staging_refuses_what_it_cannot_fly`: a drag table or a drag model past a powered separation, a separation
-  timed while the booster burns, a delay that is negative or not a number, a booster with nothing
-  open at the split, a separation that could never fire, and a powered separation after the
-  sustainer's canopy opened.
+- `staging_refuses_what_it_cannot_fly`: a drag table or a drag model past a powered separation, a
+  separation timed while the booster burns, a delay that is negative or not a number, a booster
+  with nothing open at the split, a separation that could never fire, and a powered separation
+  after the sustainer's canopy opened.
 - `ignition_times_follow_their_events`, `bad_ignitions_are_refused`.
 
 [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25

@@ -415,8 +415,9 @@ impl Simulation {
     /// ([`hpr_aero::custom`]). The model gives the zero-lift drag coefficient on the rocket's
     /// reference area, not rescaled; the flight scales it for the angle of attack, and the
     /// normal force, centre of pressure, roll and damping stay hpr's. A model's own errors reach
-    /// the caller as [`SimError::Aero`] around [`hpr_aero::AeroError::DragModel`]. Like a table, the model is the whole stack's: a flight with a powered
-    /// separation refuses it at the separation, since the sustainer would fly on without it.
+    /// the caller as [`SimError::Aero`] around [`hpr_aero::AeroError::DragModel`]. Like a table,
+    /// the model is the whole stack's: a flight with a powered separation refuses it at the
+    /// separation, since the sustainer would fly on without it.
     ///
     /// # Examples
     ///

@@ -642,6 +642,26 @@ fn a_drag_model_is_flown_in_place_of_hprs_drag() {
         .unwrap();
     assert_eq!(last, own);
 
+    // One shared model flies two builders' flights the same.
+    let shared: std::sync::Arc<dyn hpr_aero::DragModel> = std::sync::Arc::new(ConstantDrag(0.5));
+    let other = Flight::builder(&rocket, &environment, 1.8);
+    assert_eq!(
+        launch
+            .clone()
+            .shared_drag_model(shared.clone())
+            .fly()
+            .unwrap(),
+        other.shared_drag_model(shared).fly().unwrap()
+    );
+    assert_eq!(
+        launch
+            .clone()
+            .shared_drag_model(std::sync::Arc::new(ConstantDrag(0.5)))
+            .fly()
+            .unwrap(),
+        by_model
+    );
+
     // A model that answers nonsense stops the flight, named.
     let error = launch.drag_model(ConstantDrag(-1.0)).fly().unwrap_err();
     assert!(

@@ -110,8 +110,15 @@ impl FlightBuilder<'_> {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn drag_model(mut self, model: impl DragModel + 'static) -> Self {
-        self.drag_model = Some(Arc::new(model));
+    pub fn drag_model(self, model: impl DragModel + 'static) -> Self {
+        self.shared_drag_model(Arc::new(model))
+    }
+
+    /// As [`FlightBuilder::drag_model`], with a model already shared: one model, a large table
+    /// say, flown by many builders without a copy for each.
+    #[must_use]
+    pub fn shared_drag_model(mut self, model: Arc<dyn DragModel>) -> Self {
+        self.drag_model = Some(model);
         self
     }
 
