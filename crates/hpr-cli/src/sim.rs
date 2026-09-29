@@ -941,7 +941,8 @@ fn in_fall(peak: &Peak) -> &'static str {
 }
 
 /// A recording file's contents. The maps draw no landing point: with no recovery device flown,
-/// where the rocket came down is not a prediction, and a pin on a map reads as one.
+/// where the rocket came down is not a prediction, and a pin on a map reads as one. Once
+/// `hpr sim` flies recovery (#240), a flight that deploys one should keep its landings.
 fn contents(
     format: ExportFormat,
     recorder: &Recorder,

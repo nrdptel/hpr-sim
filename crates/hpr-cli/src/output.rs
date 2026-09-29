@@ -547,7 +547,7 @@ pub enum ExportFormat {
     Json,
     /// `.parquet`: Apache Parquet.
     Parquet,
-    /// `.geojson`: the centre of mass's path on the Earth, with the flight's landmarks.
+    /// `.geojson`: the centre of mass's path on the Earth.
     Geojson,
     /// `.kml`: the same path, for Google Earth.
     Kml,

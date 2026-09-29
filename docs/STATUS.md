@@ -144,7 +144,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   past Mach 0.3. In wind, a slow rocket's drift rests on body lift: Juno III's apogee drift is 245 m
   in hpr, 240 to 194 m over Galejs's `K` 1.0 to 1.5 (oracle corrections, #1196).
 - Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α` (a fall
-  with no recovery glides tail-first, #241). Recovery
-  omits canopy overshoot, opening-load factor, added mass and airframe drag; attitude freezes at
+  with no recovery glides tail-first, #241; its ascent peaks unshown, #243); two apogees on a
+  near-flat rail (#242). Recovery omits canopy overshoot, opening-load factor, added mass and airframe drag; attitude freezes at
   deployment, streamer pleats unmodelled (+58% on Kidwell's), tumble reads +19%. Reports pinned
   to six decimals or 1e-7 relative; no oracle runs in CI.

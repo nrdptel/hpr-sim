@@ -205,8 +205,9 @@ landing               310.4 m from the pad at 28.71 s, at 70.3 m/s: with no reco
 
 <!-- cli: end -->
 
-It climbs about 4% higher than the first example, not 8%: the lean and the wind tip its climb away
-from the vertical.
+It climbs about 4% higher than the first example, not 8%: the rocket turns into the wind as it
+climbs, and the rail already leans that way, so its climb tips away from the vertical. The wind
+does most of it.
 
 ### The motor and the configuration
 
@@ -238,8 +239,8 @@ from the vertical.
 ### Exporting the recording
 
 `--export FILE` writes the flight's recording: every quantity hpr tracks, every 0.01 s (set it
-with `--interval`, down to 0.001 s), and at every event. The file's extension picks the format; repeat `--export`
-for several files. `hpr sim` won't write over a file it reads.
+with `--interval`, down to 0.001 s), and at every event. The file's extension picks the format;
+repeat `--export` for several files. `hpr sim` won't write over a file it reads.
 
 | extension | what it holds |
 |---|---|
@@ -249,8 +250,9 @@ for several files. `hpr sim` won't write over a file it reads.
 | `.geojson` | the rocket's path over the Earth, for web maps |
 | `.kml` | the same path, for Google Earth |
 
-The maps mark no landing point: with no recovery device flown, where the rocket comes down is not
-a prediction, and neither is the path's end after apogee.
+The maps draw the whole path but mark no landing point: with no recovery device flown, the path
+after apogee and where it ends are not predictions.
+
 [Exporting a flight](exporting-a-flight.md) says what each column and field means.
 
 ### What `hpr sim` doesn't fly yet

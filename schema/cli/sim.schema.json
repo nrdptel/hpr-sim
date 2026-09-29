@@ -253,7 +253,7 @@
           "const": "parquet"
         },
         {
-          "description": "`.geojson`: the centre of mass's path on the Earth, with the flight's landmarks.",
+          "description": "`.geojson`: the centre of mass's path on the Earth.",
           "type": "string",
           "const": "geojson"
         },

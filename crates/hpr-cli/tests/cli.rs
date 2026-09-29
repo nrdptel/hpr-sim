@@ -1272,7 +1272,7 @@ fn sim_refuses_a_motor_it_cant_place() {
 }
 
 /// A motor file's reading caveats and the design's warnings come out as warnings, each saying
-/// where it came from; a design error is refused unless accepted.
+/// where it came from.
 #[test]
 fn sim_passes_on_what_the_readers_and_checks_found() {
     let folder = tempfile::tempdir().unwrap();
@@ -1400,4 +1400,28 @@ fn the_guides_launch_figures_hold() {
     assert!((0.075..0.085).contains(&high), "{high}");
     let north = apogee(&["--latitude", "45"]) / sea - 1.0;
     assert!(north.abs() < 0.002, "{north}");
+
+    // The second example, from Spaceport America on a leaning rail in a wind, climbs about 4%
+    // higher, the wind costing more than the lean.
+    let site = [
+        "--latitude",
+        "32.99",
+        "--longitude",
+        "-106.97",
+        "--elevation",
+        "1400",
+        "--rail-length",
+        "3",
+    ];
+    let lean = ["--inclination", "85", "--heading", "270"];
+    let wind = ["--wind", "5", "--wind-from", "270"];
+    let spaceport = apogee(&[&site[..], &lean, &wind].concat()) / sea - 1.0;
+    assert!((0.035..0.045).contains(&spaceport), "{spaceport}");
+    let calm = apogee(&[&site[..], &lean].concat());
+    let upright = apogee(&[&site[..], &wind].concat());
+    let vertical = apogee(&site);
+    assert!(
+        vertical - upright > vertical - calm,
+        "{vertical} {upright} {calm}"
+    );
 }
