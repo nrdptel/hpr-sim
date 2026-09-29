@@ -12,8 +12,8 @@ design's flight logs and photographs ([the container](#the-container-hprz)).
 **What works today:** `hpr convert` turns a `.ork` into a `.hpr` or `.hprz` and back, and `hpr sim`
 flies a `.hpr` or `.hprz` as it flies the `.ork` ([reading and writing one](#reading-and-writing-one)).
 A document of the older version 0.1 is migrated when it is read. Rust programs can do all of this
-through the `hpr_format` library. Generated TypeScript and Python types come with the format's next
-step, [M3.3c](../decisions-and-roadmap.md#m3-3c).
+through the `hpr_format` library, and TypeScript and Python programs through types generated from
+the schema, each with a reader that checks a document ([TypeScript and Python](#typescript-and-python)).
 
 **How far to trust it.** Converting keeps everything hpr read from the `.ork` except the reader's
 warnings. hpr's checks use 75 `.ork` files and read 73. Each of the 73 goes `.ork` → `.hpr` →
@@ -249,6 +249,151 @@ be `rocket.ork` or a folder's, and every embedded thrust curve must be among the
 Version 0.1's schema stays beside it,
 [`hpr-design-0.1.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/hpr-design-0.1.schema.json).
 
+## TypeScript and Python
+
+Programs in TypeScript (or JavaScript) and Python can read a document with types generated from the
+schema. Each language gets one file, with a reader that checks a document against the schema.
+Three limits come first:
+
+- The readers check what the schema checks, not everything hpr does ([how far to trust
+  them](#how-far-to-trust-the-readers)).
+- They read version 0.2 only, which is a draft, so copy the file again when hpr's format version
+  changes.
+- They read designs; they don't fly them. Python bindings for flying come in a later milestone,
+  [M4.3](../decisions-and-roadmap.md#m4-3), not started.
+
+| language | file | needs |
+|---|---|---|
+| TypeScript | [`schema/format/typescript/hpr-design.ts`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/typescript/hpr-design.ts) | Node.js 22.18 or later to run it as it is, or a TypeScript compiler with `target` ES2020 or later; tested with Node.js 24 and TypeScript 7.0.2 |
+| Python | [`schema/format/python/hpr_design.py`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/python/hpr_design.py) | Python 3.11 or later (macOS's own `python3` is 3.9: check `python3 --version`), nothing outside its standard library; tested with Python 3.12 and the type checker mypy 2.3.1 |
+
+**Using one in your project.** Neither is a package on npm or PyPI yet: copy the one file into your
+source tree. Both are `MIT OR Apache-2.0`, like the rest of hpr.
+
+- TypeScript: the file is an ES module, so your `package.json` needs `"type": "module"`. Where the
+  compiler only checks types (`noEmit`, as with a bundler or with Node.js running TypeScript as it
+  is), import `./hpr-design.ts` with `allowImportingTsExtensions`, as hpr's tests do. Where it
+  writes JavaScript, import `./hpr-design.js` under `module: nodenext`; hpr's tests don't try that.
+- Python: put `hpr_design.py` beside your code or on `PYTHONPATH`.
+- A reader takes a `.hpr` file's text. For a `.hprz`, unzip it and read the `design.hpr` inside
+  ([the container](#the-container-hprz)).
+
+**What the file holds.** A type for every object in the schema, named as the schema names it, with
+the schema's descriptions as its comments: `DesignFile` for a whole document, `Rocket`, `Component`,
+`NoseCone` and so on. In TypeScript they are interfaces and unions; in Python, `TypedDict`s (typed
+dictionaries) and `Literal`s. A document stays plain JSON data, objects and arrays (dictionaries
+and lists in Python), so a program can write it back with its own JSON writer. hpr reads the
+result as the same design, but numbers may be spelled differently (`1850` for `1850.0`).
+`hpr convert edited.hpr tidy.hpr` writes it back in hpr's own spelling; replace the original with
+`tidy.hpr` so diffs in git stay small. To check a document your program built or changed, pass
+its text through the reader: `readDesign(JSON.stringify(design))` or
+`read_design(json.dumps(design))`.
+
+**The reader**, `readDesign` in TypeScript and `read_design` in Python, takes a document's text and
+checks it against the schema, which is copied into the file, before handing it back typed. It
+refuses, with a `DesignFormatError`:
+
+- a document of another version: `hpr convert` rewrites an older one, and a newer one needs the file
+  from a newer hpr;
+- a missing key, an unknown key, or a value of the wrong type, naming where, for example
+  `$.rocket.stages[0].components[0].part.nose_cone: has no "length_m", which it needs`;
+- a misspelt fixed word, listing the words allowed there, for example
+  `…position.from: is "topp", not "top", "middle", "bottom" or "after"`.
+
+This example reads each document it is given and counts what it holds:
+
+<!-- quote: schema/format/typescript/read-design.ts -->
+```ts
+// Reads each design document named on the command line with the generated types, and prints a
+// line for each: what it holds, or why the reader refused it. Exits 1 if it refused any.
+//
+//     node schema/format/typescript/read-design.ts design.hpr [more.hpr ...]
+//
+// Node.js 22.18 or later runs TypeScript as it is; an older one needs --experimental-strip-types.
+import { readFileSync } from "node:fs";
+import { DesignFormatError, readDesign, type Component } from "./hpr-design.ts";
+
+/** How many parts `components` hold, counting the parts inside parts. */
+function count(components: Component[]): number {
+  return components.reduce((sum, c) => sum + 1 + count(c.children ?? []), 0);
+}
+
+let refused = 0;
+for (const path of process.argv.slice(2)) {
+  try {
+    const design = readDesign(readFileSync(path, "utf8"));
+    const stages = design.rocket.stages;
+    const parts = stages.reduce((sum, stage) => sum + count(stage.components), 0);
+    const configurations = design.motors.configurations.length;
+    console.log(
+      `read ${path}: stages ${stages.length}, parts ${parts}, motor configurations ${configurations}`,
+    );
+  } catch (error) {
+    if (!(error instanceof DesignFormatError)) {
+      throw error;
+    }
+    refused += 1;
+    console.log(`refused ${path}: ${error.message}`);
+  }
+}
+process.exitCode = refused === 0 ? 0 : 1;
+```
+
+The Python one,
+[`read_design.py`](https://github.com/nrdptel/hpr-sim/blob/main/schema/format/python/read_design.py),
+does the same. From a checkout of the repository, with `hpr` installed ([the command
+line](../cli.md)), convert one of Loft's public demonstration designs and read it:
+
+```bash
+hpr convert validation/fixtures/ork/loft-demo/demo-dual-deploy.ork demo-dual-deploy.hpr
+node schema/format/typescript/read-design.ts demo-dual-deploy.hpr
+python3 schema/format/python/read_design.py demo-dual-deploy.hpr
+```
+
+Each prints:
+
+<!-- quote: schema/format/read-design.output.txt -->
+```text
+read demo-dual-deploy.hpr: stages 1, parts 7, motor configurations 1
+```
+
+### How far to trust the readers
+
+Both are checked on every change:
+
+- `cargo xtask format` writes both files from the schema, and a test fails when either is stale.
+- Both readers read the 17 public designs' documents ([checked on real
+  designs](#checked-on-real-designs)), plus the committed version 0.1 document after hpr migrates
+  it to 0.2. They print the same counts of stages, parts and motor configurations as a count of the
+  same JSON in Rust.
+- Each language's own JSON writer (`JSON.stringify`, Python's `json.dumps`) writes the 18
+  documents back out, and hpr reads each as the same design.
+- Tests make 4,892 altered copies of two of those documents: a key added or removed, an array
+  lengthened or shortened, or a value replaced by another (a different type, an out-of-range
+  number, an unknown word, or a string with a final newline). The schema refuses 4,114 of them. Each reader takes a copy exactly when a separate schema checker, the Rust `jsonschema`
+  library, does.
+- The TypeScript compiler (at `target` ES2020) and mypy, both at their strictest, accept the 18
+  documents written out as values of type `DesignFile`, and the two examples, and refuse a
+  document with a misspelt fixed word.
+- Like hpr, both refuse a number too large for a 64-bit float (`1e400`), a lone UTF-16 surrogate
+  (`"\ud800"`), and arrays nested 128 levels deep. Tests hold each to hpr's own reader.
+
+A reader checks what the schema says, so it shares the schema's blind spots: a document it takes
+can still be refused by hpr for the [few rules the schema can't express](#the-schema). The two
+readers also differ from hpr on three details of JSON:
+
+| in the text | hpr | TypeScript reader | Python reader |
+|---|---|---|---|
+| a key twice in one object | refused | takes the last | refused |
+| a whole number written with a point or an exponent (`2.0`, `3e0`) | refused | taken as `2`, `3` | refused |
+| a stage number of 2<sup>53</sup> or more | read | refused, since JavaScript would round it | read |
+
+Each row of the table, and each refusal in the list above, is tested against hpr's own reader.
+
+The other way round, hpr reads one kind of document the readers refuse: one whose
+`provenance.source.sha256` isn't 64 hexadecimal digits, which the schema refuses. That is a bug in
+hpr's reader, open as [#253](https://github.com/nrdptel/hpr-sim/issues/253).
+
 ## Checked on real designs
 
 The `.ork` reader and writer are checked on 75 `.ork` files, 73 of which hpr reads
@@ -362,7 +507,8 @@ version hpr's checks pin, where `.rpy` came with version 1.10.0
 
 ## What is not there yet
 
-- **Generated TypeScript and Python types**: [M3.3c](../decisions-and-roadmap.md#m3-3c).
+- **The generated types aren't on npm or PyPI.** Copy the file you need from the repository
+  ([TypeScript and Python](#typescript-and-python)).
 - **Reading `.rkt`, `.CDX1` or `.rpy`**: no milestone yet.
 - **The motors are held twice**: under `motors.configurations`, every configuration in the file as
   the `.ork` holds it, and under `rocket.configurations`, the ones that fly, each motor ready to

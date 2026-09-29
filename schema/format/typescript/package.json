@@ -1,0 +1,7 @@
+{
+  "name": "hpr-design-types",
+  "private": true,
+  "description": "TypeScript types for the hpr design format, generated from its JSON Schema.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module"
+}

@@ -32,6 +32,7 @@ mod designs;
 mod docs;
 mod examples;
 mod format;
+mod format_types;
 mod layering;
 mod ork;
 mod ork_corpus_flights;

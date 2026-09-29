@@ -97,6 +97,10 @@ cargo deny check                        # dependency licenses, advisories and so
 cargo xtask site                        # build the documentation site and check its links
 ```
 
+`cargo test` also runs the design format's generated TypeScript and Python readers, so it needs
+Node.js 22.18 or later and Python 3.11 or later on the path
+([TypeScript and Python](docs/format/hpr.md#typescript-and-python)).
+
 `cargo xtask site` needs mdBook 0.5: `cargo install mdbook --version 0.5.4 --locked` (the version
 CI uses) or `brew install mdbook`. The site is built from `docs/` into `target/site`: open
 `target/site/index.html`, or read [`docs/start-here.md`](docs/start-here.md) on GitHub.

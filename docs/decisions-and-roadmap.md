@@ -129,6 +129,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-110: M3.2b: OpenRocket flies the export; only counts are published][adr-110] | OpenRocket 24.12 tries to fly each of the 75 `.ork` files hpr's checks use twice, as written and as hpr writes it back out, and only counts are committed. Every design it opens as written must open as exported, a design it refuses must be refused for the same reason, and every configuration flown both ways must reach the original's apogee within 0.5% ([Checked in OpenRocket](format/ork.md#checked-in-openrocket)) |
 | [ADR-111: M3.3: the hpr design format, its extensions, versions and crate][adr-111] | [M3.3](#m3-3) is split: the JSON document first ([M3.3a](#m3-3a)), then the zip container, migrations and the comparison ([M3.3b](#m3-3b)), then generated types ([M3.3c](#m3-3c)). A design is a `.hpr` file, the container a `.hprz`. A document names its format and a `major.minor` version, checked first; a key its version doesn't define is refused, not dropped. The document holds the design as the `.ork` reader models it, with the source file's other files, so `hpr-format` builds on `hpr-io` ([The hpr design format](format/hpr.md)) |
 | [ADR-112: M3.3b: the `.hprz` container and migrations][adr-112] | Version 0.2 renames the source file's other files `source_files`, so "attachment" means a file in a `.hprz`, and records why a `.ork`'s airframe wasn't read as written, which the `.ork` written from a document can't say. A change that stops old documents reading takes a new version and a migration, tested on a committed older document. A `.hprz` is a zip whose first entry is the `.hpr`; attachment names are relative paths, refused otherwise. `hpr convert` and `hpr sim` take all three design formats ([The hpr design format](format/hpr.md)) |
+| [ADR-113: M3.3c: TypeScript and Python types][adr-113] | xtask generates the types and a reader for each language from the schema, not a third-party generator. A reader checks a document against the schema embedded in its file, and tests hold both readers to a separate schema checker on 4,892 altered documents. Not on npm or PyPI ([TypeScript and Python](format/hpr.md#typescript-and-python)) |
 
 ## The roadmap
 
@@ -319,10 +320,10 @@ missing or its status disagrees.
 | <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | done |
 | <a id="m3-2a"></a>[M3.2a][phase-2] | The writer: a design written back out as a `.ork`, reading back as the same design ([ADR-109][adr-109], [Writing a `.ork`](format/ork.md#writing-a-ork-back-out)) | done |
 | <a id="m3-2b"></a>[M3.2b][phase-2] | OpenRocket 24.12 loading and flying the written files, within 0.5% of the original's apogee ([ADR-110][adr-110], [Checked in OpenRocket](format/ork.md#checked-in-openrocket)) | done |
-| <a id="m3-3"></a>[M3.3][phase-2] | hpr's own open design file format | not yet done |
+| <a id="m3-3"></a>[M3.3][phase-2] | hpr's own open design file format | done |
 | <a id="m3-3a"></a>[M3.3a][phase-2] | The document: a design as canonical JSON with its schema, every corpus design through it and back to `.ork` flying to the same apogee ([ADR-111][adr-111], [The hpr design format](format/hpr.md)) | done |
 | <a id="m3-3b"></a>[M3.3b][phase-2] | The zip container (`.hprz`), the first migration (0.1 to 0.2), the comparison with other formats, and `hpr convert` and `hpr sim` taking `.hpr` and `.hprz` ([ADR-112][adr-112], [The hpr design format](format/hpr.md)) | done |
-| <a id="m3-3c"></a>[M3.3c][phase-2] | TypeScript and Python types generated from the schema | not yet done |
+| <a id="m3-3c"></a>[M3.3c][phase-2] | TypeScript and Python types generated from the schema, each with a reader that checks a document ([ADR-113][adr-113], [TypeScript and Python](format/hpr.md#typescript-and-python)) | done |
 | <a id="m4-3"></a>[M4.3][phase-2] | Python bindings | not yet done |
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
@@ -557,6 +558,7 @@ is the milestone that added or will add that test.
 [adr-110]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-110-m32b-openrocket-flies-the-export-only-counts-are-published-2026-09-29
 [adr-111]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-111-m33-the-hpr-design-format-its-extensions-versions-and-crate-2026-09-29
 [adr-112]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-112-m33b-the-hprz-container-and-migrations-2026-09-29
+[adr-113]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-113-m33c-typescript-and-python-types-generated-from-the-schema-2026-09-29
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
