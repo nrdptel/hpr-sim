@@ -1,8 +1,8 @@
 {
   "generated_by": "cargo xtask census --accept",
-  "reason": "M2.2e9 (ADR-099): tube fins have a cited aerodynamic model, so the Tube fin rocket flies. Its apogee is +6.95% from OpenRocket's, sized as hpr's own drag: on OpenRocket's drag curve hpr lands within 0.03%. Its margin is 1.08 cal below OpenRocket's, whose tube-fin normal force is 1.6 times the slender-body bound and whose centre is at a quarter chord.",
+  "reason": "M2.2e10 (ADR-100): C04/1 flies now, its never-lit motor carried unlit and loaded as OpenRocket flies it",
   "changes": [
-    "flown: calm flights of OpenRocket's examples: Tube fin rocket / f58f38e4-0cb4-45b3-9899-8b5e561d1b73 (the case), not flown before: hpr flies it now (L85); apogee +6.950982% (over the bar), launch_mass +0.000222% (within the bar), margin -1.076753 cal (over the bar), max_speed +6.402283% (over the bar), rod_clearance_cg +0.002012 cal (within the bar), rod_clearance_mass +0.051963% (within the bar)"
+    "flown: calm flights of the private designs: C04/1 (the case), not flown before: hpr flies it now (L85); apogee +0.878152% (within the bar), launch_mass -0.001000% (within the bar), margin +0.022318 cal (within the bar), max_speed +1.372500% (within the bar), rod_clearance_cg -0.017019 cal (within the bar), rod_clearance_mass +0.000000% (within the bar)"
   ],
   "summaries": [
     {
@@ -136,69 +136,69 @@
     {
       "group": "open_rocket_library",
       "reference": "OpenRocket 24.12",
-      "cases": 34,
-      "not_flown": 3,
+      "cases": 35,
+      "not_flown": 2,
       "regimes": {
-        "subsonic": 27,
+        "subsonic": 28,
         "transonic": 6,
         "supersonic": 1
       },
-      "rows": 207,
+      "rows": 212,
       "standings": {
-        "within_bar": 202,
+        "within_bar": 208,
         "over_bar": 2,
-        "not_flown": 3
+        "not_flown": 2
       },
       "bars": [
         {
           "metric": "apogee",
           "scale": 5.0,
           "unit": "percent",
-          "within": 33,
-          "compared": 34
+          "within": 34,
+          "compared": 35
         },
         {
           "metric": "max_speed",
           "scale": 5.0,
           "unit": "percent",
-          "within": 33,
-          "compared": 34
+          "within": 34,
+          "compared": 35
         },
         {
           "metric": "margin",
           "scale": 0.5,
           "unit": "calibre",
-          "within": 34,
-          "compared": 34
+          "within": 35,
+          "compared": 35
         },
         {
           "metric": "launch_mass",
           "scale": 1.0,
           "unit": "percent",
-          "within": 34,
-          "compared": 34
+          "within": 35,
+          "compared": 35
         },
         {
           "metric": "rod_clearance_mass",
           "scale": 1.0,
           "unit": "percent",
-          "within": 34,
-          "compared": 34
+          "within": 35,
+          "compared": 35
         },
         {
           "metric": "rod_clearance_cg",
           "scale": 0.5,
           "unit": "calibre",
-          "within": 34,
-          "compared": 34
+          "within": 35,
+          "compared": 35
         }
       ],
       "apogee_percent": {
-        "count": 34,
+        "count": 35,
         "min": -4.844469,
         "max": 13.603657,
-        "mean_absolute": 1.7337613235294118,
-        "within": 33
+        "mean_absolute": 1.7093153428571428,
+        "within": 34
       }
     },
     {
@@ -7117,13 +7117,72 @@
       {
         "group": "open_rocket_library",
         "case": "C04/1",
-        "metric": "",
+        "metric": "apogee",
+        "difference": 0.878152,
+        "percent": 0.878152,
+        "unit": "percent",
+        "scale": 5.0,
+        "slack": 0.005,
+        "standing": "within_bar",
+        "regime": "subsonic"
+      },
+      {
+        "group": "open_rocket_library",
+        "case": "C04/1",
+        "metric": "launch_mass",
+        "difference": -0.001,
+        "percent": -0.001,
+        "unit": "percent",
+        "scale": 1.0,
+        "slack": 0.001,
+        "standing": "within_bar",
+        "regime": "subsonic"
+      },
+      {
+        "group": "open_rocket_library",
+        "case": "C04/1",
+        "metric": "margin",
+        "difference": 0.022318,
+        "unit": "calibre",
+        "scale": 0.5,
+        "slack": 0.0005,
+        "standing": "within_bar",
+        "regime": "subsonic"
+      },
+      {
+        "group": "open_rocket_library",
+        "case": "C04/1",
+        "metric": "max_speed",
+        "difference": 1.3725,
+        "percent": 1.3725,
+        "unit": "percent",
+        "scale": 5.0,
+        "slack": 0.005,
+        "standing": "within_bar",
+        "regime": "subsonic"
+      },
+      {
+        "group": "open_rocket_library",
+        "case": "C04/1",
+        "metric": "rod_clearance_cg",
+        "difference": -0.017019,
+        "unit": "calibre",
+        "scale": 0.5,
+        "slack": 0.0005,
+        "standing": "within_bar",
+        "regime": "subsonic"
+      },
+      {
+        "group": "open_rocket_library",
+        "case": "C04/1",
+        "metric": "rod_clearance_mass",
         "difference": 0.0,
-        "unit": "metric",
-        "scale": 0.0,
-        "slack": 0.0,
-        "standing": "not_flown",
-        "regime": "unknown"
+        "percent": 0.0,
+        "unit": "percent",
+        "scale": 1.0,
+        "slack": 0.001,
+        "standing": "within_bar",
+        "regime": "subsonic"
       },
       {
         "group": "open_rocket_library",

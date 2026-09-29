@@ -12,18 +12,29 @@
 //! | `automatic` plus `d`, in a stage above | as `ejectioncharge` |
 //! | `ejectioncharge` plus `d` | `x + d` after the burnout of the stage below's motor, whose ejection delay is `x` |
 //! | `burnout` plus `d` | `d` after the burnout of the stage below's motor |
+//! | `never` | never ([`hpr_design::Ignition::Never`]) |
+//! | `burnout` or `ejectioncharge`, in the bottom stage | never: it has no stage below |
+//! | `ejectioncharge` or `automatic`, the stage below's motor plugged | never: that fires no charge |
 //!
 //! "The stage below" is the next stage aft, and its motors must sit in one mount (one tube or one
-//! cluster), so that its first burnout is that mount's. A plugged motor below has no ejection
-//! charge, so a motor lit by it never lights; `never` is the same. hpr has no motor that is never
-//! lit on purpose, so those configurations are not flown, nor is one whose stage below holds no
-//! motor, or motors in more than one mount, nor one with a negative delay.
+//! cluster), so that its first burnout is that mount's. A motor that never lights is carried
+//! loaded, with no thrust, as OpenRocket 24.12 flies it ([M2.2e10][m2-2e10]), and so is one that
+//! waits on it, which has no burnout or charge to wait on (inferred: no probe chains two). `unlit_motors.py` sets the booster of OpenRocket's two-stage example so
+//! that it, or the sustainer waiting on its plugged charge, never lights: OpenRocket lights only
+//! the other motor and loses only that one's propellant. A configuration is not flown when a
+//! motor waits on a stage below that holds no motor, or motors in more than one mount, or on the
+//! charge of a motor below that states no ejection delay, or has a negative delay, or when no
+//! motor of it lights at all.
 //!
 //! **Separation.** A stage's `<separationevent>` says when it drops away from the stage ahead of
 //! it. hpr flies one separation, as a [`Staging`], when its time is known before the flight (a time
 //! after launch, or a motor's burnout or ejection charge) and the part ahead of it still has a motor
 //! to burn then, burning or due to light: that part is a sustainer, and hpr flies it on
 //! ([Staging][staging]). The motors of the part that drops away must have burned out by then.
+//!
+//! A separation at its own motor's burnout or ejection charge, when that motor never lights, never
+//! comes, as in the probes, and is left out. One at the ignition of a motor that never lights, or
+//! at launch (hpr's flight fires a separation only once the rocket is off the rod), is not flown.
 //!
 //! A separation at `apogee` or at a height on the way down can only come at or after apogee, so the
 //! climb is the whole stack's in both programs, as long as every motor is spent by then, and the
@@ -42,6 +53,7 @@
 //! flies one.
 //!
 //! [m1-9c]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9c
+//! [m2-2e10]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e10
 //! [adr-076]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-076-a-ork-files-ignitions-and-one-powered-separation-flown-against-openrocket-2026-09-25
 //! [adr-056]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-056-a-ork-designs-recovery-and-separation-read-as-written-with-openrockets-words-measured-2026-09-21
 //! [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
@@ -133,32 +145,36 @@ pub(super) fn ignition(
             hpr_design::Ignition::Time { time_s }
         }
     };
-    let below = || -> Result<&OrkMotor, String> {
+    // The stage below's motor, or `None` in the bottom stage, which has no stage below: its event
+    // never comes, and OpenRocket flies the motor unlit.
+    let below = || -> Result<Option<&OrkMotor>, String> {
         if motor.stage >= last_stage {
-            return Err(format!(
-                "it lights at `{}` of the stage below, and stage {} is the bottom stage",
-                event.as_str(),
-                motor.stage
-            ));
+            return Ok(None);
         }
-        one_mount(motors, motor.stage + 1)?.ok_or_else(|| {
-            format!(
-                "it lights at `{}` of the stage below, and stage {} holds no motor",
-                event.as_str(),
-                motor.stage + 1
-            )
-        })
+        one_mount(motors, motor.stage + 1)?
+            .ok_or_else(|| {
+                format!(
+                    "it lights at `{}` of the stage below, and stage {} holds no motor",
+                    event.as_str(),
+                    motor.stage + 1
+                )
+            })
+            .map(Some)
     };
     let ejection = || -> Result<hpr_design::Ignition, String> {
-        let below = below()?;
+        let Some(below) = below()? else {
+            return Ok(hpr_design::Ignition::Never);
+        };
         match below.delay {
             Some(Delay::Seconds(charge_s)) => Ok(hpr_design::Ignition::Burnout {
                 mount: below.mount.clone(),
                 delay_s: delay(charge_s, "ejection")? + delay_s,
             }),
+            // Plugged: no charge fires, and OpenRocket flies the motor unlit.
+            Some(Delay::Plugged) => Ok(hpr_design::Ignition::Never),
             _ => Err(format!(
-                "it lights at the ejection charge of {} in the stage below, which has none \
-                 (plugged, or no delay given), so it would never light",
+                "it lights at the ejection charge of {} in the stage below, which states no \
+                 delay",
                 below.designation
             )),
         }
@@ -167,11 +183,13 @@ pub(super) fn ignition(
         IgnitionEvent::Launch => Ok(at(delay_s)),
         IgnitionEvent::Automatic if motor.stage == last_stage => Ok(at(delay_s)),
         IgnitionEvent::Automatic | IgnitionEvent::EjectionCharge => ejection(),
-        IgnitionEvent::Burnout => Ok(hpr_design::Ignition::Burnout {
-            mount: below()?.mount.clone(),
-            delay_s,
-        }),
-        IgnitionEvent::Never => Err("it is set never to light".to_owned()),
+        IgnitionEvent::Burnout => Ok(below()?.map_or(hpr_design::Ignition::Never, |below| {
+            hpr_design::Ignition::Burnout {
+                mount: below.mount.clone(),
+                delay_s,
+            }
+        })),
+        IgnitionEvent::Never => Ok(hpr_design::Ignition::Never),
         IgnitionEvent::Other(word) => Err(format!("its ignition event `{word}` is not known")),
     }
 }
@@ -185,20 +203,22 @@ fn burn_s(motor: &OrkMotor) -> Result<f64, String> {
         .ok_or_else(|| format!("{} has no thrust curve", motor.designation))
 }
 
-/// When each of `motors` lights, s after launch, given their ignitions `lit` in the same order.
-/// Every one is known before the flight: a `.ork` lights a motor at a time, or at the burnout of a
-/// motor in the stage below, whose time is known in turn.
+/// When each of `motors` lights, s after launch, given their ignitions `lit` in the same order:
+/// `None` for one that never lights ([`never_lit`]). Every other one is known before the flight: a
+/// `.ork` lights a motor at a time, or at the burnout of a motor in the stage below, whose time is
+/// known in turn.
 fn ignition_times_s(
     motors: &[OrkMotor],
     lit: &[hpr_design::Ignition],
     burns_s: &[f64],
-) -> Result<Vec<f64>, String> {
+) -> Result<Vec<Option<f64>>, String> {
+    let never = never_lit(motors, lit);
     let mut times: Vec<Option<f64>> = vec![None; motors.len()];
     // Each pass settles at least one motor while any can be, so this many passes settle them all.
     for _ in 0..motors.len() {
         let mut settled = false;
         for index in 0..motors.len() {
-            if times[index].is_some() {
+            if times[index].is_some() || never[index] {
                 continue;
             }
             let time = match &lit[index] {
@@ -219,10 +239,64 @@ fn ignition_times_s(
             break;
         }
     }
-    times
+    if (0..motors.len()).any(|index| times[index].is_none() && !never[index]) {
+        return Err("a motor's ignition waits on one whose time is not known".to_owned());
+    }
+    Ok(times)
+}
+
+/// `lit`, the ignitions of `motors` in the same order, with each motor that never lights
+/// ([`never_lit`]) written as [`hpr_design::Ignition::Never`]; or why the configuration can't be
+/// flown: no motor of it lights.
+pub(super) fn never_when_waiting_on_never(
+    motors: &[OrkMotor],
+    lit: Vec<hpr_design::Ignition>,
+) -> Result<Vec<hpr_design::Ignition>, String> {
+    let never = never_lit(motors, &lit);
+    if never.iter().all(|&never| never) {
+        return Err("no motor of it ever lights, so the rocket would not leave the pad".to_owned());
+    }
+    Ok(lit
         .into_iter()
-        .collect::<Option<Vec<_>>>()
-        .ok_or_else(|| "a motor's ignition waits on one that never lights".to_owned())
+        .zip(never)
+        .map(|(ignition, never)| {
+            if never {
+                hpr_design::Ignition::Never
+            } else {
+                ignition
+            }
+        })
+        .collect())
+}
+
+/// Whether each of `motors`, lit by `lit` in the same order, never lights: it is set so
+/// ([`hpr_design::Ignition::Never`]), or lit by the burnout of a mount whose motors never light,
+/// as hpr's flight lights it.
+fn never_lit(motors: &[OrkMotor], lit: &[hpr_design::Ignition]) -> Vec<bool> {
+    let mut never: Vec<bool> = lit
+        .iter()
+        .map(|ignition| *ignition == hpr_design::Ignition::Never)
+        .collect();
+    // Each pass settles at least one more link of a chain, so this many passes settle them all.
+    for _ in 0..motors.len() {
+        let mut changed = false;
+        for index in 0..motors.len() {
+            if never[index] {
+                continue;
+            }
+            if let hpr_design::Ignition::Burnout { mount, .. } = &lit[index] {
+                let mut in_mount = (0..motors.len()).filter(|&i| motors[i].mount == *mount);
+                if in_mount.all(|i| never[i]) {
+                    never[index] = true;
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    never
 }
 
 /// The ignition of the motors in `stage` as a separation's trigger `delay_s` after it, when they
@@ -257,6 +331,9 @@ fn lit_at(
             mount: mount.clone(),
             delay_s: after_s + delay_s,
         }),
+        hpr_design::Ignition::Never => Err(format!(
+            "it separates at {what}'s ignition, which never comes"
+        )),
         // The `.ork` reading never gives one, and a separation timed from the ignition that a
         // separation causes could never fire.
         _ => Err(format!(
@@ -275,6 +352,13 @@ pub(super) fn staging(
     separations: &[StageSeparation],
     stages: usize,
 ) -> Result<Option<Staging>, String> {
+    let never = never_lit(motors, lit);
+    // A stage's own motors, when it holds some and none of them ever lights: a separation at
+    // their burnout or ejection charge never comes, and OpenRocket keeps the stage on.
+    let unlit = |stage: usize| {
+        let mut own = (0..motors.len()).filter(|&i| motors[i].stage == stage);
+        own.clone().next().is_some() && own.all(|i| never[i])
+    };
     let mut active = Vec::new();
     for stage in 1..stages {
         let setting = separations
@@ -283,6 +367,7 @@ pub(super) fn staging(
             .map(|s| s.separation_in(id));
         match setting.and_then(|s| s.event.as_ref().map(|event| (event, s))) {
             Some((SeparationEvent::Never, _)) => {}
+            Some((SeparationEvent::Burnout | SeparationEvent::Ejection, _)) if unlit(stage) => {}
             Some((event, setting)) => active.push((stage, event, setting)),
             None => return Err(format!("stage {stage} states no separation event")),
         }
@@ -360,23 +445,37 @@ pub(super) fn staging(
                 .iter()
                 .position(|m| m.mount == *mount)
                 .ok_or_else(|| format!("no motor sits in mount `{mount}`"))?;
-            times_s[at] + burns_s[at] + delay_s
+            // The stage's motors light (`unlit` let through no other), so the time is known.
+            let lit_s = times_s[at]
+                .ok_or_else(|| format!("stage {stage} separates at a motor that never lights"))?;
+            lit_s + burns_s[at] + delay_s
         }
     };
     // hpr's test, when the separation fires: the part ahead has a motor burning or still to
-    // light, and the part behind has none (flight.rs).
-    let burning = |index: usize| times_s[index] + burns_s[index] > time_s;
+    // light, and the part behind has none (flight.rs). A motor that never lights does neither.
+    let burning =
+        |index: usize| times_s[index].is_some_and(|lit_s| lit_s + burns_s[index] > time_s);
     if !(0..motors.len()).any(|i| motors[i].stage < stage && burning(i)) {
         return Err(format!(
             "stage {stage} separates at {time_s} s with no motor ahead of it left to burn, which \
              can come before apogee, and hpr would fly both parts without their airframes' drag"
         ));
     }
-    if let Some(behind) = (0..motors.len()).find(|&i| motors[i].stage >= stage && burning(i)) {
+    if let Some((behind, lit_s)) = (0..motors.len())
+        .filter(|&i| motors[i].stage >= stage && burning(i))
+        .find_map(|i| times_s[i].map(|lit_s| (i, lit_s)))
+    {
         return Err(format!(
             "stage {stage} separates at {time_s} s, while {} behind it burns until {} s",
             motors[behind].designation,
-            times_s[behind] + burns_s[behind]
+            lit_s + burns_s[behind]
+        ));
+    }
+    // hpr's flight fires a separation only once the rocket is off the rod (flight.rs), so one at
+    // launch would come late.
+    if time_s <= 0.0 {
+        return Err(format!(
+            "stage {stage} separates at launch, on the pad, where hpr's flight fires no separation"
         ));
     }
     Ok(Some(Staging {

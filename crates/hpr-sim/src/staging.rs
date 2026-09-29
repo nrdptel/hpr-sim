@@ -65,13 +65,15 @@ impl Sustainer {
         // since a cluster's mount places its motor in every tube again, in the same order. Their
         // ignition times come from the stack's (a burnout can name a booster's mount, which the
         // cut has not), so each is written as lit at launch and given its time when the sustainer
-        // flies.
+        // flies; one set never to light stays so.
         let mut mounts: Vec<MountedMotor> = Vec::new();
         for &index in &motors {
             let mounted = &stack.motors[index].mounted;
             if mounts.iter().all(|m| m.mount != mounted.mount) {
                 let mut mounted = mounted.clone();
-                mounted.ignition = Ignition::Launch;
+                if mounted.ignition != Ignition::Never {
+                    mounted.ignition = Ignition::Launch;
+                }
                 mounts.push(mounted);
             }
         }
@@ -402,6 +404,108 @@ mod tests {
             result.final_sample.mass_kg,
             spent.mass_kg
         );
+    }
+
+    /// A sustainer cut at a powered separation keeps a motor set never to light unlit: beside the
+    /// lit motor, a second mount's motor set `Never` gives no ignition and lands loaded.
+    #[test]
+    fn a_sustainer_keeps_a_motor_set_never_to_light_through_the_separation() {
+        const SECOND: &str = "sustainer-second-mount";
+        let mut rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        let airframe = &mut rocket.stages[0].components[1].children;
+        let mut mount = airframe
+            .iter()
+            .find(|c| c.id == SUSTAINER_MOUNT)
+            .unwrap()
+            .clone();
+        mount.id = SECOND.to_owned();
+        airframe.push(mount);
+        let motors = &mut rocket.configurations[0].motors;
+        let mut unlit = motors
+            .iter()
+            .find(|m| m.mount == SUSTAINER_MOUNT)
+            .unwrap()
+            .clone();
+        unlit.mount = SECOND.to_owned();
+        unlit.ignition = Ignition::Never;
+        motors.push(unlit);
+        let sim = staged(&rocket, |sim| {
+            Separation::new(
+                Trigger::Burnout {
+                    motor: motor_index(sim, BOOSTER_MOUNT),
+                    delay_s: 0.5,
+                },
+                0,
+            )
+        });
+        let second = motor_index(&sim, SECOND);
+        let result = sim.run(&mut ()).unwrap();
+        assert!(result.event(EventKind::Separation).is_some());
+        assert!(result.event(EventKind::Ignition(second)).is_none());
+        let lit = time_of(
+            &result,
+            EventKind::Ignition(motor_index(&sim, SUSTAINER_MOUNT)),
+        );
+        assert!(
+            (lit - (booster_burnout_s(&sim) + 1.0)).abs() < 1e-12,
+            "{lit}"
+        );
+        let mut ignitions = sim.assembly().ignition_times_s(|_| Some(0.0));
+        assert_eq!(ignitions[second], None);
+        ignitions[motor_index(&sim, BOOSTER_MOUNT)] = Some(0.0);
+        let spent = super::super::recovery::body_mass_properties(
+            sim.assembly(),
+            (0, 0),
+            f64::MAX,
+            &ignitions,
+        );
+        assert_eq!(result.termination, Termination::GroundHit);
+        assert!(
+            (result.final_sample.mass_kg - spent.mass_kg).abs() < 1e-12 * spent.mass_kg,
+            "{} against {}",
+            result.final_sample.mass_kg,
+            spent.mass_kg
+        );
+    }
+
+    /// A sustainer set never to light flies as one whose only tube fails: carried loaded, with
+    /// no thrust, to the apogee separation, and both bodies land.
+    #[test]
+    fn a_sustainer_set_never_to_light_flies_as_a_motor_out() {
+        let never = staged(&two_stage(Ignition::Never), |_| {
+            Separation::new(Trigger::Apogee, 0)
+        })
+        .run(&mut ())
+        .unwrap();
+        let mut out = two_stage(Ignition::Launch);
+        out.configurations[0]
+            .motors
+            .iter_mut()
+            .find(|m| m.mount == SUSTAINER_MOUNT)
+            .unwrap()
+            .failed_tubes = vec![0];
+        let out = staged(&out, |_| Separation::new(Trigger::Apogee, 0))
+            .run(&mut ())
+            .unwrap();
+        assert_eq!(kinds(&never), kinds(&out));
+        assert_eq!(
+            never.event(EventKind::Apogee).unwrap().sample,
+            out.event(EventKind::Apogee).unwrap().sample
+        );
+        assert!(never.bodies_landed(), "{:?}", never.bodies);
+        // No motor lit after launch: the sustainer's ignition never comes.
+        let ignitions = never
+            .events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Ignition(motor) => Some(motor),
+                _ => None,
+            })
+            .collect::<Vec<usize>>();
+        assert!(ignitions.is_empty(), "{ignitions:?}");
     }
 
     #[test]

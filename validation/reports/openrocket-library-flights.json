@@ -320,6 +320,31 @@
     {
       "aborted": false,
       "apogee_outcome": "scored",
+      "apogee_percent": 0.878152,
+      "chute_early_s": null,
+      "design_checks": [],
+      "drag_overrides_not_applied": null,
+      "flight": "C04/1",
+      "launch_mass_percent": -0.001,
+      "mach": "subsonic",
+      "margin_at_openrocket_alpha_cal": 0.022316,
+      "margin_cal": 0.022318,
+      "margin_outcome": "scored",
+      "max_speed_outcome": "scored",
+      "max_speed_percent": 1.3725,
+      "on_openrocket_s_drag": null,
+      "reference_same": true,
+      "rod_clearance_cg_cal": -0.017019,
+      "rod_clearance_cp_cal": 0.005298,
+      "rod_clearance_mass_percent": 0.0,
+      "site": "sea_level",
+      "termination": "ground_hit",
+      "whole_base_under_power": null,
+      "without_the_overridden_parts": null
+    },
+    {
+      "aborted": false,
+      "apogee_outcome": "scored",
       "apogee_percent": 0.255815,
       "chute_early_s": null,
       "design_checks": [],
@@ -895,11 +920,6 @@
   "not_flown": [
     {
       "aborted": false,
-      "flight": "C04/1",
-      "why": "a motor hpr can't light as written"
-    },
-    {
-      "aborted": false,
       "flight": "C10/1",
       "why": "stages hpr can't separate as written"
     },
@@ -918,28 +938,28 @@
   "summary": {
     "apogee_over_5_percent": 1,
     "bar": 20,
-    "bar_met": false,
-    "designs_with_all_five": 10,
-    "flown": 34,
+    "bar_met": true,
+    "designs_with_all_five": 11,
+    "flown": 35,
     "mass_and_cg": {
       "launch_mass_percent": {
-        "count": 34,
+        "count": 35,
         "max": 0.07,
-        "mean_absolute": 0.02732352941176471,
+        "mean_absolute": 0.026571428571428576,
         "median": 0.0,
         "min": -0.77
       },
       "rod_clearance_cg_cal": {
-        "count": 34,
+        "count": 35,
         "max": 0.019772,
-        "mean_absolute": 0.011962794117647056,
-        "median": -0.0003625,
+        "mean_absolute": 0.01210725714285714,
+        "median": -0.000429,
         "min": -0.110245
       },
       "rod_clearance_mass_percent": {
-        "count": 34,
+        "count": 35,
         "max": 0.072,
-        "mean_absolute": 0.034911764705882364,
+        "mean_absolute": 0.03391428571428572,
         "median": 0.001,
         "min": -0.781
       }
@@ -952,7 +972,7 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 34
+          "scored": 35
         },
         "scored_by_cause": {
           "hpr's own drag coefficient": {
@@ -963,10 +983,10 @@
             "min": 13.603657
           },
           "no named cause": {
-            "count": 27,
+            "count": 28,
             "max": 1.167295,
-            "mean_absolute": 1.3327488518518522,
-            "median": -0.359999,
+            "mean_absolute": 1.3165132500000003,
+            "median": -0.308323,
             "min": -4.844469
           },
           "reference parachute open before apogee": {
@@ -985,7 +1005,7 @@
         },
         "difference_unit": "percent of OpenRocket's",
         "outcomes": {
-          "scored": 34
+          "scored": 35
         },
         "scored_by_cause": {
           "hpr's own drag coefficient": {
@@ -996,10 +1016,10 @@
             "min": 7.976074
           },
           "no named cause": {
-            "count": 33,
+            "count": 34,
             "max": 2.281658,
-            "mean_absolute": 0.4572360303030303,
-            "median": 0.261652,
+            "mean_absolute": 0.48415555882352945,
+            "median": 0.266802,
             "min": -0.65326
           }
         }
@@ -1011,22 +1031,22 @@
         },
         "difference_unit": "calibres",
         "outcomes": {
-          "scored": 34
+          "scored": 35
         },
         "scored_by_cause": {
           "no named cause": {
-            "count": 34,
+            "count": 35,
             "max": 0.110841,
-            "mean_absolute": 0.02932441176470588,
-            "median": 0.0328915,
+            "mean_absolute": 0.02912422857142857,
+            "median": 0.030809,
             "min": -0.016633
           }
         }
       }
     },
-    "not_flown": 3,
+    "not_flown": 2,
     "public_designs_with_all_five": 9,
-    "reference_same": 34,
-    "together": 19
+    "reference_same": 35,
+    "together": 20
   }
 }
