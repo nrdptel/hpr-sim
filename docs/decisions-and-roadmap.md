@@ -133,6 +133,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-114: M4.3: the Python package][adr-114] | [M4.3](#m4-3), the Python bindings, is split in three: the package, RocketPy's example flown from Python, and models written in Python. The package wraps the Rust builder and adds no physics; it keeps RocketPy's shape (a flight flies when it is made, its recording comes back as arrays) but the Rust API's unit-named arguments. One wheel per operating system serves CPython 3.10 on; nothing is published to PyPI | [Python](python.md) |
 | [ADR-115: M4.3b: a drag table, and Calisto from Python][adr-115] | The flight builder takes another program's drag table, and the Python package gains it with RocketPy's gravity formula and a parachute cut away when another opens. RocketPy's ways of measuring a flight (from the dry centre of mass, its rail exit at the forward button) stay in the Calisto example rather than the library; a test holds the example to 3% of RocketPy and to the validation suite's own numbers | [Python](python.md#rocketpys-example-flown-as-the-suite-flies-it) |
 | [ADR-116: M4.3c: drag and wind as Python functions][adr-116] | A flight takes a drag, and an environment a wind, written as Python functions. hpr calls them as it flies; an exception one raises stops the flight and reaches the caller unchanged, not as hpr's own error. A constant drag function flies exactly as a table of the same number | [Python](python.md#drag-and-wind-of-your-own) |
+| [ADR-117: M5.1 split; the cache and offline mode][adr-117] | The online layer ships in two parts: first the cache and the offline rule over a transport you plug in, then HTTP. Offline never calls the transport; online, a copy younger than the source's time to live is served without fetching, and a failed fetch falls back to an old copy marked stale | [Online data and the cache](online-data.md) |
 
 ## The roadmap
 
@@ -332,6 +333,7 @@ missing or its status disagrees.
 | <a id="m4-3b"></a>[M4.3b][phase-2] | A drag table on a flight, and RocketPy's example rocket, Calisto, flown from Python within 3% of RocketPy ([ADR-115][adr-115], [Python](python.md#rocketpys-example-flown-as-the-suite-flies-it)) | done |
 | <a id="m4-3c"></a>[M4.3c][phase-2] | Drag and wind models written as Python functions, their exceptions raised in Python ([ADR-116][adr-116], [Python](python.md#drag-and-wind-of-your-own)) | done |
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
+| <a id="m5-1a"></a>[M5.1a][phase-2] | The cache, its freshness rule and an offline mode that never fetches, tested on recorded responses ([ADR-117][adr-117], [Online data and the cache](online-data.md)) | done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
 | <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
 | <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |
@@ -568,6 +570,7 @@ is the milestone that added or will add that test.
 [adr-114]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-114-m43-the-python-package-and-its-split-2026-09-29
 [adr-115]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-115-m43b-a-drag-table-and-rocketpys-calisto-from-python-2026-09-29
 [adr-116]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-116-m43c-drag-and-wind-as-python-functions-2026-09-29
+[adr-117]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-117-m51-split-the-cache-and-offline-mode-2026-09-29
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

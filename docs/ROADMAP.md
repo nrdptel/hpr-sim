@@ -756,13 +756,8 @@
 
 - [x] **M4.3 Python bindings.** `hpr-py` (PyO3 abi3 + maturin) with numpy outputs, a RocketPy-like
   API, and Python callbacks for custom models. pytest suite; CI builds wheels on 3 operating
-  systems (no publishing).
-
-  *Done when:*
-  - pytest passes in CI.
-  - A notebook-style example reproduces a RocketPy example flight via hpr within the M2.1 tolerance.
-
-  Split into a to c (ADR-114).
+  systems (no publishing). *Done when:* pytest passes in CI; a notebook-style example reproduces
+  a RocketPy example flight via hpr within the M2.1 tolerance. Split into a to c (ADR-114).
   - [x] **M4.3a The package.** `hpr` over the builder, NumPy recordings, designs from files. Met: pytest
     in CI on three OSes against a wheel built there; the Rust example's print; the guide's page runs.
   - [x] **M4.3b RocketPy's example.** *Done when:* a flight takes a drag table (`C_D0` by Mach,
@@ -774,11 +769,15 @@
     *Result:* met (ADR-116): `drag=f(mach, thrusting)`, `wind=f(height_m)`; `test_models.py`.
 
 - [ ] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
-  dirs), TTLs, an explicit offline mode, attribution strings.
-
-  *Done when:*
-  - Tests run against recorded fixtures (no live network in CI).
-  - Offline mode never touches the network (asserted by test).
+  dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
+  recorded fixtures (no live network in CI); offline mode never touches the network (asserted by
+  test). Split into a and b.
+  - [x] **M5.1a Cache and offline mode.** A cache on disk with TTLs, `Mode::Offline` and attribution
+    over a transport trait. *Done when:* recorded-fixture tests pass; an offline fetch never calls
+    the transport (the test's transport fails if called), and serves a stale entry marked stale.
+    *Result:* met (ADR-117): `tests/offline.rs` replays a recording; a panicking transport, 30 days.
+  - [ ] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
+    *Done when:* a loopback server replaying a recorded fixture fills the cache; `cargo deny` passes.
 
 - [ ] **M5.2 Weather.**
   - Open-Meteo forecast and historical-forecast with pressure-level winds, turned into an

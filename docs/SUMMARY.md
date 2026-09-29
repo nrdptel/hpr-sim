@@ -16,6 +16,8 @@
 
 [The command line](cli.md)
 
+[Online data and the cache](online-data.md)
+
 [Reading a flight log](reading-a-flight-log.md)
 
 [Your own rocket](your-own-rocket.md)
