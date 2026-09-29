@@ -29,6 +29,7 @@
 pub mod motors;
 pub mod output;
 pub mod registry;
+pub mod sim;
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -97,8 +98,8 @@ pub struct Cli {
 /// The commands, in the order `hpr --help` lists them.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Fly a design and print its flight summary (not available yet)
-    Sim(Planned),
+    /// Fly a .ork or hpr design from a rail and print its flight; export its recording
+    Sim(sim::SimArgs),
     /// Run the committed validation cases and report them (not available yet)
     Validate(Planned),
     /// Convert motor and design files between formats (not available yet)
@@ -240,9 +241,9 @@ where
         }
         Some(Availability::Available { .. }) => match cli.command {
             Command::Motors(motors) => motors::run(&motors, &mut to),
+            Command::Sim(args) => sim::run(&args, &mut to),
             Command::Completions(args) => completions(args.shell, &mut to),
-            Command::Sim(_)
-            | Command::Validate(_)
+            Command::Validate(_)
             | Command::Convert(_)
             | Command::Weather(_)
             | Command::Mc(_)

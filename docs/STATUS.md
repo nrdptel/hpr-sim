@@ -4,18 +4,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.2b (`hpr
-  sim`). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1, M4.2a.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.2c (`hpr
+  validate`, `convert`). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1, M4.2a-b.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-29; M4.2a shipped the CLI's surface and `hpr motors` (ADR-105).
+- **Last updated:** 2026-09-29; M4.2b shipped `hpr sim` (ADR-106).
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** M4.2b, `hpr sim`: `hpr_io::ork::read` and `design`, then
-  `hpr::Rocket::from_design` and `Flight::builder` (as `crates/hpr/examples/ork_two_stage.rs`); a
-  `.ork`'s parachutes aren't flown yet, so say so. CLI (ADR-105): a command goes live by leaving
-  `registry::PLANNED`, adding its output type to `output::schemas`, then `cargo xtask cli` (tables,
-  schemas, examples). Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
+- **Next (resume here):** M4.2c: `hpr validate` fails where `cargo xtask validate --check` does
+  (reuse `hpr_validate`), `hpr convert` round-trips `.eng`/`.rse`. CLI (ADR-105, 106): a command
+  goes live by leaving `registry::PLANNED`, adding its output type to `output::schemas`, then
+  `cargo xtask cli`; examples may name repo files from the root. `hpr sim`'s recovery, staging: #240. Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
   (`tube_fin_aero.py`, ADR-102); a new OR with #3235 moves its centre past Mach 0.5; body
   interference open (#234). #185: `unlit_motors.py`. Tube-fin drag likely low (#228); public drag
   curves: `PUBLIC_DRAG_CURVES`'s doc. Library runs need `drag_curves.py` (ADR-097). Probes (ADR-093,
@@ -61,6 +60,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-29: M4.2b `hpr sim` (ADR-106): a public `.ork` flown as the library flies it, bit for bit; 5 exports.
 - 2026-09-29: M4.2a The CLI's surface (ADR-105): 11 commands, 9 refusing with their milestone; `hpr motors`; schemas.
 - 2026-09-29: M4.1b, M4.1 closed (ADR-104): `DragModel` flown bit for bit as hpr's own; 5 builder examples; `hpr::guide`.
 - 2026-09-28: M4.1a The builder (ADR-103): `own_rocket`'s rocket flown bit for bit; L95 pinned, 8 designs; 2 examples.
@@ -73,9 +73,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   those repos, and an ERA5 file of the day unless cached (Data Store account). Or drop M2.3c.
 - **Scrub the first revisions of #186 and #210** (1 minute each): they quote a private design's
   sizes. On each issue click *edited* → the oldest revision (*created*) → *Delete revision from history*.
-- **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
-  `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
-  checks; block force pushes. Don't require approvals (authors can't self-approve).
+- **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`, `clippy`, `doc`, `deny`,
+  `wasm-check`, `site`, the three `test (...)` and `validate (...)`; block force pushes; no approvals.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
 - **OpenRocket example outputs in fixtures** (no action if fine): `openrocket-automatic-radius.json`,
   `-flights.json`, `-base-drag.json`, `-drag-curves.json`, `-tube-fin-aero.json` commit numbers OR computed for its GPL examples.
@@ -85,7 +84,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-103 to 105 (M4.1, M4.2a): the builder wraps the crates' types; drag models `C_D0` only; CLI adds `weather`.
+- ADR-103 to 106 (M4.1, M4.2a-b): builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m.
 - ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings,
   8 at most; L19 left unmet, not bought with OR's unmeasured slope and centre.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights
@@ -136,7 +135,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in radius takes the body
   off the method past 2.7e-11 m tube to tube or 1.3e-13 m at a boattail — −8.65% to −11.34% (#87).
 - `.ork` (M3.1): hpr alone flies 4 of 170 configurations (93 with OR's database, ADR-067), one
-  powered split at most (#183); recovery read, not flown; freeform fins, parallel stages left out; tube fins fly, drag likely low (#228); screw
+  powered split at most (#183); recovery read, not flown (`hpr sim` flies neither, #240); freeform fins, parallel stages left out; tube fins fly, drag likely low (#228); screw
   heads read simpler, warned; supersonic pressure drag twice OR's on `C06` (#222); `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).
   Pods (ADR-092) fly without pod–body interference, a single pod's moments dropped (#213); two motor pod sets refused (#214).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
@@ -144,7 +143,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the Arcas Robin it reads high at every row (#70, #72, #73); a cylinder's base drag is unmeasured
   past Mach 0.3. In wind, a slow rocket's drift rests on body lift: Juno III's apogee drift is 245 m
   in hpr, 240 to 194 m over Galejs's `K` 1.0 to 1.5 (oracle corrections, #1196).
-- Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`. Recovery
-  omits canopy overshoot, opening-load factor, added mass and airframe drag; attitude freezes at
-  deployment, streamer pleats are not modelled (+58% on Kidwell's), and tumble reads +19%. Reports
-  are pinned to six decimals or 1e-7 relative; no oracle runs in CI.
+- Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α` (a fall
+  with no recovery glides tail-first, #241; its ascent peaks unshown, #243); two apogees on a
+  near-flat rail (#242). Recovery omits canopy overshoot, opening-load factor, added mass and airframe drag; attitude freezes at
+  deployment, streamer pleats unmodelled (+58% on Kidwell's), tumble reads +19%. Reports pinned
+  to six decimals or 1e-7 relative; no oracle runs in CI.

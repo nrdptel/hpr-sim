@@ -44,7 +44,7 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 
 | command | what it does | reads | prints | status |
 |---|---|---|---|---|
-| `hpr sim` | Fly a design and print its flight summary | - | - | not yet: [M4.2b](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2b) |
+| `hpr sim` | Fly a .ork or hpr design from a rail and print its flight; export its recording | `.ork`, hpr design `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-sim)) |
 | `hpr validate` | Run the committed validation cases and report them | - | - | not yet: [M4.2c](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2c) |
 | `hpr convert` | Convert motor and design files between formats | - | - | not yet: [M4.2c](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2c) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)) |

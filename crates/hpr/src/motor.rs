@@ -1,7 +1,7 @@
 //! A solid rocket motor, ready to go in a rocket's motor tube.
 
 use hpr_motor::catalog::bundled_curve_text;
-use hpr_motor::{Catalog, Delay, SolidMotor, eng};
+use hpr_motor::{Catalog, Delay, MotorError, SolidMotor, eng, rse};
 use serde::Serialize;
 
 use crate::error::{Error, non_negative, positive};
@@ -13,7 +13,8 @@ use crate::error::{Error, non_negative, positive};
 ///
 /// - [`Motor::from_catalog`]: a motor from the catalog built into hpr-sim, by its designation or
 ///   common name, with the catalog's size, masses and thrust curve.
-/// - [`Motor::from_eng`]: a RASP `.eng` file's text, as ThrustCurve.org serves it.
+/// - [`Motor::from_eng`]: a RASP `.eng` file's text, as ThrustCurve.org serves it, or
+///   [`Motor::from_rse`]: a RockSim `.rse` file's.
 /// - [`Motor::new`]: a [`SolidMotor`] you built with [`hpr_motor`], and its case's size.
 ///
 /// ```
@@ -114,7 +115,8 @@ impl Motor {
     /// The one motor in the text of a RASP `.eng` file, with the file's size, masses and thrust
     /// curve ([`SolidMotor::from_envelope`]). The file's warnings and its list of delays are
     /// dropped (read the file with [`hpr_motor::eng::parse`] to see them): set the delay with
-    /// [`Motor::with_delay_s`].
+    /// [`Motor::with_delay_s`]. A `.eng` file doesn't say what kind of motor it holds, so a
+    /// hybrid's file is read as a solid motor; hpr models solid motors only.
     ///
     /// # Errors
     ///
@@ -135,6 +137,43 @@ impl Motor {
             entry.total_mass_kg,
         )?;
         Self::new(&entry.name, motor, diameter_m, length_m)
+    }
+
+    /// The one motor in the text of a RockSim `.rse` file, with the file's size, masses (grams,
+    /// converted) and thrust curve ([`SolidMotor::from_envelope`]). As with [`Motor::from_eng`],
+    /// the file's warnings, its delays and the centre-of-gravity column some files carry are
+    /// dropped (read the file with [`hpr_motor::rse::parse`] to see them). A hybrid, which the
+    /// file's `Type` names, is refused: hpr models solid motors only.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Motor`] if the text isn't a motor file, its numbers don't make a motor, or it is a
+    /// hybrid; [`Error::MotorCount`] if it holds more than one motor.
+    pub fn from_rse(text: &str) -> Result<Self, Error> {
+        let parsed = rse::parse(text)?;
+        let [engine] = &parsed.value.engines[..] else {
+            return Err(Error::MotorCount(parsed.value.engines.len()));
+        };
+        if engine
+            .motor_type
+            .as_deref()
+            .is_some_and(|kind| kind.trim().eq_ignore_ascii_case("hybrid"))
+        {
+            return Err(Error::Motor(MotorError::Inconsistent(format!(
+                "{} is a hybrid; hpr models solid motors only",
+                engine.code
+            ))));
+        }
+        let diameter_m = engine.diameter_mm / 1000.0;
+        let length_m = engine.length_mm / 1000.0;
+        let motor = SolidMotor::from_envelope(
+            engine.thrust_curve()?,
+            diameter_m,
+            length_m,
+            engine.propellant_mass_g / 1000.0,
+            engine.initial_mass_g / 1000.0,
+        )?;
+        Self::new(&engine.code, motor, diameter_m, length_m)
     }
 
     /// The same motor with an ejection charge `delay_s` seconds after burnout.

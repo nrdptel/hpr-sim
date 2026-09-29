@@ -2758,6 +2758,38 @@ fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
     assert!(design.rocket.configurations.is_empty());
 }
 
+/// A motor with no curve comes first on `NotFlown`'s list, so it hides an incomplete airframe from
+/// the configuration's reason; `airframe_not_as_written` still says it, for a program that brings
+/// a motor of its own, and says nothing of a rocket read whole.
+#[test]
+fn an_incomplete_airframe_is_found_behind_a_missing_curve() {
+    let with = |inside: &str| {
+        motor_design(
+            r#"<motorconfiguration configid="a" default="true"/>"#,
+            "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+             <manufacturer>Nobody</manufacturer><designation>Z1</designation>\
+             <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+            inside,
+        )
+    };
+    let boosters = "<parallelstage><name>Boosters</name><id>boosters</id>\
+                    <instancecount>2</instancecount></parallelstage>";
+    let xml = with(boosters);
+    let file = crate::ork::read(xml.as_bytes()).unwrap().value;
+    let design = crate::ork::design(&file).value;
+    assert_eq!(
+        design.motors.configurations[0]
+            .left_out
+            .as_ref()
+            .map(|l| l.why),
+        Some(NotFlown::NoCurve)
+    );
+    let why = crate::ork::airframe_not_as_written(&file).unwrap();
+    assert!(why.contains("parallel"), "{why}");
+    let whole = crate::ork::read(with("").as_bytes()).unwrap().value;
+    assert_eq!(crate::ork::airframe_not_as_written(&whole), None);
+}
+
 /// One whose airframe holds tube fins flies (M2.2e9), as the same design without them does: they
 /// are read and weighed (ADR-098), and `hpr-aero` has a model for them.
 #[test]

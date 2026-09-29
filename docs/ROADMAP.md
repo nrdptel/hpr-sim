@@ -737,9 +737,10 @@
     `assert_cmd` tests cover `motors`, `completions` and every refusal, each JSON output validating
     against its committed schema; a test fails when the table, a schema or a page's example is
     stale, or when the table lists a command clap doesn't register. *Result:* met (ADR-105).
-  - [ ] **M4.2b `hpr sim`.** A `.ork` or hpr design flown with a catalog motor or a motor file, its
+  - [x] **M4.2b `hpr sim`.** A `.ork` or hpr design flown with a catalog motor or a motor file, its
     summary printed and its recording exported. *Done when:* a public `.ork` flown by `hpr sim`
-    gives the library's flight bit for bit, and its JSON validates.
+    gives the library's flight bit for bit, and its JSON validates. *Result:* met (ADR-106): the
+    pod probe with `--motor H54`, every summary field, event and CSV byte the library's; #240.
   - [ ] **M4.2c `hpr validate` and `hpr convert`.** *Done when:* `hpr validate` fails where `cargo
     xtask validate --check` does, and `hpr convert` round-trips `.eng` and `.rse` motor files.
   - [ ] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*

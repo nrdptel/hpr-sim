@@ -287,6 +287,41 @@ pub fn design_with(file: &OrkFile, supplied: &SuppliedCurves) -> Imported<Design
     }
 }
 
+/// Why the rocket in `file` was not read exactly as written, or `None` if it was. A rocket read
+/// otherwise flies in none of its configurations, whatever its motors ([ADR-055][adr-055], the
+/// rule for which configurations fly), so a program that puts a motor of its own into a
+/// configuration [`design`] left out, as `hpr sim --motor` does, asks this first: a
+/// configuration's [`LeftOut`] names only the first reason on [`NotFlown`]'s list, and a missing
+/// curve comes before the airframe.
+///
+/// [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
+#[must_use]
+pub fn airframe_not_as_written(file: &OrkFile) -> Option<String> {
+    let (rocket, _) = component::walk(&file.document);
+    incomplete(&rocket.warnings)
+}
+
+// Any warning the walk raised about the rocket or a motor mount means it was not read exactly as
+// written: a part left out, a value dropped or simplified, or something assumed. No configuration
+// of such a rocket is flown (ADR-055). A recovery device's or a stage separation's own warnings
+// are about when things happen, which is not flown (ADR-056), and their paths say so.
+fn incomplete(warnings: &[Warning]) -> Option<String> {
+    let skipped: Vec<&str> = warnings
+        .iter()
+        .filter(|w| {
+            ![recovery::DEPLOYMENT, recovery::DRAG, recovery::SEPARATION]
+                .iter()
+                .any(|segment| w.at.contains(segment))
+        })
+        .map(|w| w.message.as_str())
+        .collect();
+    match skipped.as_slice() {
+        [] => None,
+        [one] => Some((*one).to_owned()),
+        [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
+    }
+}
+
 /// The rocket, its motors and its recovery, the warnings reading them raised, and the paths of
 /// the stages and components read.
 fn read_design(
@@ -298,25 +333,7 @@ fn read_design(
         value: rocket,
         mut warnings,
     } = rocket;
-    // Any warning the walk raised about the rocket or a motor mount means it was not read exactly
-    // as written: a part left out, a value dropped or simplified, or something assumed. No
-    // configuration of such a rocket is flown (ADR-055). A recovery device's or a stage
-    // separation's own warnings are about when things happen, which is not flown (ADR-056), and
-    // their paths say so.
-    let skipped: Vec<&str> = warnings
-        .iter()
-        .filter(|w| {
-            ![recovery::DEPLOYMENT, recovery::DRAG, recovery::SEPARATION]
-                .iter()
-                .any(|segment| w.at.contains(segment))
-        })
-        .map(|w| w.message.as_str())
-        .collect();
-    let incomplete = match skipped.as_slice() {
-        [] => None,
-        [one] => Some((*one).to_owned()),
-        [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
-    };
+    let incomplete = incomplete(&warnings);
     let mut design = Design {
         rocket,
         motors: Motors::default(),

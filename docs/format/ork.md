@@ -14,8 +14,10 @@ recovery gear, motor configurations, recovery settings and stored simulations. S
 and air-start configurations fly, with one powered stage separation at most
 ([staged, clustered and air-start flights](#staged-clustered-and-air-start-flights)). Pods, parallel
 stages, unsupported shapes and recovery behaviour are not fully modelled; the trust limits below
-are measured against OpenRocket 24.12 and the current reference corpus. That is from Rust; there
-is no command-line tool yet.
+are measured against OpenRocket 24.12 and the current reference corpus. A Rust program reads a
+file with `hpr_io::ork`. From a terminal, [`hpr sim`](../cli.md#hpr-sim) flies one. It flies no
+parachutes or streamers yet and says so in its notes, and it refuses what it can't fly as written,
+such as a powered stage separation.
 
 **How far to trust it.**
 

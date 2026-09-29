@@ -45,6 +45,18 @@ pub fn availability(name: &str) -> Option<Availability> {
                 .collect(),
             writes: text_or_json(),
         }),
+        "sim" => Some(Availability::Available {
+            reads: vec![
+                "`.ork`".to_owned(),
+                "hpr design `.json`".to_owned(),
+                "a motor from the bundled catalog, `.eng` or `.rse`".to_owned(),
+            ],
+            writes: vec![
+                "text".to_owned(),
+                "JSON".to_owned(),
+                "a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml`".to_owned(),
+            ],
+        }),
         "completions" => Some(Availability::Available {
             reads: Vec::new(),
             writes: vec![format!("a {} script", shells()), "JSON".to_owned()],
@@ -57,8 +69,7 @@ pub fn availability(name: &str) -> Option<Availability> {
 }
 
 /// The commands registered before their milestone, each with the milestone that brings it.
-pub const PLANNED: [(&str, &str); 9] = [
-    ("sim", "M4.2b"),
+pub const PLANNED: [(&str, &str); 8] = [
     ("validate", "M4.2c"),
     ("convert", "M4.2c"),
     ("analyze", "M4.2d"),
@@ -257,7 +268,7 @@ mod tests {
         let readme = command_table(Links::Readme);
         assert!(readme.contains("(https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)"));
         assert!(
-            readme.contains("(https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2b)")
+            readme.contains("(https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2c)")
         );
     }
 
