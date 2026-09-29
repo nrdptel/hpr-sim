@@ -61,7 +61,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 - 2026-09-29: M3.3 `.hpr`, `.hprz`, types (ADR-111 to 113): 73 of 73 round-trip, 109 flown to the same apogee; TS, Python readers
-  agree with the schema on 4,705 mutations; `hpr convert`/`sim` take all three. M3.2 `.ork` writer (ADR-109, 110): OR flies 151 of 151 within 0.5%.
+  agree with the schema on 4,892 mutations; `hpr convert`/`sim` take all three. M3.2 `.ork` writer (ADR-109, 110): OR flies 151 of 151 within 0.5%.
 - 2026-09-29: M4.2 CLI (ADR-105 to 108): schemas; `hpr sim` bit for bit; `validate`, `convert` (32 curves round-trip);
   `hpr analyze` reads `.pf2` alone; the public Pnut, where fetched, 1,010 ft against 1,009.
 - 2026-09-28/29: M4.1 builder (ADR-103, 104), bit for bit; `DragModel`; 5 examples. M2.2b, f; M2.2 closed (ADR-101, 102): OR mass conventions 68/71 within 1%; L82 live; L19 not met, pinned.

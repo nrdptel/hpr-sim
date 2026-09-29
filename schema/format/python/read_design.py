@@ -6,6 +6,7 @@ line for each: what it holds, or why the reader refused it. Exits 1 if it refuse
 Needs Python 3.11 or later.
 """
 
+import io
 import sys
 from pathlib import Path
 
@@ -18,6 +19,9 @@ def count(components: list[Component]) -> int:
 
 
 def main(paths: list[str]) -> int:
+    # Windows writes piped output in its own code page unless told otherwise.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     refused = 0
     for path in paths:
         try:

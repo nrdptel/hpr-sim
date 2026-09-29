@@ -37,11 +37,12 @@ fn a_keyword_the_readers_do_not_check_is_refused() {
     assert!(typescript(&schema).unwrap_err().contains("format `date`"));
 }
 
-/// A command running `program`, after checking it runs at all, with what to install if not.
-fn interpreter(candidates: &[&str], needs: &str) -> Command {
+/// A command running the first of `candidates` that is new enough, as `probe` tells by its exit
+/// status, or a failure saying what to install.
+fn interpreter(candidates: &[&str], probe: &[&str], needs: &str) -> Command {
     for program in candidates {
         let works = Command::new(program)
-            .arg("--version")
+            .args(probe)
             .output()
             .is_ok_and(|o| o.status.success());
         if works {
@@ -49,10 +50,20 @@ fn interpreter(candidates: &[&str], needs: &str) -> Command {
         }
     }
     panic!(
-        "none of {candidates:?} runs: the generated types' readers (M3.3c) are tested under \
-         {needs}, which must be on the path"
+        "none of {candidates:?} runs, or is new enough: the generated types' readers (M3.3c) \
+         are tested under {needs}, which must be on the path"
     );
 }
+
+/// Succeeds under Node.js 22.18 or later, which runs TypeScript as it is.
+const NODE_PROBE: &[&str] = &[
+    "-e",
+    "const [a, b] = process.versions.node.split('.').map(Number); \
+     process.exit(a > 22 || (a === 22 && b >= 18) ? 0 : 1)",
+];
+
+/// Succeeds under Python 3.11 or later, which has `typing.NotRequired`.
+const PYTHON_PROBE: &[&str] = &["-c", "import sys; sys.exit(sys.version_info < (3, 11))"];
 
 /// What the TypeScript and the Python example print for the documents `names` in `dir`, one
 /// line a document each.
@@ -61,13 +72,13 @@ fn read_all(dir: &Path, names: &[String]) -> (Vec<String>, Vec<String>) {
     let (mut ts, mut py) = (Vec::new(), Vec::new());
     // A few hundred names a run keeps a command line well inside Windows' limit.
     for chunk in names.chunks(400) {
-        let ts_out = interpreter(&["node"], "Node.js 22.18 or later")
+        let ts_out = interpreter(&["node"], NODE_PROBE, "Node.js 22.18 or later")
             .arg(root.join("schema/format/typescript/read-design.ts"))
             .args(chunk)
             .current_dir(dir)
             .output()
             .unwrap();
-        let py_out = interpreter(&["python3", "python"], "Python 3.11 or later")
+        let py_out = interpreter(&["python3", "python"], PYTHON_PROBE, "Python 3.11 or later")
             .arg(root.join("schema/format/python/read_design.py"))
             .args(chunk)
             .current_dir(dir)
@@ -171,7 +182,8 @@ fn at<'a>(value: &'a mut Value, path: &[Step]) -> &'a mut Value {
 }
 
 /// Mutations of `document`: at every value, a key added to an object, a key taken out of its
-/// parent, and the value swapped for others of each JSON type and for edge values. The root's
+/// parent, the value swapped for others of each JSON type and for edge values, a string given a
+/// final newline, and an array a copy of its last item or without its first. The root's
 /// `format` and `version`, which the readers check before the schema, are left alone.
 fn mutations(document: &Value) -> Vec<Value> {
     let mut paths = Vec::new();
@@ -200,6 +212,8 @@ fn mutations(document: &Value) -> Vec<Value> {
                 more.insert("unknown_key".to_owned(), serde_json::json!(0));
                 replacements.push(Value::Object(more));
             }
+            // A final newline, which Python's `$` would let through a pattern.
+            Value::String(text) => replacements.push(Value::String(format!("{text}\n"))),
             Value::Array(items) if !items.is_empty() => {
                 let mut more = items.clone();
                 more.push(items[items.len() - 1].clone());
@@ -229,7 +243,8 @@ fn mutations(document: &Value) -> Vec<Value> {
 
 /// On every mutation of two public designs, each reader takes the document exactly when the
 /// committed schema does, as the `jsonschema` crate reads it: the readers check what the schema
-/// says, no more and no less.
+/// says, no more and no less. (The crate leaves `format` unchecked, as JSON Schema allows; the
+/// readers' limits for `uint32` and `uint` are tested on their own, against hpr.)
 #[test]
 fn both_readers_agree_with_the_schema_on_mutations() {
     let schema: Value = serde_json::from_str(
@@ -252,10 +267,11 @@ fn both_readers_agree_with_the_schema_on_mutations() {
     }
     let (ts, py) = read_all(dir.path(), &names);
     let refused = valid.iter().filter(|v| !**v).count();
-    assert!(
-        names.len() > 2000 && refused > 1000 && refused < names.len() - 200,
-        "{} mutations, {refused} invalid: too few of either kind to test anything",
-        names.len()
+    // The format's page, ADR-113 and the roadmap quote these counts.
+    assert_eq!(
+        (names.len(), refused),
+        (4892, 4114),
+        "mutations, and those the schema refuses: update the docs that quote them"
     );
     for (reader, lines) in [("TypeScript", &ts), ("Python", &py)] {
         let disagree: Vec<String> = names
@@ -280,24 +296,134 @@ fn both_readers_agree_with_the_schema_on_mutations() {
     }
 }
 
-/// What each reader makes of documents the schema can't speak for: a byte-order mark, another
-/// version or format, not JSON, a repeated key, `NaN`, and `2.0` for a whole number.
+/// `good` with the first value under the key `key` set to `value`.
+fn with(good: &str, key: &str, value: Value) -> String {
+    let mut document: Value = serde_json::from_str(good).unwrap();
+    let mut paths = Vec::new();
+    places(&document, &mut Vec::new(), &mut paths);
+    let path = paths
+        .iter()
+        .find(|p| matches!(p.last(), Some(Step::Key(k)) if k == key))
+        .unwrap_or_else(|| panic!("no {key}"));
+    *at(&mut document, path) = value;
+    document.to_string()
+}
+
+/// `good` with a key `x` at its root holding arrays nested so the document is `levels` deep.
+fn nested(good: &str, levels: usize) -> String {
+    let inner = format!("{}{}", "[".repeat(levels - 1), "]".repeat(levels - 1));
+    good.replacen('{', &format!("{{\"x\": {inner},"), 1)
+}
+
+/// What each reader makes of documents at the edges: JSON's corners, which hpr refuses before
+/// the schema is asked (numbers too large, lone surrogates, nesting, repeated keys, `NaN`, `2.0`
+/// for a whole number), another version or format, the limits of `uint32` and `uint`, and the
+/// message for a misspelt tag. Each case is held to hpr's own reader where the page says they
+/// agree.
 #[test]
-fn both_readers_refuse_what_hpr_refuses_before_the_schema() {
+fn both_readers_at_the_edges() {
     let documents = public_documents(&root()).unwrap();
     let good = &documents[0].1;
-    let dir = tempfile::tempdir().unwrap();
-    let mut cases: Vec<(&str, String)> = vec![
-        ("bom.hpr", format!("\u{feff}{good}")),
+    let most_u32 = serde_json::json!(4_294_967_295_u64);
+    let past_u32 = serde_json::json!(4_294_967_296_u64);
+    let safe = serde_json::json!(9_007_199_254_740_991_u64);
+    let unsafe_ = serde_json::json!(9_007_199_254_740_992_u64);
+    // (file, text, what the TypeScript reader prints, what the Python one does, whether hpr
+    // refuses it; `None` where hpr's verdict turns on its checks beyond the schema).
+    let cases: Vec<(&str, String, &str, &str, Option<bool>)> = vec![
+        (
+            "bom.hpr",
+            format!("\u{feff}{good}"),
+            "read",
+            "read",
+            Some(false),
+        ),
         (
             "old.hpr",
             good.replacen("\"version\": \"0.2\"", "\"version\": \"0.1\"", 1),
+            "refused old.hpr: written in version 0.1; these types read 0.2 only",
+            "refused old.hpr: written in version 0.1; these types read 0.2 only",
+            None,
+        ),
+        (
+            "new.hpr",
+            good.replacen("\"version\": \"0.2\"", "\"version\": \"0.10\"", 1),
+            "refused new.hpr: written in version 0.10, newer than these types",
+            "refused new.hpr: written in version 0.10, newer than these types",
+            Some(true),
         ),
         (
             "other.hpr",
             good.replacen("\"hpr-design\"", "\"hpr-other\"", 1),
+            "refused other.hpr: not an hpr design",
+            "refused other.hpr: not an hpr design",
+            Some(true),
         ),
-        ("text.hpr", "not json".to_owned()),
+        (
+            "text.hpr",
+            "not json".to_owned(),
+            "refused text.hpr: not JSON",
+            "refused text.hpr: not JSON",
+            Some(true),
+        ),
+        (
+            "nan.hpr",
+            good.replacen("\"length_m\": ", "\"length_m\": NaN, \"x\": ", 1),
+            "refused nan.hpr: not JSON",
+            "refused nan.hpr: not JSON",
+            Some(true),
+        ),
+        (
+            "huge.hpr",
+            good.replacen("\"length_m\": ", "\"length_m\": 1e400, \"x\": ", 1),
+            "refused huge.hpr: not JSON: a number too large for a 64-bit float",
+            "refused huge.hpr: not JSON: a number too large for a 64-bit float",
+            Some(true),
+        ),
+        (
+            "huge-integer.hpr",
+            good.replacen(
+                "\"length_m\": ",
+                &format!("\"length_m\": 1{}, \"x\": ", "0".repeat(400)),
+                1,
+            ),
+            "refused huge-integer.hpr: not JSON: a number too large for a 64-bit float",
+            "refused huge-integer.hpr: not JSON: a number too large for a 64-bit float",
+            Some(true),
+        ),
+        (
+            "surrogate.hpr",
+            good.replacen(
+                "\"format\": \"hpr-design\",",
+                "\"format\": \"hpr-design\", \"x\": \"\\ud800\",",
+                1,
+            ),
+            "refused surrogate.hpr: not JSON: a lone UTF-16 surrogate",
+            "refused surrogate.hpr: not JSON: a lone UTF-16 surrogate",
+            Some(true),
+        ),
+        // 127 levels is the most hpr reads: the reader gets to the schema, which refuses `x`.
+        (
+            "deep-127.hpr",
+            nested(good, 127),
+            "refused deep-127.hpr: $: has the unknown key \"x\"",
+            "refused deep-127.hpr: $: has the unknown key \"x\"",
+            Some(true),
+        ),
+        (
+            "deep-128.hpr",
+            nested(good, 128),
+            "refused deep-128.hpr: not JSON: nested more than 127 levels deep",
+            "refused deep-128.hpr: not JSON: nested more than 127 levels deep",
+            Some(true),
+        ),
+        (
+            "deep-5000.hpr",
+            nested(good, 5000),
+            "refused deep-5000.hpr: not JSON",
+            "refused deep-5000.hpr: not JSON",
+            Some(true),
+        ),
         (
             "repeated.hpr",
             good.replacen(
@@ -305,58 +431,88 @@ fn both_readers_refuse_what_hpr_refuses_before_the_schema() {
                 "\"rocket\": {\"name\": \"a\", \"name\": \"b\",",
                 1,
             ),
+            // `JSON.parse` keeps a repeated key's last value, as the TypeScript reader says.
+            "read",
+            "refused repeated.hpr: not JSON: the key \"name\" appears twice",
+            Some(true),
         ),
         (
-            "nan.hpr",
-            good.replacen("\"length_m\": ", "\"length_m\": NaN, \"x\": ", 1),
+            "float.hpr",
+            with(good, "count", serde_json::json!(2.0)),
+            // `JSON.parse` reads `2.0` as `2`.
+            "read",
+            "refused float.hpr: $.rocket",
+            Some(true),
+        ),
+        (
+            "u32-most.hpr",
+            with(good, "count", most_u32),
+            "read",
+            "read",
+            None,
+        ),
+        (
+            "u32-past.hpr",
+            with(good, "count", past_u32),
+            "refused u32-past.hpr: $.rocket",
+            "refused u32-past.hpr: $.rocket",
+            Some(true),
+        ),
+        (
+            "uint-safe.hpr",
+            with(good, "stage", safe),
+            "read",
+            "read",
+            None,
+        ),
+        (
+            "uint-unsafe.hpr",
+            with(good, "stage", unsafe_),
+            // JavaScript can't hold 2^53 apart from 2^53 + 1.
+            "refused uint-unsafe.hpr: $.",
+            "read",
+            None,
+        ),
+        (
+            "tag.hpr",
+            good.replacen("\"from\": \"top\"", "\"from\": \"topp\"", 1),
+            "refused tag.hpr: $.rocket.stages[0].components[1].children[0].position.from: is \"topp\", \
+             not \"top\", \"middle\", \"bottom\" or \"after\"",
+            "refused tag.hpr: $.rocket.stages[0].components[1].children[0].position.from: is \"topp\", \
+             not \"top\", \"middle\", \"bottom\" or \"after\"",
+            None,
         ),
     ];
-    // A fin count, a whole number, written `2.0`.
-    let mut whole: Value = serde_json::from_str(good).unwrap();
-    let mut paths = Vec::new();
-    places(&whole, &mut Vec::new(), &mut paths);
-    let count = paths
-        .iter()
-        .find(|p| matches!(p.last(), Some(Step::Key(k)) if k == "count"))
-        .unwrap();
-    *at(&mut whole, count) = serde_json::json!(2.0);
-    cases.push(("float.hpr", whole.to_string()));
-    assert!(cases[6].1.contains("\"count\":2.0"));
-    let names: Vec<String> = cases.iter().map(|(n, _)| (*n).to_owned()).collect();
-    for (name, text) in &cases {
+    let names: Vec<String> = cases.iter().map(|c| c.0.to_owned()).collect();
+    let dir = tempfile::tempdir().unwrap();
+    for (name, text, ..) in &cases {
         assert!(text != good, "{name} changed nothing");
         std::fs::write(dir.path().join(name), text).unwrap();
     }
     let (ts, py) = read_all(dir.path(), &names);
-    let expected = |lines: &[String], i: usize, start: &str| {
-        assert!(lines[i].starts_with(start), "{}: {}", names[i], lines[i]);
-    };
-    for lines in [&ts, &py] {
-        expected(lines, 0, "read bom.hpr");
-        expected(
-            lines,
-            1,
-            "refused old.hpr: written in version \"0.1\"; these types read 0.2",
+    for (i, (name, text, ts_start, py_start, hpr_refuses)) in cases.iter().enumerate() {
+        let expected = |start: &str| {
+            if start == "read" {
+                format!("read {name}")
+            } else {
+                start.to_owned()
+            }
+        };
+        let (ts_start, py_start) = (expected(ts_start), expected(py_start));
+        assert!(
+            ts[i].starts_with(&ts_start),
+            "TypeScript, {name}: {}",
+            ts[i]
         );
-        expected(lines, 2, "refused other.hpr: not an hpr design");
-        expected(lines, 3, "refused text.hpr: not JSON");
-        expected(lines, 5, "refused nan.hpr: not JSON");
+        assert!(py[i].starts_with(&py_start), "Python, {name}: {}", py[i]);
+        if let Some(refuses) = hpr_refuses {
+            let hpr = hpr_format::read_json(text);
+            assert_eq!(hpr.is_err(), *refuses, "hpr, {name}: {:?}", hpr.err());
+        }
     }
-    // `JSON.parse` keeps a repeated key's last value, as the TypeScript reader's doc says; hpr
-    // and the Python reader refuse it.
-    expected(&ts, 4, "read repeated.hpr");
-    expected(
-        &py,
-        4,
-        "refused repeated.hpr: not JSON: the key \"name\" appears twice",
-    );
-    let hpr = hpr_format::read_json(&cases[4].1);
-    assert!(hpr.is_err(), "hpr reads a repeated key");
-    // `JSON.parse` reads `2.0` as `2`; hpr and the Python reader refuse it.
-    expected(&ts, 6, "read float.hpr");
-    expected(&py, 6, "refused float.hpr: $.rocket");
-    assert!(
-        hpr_format::read_json(&cases[6].1).is_err(),
-        "hpr reads 2.0 as a count"
-    );
+    // hpr's reader stops at the same depth, for the same reason.
+    let deep = hpr_format::read_json(&cases[10].1).unwrap_err().to_string();
+    assert!(deep.contains("recursion limit"), "{deep}");
+    let shallow = hpr_format::read_json(&cases[9].1).unwrap_err().to_string();
+    assert!(!shallow.contains("recursion limit"), "{shallow}");
 }

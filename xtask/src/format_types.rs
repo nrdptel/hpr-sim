@@ -4,8 +4,8 @@
 //! `readDesign` or `read_design`, that parses a document's text and checks it against the schema
 //! before handing it back typed. The reader checks against a copy of the schema embedded in the
 //! module, stripped of its prose, so a document either of them takes is one the schema takes;
-//! the tests hold them to that on every public design and on mutations of two. `cargo xtask format` writes both modules and `--check` fails when either
-//! is stale (ADR-113).
+//! the tests hold them to that on every public design and on mutations of two. `cargo xtask
+//! format` writes both modules and `--check` fails when either is stale (ADR-113).
 
 use serde_json::{Map, Value};
 
@@ -17,6 +17,44 @@ pub const PYTHON_PATH: &str = "schema/format/python/hpr_design.py";
 
 /// The name the schema's root, a whole document, takes in both languages.
 const ROOT: &str = "DesignFile";
+
+/// The names the TypeScript module's own code takes, which no type may.
+const TYPESCRIPT_TAKEN: [&str; 17] = [
+    "FORMAT",
+    "VERSION",
+    "SCHEMA",
+    "DesignFormatError",
+    "readDesign",
+    "versionMessage",
+    "SchemaNode",
+    "Problem",
+    "MOST_LEVELS",
+    "LONE_SURROGATE",
+    "scan",
+    "shown",
+    "has",
+    "isObject",
+    "isType",
+    "member",
+    "union",
+];
+
+/// The names the Python module's own code and imports take, which no type may.
+const PYTHON_TAKEN: [&str; 13] = [
+    "FORMAT",
+    "VERSION",
+    "DesignFormatError",
+    "read_design",
+    "json",
+    "math",
+    "re",
+    "Any",
+    "Literal",
+    "NotRequired",
+    "TypedDict",
+    "Union",
+    "cast",
+];
 
 /// The TypeScript reader, which the generated module ends with.
 const TYPESCRIPT_READER: &str = include_str!("format_types/reader.ts");
@@ -61,6 +99,14 @@ const CHECKED_FORMATS: [&str; 2] = ["uint32", "uint"];
 /// The schema uses something the generator doesn't understand.
 pub fn typescript(schema: &Value) -> Result<String, String> {
     let (root, defs) = parts(schema)?;
+    if let Some(name) = defs
+        .keys()
+        .find(|n| TYPESCRIPT_TAKEN.contains(&n.as_str()) || n.as_str() == "check")
+    {
+        return Err(format!(
+            "the definition {name} takes a name the reader uses"
+        ));
+    }
     let mut out = String::new();
     out.push_str(&header("//"));
     out.push_str(&format!(
@@ -107,6 +153,9 @@ pub fn typescript(schema: &Value) -> Result<String, String> {
 pub fn python(schema: &Value) -> Result<String, String> {
     let (root, defs) = parts(schema)?;
     let mut py = Python::default();
+    for name in PYTHON_TAKEN {
+        py.claim(name)?;
+    }
     for (name, _) in defs {
         py.claim(name)?;
     }
@@ -121,6 +170,7 @@ pub fn python(schema: &Value) -> Result<String, String> {
         "\n\"\"\"Types for the hpr design format {}, and a reader that checks a document against its\n\
          schema. Generated from the schema by `cargo xtask format`; don't edit by hand.\"\"\"\n\n\
          import json\n\
+         import math\n\
          import re\n\
          from typing import Any, Literal, NotRequired, TypedDict, Union, cast\n\n\
          FORMAT = \"{}\"\n\
@@ -150,6 +200,7 @@ pub fn python(schema: &Value) -> Result<String, String> {
 fn header(comment: &str) -> String {
     format!(
         "{comment} The hpr design format {version}: types for a document, and a reader that checks one.\n\
+         {comment} SPDX-License-Identifier: MIT OR Apache-2.0 (https://github.com/nrdptel/hpr-sim)\n\
          {comment} Generated from schema/format/hpr-design-{version}.schema.json by `cargo xtask format`.\n\
          {comment} Don't edit by hand: the next run overwrites it, and CI fails while it is stale.\n",
         version = hpr_format::VERSION
@@ -166,12 +217,36 @@ fn parts(schema: &Value) -> Result<(&Value, &Map<String, Value>), String> {
     Ok((schema, defs))
 }
 
-/// Fails on a keyword outside [`KEYWORDS`], or a `format` the readers would leave unchecked
-/// that isn't `double`.
+/// Fails on what the readers or the types would get wrong: a keyword outside [`KEYWORDS`]; a
+/// schema that is `true` or `false` anywhere but `additionalProperties`; a `$ref`, union or
+/// `const` with a constraint beside it, which the types would drop; a `format` other than
+/// `double` that the readers don't check; and a `pattern` whose meaning differs between
+/// JavaScript and Python (a class such as `\d`, or an escaped final `$`).
 fn check_keywords(node: &Value, path: &str) -> Result<(), String> {
     let Value::Object(map) = node else {
-        return Ok(());
+        return Err(format!("{path}: a schema that is `{node}`, not an object"));
     };
+    let beside = |allowed: &[&str]| -> Result<(), String> {
+        match map.keys().find(|k| {
+            !["description", "default", "title", "$schema", "$defs"].contains(&k.as_str())
+                && !allowed.contains(&k.as_str())
+        }) {
+            Some(other) => Err(format!("{path}: `{other}` beside `{}`", allowed[0])),
+            None => Ok(()),
+        }
+    };
+    if map.contains_key("$ref") {
+        beside(&["$ref"])?;
+    }
+    if map.contains_key("oneOf") {
+        beside(&["oneOf"])?;
+    }
+    if map.contains_key("anyOf") {
+        beside(&["anyOf"])?;
+    }
+    if map.contains_key("const") {
+        beside(&["const", "type"])?;
+    }
     for (key, value) in map {
         if !KEYWORDS.contains(&key.as_str()) {
             return Err(format!("{path}: the generator doesn't understand `{key}`"));
@@ -193,6 +268,7 @@ fn check_keywords(node: &Value, path: &str) -> Result<(), String> {
                     check_keywords(child, &format!("{path}/{key}/{i}"))?;
                 }
             }
+            "additionalProperties" if value.is_boolean() => {}
             "items" | "additionalProperties" => check_keywords(value, &format!("{path}/{key}"))?,
             "format" => {
                 let format = value.as_str().unwrap_or_default();
@@ -204,6 +280,18 @@ fn check_keywords(node: &Value, path: &str) -> Result<(), String> {
             }
             "const" if !value.is_string() => {
                 return Err(format!("{path}: a `const` that isn't a string"));
+            }
+            "pattern" => {
+                let pattern = value.as_str().unwrap_or_default();
+                let class = pattern
+                    .as_bytes()
+                    .windows(2)
+                    .any(|w| w[0] == b'\\' && w[1].is_ascii_alphabetic());
+                if class || pattern.ends_with("\\$") {
+                    return Err(format!(
+                        "{path}: the pattern `{pattern}` reads differently in JavaScript and Python"
+                    ));
+                }
             }
             _ => {}
         }
@@ -274,7 +362,11 @@ fn types(node: &Value) -> Vec<&str> {
 
 /// `node`'s description, and what an absent value means where it has a default, as prose.
 fn prose(node: &Value) -> Option<String> {
-    let description = node.get("description").and_then(Value::as_str);
+    let description = node
+        .get("description")
+        .and_then(Value::as_str)
+        .map(without_rust_links);
+    let description = description.as_deref();
     let default = node.get("default").map(|d| format!("Absent means `{d}`."));
     match (description, default) {
         (Some(d), Some(a)) => Some(format!("{d}\n\n{a}")),
@@ -282,6 +374,47 @@ fn prose(node: &Value) -> Option<String> {
         (None, Some(a)) => Some(a),
         (None, None) => None,
     }
+}
+
+/// `text` with its links to Rust items, which mean nothing outside rustdoc, left as the code
+/// they show: `` [`Self::pods`] `` and `` [`pods`](crate::PodSet::pods) `` become `` `pods` ``
+/// and `` `Self::pods` ``. Links to web pages and reference links (`[ADR-074][adr-074]`) stay.
+fn without_rust_links(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("[`") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 1..];
+        let Some(end) = after.find("`]") else {
+            out.push_str(&rest[start..]);
+            return out;
+        };
+        let code = &after[..=end];
+        let tail = &after[end + 2..];
+        if code[1..code.len() - 1].contains('`') {
+            // Not one code span: leave the bracket.
+            out.push('[');
+            rest = after;
+        } else if let Some(target) = tail.strip_prefix('(') {
+            let close = target.find(')').unwrap_or(target.len());
+            let url = &target[..close];
+            if url.starts_with("http") || url.starts_with('#') {
+                out.push_str(&rest[start..start + 1 + end + 2]);
+                rest = tail;
+            } else {
+                out.push_str(code);
+                rest = target.get(close + 1..).unwrap_or_default();
+            }
+        } else if tail.starts_with('[') {
+            out.push_str(&rest[start..start + 1 + end + 2]);
+            rest = tail;
+        } else {
+            out.push_str(code);
+            rest = tail;
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Whether `key` can stand bare as a property name in both languages.
@@ -843,6 +976,16 @@ pub fn typecheck(root: &std::path::Path) -> Result<(), String> {
         std::fs::copy(root.join(PYTHON_PATH), dir.join(sub).join("hpr_design.py"))
             .map_err(|e| e.to_string())?;
     }
+    // Each example runs on its module, so it is checked with it: the TypeScript one against a
+    // declaration of the little of Node.js it uses, since the compiler has no Node.js types here.
+    std::fs::copy(
+        root.join("schema/format/typescript/read-design.ts"),
+        dir.join("ts/good/read-design.ts"),
+    )
+    .map_err(|e| e.to_string())?;
+    write(&dir.join("ts/good/node.d.ts"), NODE_DECLARATIONS)?;
+    ts.push("read-design.ts".to_owned());
+    ts.push("node.d.ts".to_owned());
     // The Python example runs on the module, so it is checked with it.
     std::fs::copy(
         root.join("schema/format/python/read_design.py"),
@@ -914,6 +1057,14 @@ pub fn typecheck(root: &std::path::Path) -> Result<(), String> {
     );
     Ok(())
 }
+
+/// What the TypeScript example uses of Node.js, declared for the compiler.
+const NODE_DECLARATIONS: &str = "\
+declare module \"node:fs\" {
+  export function readFileSync(path: string, encoding: \"utf8\"): string;
+}
+declare const process: { argv: string[]; exitCode: number | undefined };
+";
 
 /// Writes `text` to `path`.
 fn write(path: &std::path::Path, text: &str) -> Result<(), String> {

@@ -762,7 +762,7 @@
     document migrates to 0.2, as do 73 of 73 corpus documents; the table in `hpr.md`; both commands.
   - [x] **M3.3c Generated types.** *Done when:* TypeScript and Python types are generated from the
     schema, a check fails when they are stale, and each reads a public document. *Result:* met
-    (ADR-113): each language's reader reads 18 public documents and agrees with the schema on 4,705
+    (ADR-113): each language's reader reads 18 public documents and agrees with the schema on 4,892
     mutations; `tsc` and mypy take the 18 typed as `DesignFile`.
 
 - [ ] **M4.3 Python bindings.** `hpr-py` (PyO3 abi3 + maturin) with numpy outputs, a RocketPy-like

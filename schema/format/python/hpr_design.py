@@ -1,4 +1,5 @@
 # The hpr design format 0.2: types for a document, and a reader that checks one.
+# SPDX-License-Identifier: MIT OR Apache-2.0 (https://github.com/nrdptel/hpr-sim)
 # Generated from schema/format/hpr-design-0.2.schema.json by `cargo xtask format`.
 # Don't edit by hand: the next run overwrites it, and CI fails while it is stale.
 
@@ -6,6 +7,7 @@
 schema. Generated from the schema by `cargo xtask format`; don't edit by hand."""
 
 import json
+import math
 import re
 from typing import Any, Literal, NotRequired, TypedDict, Union, cast
 
@@ -139,7 +141,7 @@ class Component(TypedDict):
     """Attached parts, or a pod set's body components."""
 
     finish: NotRequired[Union["Finish", None]]
-    """The outer surface's finish, for skin friction; `None` means [`Finish::default`]. Parts
+    """The outer surface's finish, for skin friction; `None` means `Finish::default`. Parts
     inside the body ignore it.
     """
 
@@ -174,7 +176,7 @@ class Component(TypedDict):
 
 class Configuration(TypedDict):
     """A set of motors to fly with: at most one per mount. A mount that is a cluster
-    ([`InnerTube::cluster_m`](crate::InnerTube::cluster_m)) takes its motor in every tube.
+    (`InnerTube::cluster_m`) takes its motor in every tube.
     """
 
     id: str
@@ -222,13 +224,13 @@ class CurveEmbedded(TypedDict):
     source: Literal["embedded"]
 
 
-# A curve the caller supplied for the motor's digest ([`SuppliedCurves`]).
+# A curve the caller supplied for the motor's digest (`SuppliedCurves`).
 CurveSupplied = TypedDict(
     "CurveSupplied",
     {
         # The digest the design records, which the curve was supplied for.
         "digest": str,
-        # Where the supplied curves came from ([`SuppliedCurves::source`]).
+        # Where the supplied curves came from (`SuppliedCurves::source`).
         "from": str,
         # The motor supplied.
         "motor": "SolidMotor",
@@ -238,7 +240,7 @@ CurveSupplied = TypedDict(
 
 
 class CurveCatalog(TypedDict):
-    """The bundled ThrustCurve.org catalog ([`Catalog::bundled`])."""
+    """The bundled ThrustCurve.org catalog (`Catalog::bundled`)."""
 
     motor: "SolidMotor"
     """The motor built from it."""
@@ -751,7 +753,7 @@ class IgnitionEventOther(TypedDict):
 
 class InertiaOverride(TypedDict):
     """An inertia tensor about the centre of mass in body axes, kg·m². The off-diagonal entries are
-    the tensor's, `I_xy = −∫ x y dm` ([`crate::mass`]); they default to zero.
+    the tensor's, `I_xy = −∫ x y dm` (`crate::mass`); they default to zero.
     """
 
     xx_kg_m2: float
@@ -787,7 +789,7 @@ class InnerTube(TypedDict):
     may sit off the axis, and it may be a cluster: several like tubes side by side, as in a
     cluster's motor mount.
 
-    **A cluster.** [`Self::cluster_m`] lists where each tube's axis sits, `[x, y]` in body axes
+    **A cluster.** `Self::cluster_m` lists where each tube's axis sits, `[x, y]` in body axes
     from the axis the radial offset and angle give. The tubes are the one tube written here,
     repeated at each place: their mass is the sum of the copies, each with its own parallel-axis
     term. What the tube holds (an engine block, a motor) is repeated in every tube in the same way
@@ -830,7 +832,7 @@ class Kept(TypedDict):
     """An element kept whole, and where it was."""
 
     at: str
-    """Its path in the document; see [`element_at`]."""
+    """Its path in the document; see `element_at`."""
 
     element: "Element"
     """The element, with everything inside it."""
@@ -840,7 +842,7 @@ class KeptAttribute(TypedDict):
     """An attribute kept, and the element it was on."""
 
     at: str
-    """The path of the element it was on; see [`element_at`]."""
+    """The path of the element it was on; see `element_at`."""
 
     name: str
     """Its name."""
@@ -1029,7 +1031,7 @@ class MotorConfiguration(TypedDict):
 
     staging: NotRequired[Union["Staging", None]]
     """The powered separation it flies, for one among the rocket's configurations that has one
-    ([`staging`]). The rocket's configuration does not carry it: give it to the flight
+    (`staging`). The rocket's configuration does not carry it: give it to the flight
     (`hpr::ork::separation` maps it onto one), with a recovery device on each part.
     """
 
@@ -1071,9 +1073,9 @@ class MountedMotor(TypedDict):
 
     failed_tubes: NotRequired[list[int]]
     """The tubes whose motor fails to light, by index into the mount's tubes (a cluster's in the
-    order of [`InnerTube::cluster_m`](crate::InnerTube::cluster_m), `0` for a single tube; a
+    order of `InnerTube::cluster_m`, `0` for a single tube; a
     cluster inside another cluster counts the outer copies first, each with all its tubes; a
-    mount in a pod counts the pods, in the order of [`PodSet::pods`](crate::PodSet::pods)): a
+    mount in a pod counts the pods, in the order of `PodSet::pods`): a
     motor out. Each is carried loaded and gives no thrust. An ignition on the mount's burnout
     takes its first motor that lights, but a recovery device or separation triggered by one
     motor's index waits on that motor alone: point it at a tube that lights, or it never fires.
@@ -1098,7 +1100,7 @@ NoCurve = Literal["hybrid", "no_designation", "not_found", "ambiguous", "unusabl
 
 
 Node = Union["NodeElement", "NodeText"]
-"""A child of an [`Element`]: another element, or text."""
+"""A child of an `Element`: another element, or text."""
 
 
 class NodeElement(TypedDict):
@@ -1188,7 +1190,7 @@ class NoseShapePowerSeries(TypedDict):
     """`g = ξⁿ`: `n = 1` is a cone and `n = ½` a paraboloid."""
 
     exponent: float
-    """The exponent `n`, in `[0.05, 1]` ([`MIN_POWER_EXPONENT`])."""
+    """The exponent `n`, in `[0.05, 1]` (`MIN_POWER_EXPONENT`)."""
 
     kind: Literal["power_series"]
 
@@ -1242,7 +1244,7 @@ class Nozzle(TypedDict):
     `motor.py:1188-1189`), so a RocketPy input transcribed into hpr says `None`.
 
     Which to give: motor files don't record where the curve was measured. For a motor tested
-    near sea level, [`STANDARD_SEA_LEVEL_PRESSURE_PA`] adds the thrust a higher site gains
+    near sea level, `STANDARD_SEA_LEVEL_PRESSURE_PA` adds the thrust a higher site gains
     (16 kPa × `A_e` at 1,400 m); `None` leaves it out. A design must say which: the field is
     required, as `null` for `None`, so leaving it out is an error rather than a silent choice.
     Motors read from `.eng` or `.rse` files, or from the catalog, carry no nozzle and so no
@@ -1339,7 +1341,7 @@ class OrkMotor(TypedDict):
     """The id of the mount component in the rocket."""
 
     stage: int
-    """The index of the mount's stage in [`Rocket::stages`]."""
+    """The index of the mount's stage in `Rocket::stages`."""
 
 
 class Overrides(TypedDict):
@@ -1495,7 +1497,7 @@ class PartRailButton(TypedDict):
 
 class PartPodSet(TypedDict):
     """Pods (external, on a body tube). Its children are the pod's body components, which stack
-    along the pod's axis; its extent is theirs ([`Component::length_m`]).
+    along the pod's axis; its extent is theirs (`Component::length_m`).
     """
 
     pod_set: "PodSet"
@@ -1533,7 +1535,7 @@ class PodSet(TypedDict):
 
     **Copies.** The pod written in the tree is one pod on the body's axis, repeated `count` times
     around it as a rotational pattern: pod `k` is that pod turned by `φ_k = angle + 2π k / count`
-    about the body's axis and moved to `r (cos φ_k, sin φ_k)` ([`Self::pods`]), in
+    about the body's axis and moved to `r (cos φ_k, sin φ_k)` (`Self::pods`), in
     [body axes](https://github.com/nrdptel/hpr-sim/blob/main/docs/physics/frames.md). Everything
     the pod holds (fins on its tubes, parts inside them, a motor in a mount) turns and moves with
     it, so what points away from the airframe on one pod does on every pod. Each copy adds its own
@@ -1785,7 +1787,7 @@ class RecoveryDevice(TypedDict):
 
     configurations: dict[str, "EventSetting_for_DeployEvent"]
     """When it deploys in each configuration that changes that, by `configid`, with anything the
-    configuration leaves out taken from [`RecoveryDevice::deployment`].
+    configuration leaves out taken from `RecoveryDevice::deployment`.
     """
 
     deployment: "EventSetting_for_DeployEvent"
@@ -1798,7 +1800,7 @@ class RecoveryDevice(TypedDict):
     """Parachute or streamer."""
 
     stage: int
-    """The index of its stage in [`Rocket::stages`]."""
+    """The index of its stage in `Rocket::stages`."""
 
 
 ReferenceDiameter = Union[
@@ -1918,7 +1920,7 @@ class SolidMotor(TypedDict):
     """A solid rocket motor.
 
     Nothing here can tell a hybrid's thrust curve from a solid's, so the checks are at the edges:
-    [`crate::catalog::CatalogMotor::motor`] refuses hybrids and the `.rse` reader warns about them
+    `crate::catalog::CatalogMotor::motor` refuses hybrids and the `.rse` reader warns about them
     (`.eng` files don't say).
     """
 
@@ -1939,9 +1941,9 @@ class Source(TypedDict):
     airframe_not_as_written: NotRequired[Union[str, None]]
     """Why the file's airframe or a motor mount was not read exactly as written, if it wasn't: a
     part left out, a value dropped or simplified, or something assumed
-    ([`hpr_io::ork::airframe_not_as_written`]). No configuration of such a rocket flies, and
+    (`hpr_io::ork::airframe_not_as_written`). No configuration of such a rocket flies, and
     `hpr sim` flies no other motor in it. Absent when the rocket was read as written. A document
-    migrated from 0.1 that doesn't show which holds exactly [`migrate::UNKNOWN`], a fixed text a
+    migrated from 0.1 that doesn't show which holds exactly `migrate::UNKNOWN`, a fixed text a
     program can compare against.
     """
 
@@ -2000,7 +2002,7 @@ class StageSeparation(TypedDict):
 
     configurations: dict[str, "EventSetting_for_SeparationEvent"]
     """When it separates in each configuration that changes that, by `configid`, with anything
-    the configuration leaves out taken from [`StageSeparation::separation`].
+    the configuration leaves out taken from `StageSeparation::separation`.
     """
 
     id: str
@@ -2010,7 +2012,7 @@ class StageSeparation(TypedDict):
     """When it separates, as the stage states it."""
 
     stage: int
-    """The stage's index in [`Rocket::stages`]."""
+    """The stage's index in `Rocket::stages`."""
 
 
 class Staging(TypedDict):
@@ -2183,7 +2185,7 @@ class ThrustCurve(TypedDict):
     """A thrust curve: thrust in newtons against time in seconds from ignition, joined by straight
     lines.
 
-    Built through [`ThrustCurve::new`], which checks the samples; it serializes as its samples and
+    Built through `ThrustCurve::new`, which checks the samples; it serializes as its samples and
     re-checks them when deserialized.
     """
 
@@ -2322,7 +2324,7 @@ class WindLevel(TypedDict):
     """One level of a multilevel wind."""
 
     altitude_m: NotRequired[Union[float, None]]
-    """Its altitude, m, above the ground or the sea as [`LaunchConditions::wind_levels_above`]
+    """Its altitude, m, above the ground or the sea as `LaunchConditions::wind_levels_above`
     says.
     """
 
@@ -2353,8 +2355,9 @@ def read_design(text: str) -> DesignFile:
     It checks what the schema says: every required key present, no unknown key, each value of
     its type, each tagged union one of its forms. hpr's own reader checks a few things more that
     no schema can say, such as that two source files don't share a name, so hpr can still refuse
-    a document this takes. Like hpr, it refuses two equal keys in one object, `NaN` and
-    `Infinity`, and `2.0` where a whole number belongs.
+    a document this takes. Like hpr, it refuses two equal keys in one object, `NaN`, `Infinity`
+    and any number too large for a 64-bit float, a lone UTF-16 surrogate (`"\\ud800"`), nesting
+    128 levels deep, and `2.0` where a whole number belongs.
 
     Raises `DesignFormatError` when the document is not one of this version.
     """
@@ -2365,19 +2368,48 @@ def read_design(text: str) -> DesignFile:
             object_pairs_hook=_no_repeated_keys,
             parse_constant=_no_constants,
         )
+    except RecursionError:
+        raise DesignFormatError(f"not JSON: nested more than {_MOST_LEVELS} levels deep") from None
     except ValueError as error:
         raise DesignFormatError(f"not JSON: {error}") from None
+    unread = _scan(value)
+    if unread is not None:
+        raise DesignFormatError(f"not JSON: {unread}")
     if not isinstance(value, dict) or value.get("format") != FORMAT:
         raise DesignFormatError(f'not an hpr design: its "format" is not "{FORMAT}"')
     if value.get("version") != VERSION:
-        raise DesignFormatError(
-            f"written in version {json.dumps(value.get('version'))}; these types read {VERSION}"
-            f" only (`hpr convert` rewrites an older document at {VERSION})"
-        )
+        raise DesignFormatError(_version_message(value.get("version")))
     problem = _check(value, _SCHEMA, "$")
     if problem is not None:
         raise DesignFormatError(f"{problem[0]}: {problem[1]}")
     return cast(DesignFile, value)
+
+
+def _version_message(version: Any) -> str:
+    """Why a document of `version`, which isn't this one, is refused, and what to do."""
+    match = re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version, re.ASCII) if isinstance(
+        version, str
+    ) else None
+    if match is None:
+        return f'its "version" is {_shown(version)}, not a version such as "{VERSION}"'
+    theirs = (int(match[1]), int(match[2]))
+    ours = tuple(int(part) for part in VERSION.split("."))
+    if theirs > ours:
+        return (
+            f"written in version {version}, newer than these types, which read {VERSION}:"
+            " take the types from a newer hpr"
+        )
+    return (
+        f"written in version {version}; these types read {VERSION} only"
+        f" (`hpr convert` rewrites an older document at {VERSION})"
+    )
+
+
+# The deepest nesting hpr reads: serde_json refuses a 128th level of arrays and objects.
+_MOST_LEVELS = 127
+
+# The largest finite 64-bit float.
+_LARGEST_FLOAT = 1.7976931348623157e308
 
 
 def _no_repeated_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -2393,9 +2425,40 @@ def _no_constants(name: str) -> Any:
     raise ValueError(f"{name} is not a JSON number")
 
 
+def _is_text(text: str) -> bool:
+    """Whether `text` is Unicode, with no lone UTF-16 surrogate, which JSON can escape."""
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _scan(value: Any) -> str | None:
+    """Why hpr couldn't read `value` as JSON although Python's reader did, or `None`."""
+    stack: list[tuple[Any, int]] = [(value, 0)]
+    while stack:
+        item, level = stack.pop()
+        if isinstance(item, float) and not math.isfinite(item):
+            return "a number too large for a 64-bit float"
+        if isinstance(item, int) and not isinstance(item, bool) and abs(item) > _LARGEST_FLOAT:
+            return "a number too large for a 64-bit float"
+        if isinstance(item, str) and not _is_text(item):
+            return f"a lone UTF-16 surrogate in {_shown(item)}"
+        if isinstance(item, (dict, list)):
+            if level + 1 > _MOST_LEVELS:
+                return f"nested more than {_MOST_LEVELS} levels deep"
+            for key in item if isinstance(item, dict) else ():
+                if not _is_text(key):
+                    return f"a lone UTF-16 surrogate in the key {_shown(key)}"
+            children = item.values() if isinstance(item, dict) else item
+            stack.extend((child, level + 1) for child in children)
+    return None
+
+
 def _shown(value: Any) -> str:
     """`value` as JSON, cut to its first 40 characters."""
-    text = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    text = json.dumps(value, separators=(",", ":"))
     return text if len(text) <= 40 else text[:40] + "…"
 
 
@@ -2421,46 +2484,72 @@ _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 _MOST = {"uint32": 4294967295, "uint": 18446744073709551615}
 
+_PATTERNS: dict[str, re.Pattern[str]] = {}
+
+
+def _pattern(pattern: str) -> re.Pattern[str]:
+    """`pattern` as JSON Schema reads it: ASCII classes, and `$` at the very end of the text only,
+    where Python's `$` would also match before a final newline."""
+    if pattern not in _PATTERNS:
+        translated = pattern[:-1] + r"\Z" if pattern.endswith("$") else pattern
+        _PATTERNS[pattern] = re.compile(translated, re.ASCII)
+    return _PATTERNS[pattern]
+
+
+# A problem: where in the document a check failed, and why; for a value that isn't a union's
+# constant, also the value and the constant, so a union can list every constant it allows.
+_Problem = tuple[str, str, Union[str, None], Union[str, None]]
+
 
 def _member(path: str, key: str) -> str:
     """`path` followed by the key `key`: `.name` where it can be, else `["na-me"]`."""
     return f"{path}.{key}" if _IDENTIFIER.fullmatch(key) else f"{path}[{json.dumps(key)}]"
 
 
-def _union(value: Any, forms: list[Any], path: str, exactly_one: bool) -> tuple[str, str] | None:
-    """The problem in the first of `forms` that fails deepest, or `None` if any form holds."""
+def _union(value: Any, forms: list[Any], path: str, exactly_one: bool) -> _Problem | None:
+    """The problem with `value` against the union `forms`, or `None` if a form holds (exactly
+    one, for `oneOf`): where the forms fail deepest, every constant they wanted there, or else the
+    first deepest problem, or else that the value is none of them."""
     matched = 0
-    deepest: tuple[str, str] | None = None
+    problems: list[_Problem] = []
     for form in forms:
         problem = _check(value, form, path)
         if problem is None:
             matched += 1
-        elif deepest is None or len(problem[0]) > len(deepest[0]):
-            deepest = problem
+        else:
+            problems.append(problem)
     if exactly_one and matched > 1:
-        return (path, f"matches {matched} of its forms, not one")
+        return (path, f"matches {matched} of its forms, not one", None, None)
     if matched > 0:
         return None
-    if deepest is not None and len(deepest[0]) > len(path):
-        return deepest
-    return (path, f"{_shown(value)} is none of the {len(forms)} forms allowed here")
+    depth = max((len(p[0]) for p in problems), default=-1)
+    deepest = [p for p in problems if len(p[0]) == depth]
+    wanted = [p[3] for p in deepest]
+    if len(deepest) > 1 and all(p[0] == deepest[0][0] for p in deepest) and None not in wanted:
+        choices = list(dict.fromkeys(w for w in wanted if w is not None))
+        listed = f"{', '.join(choices[:-1])} or {choices[-1]}"
+        return (deepest[0][0], f"is {deepest[0][2]}, not {listed}", None, None)
+    if depth > len(path):
+        return deepest[0]
+    return (path, f"{_shown(value)} is none of the {len(forms)} forms allowed here", None, None)
 
 
-def _check(value: Any, node: Any, path: str) -> tuple[str, str] | None:
-    """The first problem with `value` against `node`, as its path and why, or `None`."""
+def _check(value: Any, node: Any, path: str) -> _Problem | None:
+    """The first problem with `value` against `node`, or `None` when it holds."""
     if "$ref" in node:
         target = _SCHEMA["$defs"].get(node["$ref"].removeprefix("#/$defs/"))
         if target is None:
-            return (path, f"the schema has no {node['$ref']}")
+            return (path, f"the schema has no {node['$ref']}", None, None)
         problem = _check(value, target, path)
         if problem is not None:
             return problem
     if "type" in node:
         kinds = [node["type"]] if isinstance(node["type"], str) else node["type"]
         if not any(_is_type(value, kind) for kind in kinds):
-            return (path, f"is {_shown(value)}, not {' or '.join(kinds)}")
+            return (path, f"is {_shown(value)}, not {' or '.join(kinds)}", None, None)
     if "const" in node and value != node["const"]:
-        return (path, f"is {_shown(value)}, not {json.dumps(node['const'])}")
+        found, expected = _shown(value), json.dumps(node["const"])
+        return (path, f"is {found}, not {expected}", found, expected)
     for keyword, exactly_one in (("oneOf", True), ("anyOf", False)):
         if keyword in node:
             problem = _union(value, node[keyword], path, exactly_one)
@@ -2468,17 +2557,17 @@ def _check(value: Any, node: Any, path: str) -> tuple[str, str] | None:
                 return problem
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in node and value < node["minimum"]:
-            return (path, f"is {value}, less than {node['minimum']}")
+            return (path, f"is {value}, less than {node['minimum']}", None, None)
         most = _MOST.get(node.get("format", ""))
         if most is not None and value > most:
-            return (path, f"is {value}, more than {node['format']} holds ({most})")
-    if isinstance(value, str) and "pattern" in node and not re.search(node["pattern"], value):
-        return (path, f"{json.dumps(value)} doesn't match {node['pattern']}")
+            return (path, f"is {value}, more than {node['format']} holds ({most})", None, None)
+    if isinstance(value, str) and "pattern" in node and not _pattern(node["pattern"]).search(value):
+        return (path, f"{_shown(value)} doesn't match {node['pattern']}", None, None)
     if isinstance(value, list):
         if "minItems" in node and len(value) < node["minItems"]:
-            return (path, f"has {len(value)} items, fewer than {node['minItems']}")
+            return (path, f"has {len(value)} items, fewer than {node['minItems']}", None, None)
         if "maxItems" in node and len(value) > node["maxItems"]:
-            return (path, f"has {len(value)} items, more than {node['maxItems']}")
+            return (path, f"has {len(value)} items, more than {node['maxItems']}", None, None)
         prefix = node.get("prefixItems", [])
         for i, item in enumerate(value):
             item_node = prefix[i] if i < len(prefix) else node.get("items")
@@ -2488,14 +2577,14 @@ def _check(value: Any, node: Any, path: str) -> tuple[str, str] | None:
     if isinstance(value, dict):
         for key in node.get("required", []):
             if key not in value:
-                return (path, f"has no {json.dumps(key)}, which it needs")
+                return (path, f"has no {json.dumps(key)}, which it needs", None, None)
         properties = node.get("properties", {})
         extra = node.get("additionalProperties", True)
         for key, item in value.items():
             if key in properties:
                 problem = _check(item, properties[key], _member(path, key))
             elif extra is False:
-                return (path, f"has the unknown key {json.dumps(key)}")
+                return (path, f"has the unknown key {json.dumps(key)}", None, None)
             elif isinstance(extra, dict):
                 problem = _check(item, extra, _member(path, key))
             else:
