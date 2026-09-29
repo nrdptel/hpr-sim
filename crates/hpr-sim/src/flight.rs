@@ -403,7 +403,8 @@ impl Simulation {
     }
 
     /// Flies another tool's `C_D0(M)` table instead of the drag buildup, and instead of any drag
-    /// model ([`Simulation::with_drag_model`]).
+    /// model ([`Simulation::with_drag_model`]). A negative coefficient where the flight meets one
+    /// stops it with [`hpr_aero::AeroError::Domain`].
     #[must_use]
     pub fn with_drag_table(mut self, table: DragTable) -> Self {
         self.vehicle.aero = self.vehicle.aero.clone().with_drag_table(table);
