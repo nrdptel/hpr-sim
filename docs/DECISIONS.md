@@ -9446,8 +9446,8 @@ used `attachments` for the source `.ork`'s other entries, which the brief's cont
    or naming a Windows device with or without an extension (`CON`, `CONIN$`, `COM0` to `COM9`,
    `LPT¹` and the like), no `\`, `:` or control character, not `design.hpr` in any case; no two
    names the same ignoring case (compared upper-cased then lower-cased, so `ς`, `σ` and `Σ` meet,
-   and `ß` meets `ss`, a conservative refusal), none also another's folder, and none in a folder
-   named `design.hpr`. A container holds at most 256 MiB unpacked, which
+   and `ß` meets `ss`, a conservative refusal), none also another's folder, and none in a
+   top-level folder named `design.hpr`. A container holds at most 256 MiB unpacked, which
    the writer and the reader both hold to. The reader checks every name before it decompresses,
    passes over a folder's own entry if it is empty, refuses a symbolic link and a name beyond ASCII
    not marked as UTF-8, and

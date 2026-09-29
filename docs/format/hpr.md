@@ -16,7 +16,8 @@ through the `hpr_format` library. Generated TypeScript and Python types come wit
 step, [M3.3c](../decisions-and-roadmap.md#m3-3c).
 
 **How far to trust it.** Converting keeps everything hpr read from the `.ork` except the reader's
-warnings. hpr's checks use 75 `.ork` files and read 73. Each of the 73 goes `.ork` → `.hpr` → `.ork` and comes back as the same
+warnings. hpr's checks use 75 `.ork` files and read 73. Each of the 73 goes `.ork` → `.hpr` →
+`.ork` and comes back as the same
 design, bit for bit, and as the `.ork` hpr writes from the original, byte for byte. That `.ork` is
 close to the original file but not the same: [what the writer changes](ork.md#writing-a-ork-back-out)
 says how. The 109 motor configurations that fly, spread over 30 of the designs, reach the same
@@ -118,7 +119,7 @@ an attachment, kept byte for byte, under its name, in its order.
 - **Names are relative paths**, with `/` between folders, such as `logs/flight-1.csv`. No part of a
   name may be empty, `.` or `..`, and a name holds no `\`, `:` or control character, so no name can
   climb out of the folder a container is unpacked into. No attachment may be named `design.hpr`, in
-  any mix of capitals, nor sit in a folder of that name.
+  any mix of capitals, nor sit in a top-level folder of that name (`design.hpr/notes.txt`).
 - **Names that would unpack as one file are refused**: two names the same but for capitals, a name
   that is also another's folder (`logs` beside `logs/a.csv`), and, for Windows, a part ending in `.`
   or a space, or named as a device (`CON`, `NUL`, `COM1` and the like, with or without an
@@ -171,8 +172,8 @@ separation yet, so a recovery edit changes only the `.ork`.) The motors are the 
 held twice ([what is not there yet](#what-is-not-there-yet)). `hpr sim` flies the motors under
 `rocket.configurations`, and the `.ork` writer takes its motors from `motors.configurations`, so
 change a motor in both places, or convert the `.ork` again. Nothing warns when the two disagree.
-Any program that checks JSON against a JSON Schema can check an edited document before hpr reads it ([the schema](#the-schema)). No other
-design program reads `.hpr` or `.hprz` yet.
+Any program that checks JSON against a JSON Schema can check an edited document before hpr reads
+it ([the schema](#the-schema)). No other design program reads `.hpr` or `.hprz` yet.
 
 The text is canonical, meaning there is exactly one way to write a given design: two-space indents,
 keys in the order above, and a final newline. So the same design always gives the same bytes.
