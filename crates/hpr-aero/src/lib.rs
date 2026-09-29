@@ -32,6 +32,8 @@
 //!   RASAero II's export.
 //! - [`tube_fins`]: tube fins, each tube an annular wing: Weissinger's slope with Göthert's rule,
 //!   Fletcher's measured aerodynamic centre, below Mach 0.8.
+//! - [`custom`]: drag models of your own: the [`DragModel`] trait, flown in place of the drag
+//!   buildup.
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
 //! A rocket's centre of pressure is [`NormalForce::cp_station_m`], in metres aft of the nose tip,
@@ -41,8 +43,9 @@
 //! Status: the normal force and centre of pressure from Mach 0 to 5 (fins through the transonic
 //! region to supersonic linear theory, [Fins through Mach 1][guide-fins-mach]); the drag buildup
 //! from Mach 0 to 5 (noses, shoulders and steps through Mach 1 by Niskanen's appendix B,
-//! [Drag through Mach 1][guide-drag-mach]); drag override tables at any Mach number; normal-force
-//! override tables from RASAero II's export ([The normal force from RASAero II][guide-override]);
+//! [Drag through Mach 1][guide-drag-mach]); drag override tables, and drag models of a
+//! program's own ([`custom`]), at any Mach number; normal-force override tables from RASAero II's
+//! export ([The normal force from RASAero II][guide-override]);
 //! the roll forcing of canted fins and the roll damping from Mach 0 to 5 ([`AeroModel::roll`],
 //! [Roll: forcing and damping][guide-roll]).
 //!
@@ -58,6 +61,7 @@ pub mod afterbody;
 pub mod blunt_tip;
 pub mod body;
 pub mod crossflow;
+pub mod custom;
 pub mod drag;
 pub mod error;
 pub mod fins;
@@ -71,6 +75,7 @@ pub mod tube_fins;
 pub use afterbody::Boattail;
 pub use body::{BODY_LIFT_K, BodyGeometry};
 pub use crossflow::BodyLift;
+pub use custom::{DragModel, DragQuery};
 pub use drag::{
     BaseBehindBoattail, BoattailTerm, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
     MergedBoattail, PressureDragTerm, ReliefSource, WakeTerm,

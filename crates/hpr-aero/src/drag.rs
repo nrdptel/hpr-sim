@@ -537,7 +537,8 @@ impl DragConditions {
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Drag {
-    /// Zero-lift drag coefficient `C_D0`: the sum of the four parts, or an override table's value.
+    /// Zero-lift drag coefficient `C_D0`: the sum of the four parts, or an override table's or a
+    /// drag model's value ([`crate::custom`]), when the four parts are zero.
     pub zero_lift_coefficient: f64,
     /// Axial-force coefficient `C_A = C_D0 f(α)` ([`axial_drag_alpha_factor`]), along `−z_B` when
     /// the flow meets the nose.

@@ -716,7 +716,7 @@
       probes, apogee +0.41% to +0.81%, speed to +1.24%, the pods' change within 0.32 points.
 ## Phase 2: Library surfaces and interop
 
-- [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
+- [x] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
   - Loft lessons: L95.
@@ -732,9 +732,10 @@
     *Done when:* the builder's rocket is `own_rocket.rs`'s, flown bit for bit the same; L95's test
     passes, each refusal pinned; two builder examples run in CI; a guide page explains it.
     *Result:* met (ADR-103): equal `FlightResult`s; 8 spoiled designs, 7 refused by part, 1 finite.
-  - [ ] **M4.1b Custom models and the rustdoc guide.** A drag-model trait the flight calls in
+  - [x] **M4.1b Custom models and the rustdoc guide.** A drag-model trait the flight calls in
     place of hpr's own, the custom aero example, two more examples, and a rustdoc guide. *Done
-    when:* the three bullets above are met with at least 4 builder examples.
+    when:* the three bullets above are met with at least 4 builder examples. *Result:* met
+    (ADR-104): `custom_drag` flies `DragModel`s; 5 builder examples; `hpr::guide`.
 
 - [ ] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|analyze|diagnose` (stubs
   are fine for commands whose milestone hasn't come yet), `--json` everywhere, and shell

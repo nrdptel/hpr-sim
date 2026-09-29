@@ -31,8 +31,9 @@
     drag).
   - Any push from the separation (no charge or spring), the air flowing between the parts as they
     come apart, and the booster's orientation as it falls.
-  - A drag or normal-force table from another program (`Simulation::with_drag_table`): it
-    describes the whole stack, so a powered separation under one is refused.
+  - A drag or normal-force table from another program (`Simulation::with_drag_table`), or a drag
+    model of your own ([Models of your own](../custom-models.md)): it describes the whole stack,
+    so a powered separation under one is refused.
   - More than one separation in a flight
     ([#183](https://github.com/nrdptel/hpr-sim/issues/183)), so a three-stage rocket can't fly.
 
@@ -360,10 +361,10 @@ In `crates/hpr-sim/src/staging.rs` and `crates/hpr-design/src/config.rs`:
   to 1e-9 of it, launched 10° off vertical.
 - `an_air_start_lights_at_its_time_and_burns_on_its_own_clock`: a motor lit at 3 s, loaded until
   then, burns out at 3 s plus its burn time.
-- `staging_refuses_what_it_cannot_fly`: a drag table past a powered separation, a separation
-  timed while the booster burns, a delay that is negative or not a number, a booster with nothing
-  open at the split, a separation that could never fire, and a powered separation after the
-  sustainer's canopy opened.
+- `staging_refuses_what_it_cannot_fly`: a drag table or a drag model past a powered separation, a
+  separation timed while the booster burns, a delay that is negative or not a number, a booster
+  with nothing open at the split, a separation that could never fire, and a powered separation
+  after the sustainer's canopy opened.
 - `ignition_times_follow_their_events`, `bad_ignitions_are_refused`.
 
 [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25

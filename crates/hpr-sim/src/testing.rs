@@ -367,6 +367,17 @@ pub(crate) fn constant_drag(cd: f64) -> DragTable {
     )
 }
 
+/// A drag model with the same `C_D0` at every flow: [`constant_drag`] as a
+/// [`hpr_aero::DragModel`].
+#[derive(Debug)]
+pub(crate) struct ConstantDrag(pub(crate) f64);
+
+impl hpr_aero::DragModel for ConstantDrag {
+    fn zero_lift_drag(&self, _query: &hpr_aero::DragQuery<'_>) -> Result<f64, hpr_aero::AeroError> {
+        Ok(self.0)
+    }
+}
+
 /// The ballast's mass in [`with_ballast`], kg.
 pub(crate) const BALLAST_KG: f64 = 0.2;
 

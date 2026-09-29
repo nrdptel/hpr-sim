@@ -114,7 +114,9 @@ mod tests {
     use crate::recovery::{CanopyType, Device, DeviceDrag, Separation, Trigger};
     use hpr_core::{DQuat, DVec3};
 
-    use crate::testing::{UniformAir, analytic_environment, constant_drag, design, site};
+    use crate::testing::{
+        ConstantDrag, UniformAir, analytic_environment, constant_drag, design, site,
+    };
 
     /// The synthetic two-stage design's configuration: a J760 in the booster, an I175 in the
     /// sustainer.
@@ -738,47 +740,67 @@ mod tests {
 
     #[test]
     fn staging_refuses_what_it_cannot_fly() {
-        // A drag table is the whole stack's; the sustainer would fly it on the wrong shape.
+        // A drag table or drag model is the whole stack's; the sustainer would fly it on the
+        // wrong shape.
         let rocket = two_stage(Ignition::Burnout {
             mount: BOOSTER_MOUNT.to_owned(),
             delay_s: 1.0,
         });
-        let sim = Simulation::new(
-            &rocket,
-            CONFIGURATION,
-            Environment::standard(site()).unwrap(),
-            Rail::vertical(6.0),
-            FlightSettings::default(),
-        )
-        .unwrap()
-        .with_drag_table(constant_drag(0.5));
-        let booster = motor_index(&sim, BOOSTER_MOUNT);
-        let tumble = DeviceDrag::tumbling_stages(sim.assembly(), (1, 1)).unwrap();
-        let sim = sim
-            .with_recovery(vec![
-                Device::new(
-                    "sustainer main",
-                    DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
-                    Trigger::Apogee,
-                ),
-                Device::new("booster tumble", tumble, BOOSTER_AT_SEPARATION).on_body(1),
-            ])
-            .unwrap();
-        let error = sim
-            .with_separation(Separation::new(
-                Trigger::Burnout {
-                    motor: booster,
-                    delay_s: 0.5,
-                },
-                0,
-            ))
-            .unwrap()
-            .run(&mut ())
-            .expect_err("a table flown past a powered separation");
-        assert!(
-            matches!(error, SimError::Domain { what, .. } if what.contains("table")),
-            "{error:?}"
+        let booster = motor_index(
+            &Simulation::new(
+                &rocket,
+                CONFIGURATION,
+                Environment::standard(site()).unwrap(),
+                Rail::vertical(6.0),
+                FlightSettings::default(),
+            )
+            .unwrap(),
+            BOOSTER_MOUNT,
         );
+        type Override = fn(Simulation) -> Simulation;
+        let overrides: [(Override, &str); 2] = [
+            (|sim| sim.with_drag_table(constant_drag(0.5)), "a table"),
+            (|sim| sim.with_drag_model(ConstantDrag(0.5)), "a drag model"),
+        ];
+        for (with_override, flown) in overrides {
+            let sim = with_override(
+                Simulation::new(
+                    &rocket,
+                    CONFIGURATION,
+                    Environment::standard(site()).unwrap(),
+                    Rail::vertical(6.0),
+                    FlightSettings::default(),
+                )
+                .unwrap(),
+            );
+            let tumble = DeviceDrag::tumbling_stages(sim.assembly(), (1, 1)).unwrap();
+            let sim = sim
+                .with_recovery(vec![
+                    Device::new(
+                        "sustainer main",
+                        DeviceDrag::canopy(CanopyType::FlatCircular, 1.2),
+                        Trigger::Apogee,
+                    ),
+                    Device::new("booster tumble", tumble, BOOSTER_AT_SEPARATION).on_body(1),
+                ])
+                .unwrap();
+            let error = sim
+                .with_separation(Separation::new(
+                    Trigger::Burnout {
+                        motor: booster,
+                        delay_s: 0.5,
+                    },
+                    0,
+                ))
+                .unwrap()
+                .run(&mut ())
+                .unwrap_err();
+            assert!(
+                matches!(error, SimError::Domain { what, .. }
+                if what.starts_with("time of a powered separation (a drag table or drag model")),
+                "{flown} flown past a powered separation: {error:?}"
+            );
+        }
 
         // A separation timed before the booster burns out, and a delay out of its domain.
         for (motor_delay_s, what) in [(-0.5, "negative delay"), (f64::NAN, "delay NaN")] {

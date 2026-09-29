@@ -590,6 +590,90 @@ fn an_observer_sees_the_flight() {
     assert_eq!(serde_json::from_str::<Flight>(&text).unwrap(), flight);
 }
 
+/// hpr's own drag buildup, handed back through the drag-model trait unchanged.
+#[derive(Debug)]
+struct HprsOwn;
+
+impl hpr_aero::DragModel for HprsOwn {
+    fn zero_lift_drag(&self, query: &hpr_aero::DragQuery<'_>) -> Result<f64, hpr_aero::AeroError> {
+        Ok(query.buildup()?.zero_lift_coefficient)
+    }
+}
+
+/// The same drag coefficient at every flow.
+#[derive(Debug)]
+struct ConstantDrag(f64);
+
+impl hpr_aero::DragModel for ConstantDrag {
+    fn zero_lift_drag(&self, _query: &hpr_aero::DragQuery<'_>) -> Result<f64, hpr_aero::AeroError> {
+        Ok(self.0)
+    }
+}
+
+/// A drag model is flown in hpr's place: one handing back hpr's own drag flies the same flight,
+/// bit for bit, and a constant one flies as the same constant table.
+#[test]
+fn a_drag_model_is_flown_in_place_of_hprs_drag() {
+    let rocket = built();
+    let environment = environment();
+    let launch = Flight::builder(&rocket, &environment, 1.8);
+    let own = launch.fly().unwrap();
+    assert_eq!(launch.clone().drag_model(HprsOwn).fly().unwrap(), own);
+
+    let table = hpr_aero::DragTable::from_csv("0,0.5\n1,0.5\n", None).unwrap();
+    let by_table = launch
+        .simulation()
+        .unwrap()
+        .with_drag_table(table)
+        .run(&mut ())
+        .unwrap();
+    let by_model = launch.clone().drag_model(ConstantDrag(0.5)).fly().unwrap();
+    assert_eq!(by_model.result(), &by_table);
+    assert_ne!(by_model.apogee_m(), own.apogee_m());
+
+    // More drag, a lower apogee; the last model set is the one flown.
+    let draggier = launch.clone().drag_model(ConstantDrag(0.9)).fly().unwrap();
+    assert!(draggier.apogee_m().unwrap() < by_model.apogee_m().unwrap());
+    let last = launch
+        .clone()
+        .drag_model(ConstantDrag(0.9))
+        .drag_model(HprsOwn)
+        .fly()
+        .unwrap();
+    assert_eq!(last, own);
+
+    // One shared model flies two builders' flights the same.
+    let shared: std::sync::Arc<dyn hpr_aero::DragModel> = std::sync::Arc::new(ConstantDrag(0.5));
+    let other = Flight::builder(&rocket, &environment, 1.8);
+    assert_eq!(
+        launch
+            .clone()
+            .shared_drag_model(shared.clone())
+            .fly()
+            .unwrap(),
+        other.shared_drag_model(shared).fly().unwrap()
+    );
+    assert_eq!(
+        launch
+            .clone()
+            .shared_drag_model(std::sync::Arc::new(ConstantDrag(0.5)))
+            .fly()
+            .unwrap(),
+        by_model
+    );
+
+    // A model that answers nonsense stops the flight, named.
+    let error = launch.drag_model(ConstantDrag(-1.0)).fly().unwrap_err();
+    assert!(
+        matches!(
+            &error,
+            Error::Sim(hpr_sim::SimError::Aero(hpr_aero::AeroError::Domain { what, value }))
+                if *what == "zero-lift drag coefficient from a drag model" && *value == -1.0
+        ),
+        "{error:?}"
+    );
+}
+
 /// Loft lesson L95: a degenerate design must be refused or fly to finite numbers, never to a NaN
 /// or a hang. The builder refuses each one as it is given, naming it. Put straight into a design
 /// the builder can't check, each is refused before the flight or flies finite.
@@ -815,4 +899,40 @@ fn assert_flies_finite(name: &str, flight: &Flight) {
             event.kind
         );
     }
+}
+
+/// A wind of your own that isn't a finite velocity stops the flight: the air's speed then isn't
+/// finite, and the drag's Reynolds number, checked at every step, refuses it.
+#[test]
+fn a_wind_that_is_not_finite_stops_the_flight() {
+    /// A west wind of `speed_m_s` above 300 m over the site, and calm below.
+    #[derive(Debug)]
+    struct Aloft(f64);
+    impl hpr_atmos::Wind for Aloft {
+        fn wind(&self, height_msl_m: f64) -> Result<hpr_atmos::WindSample, hpr_atmos::AtmosError> {
+            let east_m_s = if height_msl_m > 1700.0 { self.0 } else { 0.0 };
+            Ok(hpr_atmos::WindSample {
+                velocity_enu_m_s: hpr_core::DVec3::new(east_m_s, 0.0, 0.0),
+                extrapolated: None,
+            })
+        }
+    }
+    let rocket = built();
+    for bad in [f64::NAN, f64::INFINITY] {
+        let environment = environment().with_wind(Aloft(bad));
+        let error = Flight::builder(&rocket, &environment, 1.8)
+            .fly()
+            .unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                Error::Sim(hpr_sim::SimError::Aero(hpr_aero::AeroError::Domain { what, .. }))
+                    if *what == "Reynolds number per metre"
+            ),
+            "{error:?}"
+        );
+    }
+    // The same wind, finite, flies.
+    let environment = environment().with_wind(Aloft(5.0));
+    assert!(Flight::builder(&rocket, &environment, 1.8).fly().is_ok());
 }

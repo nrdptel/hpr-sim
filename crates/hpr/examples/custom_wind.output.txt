@@ -1,0 +1,7 @@
+My 54 mm rocket on a 168H54-10A, from a 1.8 m vertical rail
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+wind                    apogee   landing east  landing south  descent
+                           (m)            (m)            (m)    (m/s)
+steady, from the west   1138.0            853              0      4.6
+veering                 1135.7           1395            835      4.6
