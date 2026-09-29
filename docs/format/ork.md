@@ -2776,9 +2776,13 @@ Four kinds of thing are kept:
   [issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
 
 Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
-podset that is the first part inside the second part of the first stage. A tag's last step starts
-with `@`: `openrocket/rocket/stage[0]/nosecone[0]/@appearance[7]` is the eighth tag of that nose
-cone, and a tag inside it adds another, such as `…/@wind[2]/@gusts[1]`. An attribute is kept with
+podset that is the first part inside the second part of the first stage. A part counts among all
+the parts beside it, since their order is where they stack. A tag's step starts with `@` and
+counts only among the tags of its own name: `openrocket/rocket/stage[0]/nosecone[0]/@appearance[0]`
+is that nose cone's first `<appearance>`, wherever it stood, and a tag inside it adds another,
+such as `…/@wind[0]/@gusts[0]`. A section counts the same way. OpenRocket reads no meaning into
+the order of tags, and counting by name lets an export put each tag back without knowing where
+it stood ([ADR-109](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-109-m32-split-and-a-ork-written-from-the-design-2026-09-29)). An attribute is kept with
 the path of the element it was on, its name and its value. The function `hpr_io::ork::element_at`
 follows a path back to the element.
 

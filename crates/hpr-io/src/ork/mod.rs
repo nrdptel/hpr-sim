@@ -36,6 +36,7 @@ pub mod component;
 pub mod container;
 pub mod document;
 mod error;
+pub mod export;
 pub mod extensions;
 pub mod motors;
 mod reads;

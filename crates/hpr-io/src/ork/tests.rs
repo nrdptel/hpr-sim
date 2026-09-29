@@ -3445,9 +3445,9 @@ fn unknown_content_round_trips_through_x_openrocket() {
     assert_eq!(
         at(&kept.sections),
         [
-            "openrocket/simulations/simulation[0]/extension[2]",
-            "openrocket/photostudio[2]",
-            "openrocket/docprefs[3]",
+            "openrocket/simulations/simulation[0]/extension[0]",
+            "openrocket/photostudio[0]",
+            "openrocket/docprefs[0]",
         ]
     );
     // The tags no reader asked for, in parts it did read: the nose cone's colour and a tag hpr has
@@ -3455,10 +3455,10 @@ fn unknown_content_round_trips_through_x_openrocket() {
     assert_eq!(
         at(&kept.tags),
         [
-            "openrocket/rocket/stage[0]/nosecone[0]/@appearance[7]",
-            "openrocket/rocket/stage[0]/nosecone[0]/@glowsinthedark[8]",
-            "openrocket/simulations/simulation[0]/conditions[1]/@randomseed[1]",
-            "openrocket/simulations/simulation[0]/conditions[1]/@wind[2]/@gusts[1]",
+            "openrocket/rocket/stage[0]/nosecone[0]/@appearance[0]",
+            "openrocket/rocket/stage[0]/nosecone[0]/@glowsinthedark[0]",
+            "openrocket/simulations/simulation[0]/conditions[0]/@randomseed[0]",
+            "openrocket/simulations/simulation[0]/conditions[0]/@wind[0]/@gusts[0]",
         ]
     );
     // And an attribute no reader asked for, on a tag one did: the material's group.
@@ -3470,7 +3470,7 @@ fn unknown_content_round_trips_through_x_openrocket() {
     assert_eq!(
         attributes,
         [(
-            "openrocket/rocket/stage[0]/nosecone[0]/@material[2]",
+            "openrocket/rocket/stage[0]/nosecone[0]/@material[0]",
             "group",
             "Plastics"
         )]

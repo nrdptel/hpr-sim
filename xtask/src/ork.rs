@@ -265,6 +265,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut recovery_tally = crate::ork_recovery::RecoveryTally::default();
     let mut simulation_tally = crate::ork_simulations::SimulationTally::default();
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
+    let mut export_tally = crate::ork_export::ExportTally::default();
     let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
     let mut mass = crate::ork_mass::MassTally::load(root, library)?;
     let mut supply = crate::ork_supply::Supply::load(root, library)?;
@@ -375,6 +376,13 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                 let recovery_here = recovery_tally.add(&whole);
                 let simulations_here = simulation_tally.add(&whole);
                 let extensions_here = extension_tally.add(&whole, &read.value.document);
+                let export_here = export_tally.add(
+                    name,
+                    &whole,
+                    &read.value.document,
+                    &read.value.attachments,
+                    supply.curves(),
+                );
                 let mut defaulted_here = 0usize;
                 for warning in &spine.warnings {
                     if warning.message.starts_with(DEFAULT_RADIUS) {
@@ -575,6 +583,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     "recovery": recovery_here,
                     "simulations": simulations_here,
                     "extensions": extensions_here,
+                    "export": export_here,
                     "rocketserializer": geometry_here,
                     "openrocket_mass": mass_here,
                     "container": read.value.container.as_str(),
@@ -712,6 +721,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     summary["recovery"] = recovery_tally.summary();
     summary["simulations"] = simulation_tally.summary();
     summary["extensions"] = extension_tally.summary();
+    summary["export"] = export_tally.summary();
     let path = root.join(REPORT);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
@@ -855,6 +865,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     recovery_tally.print();
     simulation_tally.print();
     extension_tally.print();
+    export_tally.print();
     geometry.print();
     mass.print();
     if !spine_errors.is_empty() {
@@ -893,6 +904,9 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
         return Err(failure);
     }
     if let Some(failure) = extension_tally.failure() {
+        return Err(failure);
+    }
+    if let Some(failure) = export_tally.failure() {
         return Err(failure);
     }
     if let Some(failure) = geometry.failure() {
@@ -1023,7 +1037,7 @@ fn openrocket_radii(root: &Path, path: &Path) -> Result<BTreeMap<String, Vec<f64
     Ok(radii)
 }
 
-fn print_counts<K: std::fmt::Display>(title: &str, counts: &BTreeMap<K, usize>) {
+pub(crate) fn print_counts<K: std::fmt::Display>(title: &str, counts: &BTreeMap<K, usize>) {
     if counts.is_empty() {
         println!("  {title}: none");
         return;
