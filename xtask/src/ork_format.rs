@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 pub(crate) const APOGEE_RELATIVE: f64 = 1e-9;
 
 /// The committed schema, which every document is checked against.
-const SCHEMA: &str = "schema/format/hpr-design-0.1.schema.json";
+const SCHEMA: &str = "schema/format/hpr-design-0.2.schema.json";
 
 /// The counts, summed over the designs.
 pub(crate) struct FormatTally {
@@ -32,6 +32,20 @@ pub(crate) struct FormatTally {
     attachments: BTreeMap<String, usize>,
     /// Designs that read back from that `.ork` as first read.
     same_design: usize,
+    /// Documents that, rewritten as version 0.1 (`source_files` named `attachments`, and no
+    /// `airframe_not_as_written`, which 0.1 didn't record), migrate back to the same document but
+    /// for that reason.
+    migrated: usize,
+    /// Documents whose `.ork` airframe was not read exactly as written, and of them, those whose
+    /// migration from 0.1 recovers the reason, and those it marks unknown.
+    not_as_written: usize,
+    recovered: usize,
+    unknown: usize,
+    /// Documents read as written that the migration marks unknown, which refuses another motor in
+    /// them though it could fly.
+    unknown_as_written: usize,
+    /// Documents whose migration gives a wrong reason, or none where there is one: a failure.
+    wrong_reason: Vec<String>,
     /// Motor configurations the designs leave out of their rockets, as the `.ork` reader does:
     /// no curve, a size that disagrees, a part read simpler (ADR-055). None has a flight to compare.
     left_out: usize,
@@ -63,6 +77,12 @@ impl FormatTally {
             same_ork: 0,
             attachments: BTreeMap::new(),
             same_design: 0,
+            migrated: 0,
+            not_as_written: 0,
+            recovered: 0,
+            unknown: 0,
+            unknown_as_written: 0,
+            wrong_reason: Vec::new(),
             left_out: 0,
             flown: 0,
             largest_relative: 0.0,
@@ -83,9 +103,13 @@ impl FormatTally {
         curves: &SuppliedCurves,
     ) -> Value {
         self.designs += 1;
-        let provenance = Provenance::hpr(Some(Source::of(SourceFormat::Ork, bytes)));
-        let document = DesignFile::new(design.clone(), provenance, attachments);
-        for file in &document.attachments {
+        let mut source = Source::of(SourceFormat::Ork, bytes);
+        source.airframe_not_as_written = ork::read(bytes)
+            .ok()
+            .and_then(|file| ork::airframe_not_as_written(&file.value));
+        let airframe = source.airframe_not_as_written.clone();
+        let document = DesignFile::new(design.clone(), Provenance::hpr(Some(source)), attachments);
+        for file in &document.source_files {
             let key = match file.content {
                 Content::Text(_) => "text",
                 _ => "base64",
@@ -124,6 +148,43 @@ impl FormatTally {
         let read_back = back == document;
         if read_back {
             self.read_back += 1;
+        }
+        let migrated = as_version_0_1(&value)
+            .and_then(|old| hpr_format::read_json(&old).ok())
+            .filter(|opened| opened.written_as.to_string() == "0.1")
+            .map(|opened| opened.value);
+        let recovered = migrated.as_ref().and_then(|migrated| {
+            let source = migrated.provenance.source.as_ref()?;
+            Some(source.airframe_not_as_written.clone())
+        });
+        let migrated = migrated.is_some_and(|mut migrated| {
+            if let Some(source) = migrated.provenance.source.as_mut() {
+                source.airframe_not_as_written.clone_from(&airframe);
+            }
+            migrated == document
+        });
+        if migrated {
+            self.migrated += 1;
+        }
+        let unknown = Some(hpr_format::migrate::UNKNOWN);
+        match (
+            airframe.as_deref(),
+            recovered.as_ref().map(Option::as_deref),
+        ) {
+            (Some(truth), Some(Some(reason))) if reason == truth => {
+                self.not_as_written += 1;
+                self.recovered += 1;
+            }
+            (Some(_), Some(reason)) if reason == unknown => {
+                self.not_as_written += 1;
+                self.unknown += 1;
+            }
+            (None, Some(reason)) if reason == unknown => self.unknown_as_written += 1,
+            (None, Some(None)) => {}
+            _ => {
+                self.not_as_written += usize::from(airframe.is_some());
+                self.wrong_reason.push(name.to_owned());
+            }
         }
         // The `.ork` M3.2a writes from the file itself, its other entries and all.
         let (Ok(through), Ok(direct)) = (back.to_ork(), export::write(design, attachments)) else {
@@ -190,6 +251,7 @@ impl FormatTally {
             "read_back_the_same": read_back,
             "ork_same_as_the_designs_own": same_ork,
             "design_read_back_the_same": same_design,
+            "migrated_from_0_1_the_same": migrated,
             "flights": flights,
         })
     }
@@ -203,6 +265,12 @@ impl FormatTally {
             "ork_same_as_the_designs_own": self.same_ork,
             "attachments": self.attachments,
             "design_read_back_the_same": self.same_design,
+            "migrated_from_0_1_the_same": self.migrated,
+            "airframe_not_as_written": self.not_as_written,
+            "airframe_recovered_by_the_migration": self.recovered,
+            "airframe_marked_unknown_by_the_migration": self.unknown,
+            "as_written_marked_unknown_by_the_migration": self.unknown_as_written,
+            "airframe_wrong_after_the_migration": self.wrong_reason.len(),
             "configurations_left_out": self.left_out,
             "configurations_flown": self.flown,
             "largest_relative_apogee_difference": self.largest_relative,
@@ -217,14 +285,25 @@ impl FormatTally {
     pub(crate) fn print(&self) {
         println!(
             "  through the hpr design format: {} design(s); {} valid against {SCHEMA}, {} read \
-             back the same, {} write the .ork hpr writes from the file, {} read back from it the same; \
-             {} failed",
+             back the same, {} write the .ork hpr writes from the file, {} read back from it the same, \
+             {} migrate from 0.1 the same; {} failed",
             self.designs,
             self.valid,
             self.read_back,
             self.same_ork,
             self.same_design,
+            self.migrated,
             self.failed.len()
+        );
+        println!(
+            "    airframe not read exactly as written: {} design(s); the migration from 0.1 \
+             recovers the reason for {} and marks {} unknown; of the others, it marks {} \
+             unknown; {} wrong",
+            self.not_as_written,
+            self.recovered,
+            self.unknown,
+            self.unknown_as_written,
+            self.wrong_reason.len()
         );
         println!(
             "    flown three ways (as read, from the document, from its .ork): {} configuration(s), apogees at most {:e} apart (relative; \
@@ -244,23 +323,55 @@ impl FormatTally {
 
     /// Why the survey should fail: a design that does not come through the format as it went in.
     pub(crate) fn failure(&self) -> Option<String> {
-        let counts = [self.valid, self.read_back, self.same_ork, self.same_design];
+        let counts = [
+            self.valid,
+            self.read_back,
+            self.same_ork,
+            self.same_design,
+            self.migrated,
+        ];
         let short = counts.iter().any(|&count| count != self.designs);
-        (short || !self.apart.is_empty() || !self.failed.is_empty()).then(|| {
+        let wrong = !self.wrong_reason.is_empty();
+        (short || wrong || !self.apart.is_empty() || !self.failed.is_empty()).then(|| {
             format!(
                 "through the hpr design format, of {} design(s): {} valid, {} read back the same, \
-                 {} write the same .ork, {} read back from it the same; {} configuration(s) \
-                 apart; {} failed",
+                 {} write the same .ork, {} read back from it the same, {} migrate from 0.1 the \
+                 same, {} with a wrong airframe reason; {} configuration(s) apart; {} failed",
                 self.designs,
                 self.valid,
                 self.read_back,
                 self.same_ork,
                 self.same_design,
+                self.migrated,
+                self.wrong_reason.len(),
                 self.apart.len(),
                 self.failed.len()
             )
         })
     }
+}
+
+/// The document `value` of the current version as version 0.1 would have held it, the reverse of
+/// the one migration there is: `source_files` named `attachments`, in its place, and no
+/// `airframe_not_as_written` in the source.
+fn as_version_0_1(value: &Value) -> Option<String> {
+    let mut old: serde_json::Map<String, Value> = value
+        .as_object()?
+        .iter()
+        .map(|(key, value)| match key.as_str() {
+            "version" => ("version".to_owned(), json!("0.1")),
+            "source_files" => ("attachments".to_owned(), value.clone()),
+            _ => (key.clone(), value.clone()),
+        })
+        .collect();
+    if let Some(source) = old
+        .get_mut("provenance")
+        .and_then(|provenance| provenance.get_mut("source"))
+        .and_then(Value::as_object_mut)
+    {
+        source.remove("airframe_not_as_written");
+    }
+    serde_json::to_string_pretty(&Value::Object(old)).ok()
 }
 
 /// Why a configuration was not flown, without the part or design names it can hold.

@@ -123,9 +123,19 @@
           "const": "ork"
         },
         {
-          "description": "An hpr design file: a `hpr_design::Rocket` as JSON.",
+          "description": "A rocket's JSON (`.json`): a `hpr_design::Rocket` alone.",
           "type": "string",
           "const": "hpr_json"
+        },
+        {
+          "description": "A document of the hpr design format (`.hpr`).",
+          "type": "string",
+          "const": "hpr"
+        },
+        {
+          "description": "A design in the hpr design format's zip container (`.hprz`).",
+          "type": "string",
+          "const": "hprz"
         }
       ]
     },

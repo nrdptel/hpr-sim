@@ -1,4 +1,5 @@
-//! `hpr convert`: a motor file written as a RASP `.eng` or a RockSim `.rse` file.
+//! `hpr convert`: a motor file written as a RASP `.eng` or a RockSim `.rse` file, or a design
+//! written as a `.ork`, `.hpr` or `.hprz` file ([`crate::convert_design`]).
 //!
 //! The conversion is the library's own ([`hpr::hpr_motor::convert`]): `.eng` to `.rse` fills
 //! what `.eng` doesn't give the way RockSim's files do, and `.rse` to `.eng` drops what `.eng`
@@ -17,18 +18,24 @@ use hpr::hpr_motor::eng::{self, EngFile};
 use hpr::hpr_motor::rse::{self, RseEngine, RseFile};
 use hpr::hpr_motor::text::WarningKind as ReadWarning;
 
+use crate::convert_design;
 use crate::motors::{MotorFile, catalog, read_warnings, warning_kind};
-use crate::output::{Convert, ConvertedFile, MotorSource, Warning, WarningKind};
+use crate::output::{Convert, ConvertMotors, ConvertedFile, MotorSource, Warning, WarningKind};
 use crate::sim::same_file;
 use crate::{Failure, Out};
 
 /// `hpr convert`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct ConvertArgs {
-    /// The motors to read: a .eng or .rse file, or a catalog motor's name, such as H170M
+    /// What to read: a motor file (.eng or .rse), a catalog motor's name, such as H170M, or a
+    /// design (.ork, .hpr or .hprz)
     pub input: String,
-    /// The file to write, .eng or .rse by its extension; it is replaced if it exists
+    /// The file to write, by its extension: .eng or .rse for motors, .ork, .hpr or .hprz for a
+    /// design; it is replaced if it exists
     pub output: String,
+    /// A file to carry in a .hprz beside the design, under its file name; give it once for each
+    #[arg(long, value_name = "FILE")]
+    pub attach: Vec<String>,
     /// Delays for a .rse motor that gives none, when writing a .eng file, whose header must
     /// give them: such as 6-10-14, or P for plugged
     #[arg(long, value_name = "LIST")]
@@ -43,12 +50,21 @@ enum Motors {
 
 /// Runs `hpr convert`.
 pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
+    if convert_design::is_design(&args.input) || convert_design::is_design(&args.output) {
+        return convert_design::run(args, to);
+    }
     let output = &args.output;
     let target = MotorFile::of(output).ok_or_else(|| {
         Failure::Input(format!(
-            "{output}: hpr convert writes a .eng or a .rse file, named by its extension"
+            "{output}: hpr convert writes a .eng or a .rse file for motors, or a .ork, .hpr or \
+             .hprz file for a design, named by its extension"
         ))
     })?;
+    if !args.attach.is_empty() {
+        return Err(Failure::Input(
+            "--attach adds files to a .hprz design, and hpr convert is writing motors".to_owned(),
+        ));
+    }
     if let Some(delays) = &args.delays {
         let list = DelayList::parse(delays);
         if list.delays.is_empty()
@@ -66,15 +82,7 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             "{output}: that is the file hpr convert reads, and it would write over it"
         )));
     }
-    if let Some(folder) = Path::new(output).parent()
-        && !folder.as_os_str().is_empty()
-        && !folder.is_dir()
-    {
-        return Err(Failure::Input(format!(
-            "{output}: there is no folder {}",
-            folder.display()
-        )));
-    }
+    output_folder(output)?;
     let input = &args.input;
     let refused = |error| Failure::Input(format!("{input}: {error}"));
     let mut warnings = Vec::new();
@@ -170,7 +178,7 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
     }
     std::fs::write(output, written)
         .map_err(|error| Failure::Input(format!("{output}: {error}")))?;
-    let document = Convert {
+    let document = ConvertMotors {
         input: source,
         output: ConvertedFile {
             path: output.clone(),
@@ -179,7 +187,19 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
         motors: names,
         warnings,
     };
-    to.emit(&document, |out| text_output(&document, input, out))
+    to.emit(&Convert::Motors(document.clone()), |out| {
+        text_output(&document, input, out)
+    })
+}
+
+/// Refuses an output path whose folder doesn't exist.
+pub(crate) fn output_folder(output: &str) -> Result<(), Failure> {
+    match Path::new(output).parent() {
+        Some(folder) if !folder.as_os_str().is_empty() && !folder.is_dir() => Err(Failure::Input(
+            format!("{output}: there is no folder {}", folder.display()),
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// Whether a `.rse` engine gives no delays a `.eng` header could take: none, or none
@@ -477,7 +497,7 @@ fn converted_warning(warning: &ConvertWarning) -> Result<Warning, Failure> {
 }
 
 /// `hpr convert` as text: what was read, what was written, and the warnings.
-fn text_output(document: &Convert, input: &str, out: &mut dyn Write) -> io::Result<()> {
+fn text_output(document: &ConvertMotors, input: &str, out: &mut dyn Write) -> io::Result<()> {
     let from = match &document.input {
         MotorSource::Catalog { curve_url, .. } => format!("the bundled catalog ({curve_url})"),
         MotorSource::File { .. } => file_name(input),
@@ -501,7 +521,7 @@ fn text_output(document: &Convert, input: &str, out: &mut dyn Write) -> io::Resu
 }
 
 /// The file name of a path, for the text: its folder depends on where it was run from.
-fn file_name(path: &str) -> String {
+pub(crate) fn file_name(path: &str) -> String {
     Path::new(path).file_name().map_or_else(
         || path.to_owned(),
         |name| name.to_string_lossy().into_owned(),

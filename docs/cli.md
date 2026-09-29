@@ -8,7 +8,8 @@ Today `hpr` does six things:
 - It flies a design, read from an OpenRocket file or an hpr
   [design file](glossary.md#design-file), and prints how the flight went.
 - It looks up motors, from the catalog built into it or from a motor file of your own.
-- It converts motor files between the two common formats.
+- It converts motor files between the two common formats, and designs between OpenRocket's `.ork`
+  and [hpr's own format](format/hpr.md) (`.hpr`, and `.hprz` with other files beside the design).
 - It re-runs hpr-sim's validation against RocketPy and checks the results against the
   published ones.
 - It reads a flight log from an altimeter and prints what it says about the flight, with no
@@ -76,9 +77,9 @@ only the files each command really reads. "Not yet" commands exit with
 
 | command | what it does | reads | prints | status |
 |---|---|---|---|---|
-| `hpr sim` | Fly a .ork or a rocket's .json from a rail and print its flight; export its recording | `.ork`, a rocket's `.json` (not yet an `.hpr`), a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](cli.md#hpr-sim)) |
+| `hpr sim` | Fly a .ork, an .hpr or .hprz design, or a rocket's .json from a rail and print its flight; export its recording | `.ork`, `.hpr` or `.hprz`, a rocket's `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](cli.md#hpr-sim)) |
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
-| `hpr convert` | Convert a motor file between .eng and .rse, or write a catalog motor as either | `.eng`, `.rse`, the bundled catalog | `.eng` or `.rse`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
+| `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
 | `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2](decisions-and-roadmap.md#m5-2) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
@@ -95,10 +96,12 @@ only the files each command really reads. "Not yet" commands exit with
 `hpr sim` flies a design from a launch rail to the ground, and prints what happened: its
 [events](glossary.md#event), its [apogee](glossary.md#apogee) and top speed, its
 [stability margin](glossary.md#stability-margin) as it leaves the rail, and where it came down. It
-reads an [OpenRocket](glossary.md#openrocket) `.ork` file, or a rocket's JSON (`.json`, the
-tree [Your own rocket](your-own-rocket.md) describes). It doesn't read a document of
-[the hpr design format](format/hpr.md) (`.hpr`) yet: that comes with the format's next step,
-[M3.3b](decisions-and-roadmap.md#m3-3b). It runs the same simulation code as the
+reads an [OpenRocket](glossary.md#openrocket) `.ork` file, a design in
+[the hpr design format](format/hpr.md) (`.hpr`, or a `.hprz` with its attachments), or a rocket's
+JSON (`.json`, the tree [Your own rocket](your-own-rocket.md) describes). A `.hpr` or `.hprz`
+flies exactly as the `.ork` it was converted from ([converting a design](#converting-a-design)),
+though it doesn't print the `.ork` reader's warnings, which `hpr convert` printed.
+It runs the same simulation code as the
 Rust library, so a Rust program flying the same design gets the same numbers.
 
 ### Flying a design
@@ -384,7 +387,8 @@ format's description ([RASP and RockSim files](glossary.md#rasp-and-rocksim-file
 ## `hpr convert`
 
 `hpr convert` writes a motor as a RASP `.eng` file or a RockSim `.rse` file, the two formats
-ThrustCurve.org offers ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)). Give it the
+ThrustCurve.org offers ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)), and a
+design as a `.ork`, `.hpr` or `.hprz` file ([converting a design](#converting-a-design)). Give it the
 file to read and the file to write; the extensions pick the formats. It reads a motor file, or a
 motor of the bundled catalog by its name:
 
@@ -481,6 +485,47 @@ same.
 
 The project's automated tests don't run the script, as they have no OpenRocket. Whether RockSim
 opens the files is not checked.
+
+### Converting a design
+
+Given design files, `hpr convert` takes a design between OpenRocket's `.ork` and
+[the hpr design format](format/hpr.md): `.hpr`, one JSON document, or `.hprz`, a zip archive of the
+document with other files beside it. The extensions pick the formats, any of the three to any.
+Here one of the repository's public designs becomes a `.hpr`:
+
+<!-- cli: example `hpr convert validation/fixtures/ork/loft-demo/demo-multi-config.ork demo.hpr`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr convert validation/fixtures/ork/loft-demo/demo-multi-config.ork demo.hpr
+read   demo-multi-config.ork
+wrote  demo.hpr: "Loft Demo 38mm — motor comparison", 2 motor configurations, hpr design format 0.2
+```
+
+<!-- cli: end -->
+
+The document holds everything hpr read from the `.ork`, including what hpr doesn't model, so
+`hpr convert demo.hpr demo.ork` writes the `.ork` hpr would write from the original, byte for byte.
+`hpr sim demo.hpr` flies it to the same flight as the `.ork`, but without the `.ork` reader's
+warnings, which hpr prints only when it reads the `.ork` itself. A document of an older version of the format is migrated
+as it is read, and the output says from which version. `hpr sim` may refuse `--motor` for a
+version 0.1 document, which didn't record whether the rocket was read exactly as written; converting
+the `.ork` again fixes that ([versions](format/hpr.md#versions)).
+
+`--attach` adds a file to a `.hprz`, once for each file: a flight log, a photograph, anything, up
+to 256 MiB for the whole container. Each goes at the top of the container, under its file name,
+and a name the container can't hold, such as `CON.txt`, is refused
+([the container's name rules](format/hpr.md#the-container-hprz)). Converting a `.hprz` to a `.hprz`
+keeps its attachments, and adds any `--attach` names. Converting one to a `.hpr` or a `.ork` leaves
+its attachments out, and a warning names each.
+With `--json`, the output
+([`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json))
+gives:
+
+- the files read and written, with their formats;
+- the rocket's name, and how many motor configurations the design holds;
+- the version of the format the input was migrated from, if it was;
+- the attachments written into a `.hprz`;
+- the warnings: the `.ork` reader's, the `.ork` writer's, and each attachment left out.
 
 ## `hpr validate`
 
@@ -725,9 +770,9 @@ you press Tab. Save it where your shell looks for completions:
 - **One log format.** `hpr analyze` reads PerfectFlite's `.pf2` so far; other loggers' files,
   and readings such as the drogue and main descent rates and the Mach number, come with
   [M7.1](decisions-and-roadmap.md#m7-1) and [M7.2](decisions-and-roadmap.md#m7-2).
-- **Design files aren't converted.** `hpr convert` converts motor files only. The library writes
-  a design as an OpenRocket file ([writing a `.ork`](format/ork.md#writing-a-ork-back-out)); the
-  command line can't yet.
+- **Only OpenRocket's and hpr's own design files.** `hpr convert` and `hpr sim` read OpenRocket's
+  `.ork` and hpr's `.hpr` and `.hprz`, not RockSim's `.rkt` or RASAero's `.CDX1`
+  ([how the formats compare](format/hpr.md#how-it-compares-with-other-design-formats)).
 - **`hpr validate` needs the repository.** The cases and their reference results are files in it,
   not part of the tool. It re-flies only the RocketPy comparisons.
 - **RockSim is unchecked.** OpenRocket opens the files `hpr convert` writes; whether RockSim

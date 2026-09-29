@@ -907,7 +907,7 @@ fn sim_refuses_what_it_cant_fly() {
     refused(&["sim", "missing.ork"], "missing.ork");
     refused(
         &["sim", "design.rkt"],
-        "reads an OpenRocket .ork file or a rocket's JSON",
+        "reads an OpenRocket .ork file, an hpr design (.hpr or .hprz), or a rocket's JSON (.json)",
     );
     let not_json = folder.path().join("design.json");
     std::fs::write(&not_json, "{}").unwrap();
@@ -971,6 +971,58 @@ fn sim_refuses_what_it_cant_fly() {
     refused(
         &["sim", &reduced, "--motor", "H54"],
         "not read exactly as written",
+    );
+    // The same from its .hpr and .hprz: the document keeps why, though the .ork written from it
+    // need not say.
+    for extension in ["hpr", "hprz"] {
+        let converted = folder.path().join(format!("reduced.{extension}"));
+        let converted = converted.to_string_lossy().into_owned();
+        assert_eq!(
+            hpr(&["convert", &reduced, &converted]).status.code(),
+            Some(0)
+        );
+        refused(&["sim", &converted], "no thrust curve for H128W");
+        refused(
+            &["sim", &converted, "--motor", "H54"],
+            "the airframe was not read exactly as written: 1 `parallelstage` were left out",
+        );
+    }
+    // As a 0.1 document, which didn't record why, nothing shows whether the airframe was read as
+    // written, so no other motor flies it either.
+    let converted = folder.path().join("reduced.hpr");
+    let mut document: Value =
+        serde_json::from_str(&std::fs::read_to_string(&converted).unwrap()).unwrap();
+    let object = document.as_object_mut().unwrap();
+    object.insert("version".to_owned(), Value::from("0.1"));
+    let files = object.remove("source_files").unwrap();
+    object.insert("attachments".to_owned(), files);
+    let source = document["provenance"]["source"].as_object_mut().unwrap();
+    source.remove("airframe_not_as_written").unwrap();
+    let old = folder.path().join("reduced-0.1.hpr");
+    std::fs::write(&old, document.to_string()).unwrap();
+    refused(
+        &["sim", &old.to_string_lossy(), "--motor", "H54"],
+        "whether the airframe was read exactly as written is unknown: the document is from \
+         version 0.1",
+    );
+    // A document whose provenance says nothing flies another motor, with a note on the parts it
+    // keeps aside.
+    document["version"] = Value::from("0.2");
+    let object = document.as_object_mut().unwrap();
+    let files = object.remove("attachments").unwrap();
+    object.insert("source_files".to_owned(), files);
+    let edited = folder.path().join("edited.hpr");
+    std::fs::write(&edited, document.to_string()).unwrap();
+    let flown = json(
+        &["sim", &edited.to_string_lossy(), "--motor", "H54"],
+        0,
+        "sim.schema.json",
+    );
+    assert!(
+        flown["notes"].as_array().unwrap().iter().any(|note| note
+            == "the file has parts hpr keeps aside instead of flying, such as a parallel stage: \
+                the rocket flown is the rest of it"),
+        "{flown:#}"
     );
 }
 
@@ -2159,4 +2211,237 @@ fn analyze_reads_the_public_pnut_log_as_it_states() {
         (highest(&filter::hampel(&log.altitude_m, 3, 4.0)) / FOOT_M).round(),
         1028.0
     );
+}
+
+/// A public design taken `.ork` → `.hpr` → `.hprz` (with a file attached) → `.ork`: each file is
+/// the library's, byte for byte, and the JSON says what was read and written.
+#[test]
+fn convert_takes_a_design_through_every_format() {
+    use hpr::hpr_format::{self, DesignFile, container};
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let source = root().join("validation/fixtures/ork/loft-demo/demo-multi-config.ork");
+    let source = source.to_string_lossy().into_owned();
+    let expected = DesignFile::from_ork(&std::fs::read(&source).unwrap())
+        .unwrap()
+        .value;
+
+    let hpr_file = path("demo.hpr");
+    let document = json(&["convert", &source, &hpr_file], 0, "convert.schema.json");
+    assert_eq!(document["input"]["format"], "ork");
+    assert_eq!(document["output"]["format"], "hpr");
+    assert_eq!(document["rocket"], expected.rocket.name.as_str());
+    assert_eq!(document["configurations"], 2);
+    assert_eq!(document["migrated_from"], Value::Null);
+    let written = std::fs::read_to_string(&hpr_file).unwrap();
+    assert_eq!(written, hpr_format::to_json(&expected).unwrap());
+
+    let log = path("flight-1.csv");
+    std::fs::write(&log, "time_s,altitude_m\n0,0\n").unwrap();
+    let hprz_file = path("demo.hprz");
+    let document = json(
+        &["convert", &hpr_file, &hprz_file, "--attach", &log],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(document["attachments"], serde_json::json!(["flight-1.csv"]));
+    let read = container::read(&std::fs::read(&hprz_file).unwrap()).unwrap();
+    assert_eq!(read.value.design, expected);
+    assert_eq!(read.value.attachments.len(), 1);
+    assert_eq!(read.value.attachments[0].name, "flight-1.csv");
+    assert_eq!(read.value.attachments[0].bytes, b"time_s,altitude_m\n0,0\n");
+
+    // A .hprz to a .hprz keeps its attachments; to a .ork, each is named as left out.
+    let again = path("again.hprz");
+    let document = json(&["convert", &hprz_file, &again], 0, "convert.schema.json");
+    assert_eq!(document["attachments"], serde_json::json!(["flight-1.csv"]));
+    assert_eq!(
+        std::fs::read(&again).unwrap(),
+        std::fs::read(&hprz_file).unwrap()
+    );
+    let ork_file = path("demo.ork");
+    let document = json(
+        &["convert", &hprz_file, &ork_file],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(document["warnings"][0]["at"], "flight-1.csv");
+    assert_eq!(document["warnings"][0]["kind"], "dropped");
+    assert_eq!(
+        std::fs::read(&ork_file).unwrap(),
+        expected.to_ork().unwrap().value
+    );
+
+    // The text says the same.
+    let output = hpr(&["convert", &hprz_file, &path("text.hpr")]);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let printed = text(&output.stdout);
+    assert!(
+        printed.starts_with("read   demo.hprz\nwrote  text.hpr: "),
+        "{printed}"
+    );
+    assert!(
+        printed.contains("2 motor configurations, hpr design format 0.2"),
+        "{printed}"
+    );
+    assert!(
+        printed.contains("warning: flight-1.csv: the .hpr file has no place"),
+        "{printed}"
+    );
+}
+
+/// A document of the format's older version is migrated, and the JSON says from which.
+#[test]
+fn convert_migrates_an_older_design() {
+    use hpr::hpr_format;
+    let dir = tempfile::tempdir().unwrap();
+    let old = root().join("crates/hpr-format/fixtures/embedded-curve-0.1.hpr");
+    let old = old.to_string_lossy().into_owned();
+    let out = dir.path().join("new.hpr").to_string_lossy().into_owned();
+    let document = json(&["convert", &old, &out], 0, "convert.schema.json");
+    assert_eq!(document["migrated_from"], "0.1");
+    let migrated = hpr_format::from_json(&std::fs::read_to_string(&old).unwrap()).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&out).unwrap(),
+        hpr_format::to_json(&migrated).unwrap()
+    );
+    let output = hpr(&["convert", &old, &out]);
+    assert!(
+        text(&output.stdout)
+            .starts_with("read   embedded-curve-0.1.hpr, migrated from version 0.1\n"),
+        "{output:?}"
+    );
+}
+
+#[test]
+fn convert_refuses_a_design_it_cant_write() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let refused = |args: &[&str], says: &str| {
+        let document = json_error(args, 1, "input");
+        let message = document["error"]["message"].as_str().unwrap().to_owned();
+        assert!(message.contains(says), "{args:?}: {message}");
+    };
+    let ork = path("in.ork");
+    std::fs::copy(
+        root().join("validation/fixtures/ork/loft-demo/demo-stable.ork"),
+        &ork,
+    )
+    .unwrap();
+    let from_motors = "writes a design (.ork, .hpr or .hprz) from a design";
+    refused(&["convert", &ork, &path("out.eng")], from_motors);
+    refused(
+        &["convert", &curve_file(ENG_CURVE), &path("out.hpr")],
+        from_motors,
+    );
+    refused(&["convert", "H170M", &path("out.hprz")], from_motors);
+    refused(
+        &["convert", &ork, &ork],
+        "that is the file hpr convert reads",
+    );
+    refused(
+        &["convert", &ork, &path("missing/out.hpr")],
+        "there is no folder",
+    );
+    refused(
+        &["convert", &ork, &path("out.hpr"), "--delays", "6"],
+        "hpr convert is writing a design",
+    );
+    refused(
+        &["convert", &ork, &path("out.hpr"), "--attach", &ork],
+        "--attach adds files to a .hprz, and this is not one",
+    );
+    refused(
+        &[
+            "convert",
+            &curve_file(ENG_CURVE),
+            &path("out.rse"),
+            "--attach",
+            &ork,
+        ],
+        "--attach adds files to a .hprz design",
+    );
+    refused(
+        &[
+            "convert",
+            &ork,
+            &path("out.hprz"),
+            "--attach",
+            &path("absent.csv"),
+        ],
+        "absent.csv",
+    );
+    refused(
+        &[
+            "convert",
+            &ork,
+            &path("out.hprz"),
+            "--attach",
+            &ork,
+            "--attach",
+            &ork,
+        ],
+        "two attachments are named \"in.ork\"",
+    );
+    let design = path("design.hpr");
+    std::fs::write(&design, "{}").unwrap();
+    refused(
+        &["convert", &ork, &path("out.hprz"), "--attach", &design],
+        "which is the design's entry",
+    );
+    refused(&["convert", &design, &path("out.ork")], "not an hpr design");
+    std::fs::write(path("bad.hprz"), b"PK\x03\x04 and no more").unwrap();
+    refused(
+        &["convert", &path("bad.hprz"), &path("out.hpr")],
+        "not a valid .hprz",
+    );
+    std::fs::write(path("latin1.hpr"), b"{\"caf\xe9\": 1}").unwrap();
+    refused(
+        &["convert", &path("latin1.hpr"), &path("out.ork")],
+        "UTF-8 text",
+    );
+    assert!(!dir.path().join("out.hpr").exists() && !dir.path().join("out.hprz").exists());
+}
+
+/// A design flies the same from its `.ork`, its `.hpr` and its `.hprz`: only the file named and
+/// the container's note differ.
+#[test]
+fn sim_flies_an_hpr_design_as_its_ork() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let ork = root().join("validation/fixtures/ork/pod-flights/pods-none.ork");
+    let ork = ork.to_string_lossy().into_owned();
+    assert_eq!(
+        hpr(&["convert", &ork, &path("pods.hpr")]).status.code(),
+        Some(0)
+    );
+    let log = path("log.csv");
+    std::fs::write(&log, "t\n").unwrap();
+    let written = hpr(&["convert", &ork, &path("pods.hprz"), "--attach", &log]);
+    assert_eq!(written.status.code(), Some(0));
+    let fly = |file: &str| json(&["sim", file, "--motor", "H54"], 0, "sim.schema.json");
+    let from_ork = fly(&ork);
+    for (file, format) in [(path("pods.hpr"), "hpr"), (path("pods.hprz"), "hprz")] {
+        let mut flown = fly(&file);
+        assert_eq!(flown["design"]["format"], format);
+        flown["design"]["file"] = from_ork["design"]["file"].clone();
+        flown["design"]["format"] = from_ork["design"]["format"].clone();
+        if format == "hprz" {
+            let notes = flown["notes"].as_array_mut().unwrap();
+            let at = notes
+                .iter()
+                .position(|note| note == "the container's 1 attachment is not read")
+                .unwrap();
+            notes.remove(at);
+        }
+        assert_eq!(flown, from_ork, "{file}");
+    }
+    // An older document flies too, with a note that it was migrated.
+    let old = root().join("crates/hpr-format/fixtures/embedded-curve-0.1.hpr");
+    let flown = json(&["sim", &old.to_string_lossy()], 0, "sim.schema.json");
+    assert_eq!(
+        flown["notes"][0],
+        "the design is version 0.1 of the hpr design format, read as version 0.2"
+    );
+    assert_eq!(flown["motors"][0]["designation"], "H128W");
 }

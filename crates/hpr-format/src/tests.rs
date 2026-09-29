@@ -79,7 +79,7 @@ const PUBLIC: [(&str, &[u8]); 17] = [
 ];
 
 /// The committed schema.
-const COMMITTED_SCHEMA: &str = include_str!("../../../schema/format/hpr-design-0.1.schema.json");
+const COMMITTED_SCHEMA: &str = include_str!("../../../schema/format/hpr-design-0.2.schema.json");
 
 fn validator() -> jsonschema::Validator {
     let schema: serde_json::Value = serde_json::from_str(COMMITTED_SCHEMA).unwrap();
@@ -119,7 +119,7 @@ fn the_committed_schema_is_the_generated_one() {
     assert_eq!(
         COMMITTED_SCHEMA,
         schema_json(),
-        "schema/format/hpr-design-0.1.schema.json is stale: run `cargo xtask format`"
+        "schema/format/hpr-design-0.2.schema.json is stale: run `cargo xtask format`"
     );
 }
 
@@ -178,7 +178,7 @@ fn the_text_is_canonical() {
     let read = document(bytes);
     let text = to_json(&read).unwrap();
     assert!(text.starts_with(
-        "{\n  \"format\": \"hpr-design\",\n  \"version\": \"0.1\",\n  \"provenance\": {\n    \
+        "{\n  \"format\": \"hpr-design\",\n  \"version\": \"0.2\",\n  \"provenance\": {\n    \
          \"tool\": \"hpr-sim\","
     ));
     assert!(text.ends_with("}\n") && !text.ends_with("\n\n"));
@@ -199,7 +199,7 @@ fn the_text_is_canonical() {
             "recovery",
             "simulations",
             "extensions",
-            "attachments"
+            "source_files"
         ]
     );
     // The same design always writes the same bytes.
@@ -421,13 +421,13 @@ fn a_files_other_entries_travel_with_the_document() {
         Curve::Embedded { .. }
     ));
     assert_eq!(
-        read.attachments,
+        read.source_files,
         [
-            AttachedFile {
+            SourceFile {
                 name: "decals/invented.png".to_owned(),
                 content: Content::Base64("iVBORw0KGgoA//6A".to_owned()),
             },
-            AttachedFile {
+            SourceFile {
                 name: entry.clone(),
                 content: Content::Text(rse.clone()),
             },
@@ -453,10 +453,10 @@ fn a_files_other_entries_travel_with_the_document() {
     assert_eq!(apogees(&again), before);
 }
 
-/// What the attachments must hold to, beyond their types: base64 that decodes, one name each, and
+/// What the source files must hold to, beyond their types: base64 that decodes, one name each, and
 /// every embedded curve's entry.
 #[test]
-fn attachments_that_do_not_hold_together_are_refused() {
+fn source_files_that_do_not_hold_together_are_refused() {
     let (archive, entry, _) = with_attachments();
     let text = to_json(&document(&archive)).unwrap();
     let swap = |from: &str, to: &str| {
@@ -466,7 +466,7 @@ fn attachments_that_do_not_hold_together_are_refused() {
             .to_string()
     };
     assert!(swap("iVBORw0KGgoA//6A", "iVBORw0KGgoA//6").contains("decals/invented.png"));
-    assert!(swap("decals/invented.png", &entry).contains("two attachments are named"));
+    assert!(swap("decals/invented.png", &entry).contains("two source files are named"));
     for name in ["rocket.ork", "decals/", "decals\\", ""] {
         let refused = swap("\"decals/invented.png\"", &format!("{name:?}"));
         assert!(refused.contains("which a .ork can't hold"), "{refused}");
@@ -476,7 +476,7 @@ fn attachments_that_do_not_hold_together_are_refused() {
             &format!("\"name\": \"{entry}\""),
             "\"name\": \"elsewhere.rse\""
         )
-        .contains("which the attachments don't hold")
+        .contains("which the source files don't hold")
     );
 }
 
@@ -562,26 +562,34 @@ fn another_format_or_version_is_refused_with_its_reason() {
             found: "\"rocksim\"".to_owned()
         }
     );
-    let newer = swap("\"version\": \"0.1\"", "\"version\": \"0.2\"");
+    let newer = swap("\"version\": \"0.2\"", "\"version\": \"0.3\"");
     assert_eq!(
         newer,
         FormatError::Unsupported {
-            found: Version { major: 0, minor: 2 },
+            found: Version { major: 0, minor: 3 },
             supported: VERSION
         }
     );
     assert!(newer.to_string().ends_with("written by a newer program"));
-    let older = swap("\"version\": \"0.1\"", "\"version\": \"0.0\"");
-    assert!(!older.to_string().contains("newer"));
+    // 0.0 was never a version: nothing migrates from it.
+    let older = swap("\"version\": \"0.2\"", "\"version\": \"0.0\"");
+    assert_eq!(
+        older.to_string(),
+        "the document is version 0.0, and this reader takes version 0.2 and migrates from 0.1 on"
+    );
+    assert!(matches!(
+        swap("\"version\": \"0.2\"", "\"version\": \"1.2\""),
+        FormatError::Unsupported { .. }
+    ));
     for bad in ["01.1", "0.01", "1", "0.1.0", "+0.1", " 0.1", "0.x", ""] {
-        let refused = swap("\"version\": \"0.1\"", &format!("\"version\": \"{bad}\""));
+        let refused = swap("\"version\": \"0.2\"", &format!("\"version\": \"{bad}\""));
         assert!(
             matches!(refused, FormatError::Invalid(_)),
             "{bad:?}: {refused}"
         );
     }
     assert!(matches!(
-        swap("\"version\": \"0.1\"", "\"version\": 0.1"),
+        swap("\"version\": \"0.2\"", "\"version\": 0.2"),
         FormatError::Invalid(_)
     ));
     // A key the version does not have, at the top, among the extensions or inside a part of the
@@ -627,11 +635,19 @@ fn a_value_json_cannot_carry_is_refused_when_written() {
 fn a_document_of_another_version_is_not_written() {
     let (_, bytes) = PUBLIC[0];
     let mut read = document(bytes);
-    read.version = Version { major: 0, minor: 2 };
-    assert!(matches!(
-        to_json(&read),
-        Err(FormatError::Unsupported { found, .. }) if found == read.version
-    ));
+    for version in [
+        Version { major: 0, minor: 1 },
+        Version { major: 0, minor: 3 },
+    ] {
+        read.version = version;
+        assert_eq!(
+            to_json(&read).unwrap_err().to_string(),
+            format!(
+                "not a valid hpr design 0.2: its \"version\" is {version}, and this program \
+                 writes only 0.2"
+            )
+        );
+    }
 }
 
 #[test]
@@ -706,16 +722,701 @@ fn the_pages_example_is_the_document() {
     assert!(example.lines().count() > 20);
 }
 
-/// A smoke test of many attachments: a forged document with 30,000 reads back whole.
+/// A smoke test of many source files: a forged document with 30,000 reads back whole.
 #[test]
-fn many_attachments_are_read() {
+fn many_source_files_are_read() {
     let mut read = document(PUBLIC[0].1);
-    read.attachments = (0..30_000)
-        .map(|index| AttachedFile {
+    read.source_files = (0..30_000)
+        .map(|index| SourceFile {
             name: format!("decals/{index}.png"),
             content: Content::Base64("AA==".to_owned()),
         })
         .collect();
     let text = to_json(&read).unwrap();
-    assert_eq!(from_json(&text).unwrap().attachments.len(), 30_000);
+    assert_eq!(from_json(&text).unwrap().source_files.len(), 30_000);
+}
+
+/// A document of version 0.1, written by hpr's M3.3a reader (the format's first step) from
+/// `with_attachments`'s archive, before 0.2 renamed `attachments` to `source_files`.
+const DOCUMENT_0_1: &str = include_str!("../fixtures/embedded-curve-0.1.hpr");
+
+/// Version 0.1's schema, committed beside the current one.
+const SCHEMA_0_1: &str = include_str!("../../../schema/format/hpr-design-0.1.schema.json");
+
+/// A document of the older version reads as the current version, holding everything it held: the
+/// migration renames one key and changes nothing else, the design flies on the curve it embeds,
+/// and it writes the `.ork` it came from.
+#[test]
+fn a_document_of_an_older_version_is_migrated_to_the_current_one() {
+    // The fixture is a real 0.1 document: 0.1's schema takes it, and the current one doesn't.
+    let old: serde_json::Value = serde_json::from_str(DOCUMENT_0_1).unwrap();
+    let schema_0_1: serde_json::Value = serde_json::from_str(SCHEMA_0_1).unwrap();
+    let errors: Vec<String> = jsonschema::validator_for(&schema_0_1)
+        .unwrap()
+        .iter_errors(&old)
+        .map(|error| error.to_string())
+        .collect();
+    assert_eq!(errors, Vec::<String>::new());
+    assert!(!schema_errors(&validator(), DOCUMENT_0_1).is_empty());
+
+    let opened = read_json(DOCUMENT_0_1).unwrap();
+    assert_eq!(opened.written_as, Version { major: 0, minor: 1 });
+    let document = opened.value;
+    assert_eq!(document.version, VERSION);
+    let text = to_json(&document).unwrap();
+    assert_eq!(schema_errors(&validator(), &text), Vec::<String>::new());
+    // Key for key, the old document with `attachments` renamed and the version set.
+    let mut expected = old.clone();
+    let object = expected.as_object_mut().unwrap();
+    let files = object.remove("attachments").unwrap();
+    assert_eq!(files.as_array().map(Vec::len), Some(2));
+    object.insert("source_files".to_owned(), files);
+    object.insert("version".to_owned(), serde_json::json!("0.2"));
+    let written: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(written, expected);
+
+    // The design as the current reader makes it from the same archive, and the same `.ork` back.
+    // The provenance is the fixture's own: it names the program's version then, and the SHA-256
+    // of the archive as the `.ork` writer wrote it then, which later versions of either change.
+    let (archive, entry, rse) = with_attachments();
+    let mut fresh = document_of(file_design(&ork::read(&archive).unwrap().value), &archive);
+    fresh.provenance = document.provenance.clone();
+    assert_eq!(document, fresh);
+    let written = document.to_ork().unwrap().value;
+    let file = ork::read(&written).unwrap().value;
+    assert_eq!(file.attachment(&entry).unwrap().bytes, rse.as_bytes());
+    let flown = apogees(&document.design());
+    assert_eq!(flown.len(), 1);
+    assert_eq!(flown, apogees(&fresh.design()));
+}
+
+/// A 0.1 document that doesn't hold what its migration needs is refused with the reason, as is
+/// one of 0.1 whose content is wrong once migrated.
+#[test]
+fn an_older_document_that_does_not_migrate_is_refused() {
+    let swap = |from: &str, to: &str| {
+        assert!(DOCUMENT_0_1.contains(from), "{from}");
+        from_json(&DOCUMENT_0_1.replacen(from, to, 1))
+            .unwrap_err()
+            .to_string()
+    };
+    assert_eq!(
+        swap("\"attachments\":", "\"not_attachments\":"),
+        "not a valid hpr design 0.2: as a 0.1 document, it has no \"attachments\""
+    );
+    assert_eq!(
+        swap(
+            "\"attachments\":",
+            "\"source_files\": [],\n  \"attachments\":"
+        ),
+        "not a valid hpr design 0.2: as a 0.1 document, it has a \"source_files\", which 0.1 \
+         doesn't define"
+    );
+    let unknown = swap(
+        "\"format\": \"hpr-design\",",
+        "\"format\": \"hpr-design\",\n  \"colour\": 1,",
+    );
+    assert!(
+        unknown.contains("migrated from 0.1") && unknown.contains("colour"),
+        "{unknown}"
+    );
+    // The rules beyond the schema hold after a migration too.
+    let broken = swap("iVBORw0KGgoA//6A", "iVBORw0KGgoA//6");
+    assert!(broken.contains("decals/invented.png"), "{broken}");
+}
+
+fn hprz_of(attachments: Vec<container::Entry>) -> container::Hprz {
+    let (archive, _, _) = with_attachments();
+    container::Hprz::new(document(&archive), attachments)
+}
+
+/// A `.hprz` holds a design and its attachments and reads back the same, byte for byte; its first
+/// entry is the design's `.hpr` text; and its bytes depend only on what it holds.
+#[test]
+fn a_container_reads_back_the_same() {
+    let attachments = vec![
+        container::Entry::new(
+            "logs/flight-1.csv",
+            b"time_s,altitude_m\n0,0\n1,12.5\n".to_vec(),
+        ),
+        container::Entry::new("photos/pad.png", IMAGE.to_vec()),
+        container::Entry::new("empty.txt", Vec::new()),
+        container::Entry::new("r\u{e9}sultats/vol \u{2116}1.json", b"{}".to_vec()),
+    ];
+    let hprz = hprz_of(attachments);
+    let bytes = container::write(&hprz).unwrap();
+    let read = container::read(&bytes).unwrap();
+    assert_eq!(read.written_as, VERSION);
+    assert_eq!(read.value, hprz);
+    assert_eq!(container::write(&read.value).unwrap(), bytes);
+    // Unzipped by the zip reader alone: the design's text first, then each file, all deflated and
+    // dated 1980-01-01.
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&bytes)).unwrap();
+    let names: Vec<String> = archive.file_names().map(str::to_owned).collect();
+    assert_eq!(names.len(), 5);
+    let mut first = archive.by_index(0).unwrap();
+    assert_eq!(first.name(), container::DESIGN_ENTRY);
+    assert_eq!(first.compression(), zip::CompressionMethod::Deflated);
+    assert_eq!(first.last_modified(), Some(zip::DateTime::DEFAULT));
+    let mut text = String::new();
+    std::io::Read::read_to_string(&mut first, &mut text).unwrap();
+    assert_eq!(text, to_json(&hprz.design).unwrap());
+    // A container of no attachments is the design alone.
+    let bare = hprz_of(Vec::new());
+    assert_eq!(
+        container::read(&container::write(&bare).unwrap())
+            .unwrap()
+            .value,
+        bare
+    );
+}
+
+/// A container whose design is of an older version reads as the current version.
+#[test]
+fn a_containers_older_design_is_migrated() {
+    let zip = zip_of(&[
+        ("design.hpr", DOCUMENT_0_1.as_bytes()),
+        ("logs/a.csv", b"t\n"),
+    ]);
+    let read = container::read(&zip).unwrap();
+    assert_eq!(read.written_as, Version { major: 0, minor: 1 });
+    assert_eq!(read.value.design, from_json(DOCUMENT_0_1).unwrap());
+    assert_eq!(
+        read.value.attachments,
+        [container::Entry::new("logs/a.csv", b"t\n".to_vec())]
+    );
+}
+
+/// A zip archive of `entries`, in order, each deflated, as another program might write one.
+fn zip_of(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    use std::io::Write as _;
+    let options = zip::write::SimpleFileOptions::DEFAULT
+        .compression_method(zip::CompressionMethod::Deflated)
+        .last_modified_time(zip::DateTime::DEFAULT);
+    let mut archive = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for (name, bytes) in entries {
+        archive.start_file(*name, options).unwrap();
+        archive.write_all(bytes).unwrap();
+    }
+    archive.finish().unwrap().into_inner()
+}
+
+/// Names no container holds, written and read: each refused with its reason, on both sides.
+#[test]
+fn an_attachment_name_that_leaves_its_folder_is_refused() {
+    let design = to_json(&document(PUBLIC[6].1)).unwrap();
+    for (name, why) in [
+        ("", "is empty"),
+        ("design.hpr", "the design's entry"),
+        ("DESIGN.HPR", "the design's entry"),
+        ("../up.txt", "not a relative path"),
+        ("logs/../../up.txt", "not a relative path"),
+        ("/etc/passwd", "not a relative path"),
+        ("logs//a.csv", "not a relative path"),
+        ("./a.csv", "not a relative path"),
+        ("logs/", "not a relative path"),
+        ("C:/a.csv", "':'"),
+        ("logs\\a.csv", "'\\\\'"),
+        ("a\u{0}.csv", "'\\0'"),
+        ("a\n.csv", "'\\n'"),
+        ("a.csv.", "ending in `.` or a space"),
+        ("logs /a.csv", "ending in `.` or a space"),
+        ("NUL", "a Windows device's name"),
+        ("con.txt", "a Windows device's name"),
+        ("logs/COM1.csv", "a Windows device's name"),
+        ("Lpt9", "a Windows device's name"),
+        ("COM0", "a Windows device's name"),
+        ("lpt\u{b9}.txt", "a Windows device's name"),
+        ("NUL .txt", "a Windows device's name"),
+        ("logs/CONIN$", "a Windows device's name"),
+        (&format!("{}.txt", "x".repeat(252)), "longer than 255 bytes"),
+    ] {
+        let written = container::write(&hprz_of(vec![container::Entry::new(name, vec![1])]));
+        let Err(FormatError::Container(message)) = written else {
+            panic!("{name:?} written: {written:?}");
+        };
+        assert!(message.contains(why), "{name:?}: {message}");
+        // An empty name, a folder's, or the design's own is not an entry the zip writer adds
+        // beside a design, so only the rest are read back (a second design entry: below).
+        if name.is_empty() || name.ends_with('/') || name == "design.hpr" {
+            continue;
+        }
+        let zip = zip_of(&[("design.hpr", design.as_bytes()), (name, &[1])]);
+        let read = container::read(&zip);
+        let Err(FormatError::Container(message)) = read else {
+            panic!("{name:?} read: {read:?}");
+        };
+        assert!(message.contains(why), "{name:?}: {message}");
+    }
+    // Two of one name, even by case alone.
+    for (a, b) in [("logs/a.csv", "logs/a.csv"), ("Logs/A.csv", "logs/a.csv")] {
+        let hprz = hprz_of(vec![
+            container::Entry::new(a, vec![1]),
+            container::Entry::new(b, vec![2]),
+        ]);
+        let message = container::write(&hprz).unwrap_err().to_string();
+        assert!(message.contains("two attachments are named"), "{message}");
+    }
+    let zip = zip_of(&[
+        ("design.hpr", design.as_bytes()),
+        ("Logs/A.csv", &[1]),
+        ("logs/a.csv", &[2]),
+    ]);
+    let message = container::read(&zip).unwrap_err().to_string();
+    assert!(message.contains("two attachments are named"), "{message}");
+    // Names that only look like a device's are taken.
+    let names = [
+        "console.txt",
+        "com10.txt",
+        "nul-report.csv",
+        "lpt.csv",
+        "logs/aux1.csv",
+    ];
+    let hprz = hprz_of(
+        names
+            .iter()
+            .map(|name| container::Entry::new(*name, vec![1]))
+            .collect(),
+    );
+    assert_eq!(
+        container::read(&container::write(&hprz).unwrap())
+            .unwrap()
+            .value,
+        hprz
+    );
+    // A name that is also another's folder, even by case alone, in either order.
+    for (a, b) in [("logs", "logs/a.csv"), ("logs/a.csv", "Logs")] {
+        let hprz = hprz_of(vec![
+            container::Entry::new(a, vec![1]),
+            container::Entry::new(b, vec![2]),
+        ]);
+        let message = container::write(&hprz).unwrap_err().to_string();
+        assert!(
+            message.contains("is also the folder of another"),
+            "{message}"
+        );
+        let zip = zip_of(&[("design.hpr", design.as_bytes()), (a, &[1]), (b, &[2])]);
+        let message = container::read(&zip).unwrap_err().to_string();
+        assert!(
+            message.contains("is also the folder of another"),
+            "{message}"
+        );
+    }
+    // A symbolic link is refused, not read as a file holding its target.
+    let mut links = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    links
+        .start_file("design.hpr", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    std::io::Write::write_all(&mut links, design.as_bytes()).unwrap();
+    links
+        .add_symlink("logs/link", "/etc", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    let zip = links.finish().unwrap().into_inner();
+    let message = container::read(&zip).unwrap_err().to_string();
+    assert!(
+        message.contains("\"logs/link\" is a symbolic link"),
+        "{message}"
+    );
+    // A name not marked as UTF-8 (a byte of the old DOS code page, which the zip reader turns into
+    // another character) is refused rather than renamed.
+    let mut dos = zip_of(&[("design.hpr", design.as_bytes()), ("x.csv", b"1")]);
+    let at: Vec<usize> = (0..dos.len() - 5)
+        .filter(|&i| &dos[i..i + 5] == b"x.csv")
+        .collect();
+    assert_eq!(at.len(), 2);
+    for i in at {
+        dos[i] = 0x82;
+    }
+    let message = container::read(&dos).unwrap_err().to_string();
+    assert!(message.contains("isn't marked as UTF-8"), "{message}");
+    // A folder's entry that holds bytes would be lost, so it is refused.
+    let mut full = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    full.start_file("design.hpr", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    std::io::Write::write_all(&mut full, design.as_bytes()).unwrap();
+    full.start_file("notes/", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    std::io::Write::write_all(&mut full, b"lost").unwrap();
+    let zip = full.finish().unwrap().into_inner();
+    let message = container::read(&zip).unwrap_err().to_string();
+    assert!(
+        message.contains("\"notes/\" is a folder's entry that is not an empty folder"),
+        "{message}"
+    );
+    // So is one the zip reader takes for a folder by a `\` at its end.
+    let zip = zip_of(&[("design.hpr", design.as_bytes()), ("notes\\", b"")]);
+    let message = container::read(&zip).unwrap_err().to_string();
+    assert!(
+        message.contains("\"notes\\\\\" is a folder's entry that is not an empty folder"),
+        "{message}"
+    );
+    // The design's entry is neither an attachment's name nor its folder, in any case.
+    for name in ["design.hpr/x", "DESIGN.HPR/x", "de\u{17f}ign.hpr"] {
+        let message = container::check_name(name).unwrap_err().to_string();
+        assert!(message.contains("the design's entry"), "{name}: {message}");
+        let zip = zip_of(&[("design.hpr", design.as_bytes()), (name, b"1")]);
+        let message = container::read(&zip).unwrap_err().to_string();
+        assert!(message.contains("the design's entry"), "{name}: {message}");
+    }
+    // Names that differ only by a letter's case, some of which Rust's lower case alone keeps apart:
+    // the Greek final sigma, the long s and the micro sign. Full case mapping also takes `ß` for
+    // `ss`, which the rule refuses rather than risk.
+    for (a, b) in [
+        ("\u{3b1}\u{3c3}.txt", "\u{391}\u{3a3}.txt"),
+        ("\u{3b1}\u{3c2}.txt", "\u{3b1}\u{3c3}.txt"),
+        ("\u{17f}.txt", "s.txt"),
+        ("\u{b5}.txt", "\u{3bc}.txt"),
+        ("stra\u{df}e.csv", "strasse.csv"),
+    ] {
+        let hprz = hprz_of(vec![
+            container::Entry::new(a, vec![1]),
+            container::Entry::new(b, vec![2]),
+        ]);
+        let message = container::write(&hprz).unwrap_err().to_string();
+        assert!(
+            message.contains("two attachments are named"),
+            "{a} {b}: {message}"
+        );
+    }
+    // A name of 255 bytes is taken.
+    let longest = format!("{}.txt", "x".repeat(251));
+    let hprz = hprz_of(vec![container::Entry::new(longest.as_str(), vec![1])]);
+    assert_eq!(
+        container::read(&container::write(&hprz).unwrap())
+            .unwrap()
+            .value,
+        hprz
+    );
+    // A name of 30,000 folders is taken, and found to be the file of its own first folder. (Its
+    // check once copied the name for each folder, about a gigabyte; this test shows the answers,
+    // not the memory.)
+    let deep = format!("{}x", "a/".repeat(30_000));
+    let hprz = hprz_of(vec![container::Entry::new(deep.as_str(), vec![1])]);
+    assert_eq!(
+        container::read(&container::write(&hprz).unwrap())
+            .unwrap()
+            .value,
+        hprz
+    );
+    let hprz = hprz_of(vec![
+        container::Entry::new(deep.as_str(), vec![1]),
+        container::Entry::new("A", vec![2]),
+    ]);
+    let message = container::write(&hprz).unwrap_err().to_string();
+    assert!(
+        message.contains("\"A\" is also the folder of another"),
+        "{message}"
+    );
+    // A name that sorts between a folder and its files is not taken for one of them.
+    let names = ["logs", "logs-old/a.csv", "logs.csv"];
+    let hprz = hprz_of(
+        names
+            .iter()
+            .map(|name| container::Entry::new(*name, vec![1]))
+            .collect(),
+    );
+    assert!(container::write(&hprz).is_ok());
+    // Nor do they hide a file of the folder that sorts after them.
+    let names = ["logs", "logs-old", "logs.csv", "logs/a.csv"];
+    let hprz = hprz_of(
+        names
+            .iter()
+            .map(|name| container::Entry::new(*name, vec![1]))
+            .collect(),
+    );
+    let message = container::write(&hprz).unwrap_err().to_string();
+    assert!(
+        message.contains("\"logs\" is also the folder of another"),
+        "{message}"
+    );
+    // A folder's own entry holds nothing and is passed over.
+    let mut folders = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    folders
+        .add_directory("logs/", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    folders
+        .start_file("design.hpr", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    std::io::Write::write_all(&mut folders, design.as_bytes()).unwrap();
+    let zip = folders.finish().unwrap().into_inner();
+    assert_eq!(container::read(&zip).unwrap().value.attachments, []);
+}
+
+/// What isn't a container, or is a damaged or hostile one, is refused with the reason.
+#[test]
+fn a_damaged_container_is_refused() {
+    let design = to_json(&document(PUBLIC[6].1)).unwrap();
+    let refused = |bytes: &[u8]| match container::read(bytes) {
+        Err(error) => error.to_string(),
+        Ok(read) => panic!("read {} attachments", read.value.attachments.len()),
+    };
+    assert!(refused(b"").contains("don't start as one"));
+    assert!(refused(design.as_bytes()).contains("don't start as one"));
+    assert!(refused(b"PK\x03\x04 and then nothing").starts_with("not a valid .hprz"));
+    assert!(refused(&zip_of(&[("logs/a.csv", b"t\n")])).contains("holds no \"design.hpr\""));
+    assert!(refused(&zip_of(&[("design.hpr", &[0xff, 0xfe])])).contains("not UTF-8"));
+    // The design is held to everything a `.hpr` is.
+    let other = design.replacen("\"version\": \"0.2\"", "\"version\": \"0.3\"", 1);
+    assert!(refused(&zip_of(&[("design.hpr", other.as_bytes())])).contains("newer program"));
+    // Two entries of one name, which the zip writer won't make, so the second is renamed in the
+    // bytes: the zip reader would keep one and drop the other, so the archive is refused. For a
+    // second design entry and for an attachment's.
+    for (keep, rename) in [("design.hpr", "design.hpx"), ("logs/a.csv", "logs/a.csx")] {
+        let mut two = zip_of(&[
+            ("design.hpr", design.as_bytes()),
+            ("logs/a.csv", b"1\n"),
+            (rename, b"2\n"),
+        ]);
+        let at: Vec<usize> = (0..two.len() - rename.len())
+            .filter(|&i| &two[i..i + rename.len()] == rename.as_bytes())
+            .collect();
+        assert_eq!(
+            at.len(),
+            2,
+            "its local header and its central directory record"
+        );
+        for i in at {
+            two[i..i + rename.len()].copy_from_slice(keep.as_bytes());
+        }
+        assert_eq!(
+            refused(&two),
+            "not a valid .hprz: its central directory holds 3 entries, and the zip reader keeps \
+             2: two have the same name, and one would be lost, or the directory is damaged"
+        );
+    }
+    // A megabyte of zeros deflates to about a kilobyte; with a smaller budget it is refused
+    // rather than read, whichever entry passes it.
+    let zeros = vec![0u8; 1 << 20];
+    let bomb = zip_of(&[("design.hpr", design.as_bytes()), ("zeros.bin", &zeros)]);
+    assert!(bomb.len() < 20_000, "{}", bomb.len());
+    let budget = design.len() as u64 + (1 << 20) - 1;
+    let message = container::read_within(&bomb, budget)
+        .unwrap_err()
+        .to_string();
+    assert!(message.contains("more than"), "{message}");
+    assert!(container::read_within(&bomb, budget + 1).is_ok());
+    let message = container::read_within(&bomb, 10).unwrap_err().to_string();
+    assert!(message.contains("more than 10 bytes"), "{message}");
+    // A name is refused before anything is decompressed: with the budget spent on the design,
+    // the name's reason still comes first.
+    let named = zip_of(&[("design.hpr", design.as_bytes()), ("../zeros.bin", &zeros)]);
+    let message = container::read_within(&named, 10).unwrap_err().to_string();
+    assert!(message.contains("not a relative path"), "{message}");
+    // Nor does a container hold more than it can be read back with: the writer refuses one past
+    // the limit before compressing anything.
+    let text = to_json(&hprz_of(Vec::new()).design).unwrap();
+    let over = container::MAX_UNPACKED_BYTES as usize - text.len() + 1;
+    let hprz = hprz_of(vec![container::Entry::new("big.bin", vec![0; over])]);
+    let message = container::write(&hprz).unwrap_err().to_string();
+    assert!(
+        message.contains(&format!(
+            "it would hold {} bytes unpacked",
+            container::MAX_UNPACKED_BYTES + 1
+        )),
+        "{message}"
+    );
+}
+
+/// A design the format refuses to write is refused in a container too.
+#[test]
+fn a_container_of_a_design_that_cannot_be_written_is_refused() {
+    let mut hprz = hprz_of(Vec::new());
+    hprz.design.motors.configurations[0].motors[0].diameter_m = Some(f64::NAN);
+    assert!(matches!(
+        container::write(&hprz),
+        Err(FormatError::NotRepresentable(_))
+    ));
+}
+
+/// A public design's XML with a parallel stage hpr doesn't read put inside its first body tube, so
+/// its airframe is not read exactly as written, as raw XML, which the `.ork` reader takes.
+fn with_a_parallel_stage() -> Vec<u8> {
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(PUBLIC[6].1)).unwrap();
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut archive.by_name("rocket.ork").unwrap(), &mut xml).unwrap();
+    let at = xml.find("<bodytube>").unwrap();
+    let inside = xml[at..].find("<subcomponents>").unwrap() + at + "<subcomponents>".len();
+    format!(
+        "{}<parallelstage><name>Boosters</name><id>boosters</id>\
+         <instancecount>2</instancecount></parallelstage>{}",
+        &xml[..inside],
+        &xml[inside..]
+    )
+    .into_bytes()
+}
+
+/// The provenance says why a `.ork`'s airframe was not read exactly as written, as the `.ork`
+/// reader does, and says nothing when it was.
+#[test]
+fn the_provenance_says_when_the_airframe_was_not_read_as_written() {
+    let airframe = |document: &DesignFile| {
+        document
+            .provenance
+            .source
+            .as_ref()
+            .unwrap()
+            .airframe_not_as_written
+            .clone()
+    };
+    for (name, bytes) in PUBLIC {
+        let file = ork::read(bytes).unwrap().value;
+        assert_eq!(
+            airframe(&document(bytes)),
+            ork::airframe_not_as_written(&file),
+            "{name}"
+        );
+    }
+    let reduced = with_a_parallel_stage();
+    let read = document(&reduced);
+    let why = airframe(&read).unwrap();
+    assert!(why.starts_with("1 `parallelstage` were left out"), "{why}");
+    let text = to_json(&read).unwrap();
+    assert!(text.contains("\"airframe_not_as_written\": \"1 `parallelstage`"));
+    assert_eq!(schema_errors(&validator(), &text), Vec::<String>::new());
+    assert_eq!(from_json(&text).unwrap(), read);
+}
+
+/// 0.1 didn't record the airframe's reason, so the migration takes it from the first
+/// configuration left out for it, when the source is a `.ork`; and refuses a 0.1 document that
+/// already has one.
+#[test]
+fn the_migration_recovers_the_airframes_reason_from_the_configurations() {
+    let reduced = document(&with_a_parallel_stage());
+    let why = reduced
+        .provenance
+        .source
+        .clone()
+        .unwrap()
+        .airframe_not_as_written
+        .unwrap();
+    // Its one configuration is left out first for want of a curve, so as 0.1 held it, nothing
+    // says whether the airframe was read as written: the migration says it can't be known, which
+    // `hpr sim` refuses another motor on, as it does the `.ork`.
+    let left_out = reduced.motors.configurations[0].left_out.as_ref().unwrap();
+    assert_eq!(left_out.why, ork::NotFlown::NoCurve);
+    let as_0_1 = |document: &DesignFile| {
+        let mut value = serde_json::to_value(document).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("version".to_owned(), serde_json::json!("0.1"));
+        let files = object.remove("source_files").unwrap();
+        object.insert("attachments".to_owned(), files);
+        object["provenance"]["source"]
+            .as_object_mut()
+            .unwrap()
+            .remove("airframe_not_as_written");
+        value
+    };
+    let migrated_reason = |value: &serde_json::Value| {
+        from_json(&value.to_string())
+            .unwrap()
+            .provenance
+            .source
+            .unwrap()
+            .airframe_not_as_written
+    };
+    let old = as_0_1(&reduced);
+    let errors: Vec<String> = jsonschema::validator_for(&serde_json::from_str(SCHEMA_0_1).unwrap())
+        .unwrap()
+        .iter_errors(&old)
+        .map(|error| error.to_string())
+        .collect();
+    assert_eq!(errors, Vec::<String>::new());
+    let migrated = from_json(&old.to_string()).unwrap();
+    let mut expected = reduced.clone();
+    expected
+        .provenance
+        .source
+        .as_mut()
+        .unwrap()
+        .airframe_not_as_written = Some(migrate::UNKNOWN.to_owned());
+    assert_eq!(migrated, expected);
+    // With no configuration at all, the same.
+    let mut value = old.clone();
+    value["motors"]["configurations"] = serde_json::json!([]);
+    assert_eq!(migrated_reason(&value).as_deref(), Some(migrate::UNKNOWN));
+    // Had it a curve, the configuration would be left out for the airframe: the reason is taken
+    // from there.
+    let mut value = old.clone();
+    value["motors"]["configurations"][0]["left_out"] = serde_json::json!({
+        "why": "airframe_not_as_written",
+        "message": format!("the airframe was not read exactly as written: {why}"),
+    });
+    assert_eq!(migrated_reason(&value).as_deref(), Some(why.as_str()));
+    // A configuration that flies, or is left out only for its separation, which the reader asks
+    // after the airframe, shows the airframe was read as written.
+    for left_out in [
+        serde_json::Value::Null,
+        serde_json::json!({ "why": "separation_not_flown", "message": "x" }),
+    ] {
+        let mut value = old.clone();
+        value["motors"]["configurations"][0]["left_out"] = left_out.clone();
+        assert_eq!(migrated_reason(&value), None, "{left_out}");
+    }
+    // Nothing is recorded for a source that isn't a `.ork`.
+    let mut value = old.clone();
+    value["provenance"]["source"]["format"] = serde_json::json!("hpr_design");
+    assert_eq!(migrated_reason(&value), None);
+    // A 0.1 document that has one is not a 0.1 document.
+    let mut value = as_0_1(&reduced);
+    value["provenance"]["source"]["airframe_not_as_written"] = serde_json::json!("x");
+    assert_eq!(
+        from_json(&value.to_string()).unwrap_err().to_string(),
+        "not a valid hpr design 0.2: as a 0.1 document, its source has an \
+         \"airframe_not_as_written\", which 0.1 doesn't define"
+    );
+}
+
+/// On every public design, the migration from 0.1 works out whether the airframe was read as
+/// written as the `.ork` reader says, or marks it unknown, and is never wrong: as `cargo xtask ork`
+/// holds the private designs to. The reduced design adds one whose airframe wasn't, and the
+/// archive with an embedded curve one whose configuration flies.
+#[test]
+fn the_migration_is_never_wrong_about_a_public_designs_airframe() {
+    // Found the same, marked unknown though read as written, marked unknown though not.
+    let mut counts = [0usize; 3];
+    let reduced = with_a_parallel_stage();
+    let (embedded, _, _) = with_attachments();
+    let designs = PUBLIC.iter().map(|(name, bytes)| (*name, *bytes)).chain([
+        ("reduced", reduced.as_slice()),
+        ("embedded", embedded.as_slice()),
+    ]);
+    for (name, bytes) in designs {
+        let document = document(bytes);
+        let truth = ork::airframe_not_as_written(&ork::read(bytes).unwrap().value);
+        let mut value = serde_json::to_value(&document).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("version".to_owned(), serde_json::json!("0.1"));
+        let files = object.remove("source_files").unwrap();
+        object.insert("attachments".to_owned(), files);
+        object["provenance"]["source"]
+            .as_object_mut()
+            .unwrap()
+            .remove("airframe_not_as_written");
+        let migrated = from_json(&value.to_string()).unwrap();
+        let reason = migrated
+            .provenance
+            .source
+            .as_ref()
+            .unwrap()
+            .airframe_not_as_written
+            .clone();
+        // All but that answer is the document first written.
+        let mut expected = document.clone();
+        expected
+            .provenance
+            .source
+            .as_mut()
+            .unwrap()
+            .airframe_not_as_written
+            .clone_from(&reason);
+        assert_eq!(migrated, expected, "{name}");
+        match (truth.as_deref(), reason.as_deref()) {
+            (truth, reason) if truth == reason => counts[0] += 1,
+            (_, Some(migrate::UNKNOWN)) => counts[usize::from(truth.is_some()) + 1] += 1,
+            (truth, reason) => panic!("{name}: {truth:?}, migrated as {reason:?}"),
+        }
+    }
+    // With no motor catalog here, a public design's configurations are all left out for want of a
+    // curve, before the airframe is asked after, so only the embedded curve's design shows it.
+    assert_eq!(counts, [1, PUBLIC.len() - 1, 2]);
 }

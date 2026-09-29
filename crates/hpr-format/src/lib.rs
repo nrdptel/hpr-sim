@@ -15,14 +15,13 @@
 //!
 //! [`to_json`] writes the canonical text: two-space indents, keys in the order the types declare
 //! them, and a final newline, so the same design always gives the same bytes and a change shows as
-//! a small diff. [`from_json`] reads it back to the same value, and refuses a document of another
-//! format or version with the reason. [`schema`] is the document's JSON Schema, committed as
-//! [`schema/format/hpr-design-0.1.schema.json`][schema-file].
+//! a small diff. [`from_json`] reads it back to the same value, takes a document of an older
+//! version to the current one ([`migrate`]), and refuses one of another format or a newer version
+//! with the reason. [`schema`] is the document's JSON Schema, committed as
+//! [`schema/format/hpr-design-0.2.schema.json`][schema-file] beside the older versions' schemas.
+//! A [`container`] (`.hprz`) carries a design with other files, such as its flight logs.
 //!
-//! The zip container that carries a design with other files, and migrations from older versions,
-//! come with
-//! the format's second step, [M3.3b][m3-3b]; generated TypeScript and Python types with
-//! [M3.3c][m3-3c], its third.
+//! Generated TypeScript and Python types come with the format's third step, [M3.3c][m3-3c].
 //!
 //! ```
 //! use hpr_format::{DesignFile, Provenance, from_json, to_json};
@@ -30,15 +29,14 @@
 //! let bytes = include_bytes!("../../../validation/fixtures/ork/loft-demo/demo-stable.ork");
 //! let read = DesignFile::from_ork(bytes)?;
 //! let text = to_json(&read.value)?;
-//! assert!(text.starts_with("{\n  \"format\": \"hpr-design\",\n  \"version\": \"0.1\","));
+//! assert!(text.starts_with("{\n  \"format\": \"hpr-design\",\n  \"version\": \"0.2\","));
 //! assert_eq!(from_json(&text)?, read.value);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
 //! [guide-format]: https://nrdptel.github.io/hpr-sim/format/hpr.html
 //! [adr-111]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-111-m33-the-hpr-design-format-its-extensions-versions-and-crate-2026-09-29
-//! [schema-file]: https://github.com/nrdptel/hpr-sim/blob/main/schema/format/hpr-design-0.1.schema.json
-//! [m3-3b]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-3b
+//! [schema-file]: https://github.com/nrdptel/hpr-sim/blob/main/schema/format/hpr-design-0.2.schema.json
 //! [m3-3c]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-3c
 
 use std::collections::BTreeSet;
@@ -59,17 +57,14 @@ use sha2::{Digest, Sha256};
 pub const FORMAT: &str = "hpr-design";
 
 /// The version this crate writes and reads.
-pub const VERSION: Version = Version { major: 0, minor: 1 };
+pub const VERSION: Version = Version { major: 0, minor: 2 };
 
 /// The extension of a design written as plain JSON ([ADR-111][adr-111]): `.hpr`.
 ///
 /// [adr-111]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-111-m33-the-hpr-design-format-its-extensions-versions-and-crate-2026-09-29
 pub const EXTENSION: &str = "hpr";
 
-/// The extension reserved for the zip container of a design and its attachments, which comes with
-/// the format's second step, [M3.3b][m3-3b]: `.hprz`.
-///
-/// [m3-3b]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-3b
+/// The extension of the zip container of a design and its attachments ([`container`]): `.hprz`.
 pub const CONTAINER_EXTENSION: &str = "hprz";
 
 /// A design as one document of the hpr design format.
@@ -102,18 +97,24 @@ pub struct DesignFile {
     /// back.
     pub extensions: Extensions,
     /// The source file's other files, in the order it held them: a `.ork` archive's entries
-    /// besides the design, such as embedded thrust curves and decal images.
-    pub attachments: Vec<AttachedFile>,
+    /// besides the design, such as embedded thrust curves and decal images. Version 0.1 called
+    /// them `attachments`.
+    pub source_files: Vec<SourceFile>,
 }
 
 impl DesignFile {
     /// The document of `design`, with its provenance and the source file's other files.
     ///
-    /// `attachments` must hold each thrust curve the design's motors name as embedded
+    /// `source_files` must hold each thrust curve the design's motors name as embedded
     /// ([`Curve::Embedded`]): the file's own
     /// [`OrkFile::attachments`](hpr_io::ork::OrkFile::attachments) do. Without one, [`to_json`]
     /// refuses the document.
-    pub fn new(design: Design, provenance: Provenance, attachments: &[Attachment]) -> Self {
+    ///
+    /// A design read from a `.ork` should name, in its provenance's
+    /// [`Source::airframe_not_as_written`], why the file's airframe was not read exactly as written,
+    /// if it wasn't: without it, a program flies another motor in a rocket its `.ork` refuses.
+    /// [`DesignFile::from_ork`] sets it.
+    pub fn new(design: Design, provenance: Provenance, source_files: &[Attachment]) -> Self {
         Self {
             format: Format::HprDesign,
             version: VERSION,
@@ -123,12 +124,13 @@ impl DesignFile {
             recovery: design.recovery,
             simulations: design.simulations,
             extensions: design.extensions,
-            attachments: attachments.iter().map(AttachedFile::of).collect(),
+            source_files: source_files.iter().map(SourceFile::of).collect(),
         }
     }
 
     /// Reads a `.ork` file's bytes (zip, gzip or raw XML) into a document whose provenance names
-    /// this program and the file's SHA-256, with the reader's warnings.
+    /// this program, the file's SHA-256 and why its airframe was not read exactly as written, if
+    /// it wasn't, with the reader's warnings.
     ///
     /// The design is [`hpr_io::ork::design`]'s: a motor configuration flies with the curve the
     /// file itself holds.
@@ -141,7 +143,9 @@ impl DesignFile {
         let design = ork::design(&file.value);
         let mut warnings = file.warnings;
         warnings.extend(design.warnings);
-        let provenance = Provenance::hpr(Some(Source::of(SourceFormat::Ork, bytes)));
+        let mut source = Source::of(SourceFormat::Ork, bytes);
+        source.airframe_not_as_written = ork::airframe_not_as_written(&file.value);
+        let provenance = Provenance::hpr(Some(source));
         Ok(Imported {
             value: Self::new(design.value, provenance, &file.value.attachments),
             warnings,
@@ -165,8 +169,8 @@ impl DesignFile {
     ///
     /// [`FormatError::Invalid`] when a file's base64 does not decode; [`from_json`] refuses such a
     /// document, so only one built in code can hold one.
-    pub fn attachments(&self) -> Result<Vec<Attachment>, FormatError> {
-        self.attachments
+    pub fn source_files(&self) -> Result<Vec<Attachment>, FormatError> {
+        self.source_files
             .iter()
             .map(|file| {
                 Ok(Attachment {
@@ -182,23 +186,23 @@ impl DesignFile {
     ///
     /// # Errors
     ///
-    /// [`FormatError::Invalid`] for an attachment that does not decode, and
+    /// [`FormatError::Invalid`] for a source file that does not decode, and
     /// [`FormatError::Ork`] when the archive cannot be written.
     pub fn to_ork(&self) -> Result<Imported<Vec<u8>>, FormatError> {
-        ork::export::write(&self.design(), &self.attachments()?)
+        ork::export::write(&self.design(), &self.source_files()?)
             .map_err(|error| FormatError::Ork(error.to_string()))
     }
 
-    /// What in a document read from JSON the types alone don't hold to: every attachment decodes,
+    /// What in a document read from JSON the types alone don't hold to: every source file decodes,
     /// has its own name, and is a file a `.ork` can hold besides its design, and every thrust curve
     /// embedded in the source file is among them.
     fn check(&self) -> Result<(), FormatError> {
         let mut names = BTreeSet::new();
-        for file in &self.attachments {
+        for file in &self.source_files {
             file.bytes()?;
             if !names.insert(file.name.as_str()) {
                 return Err(FormatError::Invalid(format!(
-                    "two attachments are named {:?}",
+                    "two source files are named {:?}",
                     shortened(&file.name)
                 )));
             }
@@ -206,7 +210,7 @@ impl DesignFile {
             if file.name.is_empty() || file.name == "rocket.ork" || file.name.ends_with(['/', '\\'])
             {
                 return Err(FormatError::Invalid(format!(
-                    "an attachment is named {:?}, which a .ork can't hold besides its design",
+                    "a source file is named {:?}, which a .ork can't hold besides its design",
                     shortened(&file.name)
                 )));
             }
@@ -223,7 +227,7 @@ impl DesignFile {
         for entry in entries {
             if !names.contains(entry.as_str()) {
                 return Err(FormatError::Invalid(format!(
-                    "a motor's curve is embedded as {:?}, which the attachments don't hold",
+                    "a motor's curve is embedded as {:?}, which the source files don't hold",
                     shortened(entry)
                 )));
             }
@@ -235,7 +239,7 @@ impl DesignFile {
 /// One of the source file's other files: its name, and its contents as text where they are UTF-8,
 /// or else as base64 ([RFC 4648][rfc-4648], section 4).
 ///
-/// Beyond the schema, the reader holds a document's attachments to four rules: base64 decodes; no
+/// Beyond the schema, the reader holds a document's source files to four rules: base64 decodes; no
 /// two share a name; each thrust curve a motor names as embedded is among them; and a name is not
 /// empty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/` or `\`.
 ///
@@ -243,15 +247,15 @@ impl DesignFile {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
-pub struct AttachedFile {
+pub struct SourceFile {
     /// Its name in the source file, such as `thrustcurves/<digest>.rse`.
     pub name: String,
     /// Its contents.
     pub content: Content,
 }
 
-impl AttachedFile {
-    /// `attachment`, as text if it is UTF-8.
+impl SourceFile {
+    /// `attachment`, an entry of the source file's archive, as text if it is UTF-8.
     pub fn of(attachment: &Attachment) -> Self {
         let content = match std::str::from_utf8(&attachment.bytes) {
             Ok(text) => Content::Text(text.to_owned()),
@@ -272,7 +276,7 @@ impl AttachedFile {
         match &self.content {
             Content::Text(text) => Ok(text.clone().into_bytes()),
             Content::Base64(encoded) => BASE64.decode(encoded).map_err(|error| {
-                FormatError::Invalid(format!("attachment {:?}: {error}", shortened(&self.name)))
+                FormatError::Invalid(format!("source file {:?}: {error}", shortened(&self.name)))
             }),
         }
     }
@@ -381,7 +385,8 @@ impl Provenance {
     }
 }
 
-/// The file a design was read from: its format and its SHA-256, which name it without its path.
+/// The file a design was read from: its format and its SHA-256, which name it without its path,
+/// and whether its rocket was read exactly as written.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
@@ -391,10 +396,19 @@ pub struct Source {
     /// The SHA-256 of the file's bytes, as 64 lowercase hexadecimal digits.
     #[schemars(regex(pattern = "^[0-9a-f]{64}$"))]
     pub sha256: String,
+    /// Why the file's airframe or a motor mount was not read exactly as written, if it wasn't: a
+    /// part left out, a value dropped or simplified, or something assumed
+    /// ([`hpr_io::ork::airframe_not_as_written`]). No configuration of such a rocket flies, and
+    /// `hpr sim` flies no other motor in it. Absent when the rocket was read as written. A document
+    /// migrated from 0.1 that doesn't show which holds exactly [`migrate::UNKNOWN`], a fixed text a
+    /// program can compare against.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub airframe_not_as_written: Option<String>,
 }
 
 impl Source {
-    /// The source `bytes` of `format`.
+    /// The source `bytes` of `format`, its rocket read as written; set
+    /// [`Source::airframe_not_as_written`] when it wasn't.
     pub fn of(format: SourceFormat, bytes: &[u8]) -> Self {
         let digest = Sha256::digest(bytes);
         let sha256 = digest
@@ -403,7 +417,11 @@ impl Source {
                 hex.push_str(&format!("{byte:02x}"));
                 hex
             });
-        Self { format, sha256 }
+        Self {
+            format,
+            sha256,
+            airframe_not_as_written: None,
+        }
     }
 }
 
@@ -431,15 +449,19 @@ pub enum FormatError {
         /// What the document holds, as JSON, or `missing`.
         found: String,
     },
-    /// The document is of a version this reader does not take.
+    /// The document is of a version this reader neither takes nor migrates from.
     #[error(
         "the document is version {found}, and this reader takes version {supported}{}",
-        if found > supported { ": it was written by a newer program" } else { "" }
+        if found > supported {
+            ": it was written by a newer program".to_owned()
+        } else {
+            format!(" and migrates from {} on", migrate::OLDEST)
+        }
     )]
     Unsupported {
         /// The document's version.
         found: Version,
-        /// The version this reader takes.
+        /// The version this reader takes and writes.
         supported: Version,
     },
     /// The document names the format and version but does not follow the schema.
@@ -452,6 +474,9 @@ pub enum FormatError {
     /// The `.ork` could not be written.
     #[error("the .ork could not be written: {0}")]
     Ork(String),
+    /// A `.hprz` container could not be read or written ([`container`]).
+    #[error("not a valid .hprz: {0}")]
+    Container(String),
 }
 
 /// The canonical JSON text of `document`: two-space indents, keys in declared order, a final
@@ -459,17 +484,17 @@ pub enum FormatError {
 ///
 /// # Errors
 ///
-/// [`FormatError::Unsupported`] for a document of another version, which this crate doesn't
-/// write; [`FormatError::NotRepresentable`] when the text would not read back as `document`,
-/// including when [`from_json`] would refuse it (an attachment rule of [`AttachedFile`]): every
+/// [`FormatError::Invalid`] for a document of another version, which this crate doesn't write;
+/// [`FormatError::NotRepresentable`] when the text would not read back as `document`,
+/// including when [`from_json`] would refuse it (a rule of [`SourceFile`]): every
 /// document written is read again and compared, so a value JSON cannot carry (a number that is
 /// not finite) is refused here rather than lost.
 pub fn to_json(document: &DesignFile) -> Result<String, FormatError> {
     if document.version != VERSION {
-        return Err(FormatError::Unsupported {
-            found: document.version,
-            supported: VERSION,
-        });
+        return Err(FormatError::Invalid(format!(
+            "its \"version\" is {}, and this program writes only {VERSION}",
+            document.version
+        )));
     }
     let mut text = serde_json::to_string_pretty(document)
         .map_err(|error| FormatError::NotRepresentable(error.to_string()))?;
@@ -483,20 +508,45 @@ pub fn to_json(document: &DesignFile) -> Result<String, FormatError> {
     }
 }
 
-/// Reads a document from its JSON text.
+/// Reads a document from its JSON text, taking one of an older version to the current one.
 ///
-/// The format and version are checked first, so a file of another kind or version is refused with
-/// that reason rather than with the first field the reader does not know.
+/// [`read_json`] with the version the text was written in dropped.
 ///
 /// # Errors
 ///
-/// [`FormatError`]: not JSON, not an hpr design, another version, or not valid.
+/// [`FormatError`]: not JSON, not an hpr design, a version this reader doesn't take, or not
+/// valid.
 pub fn from_json(text: &str) -> Result<DesignFile, FormatError> {
+    read_json(text).map(|opened| opened.value)
+}
+
+/// A document read, and the version it was written in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Opened<T> {
+    /// What was read, in the current version.
+    pub value: T,
+    /// The version the text was written in: older than [`VERSION`] when it was migrated.
+    pub written_as: Version,
+}
+
+/// Reads a document from its JSON text, and says which version it was written in.
+///
+/// The format and version are checked first, so a file of another kind or version is refused with
+/// that reason rather than with the first field the reader does not know. A document of an older
+/// version this reader migrates from ([`migrate`]) is rewritten into the current version's shape
+/// and then read as one, so it is held to every rule a current document is.
+///
+/// # Errors
+///
+/// [`FormatError`]: not JSON, not an hpr design, a version this reader doesn't take, or not
+/// valid.
+pub fn read_json(text: &str) -> Result<Opened<DesignFile>, FormatError> {
     // A byte-order mark, which some Windows editors write at the start of UTF-8, is not JSON.
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let value: serde_json::Value =
         serde_json::from_str(text).map_err(|error| FormatError::Json(error.to_string()))?;
-    let serde_json::Value::Object(object) = &value else {
+    let serde_json::Value::Object(mut object) = value else {
         return Err(FormatError::NotADesign {
             found: format!("absent: the JSON is {}, not an object", kind(&value)),
         });
@@ -520,22 +570,30 @@ pub fn from_json(text: &str) -> Result<DesignFile, FormatError> {
         }
         Some(other) => {
             return Err(FormatError::Invalid(format!(
-                "its \"version\" is {}, not a string such as \"0.1\"",
+                "its \"version\" is {}, not a string such as \"{VERSION}\"",
                 shortened(&other.to_string())
             )));
         }
         None => return Err(FormatError::Invalid("it has no \"version\"".to_owned())),
     };
-    if found != VERSION {
+    let document: DesignFile = if found == VERSION {
+        // Read from the text, not the value, so an error names its line and column.
+        serde_json::from_str(text).map_err(|error| FormatError::Invalid(error.to_string()))?
+    } else if migrate::migrates_from(found) {
+        migrate::migrate(&mut object, found).map_err(FormatError::Invalid)?;
+        serde_json::from_value(serde_json::Value::Object(object))
+            .map_err(|error| FormatError::Invalid(format!("migrated from {found}: {error}")))?
+    } else {
         return Err(FormatError::Unsupported {
             found,
             supported: VERSION,
         });
-    }
-    let document: DesignFile =
-        serde_json::from_str(text).map_err(|error| FormatError::Invalid(error.to_string()))?;
+    };
     document.check()?;
-    Ok(document)
+    Ok(Opened {
+        value: document,
+        written_as: found,
+    })
 }
 
 /// What kind of JSON value `value` is, in words.
@@ -572,6 +630,9 @@ pub fn schema_json() -> String {
     text.push('\n');
     text
 }
+
+pub mod container;
+pub mod migrate;
 
 #[cfg(test)]
 mod tests;

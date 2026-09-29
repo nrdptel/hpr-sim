@@ -48,7 +48,8 @@ pub fn availability(name: &str) -> Option<Availability> {
         "sim" => Some(Availability::Available {
             reads: vec![
                 "`.ork`".to_owned(),
-                "a rocket's `.json` (not yet an `.hpr`)".to_owned(),
+                "`.hpr` or `.hprz`".to_owned(),
+                "a rocket's `.json`".to_owned(),
                 "a motor from the bundled catalog, `.eng` or `.rse`".to_owned(),
             ],
             writes: vec![
@@ -68,10 +69,14 @@ pub fn availability(name: &str) -> Option<Availability> {
             reads: MotorFile::ALL
                 .iter()
                 .map(|format| format!("`{}`", format.extension()))
-                .chain(["the bundled catalog".to_owned()])
+                .chain([
+                    "the bundled catalog".to_owned(),
+                    "a design as `.ork`, `.hpr` or `.hprz`".to_owned(),
+                ])
                 .collect(),
             writes: vec![
                 "`.eng` or `.rse`".to_owned(),
+                "`.ork`, `.hpr` or `.hprz`".to_owned(),
                 "text".to_owned(),
                 "JSON".to_owned(),
             ],
