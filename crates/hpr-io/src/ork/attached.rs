@@ -43,7 +43,7 @@ use super::component::{
 use super::document::Element;
 use super::motors;
 use super::recovery;
-use super::value::{AXIAL_OFFSET, INSTANCE_COUNT, Values};
+use super::value::{AXIAL_OFFSET, INSTANCE_COUNT, OVERRIDE_FLAGS, Values};
 use super::warning::{Warning, WarningKind};
 
 /// The tags that hang off the spine and hold another part inside them.
@@ -488,6 +488,8 @@ fn pod_set(
                      was read as `relative`, from the tube's surface to the pod's"
                 ),
             );
+            // The design holds a distance from the axis, not this word: kept as written.
+            values.forget(&["radiusoffset"]);
             tube_radius_m + pod_radius_m + number
         }
     };
@@ -512,6 +514,9 @@ fn pod_set(
                  cached, {tube_radius_m} m"
             ),
         );
+        // The design holds the distance this cached radius gives, where the file says the pods
+        // follow the tube: the file's offset is kept as written.
+        values.forget(&["radiusoffset"]);
     }
     if !(radial_offset_m >= 0.0 && radial_offset_m.is_finite()) {
         values.warn_at(
@@ -535,6 +540,8 @@ fn pod_set(
             "an override on a pod set that holds nothing, which OpenRocket weighs at the rocket's \
              tip; it was left out",
         );
+        values.forget(&["overridemass", "overridecg", "overridecd"]);
+        values.forget(&OVERRIDE_FLAGS);
     } else if overrides != Overrides::default() && !include_children {
         // A pod set weighs nothing of its own, so an override on it can only be its pods' total,
         // as a stage's is; `hpr-design` refuses one that does not say it covers them.
@@ -543,6 +550,7 @@ fn pod_set(
             "an override on a pod set that does not cover its pods; a pod set weighs nothing of \
              its own, so it was read as covering them",
         );
+        values.forget(&OVERRIDE_FLAGS);
     }
     // A tube of no length has no wall for a fin's tab to sit in either: the tab would reach below
     // the tube's radius.
@@ -648,6 +656,7 @@ fn cluster(values: &mut Values<'_>, outer_radius_m: f64, angle_rad: f64) -> Vec<
                  tube, as OpenRocket reads it"
             ),
         );
+        values.forget(&["clusterconfiguration"]);
         return Vec::new();
     };
     let scale = values.number(&["clusterscale"]).unwrap_or(1.0);
@@ -911,6 +920,7 @@ fn cross_section(values: &mut Values<'_>) -> FinCrossSection {
                 WarningKind::Unusual,
                 format!("`{other}` is not a fin section this reader knows; it was read as square"),
             );
+            values.forget(&["crosssection"]);
             FinCrossSection::Square
         }
     }
@@ -955,6 +965,7 @@ fn tab(values: &mut Values<'_>, root_chord_m: f64) -> Option<FinTab> {
                      read from the root leading edge"
                 ),
             );
+            values.forget(&["tabposition"]);
             offset_m
         }
     };
@@ -993,6 +1004,7 @@ fn tube_fins(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<P
                      {MOST_TUBE_FINS}, so it was read as {MOST_TUBE_FINS}"
                 ),
             );
+            values.forget(&INSTANCE_COUNT);
             MOST_TUBE_FINS
         }
         written => written,
@@ -1047,6 +1059,8 @@ fn rail_button(values: &mut Values<'_>) -> Option<Part> {
             "the screw head above the rail button was dropped; hpr does not model its mass",
         );
     }
+    // The design holds no screw at all, of any height, so the tag is kept as written.
+    values.forget(&["screwheight"]);
     Some(Part::RailButton(RailButton {
         outer_diameter_m: values.number(&["outerdiameter"]).unwrap_or_default(),
         inner_diameter_m: values.number(&["innerdiameter"]).unwrap_or_default(),
@@ -1184,6 +1198,7 @@ fn instanced_once(values: &mut Values<'_>, what: &str) {
             WarningKind::Dropped,
             format!("a row of more than one {what} was read as the one it is written as"),
         );
+        values.forget(&INSTANCE_COUNT);
     }
 }
 
@@ -1198,6 +1213,7 @@ fn off_the_axis(values: &mut Values<'_>, what: &str) {
             WarningKind::Dropped,
             format!("a {what} off the body axis was read on it; hpr keeps one on the axis"),
         );
+        values.forget(&["radialposition"]);
     }
 }
 
@@ -1220,6 +1236,7 @@ fn radial_offset_on_the_surface(values: &mut Values<'_>, part: &Part) {
             WarningKind::Dropped,
             format!("a {kind} standing off the body was read sitting on it"),
         );
+        values.forget(&["radiusoffset"]);
     }
 }
 
@@ -1253,6 +1270,7 @@ fn position(values: &mut Values<'_>) -> Position {
                 WarningKind::Dropped,
                 format!("`{name}` says `{text}`, which is not a number; it was read as zero"),
             );
+            values.forget(&AXIAL_OFFSET);
             0.0
         }
     };
@@ -1272,6 +1290,7 @@ fn position(values: &mut Values<'_>) -> Position {
                      was read from the parent's forward end"
                 ),
             );
+            values.forget(&AXIAL_OFFSET);
             Position::Top { aft_offset_m }
         }
     }
@@ -1348,6 +1367,7 @@ pub(super) fn finish(values: &mut Values<'_>) -> Option<Finish> {
                      took hpr's default"
                 ),
             );
+            values.forget(&["finish"]);
             return None;
         }
     };
@@ -1401,6 +1421,7 @@ fn roll_angle(values: &mut Values<'_>) -> f64 {
                  names for one angle, so `angleoffset` was taken"
             ),
         );
+        values.forget(&["rotation", "radialdirection"]);
     }
     newer.or(older).unwrap_or_default().to_radians()
 }

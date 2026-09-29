@@ -3500,6 +3500,64 @@ fn unknown_content_round_trips_through_x_openrocket() {
     }
 }
 
+/// A tag or attribute a reader asks for and then drops or simplifies is kept whole too, since the
+/// design does not hold what it says: a rail button's screw height, a ring's count above one, a
+/// fin section the reader has no reading for, and a material's declared kind where the part needs
+/// another. A value read exactly, such as the fins' count, is not kept.
+#[test]
+fn a_value_the_reader_drops_is_kept_in_x_openrocket() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>R</name><subcomponents>
+    <stage><name>Sustainer</name><id>s</id><subcomponents>
+      <bodytube><name>Tube</name><id>tube</id><length>0.5</length><thickness>0.001</thickness>
+        <radius>0.03</radius><subcomponents>
+          <railbutton><name>Button</name><id>button</id><axialoffset method="top">0.1</axialoffset>
+            <outerdiameter>0.01</outerdiameter><innerdiameter>0.006</innerdiameter>
+            <height>0.007</height><screwheight>0.003</screwheight></railbutton>
+          <centeringring><name>Rings</name><id>rings</id><axialoffset method="top">0.2</axialoffset>
+            <instancecount>3</instancecount><length>0.005</length><outerradius>0.029</outerradius>
+            <innerradius>0.01</innerradius>
+            <material type="surface" density="0.2">Invented board</material></centeringring>
+          <trapezoidfinset><name>Fins</name><id>fins</id><instancecount>4</instancecount>
+            <axialoffset method="bottom">0.0</axialoffset><thickness>0.003</thickness>
+            <crosssection>wedge</crosssection><rootchord>0.1</rootchord><tipchord>0.05</tipchord>
+            <sweeplength>0.05</sweeplength><height>0.06</height></trapezoidfinset>
+        </subcomponents></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#;
+    let file = read(xml.as_bytes()).expect("a readable document").value;
+    let read = design(&file);
+    assert_eq!(read.count(WarningKind::Dropped), 3, "{:?}", read.warnings);
+    assert_eq!(read.count(WarningKind::Unusual), 1, "{:?}", read.warnings);
+    let kept = &read.value.extensions.x_openrocket;
+    let tags: Vec<&str> = kept.tags.iter().map(|k| k.at.as_str()).collect();
+    assert_eq!(
+        tags,
+        [
+            "openrocket/rocket/stage[0]/bodytube[0]/railbutton[0]/@screwheight[0]",
+            "openrocket/rocket/stage[0]/bodytube[0]/centeringring[1]/@instancecount[0]",
+            "openrocket/rocket/stage[0]/bodytube[0]/trapezoidfinset[2]/@crosssection[0]",
+        ]
+    );
+    let attributes: Vec<(&str, &str, &str)> = kept
+        .attributes
+        .iter()
+        .map(|a| (a.at.as_str(), a.name.as_str(), a.value.as_str()))
+        .collect();
+    assert_eq!(
+        attributes,
+        [(
+            "openrocket/rocket/stage[0]/bodytube[0]/centeringring[1]/@material[0]",
+            "type",
+            "surface"
+        )]
+    );
+    for kept in &kept.tags {
+        assert_eq!(element_at(&file.document, &kept.at), Some(&kept.element));
+    }
+}
+
 /// A path that does not lead to an element gives `None`, never a panic, and an extension written
 /// before a namespace had anything in it still reads.
 #[test]

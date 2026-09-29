@@ -544,6 +544,38 @@ mod tests {
         assert!(warnings.is_empty());
     }
 
+    /// What a reader drops from a stored simulation is written back as the file had it: the
+    /// average `wind` block's speed where the older tag says otherwise, and a wind level's
+    /// altitude that is not a number. Read back, the design and its warnings are the same.
+    #[test]
+    fn what_the_reader_drops_is_written_back() {
+        let xml = with_simulations(
+            r#"<simulation><name>S</name><conditions>
+    <windaverage>4.25</windaverage><winddirection>2.1</winddirection>
+    <wind model="average"><speed>5.5</speed><direction>2.1</direction></wind>
+    <wind model="multilevel" altituderef="msl">
+      <windlevel altitude="high" speed="3.1" direction="1.2" standarddeviation="0.4"/></wind>
+    <windmodeltype>Average</windmodeltype></conditions></simulation>"#,
+        );
+        let file = read(xml.as_bytes()).expect("a readable .ork").value;
+        let original = design(&file);
+        // The bare rocket holds no design, which is said too.
+        assert_eq!(original.warnings.len(), 3, "{:?}", original.warnings);
+        let text = document(&original.value).value.to_xml();
+        let file = read(text.as_bytes()).expect("the written .ork reads").value;
+        let back = design(&file);
+        assert_eq!(back.value, original.value, "{text}");
+        assert_eq!(back.warnings, original.warnings, "{text}");
+        for (written, times) in [
+            ("<speed>5.5</speed>", 1),
+            ("<speed>", 1),
+            ("<windaverage>4.25</windaverage>", 1),
+            (r#"altitude="high""#, 1),
+        ] {
+            assert_eq!(text.matches(written).count(), times, "{written} in {text}");
+        }
+    }
+
     /// A number the reader would drop is left out, with a warning, rather than written as text
     /// OpenRocket cannot read.
     #[test]

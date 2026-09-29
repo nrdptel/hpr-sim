@@ -18,7 +18,10 @@
 //! - **Attributes** no reader asks for on an element hpr does read, such as a material's `group`.
 //!
 //! The readers record every tag and attribute they ask for while [`super::design`] reads, so one is
-//! kept exactly when nothing asked for it.
+//! kept when nothing asked for it. One a reader asked for and then dropped or simplified — a rail
+//! button's screw height, a drag override, a ring's count above one, a word with no reading — is
+//! kept too, since the design does not hold what it says: an export writes it back in place of
+//! what the design would, and reading that export warns of it again.
 //!
 //! **What is not.** The text of a second copy of a tag a reader takes once by name; its attributes
 //! and unread children are kept. Everything is still in the document itself, which
@@ -68,11 +71,13 @@ pub struct OpenRocketExtension {
     pub sections: Vec<Kept>,
     /// The tags hpr does not read in an element it does read — a part, a stage, the rocket, a
     /// stored simulation, or a tag inside any of those that a reader asked for — such as a part's
-    /// `<appearance>`.
+    /// `<appearance>`; and those a reader asked for and dropped or simplified, such as a rail
+    /// button's `<screwheight>`, which the design does not hold.
     #[serde(default)]
     pub tags: Vec<Kept>,
     /// The attributes hpr does not read on an element it does read, such as a material's
-    /// `group`.
+    /// `group`, and those whose value a reader dropped, such as a material's declared `type` where
+    /// the part needs another.
     #[serde(default)]
     pub attributes: Vec<KeptAttribute>,
 }

@@ -1587,4 +1587,467 @@ mod tests {
         assert_eq!(warnings.len(), 3, "{warnings:?}");
         assert!(warnings.iter().all(|w| w.kind == WarningKind::Dropped));
     }
+
+    /// Text the written file must hold, and how many times.
+    type Holds<'a> = [(&'a str, usize)];
+
+    /// `xml` read, written and read back, where the reader drops or simplifies a value: the
+    /// reader warns of it (with `warning` in the message, when there is one), the design and every
+    /// warning come back the same, the written text holds each of `tags` exactly the number of
+    /// times given, as the file wrote it, and it is written the same again. Returns the design and
+    /// the text.
+    fn kept_as_written(xml: &str, warning: Option<&str>, tags: &Holds<'_>) -> (Design, String) {
+        let file = read(xml.as_bytes()).expect("the test design reads").value;
+        let original = design(&file);
+        match warning {
+            Some(warning) => assert!(
+                original
+                    .warnings
+                    .iter()
+                    .any(|w| w.message.contains(warning)),
+                "`{warning}` not in {:?}",
+                original.warnings
+            ),
+            None => assert!(original.warnings.is_empty(), "{:?}", original.warnings),
+        }
+        let written = document(&original.value);
+        assert!(written.warnings.is_empty(), "{:?}", written.warnings);
+        let text = written.value.to_xml();
+        let file = read(text.as_bytes())
+            .expect("the written design reads")
+            .value;
+        let back = design(&file);
+        assert_eq!(back.value, original.value, "{text}");
+        assert_eq!(back.warnings, original.warnings, "{text}");
+        for (tag, times) in tags {
+            assert_eq!(text.matches(tag).count(), *times, "{tag} in {text}");
+        }
+        assert_eq!(document(&back.value).value.to_xml(), text);
+        (original.value, text)
+    }
+
+    /// A body tube 50 mm in radius holding `parts` and a motor for configuration `c1`, which the
+    /// rocket declares: a rocket that flies unless its airframe was not read as written.
+    fn flying_tube_of(parts: &str) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Probe</name><referencetype>maximum</referencetype>
+    <motorconfiguration configid="c1" default="true"><name>F15</name></motorconfiguration>
+    <subcomponents><stage><name>Sustainer</name><id>sustainer</id><subcomponents>
+      <nosecone><name>Nose</name><id>nose</id>
+        <length>0.25</length><thickness>0.002</thickness><shape>conical</shape>
+        <aftradius>auto</aftradius></nosecone>
+      <bodytube><name>Tube</name><id>tube</id>
+        <length>0.8</length><thickness>0.0015</thickness><radius>0.05</radius>
+        <motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+          <overhang>0.005</overhang>
+          <motor configid="c1"><type>single</type><manufacturer>Estes</manufacturer>
+            <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>
+            <delay>4.0</delay></motor></motormount>
+        <subcomponents>{parts}</subcomponents></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#
+        )
+    }
+
+    /// A rail button's screw head, which hpr does not model, is kept as written: the export
+    /// writes it back, so reading the export warns of it again and flies none of the rocket's
+    /// configurations, as reading the original did, and OpenRocket reads the screw it had.
+    #[test]
+    fn a_rail_buttons_screw_height_is_written_back() {
+        let button = |screw: &str| {
+            format!(
+                r#"
+          <railbutton><name>Button</name><id>button</id>
+            <axialoffset method="top">0.2</axialoffset>
+            <outerdiameter>0.0102</outerdiameter><innerdiameter>0.0062</innerdiameter>
+            <height>0.0071</height><baseheight>0.0015</baseheight>
+            <flangeheight>0.0016</flangeheight>{screw}</railbutton>"#
+            )
+        };
+        let (flown, _) = kept_as_written(&flying_tube_of(&button("")), None, &[]);
+        assert!(flown.motors.configurations[0].left_out.is_none());
+        let (screwed, _) = kept_as_written(
+            &flying_tube_of(&button("<screwheight>0.004</screwheight>")),
+            Some("screw head"),
+            &[("<screwheight>0.004</screwheight>", 1)],
+        );
+        assert!(screwed.motors.configurations[0].left_out.is_some());
+        // A screw of no height is no loss, but the design holds no screw to write either.
+        kept_as_written(
+            &flying_tube_of(&button("<screwheight>0.0</screwheight>")),
+            None,
+            &[("<screwheight>0.0</screwheight>", 1)],
+        );
+    }
+
+    /// Each value a reader drops or simplifies, with a warning, is written back as the file had
+    /// it, once, in place of what the writer would write from the design.
+    #[test]
+    fn a_value_the_reader_drops_is_written_back() {
+        let lug = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <launchlug><name>Lug</name><id>lug</id>
+            <axialoffset method="top">0.1</axialoffset>{inside}
+            <radius>0.004</radius><length>0.03</length><thickness>0.0005</thickness></launchlug>"#
+            ))
+        };
+        let ring = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <centeringring><name>Ring</name><id>ring</id>
+            <axialoffset method="bottom">0.0</axialoffset>{inside}
+            <length>0.005</length><outerradius>0.0485</outerradius><innerradius>0.01</innerradius>
+            </centeringring>"#
+            ))
+        };
+        let fins = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <trapezoidfinset><name>Fins</name><id>fins</id>
+            <instancecount>3</instancecount><axialoffset method="bottom">0.0</axialoffset>
+            <thickness>0.003</thickness>{inside}
+            <rootchord>0.12</rootchord><tipchord>0.05</tipchord><sweeplength>0.06</sweeplength>
+            <height>0.08</height></trapezoidfinset>"#
+            ))
+        };
+        let nose = |inside: &str| {
+            rocket_of(&format!(
+                r#"
+      <nosecone><name>Nose</name><id>nose</id>
+        <length>0.2</length><aftradius>0.03</aftradius>{inside}</nosecone>"#
+            ))
+        };
+        let cases: [(String, &str, &Holds<'_>); 22] = [
+            (
+                ring(
+                    "<instancecount>3</instancecount><instanceseparation>0.02</instanceseparation>",
+                ),
+                "a row of more than one ring",
+                &[
+                    ("<instancecount>3</instancecount>", 1),
+                    ("<instancecount>", 1),
+                ],
+            ),
+            (
+                ring("<radialposition>0.01</radialposition>"),
+                "off the body axis",
+                &[("<radialposition>0.01</radialposition>", 1)],
+            ),
+            (
+                fins(r#"<radiusoffset method="surface">0.01</radiusoffset>"#),
+                "standing off the body",
+                &[
+                    (r#"<radiusoffset method="surface">0.01</radiusoffset>"#, 1),
+                    ("<radiusoffset", 1),
+                ],
+            ),
+            (
+                fins("<crosssection>wedge</crosssection>"),
+                "not a fin section",
+                &[
+                    ("<crosssection>wedge</crosssection>", 1),
+                    ("<crosssection>", 1),
+                ],
+            ),
+            (
+                fins(
+                    r#"<tabheight>0.01</tabheight><tablength>0.05</tablength>
+            <tabposition relativeto="nowhere">0.01</tabposition>"#,
+                ),
+                "a fin tab measured from `nowhere`",
+                &[
+                    (r#"<tabposition relativeto="nowhere">0.01</tabposition>"#, 1),
+                    ("<tabposition", 1),
+                ],
+            ),
+            (
+                fins("<cant>steep</cant>"),
+                "not a number",
+                &[("<cant>steep</cant>", 1), ("<cant>", 1)],
+            ),
+            (
+                tube_of(
+                    r#"
+          <tubefinset><name>Tube fins</name><id>tube-fins</id>
+            <instancecount>12</instancecount><axialoffset method="bottom">0.0</axialoffset>
+            <length>0.08</length><radius>0.01</radius><thickness>0.0008</thickness></tubefinset>"#,
+                ),
+                "a tube fin set of 12 tubes",
+                &[
+                    ("<instancecount>12</instancecount>", 1),
+                    ("<instancecount>", 1),
+                ],
+            ),
+            (
+                tube_of(
+                    r#"
+          <innertube><name>Motor tube</name><id>mmt</id>
+            <axialoffset method="bottom">0.0</axialoffset>
+            <length>0.2</length><outerradius>0.0127</outerradius><thickness>0.0005</thickness>
+            <clusterconfiguration>7-flower</clusterconfiguration></innertube>"#,
+                ),
+                "not one of OpenRocket's cluster patterns",
+                &[("<clusterconfiguration>7-flower</clusterconfiguration>", 1)],
+            ),
+            (
+                lug("<finish>mirror</finish>"),
+                "not a surface finish",
+                &[("<finish>mirror</finish>", 1), ("<finish>", 1)],
+            ),
+            (
+                lug(r#"<position type="top">0.2</position>"#),
+                "two names for one value",
+                &[
+                    (r#"<position type="top">0.2</position>"#, 1),
+                    (r#"<axialoffset method="top">0.1</axialoffset>"#, 1),
+                ],
+            ),
+            (
+                lug("<angleoffset>30.0</angleoffset><radialdirection>60.0</radialdirection>"),
+                "two names for one angle",
+                &[
+                    ("<radialdirection>60.0</radialdirection>", 1),
+                    ("<angleoffset>30", 1),
+                ],
+            ),
+            (
+                lug(r#"<material type="surface" density="0.5">Invented felt</material>"#),
+                "is declared `surface`",
+                &[(
+                    r#"<material type="surface" density="0.5">Invented felt</material>"#,
+                    1,
+                )],
+            ),
+            (
+                lug(r#"<material type="bulk" density="heavy">Invented lead</material>"#),
+                "states no density",
+                &[(
+                    r#"<material type="bulk" density="heavy">Invented lead</material>"#,
+                    1,
+                )],
+            ),
+            (
+                lug(
+                    r#"<overridemass>0.02</overridemass><overridecg>0.01</overridecg>
+            <overridesubcomponentsmass>true</overridesubcomponentsmass>
+            <overridesubcomponentscg>false</overridesubcomponentscg>"#,
+                ),
+                "does not agree",
+                &[
+                    (
+                        "<overridesubcomponentsmass>true</overridesubcomponentsmass>",
+                        1,
+                    ),
+                    (
+                        "<overridesubcomponentscg>false</overridesubcomponentscg>",
+                        1,
+                    ),
+                    ("<overridesubcomponentscg>", 1),
+                ],
+            ),
+            (
+                lug(r#"<overridemass>0.02</overridemass>
+            <overridesubcomponentsmass>true</overridesubcomponentsmass>
+            <overridesubcomponentsmass>false</overridesubcomponentsmass>"#),
+                "written 2 times",
+                &[
+                    (
+                        "<overridesubcomponentsmass>true</overridesubcomponentsmass>",
+                        1,
+                    ),
+                    (
+                        "<overridesubcomponentsmass>false</overridesubcomponentsmass>",
+                        1,
+                    ),
+                ],
+            ),
+            (
+                lug(r#"<axialoffset method="sideways">0.1</axialoffset>"#).replacen(
+                    r#"<axialoffset method="top">0.1</axialoffset>"#,
+                    "",
+                    1,
+                ),
+                "measured from `sideways`",
+                &[
+                    (r#"<axialoffset method="sideways">0.1</axialoffset>"#, 1),
+                    ("<axialoffset", 1),
+                ],
+            ),
+            (
+                nose("<thickness>-0.001</thickness><shape>conical</shape>"),
+                "is no wall",
+                &[("<thickness>-0.001</thickness>", 1), ("<thickness>", 1)],
+            ),
+            (
+                nose(
+                    "<thickness>0.002</thickness><shape>conical</shape>
+        <aftshoulderradius>0.028</aftshoulderradius><aftshoulderlength>0.04</aftshoulderlength>
+        <aftshoulderthickness>-0.001</aftshoulderthickness>",
+                ),
+                "shoulder's wall",
+                &[("<aftshoulderthickness>-0.001</aftshoulderthickness>", 1)],
+            ),
+            (
+                nose(
+                    "<thickness>0.002</thickness><shape>bulbous</shape><shapeparameter>0.5</shapeparameter>",
+                ),
+                "not a shape this reader knows",
+                &[
+                    ("<shape>bulbous</shape>", 1),
+                    ("<shapeparameter>0.5</shapeparameter>", 1),
+                    ("<shape>", 1),
+                ],
+            ),
+            (
+                nose("<thickness>0.002</thickness><shape>power</shape>"),
+                "states no shape parameter",
+                &[("<shape>power</shape>", 1), ("<shape>", 1)],
+            ),
+            (
+                rocket_of(
+                    r#"
+      <bodytube><name>Tube</name><id>tube</id><length>0.3</length><thickness>0.001</thickness>
+        <radius>0.02</radius></bodytube>
+      <bodytube><name>Tube</name><id>tube</id><length>0.3</length><thickness>0.001</thickness>
+        <radius>0.02</radius></bodytube>"#,
+                ),
+                "already the id of another component",
+                &[("<id>tube</id>", 2)],
+            ),
+            (
+                rocket_of(
+                    r#"
+      <bodytube><name>Tube</name><id>tube</id><length>0.3</length><thickness>0.001</thickness>
+        <radius>0.02</radius></bodytube>"#,
+                )
+                .replace(
+                    "<referencetype>maximum</referencetype>",
+                    "<referencetype>nosecone</referencetype>",
+                ),
+                "a reference diameter chosen by `nosecone`",
+                &[
+                    ("<referencetype>nosecone</referencetype>", 1),
+                    ("<referencetype>", 1),
+                ],
+            ),
+        ];
+        for (xml, warning, tags) in &cases {
+            kept_as_written(xml, Some(warning), tags);
+        }
+    }
+
+    /// The drag override `hpr-design` does not hold is written back as the file had it, with no
+    /// warning, and with the single older flag, which covers drag too, the flags are all kept in
+    /// the order that says which wins.
+    #[test]
+    fn a_drag_override_is_written_back() {
+        let lug = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <launchlug><name>Lug</name><id>lug</id>
+            <axialoffset method="top">0.1</axialoffset>{inside}
+            <radius>0.004</radius><length>0.03</length><thickness>0.0005</thickness></launchlug>"#
+            ))
+        };
+        kept_as_written(
+            &lug(
+                "<overridecd>0.0</overridecd><overridesubcomponentscd>false</overridesubcomponentscd>",
+            ),
+            None,
+            &[
+                ("<overridecd>0.0</overridecd>", 1),
+                (
+                    "<overridesubcomponentscd>false</overridesubcomponentscd>",
+                    1,
+                ),
+            ],
+        );
+        let (_, text) = kept_as_written(
+            &lug(
+                "<overridesubcomponents>true</overridesubcomponents><overridemass>0.02</overridemass>
+            <overridecd>0.4</overridecd><overridesubcomponentsmass>false</overridesubcomponentsmass>",
+            ),
+            None,
+            &[
+                ("<overridecd>0.4</overridecd>", 1),
+                ("<overridesubcomponents>true</overridesubcomponents>", 1),
+                ("<overridesubcomponentsmass>false</overridesubcomponentsmass>", 1),
+                ("<overridesubcomponentsmass>", 1),
+            ],
+        );
+        let older = text
+            .find("<overridesubcomponents>")
+            .expect("the older flag");
+        let newer = text
+            .find("<overridesubcomponentsmass>")
+            .expect("the mass flag");
+        assert!(older < newer, "{text}");
+    }
+
+    /// A pod set placed by a method the reader does not know, and one whose override does not
+    /// cover its pods, are written back as the file had them.
+    #[test]
+    fn a_pod_sets_dropped_values_are_written_back() {
+        let pods = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <podset><name>Pods</name><id>pods</id>
+            <instancecount>2</instancecount><axialoffset method="top">0.1</axialoffset>{inside}
+            <subcomponents>
+              <bodytube><name>Pod</name><id>pod</id>
+                <length>0.15</length><thickness>0.001</thickness><radius>0.012</radius></bodytube>
+            </subcomponents></podset>"#
+            ))
+        };
+        kept_as_written(
+            &pods(r#"<radiusoffset method="elsewhere">0.01</radiusoffset>"#),
+            Some("measured by `elsewhere`"),
+            &[
+                (r#"<radiusoffset method="elsewhere">0.01</radiusoffset>"#, 1),
+                ("<radiusoffset", 1),
+            ],
+        );
+        kept_as_written(
+            &pods(
+                r#"<radiusoffset method="free">0.07</radiusoffset><overridemass>0.2</overridemass>
+            <overridesubcomponentsmass>false</overridesubcomponentsmass>"#,
+            ),
+            Some("does not cover its pods"),
+            &[
+                (
+                    "<overridesubcomponentsmass>false</overridesubcomponentsmass>",
+                    1,
+                ),
+                ("<overridesubcomponentsmass>", 1),
+            ],
+        );
+    }
+
+    /// A motor's delay that is neither `none` nor a number, and a recovery device's empty
+    /// deployment event, are written back as the file had them.
+    #[test]
+    fn a_motors_and_a_recoverys_dropped_values_are_written_back() {
+        let delayed = flying_tube_of("").replace("<delay>4.0</delay>", "<delay>soon</delay>");
+        kept_as_written(
+            &delayed,
+            Some("neither `none` nor a delay"),
+            &[("<delay>soon</delay>", 1), ("<delay>", 1)],
+        );
+        let (_, text) = kept_as_written(
+            &tube_of(
+                r#"
+          <parachute><name>Main</name><id>main</id>
+            <axialoffset method="top">0.02</axialoffset>
+            <packedlength>0.08</packedlength><packedradius>0.02</packedradius>
+            <diameter>0.9</diameter><linecount>8</linecount><linelength>0.8</linelength>
+            <deployevent></deployevent></parachute>"#,
+            ),
+            Some("`deployevent` is empty"),
+            &[],
+        );
+        assert_eq!(text.matches("<deployevent").count(), 1, "{text}");
+    }
 }

@@ -2758,7 +2758,8 @@ at a path that leads back to where it was, so that writing the file back out
 this way says it is **reduced**; the flag is on the design, not on its rocket, so check it before
 using the rocket on its own.
 
-Four kinds of thing are kept:
+Four kinds of thing are kept: parts, sections, tags and attributes. A tag or attribute is kept
+for one of two reasons: no reader asked for it, or the reader that asked dropped what it says.
 
 - **Parts** hpr does not read: a parallel stage, which hpr does not model yet
   ([L66](../decisions-and-roadmap.md#l66)), a pod set it cannot lay out ([Pods](#pods)), a part hpr
@@ -2769,11 +2770,25 @@ Four kinds of thing are kept:
 - **Tags** no reader asks for, inside a part, stage or stored simulation hpr does read, or inside
   a tag it does read: a part's colour (`<appearance>`), a catalogue preset, a comment, a wind's
   standard deviation, or a tag hpr has never seen. hpr records every tag its readers ask for while
-  it reads a file, so a tag is kept exactly when nothing asked for it.
+  it reads a file, so a tag is kept when nothing asked for it.
+- **Tags a reader asks for and then drops** are kept too, because the design does not hold what
+  they say. Examples: a rail button's screw height, a drag override, a ring written as a row of
+  three, a tube fin set of more than eight tubes, a fin section or finish hpr has no reading for,
+  or the older of two names for one value when the two disagree. A value hpr reads exactly, such
+  as a fin set's count, is not kept.
 - **Attributes** no reader asks for, on an element hpr does read: a material's `group`, an event's
   `id`, or the reference an angle or radius offset is measured from, which hpr does not read yet
   but for a pod set's `radiusoffset` ([Pods](#pods);
-  [issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
+  [issue #145](https://github.com/nrdptel/hpr-sim/issues/145)). An attribute whose value a reader
+  drops is kept too, such as a material's declared kind where the part needs another.
+
+**A kept value goes back as it was.** When the design is written out as a `.ork` again, each kept
+tag goes back in place of anything the writer would have written under that name from the design.
+Take a rail button with a 3 mm screw head. hpr warns that it dropped the screw, and the file it
+writes still says `<screwheight>0.003</screwheight>`. So OpenRocket reads the screw the original
+had, and reading the written file raises the same warning again. The same warning also keeps the
+rocket's configurations from flying in hpr, as the original's did
+([ADR-055](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21)).
 
 Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
 podset that is the first part inside the second part of the first stage. A part counts among all
@@ -2806,15 +2821,15 @@ hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
 
 ### Kept in the reference library
 
-`cargo xtask ork`, over the 73 readable files, on 2026-09-28:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-29:
 
 | quantity | count |
 |---|---|
 | parts kept | 5, in 5 reduced designs: 3 parallel stages and 2 freeform fin sets. On 2026-09-23 there were 17, in 10; pods ([Pods](#pods)), tube fins ([Tube fins sized from the body](#tube-fins-sized-from-the-body)) and a tube coupler are read since |
 | sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
-| tags kept | 1,815, most often a part's `<appearance>` (291), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (127) |
+| tags kept | 1,835, most often a part's `<appearance>` (291), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (127). 20 of them are values a reader drops: 16 rail buttons' `<screwheight>`, and 2 drag overrides with their 2 flags |
 | attributes kept | 3,177, most often an event's `id` (1,623), a material's `group` (576), an active stage's `number` (201) and a stored branch's optimum altitude and its time (168 each) |
-| kept elements and attributes found again at their path | 5,084 of 5,084 (the survey fails if one is not) |
+| kept elements and attributes found again at their path | 5,104 of 5,104 (the survey fails if one is not) |
 
 How this was decided is in [ADR-058][adr-058].
 

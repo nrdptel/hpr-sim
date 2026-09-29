@@ -34,6 +34,16 @@ pub const AXIAL_OFFSET: [&str; 2] = ["axialoffset", "position"];
 /// count is the one value here that a rename cannot change the meaning of.
 pub const INSTANCE_COUNT: [&str; 2] = ["instancecount", "fincount"];
 
+/// The flags that say whether a component's overrides cover the components inside it: the single
+/// one files before schema 1.9 write, then one per quantity. Which of them wins is their order in
+/// the file ([`Values::overrides`]).
+pub(crate) const OVERRIDE_FLAGS: [&str; 4] = [
+    "overridesubcomponents",
+    "overridesubcomponentsmass",
+    "overridesubcomponentscg",
+    "overridesubcomponentscd",
+];
+
 // `angleoffset`/`radialdirection` and `radiusoffset`/`radialposition` are deliberately **not**
 // here. They look like the two pairs above, and they are not: the newer name of each carries a
 // `method` attribute — the frame the number is measured in — that the older name never carries.
@@ -125,7 +135,8 @@ impl<'a> Values<'a> {
     /// When more than one is present they are checked against each other, on the text **and** on
     /// the `method`/`type` attribute that says what the text is measured from: in the reference
     /// corpus OpenRocket agrees with itself on both, every time. A disagreement is therefore worth
-    /// a warning, and the first name still wins.
+    /// a warning, and the first name still wins. The name that lost says something the design
+    /// does not hold, so it is kept as written, in `x-openrocket`.
     pub fn element(&mut self, names: &[&str]) -> Option<&'a Element> {
         let mut found: Option<&'a Element> = None;
         for name in names {
@@ -138,6 +149,11 @@ impl<'a> Values<'a> {
                 continue;
             };
             let (winner, loser) = (first.name.clone(), child.name.clone());
+            let disagree =
+                first.text().trim() != child.text().trim() || frame(first) != frame(child);
+            if disagree {
+                super::reads::forget(self.element, &loser);
+            }
             if first.text().trim() != child.text().trim() {
                 self.warn(
                     WarningKind::Dropped,
@@ -185,6 +201,7 @@ impl<'a> Values<'a> {
                         text.trim()
                     ),
                 );
+                self.forget(names);
                 None
             }
         }
@@ -199,6 +216,7 @@ impl<'a> Values<'a> {
                 WarningKind::Dropped,
                 format!("a count of `{value}` is not a whole number of things; it was ignored"),
             );
+            self.forget(names);
             return None;
         }
         // The bounds above are what make this cast exact.
@@ -225,6 +243,7 @@ impl<'a> Values<'a> {
                         "`{name}` says `{other}`, which is neither true nor false; it was ignored"
                     ),
                 );
+                self.forget(names);
                 None
             }
         }
@@ -245,6 +264,7 @@ impl<'a> Values<'a> {
                         text.trim()
                     ),
                 );
+                self.forget(names);
                 None
             }
         }
@@ -256,6 +276,15 @@ impl<'a> Values<'a> {
         self.warn(kind, message.into());
     }
 
+    /// Records that what the children called any of `names` say was dropped or simplified, not
+    /// read into the design, so that each is kept as written ([`super::reads::forget`]) and an
+    /// export writes it back.
+    pub(crate) fn forget(&mut self, names: &[&str]) {
+        for name in names {
+            super::reads::forget(self.element, name);
+        }
+    }
+
     /// The mass, centre of gravity and drag a component's own figures are replaced by, and
     /// whether each covers the components inside this one.
     ///
@@ -265,7 +294,9 @@ impl<'a> Values<'a> {
     /// written later wins, quantity by quantity: measured on probe designs
     /// ([M2.2e6][m2-2e6], [ADR-095][adr-095]), whose answers `hpr_validate::openrocket` holds hpr
     /// to. This reads it the same way. A flag tag written twice on one component is read at its
-    /// first copy only, and warned of, since which copy OpenRocket takes is not measured.
+    /// first copy only, and warned of, since which copy OpenRocket takes is not measured. What the
+    /// design does not hold — a drag override, a flag read at one copy of two — is kept as written,
+    /// the flags all together, so that an export writes back what the file said, in its order.
     ///
     /// [m2-2e6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e6
     /// [adr-095]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-095-the-single-pre-19-override-flag-read-as-openrocket-reads-it-2026-09-27
@@ -287,6 +318,25 @@ impl<'a> Values<'a> {
             (None, Some((all, _))) => Some(all),
             (None, None) => None,
         });
+        // What the design does not hold is kept as written. The flags are kept together when any
+        // one is, since which of them wins is their order in the file, and a kept tag goes back
+        // after the ones an export writes.
+        let dropped_flag = OVERRIDE_FLAGS.iter().any(|name| {
+            let mut copies = self.element.children_named(name);
+            let first = copies.next();
+            copies.next().is_some()
+                || first.is_some_and(|flag| !matches!(flag.text().trim(), "true" | "false"))
+        });
+        // `hpr-design` has no drag override, and the single older flag covers drag too.
+        let drag_stated = ["overridecd", "overridesubcomponentscd"]
+            .iter()
+            .any(|name| self.element.child(name).is_some());
+        if drag_stated {
+            self.forget(&["overridecd", "overridesubcomponentscd"]);
+        }
+        if dropped_flag || (drag_stated && all.is_some()) {
+            self.forget(&OVERRIDE_FLAGS);
+        }
         Overrides {
             mass_kg,
             cg_m,

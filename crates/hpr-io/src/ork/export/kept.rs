@@ -4,8 +4,15 @@
 //! A kept part goes back at its place among its parent's parts, since the order of parts is where
 //! they stack. A section or a tag goes back as the next of its name in its parent, which is where
 //! its path's count says it was ([`super::super::extensions`]); it is written before the parent's
-//! `<subcomponents>`, where OpenRocket writes its tags. An attribute goes back on its element,
-//! unless the export already wrote one of that name there.
+//! `<subcomponents>`, where OpenRocket writes its tags. An attribute goes back on its element.
+//!
+//! **What is kept wins over what is written.** A tag or attribute is kept when no reader asked for
+//! it, or when a reader asked and then dropped or simplified what it says, so that the design
+//! does not hold it: a rail button's screw height, a ring's count above one, a word the reader has
+//! no meaning for. The writer may still write a tag of that name from what the design holds
+//! instead — a count of one, a square fin section — and that one is taken out, every copy of it,
+//! before the kept ones go back, so the file says what it said before and says it once. A kept
+//! attribute likewise replaces one the writer wrote.
 //!
 //! Something whose path no longer leads anywhere — its parent is not in the written document —
 //! is left out with a warning rather than put somewhere it was not.
@@ -41,12 +48,15 @@ pub(super) fn splice(document: &mut Document, kept: &OpenRocketExtension) -> Vec
     for attribute in &kept.attributes {
         match element_at_mut(document, &attribute.at) {
             Some(on) => {
-                if on
+                match on
                     .attributes
-                    .iter()
-                    .all(|(name, _)| *name != attribute.name)
+                    .iter_mut()
+                    .find(|(name, _)| *name == attribute.name)
                 {
-                    on.with_attribute(&attribute.name, attribute.value.clone());
+                    Some((_, value)) => value.clone_from(&attribute.value),
+                    None => {
+                        on.with_attribute(&attribute.name, attribute.value.clone());
+                    }
                 }
             }
             None => lost(&attribute.at, "an attribute"),
@@ -125,6 +135,13 @@ fn insert_tag(document: &mut Document, at: &str, tag: &Element) -> bool {
     let Some(parent) = element_at_mut(document, parent) else {
         return false;
     };
+    // Every copy of a name is kept or none is, so the first kept copy takes the place of what the
+    // writer wrote of that name.
+    if index == 0 {
+        parent
+            .children
+            .retain(|child| !matches!(child, Node::Element(e) if e.name == name));
+    }
     // Its count says how many of its name came before it, and they have all been put back by now:
     // the extension lists them in document order.
     if parent.children_named(name).count() != index {
