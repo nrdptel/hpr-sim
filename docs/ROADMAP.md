@@ -754,7 +754,7 @@
     (ADR-113): each language's reader reads 18 public documents and agrees with the schema on 4,892
     mutations; `tsc` and mypy take the 18 typed as `DesignFile`.
 
-- [ ] **M4.3 Python bindings.** `hpr-py` (PyO3 abi3 + maturin) with numpy outputs, a RocketPy-like
+- [x] **M4.3 Python bindings.** `hpr-py` (PyO3 abi3 + maturin) with numpy outputs, a RocketPy-like
   API, and Python callbacks for custom models. pytest suite; CI builds wheels on 3 operating
   systems (no publishing).
 
@@ -763,16 +763,15 @@
   - A notebook-style example reproduces a RocketPy example flight via hpr within the M2.1 tolerance.
 
   Split into a to c (ADR-114).
-  - [x] **M4.3a The package.** `hpr` over the builder, recordings as NumPy arrays, designs from
-    files. *Done when:* pytest passes in CI on Linux, macOS and Windows against a wheel built
-    there; a Python flight prints what the Rust builder's example prints; the guide's page runs in
-    the tests.
+  - [x] **M4.3a The package.** `hpr` over the builder, NumPy recordings, designs from files. Met: pytest
+    in CI on three OSes against a wheel built there; the Rust example's print; the guide's page runs.
   - [x] **M4.3b RocketPy's example.** *Done when:* a flight takes a drag table (`C_D0` by Mach,
     power on and off); a notebook-style example flies RocketPy's Calisto from Python within M2.1's
     3% on every scored metric, run in CI. *Result:* met (ADR-115): `DragTable`; `calisto.py`, run by
     pytest in CI, is within 3% on all 14 metrics scored in % (largest: landing drift, +1.257%).
-  - [ ] **M4.3c Python models.** *Done when:* a drag and a wind written as Python functions fly,
+  - [x] **M4.3c Python models.** *Done when:* a drag and a wind written as Python functions fly,
     their exceptions reach Python, and a flight with Python's constant drag equals a table's.
+    *Result:* met (ADR-116): `drag=f(mach, thrusting)`, `wind=f(height_m)`; `test_models.py`.
 
 - [ ] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings.

@@ -8,8 +8,10 @@ use numpy::{PyArray1, PyArrayMethods};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
+use crate::models::{PythonDrag, PythonWind, Raised};
 use crate::rocket::Rocket;
 use crate::{error, key, to_python};
+use pyo3::{PyTraverseError, PyVisit};
 
 /// Where a rocket flies: the launch site, the US Standard Atmosphere 1976, and a wind.
 ///
@@ -17,7 +19,10 @@ use crate::{error, key, to_python};
 /// wind_from_deg=0.0, gravity="ellipsoidal")`: a launch site at `latitude_deg` and
 /// `longitude_deg` (positive east, so negative in the Americas), `elevation_m` above sea level,
 /// with no wind, or a wind of `wind_speed_m_s` blowing **from** `wind_from_deg`, clockwise from
-/// true north, the same at every height.
+/// true north, the same at every height. Or a wind of your own, as a Python function given as
+/// `wind`: called as `wind(height_m)` with a height above sea level, m, it returns the air's
+/// velocity `(east_m_s, north_m_s)`, the way the air moves (a west wind is `(+speed, 0)`). An
+/// exception it raises stops the flight and is raised by `Flight`.
 ///
 /// `gravity` says how gravity is found along the flight: `"ellipsoidal"`, the default, is the
 /// full normal gravity vector at the rocket's position; `"vertical"` is its exact size along the
@@ -27,12 +32,14 @@ use crate::{error, key, to_python};
 #[derive(Debug)]
 pub struct Environment {
     environment: hpr::Environment,
+    /// A Python wind function, bound to each flight's own exception slot as the flight starts.
+    wind: Option<Py<PyAny>>,
 }
 
 #[pymethods]
 impl Environment {
     #[new]
-    #[pyo3(signature = (latitude_deg, longitude_deg, elevation_m, *, wind_speed_m_s = 0.0, wind_from_deg = 0.0, gravity = "ellipsoidal"))]
+    #[pyo3(signature = (latitude_deg, longitude_deg, elevation_m, *, wind_speed_m_s = 0.0, wind_from_deg = 0.0, gravity = "ellipsoidal", wind = None))]
     fn new(
         latitude_deg: f64,
         longitude_deg: f64,
@@ -40,6 +47,7 @@ impl Environment {
         wind_speed_m_s: f64,
         wind_from_deg: f64,
         gravity: &str,
+        wind: Option<Py<PyAny>>,
     ) -> PyResult<Self> {
         let mut environment =
             hpr::Environment::new(latitude_deg, longitude_deg, elevation_m).map_err(error)?;
@@ -47,12 +55,28 @@ impl Environment {
         if gravity != GravityModel::default() {
             environment = environment.with_gravity(gravity).map_err(error)?;
         }
-        if wind_speed_m_s != 0.0 || wind_from_deg != 0.0 {
+        if let Some(wind) = &wind {
+            callable("wind", wind)?;
+            if wind_speed_m_s != 0.0 || wind_from_deg != 0.0 {
+                return Err(error(
+                    "a wind function and a constant wind were both given; give one",
+                ));
+            }
+        } else if wind_speed_m_s != 0.0 || wind_from_deg != 0.0 {
             environment = environment
                 .with_constant_wind(wind_speed_m_s, wind_from_deg)
                 .map_err(error)?;
         }
-        Ok(Self { environment })
+        Ok(Self { environment, wind })
+    }
+
+    /// The wind function, for Python's garbage collector: a function that holds this environment
+    /// makes a cycle it can then find.
+    fn __traverse__(&self, visit: PyVisit<'_>) -> Result<(), PyTraverseError> {
+        if let Some(wind) = &self.wind {
+            visit.call(wind)?;
+        }
+        Ok(())
     }
 
     fn __repr__(&self) -> String {
@@ -64,6 +88,19 @@ impl Environment {
             site.height_m
         )
     }
+}
+
+/// Refuses a `what` function that can't be called, as it is given rather than mid-flight.
+fn callable(what: &str, function: &Py<PyAny>) -> PyResult<()> {
+    Python::attach(|py| {
+        if function.bind(py).is_callable() {
+            Ok(())
+        } else {
+            Err(error(format!(
+                "`{what}` must be a function, and is not callable"
+            )))
+        }
+    })
 }
 
 /// A gravity model by its name: one of the library's `GravityModel`s that takes no number, read
@@ -242,12 +279,16 @@ impl DragTable {
 /// ground as soon as it is made.
 ///
 /// `Flight(rocket, environment, rail_length_m, *, inclination_deg=90.0, heading_deg=0.0,
-/// interval_s=None, drag_table=None)`: the rail is measured from the rocket's aft end to the rail's top, and leans
+/// interval_s=None, drag_table=None, drag=None)`: the rail is measured from the rocket's aft end to the rail's top, and leans
 /// `inclination_deg` above the horizon (90 is vertical) toward `heading_deg`, clockwise from true
 /// north. The flight is recorded every `interval_s` seconds, at least 0.001 s, and at every event;
 /// or at every step of the integrator when that is left out. The rocket is copied as the flight
 /// starts, and a flight runs to its end: it can't be interrupted. A `DragTable` given as
-/// `drag_table` is flown in place of hpr's own drag.
+/// `drag_table` is flown in place of hpr's own drag, and so is a Python function given as `drag`:
+/// called as `drag(mach, thrusting)`, with `thrusting` true while a motor burns, it returns the
+/// rocket's zero-lift drag coefficient `C_D0` on the rocket's reference area. An exception a
+/// function raises, the drag's or the environment's wind's, stops the flight, even at a trial
+/// step the integrator would have retried shorter, and is raised here as it was raised.
 ///
 /// Heights are the rocket's centre of gravity's, above the launch site: it stands on the rail at
 /// the start, so the first height isn't zero. Speeds are relative to the ground.
@@ -267,7 +308,7 @@ const MIN_INTERVAL_S: f64 = 0.001;
 #[pymethods]
 impl Flight {
     #[new]
-    #[pyo3(signature = (rocket, environment, rail_length_m, *, inclination_deg = 90.0, heading_deg = 0.0, interval_s = None, drag_table = None))]
+    #[pyo3(signature = (rocket, environment, rail_length_m, *, inclination_deg = 90.0, heading_deg = 0.0, interval_s = None, drag_table = None, drag = None))]
     #[expect(
         clippy::too_many_arguments,
         reason = "Python's keyword arguments, one per option of a flight"
@@ -281,6 +322,7 @@ impl Flight {
         heading_deg: f64,
         interval_s: Option<f64>,
         drag_table: Option<&DragTable>,
+        drag: Option<Py<PyAny>>,
     ) -> PyResult<Self> {
         if let Some(interval_s) = interval_s
             && (interval_s.is_nan() || interval_s < MIN_INTERVAL_S)
@@ -292,16 +334,46 @@ impl Flight {
         let mut recorder = Recorder::new(Channel::ALL.to_vec(), interval_s).map_err(error)?;
         // A copy, so the rocket isn't held borrowed while the flight runs without the GIL.
         let rocket = rocket.borrow().rocket.clone();
-        let mut builder = hpr::Flight::builder(&rocket, &environment.environment, rail_length_m)
+        // One slot for this flight's functions: its drag and its environment's wind.
+        let raised = Raised::default();
+        let with_wind;
+        let environment = match &environment.wind {
+            Some(wind) => {
+                with_wind = environment
+                    .environment
+                    .clone()
+                    .with_wind(PythonWind::new(wind.clone_ref(py), raised.clone()));
+                &with_wind
+            }
+            None => &environment.environment,
+        };
+        let mut builder = hpr::Flight::builder(&rocket, environment, rail_length_m)
             .inclination_deg(inclination_deg)
             .heading_deg(heading_deg);
-        if let Some(drag_table) = drag_table {
-            builder = builder.drag_table(drag_table.table.clone());
+        if let Some(drag) = &drag {
+            callable("drag", drag)?;
         }
-        // The flight holds no Python object, so other Python threads run while it flies.
-        let flight = py
-            .detach(|| builder.fly_with(&mut recorder))
-            .map_err(error)?;
+        match (drag_table, drag) {
+            (Some(_), Some(_)) => {
+                return Err(error(
+                    "a drag table and a drag function were both given; give one",
+                ));
+            }
+            (Some(drag_table), None) => builder = builder.drag_table(drag_table.table.clone()),
+            (None, Some(drag)) => {
+                builder = builder.drag_model(PythonDrag::new(drag, raised.clone()))
+            }
+            (None, None) => {}
+        }
+        // The flight holds the GIL only while a Python function runs, so other Python threads run
+        // while it flies.
+        let flown = py.detach(|| builder.fly_with(&mut recorder));
+        // A function's exception is raised in place of the library's error, or of a flight the
+        // library finished anyway: the exception stopped this flight's functions.
+        if let Some(raised) = raised.take() {
+            return Err(raised);
+        }
+        let flight = flown.map_err(error)?;
         let columns = recorder.columns();
         let rows = recorder.rows();
         let values = (0..columns.len())

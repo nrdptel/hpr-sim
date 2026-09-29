@@ -26,7 +26,7 @@ def blocks(repo):
 
 def test_the_python_page_prints_what_it_says(repo, monkeypatch):
     pairs = blocks(repo)
-    assert len(pairs) == 5, "the page's python blocks"
+    assert len(pairs) == 6, "the page's python blocks"
     monkeypatch.chdir(repo)
     namespace = {}
     for code, expected in pairs:
