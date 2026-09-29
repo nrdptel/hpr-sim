@@ -12,3 +12,7 @@
 # Bundled ThrustCurve.org curves keep the exact bytes the site serves (mostly CRLF, no final
 # newline); crates/hpr-motor/data/thrustcurve/catalog.json pins their sha256.
 crates/hpr-motor/data/thrustcurve/curves/** -text
+
+# PerfectFlite logs keep the CRLF line ends the logger's software writes; the invented one is held
+# byte for byte to the code that writes it (hpr_flightdata's synthetic.rs).
+*.pf2 -text
