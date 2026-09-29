@@ -39,7 +39,10 @@ What has been checked so far:
   ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)), and from Mach 0.5 to
   3.2 against a worked example in MIL-HDBK-762, the U.S. Army's handbook for designing unguided
   rockets
-  ([Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation)).
+  ([Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation));
+- the readings `hpr analyze` takes from a flight log, against an invented log whose every
+  reading is known, each within the bound its rounding and filter allow
+  ([Flight-log readings](physics/log-readings.md#checked-against)).
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
 shows how to follow one back to its source and its test, and

@@ -105,7 +105,10 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
             Some((_, line)) => {
                 return Err(LogError::NotThisFormat {
                     format: FORMAT,
-                    message: format!("its first line, {line:?}, doesn't name PerfectFlite"),
+                    message: format!(
+                        "its first line, {:?}, doesn't name PerfectFlite",
+                        short(line)
+                    ),
                 });
             }
             None => {
@@ -145,12 +148,16 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
         if !rows.is_empty() {
             return Err(syntax(
                 number,
-                format!("{line:?} after the data rows began isn't a row of numbers"),
+                format!(
+                    "{:?} after the data rows began isn't a row of numbers",
+                    short(line)
+                ),
             ));
         }
         let Some((key, value)) = line.split_once(':') else {
             log.notes.push(format!(
-                "line {number}, {line:?}, isn't a `Key: value` line and was skipped"
+                "line {number}, {:?}, isn't a `Key: value` line and was skipped",
+                short(line)
             ));
             continue;
         };
@@ -216,7 +223,7 @@ fn data_row(line: &str, number: usize) -> Result<Vec<f64>, LogError> {
             cell.parse::<f64>()
                 .ok()
                 .filter(|value| value.is_finite())
-                .ok_or_else(|| syntax(number, format!("{cell:?} isn't a finite number")))
+                .ok_or_else(|| syntax(number, format!("{:?} isn't a finite number", short(cell))))
         })
         .collect()
 }
@@ -250,7 +257,8 @@ fn data_columns(
             };
             if column == Column::Unknown {
                 notes.push(format!(
-                    "the column {name:?} isn't one this reader knows, and was left out"
+                    "the column {:?} isn't one this reader knows, and was left out",
+                    short(&name)
                 ));
             }
             column
@@ -260,7 +268,10 @@ fn data_columns(
         if columns.iter().filter(|column| **column == required).count() != 1 {
             return Err(syntax(
                 number,
-                format!("the `Data:` line must name one {required:?} column: {value:?}"),
+                format!(
+                    "the `Data:` line must name one {required:?} column: {:?}",
+                    short(value)
+                ),
             ));
         }
     }
@@ -268,8 +279,8 @@ fn data_columns(
 }
 
 /// A stated height, such as `1009' AGL`, in metres; `None`, with a note, for one that isn't a
-/// number hpr can read, such as `PWRLOSS`. A number in a unit other than feet (`'`, `ft`, `feet`)
-/// is refused.
+/// number hpr can read, such as `PWRLOSS`, or that names no unit, such as `1009 AGL`. A number in
+/// a unit other than feet (`'`, `ft`, `feet`) is refused.
 fn stated_feet(
     value: &str,
     number: usize,
@@ -282,7 +293,8 @@ fn stated_feet(
     let (digits, rest) = value.split_at(end);
     let Some(feet) = digits.parse::<f64>().ok().filter(|feet| feet.is_finite()) else {
         notes.push(format!(
-            "the file states its {what} as {value:?}, which isn't a height"
+            "the file states its {what} as {:?}, which isn't a height",
+            short(value)
         ));
         return Ok(None);
     };
@@ -295,9 +307,11 @@ fn stated_feet(
     if rest.starts_with('\'') || word == "ft" || word == "feet" {
         return Ok(Some(feet * FOOT_M));
     }
-    if word.is_empty() {
+    // `AGL` and `MSL` say what the height is measured from, not its unit.
+    if word.is_empty() || word == "agl" || word == "msl" {
         notes.push(format!(
-            "the file states its {what} as {value:?}, which isn't a height hpr can read"
+            "the file states its {what} as {:?}, with no unit hpr can read",
+            short(value)
         ));
         return Ok(None);
     }
@@ -305,10 +319,27 @@ fn stated_feet(
         format: FORMAT,
         line: number,
         message: format!(
-            "the {what} {value:?} is in {word:?}, not feet ('), the only unit this reader knows"
+            "the {what} {:?} is in {:?}, not feet ('), the only unit this reader knows",
+            short(value),
+            short(&word)
         ),
     })
 }
+
+/// Text from the file as an error or note quotes it: cut to [`QUOTED_CHARS`] characters, so a
+/// binary file's "first line" doesn't fill the message.
+fn short(text: &str) -> String {
+    if text.chars().count() <= QUOTED_CHARS {
+        text.to_owned()
+    } else {
+        let mut cut: String = text.chars().take(QUOTED_CHARS - 1).collect();
+        cut.push('…');
+        cut
+    }
+}
+
+/// The most characters of the file an error or note quotes.
+const QUOTED_CHARS: usize = 80;
 
 /// Puts the rows' values into the log's channels, in SI.
 fn fill(
@@ -426,7 +457,8 @@ mod tests {
         assert!(log.notes[0].contains("no `Data:` line"), "{:?}", log.notes);
     }
 
-    /// `PWRLOSS` is no height: noted, not refused. A height in another unit is refused.
+    /// `PWRLOSS` is no height, and `1009 AGL` names no unit: both noted, not refused. A height in
+    /// another unit is refused.
     #[test]
     fn stated_heights_are_feet_or_nothing() {
         let log = read("PerfectFlite Pnut\nApogee: PWRLOSS\n0, 0, 0\n").unwrap();
@@ -436,7 +468,19 @@ mod tests {
         assert!(
             matches!(&error, LogError::Unit { line: 2, message, .. } if message.contains("\"390 m AGL\" is in \"m\"")),
             "{error}"
-        );
+        ); // `AGL` names the height's zero, not its unit: noted, and the flight still reads.
+        let log = read("PerfectFlite Pnut\nApogee: 1009 AGL\n0, 0, 0\n").unwrap();
+        assert_eq!(log.stated.apogee_m, None);
+        assert!(log.notes[0].contains("no unit"), "{:?}", log.notes);
+    }
+
+    /// A file that isn't text is refused with a short quote of it, not the whole of it.
+    #[test]
+    fn a_long_line_is_quoted_short() {
+        let junk = "\u{fffd}".repeat(100_000);
+        let error = read(&junk).unwrap_err().to_string();
+        assert!(error.len() < 400, "{} bytes", error.len());
+        assert!(error.contains('…'), "{error}");
     }
 
     /// A byte-order mark is dropped; CR-only line ends read as lines; `ft` is feet; a height

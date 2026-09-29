@@ -8,16 +8,16 @@ designed on a computer at all.
 **What works today:** logs from PerfectFlite altimeters in their `.pf2` format. The one real
 file read so far is a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same
 layout, but no file of theirs has been tried ([the format](format/pf2.md)). Other loggers come
-with [M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats Debrief
-read.
+with [M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats that
+Debrief, the project owner's earlier flight-log analyzer, read.
 
 **How far to trust it:** on an invented flight whose every number is known, the apogee comes
 within a quarter of a metre and one sample of the truth, and liftoff within a tenth of a second.
-The landing is read at the first sample within 2 m of the pad, so up to 0.4 s before touchdown
-under a main. On one real flight, a public log that isn't committed here and so isn't checked in
-CI, hpr reads 1,010 ft where the altimeter states 1,009 ft. hpr has no check yet for a
-barometer's errors near the speed of sound, so on a flight faster than about Mach 0.9 treat the
-top speed with care. The rules behind each reading are on
+The landing is read at the first sample within 2 m of the pad, so early by the time the last 2 m
+take: 0.33 s at 6 m/s, 0.5 s at 4 m/s. On one real flight, a public log that isn't committed here
+and so isn't checked in CI, hpr reads 1,010 ft where the altimeter states 1,009 ft. hpr has no
+check yet for a barometer's errors near the speed of sound, so if the top speed reads above about
+300 m/s (1,000 ft/s), roughly Mach 0.9, treat it and the heights near it with care. The rules behind each reading are on
 [Flight-log readings](physics/log-readings.md), with what they were checked against. A reading
 the log can't support is left out and says why, rather than printed as a number.
 
@@ -28,7 +28,9 @@ hpr analyze flight.pf2
 ```
 
 prints the readings as text, or as one JSON document with `--json`.
-[`hpr analyze`](cli.md#hpr-analyze) shows its output on an example log and lists the fields.
+[`hpr analyze`](cli.md#hpr-analyze) shows its output on an example log, and its
+[JSON schema](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/analyze.schema.json) lists
+the fields.
 
 ## From a program
 
@@ -165,7 +167,8 @@ start of the log, and a coast with no drag to 390.3 m (1,280.5 ft) at 10.26 s.
 
 - **Liftoff**, 0.55 s: the last sample before the altitude shows the rocket moving. The rocket
   left the pad at 0.50 s, but its first 0.15 m rounds to 0 ft.
-- **Apogee**, 390.1 m (1,280 ft) at 10.28 s: the top of the altitude after a 0.3 s
+- **Apogee**, 390.1 m (1,280 ft) at 10.28 s (10.275 s, the middle of the samples that hold the
+  top, which falls between two): the top of the altitude after a 0.3 s
   [running median](glossary.md#running-median). It is 0.17 m below the true apogee: the file
   rounds to whole feet.
 - **The highest sample**, 400.5 m, a second after apogee, is the ejection charge's pressure
@@ -180,7 +183,7 @@ start of the log, and a coast with no drag to 390.3 m (1,280.5 ft) at 10.26 s.
   taken, drogue and main together.
 
 What the file states about itself, such as the altimeter's own apogee of 1,281 ft, is kept in
-`log.stated`, beside hpr's readings and never in their place. The codes in brackets, such as
+`log.stated`, beside hpr's readings and never in their place. The codes, such as
 `no_accelerometer` and `barometer`, are the ones the JSON output of `hpr analyze` uses. The top
 speed is `max_speed` in both.
 

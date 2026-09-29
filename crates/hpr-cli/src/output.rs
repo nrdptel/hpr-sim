@@ -760,7 +760,8 @@ pub struct LoggerStated {
     pub ground_elevation_msl_m: Option<f64>,
 }
 
-/// How the readings were taken; `null` throughout for a log too short to read.
+/// How the readings were taken. Every field but `altitude_resolution_m` is `null` for a log too
+/// short to read, or one withheld whole as `bad_record`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
 pub struct AnalyzeMethod {
     /// The median interval between samples, s.
@@ -800,10 +801,10 @@ pub struct WithheldReading {
 pub enum WithheldReason {
     /// The log has fewer than three samples.
     TooShort,
-    /// The altitude never climbs 3 m above the pad.
+    /// The altitude never climbs 3 m above where the log starts.
     NoClimb,
-    /// The log's first altitude is more than 3 m from the logger's zero: it didn't start on the
-    /// pad.
+    /// The pad, the median altitude before the first metre of rise, is more than 3 m from the
+    /// logger's zero: the log didn't start on the pad.
     StartsOffThePad,
     /// The log ends before the rocket is seen to land.
     EndsBeforeLanding,

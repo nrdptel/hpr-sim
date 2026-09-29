@@ -13,16 +13,24 @@
 /// ([`crate::readings::peak_bound_m`] gives the bound for a peak bent by gravity). With noise, the
 /// highest of the medians can read above the peak.
 pub fn running_median(values: &[f64], half: usize) -> Vec<f64> {
-    let mut window = Vec::with_capacity(2 * half + 1);
+    let mut window = Vec::with_capacity(window_len(half, values.len()));
     (0..values.len())
         .map(|index| {
             let start = index.saturating_sub(half);
-            let end = (index + half + 1).min(values.len());
+            let end = index
+                .saturating_add(half)
+                .saturating_add(1)
+                .min(values.len());
             window.clear();
             window.extend(values[start..end].iter().copied().filter(|v| v.is_finite()));
             median(&mut window).unwrap_or(f64::NAN)
         })
         .collect()
+}
+
+/// The most samples a window of `half` either side can hold in a record of `len`.
+fn window_len(half: usize, len: usize) -> usize {
+    half.saturating_mul(2).saturating_add(1).min(len)
 }
 
 /// The Hampel filter: each sample more than `threshold` robust standard deviations from its
@@ -36,12 +44,15 @@ pub fn running_median(values: &[f64], half: usize) -> Vec<f64> {
 /// among other large departures, as an ejection charge's is, widens its own window's spread until
 /// the filter keeps it.
 pub fn hampel(values: &[f64], half: usize, threshold: f64) -> Vec<f64> {
-    let mut window = Vec::with_capacity(2 * half + 1);
+    let mut window = Vec::with_capacity(window_len(half, values.len()));
     (0..values.len())
         .map(|index| {
             let value = values[index];
             let start = index.saturating_sub(half);
-            let end = (index + half + 1).min(values.len());
+            let end = index
+                .saturating_add(half)
+                .saturating_add(1)
+                .min(values.len());
             window.clear();
             window.extend(values[start..end].iter().copied().filter(|v| v.is_finite()));
             let Some(middle) = median(&mut window) else {
@@ -92,17 +103,20 @@ mod tests {
         assert_eq!(running_median(&[1.0, f64::NAN, 3.0], 1), [1.0, 2.0, 3.0]);
     }
 
-    /// The bound at a peak: a parabola `−a t²/2` sampled at `Δt` reads at most `a (half·Δt)²/2`
-    /// low, and the peak sample's median is exactly the fall over `⌈half/2⌉` samples.
+    /// A parabola `−a t²/2` sampled on its peak reads low by exactly the fall over `⌈half/2⌉`
+    /// samples at the peak sample.
     #[test]
-    fn a_peak_reads_low_by_at_most_the_fall_over_the_half_window() {
+    fn a_peak_sample_reads_the_fall_over_half_the_half_window() {
         let (a, dt, half) = (9.806_65, 0.05, 3_usize);
         let trace: Vec<f64> = (-20..=20)
             .map(|i| -0.5 * a * (f64::from(i) * dt).powi(2))
             .collect();
         let peak = running_median(&trace, half)[20];
-        let bound = 0.5 * a * (3.0 * dt).powi(2);
-        assert!(peak <= 0.0 && -peak <= bound, "{peak} against {bound}");
+        let bound = 0.5 * a * (2.0 * dt).powi(2);
+        assert!(
+            peak <= 0.0 && -peak <= bound * (1.0 + 1e-12),
+            "{peak} against {bound}"
+        );
         assert_eq!(peak, trace[22]);
     }
 

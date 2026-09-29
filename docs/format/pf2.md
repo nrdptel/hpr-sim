@@ -2,9 +2,9 @@
 
 A `.pf2` file is the flight log a PerfectFlite altimeter's software saves. The one read so far is
 a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, as Debrief's
-reader assumes, but no file of theirs has been read. It is plain text: a few lines about the altimeter and the
-flight, then one row per sample, about 20 a second, with the time, altitude, speed, temperature
-and battery voltage. A PerfectFlite has a barometer and no accelerometer, so every height and
+reader assumes, but no file of theirs has been read. It is plain text: a few lines about the
+altimeter and the flight, then one row per sample, about 20 a second, with the time, altitude,
+speed, temperature and battery voltage. A PerfectFlite has a barometer and no accelerometer, so every height and
 speed in it comes from air pressure.
 
 **To read a flight from one**, run [`hpr analyze`](../cli.md#hpr-analyze) on it, or see
@@ -83,13 +83,15 @@ A file is refused, with its line number, when:
   metres as feet;
 - a line after the rows began isn't a row.
 
-These are noted and read around:
+These are noted and read around. [`hpr analyze`](../cli.md#hpr-analyze) prints each note as a
+`note:` line, and its JSON output lists them in `log.notes`:
 
 - no `Data:` line: the columns are taken to be the five above, in that order, as Debrief takes them;
 - a column the reader doesn't know: left out;
 - a line in the header that isn't `Key: value`: skipped;
 - a sample count that differs from `NumSamps:`;
-- a stated apogee or ground elevation that can't be read as feet.
+- a stated apogee or ground elevation that can't be read as feet, such as `PWRLOSS`, `1,009'`,
+  or `1009 AGL` with no unit.
 
 ## Where this comes from
 
@@ -97,8 +99,9 @@ Debrief's `lib/parsers/perfectflite.ts` (MIT, the project owner's own) reads the
 was written from exported files and cites no document. hpr's reader differs in these ways:
 
 - Debrief assumes the column order; hpr takes it from the `Data:` line when there is one.
-- hpr refuses a row it can't read, a time that doesn't increase, and a stated height in another
-  unit, where Debrief skips or accepts them.
-- hpr also accepts `ft` and `feet` as the foot mark. Debrief's
-public Pnut log states its apogee with a foot mark, `1009' AGL`, and its rows agree with that
+- Debrief skips any line that isn't a row; hpr refuses one after the rows have begun.
+- Debrief reads a stated apogee only when it is marked `'`; hpr also accepts `ft` and `feet`, and
+  refuses a height marked with another unit.
+
+The public Pnut log marks its apogee with `'`, as `1009' AGL`, and its rows agree with that
 figure ([Flight-log readings](../physics/log-readings.md#checked-against)).

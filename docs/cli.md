@@ -542,15 +542,18 @@ It reads PerfectFlite's `.pf2` logs so far ([the format](format/pf2.md)). The on
 is a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, but no
 file of theirs has been tried. Other loggers' files come with
 [M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats. It has no
-check yet for a barometer's errors near the speed of sound, so on a flight faster than about Mach
-0.9 treat the top speed with care.
+check yet for a barometer's errors near the speed of sound, so if the top speed reads above about
+300 m/s (1,000 ft/s), roughly Mach 0.9, treat it and the heights near it with care.
 
 ```bash
 hpr analyze flight.pf2
 ```
 
 Each reading is either a value that says where it came from, or `withheld` with the reason the log
-can't support it. A PerfectFlite has a barometer and no accelerometer, so the top acceleration is
+can't support it. The text output gives the reason as a sentence; the JSON output adds its code,
+listed on [Flight-log readings](physics/log-readings.md#when-a-reading-is-withheld). A log read
+with readings withheld still exits with 0; a file hpr can't read exits with 1
+([Exit codes](#exit-codes)). A PerfectFlite has a barometer and no accelerometer, so the top acceleration is
 always withheld: working it out from the altitude would turn the altitude's one-foot steps into
 spikes of many g. What the file states about itself, such as the altimeter's own apogee, is
 printed beside hpr's readings, never in their place. Heights are metres above the altimeter's

@@ -10,8 +10,8 @@
   threshold zero, as Pearson and colleagues define it ([References](#references)). The thresholds
   (a 3 m climb, landing within 2 m, a 4,000 m/s ceiling, a 20% noise share) are those of Debrief, the
   project owner's earlier flight-log analyzer, set on its collection of real logs rather than
-  taken from a published source. The landing check is a fall from rest in vacuum: Newton's, with
-  no model to doubt.
+  taken from a published source. The landing check uses a fall from rest in vacuum: drag only
+  slows a fall, so no real descent is faster.
 - **How well it is validated:** against an invented flight whose every reading is known exactly,
   each reading lands within the bound the log's rounding and the filter allow
   ([Checked against](#checked-against)). On a real log, Debrief's public Pnut file, hpr reads
@@ -60,14 +60,17 @@ Two properties make it the right tool here:
   `2K + 1` samples, so the median is never one of them. On the public log below, the ejection
   pulse's high side is two samples wide.
 - **It reads a clean peak a little low, and never high.** At 20 samples a second, the apogee of a
-  noise-free trace reads at most 0.077 m low. The reason: at the highest sample, `K + 1` of the
-  window's samples lie within `⌈K/2⌉` places of it (`⌈K/2⌉` is `K/2` rounded up), so the median is
-  no lower than the altitude that far from the peak. The true peak lies within half a sample of
-  the highest sample. Near apogee a coasting rocket's height is bent by gravity alone, as the
-  vertical speed, and so drag's vertical share, is zero there. So the median reads at most
-  `g ((⌈K/2⌉ + ½) Δt)² / 2` low: with `K = 3` and `Δt = 0.05 s`,
-  9.80665 × 0.125² / 2 = **0.077 m**. A property test checks this for every `K` from 1 to 6 and
-  every place the peak can fall between samples.
+  noise-free trace reads at most **0.077 m** low. The steps behind that number:
+  1. At the highest sample, `K + 1` of the window's `2K + 1` samples lie within `⌈K/2⌉` places of
+     it (`⌈K/2⌉` is `K/2` rounded up). So the median is no lower than the altitude that far away.
+  2. The true peak lies within half a sample of the highest sample, so that altitude is at most
+     `(⌈K/2⌉ + ½) Δt` from the true peak in time.
+  3. At apogee the vertical speed is zero, so drag has no vertical part and only gravity curves
+     the path. In that time the height falls at most `g ((⌈K/2⌉ + ½) Δt)² / 2`.
+  4. With `K = 3` and `Δt = 0.05 s`: 9.80665 × 0.125² / 2 = 0.077 m.
+
+  A property test checks this for every `K` from 1 to 6 and every place the peak can fall between
+  samples.
 
 Debrief uses the Hampel filter at `t = 4` over the same window. hpr doesn't, because of what
 the public Pnut log shows. Around its ejection pulse the trace dips below itself just before the
@@ -81,8 +84,8 @@ them.
 
 In the rules below, the **climb** begins at the first sample whose filtered altitude is 3 m above
 where the log starts. The **pad** is the median of the altitude before it first rises 1 m, so no
-one sample's jitter sets it; 1 m is hpr's choice, a third of the climb, so that a log which
-begins just before liftoff lends the pad few samples that are already climbing. A PerfectFlite
+one sample's jitter sets it. hpr chose 1 m, a third of the 3 m climb. It is low so that a log
+starting just before liftoff counts few climbing samples as pad. A PerfectFlite
 zeroes its altitude on the pad, so a pad more than 3 m from zero means the log didn't start there.
 
 | reading | rule | where it comes from |
@@ -96,13 +99,12 @@ zeroes its altitude on the pad, so a pad more than 3 m from zero means the log d
 | mean descent rate | the filtered height lost from apogee to landing, over the time taken | the barometer |
 
 Liftoff is the last sample before the altitude shows the rocket moving. The rocket had risen less
-than the altitude's resolution then, and passed it within the next sample.
+than half the altitude's resolution then, and passed it within the next sample.
 
 Landing is the first sample within 2 m of the pad, so it comes before touchdown by the time the
 last 2 m took: a third of a second under a main at 6 m/s. A barometer drifts during a flight, so
-the ground can read a little above or below the pad. On the public log it reads below, and the
-trace goes on falling for most of a second after the landing is read. Had it read more than 2 m
-above, no landing would be found. The mean descent rate covers the drogue and the main together.
+the ground can read a little above or below the pad. If it reads below, the landing is read
+while the trace is still falling; if it reads more than 2 m above, no landing is found. The mean descent rate covers the drogue and the main together.
 Splitting it into each leg's own rate is [M7.2](../decisions-and-roadmap.md#m7-2)'s work.
 
 The top acceleration is withheld rather than worked out from the altitude. Differencing twice
@@ -112,23 +114,23 @@ twice is 0.3048 / 0.05² = 122 m/s², over 12 g.
 ## When a reading is withheld
 
 A withheld reading has a code and a sentence with the log's own numbers. Only the readings that
-need the missing one go: a log that starts in the air loses its liftoff and top speed, but keeps
-its apogee and landing.
+need the missing one go: a log that starts in the air loses its liftoff, and with it the top
+speed and landing, but keeps its apogee.
 
 | code | when | readings withheld |
 |---|---|---|
 | `too_short` | the log has fewer than 3 samples | all |
-| `no_climb` | the filtered altitude never climbs 3 m above the pad | all |
+| `no_climb` | the filtered altitude never climbs 3 m above where the log starts | all |
 | `starts_off_the_pad` | the pad is more than 3 m from the logger's zero | liftoff, and so the top speed and landing |
 | `ends_before_landing` | the log ends before the altitude comes within 2 m of the pad and stays under 5 m for a second | landing |
 | `faster_than_free_fall` | the altitude comes down to the landing sample sooner after apogee than a fall from rest in vacuum could lose that height, `√(2h/g)`, allowing a sample for the apogee's time | landing |
 | `no_speed_column` | the log has no speed column | the top speed |
-| `implausible_speed` | the speed column peaks above 4,000 m/s, about twice the fastest amateur rocket | the top speed |
+| `implausible_speed` | the speed column peaks above 4,000 m/s, Debrief's ceiling | the top speed |
 | `noisy_speed` | from liftoff to apogee the speed swings below zero by more than 20% of its top | the top speed |
 | `speed_peak_at_liftoff` | the speed peaks on the liftoff sample itself: a spike, not a climb | the top speed |
 | `no_accelerometer` | the log has no accelerometer | the top acceleration |
 | `needs` | the reading needs another that was withheld | as the sentence says |
-| `bad_record` | the record breaks what every reader guarantees: channels as long as the clock, and times that increase. Only a record built by hand in a program can | all |
+| `bad_record` | the record breaks what every reader guarantees: channels as long as the clock, and times that increase. No file reader produces one; only a record built by hand in code can | all |
 
 An apogee within half a window of the log's end is read, but marked `is_floor`: the log may have
 stopped before the rocket did.
@@ -147,13 +149,17 @@ hold each within the bound worked out beside it:
 
 | reading | true | hpr reads | allowed |
 |---|---|---|---|
-| liftoff | 0.50 s | 0.55 s | from 0.50 s to 0.078 s after, when the height first rounds to a foot |
+| liftoff | 0.50 s | 0.55 s | from 0.50 s to 0.578 s, when the height first rounds to a foot |
 | apogee | 390.31 m (1,280.5 ft) | 390.14 m (1,280 ft) | 0.23 m: half a foot of rounding and the median's 0.077 m |
-| apogee time | 10.26 s | 10.28 s | one sample, 0.05 s: the middle of the flat run at the top |
-| time to apogee | 9.76 s | 9.73 s | the two readings' errors together |
+| apogee time | 10.258 s | 10.275 s | one sample, 0.05 s: the middle of the flat run at the top |
+| time to apogee | 9.758 s | 9.725 s | follows from the two rows above; not tested on its own |
 | top speed | 80.0 m/s at 2.10 s | 79.9 m/s (262 ft/s) at 2.10 s | half a foot per second |
 | landing | 46.14 s, touchdown | 45.85 s | up to 0.38 s early: 2 m at 6 m/s, and one sample |
-| mean descent rate, 10.28 s to 45.85 s | 10.92 m/s | 10.92 m/s | the two heights' bounds over the span |
+| mean descent rate | 10.92 m/s, true over the same span, 10.275 s to 45.85 s | 10.92 m/s | the two heights' bounds over the span |
+
+The middle of the flat run at the top falls between two samples here, so the apogee time is
+10.275 s. [`hpr analyze`](../cli.md#hpr-analyze) prints times to two decimals, as 10.28 s and
+9.72 s after liftoff.
 
 The first sample of the flat run at the top would read the apogee over 0.2 s early; a test shows
 that too, so the rule of taking the run's middle is pinned.
@@ -186,9 +192,11 @@ Reading the Raven's file is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
   standard atmosphere. On a warm day a barometric altimeter reads low, 6.5% on a day 20 K warmer
   than standard ([Atmosphere](atmosphere.md#pressure-altitude-what-a-barometric-altimeter-reads)).
   hpr prints what the logger recorded and doesn't correct it.
-- **Fast flights.** Debrief stops trusting a barometer's altitude above Mach 0.9
+- **Fast flights.** Debrief stops trusting a barometer's altitude above Mach 0.9, about 300 m/s
+  (1,000 ft/s) near the ground
   ([the readings note](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-flight-readings.md)).
-  hpr has no such check yet, so a fast flight's top speed from a barometer may be off.
+  hpr has no such check yet. On a flight that fast, the altitude near the top speed may be off,
+  and so may the top speed, which the logger works out from that altitude.
 - **Noise and wide pulses.** On a noisy trace the highest of the medians can read above the true
   peak, and a pulse wider than half the window passes the median. Neither is flagged.
 - **Each leg's descent rate, and deployment events.** One mean rate covers drogue and main.
@@ -200,9 +208,12 @@ Reading the Raven's file is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
 
 - `hpr_flightdata::synthetic`: the invented flight, its readings against the truth, and the
   Hampel filter keeping the pulse the median removes.
-- `hpr_flightdata::readings`: each withheld code on a log built to trigger it, and each rule at
-  its edge. For example, a 20% swing passes and 22.5% is refused. A jitter in the first samples
-  leaves the pad where it is. A property test holds the median's peak bound for every `K` from 1
+- `hpr_flightdata::readings`: each withheld code on a log built to trigger it, and the top
+  speed's guards at their edges: for example, a 20% swing passes and 22.5% is refused. A vacuum
+  fall rounded to feet lands at 10 to 100 samples a second, wherever it falls between them, and
+  one at 1.3 g is refused. A jitter in the first samples leaves the pad where it is, a log that
+  starts just before liftoff keeps its pad, and a pad between two feet takes half a foot either
+  way. A property test holds the median's peak bound for every `K` from 1
   to 6 and every place the peak can fall between samples.
 - `hpr_flightdata::filter`: a pulse removed, a ramp untouched, the Hampel filter at zero equal to
   the median, and a property test that every output lies within its window.

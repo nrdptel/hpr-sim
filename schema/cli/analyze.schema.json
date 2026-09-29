@@ -49,7 +49,7 @@
   ],
   "$defs": {
     "AnalyzeMethod": {
-      "description": "How the readings were taken; `null` throughout for a log too short to read.",
+      "description": "How the readings were taken. Every field but `altitude_resolution_m` is `null` for a log too\nshort to read, or one withheld whole as `bad_record`.",
       "type": "object",
       "properties": {
         "altitude_resolution_m": {
@@ -586,12 +586,12 @@
           "const": "too_short"
         },
         {
-          "description": "The altitude never climbs 3 m above the pad.",
+          "description": "The altitude never climbs 3 m above where the log starts.",
           "type": "string",
           "const": "no_climb"
         },
         {
-          "description": "The log's first altitude is more than 3 m from the logger's zero: it didn't start on the\npad.",
+          "description": "The pad, the median altitude before the first metre of rise, is more than 3 m from the\nlogger's zero: the log didn't start on the pad.",
           "type": "string",
           "const": "starts_off_the_pad"
         },

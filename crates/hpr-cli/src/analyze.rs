@@ -299,7 +299,7 @@ mod tests {
     /// library variant added without a mapping would reach the JSON as `other`.
     #[test]
     fn every_library_reason_and_source_has_its_own_name() {
-        for reason in Reason::ALL {
+        for reason in Reason::ALL.iter().copied() {
             let withheld = Reading::<()>::Withheld(readings::Withheld {
                 reason,
                 detail: String::new(),
@@ -313,7 +313,7 @@ mod tests {
                 serde_json::to_value(reason).unwrap()
             );
         }
-        for from in Source::ALL {
+        for from in Source::ALL.iter().copied() {
             let mapped = source(from);
             assert_ne!(mapped, ReadingSource::Other, "{from:?}");
             assert_eq!(

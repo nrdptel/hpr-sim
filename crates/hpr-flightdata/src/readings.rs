@@ -103,6 +103,24 @@ pub struct Withheld {
     pub detail: String,
 }
 
+/// Declares a fieldless enum and its `ALL`, every variant in the order declared, from one list,
+/// so that a new variant can't be left out of `ALL`.
+macro_rules! with_all {
+    ($(#[$meta:meta])* pub enum $name:ident { $($(#[$variant_meta:meta])* $variant:ident,)* }) => {
+        $(#[$meta])*
+        pub enum $name {
+            $($(#[$variant_meta])* $variant,)*
+        }
+
+        impl $name {
+            /// Every variant, in the order declared: what a program that maps them, as the
+            /// command line does, checks itself against.
+            pub const ALL: &'static [Self] = &[$(Self::$variant),*];
+        }
+    };
+}
+
+with_all! {
 /// The reason a reading was withheld.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -110,10 +128,10 @@ pub struct Withheld {
 pub enum Reason {
     /// The log has fewer than three samples.
     TooShort,
-    /// The altitude never climbs [`LIFTOFF_HEIGHT_M`] above the pad.
+    /// The altitude never climbs [`LIFTOFF_HEIGHT_M`] above where the log starts.
     NoClimb,
-    /// The log's first altitude is more than [`LIFTOFF_HEIGHT_M`] from the logger's zero: it
-    /// didn't start on the pad.
+    /// The pad, the median altitude before the first [`PAD_RISE_M`] of rise, is more than
+    /// [`LIFTOFF_HEIGHT_M`] from the logger's zero: the log didn't start on the pad.
     StartsOffThePad,
     /// The log ends before the rocket is seen to land.
     EndsBeforeLanding,
@@ -135,26 +153,9 @@ pub enum Reason {
     /// times that increase. Only a record built by hand can.
     BadRecord,
 }
-
-impl Reason {
-    /// Every reason, in the order declared: what a program that maps them, as the command line
-    /// does, checks itself against.
-    pub const ALL: [Self; 12] = [
-        Self::TooShort,
-        Self::NoClimb,
-        Self::StartsOffThePad,
-        Self::EndsBeforeLanding,
-        Self::FasterThanFreeFall,
-        Self::NoSpeedColumn,
-        Self::ImplausibleSpeed,
-        Self::NoisySpeed,
-        Self::SpeedPeakAtLiftoff,
-        Self::NoAccelerometer,
-        Self::Needs,
-        Self::BadRecord,
-    ];
 }
 
+with_all! {
 /// Where a reading's value came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -165,17 +166,14 @@ pub enum Source {
     /// A speed column the logger computed from its own barometric altitude.
     LoggerSpeedFromBarometer,
 }
-
-impl Source {
-    /// Every source, in the order declared.
-    pub const ALL: [Self; 2] = [Self::Barometer, Self::LoggerSpeedFromBarometer];
 }
 
 /// Liftoff.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Liftoff {
-    /// The last sample on the pad, s on the log's clock: the rocket had risen less than the
-    /// altitude's resolution then, and rose past it within one sample interval after.
+    /// The last sample on the pad, s on the log's clock: the filtered altitude was within half
+    /// the altitude's resolution of the pad then, and rose past it within one sample interval
+    /// after.
     pub time_s: f64,
     /// Where it came from.
     pub source: Source,
@@ -301,7 +299,9 @@ pub fn read(log: &FlightLog) -> Readings {
             &format!("the log has {n} samples, too few to take a reading from"),
         );
     };
-    let half = half_window(interval);
+    // No wider than the record: a clock stepping in fractions of a nanosecond would otherwise
+    // ask for a window of more samples than memory holds.
+    let half = half_window(interval).min(n);
     let filtered = running_median(&log.altitude_m, half);
     let bound = peak_bound_m(half, interval);
     #[expect(
@@ -589,8 +589,10 @@ fn landing(
     };
     let descent_time_s = time[index] - apogee_s;
     let drop = filtered[apogee] - filtered[index];
-    // The quickest any fall from rest at apogee can lose that height: in vacuum. The apogee's time
-    // is the middle of its run, which can be a sample late, so a sample is allowed.
+    // The quickest any fall from rest at apogee can lose that height: in vacuum. The apogee's
+    // time, the middle of its flat run, sits up to about half a sample from the true one, and
+    // the heights are rounded, so a sample is allowed: a test passes a vacuum fall in feet at 10
+    // to 100 samples a second wherever it falls between them, and fails one without it.
     let quickest = (2.0 * drop.max(0.0) / STANDARD_GRAVITY_MPS2).sqrt();
     if descent_time_s + interval < quickest {
         return Reading::withheld(
@@ -619,8 +621,13 @@ mod tests {
 
     /// A log sampled every 0.05 s to `end_s`, its height and speed from `flight`.
     fn log(end_s: f64, flight: impl Fn(f64) -> (f64, f64)) -> FlightLog {
+        log_every(DT, end_s, flight)
+    }
+
+    /// A log sampled every `dt` s to `end_s`, its height and speed from `flight`.
+    fn log_every(dt: f64, end_s: f64, flight: impl Fn(f64) -> (f64, f64)) -> FlightLog {
         let times: Vec<f64> = (0..)
-            .map(|i| f64::from(i) * DT)
+            .map(|i| f64::from(i) * dt)
             .take_while(|t| *t <= end_s + 1e-9)
             .collect();
         let (altitude_m, speed): (Vec<f64>, Vec<f64>) = times.iter().map(|t| flight(*t)).unzip();
@@ -745,6 +752,109 @@ mod tests {
         assert_eq!(read.liftoff.value().unwrap().time_s, 3.0);
     }
 
+    /// A vacuum hop from `t0` to `apogee_m`, falling back at `fall_g` times gravity, its heights
+    /// rounded to whole feet as a PerfectFlite writes them; and when it is back on the pad.
+    fn hop(apogee_m: f64, t0: f64, fall_g: f64) -> (impl Fn(f64) -> (f64, f64), f64) {
+        let g = STANDARD_GRAVITY_MPS2;
+        let foot = crate::perfectflite::FOOT_M;
+        let v0 = (2.0 * g * apogee_m).sqrt();
+        let top = t0 + v0 / g;
+        let fall = fall_g * g;
+        let down = top + (2.0 * apogee_m / fall).sqrt();
+        let flight = move |t: f64| {
+            let (h, v) = if t <= t0 {
+                (0.0, 0.0)
+            } else if t <= top {
+                (
+                    v0 * (t - t0) - 0.5 * g * (t - t0).powi(2),
+                    v0 - g * (t - t0),
+                )
+            } else if t < down {
+                (apogee_m - 0.5 * fall * (t - top).powi(2), -fall * (t - top))
+            } else {
+                (0.0, 0.0)
+            };
+            ((h / foot).round() * foot, v)
+        };
+        (flight, down)
+    }
+
+    /// The free-fall check passes a fall in vacuum wherever it falls between samples, with the
+    /// heights rounded to feet, at 10 to 100 samples a second, and refuses one at 1.3 g.
+    #[test]
+    fn a_vacuum_fall_lands_and_a_faster_one_is_refused() {
+        for dt in [0.01, 0.05, 0.1] {
+            for apogee_m in [5.0, 30.0, 300.0, 3000.0] {
+                for step in 0..7 {
+                    let t0 = 1.0 + f64::from(step) * dt / 7.0;
+                    let (flight, down) = hop(apogee_m, t0, 1.0);
+                    let read = read(&log_every(dt, down + 3.0, flight));
+                    assert!(
+                        read.landing.value().is_some(),
+                        "{dt} s, {apogee_m} m, from {t0} s: {:?}",
+                        read.landing
+                    );
+                }
+            }
+        }
+        for apogee_m in [100.0, 1000.0] {
+            let (flight, down) = hop(apogee_m, 1.0, 1.3);
+            let read = read(&log(down + 3.0, flight));
+            assert_eq!(
+                reason(&read.landing),
+                Some(Reason::FasterThanFreeFall),
+                "{apogee_m} m"
+            );
+        }
+    }
+
+    /// A log that starts just before liftoff: the pad is read from before the first metre of
+    /// rise, so the climb's first samples don't lift it and liftoff stays at the sample it was.
+    /// Taken from before the 3 m climb instead, the pad would read 1.1 m and liftoff 0.35 s.
+    #[test]
+    fn a_short_pad_isnt_lifted_by_the_climb() {
+        let read = read(&log(5.0, |t| {
+            if t <= 0.1 {
+                (0.0, 0.0)
+            } else {
+                (5.0 * (t - 0.1), 5.0)
+            }
+        }));
+        assert!((read.pad_altitude_m.unwrap() - 0.125).abs() < 1e-12);
+        assert!((read.liftoff.value().unwrap().time_s - 0.15).abs() < 1e-12);
+    }
+
+    /// A pad whose median falls between two feet: a sample a foot up is still on the pad, as it
+    /// lies within half a foot of that median, so liftoff is the last sample before the climb,
+    /// at 1.05 s, not the 0.5 s where the altitude last read zero.
+    #[test]
+    fn a_pad_between_two_feet_takes_half_a_foot_either_way() {
+        let foot = crate::perfectflite::FOOT_M;
+        let read = read(&log(20.0, |t| {
+            if t < 0.525 {
+                (0.0, 0.0)
+            } else if t < 1.075 {
+                (foot, 0.0)
+            } else {
+                (foot + 20.0 * (t - 1.05), 20.0)
+            }
+        }));
+        assert_eq!(read.pad_altitude_m, Some(foot / 2.0));
+        assert_eq!(read.liftoff.value().unwrap().time_s, 21.0 * DT);
+    }
+
+    /// A clock stepping in fractions of a nanosecond reads without asking for a window wider
+    /// than the record.
+    #[test]
+    fn a_clock_too_fine_for_the_window_reads() {
+        let mut log = log(1.0, flight(10.0));
+        for (index, time) in log.time_s.iter_mut().enumerate() {
+            *time = index as f64 * 1e-30;
+        }
+        let read = read(&log);
+        assert_eq!(read.median_window_s.map(|w| w > 0.0), Some(true));
+    }
+
     /// The window's half-width at a rounding tie doesn't turn on the interval's last bit.
     #[test]
     fn the_window_settles_ties_upwards() {
@@ -807,34 +917,21 @@ mod tests {
         assert_eq!(speed_at(1.05, 50.0).value().unwrap().speed_m_s, 50.0);
     }
 
-    /// `ALL` lists every variant once: a new variant fails to compile here until it has a place,
-    /// and then fails the test until `ALL` holds it there.
+    /// `ALL` is built from the enum's own list, so it can't miss a variant; each is listed once,
+    /// with its own code.
     #[test]
-    fn all_lists_every_reason_and_source() {
-        let place = |reason: Reason| match reason {
-            Reason::TooShort => 0,
-            Reason::NoClimb => 1,
-            Reason::StartsOffThePad => 2,
-            Reason::EndsBeforeLanding => 3,
-            Reason::FasterThanFreeFall => 4,
-            Reason::NoSpeedColumn => 5,
-            Reason::ImplausibleSpeed => 6,
-            Reason::NoisySpeed => 7,
-            Reason::SpeedPeakAtLiftoff => 8,
-            Reason::NoAccelerometer => 9,
-            Reason::Needs => 10,
-            Reason::BadRecord => 11,
+    fn all_lists_every_reason_and_source_once() {
+        let codes = |json: Vec<serde_json::Value>| {
+            let mut codes: Vec<String> = json.iter().map(ToString::to_string).collect();
+            let listed = codes.len();
+            codes.sort();
+            codes.dedup();
+            (listed, codes.len())
         };
-        for (index, reason) in Reason::ALL.iter().enumerate() {
-            assert_eq!(place(*reason), index);
-        }
-        let place = |source: Source| match source {
-            Source::Barometer => 0,
-            Source::LoggerSpeedFromBarometer => 1,
-        };
-        for (index, source) in Source::ALL.iter().enumerate() {
-            assert_eq!(place(*source), index);
-        }
+        let reasons = Reason::ALL.iter().map(|r| serde_json::json!(r)).collect();
+        assert_eq!(codes(reasons), (12, 12));
+        let sources = Source::ALL.iter().map(|s| serde_json::json!(s)).collect();
+        assert_eq!(codes(sources), (2, 2));
     }
 
     /// Serialized, a reading carries its status beside its fields.
