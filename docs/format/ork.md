@@ -2858,8 +2858,8 @@ as OpenRocket packs one. It writes from hpr's design alone, not from a copy of t
 from, so a design built in hpr is written the same way. One exception: a value kept from the
 original file is written as the file had it, even after the design is edited. Read back, the
 written file gives the same design, bit for bit, for each of the 73 designs hpr reads among the
-`.ork` files the checks use ([which files](#checked-in-openrocket)); most are other people's
-private designs, so their counts are published but their files are not. OpenRocket 24.12 opens
+`.ork` files the checks use ([which files](#checked-in-openrocket)). Some are other people's
+private designs, so the counts are published but those files are not. OpenRocket 24.12 opens
 every written file whose original it opens, and flies each configuration it can fly (151) to
 the original's apogee within 0.5%: the largest difference is 0.000162%.
 
@@ -2958,17 +2958,20 @@ of it. Every export opened where its original did, and every
 [configuration](../glossary.md#configuration) that flew both ways reached the same apogee within
 0.5%. Both flights are OpenRocket's, so this checks the file hpr writes, not hpr's physics; how
 hpr's own flights compare is in [hpr's flights against OpenRocket's](#hprs-flights-against-openrockets).
+hpr itself flies a written file exactly as it flies the original, since it reads back the same
+design.
 
 **The files.** The check uses every `.ork` file the survey (`cargo xtask ork`) finds:
 
 | where | files |
 |---|---|
 | the example designs that ship with OpenRocket | 17 |
-| the private design library ([the corpus](#openrockets-flights-of-the-private-designs)) | 27 |
-| other `.ork` files under `refs/`, mostly Loft's and Debrief's test designs ([listed above](#openrockets-flights-of-the-private-designs)) | 31 |
+| the private design library ([the corpus](#openrockets-flights-of-the-private-designs); the report's `refs/loft-fixtures`) | 27 |
+| other `.ork` files under `refs/`, mostly Loft's and Debrief's test designs ([listed above](#openrockets-flights-of-the-private-designs); the report's *elsewhere under refs/*) | 31 |
 | all | 75 |
 
-hpr reads 73 of them; the other two are malformed XML, which OpenRocket refuses too.
+hpr reads 73 of them; the other two are malformed XML, which OpenRocket refuses too. OpenRocket's
+examples and most of the other files are public.
 
 **How they are flown.** Each flight takes its launch conditions from the file's
 [first stored simulation](#what-openrocket-last-did-stored-simulations), or OpenRocket's defaults
@@ -2983,21 +2986,21 @@ flights agree about 3,000 times more closely, so the report also gives the large
 | designs | 75 |
 | opened as written | 71 |
 | opened as exported, of those | 71 |
-| with a configuration flown both ways | 48 |
+| designs with a configuration flown both ways | 48 |
 | configurations of the opened designs | 169 |
-| flown neither way | 18 |
-| flown both ways | 151 |
+| configurations flown neither way | 18 |
+| configurations flown both ways | 151 |
 | within 0.5% of the original's apogee | 151 |
 | the same apogee to the last bit | 142 |
 | largest apogee difference | 0.000162% |
 
 - **Four designs don't open as written.** hpr can't read two of them, so it writes nothing.
   OpenRocket refuses the exports of the other two with the same error as their originals.
-- **23 opened designs have nothing to fly.** Nine have no configuration, and 14 have only
-  configurations with no motor.
+- **23 opened designs have nothing to fly.** They have no configuration, or none with a motor.
 - **Eighteen configurations fly neither way.** Seventeen have no motor. OpenRocket aborts the
   other one both times, for the same cause.
-- **Nine configurations differ, but by very little.** All nine are private designs. The largest
+- **Nine configurations differ, but by very little.** All nine are in the private design library
+  (the report's `refs/loft-fixtures` row). The largest
   difference is 0.000162%. Their cause has not been traced.
 
 The committed report,
@@ -3006,8 +3009,10 @@ gives these counts by where the designs came from. The flights themselves stay i
 `corpus-out/`, since they could identify private designs
 ([OpenRocket's flights of the private designs](#openrockets-flights-of-the-private-designs)).
 
-**Running it again.** It needs `refs/` fetched and the oracle's Python environment set up
-(`refs/venv`), as for [OpenRocket's flights of the private designs](#openrockets-flights-of-the-private-designs).
+**Running it again.** It needs Java 17, the OpenRocket jar fetched by `cargo xtask refs fetch`,
+and a Python environment at `refs/venv` with JPype, which lets the [oracle](../glossary.md#oracle)
+scripts drive OpenRocket, as for [OpenRocket's mass](../physics/mass.md#checked-against-openrocket).
+Without the private library, the commands fly the public files alone.
 The first command flies the originals, and is needed only when `refs/` or the flight scripts
 change. The second writes each design back out; the third flies those files; the last compares:
 
