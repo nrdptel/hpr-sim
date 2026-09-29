@@ -368,15 +368,15 @@ Both are checked on every change:
   same JSON in Rust.
 - Each language's own JSON writer (`JSON.stringify`, Python's `json.dumps`) writes the 18
   documents back out, and hpr reads each as the same design.
-- Tests make 4,892 altered copies of two of those documents: a key added or removed, or a value
-  replaced by one of another type or by a string with a final newline. The schema refuses 4,114 of
-  them. Each reader takes a copy exactly when a separate schema checker, the Rust `jsonschema`
+- Tests make 4,892 altered copies of two of those documents: a key added or removed, an array
+  lengthened or shortened, or a value replaced by another (a different type, an out-of-range
+  number, an unknown word, or a string with a final newline). The schema refuses 4,114 of them. Each reader takes a copy exactly when a separate schema checker, the Rust `jsonschema`
   library, does.
 - The TypeScript compiler (at `target` ES2020) and mypy, both at their strictest, accept the 18
   documents written out as values of type `DesignFile`, and the two examples, and refuse a
   document with a misspelt fixed word.
 - Like hpr, both refuse a number too large for a 64-bit float (`1e400`), a lone UTF-16 surrogate
-  (`"\ud800"`), and arrays and objects nested 128 levels deep. Tests hold each to hpr's own reader.
+  (`"\ud800"`), and arrays nested 128 levels deep. Tests hold each to hpr's own reader.
 
 A reader checks what the schema says, so it shares the schema's blind spots: a document it takes
 can still be refused by hpr for the [few rules the schema can't express](#the-schema). The two
@@ -386,12 +386,13 @@ readers also differ from hpr on three details of JSON:
 |---|---|---|---|
 | a key twice in one object | refused | takes the last | refused |
 | a whole number written with a point or an exponent (`2.0`, `3e0`) | refused | taken as `2`, `3` | refused |
-| a stage number, or a failed motor tube's index, of 2<sup>53</sup> or more | read exactly | refused, since JavaScript would round it | read exactly |
+| a stage number of 2<sup>53</sup> or more | read | refused, since JavaScript would round it | read |
+
+Each row of the table, and each refusal in the list above, is tested against hpr's own reader.
 
 The other way round, hpr reads one kind of document the readers refuse: one whose
 `provenance.source.sha256` isn't 64 hexadecimal digits, which the schema refuses. That is a bug in
-hpr's reader, open as [#253](https://github.com/nrdptel/hpr-sim/issues/253). Each row of the table,
-and each refusal in the list above, is tested against hpr's own reader.
+hpr's reader, open as [#253](https://github.com/nrdptel/hpr-sim/issues/253).
 
 ## Checked on real designs
 
