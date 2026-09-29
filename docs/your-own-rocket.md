@@ -663,8 +663,9 @@ The example leaves out several kinds of part and setting that a design can have:
 ## What it can't do yet
 
 - **Built only in Rust, or in JSON.** [The builder](the-builder.md) builds the same rocket in
-  fewer lines, and [`hpr sim`](cli.md#hpr-sim) flies the JSON file from a terminal, with no parachute
-  opening: a design file holds a parachute's mass but not when it opens. Python ([M4.3](decisions-and-roadmap.md#m4-3)) is planned.
+  fewer lines, and [`hpr sim`](cli.md#hpr-sim) flies the JSON file from a terminal, but opens no
+  parachute: a design file can carry a parachute's weight as a mass part, but not the parachute
+  itself or when it opens. Python ([M4.3](decisions-and-roadmap.md#m4-3)) is planned.
 - **Import from one other program.** [OpenRocket](glossary.md#openrocket) `.ork` files are read
   ([`.ork` design files](format/ork.md)), though few of their motor configurations fly yet and
   their recovery settings are not flown; RockSim `.rkt` files

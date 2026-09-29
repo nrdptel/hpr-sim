@@ -7,8 +7,8 @@ landing (GeoJSON or KML, which Google Earth, QGIS and most web maps open). It fl
 setup, and a little Rust.
 
 Without writing Rust, `hpr sim --export` writes the same five formats for a `.ork` or hpr design
-file, every quantity hpr tracks in each ([The command line](cli.md#exporting-the-recording)). `hpr sim`
-flies no parachute yet, so its maps mark no landing.
+file, every quantity hpr tracks in each ([The command line](cli.md#exporting-the-recording)).
+`hpr sim` flies no parachute yet, so its maps mark no landing.
 
 > **The files are exact, the flight is not validated.** Every number in a file reads back to
 > exactly the value the simulator computed, and tests check that. The flight itself is the first

@@ -205,9 +205,9 @@ landing               310.4 m from the pad at 28.71 s, at 70.3 m/s: with no reco
 
 <!-- cli: end -->
 
-It climbs about 4% higher than the first example, not 8%: the rocket turns into the wind as it
-climbs, and the rail already leans that way, so its climb tips away from the vertical. The wind
-does most of it.
+It climbs about 4% higher than the same rocket at sea level, in the first example, not the 8% the
+altitude alone gives: the rocket turns into the wind as it climbs, and the rail already leans that
+way, so its climb tips away from the vertical. The wind does most of it.
 
 ### The motor and the configuration
 
