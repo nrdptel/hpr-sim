@@ -48,7 +48,6 @@ fn written_and_read(design: &Design) -> (Design, String, Vec<Warning>) {
     (design_of(&written.value), text, written.warnings)
 }
 
-/// The element anywhere under `root` whose `<id>` is `id`.
 /// The UUID a hand-written design's part named `name` is given ([`design_of`]).
 fn uuid_of(name: &str) -> String {
     let tagged = super::rocket::tests::uuids(&format!("<id>{name}</id>"));
@@ -60,6 +59,8 @@ fn part<'a>(design: &'a Design, name: &str) -> &'a hpr_design::tree::Component {
     component(design, &uuid_of(name))
 }
 
+/// The element anywhere under `root` whose `<id>` is the UUID a hand-written design's part named
+/// `id` is given.
 fn by_id<'a>(root: &'a Element, id: &str) -> &'a Element {
     let id = &uuid_of(id);
     fn find<'a>(element: &'a Element, id: &str) -> Option<&'a Element> {
@@ -779,8 +780,9 @@ fn attachments_follow_the_design_and_one_named_like_it_is_skipped() {
 
 /// OpenRocket 24.12 will not open a file holding an id that is not a UUID, so the export leaves
 /// such an id out and OpenRocket gives the part one of its own. A part the file gave no id reads
-/// with an id the reader invents, and reading the export invents the same one again; a part the
-/// file named some other way reads back under an invented id instead.
+/// with an id the reader invents, and reading the export invents the same one again, so that one
+/// goes unremarked; a part the file named some other way reads back under an invented id instead,
+/// and the export warns of it.
 #[test]
 fn ids_openrocket_would_refuse_are_left_out() {
     let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
@@ -798,8 +800,19 @@ fn ids_openrocket_would_refuse_are_left_out() {
 </openrocket>"#;
     let file = read(xml).expect("readable").value;
     let original = design(&file).value;
-    let text = document(&original).value.to_xml();
+    let written = document(&original);
+    let text = written.value.to_xml();
     assert!(!text.contains("<id>sustainer</id>"), "{text}");
+    // One warning, for the stage's id; none for the nose cone's, which the reader invented.
+    assert_eq!(written.warnings.len(), 1, "{:?}", written.warnings);
+    let warning = &written.warnings[0];
+    assert_eq!(warning.at, "openrocket/rocket/stage[0]");
+    assert_eq!(warning.kind, super::super::WarningKind::Dropped);
+    assert!(
+        warning.message.contains("the id `sustainer` is not a UUID"),
+        "{}",
+        warning.message
+    );
     assert_eq!(text.matches("<id>").count(), 1, "{text}");
     let back = design(&read(text.as_bytes()).expect("readable").value).value;
     let (was, is) = (&original.rocket.stages[0], &back.rocket.stages[0]);

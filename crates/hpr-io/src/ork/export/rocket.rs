@@ -122,6 +122,37 @@ impl<'a> Writer<'a> {
             .collect()
     }
 
+    /// Writes `id` as the `<tag>` element's `<id>`, at `at`, if it is a UUID, the only kind
+    /// OpenRocket 24.12 opens a file with: it refuses the whole file over one that is not. Any
+    /// other id is left out, and OpenRocket gives the part one of its own. The reader invents an
+    /// id for a part that has none (`bodytube-3`), and reading the written file invents the same
+    /// one again, since it counts the parts in the same order; nor is anything lost when the
+    /// design keeps the file's own `<id>` there, as it does for a part whose id another part
+    /// already had. Any other id left out is warned of: the part reads back under another.
+    fn id(&mut self, element: &mut Element, at: &str, tag: &str, id: &str) {
+        if is_uuid(id) {
+            element.leaf("id", id.to_owned());
+        } else if !invented(id, tag) && !self.keeps_tag(at, "id") {
+            self.warn(
+                at,
+                format!(
+                    "the id `{id}` is not a UUID, which OpenRocket 24.12 refuses a file over; it \
+                     was left out, and the part will read back under another"
+                ),
+            );
+        }
+    }
+
+    /// Whether what the design keeps holds a `<name>` tag of the element at `at` itself.
+    fn keeps_tag(&self, at: &str, name: &str) -> bool {
+        let prefix = format!("{at}/@{name}[");
+        self.kept.tags.iter().any(|kept| {
+            kept.at
+                .strip_prefix(&prefix)
+                .is_some_and(|rest| !rest.contains('/'))
+        })
+    }
+
     /// Whether what the design keeps says the part at `place` in `parent` was a `<name>`.
     fn was(&self, parent: &str, place: usize, name: &str) -> bool {
         self.known.contains(&format!("{parent}/{name}[{place}]"))
@@ -130,12 +161,7 @@ impl<'a> Writer<'a> {
     /// Whether `component` was read from a `<name>`: the design keeps something at that path, or
     /// its id is the one the reader invents for a `<name>` with none (`engineblock-7`).
     fn was_tag(&self, component: &Component, parent: &str, place: usize, name: &str) -> bool {
-        self.was(parent, place, name)
-            || component
-                .id
-                .strip_prefix(name)
-                .and_then(|rest| rest.strip_prefix('-'))
-                .is_some_and(|count| !count.is_empty() && count.bytes().all(|b| b.is_ascii_digit()))
+        self.was(parent, place, name) || invented(&component.id, name)
     }
 
     /// The `<rocket>`: its name, how its reference diameter is chosen, the motors' tags, and its
@@ -175,7 +201,7 @@ impl<'a> Writer<'a> {
         let design = self.design;
         let mut element = xml::element("stage");
         element.leaf("name", stage.name.clone());
-        id(&mut element, &stage.id);
+        self.id(&mut element, at, "stage", &stage.id);
         // A stage's override is the whole stage's, so it covers everything inside it.
         let covers = !stage.overrides.is_empty();
         self.overrides(&mut element, at, &stage.overrides, covers);
@@ -280,7 +306,7 @@ impl<'a> Writer<'a> {
         let design = self.design;
         let mut element = xml::element(name);
         element.leaf("name", component.name.clone());
-        id(&mut element, &component.id);
+        self.id(&mut element, at, name, &component.id);
         let body = matches!(
             component.part,
             Part::NoseCone(_) | Part::BodyTube(_) | Part::Transition(_)
@@ -547,7 +573,7 @@ impl<'a> Writer<'a> {
             .number("thickness", tube.thickness_m)
             .number("radialposition", tube.radial_offset_m);
         // OpenRocket 24.12 reads an inner tube's roll angle only under its older name.
-        self.angle(element, at, "radialdirection", tube.angle_rad);
+        self.older_angle(element, at, tube.angle_rad);
         self.material(element, at, "material", &tube.material, "bulk");
         if tube.cluster_m.is_empty() {
             return;
@@ -753,7 +779,29 @@ impl<'a> Writer<'a> {
             )
             .number("radialposition", packing.radial_offset_m);
         // OpenRocket 24.12 reads a packed part's roll angle only under its older name.
-        self.angle(element, at, "radialdirection", packing.angle_rad);
+        self.older_angle(element, at, packing.angle_rad);
+    }
+
+    /// The roll angle of a part OpenRocket 24.12 reads it on only as `radialdirection`: an inner
+    /// tube, coupler or engine block, a mass component or a recovery part.
+    ///
+    /// When what the design keeps holds an older name for the angle at `at` — the file gave it
+    /// as `angleoffset` and, under `radialdirection` or `rotation`, as another angle, and the
+    /// reader took `angleoffset` — the design's angle is written as `angleoffset` instead, and the
+    /// kept older names go back beside it, so the file says what it said: reading the export takes
+    /// the design's angle and warns of the other again, and OpenRocket reads the angle it read
+    /// before. OpenRocket 24.12 writes no `angleoffset` on these parts, and warns that it ignores
+    /// one, so it is written only then.
+    fn older_angle(&mut self, element: &mut Element, at: &str, radians: f64) {
+        let kept_older = ["radialdirection", "rotation"]
+            .iter()
+            .any(|name| self.keeps_tag(at, name));
+        let name = if kept_older {
+            "angleoffset"
+        } else {
+            "radialdirection"
+        };
+        self.angle(element, at, name, radians);
     }
 
     /// An angle in radians, written as the degrees a `.ork` reader turns into exactly it.
@@ -889,14 +937,28 @@ impl<'a> Writer<'a> {
 
     /// The overrides and whether they cover the parts inside, as the reader puts them back
     /// together: the mass flag decides, unless only the centre of gravity is overridden.
+    ///
+    /// Where the reader kept the file's flags as written, all together — flags that disagree, a
+    /// flag written twice or unreadable, the single older flag beside a drag override — no flag is
+    /// written: the kept ones go back as the file had them, and a flag written beside them that
+    /// the file did not have would change what they say. A kept drag flag alone is not one of
+    /// those; the reader keeps it apart from the others.
     fn overrides(&mut self, element: &mut Element, at: &str, overrides: &Overrides, covers: bool) {
         element
             .maybe_number("overridemass", overrides.mass_kg)
             .maybe_number("overridecg", overrides.cg_aft_m);
-        if overrides.mass_kg.is_some() || (overrides.cg_aft_m.is_none() && covers) {
+        let kept_flags = [
+            "overridesubcomponents",
+            "overridesubcomponentsmass",
+            "overridesubcomponentscg",
+        ]
+        .iter()
+        .any(|name| self.keeps_tag(at, name));
+        if !kept_flags && (overrides.mass_kg.is_some() || (overrides.cg_aft_m.is_none() && covers))
+        {
             element.flag("overridesubcomponentsmass", covers);
         }
-        if overrides.cg_aft_m.is_some() {
+        if !kept_flags && overrides.cg_aft_m.is_some() {
             element.flag("overridesubcomponentscg", covers);
         }
         if overrides.cg_xy_m.is_some() || overrides.inertia.is_some() {
@@ -1146,15 +1208,12 @@ fn preimage(target: f64, guess: f64, read: impl Fn(f64) -> f64) -> Option<f64> {
     None
 }
 
-/// Writes `id` as the element's `<id>` if it is a UUID, the only kind OpenRocket 24.12 opens a
-/// file with: it refuses the whole file over one that is not. Any other id is left out, and
-/// OpenRocket gives the part one of its own. The reader invents an id for a part that has none
-/// (`bodytube-3`), and reading the written file invents the same one again, since it counts the
-/// parts in the same order.
-fn id(element: &mut Element, id: &str) {
-    if is_uuid(id) {
-        element.leaf("id", id.to_owned());
-    }
+/// Whether `id` is one the reader invents for a `<tag>` with no id of its own: the tag, a hyphen
+/// and the part's count (`bodytube-3`).
+fn invented(id: &str, tag: &str) -> bool {
+    id.strip_prefix(tag)
+        .and_then(|rest| rest.strip_prefix('-'))
+        .is_some_and(|count| !count.is_empty() && count.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// Whether `text` is a UUID as OpenRocket writes one: 8, 4, 4, 4 and 12 hexadecimal digits,
@@ -1641,7 +1700,7 @@ pub(super) mod tests {
       <bodytube><name>Tube</name><id>tube</id><finish>normal</finish><length>0.3</length>
         <thickness>0.001</thickness><radius>0.02</radius></bodytube>"#,
         );
-        let file = read(xml.as_bytes()).expect("reads").value;
+        let file = read(uuids(&xml).as_bytes()).expect("reads").value;
         let mut original = design(&file).value;
         let tube = &mut original.rocket.stages[0].components[0];
         tube.finish = Some(Finish::Custom { roughness_m: 33e-6 });
@@ -1785,7 +1844,25 @@ pub(super) mod tests {
         <length>0.2</length><aftradius>0.03</aftradius>{inside}</nosecone>"#
             ))
         };
-        let cases: [(String, &str, &Holds<'_>); 22] = [
+        let inner = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <innertube><name>Motor tube</name><id>mmt</id>
+            <axialoffset method="bottom">0.0</axialoffset>
+            <length>0.2</length><outerradius>0.0127</outerradius><thickness>0.0005</thickness>
+            <radialposition>0.01</radialposition>{inside}</innertube>"#
+            ))
+        };
+        let mass = |inside: &str| {
+            tube_of(&format!(
+                r#"
+          <masscomponent><name>Altimeter</name><id>altimeter</id>
+            <axialoffset method="top">0.1</axialoffset>
+            <packedlength>0.03</packedlength><packedradius>0.01</packedradius>
+            <radialposition>0.02</radialposition>{inside}<mass>0.05</mass></masscomponent>"#
+            ))
+        };
+        let cases: [(String, &str, &Holds<'_>); 26] = [
             (
                 ring(
                     "<instancecount>3</instancecount><instanceseparation>0.02</instanceseparation>",
@@ -1878,6 +1955,37 @@ pub(super) mod tests {
                     ("<angleoffset>30", 1),
                 ],
             ),
+            // On an inner tube and a packed part, OpenRocket 24.12 reads the angle only as
+            // `radialdirection`, which the export writes the design's angle under; when the file
+            // gave another angle under an older name, that one is kept and goes back, and the
+            // design's angle is written as `angleoffset`, which the reader takes again.
+            (
+                inner("<angleoffset>30.0</angleoffset><radialdirection>45.0</radialdirection>"),
+                "two names for one angle",
+                &[
+                    ("<radialdirection>45.0</radialdirection>", 1),
+                    ("<radialdirection>", 1),
+                    ("<angleoffset>30", 1),
+                ],
+            ),
+            (
+                inner("<angleoffset>30.0</angleoffset><rotation>45.0</rotation>"),
+                "two names for one angle",
+                &[
+                    ("<rotation>45.0</rotation>", 1),
+                    ("<angleoffset>30", 1),
+                    ("<radialdirection>", 0),
+                ],
+            ),
+            (
+                mass("<angleoffset>30.0</angleoffset><radialdirection>45.0</radialdirection>"),
+                "two names for one angle",
+                &[
+                    ("<radialdirection>45.0</radialdirection>", 1),
+                    ("<radialdirection>", 1),
+                    ("<angleoffset>30", 1),
+                ],
+            ),
             (
                 lug(r#"<material type="surface" density="0.5">Invented felt</material>"#),
                 "is declared `surface`",
@@ -1911,6 +2019,23 @@ pub(super) mod tests {
                         1,
                     ),
                     ("<overridesubcomponentscg>", 1),
+                ],
+            ),
+            // Both overridden and only the mass flag stated: the missing flag reads as `false`,
+            // which disagrees, so the flags are kept, and none is written beside them.
+            (
+                lug(
+                    r#"<overridemass>0.02</overridemass><overridecg>0.01</overridecg>
+            <overridesubcomponentsmass>true</overridesubcomponentsmass>"#,
+                ),
+                "does not agree",
+                &[
+                    (
+                        "<overridesubcomponentsmass>true</overridesubcomponentsmass>",
+                        1,
+                    ),
+                    ("<overridesubcomponentsmass>", 1),
+                    ("<overridesubcomponentscg>", 0),
                 ],
             ),
             (
