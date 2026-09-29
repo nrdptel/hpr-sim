@@ -8,12 +8,14 @@
 //!
 //! The package wraps the [`hpr`] builder, the same four types in the same order:
 //!
-//! - `Environment`: the launch site, the standard atmosphere, a constant wind and a gravity model.
+//! - `Environment`: the launch site, the standard atmosphere, a wind (constant, or a Python
+//!   function of height) and a gravity model.
 //! - `Motor`: a motor from the built-in catalog, or a RASP `.eng` or RockSim `.rse` file.
 //! - `Rocket`: parts added from the nose back, the motor and the parachutes; or a design read
 //!   from a `.hpr`, `.hprz`, `.ork` or rocket JSON file.
 //! - `Flight`: the rocket flown from a rail as soon as it is made, with its metrics, its events
-//!   and its recording as NumPy arrays; with a `DragTable`, another tool's drag in place of hpr's.
+//!   and its recording as NumPy arrays; with a `DragTable` or a Python function of the Mach
+//!   number, another drag in place of hpr's (`models`).
 //!
 //! **How far to trust it:** the bindings add no physics. Each call hands its arguments to the
 //! [`hpr`] builder and returns what it returns, so a flight made in Python runs the same code as
@@ -40,6 +42,7 @@
 )]
 
 mod flight;
+mod models;
 mod rocket;
 
 use pyo3::create_exception;

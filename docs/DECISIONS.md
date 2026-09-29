@@ -121,6 +121,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-113 | M3.3c: TypeScript and Python types, and a reader for each, generated from the schema by xtask | accepted |
 | ADR-114 | M4.3 split a to c; the Python package wraps the builder, SI names, flies on construction, one abi3 wheel per OS | accepted |
 | ADR-115 | M4.3b: a drag table on the builder, gravity and a parachute release in Python; Calisto measured in the example, not in the library | accepted |
+| ADR-116 | M4.3c: Python drag `f(mach, thrusting)` and wind `f(height_m)`; a function's exception kept and raised in place of the library's error | accepted |
 
 ---
 
@@ -9647,3 +9648,37 @@ integrator's steps and the suite also finds inside them. A wrong gravity model o
 at 800 m rather than 800 m + h0 moves the landing drift by 1.8e-4 or 5.9e-4, so the test's 1e-5 catches
 it. Only the windy case is flown from Python; the calm one and predicted mode stay the suite's. The example reads
 the reference fixture's JSON, so it runs only from a checkout, not from an installed wheel alone.
+
+## ADR-116: M4.3c: drag and wind as Python functions (2026-09-29)
+
+**Context.** M4.3c's *done when*: a drag and a wind written as Python functions fly, their
+exceptions reach Python, and a flight with Python's constant drag equals a table's. The Rust
+library already takes both as traits (`hpr_aero::DragModel`, `hpr_atmos::Wind`); a flight runs
+without the GIL (ADR-114), and a trait's error is the library's own type, which can't carry a
+Python exception.
+
+**Decision.**
+
+1. `Flight(..., drag=f)` calls `f(mach, thrusting)` and takes a float, `C_D0` on the rocket's
+   reference area. RocketPy's drag functions take the Mach number only; `thrusting` is the one
+   other input a drag table reads, so a function can say what a power-on and a power-off table
+   say. The Reynolds number and hpr's own buildup (`DragQuery`) stay Rust's: a query object
+   would hold references into the flight, and nothing in M4.3 needs them.
+2. `Environment(..., wind=f)` calls `f(height_m)` with the height above sea level, as the Rust
+   `Wind` is asked, and takes `(east_m_s, north_m_s)`. Mean wind is horizontal (`wind.rs`), so
+   there is no up component. A value that isn't finite is refused.
+3. Each call takes the GIL with `Python::attach` and gives it back. An exception is kept in a slot
+   shared by the model and its `Flight` (the first one: it stopped the flight), the library gets
+   an error of its own kind, and when the flight fails `Flight` raises the kept exception in
+   place of `HprError`, so `except LookupError` works as the caller wrote it. An environment's
+   slot is emptied before each flight.
+4. A function beside its constant counterpart (`drag` with `drag_table`, `wind` with
+   `wind_speed_m_s`) is refused rather than one silently winning.
+
+**Consequences.** `test_models.py` flies both and holds a constant function's flight to a table's
+bit for bit, every recorded column. A function with a power-on and a power-off number matches a
+two-curve table to 6e-12 of the apogee, not to the bit; the cause wasn't traced, and the test
+says so. Two threads flying one windy environment at once share its slot; the guide says to fly
+it from one thread at a time. Models in Python other than these two (atmosphere, thrust,
+triggers) are not in M4.3.
+

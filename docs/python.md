@@ -312,6 +312,79 @@ of difference: flying its own, hpr puts the suite's six rockets' apogees 7.280% 
 example rockets, Juno III and Bella Lui, flown in a wind, the drifts differ by 10 to 38%
 ([Getting started](getting-started.md#how-far-to-trust-it) explains why).
 
+## Drag and wind of your own
+
+A flight can fly a drag and a wind you write as Python functions, in place of hpr's own drag and
+the environment's wind. hpr calls them as it flies, many times a step, and keeps everything else
+its own: the rest of the aerodynamics, the thrust, the masses and the atmosphere. They are the
+Python side of the Rust library's [models of your own](custom-models.md), and they answer
+what those do.
+
+| Given as | Called as | Returns |
+| --- | --- | --- |
+| `Flight(..., drag=f)` | `f(mach, thrusting)`, with `thrusting` true while a motor burns | the whole rocket's zero-lift drag coefficient `C_D0`, on its reference area (the largest body diameter's circle) |
+| `Environment(..., wind=f)` | `f(height_m)`, the height above sea level in metres, not above the launch site | the air's velocity, a tuple `(east_m_s, north_m_s)` |
+
+Here the drag rises through Mach 0.8 to 1.1 and drops 10% under power, and the wind strengthens
+with height. A function that always returns the same number flies exactly as a drag table of that
+number does, to the last digit. A function that raises stops the flight, and `Flight` raises its
+exception unchanged, with its type and traceback:
+
+```python
+def drag(mach, thrusting):
+    """0.5 below Mach 0.8, rising to 0.8 by Mach 1.1; 10% less while the motor burns."""
+    rise = min(max((mach - 0.8) / 0.3, 0.0), 1.0)
+    cd0 = 0.5 + 0.3 * rise
+    return 0.9 * cd0 if thrusting else cd0
+
+
+def wind(height_m):
+    """From the west, 3 m/s at the 1400 m site, 1 m/s stronger every 100 m above it."""
+    above_m = max(height_m - 1400.0, 0.0)
+    return (3.0 + above_m / 100.0, 0.0)
+
+
+windy = hpr.Environment(32.99, -106.97, 1400.0, wind=wind)
+flight = hpr.Flight(rocket, windy, 1.8, drag=drag)
+print(f"apogee {flight.apogee_m:.0f} m, landed {flight.landing['east_m']:.0f} m east")
+
+table = hpr.DragTable([(0.0, 0.5), (3.0, 0.5)])
+same = hpr.Flight(rocket, windy, 1.8, drag=lambda mach, thrusting: 0.5)
+print(same.apogee_m == hpr.Flight(rocket, windy, 1.8, drag_table=table).apogee_m)
+
+
+def refuses(mach, thrusting):
+    if mach > 0.3:
+        raise LookupError("no drag measured past Mach 0.3")
+    return 0.5
+
+
+try:
+    hpr.Flight(rocket, windy, 1.8, drag=refuses)
+except LookupError as error:
+    print(type(error).__name__, error)
+```
+
+```text
+apogee 1109 m, landed 1963 m east
+True
+LookupError no drag measured past Mach 0.3
+```
+
+A function can't be given alongside its constant counterpart: `drag` with `drag_table`, or `wind`
+with `wind_speed_m_s`, raises `hpr.HprError`. So does a drag coefficient that is negative or not a
+number, or a wind that isn't finite; an answer of the wrong type, such as a string, raises
+Python's `TypeError`.
+
+**How far to trust it:** as far as your functions. hpr checks that a number is finite, and that a
+drag is not negative, but not that it is right. Each call takes Python's global interpreter lock,
+so a flight with a Python function runs slower than one without. Fly an environment that has a
+wind function from one thread at a time: it keeps the function's exception until its flight
+raises it. The functions should give the same answer to the same question, or a flight
+can't be repeated. The integrator asks at speeds and heights a little past the flight's own, so a
+function that refuses past its data wants some margin: the landing's search, for one, asks the wind
+a few metres below the ground.
+
 ## When something is wrong
 
 A value out of its range, a part out of order, or a motor or material that isn't there raises
@@ -376,14 +449,15 @@ built.
 
 The package covers the Rust builder, not the whole library. Not yet:
 
-- Drag, wind and other models written as Python functions
-  ([M4.3c](decisions-and-roadmap.md#m4-3c)). Rust programs have them today
-  ([Models of your own](custom-models.md)).
+- Models written in Python other than a drag and a wind, such as an atmosphere, a thrust or a
+  parachute's trigger. Rust programs have them today ([Models of your own](custom-models.md)).
 - Staging and mass shifts. A configuration that drops a stage under power is refused. Any other
   design of several stages flies as one stack: no stage drops away, a motor lit by another's
   burnout lights on the whole stack, one lit by a separation never does, and `rocket.notes` says
   so.
 - Swapping a motor into a design read from a file, as `hpr sim --motor` does.
 - Parachutes and separations stored in a design file, as above.
-- Wind that changes with height, and weather files: only the Rust library flies them.
+- Weather files and the library's own winds that change with height (power law, layers): only
+  the Rust library flies them; a Python function can give any of them
+  ([Drag and wind of your own](#drag-and-wind-of-your-own)).
 - Type stubs, so an editor sees the docstrings but not the arguments' types.
