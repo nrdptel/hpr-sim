@@ -16,7 +16,7 @@ familiarity with it. Today you also build the package yourself, which needs the 
 > Digits beyond those printed can differ between a release and a debug build. Because the code is
 > the same, what that page and [Accuracy](accuracy.md) say about the numbers holds here too. The
 > rocket below has never been flown for real, so no flight checks it. Where it lands in a wind is the least certain number of all: on two of RocketPy's example
-> rockets, hpr's drift and RocketPy's differ by 11 to 43%
+> rockets, hpr's drift and RocketPy's differ by 10 to 38%
 > ([Getting started](getting-started.md#how-far-to-trust-it) explains why). The package is new
 > and covers less than the Rust library ([What is not here yet](#what-is-not-here-yet)). Two gaps
 > matter most if you bring a design file: it flies without the parachutes it stores, and most
@@ -239,12 +239,17 @@ Three options make it RocketPy's flight:
   replaces hpr's own drag, and nothing else. `DragTable.from_csv` reads RocketPy's two-column
   drag files.
 - **RocketPy's gravity.** `Environment(..., gravity="vertical_taylor")` uses RocketPy's formula
-  for gravity instead of hpr's default. Near the ground the two differ by parts in a million.
+  for gravity instead of hpr's default. Near the ground the two differ in size by about one part
+  in 10⁸, but hpr's default also turns with the rocket's position over the ground. On this
+  flight the switch moves the apogee by 2 parts in 10⁷ and the landing point by 0.3 m
+  ([Gravity](physics/gravity.md)).
 - **One parachute at a time.** RocketPy flies only the last parachute to open, and hpr adds
-  together every one that is open. `add_parachute(..., released_by=1)` cuts a parachute away
-  once parachute number 1, the second added, is fully open.
+  together every one that is open. `released_by` is another parachute's number, counted from 0
+  in the order they were added: `add_parachute(..., released_by=1)` cuts this one away once the
+  second parachute is fully open ([Recovery](physics/recovery.md#triggers-lag-and-release)).
 
-Here is a table with less drag while the motor burns:
+Here is an invented table with less drag while the motor burns. Calisto flies it in calm air,
+as in the section above, to 2650 m above the pad:
 
 ```python
 table = hpr.DragTable([(0.0, 0.5), (3.0, 0.5)], [(0.0, 0.45), (3.0, 0.45)])
@@ -265,10 +270,13 @@ one at a time. It reads the rocket, the wind, the drag and the parachutes from t
 files, then flies them. Then it measures each metric as RocketPy defines it, and not always as
 hpr's own summary does:
 
-- RocketPy follows the rocket's dry centre of mass, its centre of mass without propellant. It
-  measures heights from where that point starts, a metre or so above the pad here.
-- RocketPy's rail exit is when its forward rail button leaves the rail, after 3.745 m of travel.
-  hpr's rail exit is its last guide's, at 5.2 m.
+- RocketPy follows the rocket's [dry centre of mass](glossary.md#centre-of-dry-mass), its centre
+  of mass without propellant, and starts that point at ground level. hpr stands the rocket on its
+  rail, so the same point starts 1.250 m up (the first line printed below). The example subtracts
+  1.250 m from every height, and opens the main 1.250 m above RocketPy's 800 m.
+- RocketPy's rail exit is when its forward rail button leaves the rail, after 3.745 m of travel
+  (RocketPy's `effective_1rl`). hpr's is when its aft-most rail guide clears the top of the 5.2 m
+  rail, after 4.45 m of travel, so the example reads RocketPy's off the recording.
 - RocketPy's flight ends when the dry centre of mass is back at its starting height.
 
 Run from the repository's root, `python crates/hpr-py/examples/calisto.py` prints:
@@ -283,23 +291,26 @@ max_speed_m_s                        243.56     243.52      +0.01%
 max_mach                             0.7321     0.7329      -0.12%
 max_acceleration_m_s2                112.35     112.24      +0.10%
 max_acceleration_power_on_m_s2       112.35     112.24      +0.10%
-rail_exit_speed_m_s                   28.19      28.20      -0.05%
+rail_exit_speed_m_s                   28.20      28.20      -0.01%
 rail_exit_time_s                     0.2945     0.2947      -0.07%
 burnout_altitude_agl_m               684.23     684.10      +0.02%
 burnout_speed_m_s                    235.65     235.60      +0.02%
-flight_time_s                        260.83     260.53      +0.11%
+flight_time_s                        260.86     260.53      +0.12%
 apogee_drift_m                       422.52     426.36      -0.90%
-landing_drift_m                     1277.25    1261.50      +1.25%
-impact_speed_m_s                     5.4550     5.4560      -0.02%
-largest difference 1.25%, within 3%: True
+landing_drift_m                     1277.36    1261.50      +1.26%
+impact_speed_m_s                     5.4549     5.4560      -0.02%
+largest difference 1.26%, within 3%: True
 ```
 
 Every metric is within 3% of RocketPy's, the bound the validation suite holds this flight to
 ([M2.1](decisions-and-roadmap.md#m2-1)). These are the suite's numbers: a test holds each to within
-0.1% of what the suite's report records for the same flight
+0.001% of what the suite's report records for the same flight
 ([`test_calisto.py`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-py/tests/test_calisto.py)).
-The drifts differ most. On two of RocketPy's other example rockets, flown in a wind, the drifts
-differ by 11 to 43% ([Getting started](getting-started.md#how-far-to-trust-it) explains why).
+Because both codes fly the same drag, this says nothing about hpr's own drag, the largest source
+of difference: flying its own, hpr puts the suite's six rockets' apogees 7.280% below RocketPy's to
+10.302% above, as the section before says. The drifts differ most here. On two of RocketPy's other
+example rockets, Juno III and Bella Lui, flown in a wind, the drifts differ by 10 to 38%
+([Getting started](getting-started.md#how-far-to-trust-it) explains why).
 
 ## When something is wrong
 

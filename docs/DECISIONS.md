@@ -9616,21 +9616,31 @@ that point is back at its starting height.
    rest are keyword arguments: `Flight(..., drag_table=)`, `Environment(..., gravity=)` and
    `add_parachute(..., released_by=)`. `gravity` names one of the three models that take no number,
    read through `GravityModel`'s `serde` tag. `released_by` is the other parachute's index, as in
-   Rust; a bad index is refused when the rocket flies, by the simulation's own check.
+   Rust; a bad index is refused when the rocket flies, by the simulation's own check. A table with
+   a negative coefficient is refused: by the builder when a flight is built, and by the package
+   when the table is made. `Simulation::with_drag_table` itself still flies one, as it did before
+   (#257).
 3. **RocketPy's definitions stay in the example.** The library gains no RocketPy-shaped metrics.
    `crates/hpr-py/examples/calisto.py` measures them on the flight's recording and events: the dry
    centre of mass is found by turning its body-frame position by each row's attitude. `h0` comes
-   from a first flight of the rocket before its parachutes are added. The rail exit is the step
-   that crosses `effective_1rl`, solved at constant acceleration. The landing is interpolated
-   linearly between the two steps that cross `h0`. The main opens `h0` above RocketPy's 800 m, as
-   the suite has it.
+   from a first flight of the rocket before its parachutes are added. The rail exit is found in
+   the step that crosses `effective_1rl`, filled in with a cubic for the speed that matches the
+   speed and the acceleration at both ends. The landing is interpolated linearly between the two
+   steps where `height_above_ground_m`, the height the suite uses, crosses `h0`. The main opens
+   `h0` above RocketPy's 800 m, as the suite has it. Two settings differ from the suite's and
+   don't matter here: the builder's 3,600 s time limit (the suite's is 6,000 s; the flight takes
+   261 s), and a table that holds its end values where the suite's refuses a Mach number past
+   them (the flight stays below Mach 0.74, the table runs to 3).
 4. **Checked twice.** `test_calisto.py` runs the example on the built wheel. It takes the scored
-   metrics from the committed report's rows for the case that carry a relative tolerance. It holds
-   each to 3% of RocketPy's value, and to 0.1% of the suite's own measurement of the same flight.
-   The guide's printed table must equal what the example prints.
+   metrics from the committed report's rows for the case that carry a relative tolerance: 14 of
+   its 16, the other two being the trajectory's RMS rows, held to absolute bounds by the suite
+   alone. It holds each to 3% of RocketPy's value, and to 1e-5 of the suite's own measurement of
+   the same flight. The guide's printed table must equal what the example prints.
 
-**Consequences.** Every scored metric is within 3%; the largest difference is the landing drift's,
-+1.25%, as in the suite's report. The example agrees with the suite's hpr numbers to 0.04% or
-better. The largest gap is the rail exit speed's, from the constant-acceleration step. Only the windy
-case is flown from Python; the calm one and predicted mode stay the suite's. The example reads
+**Consequences.** Every metric scored in percent is within 3%; the largest difference is the
+landing drift's, +1.257%, as in the suite's report. The example agrees with the suite's hpr
+numbers to 3.2e-6 or better; the largest gap is the top speed's, which the example takes at the
+integrator's steps and the suite also finds inside them. A wrong gravity model or a main opening
+at 800 m rather than 800 m + h0 moves the landing drift by 1.8e-4 or 5.9e-4, so the test's 1e-5 catches
+it. Only the windy case is flown from Python; the calm one and predicted mode stay the suite's. The example reads
 the reference fixture's JSON, so it runs only from a checkout, not from an installed wheel alone.

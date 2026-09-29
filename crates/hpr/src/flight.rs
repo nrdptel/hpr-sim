@@ -130,12 +130,14 @@ impl FlightBuilder<'_> {
     /// coefficient `C_D0` against Mach number, as RocketPy's `power_off_drag` and
     /// `power_on_drag` curves are ([`DragTable`], [`Simulation::with_drag_table`]). Its power-on
     /// curve, where it has one, is flown while a motor thrusts, and its power-off curve at every
-    /// other time. Between its Mach numbers the table interpolates linearly; past its ends it
-    /// holds the end values. A table on a reference diameter of its own
+    /// other time. A table read by [`DragTable::from_csv`] interpolates linearly between its Mach
+    /// numbers and holds its end values past them; one built from [`hpr_core::interp::Table1D`]s
+    /// interpolates and extrapolates as they say. A table on a reference diameter of its own
     /// ([`DragTable::with_reference_diameter_m`]) is rescaled to the rocket's reference area by
     /// the ratio of the two areas, `C_D0 · (d_table / d_rocket)²`. The normal force, centre of
     /// pressure, roll and damping stay hpr's. The last model or table set is the one flown
-    /// ([`FlightBuilder::drag_model`]).
+    /// ([`FlightBuilder::drag_model`]). A table with a negative coefficient is refused when the
+    /// flight is built.
     ///
     /// ```
     /// # use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
@@ -182,6 +184,8 @@ impl FlightBuilder<'_> {
     /// - [`Error::NoMotor`] for a rocket with no motor.
     /// - [`Error::Domain`] for an inclination outside `(0°, 90°]` or a heading that isn't
     ///   finite.
+    /// - [`Error::Domain`] for a drag table ([`FlightBuilder::drag_table`]) with a negative
+    ///   coefficient: drag that pushes the rocket along.
     /// - [`Error::Sim`] for what [`Simulation::new`] and [`Simulation::with_recovery`] refuse: a
     ///   rail that isn't positive in length, a design with errors in it
     ///   ([`hpr_design::checks`]), a recovery device the flight can't fly.
@@ -212,6 +216,17 @@ impl FlightBuilder<'_> {
             simulation = simulation.with_shared_drag_model(Arc::clone(model));
         }
         if let Some(table) = &self.drag_table {
+            // A table's values are finite (`Table1D::new` refuses others), so only a sign is left.
+            let curves = std::iter::once(&table.power_off).chain(&table.power_on);
+            if let Some(&value) = curves
+                .flat_map(|curve| curve.ys())
+                .find(|value| **value < 0.0)
+            {
+                return Err(Error::Domain {
+                    what: "zero-lift drag coefficient in a drag table",
+                    value,
+                });
+            }
             simulation = simulation.with_drag_table(table.clone());
         }
         if self.rocket.recovery().is_empty() {

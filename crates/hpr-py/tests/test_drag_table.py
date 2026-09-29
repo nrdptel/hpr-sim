@@ -51,6 +51,21 @@ def test_a_table_reads_csv_files(tmp_path):
     assert table.cd0(1.0) == pytest.approx(0.55)
     assert table.reference_diameter_m == 0.1
     assert not table.has_power_on
+    assert repr(table) == "DragTable(2 power-off rows, reference_diameter_m=0.1)"
+    on = tmp_path / "on.csv"
+    on.write_text("0,0.40\n2,0.60\n", encoding="utf-8")
+    both = hpr.DragTable.from_csv(off, on)
+    assert both.has_power_on
+    assert both.cd0(1.0, thrusting=True) == pytest.approx(0.5)
+    # An error names the file it is in.
+    bad = tmp_path / "bad.csv"
+    bad.write_text("0,0.4\n0,0.5\n", encoding="utf-8")
+    with pytest.raises(hpr.HprError, match="bad.csv: "):
+        hpr.DragTable.from_csv(off, bad)
+    pushing = tmp_path / "pushing.csv"
+    pushing.write_text("0,0.4\n1,-0.1\n", encoding="utf-8")
+    with pytest.raises(hpr.HprError, match="pushing.csv's row 1 has a drag coefficient of -0.1"):
+        hpr.DragTable.from_csv(pushing)
 
 
 def test_the_table_is_flown():
@@ -67,11 +82,15 @@ def test_the_table_is_flown():
 
 def test_a_gravity_model_is_flown():
     own = apogee()
+    # Each model a different flight, by about 1e-8 near the ground.
+    flown = {}
     for name in ("vertical_taylor", "Vertical Taylor", "vertical"):
         site = hpr.Environment(32.99, -106.97, 1400.0, gravity=name)
-        assert apogee(site=site) == pytest.approx(own, rel=1e-3)
-    taylor = hpr.Environment(32.99, -106.97, 1400.0, gravity="vertical_taylor")
-    assert apogee(site=taylor) != own
+        flown[name] = apogee(site=site)
+        assert flown[name] != own
+        assert flown[name] == pytest.approx(own, rel=1e-6)
+    assert flown["vertical_taylor"] == flown["Vertical Taylor"]
+    assert flown["vertical"] != flown["vertical_taylor"]
     assert apogee(site=hpr.Environment(32.99, -106.97, 1400.0, gravity="ellipsoidal")) == own
 
 
@@ -99,6 +118,14 @@ def test_a_parachute_is_released_by_another():
         (lambda: hpr.DragTable([(0.0, 0.5)]), "power_off"),
         (lambda: hpr.DragTable([(1.0, 0.5), (0.0, 0.5)]), "power_off"),
         (lambda: hpr.DragTable([(0.0, 0.5), (1.0, 0.5)], [(0.0, 0.5)]), "power_on"),
+        (
+            lambda: hpr.DragTable([(0.0, 0.5), (1.0, -0.01)]),
+            "power_off's row 1 has a drag coefficient of -0.01, and it can't be negative",
+        ),
+        (
+            lambda: hpr.DragTable([(0.0, 0.5), (1.0, 0.5)], [(0.0, -1.0), (1.0, 0.5)]),
+            "power_on's row 0",
+        ),
         (
             lambda: hpr.DragTable([(0.0, 0.5), (1.0, 0.5)], reference_diameter_m=0.0),
             "reference diameter is 0 m",

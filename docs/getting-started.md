@@ -164,7 +164,7 @@ Below the table:
   only in still air, where its drifts agree within 3%. Here it leaves the rail at 16.2 m/s in a
   5 m/s wind, at a steep angle to the airflow. At such angles hpr's
   [body lift](glossary.md#body-lift), a sideways push on the body that RocketPy leaves out, and
-  its later release from the rail put the drifts of two of RocketPy's rockets 11 to 43% from
+  its later release from the rail put the drifts of two of RocketPy's rockets 10 to 38% from
   RocketPy's; how much body lift a body makes is itself uncertain
   ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). So this example's apogee 86 m upwind
   and its landing point are the least trustworthy numbers it prints. Drift and landing have not

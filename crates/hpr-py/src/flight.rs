@@ -82,6 +82,24 @@ fn gravity_model(name: &str) -> PyResult<GravityModel> {
 
 /// A drag table's curve from `(mach, cd)` rows: linear between them, held at the ends.
 fn curve(what: &str, rows: &[Vec<f64>]) -> PyResult<Table1D> {
+    let table = rows_to_curve(what, rows)?;
+    not_negative(what, &table)?;
+    Ok(table)
+}
+
+/// Refuses a curve with a negative coefficient: drag that would push the rocket along.
+fn not_negative(what: &str, curve: &Table1D) -> PyResult<()> {
+    match curve.ys().iter().position(|value| *value < 0.0) {
+        Some(index) => Err(error(format!(
+            "{what}'s row {index} has a drag coefficient of {}, and it can't be negative",
+            curve.ys()[index]
+        ))),
+        None => Ok(()),
+    }
+}
+
+/// The rows as a curve, before its coefficients are checked.
+fn rows_to_curve(what: &str, rows: &[Vec<f64>]) -> PyResult<Table1D> {
     let mut machs = Vec::with_capacity(rows.len());
     let mut coefficients = Vec::with_capacity(rows.len());
     for (index, row) in rows.iter().enumerate() {
@@ -167,14 +185,20 @@ impl DragTable {
         power_on: Option<std::path::PathBuf>,
         reference_diameter_m: Option<f64>,
     ) -> PyResult<Self> {
+        // Each file read and checked alone, so an error names the file.
         let read = |path: &std::path::Path| {
-            std::fs::read_to_string(path)
-                .map_err(|problem| error(format!("{}: {problem}", path.display())))
+            let named =
+                |problem: &dyn std::fmt::Display| error(format!("{}: {problem}", path.display()));
+            let text = std::fs::read_to_string(path).map_err(|problem| named(&problem))?;
+            let curve = RustDragTable::from_csv(&text, None)
+                .map_err(|problem| named(&problem))?
+                .power_off;
+            not_negative(&path.display().to_string(), &curve)?;
+            Ok::<_, PyErr>(curve)
         };
         let off = read(&power_off)?;
         let on = power_on.as_deref().map(read).transpose()?;
-        let table = RustDragTable::from_csv(&off, on.as_deref()).map_err(error)?;
-        Self::with_reference(table, reference_diameter_m)
+        Self::with_reference(RustDragTable::new(off, on), reference_diameter_m)
     }
 
     /// `C_D0` at `mach`, from the power-on curve when `thrusting` and the table has one, on the
@@ -198,7 +222,7 @@ impl DragTable {
 
     fn __repr__(&self) -> String {
         format!(
-            "DragTable({} power-off rows{}, reference_diameter_m={:?})",
+            "DragTable({} power-off rows{}, reference_diameter_m={})",
             self.table.power_off.xs().len(),
             self.table
                 .power_on
@@ -207,7 +231,9 @@ impl DragTable {
                     ", {} power-on rows",
                     on.xs().len()
                 )),
-            self.table.reference_diameter_m
+            self.table
+                .reference_diameter_m
+                .map_or_else(|| "None".to_owned(), |diameter_m| diameter_m.to_string())
         )
     }
 }

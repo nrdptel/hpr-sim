@@ -767,6 +767,23 @@ fn a_drag_table_is_flown_in_place_of_hprs_drag() {
         .with_reference_diameter_m(2.0 * reference_diameter_m);
     let rescaled = apogee(wide);
     assert!((rescaled - high).abs() <= 1e-9 * high, "{rescaled} {high}");
+
+    // Drag that pushes is refused, in either curve.
+    for (off, on) in [
+        ("0,-0.01\n1,0.5\n", None),
+        ("0,0.5\n1,0.5\n", Some("0,0.5\n1,-0.2\n")),
+    ] {
+        let table = hpr_aero::DragTable::from_csv(off, on).unwrap();
+        let error = launch.clone().drag_table(table).fly().unwrap_err();
+        assert!(
+            matches!(
+                error,
+                Error::Domain { what, value }
+                    if what == "zero-lift drag coefficient in a drag table" && value < 0.0
+            ),
+            "{error:?}"
+        );
+    }
 }
 
 /// A gravity model other than the default is flown, and the Earth's rotation kept with it.
@@ -788,9 +805,10 @@ fn a_gravity_model_is_flown_in_place_of_the_default() {
     assert_eq!(taylor.sim().site(), environment().sim().site());
     let own = Flight::builder(&rocket, &environment(), 1.8).fly().unwrap();
     let by_taylor = Flight::builder(&rocket, &taylor, 1.8).fly().unwrap();
-    // The two formulas differ by parts in a million near the ground, not by nothing.
+    // The two formulas differ by about 1e-8 near the ground (docs/physics/gravity.md), not by
+    // nothing.
     let (a, b) = (own.apogee_m().unwrap(), by_taylor.apogee_m().unwrap());
-    assert!(a != b && (a - b).abs() < 1e-3 * a, "{a} {b}");
+    assert!(a != b && (a - b).abs() < 1e-6 * a, "{a} {b}");
     // A weaker uniform field, a higher flight.
     let light = environment()
         .with_gravity(GravityModel::Constant { g_mps2: 9.0 })
@@ -800,7 +818,14 @@ fn a_gravity_model_is_flown_in_place_of_the_default() {
     let error = environment()
         .with_gravity(GravityModel::Constant { g_mps2: -1.0 })
         .unwrap_err();
-    assert!(matches!(error, Error::Core(_)), "{error:?}");
+    assert!(
+        matches!(
+            error,
+            Error::Core(hpr_core::CoreError::Domain { what, value })
+                if what.starts_with("constant gravity magnitude") && value == -1.0
+        ),
+        "{error:?}"
+    );
 }
 
 /// Loft lesson L95: a degenerate design must be refused or fly to finite numbers, never to a NaN

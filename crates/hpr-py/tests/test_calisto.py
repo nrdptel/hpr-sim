@@ -1,6 +1,7 @@
 """RocketPy's Calisto, flown from Python by `examples/calisto.py`: within M2.1's 3% of RocketPy on
-every metric the validation suite scores, measured as the suite measures them, and printing what
-the guide's Python page shows."""
+every metric the validation suite scores as a share of RocketPy's value (its two trajectory rows
+have absolute bounds, and are the suite's alone), measured as the suite measures them, and
+printing what the guide's Python page shows."""
 
 import contextlib
 import io
@@ -34,8 +35,11 @@ def test_calisto_flies_within_three_percent_of_rocketpy(repo, monkeypatch):
         assert row["tolerance"]["relative"] == 0.03
         difference = abs(metrics[name] - row["reference"]) / abs(row["reference"])
         assert difference <= 0.03, name
-        # The same flight as the suite's, measured the same way: its committed hpr numbers.
-        assert abs(metrics[name] - row["measured"]) <= 1e-3 * abs(row["measured"]), name
+        # The same flight as the suite's, measured the same way: its committed hpr numbers. The
+        # example reads the recording at the integrator's steps, the suite inside them too; on
+        # 2026-09-29 the largest gap was the top speed's, 3.2e-6, and a wrong gravity model or a
+        # main opening at 800 m rather than 800 m + h0 moved the landing drift by 1.8e-4 or 5.9e-4.
+        assert abs(metrics[name] - row["measured"]) <= 1e-5 * abs(row["measured"]), name
     assert namespace["worst"] <= 0.03
 
 
