@@ -32,7 +32,8 @@ a bug, and the last section says how to report it.
    - The model page's verification section names the fixture and the test that reads it.
    - Some comparisons, today the descents under a parachute, are also run by the validation
      harness: the program behind `cargo xtask validate`, which flies them again and rewrites the
-     committed [validation report][report], one row per number.
+     committed [validation report][report], one row per number. [`hpr validate`](cli.md#hpr-validate)
+     flies them again and checks the report without rewriting it.
    - Each of those has a [case file](glossary.md#validation-case) under
      [`validation/cases/`][cases]. It says what is flown and how close the two must agree, and
      argues for that tolerance.

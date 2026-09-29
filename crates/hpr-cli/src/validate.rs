@@ -18,7 +18,8 @@ use crate::{Failure, Out};
 /// `hpr validate`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct ValidateArgs {
-    /// The copy of the hpr-sim repository whose cases to run [default: the current folder]
+    /// The copy of the hpr-sim repository whose cases to run, the current folder by default; build
+    /// hpr from the same commit
     #[arg(long, value_name = "DIR", default_value = ".")]
     pub root: String,
 }
@@ -56,29 +57,26 @@ pub(crate) fn run(args: &ValidateArgs, to: &mut Out<'_>) -> Result<(), Failure> 
         problems,
     };
     let lines = text_lines(&report, &checked);
-    to.emit(&document, |out| {
+    let emitted = to.emit(&document, |out| {
         lines.iter().try_for_each(|line| writeln!(out, "{line}"))
-    })?;
+    });
+    // A failed check fails even when the output couldn't be written, such as to a closed pipe,
+    // which is otherwise the reader's choice and no failure.
     if document.passed {
-        Ok(())
+        emitted
     } else {
         Err(Failure::Checked(document.problems.join("; ")))
     }
 }
 
-/// What `cargo xtask validate --check` prints, line for line.
+/// What `cargo xtask validate --check` prints, line for line: the summary, then the check's lines.
 fn text_lines(report: &hpr_validate::Report, checked: &committed::Checked) -> Vec<String> {
     let mut lines: Vec<String> = summary::cases(report)
         .iter()
         .map(ToString::to_string)
         .collect();
     lines.push(summary::totals(report).to_string());
-    if let Ok(census) = &checked.census {
-        lines.extend(census.lines());
-    }
-    if checked.failed == 0 && checked.reproduced.is_ok() {
-        lines.push("validate: the committed report reproduces".to_owned());
-    }
+    lines.extend(checked.lines());
     lines
 }
 

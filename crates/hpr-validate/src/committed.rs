@@ -118,13 +118,22 @@ pub fn change_lines(changes: &[Change]) -> Vec<String> {
     lines
 }
 
+/// Why a run doesn't reproduce the committed report.
+#[derive(Debug)]
+pub enum NotReproduced {
+    /// The committed report couldn't be read.
+    Unreadable(ValidateError),
+    /// It was read, and differs from the run: the first difference.
+    Differs(String),
+}
+
 /// A run held to the committed reports.
 #[derive(Debug)]
 pub struct Checked {
     /// The scored metrics outside their tolerance.
     pub failed: usize,
-    /// Whether the run reproduces the committed report, and if not, the first difference.
-    pub reproduced: Result<(), String>,
+    /// Whether the run reproduces the committed report.
+    pub reproduced: Result<(), NotReproduced>,
     /// The census check, or why it couldn't be taken.
     pub census: Result<CensusCheck, ValidateError>,
 }
@@ -146,13 +155,28 @@ impl Checked {
         if self.failed != 0 {
             problems.push(format!("{} metric(s) outside tolerance", self.failed));
         }
-        if let Err(what) = &self.reproduced {
-            problems.push(format!(
+        match &self.reproduced {
+            Ok(()) => {}
+            Err(NotReproduced::Unreadable(error)) => problems.push(error.to_string()),
+            Err(NotReproduced::Differs(what)) => problems.push(format!(
                 "the committed report is not this run's ({what}); run `cargo xtask validate` \
                  and commit validation/reports/latest.{{md,json}}"
-            ));
+            )),
         }
         problems
+    }
+
+    /// What `cargo xtask validate --check` prints after the run's summary: the census's lines,
+    /// then whether the report reproduces, when every metric passed and it does.
+    pub fn lines(&self) -> Vec<String> {
+        let mut lines = match &self.census {
+            Ok(census) => census.lines(),
+            Err(_) => Vec::new(),
+        };
+        if self.failed == 0 && self.reproduced.is_ok() {
+            lines.push("validate: the committed report reproduces".to_owned());
+        }
+        lines
     }
 }
 
@@ -161,8 +185,8 @@ pub fn check(root: &Path, report: &Report) -> Checked {
     let reproduced = match (read(root, LATEST_MD), read(root, LATEST_JSON)) {
         (Ok(markdown), Ok(json)) => report
             .reproduces(&markdown, &json)
-            .map_err(|error| error.to_string()),
-        (Err(error), _) | (_, Err(error)) => Err(error.to_string()),
+            .map_err(|error| NotReproduced::Differs(error.to_string())),
+        (Err(error), _) | (_, Err(error)) => Err(NotReproduced::Unreadable(error)),
     };
     Checked {
         failed: report.failures().len(),
@@ -345,6 +369,65 @@ fn read_json<T: serde::de::DeserializeOwned>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A census check of 7 rows, none changed, with `stale` stale files.
+    fn census(stale: usize) -> CensusCheck {
+        CensusCheck {
+            rows: 7,
+            changes: Vec::new(),
+            stale: vec!["README.md is not what the accepted census writes".to_owned(); stale],
+        }
+    }
+
+    /// The reasons, in xtask's order, and the lines after the summary.
+    #[test]
+    fn a_check_says_each_reason_once_in_order() {
+        let passed = Checked {
+            failed: 0,
+            reproduced: Ok(()),
+            census: Ok(census(0)),
+        };
+        assert!(passed.passed());
+        assert_eq!(
+            passed.lines(),
+            [
+                "census: the committed reports hold to the accepted census (7 rows)",
+                "validate: the committed report reproduces"
+            ]
+        );
+        let failed = Checked {
+            failed: 2,
+            reproduced: Err(NotReproduced::Differs("latest.json: x".to_owned())),
+            census: Ok(census(1)),
+        };
+        assert_eq!(
+            failed.problems(),
+            [
+                "1 output(s) are stale: run `cargo xtask census --accept`",
+                "2 metric(s) outside tolerance",
+                "the committed report is not this run's (latest.json: x); run `cargo xtask \
+                 validate` and commit validation/reports/latest.{md,json}"
+            ]
+        );
+        assert_eq!(
+            failed.lines(),
+            [
+                "census: no row differs from the accepted census",
+                "census: README.md is not what the accepted census writes"
+            ]
+        );
+        // An unreadable report is its own reason, not a report to regenerate; a census that can't
+        // be taken prints no census line.
+        let unread = Checked {
+            failed: 0,
+            reproduced: Err(NotReproduced::Unreadable(ValidateError::Case(
+                "reading x".into(),
+            ))),
+            census: Err(ValidateError::Case("no census".into())),
+        };
+        assert_eq!(unread.problems(), ["no census", "reading x"]);
+        assert!(unread.lines().is_empty());
+    }
 
     #[test]
     fn a_block_is_replaced_whole_and_only_once() {

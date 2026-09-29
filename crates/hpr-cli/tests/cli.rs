@@ -1426,6 +1426,19 @@ fn the_guides_launch_figures_hold() {
     );
 }
 
+/// A writer whose reader has gone, as `hpr validate | head -1` leaves standard output.
+struct ClosedPipe;
+
+impl std::io::Write for ClosedPipe {
+    fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+        Err(std::io::ErrorKind::BrokenPipe.into())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 /// Copies `from` into `to`, folders and all.
 fn copy_tree(from: &Path, to: &Path) {
     std::fs::create_dir_all(to).unwrap();
@@ -1572,6 +1585,18 @@ fn validate_fails_where_the_check_fails() {
         problems.contains(&"1 metric(s) outside tolerance".to_owned()),
         "{problems:?}"
     );
+    // A reader that stops reading doesn't turn the failure into a success.
+    for json in [false, true] {
+        let mut args = vec!["hpr", "validate", "--root", &at];
+        if json {
+            args.push("--json");
+        }
+        let mut err = Vec::new();
+        assert_eq!(
+            hpr_cli::run(args, &mut ClosedPipe, &mut err),
+            hpr_cli::Exit::Failure
+        );
+    }
     // As text, the lines go to standard output and the reasons to standard error.
     let output = hpr(&["validate", "--root", &at]);
     assert_eq!(output.status.code(), Some(1));
@@ -1608,6 +1633,8 @@ fn validate_needs_a_copy_of_the_repository() {
 
 /// A bundled `.rse` curve and a `.eng` one.
 const RSE_CURVE: &str = "curves/5f923edb1bca5800041716ab.rse";
+/// A bundled `.rse` curve whose maker is one word, which a `.eng` header keeps as it is.
+const RSE_ONE_WORD_MAKER: &str = "curves/5f4294d20002e90000000719.rse";
 const ENG_CURVE: &str = "curves/5f4294d20002e90000000724.eng";
 
 /// `hpr convert` round-trips a `.eng` file through `.rse`, and a `.rse` file through `.eng`: the
@@ -1654,10 +1681,10 @@ fn convert_round_trips_eng_and_rse() {
     assert_eq!(read("c.rse"), read("a.rse"));
 
     // .rse → .eng → .rse: the code, maker, casing, masses, delays and points.
-    let original = rse::parse(&std::fs::read_to_string(curve_file(RSE_CURVE)).unwrap())
+    let original = rse::parse(&std::fs::read_to_string(curve_file(RSE_ONE_WORD_MAKER)).unwrap())
         .unwrap()
         .value;
-    text_ok(&["convert", &curve_file(RSE_CURVE), &path("d.eng")]);
+    text_ok(&["convert", &curve_file(RSE_ONE_WORD_MAKER), &path("d.eng")]);
     text_ok(&["convert", &path("d.eng"), &path("e.rse")]);
     let back = rse::parse(&read("e.rse")).unwrap().value;
     assert_eq!(back.engines.len(), original.engines.len());
@@ -1703,8 +1730,39 @@ fn convert_writes_a_catalog_motor_and_rewrites_a_file() {
     let flown =
         hpr::Motor::from_eng(&std::fs::read_to_string(dir.path().join("h.eng")).unwrap()).unwrap();
     let catalog = hpr::Motor::from_catalog("H170M").unwrap();
-    // The curve the catalog flies, point for point.
+    // The curve the catalog flies, point for point, and its size and masses, which the catalog
+    // gives in grams and the file in kilograms, to the last bit or so.
     assert_eq!(flown.solid_motor().curve(), catalog.solid_motor().curve());
+    assert_eq!(
+        (flown.diameter_m(), flown.length_m()),
+        (catalog.diameter_m(), catalog.length_m())
+    );
+    let close = |a: f64, b: f64| (a - b).abs() <= 4.0 * f64::EPSILON * b.abs();
+    let (a, b) = (flown.solid_motor(), catalog.solid_motor());
+    assert!(close(
+        a.propellant_initial_mass_kg(),
+        b.propellant_initial_mass_kg()
+    ));
+    assert!(close(a.dry().mass_kg, b.dry().mass_kg));
+    // Where the curve file's header disagrees with the catalog, the catalog's figure is written,
+    // and the warning says so.
+    let document = json(
+        &["convert", "26E31-15A", &path("e.eng")],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(
+        document["warnings"][0]["message"],
+        "its curve file gives a propellant mass of 0.0169 kg; the catalog gives 0.0111 kg, which \
+         hpr flies and this file takes"
+    );
+    let written =
+        hpr::Motor::from_eng(&std::fs::read_to_string(dir.path().join("e.eng")).unwrap()).unwrap();
+    let catalog = hpr::Motor::from_catalog("26E31-15A").unwrap();
+    assert!(close(
+        written.solid_motor().propellant_initial_mass_kg(),
+        catalog.solid_motor().propellant_initial_mass_kg()
+    ));
     let text = text_ok(&["convert", &curve_file(ENG_CURVE), &path("same.eng")]);
     assert_eq!(
         text,
@@ -1724,7 +1782,9 @@ fn convert_refuses_what_it_cant_write() {
         let message = document["error"]["message"].as_str().unwrap().to_owned();
         assert!(message.contains(says), "{args:?}: {message}");
     };
-    let eng = curve_file(ENG_CURVE);
+    // A copy: were the check to fail, the bundled curve would be written over.
+    let eng = path("in.eng");
+    std::fs::copy(curve_file(ENG_CURVE), &eng).unwrap();
     refused(
         &["convert", &eng, &path("out.txt")],
         "writes a .eng or a .rse file",
@@ -1732,6 +1792,25 @@ fn convert_refuses_what_it_cant_write() {
     refused(
         &["convert", &eng, &eng],
         "that is the file hpr convert reads",
+    );
+    refused(
+        &["convert", "I175", &path("out.rse")],
+        "I175 names 2 catalog motors: ",
+    );
+    for delays in ["abc", "6 10", "6-x", ""] {
+        refused(
+            &["convert", &eng, &path("out.rse"), "--delays", delays],
+            "not a list of delays",
+        );
+    }
+    std::fs::write(
+        dir.path().join("latin1.eng"),
+        b"; caf\xe9\nX 1 2 P 0.1 0.2 M\n 1 1\n",
+    )
+    .unwrap();
+    refused(
+        &["convert", &path("latin1.eng"), &path("out.rse")],
+        "not a text file in UTF-8",
     );
     refused(
         &["convert", &eng, &path("missing/out.rse")],
@@ -1743,7 +1822,7 @@ fn convert_refuses_what_it_cant_write() {
     );
     refused(
         &["convert", &eng, &path("out.rse"), "--delays", "P"],
-        "--delays gives a .rse motor's missing delays",
+        "no motor this conversion writes needs them",
     );
     let rse = std::fs::read_to_string(curve_file(RSE_CURVE)).unwrap();
     let start = rse.find(" delays=\"").unwrap();
@@ -1753,7 +1832,7 @@ fn convert_refuses_what_it_cant_write() {
     std::fs::write(dir.path().join("undelayed.rse"), undelayed).unwrap();
     refused(
         &["convert", &path("undelayed.rse"), &path("out.eng")],
-        "gives no delays, and a .eng header must; give them with --delays",
+        "F15 give(s) no delays, and a .eng header must; give them with --delays",
     );
     json(
         &[
@@ -1771,5 +1850,13 @@ fn convert_refuses_what_it_cant_write() {
             .unwrap()
             .lines()
             .any(|line| line.starts_with("F15 ") && line.split_whitespace().nth(3) == Some("P"))
+    );
+    // An existing file is replaced.
+    std::fs::write(dir.path().join("old.rse"), "not a motor").unwrap();
+    text_ok(&["convert", &eng, &path("old.rse")]);
+    assert!(
+        std::fs::read_to_string(dir.path().join("old.rse"))
+            .unwrap()
+            .starts_with("<engine-database>")
     );
 }

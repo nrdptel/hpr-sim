@@ -84,15 +84,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
 /// `hpr validate` makes too.
 fn check_committed(root: &Path, report: &Report) -> Result<(), String> {
     let checked = committed::check(root, report);
-    if let Ok(census) = &checked.census {
-        for line in census.lines() {
-            println!("{line}");
-        }
+    for line in checked.lines() {
+        println!("{line}");
     }
     let problems = checked.problems();
-    if checked.failed == 0 && checked.reproduced.is_ok() {
-        println!("validate: the committed report reproduces");
-    }
     if problems.is_empty() {
         Ok(())
     } else {

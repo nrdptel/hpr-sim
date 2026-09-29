@@ -20,24 +20,38 @@
 //! 100 m₀ / initWt`; `Isp = Itot / (m₀ g₀)`; and `Type="unspecified"`, which RockSim's guide
 //! requires and the files use when they don't say.
 //!
-//! [`rse_to_eng`] drops what `.eng` can't hold, each named in a [`ConvertWarning`]. hpr reads
-//! none of it: it works a motor's mass and centre of gravity out from its curve and masses
-//! ([`SolidMotor::from_envelope`](crate::SolidMotor::from_envelope)), so the motor flies the
-//! same. It refuses a hybrid, whose `Type` a `.eng` file couldn't keep, and an engine without
-//! delays, since a `.eng` header must give them.
+//! [`rse_to_eng`] drops what `.eng` can't hold, each named in a [`ConvertWarning`]. hpr uses
+//! none of it for a solid motor: it works the mass and centre of gravity out from the curve and
+//! the masses ([`SolidMotor::from_envelope`](crate::SolidMotor::from_envelope)). It refuses a
+//! hybrid, whose `Type` a `.eng` file couldn't keep, and an engine without delays it can read,
+//! since a `.eng` header must give them. A `.eng` header is seven fields split on spaces, and
+//! OpenRocket refuses more, so a name or a maker of several words is written with `_` between
+//! them (`Estes_Industries,_Inc.`).
 //!
 //! **Round trips.** Masses move between kg and g by moving the decimal point in their shortest
-//! digits, not by multiplying, so a mass written with at most 15 significant digits comes back
-//! bit for bit. One of 16 or 17 digits may not (2 of the 29 bundled `.eng` files write one, such
-//! as `0.0036000000000000003`), and a warning says so. Converting `.eng` to `.rse` and back gives
-//! the same entries, bit for bit, unless an entry writes its origin out, spells its delays with
-//! commas, `p` or `1000`, writes such a mass, or the file has comments after its last motor; each
-//! of those is said in a warning or reads as the same delays ([`DelayList`](crate::DelayList)). Converting `.rse` to `.eng` and back gives the
-//! same code, maker, casing, masses, delays and points, and figures filled as above.
+//! digits, not by multiplying, so a mass of at most 15 significant digits, in the normal range
+//! of a double, comes back bit for bit. One of 16 or 17 digits may not (2 of the 29 bundled
+//! `.eng` files write one, such as `0.0036000000000000003`), and a warning says so.
+//!
+//! The thrust curve hpr flies comes back bit for bit both ways, and so do the diameter, the
+//! length, and the masses above. The rest may come back written differently:
+//!
+//! - delays spelled with commas, spaces, `p` or `1000` come back in the other spelling, and read
+//!   as the same delays ([`DelayList`]);
+//! - a name or maker of several words comes back with `_` between them, said in a warning;
+//! - a `(0, 0)` origin is written in `.rse` and left out of `.eng`, so a curve that gives it the
+//!   other way comes back the usual way;
+//! - comments lose blank lines and the spaces ending a line, said in a warning; comments after a
+//!   `.eng` file's last motor are dropped, said in a warning;
+//! - the `.rse` figures `.eng` can't hold are dropped, said in a warning, and filled again by the
+//!   rules above.
+//!
+//! After one conversion, a file converts to the other format and back to the same bytes.
 
 use hpr_core::gravity::STANDARD_GRAVITY_MPS2;
 use serde::{Deserialize, Serialize};
 
+use crate::delay::DelayList;
 use crate::eng::{EngEntry, EngFile};
 use crate::error::MotorError;
 use crate::rse::{RseEngine, RseFile, RsePoint};
@@ -85,7 +99,9 @@ impl ConvertWarning {
 /// # Errors
 ///
 /// What [`EngEntry::thrust_curve`] refuses: a curve with negative thrust, decreasing time or
-/// no impulse, whose `Itot` and `m` can't be worked out.
+/// no impulse, whose `Itot` and `m` can't be worked out. [`MotorError::Domain`] for a mass that
+/// has no value in grams, or one that makes a filled figure infinite, such as a propellant mass
+/// so small that the specific impulse overflows.
 pub fn eng_to_rse(file: &EngFile) -> Result<Converted<RseFile>, MotorError> {
     let mut warnings = Vec::new();
     let engines = file
@@ -118,8 +134,8 @@ fn rse_engine(
     let curve = entry.thrust_curve()?;
     let total_impulse_ns = curve.total_impulse_ns();
     let burn_time_s = curve.end_time_s();
-    let initial_mass_g = scaled(&entry.name, entry.total_mass_kg, Unit::Kg, warnings);
-    let propellant_mass_g = scaled(&entry.name, entry.propellant_mass_kg, Unit::Kg, warnings);
+    let initial_mass_g = scaled(&entry.name, entry.total_mass_kg, Unit::Kg, warnings)?;
+    let propellant_mass_g = scaled(&entry.name, entry.propellant_mass_kg, Unit::Kg, warnings)?;
     let cg_mm = entry.length_mm / 2.0;
     let mut points = entry.points.clone();
     // The origin `ThrustCurve::new` adds, written out.
@@ -146,7 +162,20 @@ fn rse_engine(
         })
         .collect();
     let positive = |value: f64| (value > 0.0).then_some(value);
-    Ok(RseEngine {
+    let delays = if DelayList::parse(&entry.delays).delays.is_empty() {
+        warnings.push(ConvertWarning::new(
+            &entry.name,
+            WarningKind::Dropped,
+            format!(
+                "dropped the delays {:?}, which name no delay; a .rse file may leave them out",
+                entry.delays
+            ),
+        ));
+        None
+    } else {
+        Some(delays_to_rse(&entry.delays))
+    };
+    let engine = RseEngine {
         manufacturer: entry.manufacturer.clone(),
         code: entry.name.clone(),
         motor_type: Some(UNSPECIFIED_TYPE.to_owned()),
@@ -154,7 +183,7 @@ fn rse_engine(
         length_mm: entry.length_mm,
         initial_mass_g,
         propellant_mass_g,
-        delays: Some(delays_to_rse(&entry.delays)),
+        delays,
         auto_calc_mass: Some(true),
         auto_calc_cg: Some(true),
         // `ThrustCurve::new` refuses a curve with no impulse or no burn time.
@@ -172,15 +201,30 @@ fn rse_engine(
             .map(|propellant| total_impulse_ns / (propellant * STANDARD_GRAVITY_MPS2)),
         comments: (!entry.comments.is_empty()).then(|| entry.comments.join("\n")),
         points,
-    })
+    };
+    // A mass near a double's limits can make a figure infinite, which no file can hold.
+    for (what, value) in [
+        ("average thrust (N)", engine.average_thrust_n),
+        ("mass fraction (%)", engine.mass_fraction_pct),
+        ("specific impulse (s)", engine.isp_s),
+    ] {
+        if let Some(value) = value
+            && !value.is_finite()
+        {
+            return Err(MotorError::Domain { what, value });
+        }
+    }
+    Ok(engine)
 }
 
 /// A `.rse` file as a `.eng` file, with what `.eng` can't hold named in the warnings.
 ///
 /// # Errors
 ///
-/// [`MotorError::Inconsistent`] for an engine without delays, which a `.eng` header must give,
-/// or a hybrid, which a `.eng` file couldn't say it is.
+/// [`MotorError::Inconsistent`] for an engine without delays it can read (none, or none
+/// [`DelayList::parse`](crate::DelayList::parse) finds), which a `.eng` header must give, or a
+/// hybrid, which a `.eng` file couldn't say it is; [`MotorError::Domain`] for a mass that has no
+/// value in kg (see the module's docs).
 pub fn rse_to_eng(file: &RseFile) -> Result<Converted<EngFile>, MotorError> {
     let mut warnings = Vec::new();
     let entries = file
@@ -211,12 +255,17 @@ fn eng_entry(
             "{code} is a hybrid, which a .eng file can't say; hpr models solid motors only"
         )));
     }
-    let delays = engine.delays.as_deref().ok_or_else(|| {
-        MotorError::Inconsistent(format!(
-            "the .rse engine {code:?} gives no delays, and a .eng header must"
-        ))
-    })?;
-    // A `.eng` header splits on spaces: the name is one token, the maker its words.
+    let delays = engine
+        .delays
+        .as_deref()
+        .filter(|delays| !DelayList::parse(delays).delays.is_empty())
+        .ok_or_else(|| {
+            MotorError::Inconsistent(format!(
+                "the .rse engine {code:?} gives no delays, and a .eng header must"
+            ))
+        })?;
+    // A `.eng` header is seven fields split on spaces. hpr reads the maker as the rest of the
+    // line, but OpenRocket refuses a header of more than seven fields, so each is one word.
     let name = code.split_whitespace().collect::<Vec<_>>().join("_");
     if name != *code {
         warnings.push(ConvertWarning::new(
@@ -229,13 +278,13 @@ fn eng_entry(
         .manufacturer
         .split_whitespace()
         .collect::<Vec<_>>()
-        .join(" ");
+        .join("_");
     if manufacturer != engine.manufacturer {
         warnings.push(ConvertWarning::new(
             code,
             WarningKind::Unusual,
             format!(
-                "a .eng maker is words with single spaces, so {:?} is written {manufacturer:?}",
+                "a .eng maker is one word, so {:?} is written {manufacturer:?}",
                 engine.manufacturer
             ),
         ));
@@ -280,9 +329,8 @@ fn eng_entry(
             code,
             WarningKind::Dropped,
             format!(
-                "dropped {}: a .eng file has no place for them. hpr flies the same motor without \
-                 them, as it works the mass and centre of gravity out from the curve and the \
-                 masses",
+                "dropped {}: a .eng file has no place for them. hpr doesn't use them for a solid \
+                 motor: it works the mass and centre of gravity out from the curve and the masses",
                 dropped.join(", ")
             ),
         ));
@@ -293,8 +341,8 @@ fn eng_entry(
         diameter_mm: engine.diameter_mm,
         length_mm: engine.length_mm,
         delays: delays_to_eng(delays),
-        propellant_mass_kg: scaled(code, engine.propellant_mass_g, Unit::G, warnings),
-        total_mass_kg: scaled(code, engine.initial_mass_g, Unit::G, warnings),
+        propellant_mass_kg: scaled(code, engine.propellant_mass_g, Unit::G, warnings)?,
+        total_mass_kg: scaled(code, engine.initial_mass_g, Unit::G, warnings)?,
         manufacturer,
         points,
     })
@@ -366,11 +414,30 @@ enum Unit {
 /// A mass in the other format's unit, with a warning if it wouldn't come back bit for bit: a
 /// value of 16 or 17 digits, such as a file's `7.5120000000000005` kg, can fall between the
 /// doubles the other unit reaches.
-fn scaled(motor: &str, mass: f64, unit: Unit, warnings: &mut Vec<ConvertWarning>) -> f64 {
+///
+/// # Errors
+///
+/// [`MotorError::Domain`] for a mass whose value in the other unit is infinite, or zero when the
+/// mass isn't: a double's limits, which no motor comes near.
+fn scaled(
+    motor: &str,
+    mass: f64,
+    unit: Unit,
+    warnings: &mut Vec<ConvertWarning>,
+) -> Result<f64, MotorError> {
     let (there, back, from, to): (f64, fn(f64) -> f64, _, _) = match unit {
         Unit::Kg => (kg_to_g(mass), g_to_kg, "kg", "g"),
         Unit::G => (g_to_kg(mass), kg_to_g, "g", "kg"),
     };
+    if !there.is_finite() || (there == 0.0 && mass != 0.0) {
+        return Err(MotorError::Domain {
+            what: match unit {
+                Unit::Kg => "mass (kg), which has no value in g",
+                Unit::G => "mass (g), which has no value in kg",
+            },
+            value: mass,
+        });
+    }
     let returned = back(there);
     if returned.to_bits() != mass.to_bits() {
         warnings.push(ConvertWarning::new(
@@ -382,16 +449,17 @@ fn scaled(motor: &str, mass: f64, unit: Unit, warnings: &mut Vec<ConvertWarning>
             ),
         ));
     }
-    there
+    Ok(there)
 }
 
-/// Kilograms to grams, by moving the decimal point ([`shift`]).
-fn kg_to_g(kg: f64) -> f64 {
+/// Kilograms to grams, by moving the decimal point in the mass's shortest digits rather than
+/// multiplying: `0.0041` kg is `4.1` g, where `0.0041 × 1000` is `4.1000000000000005`.
+pub fn kg_to_g(kg: f64) -> f64 {
     shift(kg, 3)
 }
 
-/// Grams to kilograms, by moving the decimal point ([`shift`]).
-fn g_to_kg(g: f64) -> f64 {
+/// Grams to kilograms, by moving the decimal point as [`kg_to_g`] does.
+pub fn g_to_kg(g: f64) -> f64 {
     shift(g, -3)
 }
 
@@ -399,9 +467,10 @@ fn g_to_kg(g: f64) -> f64 {
 /// `{:e}`) and reading the result.
 ///
 /// Multiplying by 1000 would round in binary: `0.0041 × 1000` is `4.1000000000000005`, as it is
-/// for about a quarter of the masses with four decimals. Moving the point gives the double nearest
-/// `4.1`, which a file writes as `4.1`, and moving it back gives `0.0041` again whenever the digits number at most 15, since two decimals of up to 15
-/// significant digits never share a double.
+/// for about a quarter of the masses with four decimals. Moving the point gives the double
+/// nearest `4.1`, which a file writes as `4.1`, and moving it back gives `0.0041` again whenever
+/// the digits number at most 15 and both values are normal doubles, since two decimals of up to
+/// 15 significant digits never share a double.
 fn shift(value: f64, places: i32) -> f64 {
     let text = format!("{value:e}");
     text.split_once('e')
@@ -535,7 +604,7 @@ mod tests {
             panic!("one entry");
         };
         assert_eq!(entry.name, "Micro_Maxx_II");
-        assert_eq!(entry.manufacturer, "Some Maker");
+        assert_eq!(entry.manufacturer, "Some_Maker");
         assert_eq!(entry.delays, "2-4-6");
         assert_eq!(entry.total_mass_kg, 0.33);
         assert_eq!(entry.propellant_mass_kg, 0.1825);
@@ -644,6 +713,7 @@ mod tests {
         let (mut engs, mut rses) = (0, 0);
         let mut respelled = Vec::new();
         let mut said = Vec::new();
+        let mut makers = Vec::new();
         for (name, text) in crate::bundled::CURVE_FILES {
             if name.ends_with(".eng") {
                 engs += 1;
@@ -683,6 +753,11 @@ mod tests {
                 assert_eq!(written.value, eng.value, "{name}");
                 let back = eng_to_rse(&written.value).unwrap().value;
                 for (a, b) in rse.engines.iter().zip(&back.engines) {
+                    let mut b = b.clone();
+                    if b.manufacturer != a.manufacturer {
+                        makers.push(format!("{name}: {} as {}", a.manufacturer, b.manufacturer));
+                        b.manufacturer.clone_from(&a.manufacturer);
+                    }
                     let carried = |e: &RseEngine| {
                         let points: Vec<(u64, u64)> = e
                             .points
@@ -703,7 +778,7 @@ mod tests {
                             points,
                         )
                     };
-                    assert_eq!(carried(a), carried(b), "{name}");
+                    assert_eq!(carried(a), carried(&b), "{name}");
                 }
                 assert_eq!(rse_to_eng(&back).unwrap().value, written.value, "{name}");
             }
@@ -717,6 +792,13 @@ mod tests {
                 "curves/5f4294d20002e90000000876.eng: 1000 as P"
             ]
         );
+        // A maker of several words, which a .eng header joins with `_`.
+        assert_eq!(
+            makers,
+            [
+                "curves/5f923edb1bca5800041716ab.rse: Estes Industries, Inc. as Estes_Industries,_Inc."
+            ]
+        );
         // The two masses of 17 digits, each said, and the only values that move.
         assert_eq!(
             said,
@@ -727,6 +809,71 @@ mod tests {
                 "curves/5f4294d20002e9000000088e.eng: 0.0036000000000000003 kg has more digits \
                  than a value in g keeps: it is written 3.6 g, which reads back as 0.0036 kg"
             ]
+        );
+    }
+
+    /// Delays that name none are as good as none: `.rse` leaves them out, and `.eng` refuses them.
+    #[test]
+    fn delays_that_name_none_are_left_out_or_refused() {
+        let mut eng = eng::parse(ENG).unwrap().value;
+        eng.entries[0].delays = "-".to_owned();
+        let rse = eng_to_rse(&eng).unwrap();
+        assert_eq!(rse.value.engines[0].delays, None);
+        assert!(
+            rse.warnings[0]
+                .message
+                .starts_with("dropped the delays \"-\"")
+        );
+        let mut rse = rse::parse(RSE).unwrap().value;
+        for delays in ["", " ", "abc"] {
+            rse.engines[0].delays = Some(delays.to_owned());
+            let error = rse_to_eng(&rse).unwrap_err().to_string();
+            assert!(error.contains("gives no delays"), "{delays:?}: {error}");
+        }
+    }
+
+    /// A mass at a double's limits has no value in the other unit, and a figure that would be
+    /// infinite is refused rather than written.
+    #[test]
+    fn a_mass_at_a_doubles_limits_is_refused() {
+        let mut rse = rse::parse(RSE).unwrap().value;
+        rse.engines[0].propellant_mass_g = 5e-324;
+        let error = rse_to_eng(&rse).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                MotorError::Domain {
+                    what: "mass (g), which has no value in kg",
+                    ..
+                }
+            ),
+            "{error:?}"
+        );
+        let mut eng = eng::parse(ENG).unwrap().value;
+        eng.entries[0].total_mass_kg = 1e306;
+        let error = eng_to_rse(&eng).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                MotorError::Domain {
+                    what: "mass (kg), which has no value in g",
+                    ..
+                }
+            ),
+            "{error:?}"
+        );
+        let mut eng = eng::parse(ENG).unwrap().value;
+        eng.entries[0].propellant_mass_kg = 1e-310;
+        let error = eng_to_rse(&eng).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                MotorError::Domain {
+                    what: "specific impulse (s)",
+                    ..
+                }
+            ),
+            "{error:?}"
         );
     }
 

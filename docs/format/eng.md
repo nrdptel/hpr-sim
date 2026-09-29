@@ -174,10 +174,12 @@ Round-trip stable: a file hpr writes reads back to exactly the values it was wri
   write error, not a changed value.
 - Leading and trailing whitespace inside comment text: the reader trims only trailing whitespace,
   and the writer never adds any, so `; text` round-trips as ` text`.
-- Converting to and from `.rse` (`hpr_motor::convert`, `hpr convert`, since [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line conversion) is described
-  with that format's [writer policy](rse.md#writer-policy-strict-round-trip-stable). From `.rse`,
-  a code with spaces joins its words with `_`, a leading `(0, 0)` point is dropped when the next is
-  after ignition, and the comment text becomes one comment per non-blank line.
+- Converting to and from `.rse` (`hpr_motor::convert`, `hpr convert`, since
+  [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line conversion) is described with
+  that format's [writer policy](rse.md#writer-policy-strict-round-trip-stable). From `.rse`, a
+  code or maker of several words joins them with `_`, as no real file has more than seven header
+  fields and OpenRocket 24.12 refuses more; a leading `(0, 0)` point is dropped when the next is
+  after ignition; and the comment text becomes one comment per non-blank line.
 
 ## Checked against real files
 

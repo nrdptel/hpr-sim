@@ -8,13 +8,15 @@
 use std::io::{self, Write};
 use std::path::Path;
 
+use hpr::hpr_motor::DelayList;
 use hpr::hpr_motor::catalog::{CatalogMotor, CurveFormat, bundled_curve_text};
 use hpr::hpr_motor::convert::{self, ConvertWarning};
 use hpr::hpr_motor::eng::{self, EngFile};
 use hpr::hpr_motor::rse::{self, RseFile};
+use hpr::hpr_motor::text::WarningKind as ReadWarning;
 
 use crate::motors::{MotorFile, catalog, read_warnings, warning_kind};
-use crate::output::{Convert, ConvertedFile, MotorSource, Warning};
+use crate::output::{Convert, ConvertedFile, MotorSource, Warning, WarningKind};
 use crate::sim::same_file;
 use crate::{Failure, Out};
 
@@ -45,7 +47,18 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             "{output}: hpr convert writes a .eng or a .rse file, named by its extension"
         ))
     })?;
-    let (source, format, text) = read_input(&args.input)?;
+    if let Some(delays) = &args.delays {
+        let list = DelayList::parse(delays);
+        if list.delays.is_empty()
+            || delays.contains(char::is_whitespace)
+            || list.warnings.iter().any(|w| w.kind == ReadWarning::Dropped)
+        {
+            return Err(Failure::Input(format!(
+                "--delays {delays}: not a list of delays, such as 6-10-14, or P for plugged"
+            )));
+        }
+    }
+    let (source, format, text, figures) = read_input(&args.input)?;
     if matches!(source, MotorSource::File { .. }) && same_file(&args.input) == same_file(output) {
         return Err(Failure::Input(format!(
             "{output}: that is the file hpr convert reads, and it would write over it"
@@ -63,7 +76,7 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
     let input = &args.input;
     let refused = |error| Failure::Input(format!("{input}: {error}"));
     let mut warnings = Vec::new();
-    let motors = match format {
+    let mut motors = match format {
         MotorFile::Eng => {
             let parsed = eng::parse(&text).map_err(refused)?;
             warnings.extend(read_warnings(&parsed.warnings)?);
@@ -75,12 +88,39 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             Motors::Rse(parsed.value)
         }
     };
-    if args.delays.is_some() && !(format == MotorFile::Rse && target == MotorFile::Eng) {
-        return Err(Failure::Input(
-            "--delays gives a .rse motor's missing delays for a .eng file; this conversion \
-             writes none"
-                .to_owned(),
-        ));
+    if let Some(figures) = &figures {
+        warnings.extend(figures.apply(&mut motors));
+    }
+    // The engines a `.eng` header would have no delays for.
+    let undelayed: Vec<String> = match &motors {
+        Motors::Rse(file) if target == MotorFile::Eng => file
+            .engines
+            .iter()
+            .filter(|engine| {
+                engine
+                    .delays
+                    .as_deref()
+                    .is_none_or(|delays| DelayList::parse(delays).delays.is_empty())
+            })
+            .map(|engine| engine.code.clone())
+            .collect(),
+        _ => Vec::new(),
+    };
+    match (&args.delays, undelayed.is_empty()) {
+        (Some(_), true) => {
+            return Err(Failure::Input(
+                "--delays gives the delays of a .rse motor that has none, for a .eng file; no \
+                 motor this conversion writes needs them"
+                    .to_owned(),
+            ));
+        }
+        (None, false) => {
+            return Err(Failure::Input(format!(
+                "{input}: {} give(s) no delays, and a .eng header must; give them with --delays",
+                undelayed.join(", ")
+            )));
+        }
+        _ => {}
     }
     let unwritable = |error| {
         Failure::Input(format!(
@@ -109,18 +149,13 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
         }
         (Motors::Rse(mut file), MotorFile::Eng) => {
             if let Some(delays) = &args.delays {
-                for engine in file.engines.iter_mut().filter(|e| e.delays.is_none()) {
-                    engine.delays = Some(delays.clone());
+                for engine in &mut file.engines {
+                    if undelayed.contains(&engine.code) {
+                        engine.delays = Some(delays.clone());
+                    }
                 }
             }
-            let converted = convert::rse_to_eng(&file).map_err(|error| {
-                let hint = if file.engines.iter().any(|e| e.delays.is_none()) {
-                    "; give them with --delays"
-                } else {
-                    ""
-                };
-                Failure::Input(format!("{input}: {error}{hint}"))
-            })?;
+            let converted = convert::rse_to_eng(&file).map_err(refused)?;
             (
                 eng::write(&converted.value).map_err(unwritable)?,
                 eng_names(&converted.value),
@@ -145,8 +180,96 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
     to.emit(&document, |out| text_output(&document, input, out))
 }
 
-/// The input's source, format and text: a motor file by its extension, or else a catalog motor.
-fn read_input(input: &str) -> Result<(MotorSource, MotorFile, String), Failure> {
+/// What the bundled catalog gives a motor, which hpr flies in place of its curve file's header
+/// ([`CatalogMotor::motor`](hpr::hpr_motor::catalog::CatalogMotor::motor)).
+struct CatalogFigures {
+    diameter_mm: f64,
+    length_mm: f64,
+    propellant_mass_g: Option<f64>,
+    total_mass_g: Option<f64>,
+}
+
+impl CatalogFigures {
+    /// Writes the catalog's figures over the file's, with a warning for each that differed.
+    fn apply(&self, motors: &mut Motors) -> Vec<Warning> {
+        let mut warnings = Vec::new();
+        let mut set = |motor: &str, field: &mut f64, value: f64, what: &str, unit: &str| {
+            if field.to_bits() != value.to_bits() {
+                warnings.push(Warning {
+                    motor: Some(motor.to_owned()),
+                    line: None,
+                    kind: WarningKind::Unusual,
+                    message: format!(
+                        "its curve file gives a {what} of {field} {unit}; the catalog gives \
+                         {value} {unit}, which hpr flies and this file takes"
+                    ),
+                });
+                *field = value;
+            }
+        };
+        match motors {
+            Motors::Eng(file) => {
+                for entry in &mut file.entries {
+                    let name = entry.name.clone();
+                    set(
+                        &name,
+                        &mut entry.diameter_mm,
+                        self.diameter_mm,
+                        "diameter",
+                        "mm",
+                    );
+                    set(&name, &mut entry.length_mm, self.length_mm, "length", "mm");
+                    if let Some(g) = self.propellant_mass_g {
+                        let kg = convert::g_to_kg(g);
+                        set(
+                            &name,
+                            &mut entry.propellant_mass_kg,
+                            kg,
+                            "propellant mass",
+                            "kg",
+                        );
+                    }
+                    if let Some(g) = self.total_mass_g {
+                        let kg = convert::g_to_kg(g);
+                        set(&name, &mut entry.total_mass_kg, kg, "loaded mass", "kg");
+                    }
+                }
+            }
+            Motors::Rse(file) => {
+                for engine in &mut file.engines {
+                    let code = engine.code.clone();
+                    set(
+                        &code,
+                        &mut engine.diameter_mm,
+                        self.diameter_mm,
+                        "diameter",
+                        "mm",
+                    );
+                    set(&code, &mut engine.length_mm, self.length_mm, "length", "mm");
+                    if let Some(g) = self.propellant_mass_g {
+                        set(
+                            &code,
+                            &mut engine.propellant_mass_g,
+                            g,
+                            "propellant mass",
+                            "g",
+                        );
+                    }
+                    if let Some(g) = self.total_mass_g {
+                        set(&code, &mut engine.initial_mass_g, g, "loaded mass", "g");
+                    }
+                }
+            }
+        }
+        warnings
+    }
+}
+
+/// The input's source, format and text, and for a catalog motor the figures hpr flies: a motor
+/// file by its extension, or else a catalog motor.
+fn read_input(
+    input: &str,
+) -> Result<(MotorSource, MotorFile, String, Option<CatalogFigures>), Failure> {
     if let Some(format) = MotorFile::of(input) {
         let bytes =
             std::fs::read(input).map_err(|error| Failure::Input(format!("{input}: {error}")))?;
@@ -156,7 +279,7 @@ fn read_input(input: &str) -> Result<(MotorSource, MotorFile, String), Failure> 
             path: input.to_owned(),
             format: format.output(),
         };
-        return Ok((source, format, text));
+        return Ok((source, format, text, None));
     }
     let catalog = catalog()?;
     let matches: Vec<&CatalogMotor> = catalog.find(input).collect();
@@ -199,7 +322,13 @@ fn read_input(input: &str) -> Result<(MotorSource, MotorFile, String), Failure> 
         curve_url: curve.info_url.clone().unwrap_or_else(|| curve.url.clone()),
         format: format.output(),
     };
-    Ok((source, format, text.to_owned()))
+    let figures = CatalogFigures {
+        diameter_mm: motor.diameter_mm,
+        length_mm: motor.length_mm,
+        propellant_mass_g: motor.propellant_mass_g,
+        total_mass_g: motor.total_mass_g,
+    };
+    Ok((source, format, text.to_owned(), Some(figures)))
 }
 
 fn eng_names(file: &EngFile) -> Vec<String> {

@@ -177,14 +177,30 @@ Round-trip stable: a file hpr writes reads back to exactly the values it was wri
   A literal one would read back as a space [X §3.3.3]. Escape `<comments>` text as
   `&amp; &lt; &gt;` with CR as `&#13;`, without CDATA, and write it verbatim (no trimming).
 - Flags are written `1` or `0`. The rendering attributes are not kept, so they are not written.
-- Converting from `.eng` (`hpr_motor::convert`, `hpr convert`, since [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line conversion) fills what `.eng`
-  lacks the way the observed files do: a (0, 0) origin, `Itot` (trapezoid), `peakThrust`,
-  `burn-time` = last `t`, `avgThrust` = Itot/burn-time, `m` by the impulse fraction above, `cg` =
-  len/2, both auto-calc flags `1`, `massFrac` and `Isp` as observed, and `Type="unspecified"`,
-  which the guide requires. Delays trade `-` for `,` and `P` for `1000`; masses move from kg to g
-  by moving the decimal point in their shortest digits, not by multiplying. Converting to `.eng`
-  drops `Type`, the flags, the stated figures and `m` and `cg`, each named in a warning, and
-  refuses a hybrid and an engine without `delays`.
+- Converting from `.eng`, which the writer itself never does, is `hpr_motor::convert` and
+  `hpr convert` (since [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line
+  conversion). It fills what `.eng` lacks the way the observed files do:
+
+  | attribute | filled as | observed in |
+  |---|---|---|
+  | a `(0, 0)` first point | added when the curve's first point is after ignition | 715 of 715 |
+  | `Itot` | the trapezoidal integral of the curve | within 0.1% in 712 |
+  | `peakThrust` | the largest `f` | all but 9 |
+  | `burn-time` | the last `t` | equal, or rounded from it in 281 |
+  | `avgThrust` | `Itot` / `burn-time` | within 0.1% in 712 |
+  | `m` | m₀ (1 − I(t)/`Itot`), m₀ = `propWt` | 698 of 700 |
+  | `cg` | `len`/2 | 685 of 715 |
+  | `auto-calc-mass`, `auto-calc-cg` | `1` | every file |
+  | `massFrac` | 100 m₀/`initWt` | 703 of 710 |
+  | `Isp` | `Itot`/(m₀ in kg × 9.80665) | 696 of 710 |
+  | `Type` | `unspecified`, as the guide requires one [P p.1] | one of the values seen |
+
+  Delays trade `-` for `,` and `P` for `1000`. Masses move from kg to g by moving the decimal
+  point in their shortest digits, not by multiplying. Converting to `.eng` drops the attributes
+  above, each named in a warning, and refuses a hybrid and an engine without delays it can read.
+  OpenRocket 24.12 opens every file converted from the bundled curves
+  ([`motor_files.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/motor_files.py));
+  whether RockSim does is unverified.
 - Invariant (test it): whenever `write(parse(x))` succeeds, `parse(write(parse(x))) == parse(x)`,
   with f64 compared by bits and strings compared exactly.
 

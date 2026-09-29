@@ -8,11 +8,14 @@
 //!   with a `/` in it is a file of the repository, given from its root, as a reader who runs the
 //!   example from a copy of it types it. One without a `/` that ends in a file extension of
 //!   letters, such as `F15.eng`, is a file the command writes: it goes to a scratch folder, so
-//!   running the page never writes into the repository.
+//!   running the page never writes into the repository, and the page shows that folder's path,
+//!   which changes from run to run, as `<the scratch folder>`.
 //!
 //! `--check` (and the test below, which the gate runs) fails when a committed copy differs.
 
 use std::path::{Path, PathBuf};
+
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use hpr_cli::registry::{Links, command_table};
 
@@ -243,10 +246,15 @@ fn written(arg: &str) -> bool {
 
 /// A fenced block with the command line and what it printed, and its exit status if not 0; and
 /// that status. The command's paths are read from `root`; the files it writes go to a scratch
-/// folder, removed afterwards.
+/// folder of this call's own, removed afterwards, whose path the block must not show.
 fn example(command: &str, root: &Path) -> (String, u8) {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
     let (mut out, mut err) = (Vec::new(), Vec::new());
-    let scratch = std::env::temp_dir().join(format!("hpr-cli-examples-{}", std::process::id()));
+    let scratch = std::env::temp_dir().join(format!(
+        "hpr-cli-examples-{}-{}",
+        std::process::id(),
+        CALLS.fetch_add(1, Ordering::Relaxed)
+    ));
     let _ = std::fs::create_dir_all(&scratch);
     let args = command.split_whitespace().map(|arg| {
         if arg.contains('/') {
@@ -259,6 +267,15 @@ fn example(command: &str, root: &Path) -> (String, u8) {
     });
     let exit = hpr_cli::run(args, &mut out, &mut err);
     let _ = std::fs::remove_dir_all(&scratch);
+    // A written file's path differs from run to run: the page may show its name only.
+    for printed in [&mut out, &mut err] {
+        let text = String::from_utf8_lossy(printed).into_owned();
+        if text.contains(&*scratch.to_string_lossy()) {
+            *printed = text
+                .replace(&*scratch.to_string_lossy(), "<the scratch folder>")
+                .into_bytes();
+        }
+    }
     let mut block = format!("```text\n$ {command}\n");
     block.push_str(&String::from_utf8_lossy(&out));
     block.push_str(&String::from_utf8_lossy(&err));

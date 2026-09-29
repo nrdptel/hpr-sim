@@ -21,7 +21,8 @@ It is a Rust library first, meant to be built into other programs, as
 [RocketPy](glossary.md#rocketpy) is. RocketPy is an open-source rocket flight simulator, written in
 Python and used as a Python library. Python bindings and a graphical app are planned for hpr-sim.
 OpenRocket `.ork` design files are read today. The command-line tool, `hpr`, flies a `.ork` or
-hpr design file and looks up motors ([The command line](cli.md)).
+hpr design file, looks up and converts motor files, and re-runs the validation
+([The command line](cli.md)).
 
 It is also built to be checked. Every model cites a published source, and tests pin every model.
 The simulator is compared against RocketPy, [OpenRocket](https://openrocket.info/) and the logs
