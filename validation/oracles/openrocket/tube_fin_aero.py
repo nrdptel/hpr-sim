@@ -11,7 +11,8 @@ The probes are one airframe, a 12.5 mm radius body with a nose, and a tube fin s
 Each varies one thing from the first (six tubes of automatic radius, 75 mm long, a 0.3 mm wall):
 the tubes' length, their count at a stated radius, their radius, their wall. Every part has a fixed
 id, so hpr and OpenRocket name each one the same way. `hpr_validate::openrocket`'s tests read the
-same documents with `hpr_io::ork` and hold hpr's slopes and centres to these.
+same documents with `hpr_io::ork`, measure how far hpr's centre of pressure is from these, and pin
+it (ADR-102).
 
 Each (probe, Mach) pair is asked of a newly loaded design and a new calculator: one calculator
 asked again after a part changes answers from its cache. The angle of attack is 1e-4 rad; the
@@ -186,8 +187,16 @@ def main():
 
     fixture = {
         "source": "validation/oracles/openrocket/tube_fin_aero.py",
-        "command": "tube_fin_aero.py",
+        "command": "refs/venv/bin/python validation/oracles/openrocket/tube_fin_aero.py "
+        "validation/fixtures/ork/openrocket-tube-fin-aero.json",
         "generated": GENERATED,
+        "inputs_sha256": {
+            name: hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
+            for name, module in [
+                ("tube_fin_aero.py", sys.modules[__name__]),
+                ("automatic_radius.py", automatic_radius),
+            ]
+        },
         "openrocket": str(BuildProperties.getVersion()),
         "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),
         "java": str(System.getProperty("java.version")),
@@ -196,9 +205,7 @@ def main():
         "probes": probes,
         "example": example,
     }
-
-
-    text = json.dumps(fixture, indent=2, ensure_ascii=False) + "\n"
+    text = json.dumps(fixture, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
     output.write_text(text, encoding="utf-8")
 
 

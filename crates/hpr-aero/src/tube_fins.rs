@@ -28,8 +28,8 @@
 //! line to the leading edge at `A = 0`. That end point is hpr's derivation from slender-body
 //! theory, in which a section's lift is the growth of its apparent mass along the body: a thin
 //! ring's appears whole at its leading edge and stays, so all its lift is there. Hoerner and Borst
-//! (*Fluid-Dynamic Lift*, 1985, p. 19-16) take the air turned inside an open tube as turning "at
-//! or near the rim of the inlet", in theory, with no measurement to hand. Fletcher's fifth
+//! (*Fluid-Dynamic Lift*, 1985, p. 19-16) assume the same of the air turned inside an open tube,
+//! that it turns "at or near the rim of the inlet"; they had no measurement of it. Fletcher's fifth
 //! ring, at `A = 1/3`, is left out, a judgement: its centre sits 0.11 of its chord ahead of its
 //! leading edge, which he puts down to its low aspect ratio making it act like a body of
 //! revolution (p. 4). hpr infers, beyond his text, that its thick section (a Clark Y 11.7% of a
@@ -41,10 +41,14 @@
 //! diameter, past `A = 3`, are refused.
 //!
 //! **The set.** `N` tubes add `N` times one tube's slope, with no interference from the body or
-//! between the tubes: none is measured or cited. The body's own crossflow disturbance at the tubes
-//! goes as `R²/s² e^{−2iφ}` around it, which sums to zero over three or more tubes evenly spaced,
-//! so the model refuses fewer than three. This is a derivation, not a measurement
-//! (`docs/physics/aero.md`, *Tube fins*).
+//! between the tubes: none is measured. The body's own crossflow disturbance at the tubes goes as
+//! `R²/s² e^{−2iφ}` around it, which sums to zero over three or more tubes evenly spaced, so the
+//! model refuses fewer than three. That is a first-order derivation, not a measurement: it takes
+//! the body's flow at each tube's centre and leaves out the images and the lift carried onto the
+//! body. Slender-body theory with the body included gives the set more lift than `N` isolated
+//! rings, by an unchecked estimate 1.13 to 1.96 times on OpenRocket probes
+//! ([#234](https://github.com/nrdptel/hpr-sim/issues/234);
+//! `docs/physics/aero.md`, *Tube fins*).
 
 use std::f64::consts::PI;
 

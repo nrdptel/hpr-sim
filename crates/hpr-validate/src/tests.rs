@@ -2077,9 +2077,14 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
     // Loft lesson L82. Loft let a design whose two references were 60% apart off as "no single
     // target", and known issues excused its two largest misses, so none of them counted in its
     // error statistics. In hpr an explanation or a named cause is written beside a miss, never in
-    // place of it: every compared case counts in its group's spread and bar counts, whatever
-    // explains it, and a rocket with two references counts against each. Here that is RocketPy's
-    // flight (the harness) and its team's log (the real flights), which disagree.
+    // place of it:
+    //
+    // - every number a report compares is a census row, with the report's own difference, and a
+    //   scored one is never withheld: the OpenRocket flights with written causes (ADR-073) and the
+    //   real flights with written explanations among them;
+    // - every group's spread and bar counts are over all its compared rows, the misses with them;
+    // - a rocket with two references counts against each. For the harness's rockets that is
+    //   RocketPy's flight and the team's altimeter log (the real flights), which disagree.
     use crate::census::{Census, Group, Reports, Standing};
     use crate::real_flight::{REPORT_JSON, RealFlightReport};
     let read = |name: &str| {
@@ -2102,9 +2107,93 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
         openrocket_library: &library,
     })
     .expect("the committed reports make a census");
-    let summaries = census.summaries();
+    let row = |group: Group, case: &str, metric: &str| {
+        census
+            .rows
+            .iter()
+            .find(|row| row.group == group && row.case == case && row.metric == metric)
+            .unwrap_or_else(|| panic!("{group:?} {case} {metric} is not in the census"))
+    };
+
+    // Every compared number is a row, with the report's own difference.
+    for comparison in &harness.comparisons {
+        let group = census
+            .rows
+            .iter()
+            .find(|row| row.case == comparison.case)
+            .map(|row| row.group)
+            .expect("the case's group");
+        let found = row(group, &comparison.case, &comparison.metric);
+        assert_eq!(
+            found.difference, comparison.difference,
+            "{}",
+            comparison.case
+        );
+    }
+    let number = |value: &serde_json::Value| value.as_f64().expect("a number");
+    let mut caused = 0;
+    for flight in examples["flights"]
+        .as_array()
+        .expect("the examples' flights")
+    {
+        let case = format!(
+            "{} / {}",
+            flight["design"].as_str().expect("a design"),
+            flight["configuration"].as_str().expect("a configuration")
+        );
+        let apogee = &flight["metrics"]["apogee_m"];
+        if apogee["outcome"]["outcome"] != "scored" {
+            continue;
+        }
+        let found = row(Group::OpenRocketExamples, &case, "apogee");
+        assert_eq!(
+            found.percent,
+            Some(number(&apogee["relative_percent"])),
+            "{case}"
+        );
+        assert_ne!(found.standing, Standing::Withheld, "{case}");
+        if flight["apogee_with_the_causes_removed"].is_object() {
+            caused += usize::from(found.standing == Standing::OverBar);
+        }
+    }
+    assert!(
+        caused > 0,
+        "no OpenRocket miss with a written cause to hold"
+    );
+    for flight in library["flights"]
+        .as_array()
+        .expect("the library's flights")
+    {
+        let case = flight["flight"].as_str().expect("an id");
+        if flight["apogee_outcome"] != "scored" {
+            continue;
+        }
+        let found = row(Group::OpenRocketLibrary, case, "apogee");
+        assert_eq!(
+            found.percent,
+            Some(number(&flight["apogee_percent"])),
+            "{case}"
+        );
+        assert_ne!(found.standing, Standing::Withheld, "{case}");
+    }
+    let mut explained = 0;
+    for flight in &real.flights {
+        let found = row(Group::FlightLogs, &flight.id, "apogee");
+        assert_eq!(
+            found.percent,
+            Some(flight.apogee_error_percent),
+            "{}",
+            flight.id
+        );
+        if !flight.explanation.is_empty() {
+            assert_eq!(found.standing, Standing::OverBar, "{}", flight.id);
+            explained += 1;
+        }
+    }
+    assert!(explained > 0, "no explained flight to hold");
 
     // Every group's statistics are over all its compared rows, the misses with them.
+    let summaries = census.summaries();
     let mut misses_counted = 0;
     for summary in &summaries {
         let rows: Vec<_> = census
@@ -2135,114 +2224,67 @@ fn excused_cases_stay_in_the_census_statistics_against_both_references() {
                 );
             }
         }
-        for bar in &summary.bars {
-            let judged: Vec<_> = rows
+        let judged: std::collections::BTreeSet<&str> = rows
+            .iter()
+            .filter(|row| matches!(row.standing, Standing::WithinBar | Standing::OverBar))
+            .map(|row| row.metric.as_str())
+            .collect();
+        for metric in judged {
+            let bar = summary
+                .bars
                 .iter()
-                .filter(|row| row.metric == bar.metric)
-                .filter(|row| row.standing != Standing::Withheld)
-                .collect();
-            let over = judged
+                .find(|bar| bar.metric == metric)
+                .unwrap_or_else(|| panic!("{:?}: no bar counts {metric}", summary.group));
+            let rows: Vec<_> = rows.iter().filter(|row| row.metric == metric).collect();
+            let over = rows
                 .iter()
                 .filter(|row| row.standing == Standing::OverBar)
                 .count();
+            let within = rows
+                .iter()
+                .filter(|row| row.standing == Standing::WithinBar)
+                .count();
             assert_eq!(
-                bar.compared,
-                judged.len(),
-                "{:?} {}",
-                summary.group,
-                bar.metric
-            );
-            assert_eq!(
-                bar.compared,
-                bar.within + over,
-                "{:?} {}",
-                summary.group,
-                bar.metric
+                (bar.within, bar.compared),
+                (within, within + over),
+                "{:?} {metric}",
+                summary.group
             );
             misses_counted += over;
         }
     }
     assert!(misses_counted > 0, "no miss is in the committed reports");
 
-    // The logs' misses carry written explanations, and each still counts as a miss.
-    let logs = summaries
-        .iter()
-        .find(|summary| summary.group == Group::FlightLogs)
-        .expect("the real flights are in the census");
-    let mut explained = 0;
-    for flight in real
-        .flights
-        .iter()
-        .filter(|flight| !flight.explanation.is_empty())
-    {
-        let row = census
-            .rows
-            .iter()
-            .find(|row| {
-                row.group == Group::FlightLogs && row.case == flight.id && row.metric == "apogee"
-            })
-            .unwrap_or_else(|| panic!("{}'s explained apogee is not in the census", flight.id));
-        assert_eq!(
-            row.percent,
-            Some(flight.apogee_error_percent),
-            "{}",
-            flight.id
-        );
-        assert_eq!(row.standing, Standing::OverBar, "{}", flight.id);
-        explained += 1;
-    }
-    assert!(explained > 0, "no explained flight to hold");
-    let apogee_bar = logs
-        .bars
-        .iter()
-        .find(|bar| bar.metric == "apogee")
-        .expect("the logs' apogees are judged by a bar");
-    assert_eq!(apogee_bar.compared, real.flights.len());
-    assert!(apogee_bar.compared - apogee_bar.within >= explained);
-
     // A rocket with both references counts against each: its log and RocketPy's flights of it.
+    let cases = cases();
     let mut both = Vec::new();
     for flight in &real.flights {
-        for id in committed_cases(&root()).expect("the committed cases") {
-            let path = cases_dir(&root()).join(format!("{id}.toml"));
-            let case: Case = toml::from_str(&std::fs::read_to_string(&path).expect("a case"))
-                .unwrap_or_else(|error| panic!("{path:?}: {error}"));
-            if case.flight.design() != flight.design || id.starts_with("descent-") {
+        for case in cases
+            .iter()
+            .filter(|case| case.flight.design() == flight.design)
+        {
+            let Some(rocketpy) = census.rows.iter().find(|row| {
+                row.case == case.id
+                    && row.metric == "apogee_agl_m"
+                    && matches!(row.group, Group::SameDrag | Group::Predicted)
+            }) else {
                 continue;
-            }
-            let rocketpy = census
-                .rows
-                .iter()
-                .find(|row| row.case == id && row.metric == "apogee_agl_m")
-                .unwrap_or_else(|| panic!("{id}'s apogee against RocketPy is not in the census"));
-            assert!(
-                matches!(rocketpy.group, Group::SameDrag | Group::Predicted),
-                "{id}: {:?}",
-                rocketpy.group
-            );
-            assert!(rocketpy.percent.is_some(), "{id}");
+            };
+            assert!(rocketpy.percent.is_some(), "{}", case.id);
             let reference = harness
                 .comparisons
                 .iter()
-                .find(|row| row.case == id && row.metric == "apogee_agl_m")
+                .find(|row| row.case == case.id && row.metric == "apogee_agl_m")
                 .map(|row| row.reference)
                 .expect("the harness compared its apogee");
-            both.push((flight.id.as_str(), id, reference, flight.log_apogee_m));
+            let apart = (reference - flight.log_apogee_m).abs() / flight.log_apogee_m;
+            both.push((flight, case.id.as_str(), apart));
         }
     }
+    // Two references more than 5% apart on a flight whose miss is explained: Loft's case, counted.
     assert!(
-        both.iter().any(|(flight, ..)| real
-            .flights
-            .iter()
-            .any(|f| f.id == *flight && !f.explanation.is_empty())),
-        "no explained flight has a second reference: {both:?}"
-    );
-    let apart = both
-        .iter()
-        .map(|(.., rocketpy, log)| (rocketpy - log).abs() / log)
-        .fold(0.0, f64::max);
-    assert!(
-        apart > 0.05,
-        "the two references agree within 5% on every rocket ({apart}), so this holds nothing"
+        both.iter()
+            .any(|(flight, _, apart)| !flight.explanation.is_empty() && *apart > 0.05),
+        "no explained flight has a second reference more than 5% from its log"
     );
 }
