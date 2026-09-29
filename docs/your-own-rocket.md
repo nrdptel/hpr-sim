@@ -601,8 +601,10 @@ It has eight steps.
 
 ## As a design file
 
-A design file is a rocket written as text, to keep, share or edit outside Rust. Today it is the
-rocket's JSON:
+A design file is a rocket written as text, to keep, share or edit outside Rust. Here it is the
+rocket's JSON, which is also the `rocket` key of a document of
+[the hpr design format](format/hpr.md), the form that adds a versioned header, the motor
+configurations, recovery and what a `.ork` held:
 
 - `serde_json::to_string_pretty(&rocket)` gives the text, and `std::fs::write` saves it to a file.
 - `serde_json::from_str::<Rocket>(&text)` reads it back. The program checks that the rocket it

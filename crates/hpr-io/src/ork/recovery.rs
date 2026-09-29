@@ -50,7 +50,7 @@ pub(super) const DRAG: &str = "/drag";
 pub(super) const SEPARATION: &str = "/separation";
 
 /// What deploys a recovery device, as `<deployevent>` names it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum DeployEvent {
@@ -100,7 +100,7 @@ impl DeployEvent {
 
 /// What separates a stage from the one above it, as `<separationevent>` names it. "This stage" is
 /// the stage that carries the setting, the lower one, which drops away.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum SeparationEvent {
@@ -162,8 +162,11 @@ impl SeparationEvent {
 
 /// An event, a height for the events that need one, and a delay after it: when a device deploys
 /// or a stage separates. Each is `None` where the file does not say.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
+// One name per event type in the design format's schema.
+#[schemars(rename = "EventSetting_for_{E}")]
 pub struct EventSetting<E> {
     /// The event.
     pub event: Option<E>,
@@ -191,7 +194,7 @@ pub type Deployment = EventSetting<DeployEvent>;
 pub type Separation = EventSetting<SeparationEvent>;
 
 /// Which kind of recovery device.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum DeviceKind {
@@ -202,8 +205,9 @@ pub enum DeviceKind {
 }
 
 /// A parachute's or streamer's recovery settings.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct RecoveryDevice {
     /// The id of the device's component in the rocket.
     pub id: String,
@@ -229,8 +233,9 @@ impl RecoveryDevice {
 }
 
 /// A stage's separation settings.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct StageSeparation {
     /// The stage's id in the rocket.
     pub id: String,
@@ -251,8 +256,9 @@ impl StageSeparation {
 }
 
 /// A parachute or streamer inside a part hpr does not read, such as a pod.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct UnreadDevice {
     /// Where it is in the file.
     pub at: String,
@@ -264,8 +270,9 @@ pub struct UnreadDevice {
 }
 
 /// Every recovery setting in a `.ork` design.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct Recovery {
     /// The parachutes and streamers read, in file order.
     pub devices: Vec<RecoveryDevice>,

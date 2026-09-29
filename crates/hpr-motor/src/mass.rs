@@ -21,7 +21,8 @@ use serde::{Deserialize, Serialize};
 use crate::error::MotorError;
 
 /// A mass on the motor axis, with its moments of inertia about its own centre of mass.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct MassElement {
     /// Mass, kg.
     pub mass_kg: f64,

@@ -300,7 +300,7 @@ air density and `C_D S` the [drag area](#drag-area). A 1.1 kg rocket under a 1 m
 
 ## Design file
 
-A rocket design saved as text, so it can be kept, shared and read back. Today it is the JSON of hpr's `Rocket` type: each key is a Rust field's name, with its unit in the name (`length_m`), and a mounted motor is written out in full, thrust curve included. The format is provisional until the open design format, [M3.3](decisions-and-roadmap.md#m3-3). See [Your own rocket](your-own-rocket.md#as-a-design-file).
+A rocket design saved as text, so it can be kept, shared and read back. hpr's own is the [`.hpr` design format](format/hpr.md): one JSON document with a versioned header, the rocket, its motor configurations, recovery and stored simulations. The `rocket` inside it is the JSON of hpr's `Rocket` type, which `hpr sim` also reads on its own (it doesn't read an `.hpr` yet): each key is a Rust field's name, with its unit in the name (`length_m`), and a mounted motor is written out in full, thrust curve included. Version 0.1 of the format is a draft that can change until hpr's first release, so keep the source file too. See [Your own rocket](your-own-rocket.md#as-a-design-file).
 
 ## Digest
 

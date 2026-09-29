@@ -94,7 +94,7 @@ impl OrkFile {
 
 /// A `.ork` design read whole: its rocket, carrying every motor configuration hpr can fly as
 /// written, and everything the file says about its motors.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
 pub struct Design {
     /// The rocket, as [`rocket`] reads it, with [`Rocket::configurations`] holding the
@@ -117,6 +117,23 @@ pub struct Design {
 }
 
 impl Design {
+    /// A design from its parts, as the hpr design format holds them (`hpr_format::DesignFile`).
+    pub fn new(
+        rocket: hpr_design::Rocket,
+        motors: Motors,
+        recovery: Recovery,
+        simulations: Vec<StoredSimulation>,
+        extensions: Extensions,
+    ) -> Self {
+        Self {
+            rocket,
+            motors,
+            recovery,
+            simulations,
+            extensions,
+        }
+    }
+
     /// Whether the rocket is reduced: the file describes parts of it — a pod, a parallel stage, a
     /// part hpr cannot shape — that are kept in [`Design::extensions`] rather than read into it.
     ///

@@ -50,9 +50,10 @@ use super::value::Values;
 use super::warning::{Warning, WarningKind};
 
 /// Where a `<motor>` element's thrust curve came from.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "source", rename_all = "snake_case")]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub enum Curve {
     /// The archive's own `thrustcurves/<digest>.rse` entry.
     Embedded {
@@ -89,7 +90,7 @@ pub enum Curve {
 }
 
 /// Why a motor has no thrust curve.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum NoCurve {
@@ -227,7 +228,7 @@ impl Curve {
 /// OpenRocket 24.12 writes, each measured by setting it and saving; the meanings are its own
 /// labels, and for `automatic` its FAQ ("How do I create a staged rocket?"). Anything else is kept
 /// as written.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum IgnitionEvent {
@@ -273,7 +274,10 @@ impl IgnitionEvent {
 }
 
 /// When a motor ignites: an event and a delay after it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+// Named apart from `hpr_design::Ignition` in the design format's schema.
+#[schemars(rename = "OrkIgnition")]
 pub struct Ignition {
     /// The event.
     pub event: IgnitionEvent,
@@ -293,8 +297,9 @@ impl Default for Ignition {
 
 /// A motor in a mount, in one configuration: what the `<motor>` element says, when it ignites in
 /// that configuration, and the curve it flies on.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct OrkMotor {
     /// The id of the mount component in the rocket.
     pub mount: String,
@@ -324,8 +329,9 @@ pub struct OrkMotor {
 }
 
 /// A `<motor>` inside a part hpr does not read, such as a pod's mount.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct UnreadMotor {
     /// Where its mount is in the file.
     pub at: String,
@@ -339,8 +345,9 @@ pub struct UnreadMotor {
 }
 
 /// A motor configuration: what the rocket declares, and every motor the mounts put in it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct MotorConfiguration {
     /// `configid`.
     pub id: String,
@@ -366,8 +373,9 @@ pub struct MotorConfiguration {
 }
 
 /// Why a configuration is not among the rocket's.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct LeftOut {
     /// The reason.
     pub why: NotFlown,
@@ -378,7 +386,7 @@ pub struct LeftOut {
 /// The reasons a configuration cannot be flown as written, in the order they are checked; each is
 /// checked across every motor before the next, so the one given is the first on this list that
 /// applies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum NotFlown {
@@ -412,8 +420,9 @@ pub enum NotFlown {
 }
 
 /// Every motor configuration a `.ork` design holds.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct Motors {
     /// The configurations: those `<rocket>` declares in its order, then any only a mount names.
     pub configurations: Vec<MotorConfiguration>,

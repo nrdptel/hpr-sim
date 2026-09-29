@@ -38,7 +38,7 @@ pub const MIN_INTERVAL_S: f64 = 0.001;
 /// `hpr sim`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct SimArgs {
-    /// The design: an OpenRocket .ork file, or an hpr design file (.json)
+    /// The design: an OpenRocket .ork file, or a rocket's JSON (.json; not yet an .hpr document)
     pub design: String,
     /// The motor configuration to fly, by its id [default: the design's default, or its only one]
     #[arg(long, value_name = "ID")]
@@ -406,7 +406,7 @@ fn descent(recovery: &str) -> String {
 const WHOLE_STACK: &str =
     "the stages fly as one stack: hpr sim flies no separation yet, so none comes apart";
 
-/// Reads a `.ork` or an hpr design file, by its extension.
+/// Reads a `.ork` or a rocket's JSON, by its extension.
 fn read_design(path: &str) -> Result<Read, Failure> {
     let extension = Path::new(path)
         .extension()
@@ -451,11 +451,9 @@ fn read_design(path: &str) -> Result<Read, Failure> {
             })
         }
         Some("json") => {
-            let rocket: hpr_design::Rocket =
-                serde_json::from_slice(&bytes()?).map_err(|error| {
-                    Failure::Input(format!("{path}: not an hpr design file: {error}"))
-                })?;
-            let mut notes = vec![descent("an hpr design file holds no recovery devices")];
+            let rocket: hpr_design::Rocket = serde_json::from_slice(&bytes()?)
+                .map_err(|error| Failure::Input(format!("{path}: not a rocket's JSON: {error}")))?;
+            let mut notes = vec![descent("a rocket's JSON holds no recovery devices")];
             if rocket.stages.len() > 1 {
                 notes.push(WHOLE_STACK.to_owned());
             }
@@ -469,7 +467,7 @@ fn read_design(path: &str) -> Result<Read, Failure> {
             })
         }
         _ => Err(Failure::Input(format!(
-            "{path}: hpr sim reads an OpenRocket .ork file or an hpr design file (.json)"
+            "{path}: hpr sim reads an OpenRocket .ork file or a rocket's JSON (.json), not yet an .hpr document"
         ))),
     }
 }

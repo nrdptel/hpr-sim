@@ -11,7 +11,7 @@ use crate::error::DesignError;
 use crate::shapes::check_dimension;
 
 /// A surface finish, by its roughness height `R_s`.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Finish {

@@ -18,10 +18,13 @@ hpr-cli.workspace = true
 hpr-atmos.workspace = true
 hpr-core.workspace = true
 hpr-design.workspace = true
+hpr-format.workspace = true
 hpr-io.workspace = true
 hpr-validate.workspace = true
 hpr-motor.workspace = true
 hpr-sim.workspace = true
+# The hpr design format's documents checked against its committed schema (M3.3a).
+jsonschema.workspace = true
 pulldown-cmark.workspace = true
 serde.workspace = true
 serde_json.workspace = true

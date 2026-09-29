@@ -56,7 +56,8 @@ use super::document::{Document, Element};
 use super::reads::{self, Reads};
 
 /// The extensions a `.ork` design carries, by namespace.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Extensions {
     /// What the design holds that hpr does not model.
@@ -66,8 +67,9 @@ pub struct Extensions {
 
 /// The `x-openrocket` extension: the parts and sections of a `.ork` that hpr does not read, each
 /// kept whole where it was.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct OpenRocketExtension {
     /// The parts hpr does not read, in file order.
     #[serde(default)]
@@ -89,8 +91,9 @@ pub struct OpenRocketExtension {
 }
 
 /// An attribute kept, and the element it was on.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct KeptAttribute {
     /// The path of the element it was on; see [`element_at`].
     pub at: String,
@@ -101,8 +104,9 @@ pub struct KeptAttribute {
 }
 
 /// An element kept whole, and where it was.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct Kept {
     /// Its path in the document; see [`element_at`].
     pub at: String,

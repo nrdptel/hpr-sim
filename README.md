@@ -44,7 +44,7 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 
 | command | what it does | reads | prints | status |
 |---|---|---|---|---|
-| `hpr sim` | Fly a .ork or hpr design from a rail and print its flight; export its recording | `.ork`, hpr design `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-sim)) |
+| `hpr sim` | Fly a .ork or a rocket's .json from a rail and print its flight; export its recording | `.ork`, a rocket's `.json` (not yet an `.hpr`), a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-sim)) |
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or write a catalog motor as either | `.eng`, `.rse`, the bundled catalog | `.eng` or `.rse`, text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)) |

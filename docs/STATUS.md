@@ -4,15 +4,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M3.3 (hpr's own
-  design format). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1-2, M4.1-2.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M3.3b (the `.hprz`
+  container, migrations, comparison). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1-2, M3.3a, M4.1-2.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-29; M3.2b: OpenRocket flies the `.ork` export (ADR-110).
+- **Last updated:** 2026-09-29; M3.3a: the hpr design document, `.hpr` (ADR-111).
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** M3.3, likely split (a spec and serde first). `.ork` export (ADR-109, 110):
-  writers mirror readers; after a writer change, rerun ork.md's three commands and commit the report. Logs (ADR-108): `synthetic-pnut.pf2` is rewritten by `HPR_WRITE_SYNTHETIC_LOG=1`; the public Pnut test
+- **Next (resume here):** M3.3b (ROADMAP). Format (ADR-111): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change
+  needs `cargo xtask format` (the schema) and `cargo xtask ork` (73 designs through the format, flown three ways). `.ork` export (ADR-109, 110): writers mirror readers; after a writer change, rerun ork.md's three commands and commit the report. Logs (ADR-108): `synthetic-pnut.pf2` is rewritten by `HPR_WRITE_SYNTHETIC_LOG=1`; the public Pnut test
   runs only where `refs/` has Debrief. CLI (ADR-105 to 108): a command goes live by leaving `registry::PLANNED`, adding its output type to `output::schemas`,
   then `cargo xtask cli`; examples name repo files from the root, and write bare names to scratch. `hpr sim`'s recovery, staging: #240. Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
   (`tube_fin_aero.py`, ADR-102); a new OR with #3235 moves its centre past Mach 0.5; body
@@ -60,7 +60,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-29: M3.2 `.ork` writer (ADR-109, 110): 73 of 73 read back the same; OR flies 151 of 151 configurations within 0.5%.
+- 2026-09-29: M3.3a `.hpr` (ADR-111): 73 of 73 `.ork` → `.hpr` → `.ork` the same, 109 flown, same apogee. M3.2 `.ork`
+  writer (ADR-109, 110): 73 of 73 read back the same; OR flies 151 of 151 configurations within 0.5%.
 - 2026-09-29: M4.2 CLI (ADR-105 to 108): schemas; `hpr sim` bit for bit; `validate`, `convert` (32 curves round-trip);
   `hpr analyze` reads `.pf2` alone; the public Pnut, where fetched, 1,010 ft against 1,009.
 - 2026-09-28/29: M4.1 builder (ADR-103, 104), bit for bit; `DragModel`; 5 examples. M2.2b, f; M2.2 closed (ADR-101, 102): OR mass conventions 68/71 within 1%; L82 live; L19 not met, pinned.
@@ -83,7 +84,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-103 to 110 (M4.1, M4.2, M3.2): OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
+- ADR-103 to 111 (M4.1, M4.2, M3.2, M3.3a): `.hpr`/`.hprz`, 0.1 a draft, unknown keys refused, `hpr-format` over `hpr-io`; OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
 - ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings,
   8 at most; L19 left unmet, not bought with OR's unmeasured slope and centre.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights

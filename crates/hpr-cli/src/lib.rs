@@ -101,7 +101,7 @@ pub struct Cli {
 /// The commands, in the order `hpr --help` lists them.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Fly a .ork or hpr design from a rail and print its flight; export its recording
+    /// Fly a .ork or a rocket's .json from a rail and print its flight; export its recording
     Sim(sim::SimArgs),
     /// Run the validation cases and check them against the committed reports and the census
     Validate(validate::ValidateArgs),

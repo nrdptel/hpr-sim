@@ -22,9 +22,10 @@ use crate::text::WarningKind;
 
 /// One available delay setting. Serialized with a `kind` tag and the seconds as `value`:
 /// `{"kind":"seconds","value":6.0}`, `{"kind":"plugged"}`.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub enum Delay {
     /// The ejection charge fires this many seconds after burnout: positive, or zero where a file
     /// says so plainly, as a `.ork` does for a charge at burnout (`hpr_io::ork`).

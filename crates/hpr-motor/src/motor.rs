@@ -43,7 +43,8 @@ use crate::mass::MassElement;
 pub const STANDARD_SEA_LEVEL_PRESSURE_PA: f64 = 101_325.0;
 
 /// A propellant charge of fixed shape whose density falls as it burns.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct PropellantColumn {
     /// Initial propellant mass, kg.
     pub mass_kg: f64,
@@ -61,7 +62,7 @@ pub struct PropellantColumn {
 /// (`"column"`, `"grains"`).
 ///
 /// Not `Copy`, so that a later model can hold tabulated data.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "model", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Propellant {
@@ -72,7 +73,8 @@ pub enum Propellant {
 }
 
 /// A nozzle, for the ambient-pressure correction of thrust.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Nozzle {
     /// Exit radius, m.
     pub exit_radius_m: f64,
@@ -92,6 +94,8 @@ pub struct Nozzle {
     /// Motors read from `.eng` or `.rse` files, or from the catalog, carry no nozzle and so no
     /// correction.
     #[serde(deserialize_with = "Option::deserialize")]
+    // Required, and `null` allowed: `required` alone would drop the `null`.
+    #[schemars(required, extend("type" = ["number", "null"]))]
     pub reference_pressure_pa: Option<f64>,
 }
 
@@ -107,7 +111,7 @@ impl Nozzle {
 /// Nothing here can tell a hybrid's thrust curve from a solid's, so the checks are at the edges:
 /// [`crate::catalog::CatalogMotor::motor`] refuses hybrids and the `.rse` reader warns about them
 /// (`.eng` files don't say).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(try_from = "MotorData", into = "MotorData")]
 pub struct SolidMotor {
     curve: ThrustCurve,
@@ -119,7 +123,8 @@ pub struct SolidMotor {
 }
 
 /// The serialized form of a [`SolidMotor`].
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct MotorData {
     curve: ThrustCurve,
     propellant: Propellant,

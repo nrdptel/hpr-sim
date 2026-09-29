@@ -48,7 +48,7 @@ pub fn availability(name: &str) -> Option<Availability> {
         "sim" => Some(Availability::Available {
             reads: vec![
                 "`.ork`".to_owned(),
-                "hpr design `.json`".to_owned(),
+                "a rocket's `.json` (not yet an `.hpr`)".to_owned(),
                 "a motor from the bundled catalog, `.eng` or `.rse`".to_owned(),
             ],
             writes: vec![

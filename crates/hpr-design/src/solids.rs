@@ -50,7 +50,7 @@ use crate::error::DesignError;
 use crate::shapes::{Profile, check_dimension};
 
 /// Whether a solid of revolution is filled or a wall.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Wall {
     /// Solid all the way to the axis.

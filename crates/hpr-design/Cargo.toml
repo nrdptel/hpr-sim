@@ -18,6 +18,8 @@ wasm = true
 [dependencies]
 hpr-core.workspace = true
 hpr-motor.workspace = true
+# The hpr design format's JSON Schema is generated from the design's types (M3.3).
+schemars.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 

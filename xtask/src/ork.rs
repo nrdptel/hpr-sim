@@ -281,6 +281,7 @@ fn report(
     let mut simulation_tally = crate::ork_simulations::SimulationTally::default();
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
     let mut export_tally = crate::ork_export::ExportTally::new(root, export_to);
+    let mut format_tally = crate::ork_format::FormatTally::new(root)?;
     let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
     let mut mass = crate::ork_mass::MassTally::load(root, library)?;
     let mut supply = crate::ork_supply::Supply::load(root, library)?;
@@ -396,6 +397,12 @@ fn report(
                     &whole,
                     &read.value.document,
                     &read.value.attachments,
+                    supply.curves(),
+                );
+                let format_here = format_tally.add(
+                    name,
+                    (bytes, &read.value.attachments),
+                    &whole.value,
                     supply.curves(),
                 );
                 let mut defaulted_here = 0usize;
@@ -599,6 +606,7 @@ fn report(
                     "simulations": simulations_here,
                     "extensions": extensions_here,
                     "export": export_here,
+                    "format": format_here,
                     "rocketserializer": geometry_here,
                     "openrocket_mass": mass_here,
                     "container": read.value.container.as_str(),
@@ -737,6 +745,7 @@ fn report(
     summary["simulations"] = simulation_tally.summary();
     summary["extensions"] = extension_tally.summary();
     summary["export"] = export_tally.summary();
+    summary["format"] = format_tally.summary();
     let path = root.join(REPORT);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
@@ -881,6 +890,7 @@ fn report(
     simulation_tally.print();
     extension_tally.print();
     export_tally.print();
+    format_tally.print();
     geometry.print();
     mass.print();
     if !spine_errors.is_empty() {
@@ -922,6 +932,9 @@ fn report(
         return Err(failure);
     }
     if let Some(failure) = export_tally.failure() {
+        return Err(failure);
+    }
+    if let Some(failure) = format_tally.failure() {
         return Err(failure);
     }
     if let Some(failure) = geometry.failure() {

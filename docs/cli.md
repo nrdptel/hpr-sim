@@ -76,7 +76,7 @@ only the files each command really reads. "Not yet" commands exit with
 
 | command | what it does | reads | prints | status |
 |---|---|---|---|---|
-| `hpr sim` | Fly a .ork or hpr design from a rail and print its flight; export its recording | `.ork`, hpr design `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](cli.md#hpr-sim)) |
+| `hpr sim` | Fly a .ork or a rocket's .json from a rail and print its flight; export its recording | `.ork`, a rocket's `.json` (not yet an `.hpr`), a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](cli.md#hpr-sim)) |
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or write a catalog motor as either | `.eng`, `.rse`, the bundled catalog | `.eng` or `.rse`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
@@ -95,8 +95,10 @@ only the files each command really reads. "Not yet" commands exit with
 `hpr sim` flies a design from a launch rail to the ground, and prints what happened: its
 [events](glossary.md#event), its [apogee](glossary.md#apogee) and top speed, its
 [stability margin](glossary.md#stability-margin) as it leaves the rail, and where it came down. It
-reads an [OpenRocket](glossary.md#openrocket) `.ork` file, or an hpr design file (`.json`, the
-tree [Your own rocket](your-own-rocket.md) describes). It runs the same simulation code as the
+reads an [OpenRocket](glossary.md#openrocket) `.ork` file, or a rocket's JSON (`.json`, the
+tree [Your own rocket](your-own-rocket.md) describes). It doesn't read a document of
+[the hpr design format](format/hpr.md) (`.hpr`) yet: that comes with the format's next step,
+[M3.3b](decisions-and-roadmap.md#m3-3b). It runs the same simulation code as the
 Rust library, so a Rust program flying the same design gets the same numbers.
 
 ### Flying a design
@@ -278,7 +280,7 @@ after apogee and where it ends are not predictions.
 ### What `hpr sim` doesn't fly yet
 
 - **Recovery devices.** A `.ork` file's parachutes and streamers are read but not flown, and an
-  hpr design file holds none. The fall from apogee is not a prediction; the output's notes say so.
+  rocket's JSON holds none. The fall from apogee is not a prediction; the output's notes say so.
   A Rust program can fly them ([Getting started](getting-started.md)); `hpr sim` will, with issue
   [#240](https://github.com/nrdptel/hpr-sim/issues/240).
 - **Separation.** A design's stages fly as one [stack](glossary.md#stage). A `.ork` configuration

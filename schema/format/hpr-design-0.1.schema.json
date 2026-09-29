@@ -1,0 +1,4278 @@
+{
+  "$defs": {
+    "Atmosphere": {
+      "description": "The atmosphere a stored simulation was flown in.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "`isa`: the International Standard Atmosphere.",
+          "properties": {
+            "model": {
+              "const": "isa",
+              "type": "string"
+            }
+          },
+          "required": [
+            "model"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "`extendedisa`: the standard atmosphere from a temperature and pressure at the launch site.",
+          "properties": {
+            "model": {
+              "const": "extended",
+              "type": "string"
+            },
+            "pressure_pa": {
+              "description": "`<basepressure>`, Pa.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "temperature_k": {
+              "description": "`<basetemperature>`, K.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "model"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A model not listed here, or none, kept by name only.",
+          "properties": {
+            "model": {
+              "const": "other",
+              "type": "string"
+            },
+            "name": {
+              "description": "The `model` attribute; empty when there is none.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "model",
+            "name"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AttachedFile": {
+      "additionalProperties": false,
+      "description": "One of the source file's other files: its name, and its contents as text where they are UTF-8,\nor else as base64 ([RFC 4648][rfc-4648], section 4).\n\nBeyond the schema, the reader holds a document's attachments to four rules: base64 decodes; no\ntwo share a name; each thrust curve a motor names as embedded is among them; and a name is not\nempty, not `rocket.ork` (the design's own entry) and not a directory's, ending in `/` or `\\`.\n\n[rfc-4648]: https://www.rfc-editor.org/rfc/rfc4648#section-4",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/Content",
+          "description": "Its contents."
+        },
+        "name": {
+          "description": "Its name in the source file, such as `thrustcurves/<digest>.rse`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "content"
+      ],
+      "type": "object"
+    },
+    "AutoDimension": {
+      "description": "A dimension resolved from the tree instead of stored in the part.",
+      "oneOf": [
+        {
+          "const": "base_radius",
+          "description": "A nose cone's base radius: the next body component's forward radius.",
+          "type": "string"
+        },
+        {
+          "const": "outer_radius",
+          "description": "A body tube's outer radius: the previous body component's aft radius, or, when that can't\nbe resolved, the next one's forward radius. A centering ring's or inner tube's outer\nradius: its parent's inner radius, which is how a coupler or an engine block fills the tube\nit sits in; inside a hollow nose cone or transition, the parent's outer radius at the\nnarrower end of the part less the parent's wall, and never below zero, as OpenRocket 24.12\nreads it ([ADR-096][adr-096]). An inner tube whose resolved radius is less than its wall\nis laid out solid (its wall is cut to its radius), as OpenRocket weighs it; a stated radius\nwith too thick a wall is still refused. A tube fin set's outer radius: the radius at which\nits tubes close the ring around the body tube they sit on,\n[`TubeFinSet::closing_radius_m`](crate::TubeFinSet::closing_radius_m), its wall cut to that\nradius when thicker, as OpenRocket 24.12 reads it ([ADR-098][adr-098]).\n\n[adr-098]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-098-a-tube-fin-sets-automatic-radius-read-as-openrocket-reads-it-2026-09-28\n[adr-096]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-096-fin-fillets-and-an-automatic-radius-inside-a-nose-cone-read-as-openrocket-reads-them-2026-09-28",
+          "type": "string"
+        },
+        {
+          "const": "fore_radius",
+          "description": "A transition's forward radius: the previous body component's aft radius.",
+          "type": "string"
+        },
+        {
+          "const": "aft_radius",
+          "description": "A transition's aft radius: the next body component's forward radius.",
+          "type": "string"
+        },
+        {
+          "const": "shoulder_radius",
+          "description": "A nose cone's shoulder outer radius: the inner radius of the body tube behind it.",
+          "type": "string"
+        },
+        {
+          "const": "fore_shoulder_radius",
+          "description": "A transition's forward shoulder outer radius: the inner radius of the body tube ahead of it.",
+          "type": "string"
+        },
+        {
+          "const": "aft_shoulder_radius",
+          "description": "A transition's aft shoulder outer radius: the inner radius of the body tube behind it.",
+          "type": "string"
+        },
+        {
+          "const": "inner_radius",
+          "description": "A centering ring's inner radius: the outer radius of the widest on-axis inner tube among\nits siblings that overlaps it along the axis, or zero when none does.",
+          "type": "string"
+        },
+        {
+          "const": "packed_radius",
+          "description": "A mass component's or recovery part's packed radius: its parent's inner radius less the\npart's radial offset.",
+          "type": "string"
+        }
+      ]
+    },
+    "BodyTube": {
+      "additionalProperties": false,
+      "description": "An airframe tube.",
+      "properties": {
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "outer_radius_m": {
+          "description": "Outer radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "thickness_m": {
+          "description": "Wall thickness, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "outer_radius_m",
+        "thickness_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "CenteringRing": {
+      "additionalProperties": false,
+      "description": "A flat annular ring, or a bulkhead when the inner radius is zero.",
+      "properties": {
+        "inner_radius_m": {
+          "description": "Inner radius, m (zero for a bulkhead).",
+          "format": "double",
+          "type": "number"
+        },
+        "length_m": {
+          "description": "Thickness along the axis, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "outer_radius_m": {
+          "description": "Outer radius, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "outer_radius_m",
+        "inner_radius_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "Component": {
+      "additionalProperties": false,
+      "description": "A node of the design tree: a part, where it sits, and what hangs off it.",
+      "properties": {
+        "auto": {
+          "description": "Dimensions taken from neighbours or the parent instead of the part's stored values.",
+          "items": {
+            "$ref": "#/$defs/AutoDimension"
+          },
+          "type": "array"
+        },
+        "children": {
+          "description": "Attached parts, or a pod set's body components.",
+          "items": {
+            "$ref": "#/$defs/Component"
+          },
+          "type": "array"
+        },
+        "finish": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Finish"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The outer surface's finish, for skin friction; `None` means [`Finish::default`]. Parts\ninside the body ignore it."
+        },
+        "id": {
+          "description": "Unique id.",
+          "type": "string"
+        },
+        "motor_mount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MotorMount"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Makes a body tube or an inner tube a motor mount."
+        },
+        "name": {
+          "default": "",
+          "description": "Name.",
+          "type": "string"
+        },
+        "overrides": {
+          "$ref": "#/$defs/Overrides",
+          "description": "Mass, centre-of-mass and inertia overrides."
+        },
+        "overrides_include_children": {
+          "description": "Whether the overrides replace this component together with everything attached to it\n(`true`), or this component alone (`false`).",
+          "type": "boolean"
+        },
+        "part": {
+          "$ref": "#/$defs/Part",
+          "description": "The part, with its geometry and material."
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where an attached part sits along its parent. Body components (a stage's own list) have\nnone: they stack."
+        }
+      },
+      "required": [
+        "id",
+        "part"
+      ],
+      "type": "object"
+    },
+    "Configuration": {
+      "additionalProperties": false,
+      "description": "A set of motors to fly with: at most one per mount. A mount that is a cluster\n([`InnerTube::cluster_m`](crate::InnerTube::cluster_m)) takes its motor in every tube.",
+      "properties": {
+        "id": {
+          "description": "Unique id among the configurations.",
+          "type": "string"
+        },
+        "motors": {
+          "description": "The motors.",
+          "items": {
+            "$ref": "#/$defs/MountedMotor"
+          },
+          "type": "array"
+        },
+        "name": {
+          "default": "",
+          "description": "Name.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "motors"
+      ],
+      "type": "object"
+    },
+    "Content": {
+      "description": "A file's contents: text, or base64 for bytes that are not UTF-8.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "UTF-8 text, as the file holds it.",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Any other bytes, in standard base64 with padding, which must decode.",
+          "properties": {
+            "base64": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "base64"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Curve": {
+      "description": "Where a `<motor>` element's thrust curve came from.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The archive's own `thrustcurves/<digest>.rse` entry.",
+          "properties": {
+            "entry": {
+              "description": "The archive entry, such as `thrustcurves/<digest>.rse`.",
+              "type": "string"
+            },
+            "motor": {
+              "$ref": "#/$defs/SolidMotor",
+              "description": "The motor built from it."
+            },
+            "source": {
+              "const": "embedded",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "entry",
+            "motor"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A curve the caller supplied for the motor's digest ([`SuppliedCurves`]).",
+          "properties": {
+            "digest": {
+              "description": "The digest the design records, which the curve was supplied for.",
+              "type": "string"
+            },
+            "from": {
+              "description": "Where the supplied curves came from ([`SuppliedCurves::source`]).",
+              "type": "string"
+            },
+            "motor": {
+              "$ref": "#/$defs/SolidMotor",
+              "description": "The motor supplied."
+            },
+            "source": {
+              "const": "supplied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "digest",
+            "from",
+            "motor"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The bundled ThrustCurve.org catalog ([`Catalog::bundled`]).",
+          "properties": {
+            "motor": {
+              "$ref": "#/$defs/SolidMotor",
+              "description": "The motor built from it."
+            },
+            "motor_id": {
+              "description": "ThrustCurve.org's motor id.",
+              "type": "string"
+            },
+            "simfile_id": {
+              "description": "ThrustCurve.org's id of the curve file flown.",
+              "type": "string"
+            },
+            "source": {
+              "const": "catalog",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "motor_id",
+            "simfile_id",
+            "motor"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "No curve, and why.",
+          "properties": {
+            "reason": {
+              "description": "The same, in words.",
+              "type": "string"
+            },
+            "source": {
+              "const": "unresolved",
+              "type": "string"
+            },
+            "why": {
+              "$ref": "#/$defs/NoCurve",
+              "description": "Why no curve was found."
+            }
+          },
+          "required": [
+            "source",
+            "why",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Delay": {
+      "description": "One available delay setting. Serialized with a `kind` tag and the seconds as `value`:\n`{\"kind\":\"seconds\",\"value\":6.0}`, `{\"kind\":\"plugged\"}`.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The ejection charge fires this many seconds after burnout: positive, or zero where a file\nsays so plainly, as a `.ork` does for a charge at burnout (`hpr_io::ork`).",
+          "properties": {
+            "kind": {
+              "const": "seconds",
+              "type": "string"
+            },
+            "value": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "No ejection charge: the forward closure is plugged.",
+          "properties": {
+            "kind": {
+              "const": "plugged",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A `0`: the RASP spec means an ejection charge at burnout, but most files mean plugged\n(`docs/format/eng.md`). The user or the catalog has to settle which.",
+          "properties": {
+            "kind": {
+              "const": "zero_or_plugged",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Density": {
+      "description": "A density, with its units in the variant.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Mass per volume.",
+          "properties": {
+            "kg_m3": {
+              "description": "kg/m³.",
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "const": "bulk",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "kg_m3"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Mass per area, for sheets and fabrics.",
+          "properties": {
+            "kg_m2": {
+              "description": "kg/m².",
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "const": "surface",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "kg_m2"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Mass per length, for cords and lines.",
+          "properties": {
+            "kg_m": {
+              "description": "kg/m.",
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "const": "line",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "kg_m"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DeployEvent": {
+      "description": "What deploys a recovery device, as `<deployevent>` names it.",
+      "oneOf": [
+        {
+          "const": "launch",
+          "description": "`launch`: at launch, plus the delay.",
+          "type": "string"
+        },
+        {
+          "const": "ejection",
+          "description": "`ejection`: the first ejection charge of the device's own stage.",
+          "type": "string"
+        },
+        {
+          "const": "apogee",
+          "description": "`apogee`.",
+          "type": "string"
+        },
+        {
+          "const": "altitude",
+          "description": "`altitude`: the height `<deployaltitude>` gives, above the ground, on the way down.",
+          "type": "string"
+        },
+        {
+          "const": "lower_stage_separation",
+          "description": "`lowerstageseparation`: the separation of the stage below.",
+          "type": "string"
+        },
+        {
+          "const": "never",
+          "description": "`never`.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A word not listed here, kept as written.",
+          "properties": {
+            "other": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "other"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DeviceKind": {
+      "description": "Which kind of recovery device.",
+      "oneOf": [
+        {
+          "const": "parachute",
+          "description": "A `<parachute>`.",
+          "type": "string"
+        },
+        {
+          "const": "streamer",
+          "description": "A `<streamer>`.",
+          "type": "string"
+        }
+      ]
+    },
+    "Dimension": {
+      "description": "A number a `.ork` writes, which OpenRocket may be working out for itself.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A number the designer typed.",
+          "properties": {
+            "kind": {
+              "const": "stated",
+              "type": "string"
+            },
+            "value": {
+              "description": "The number, in whatever unit the tag is written in.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A number OpenRocket works out from the neighbouring components.",
+          "properties": {
+            "cached": {
+              "description": "What it last worked out, when the file says (`auto 0.0125`). A bare `auto` gives\n`None`. Either way this is a cached answer, not an input: a reader that resolves the\ndimension itself should prefer its own.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "automatic",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Element": {
+      "additionalProperties": false,
+      "description": "An XML element: its name, its attributes in the order they were written, and its children.",
+      "properties": {
+        "attributes": {
+          "description": "The attributes, in document order, as name and value.",
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "children": {
+          "description": "The children, in document order.",
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "The element's name, such as `nosecone`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "attributes",
+        "children"
+      ],
+      "type": "object"
+    },
+    "EventSetting_for_DeployEvent": {
+      "additionalProperties": false,
+      "description": "An event, a height for the events that need one, and a delay after it: when a device deploys\nor a stage separates. Each is `None` where the file does not say.",
+      "properties": {
+        "altitude_m": {
+          "description": "The height, m: above the ground for a deployment (measured; see the module docs).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "delay_s": {
+          "description": "Seconds after the event, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "event": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeployEvent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The event."
+        }
+      },
+      "type": "object"
+    },
+    "EventSetting_for_SeparationEvent": {
+      "additionalProperties": false,
+      "description": "An event, a height for the events that need one, and a delay after it: when a device deploys\nor a stage separates. Each is `None` where the file does not say.",
+      "properties": {
+        "altitude_m": {
+          "description": "The height, m: above the ground for a deployment (measured; see the module docs).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "delay_s": {
+          "description": "Seconds after the event, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "event": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SeparationEvent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The event."
+        }
+      },
+      "type": "object"
+    },
+    "Extensions": {
+      "additionalProperties": false,
+      "description": "The extensions a `.ork` design carries, by namespace.",
+      "properties": {
+        "x-openrocket": {
+          "$ref": "#/$defs/OpenRocketExtension",
+          "default": {
+            "attributes": [],
+            "parts": [],
+            "sections": [],
+            "tags": []
+          },
+          "description": "What the design holds that hpr does not model."
+        }
+      },
+      "type": "object"
+    },
+    "FinCrossSection": {
+      "description": "The shape of a fin's section along its chord.",
+      "oneOf": [
+        {
+          "const": "square",
+          "description": "Constant thickness, square edges.",
+          "type": "string"
+        },
+        {
+          "const": "rounded",
+          "description": "Semicircular leading and trailing edges.",
+          "type": "string"
+        },
+        {
+          "const": "airfoil",
+          "description": "The NACA four-digit symmetric thickness distribution.",
+          "type": "string"
+        }
+      ]
+    },
+    "FinFillet": {
+      "additionalProperties": false,
+      "description": "Fillets along each fin's root: a concave joint on both faces, running the root chord.",
+      "properties": {
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "radius_m": {
+          "description": "Radius of the fillet's concave face, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "radius_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "FinPlanform": {
+      "description": "The outline of one fin.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A trapezoid with its tip chord parallel to the root.",
+          "properties": {
+            "kind": {
+              "const": "trapezoidal",
+              "type": "string"
+            },
+            "root_chord_m": {
+              "description": "Root chord, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "span_m": {
+              "description": "Span from the body surface to the tip, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "sweep_m": {
+              "description": "Axial distance from the root leading edge aft to the tip leading edge, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "tip_chord_m": {
+              "description": "Tip chord, m (zero for a pointed fin).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "root_chord_m",
+            "tip_chord_m",
+            "span_m",
+            "sweep_m"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Half an ellipse on the root chord.",
+          "properties": {
+            "kind": {
+              "const": "elliptical",
+              "type": "string"
+            },
+            "root_chord_m": {
+              "description": "Root chord, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "span_m": {
+              "description": "Span, m.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "root_chord_m",
+            "span_m"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A polygon given as `[x, h]` points from the root leading edge, which must be `[0, 0]`,\naround to the root trailing edge `[c_r, 0]` with `c_r > 0`, closed along the root; `x` runs\naft and `h` outward, in metres.",
+          "properties": {
+            "kind": {
+              "const": "freeform",
+              "type": "string"
+            },
+            "points_m": {
+              "description": "The outline, m.",
+              "items": {
+                "items": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "points_m"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "FinSet": {
+      "additionalProperties": false,
+      "description": "A set of identical fins spaced evenly around the body.",
+      "properties": {
+        "base_angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle of the first fin from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "cant_rad": {
+          "default": 0.0,
+          "description": "Cant angle, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "count": {
+          "description": "Number of fins, at least 1.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cross_section": {
+          "$ref": "#/$defs/FinCrossSection",
+          "default": "square",
+          "description": "Section shape."
+        },
+        "fillet": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FinFillet"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional fillets along each root."
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "planform": {
+          "$ref": "#/$defs/FinPlanform",
+          "description": "Outline of each fin."
+        },
+        "tab": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FinTab"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional tab below each root."
+        },
+        "thickness_m": {
+          "description": "Maximum thickness, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "count",
+        "planform",
+        "thickness_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "FinTab": {
+      "additionalProperties": false,
+      "description": "A rectangular tab below a fin's root, reaching into the body.",
+      "properties": {
+        "height_m": {
+          "description": "Depth below the root, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "length_m": {
+          "description": "Length along the root, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "offset_m": {
+          "description": "Distance from the root leading edge aft to the tab's leading edge, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "height_m",
+        "length_m",
+        "offset_m"
+      ],
+      "type": "object"
+    },
+    "Finish": {
+      "description": "A surface finish, by its roughness height `R_s`.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A mirror-like surface, 0 µm (Barrowman Table 4-1).",
+          "properties": {
+            "kind": {
+              "const": "mirror",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Average glass, 0.1 µm.",
+          "properties": {
+            "kind": {
+              "const": "average_glass",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A finished and polished surface, 0.5 µm.",
+          "properties": {
+            "kind": {
+              "const": "polished",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "An aircraft-type sheet-metal surface, 2 µm (Barrowman Table 4-1 only).",
+          "properties": {
+            "kind": {
+              "const": "sheet_metal",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "An optimum paint-sprayed surface, 5 µm.",
+          "properties": {
+            "kind": {
+              "const": "optimum_paint",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Planed wooden boards, 15 µm.",
+          "properties": {
+            "kind": {
+              "const": "planed_wood",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Paint in aircraft mass production, 20 µm. The default.",
+          "properties": {
+            "kind": {
+              "const": "mass_production_paint",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Bare steel plating, 50 µm (Barrowman Table 4-1 only).",
+          "properties": {
+            "kind": {
+              "const": "bare_steel",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A smooth cement surface, 50 µm.",
+          "properties": {
+            "kind": {
+              "const": "smooth_cement",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A surface with an asphalt-type coating, 100 µm (Barrowman Table 4-1 only).",
+          "properties": {
+            "kind": {
+              "const": "asphalt_coating",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A dip-galvanized metal surface, 150 µm.",
+          "properties": {
+            "kind": {
+              "const": "dip_galvanized",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Incorrectly sprayed aircraft paint, 200 µm.",
+          "properties": {
+            "kind": {
+              "const": "poor_paint",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The natural surface of cast iron, 250 µm (Barrowman Table 4-1 only).",
+          "properties": {
+            "kind": {
+              "const": "cast_iron",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Raw wooden boards, 500 µm.",
+          "properties": {
+            "kind": {
+              "const": "raw_wood",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "An average concrete surface, 1000 µm.",
+          "properties": {
+            "kind": {
+              "const": "concrete",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A given roughness height.",
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "roughness_m": {
+              "description": "Roughness height, m.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "roughness_m"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Format": {
+      "description": "The format's name: a document holds only `hpr-design`.",
+      "oneOf": [
+        {
+          "const": "hpr-design",
+          "description": "A rocket design.",
+          "type": "string"
+        }
+      ]
+    },
+    "Ignition": {
+      "description": "When a motor lights, on the flight's clock: `t = 0` is launch, when the motors that light at\nlaunch ignite. A delay is counted from its event (the decision record on staging,\n[ADR-074][adr-074]).\n\n[adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25",
+      "oneOf": [
+        {
+          "const": "launch",
+          "description": "At launch, `t = 0`.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "At a time after launch: an air start on a timer.",
+          "properties": {
+            "time": {
+              "additionalProperties": false,
+              "properties": {
+                "time_s": {
+                  "description": "The time after launch, s.",
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "time_s"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "time"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A delay after another mount's motor burns out: a sustainer lit by the booster's burnout,\nor by its ejection charge with the charge's delay.",
+          "properties": {
+            "burnout": {
+              "additionalProperties": false,
+              "properties": {
+                "delay_s": {
+                  "description": "The delay after that burnout, s.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "mount": {
+                  "description": "The id of the mount whose motor's burnout lights this one.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mount",
+                "delay_s"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "burnout"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A delay after the stage aft of this motor's stage separates from it (the flight gives the\nseparation). A motor whose stage is never freed never lights; one in the last stage, with\nnothing aft of it to separate, is refused.",
+          "properties": {
+            "separation": {
+              "additionalProperties": false,
+              "properties": {
+                "delay_s": {
+                  "description": "The delay after the separation, s.",
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "delay_s"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "separation"
+          ],
+          "type": "object"
+        },
+        {
+          "const": "never",
+          "description": "Never: the motor stays loaded and gives no thrust all flight, as if every tube of its mount\nwere listed in [`MountedMotor::failed_tubes`]. A `.ork` design can set a motor so, or light\nit at an event that never comes, and OpenRocket then flies it unlit.",
+          "type": "string"
+        }
+      ]
+    },
+    "IgnitionEvent": {
+      "description": "When a motor ignites, as `<ignitionevent>` names it.\n\nOpenRocket's file-format page shows only `automatic`. The five values here are the ones\nOpenRocket 24.12 writes, each measured by setting it and saving; the meanings are its own\nlabels, and for `automatic` its FAQ (\"How do I create a staged rocket?\"). Anything else is kept\nas written.",
+      "oneOf": [
+        {
+          "const": "automatic",
+          "description": "`automatic`, \"Automatic (launch or ejection charge)\": the lowest stage at launch, and each\nstage above it at the ejection charge of the stage below.",
+          "type": "string"
+        },
+        {
+          "const": "launch",
+          "description": "`launch`: at launch.",
+          "type": "string"
+        },
+        {
+          "const": "ejection_charge",
+          "description": "`ejectioncharge`: at the first ejection charge of the stage below.",
+          "type": "string"
+        },
+        {
+          "const": "burnout",
+          "description": "`burnout`: at the first burnout of the stage below.",
+          "type": "string"
+        },
+        {
+          "const": "never",
+          "description": "`never`.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A value not listed here, kept as written.",
+          "properties": {
+            "other": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "other"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "InertiaOverride": {
+      "additionalProperties": false,
+      "description": "An inertia tensor about the centre of mass in body axes, kg·m². The off-diagonal entries are\nthe tensor's, `I_xy = −∫ x y dm` ([`crate::mass`]); they default to zero.",
+      "properties": {
+        "xx_kg_m2": {
+          "description": "`I_xx`, kg·m².",
+          "format": "double",
+          "type": "number"
+        },
+        "xy_kg_m2": {
+          "default": 0.0,
+          "description": "`I_xy`, kg·m².",
+          "format": "double",
+          "type": "number"
+        },
+        "xz_kg_m2": {
+          "default": 0.0,
+          "description": "`I_xz`, kg·m².",
+          "format": "double",
+          "type": "number"
+        },
+        "yy_kg_m2": {
+          "description": "`I_yy`, kg·m².",
+          "format": "double",
+          "type": "number"
+        },
+        "yz_kg_m2": {
+          "default": 0.0,
+          "description": "`I_yz`, kg·m².",
+          "format": "double",
+          "type": "number"
+        },
+        "zz_kg_m2": {
+          "description": "`I_zz`, about the rocket's axis, kg·m².",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "xx_kg_m2",
+        "yy_kg_m2",
+        "zz_kg_m2"
+      ],
+      "type": "object"
+    },
+    "InnerTube": {
+      "additionalProperties": false,
+      "description": "A tube inside the airframe: a coupler, a motor mount tube, an engine block or thrust ring. It\nmay sit off the axis, and it may be a cluster: several like tubes side by side, as in a\ncluster's motor mount.\n\n**A cluster.** [`Self::cluster_m`] lists where each tube's axis sits, `[x, y]` in body axes\nfrom the axis the radial offset and angle give. The tubes are the one tube written here,\nrepeated at each place: their mass is the sum of the copies, each with its own parallel-axis\nterm. What the tube holds (an engine block, a motor) is repeated in every tube in the same way\n(`docs/physics/design.md`, the decision record on clusters, [ADR-075][adr-075]).\n\n[adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25",
+      "properties": {
+        "angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle of that offset from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "cluster_m": {
+          "description": "A cluster's tubes: each tube's axis, `[x, y]` in body axes, m, measured from the axis the\nradial offset and angle give. Empty (the default) for one tube on that axis.",
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "outer_radius_m": {
+          "description": "Outer radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "radial_offset_m": {
+          "default": 0.0,
+          "description": "Distance of the tube's axis from the body axis, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "thickness_m": {
+          "description": "Wall thickness, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "outer_radius_m",
+        "thickness_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "Kept": {
+      "additionalProperties": false,
+      "description": "An element kept whole, and where it was.",
+      "properties": {
+        "at": {
+          "description": "Its path in the document; see [`element_at`].",
+          "type": "string"
+        },
+        "element": {
+          "$ref": "#/$defs/Element",
+          "description": "The element, with everything inside it."
+        }
+      },
+      "required": [
+        "at",
+        "element"
+      ],
+      "type": "object"
+    },
+    "KeptAttribute": {
+      "additionalProperties": false,
+      "description": "An attribute kept, and the element it was on.",
+      "properties": {
+        "at": {
+          "description": "The path of the element it was on; see [`element_at`].",
+          "type": "string"
+        },
+        "name": {
+          "description": "Its name.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Its value, as written.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "LaunchConditions": {
+      "additionalProperties": false,
+      "description": "The launch conditions a stored simulation was flown in. Each is `None` where the file does not\nsay.",
+      "properties": {
+        "atmosphere": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Atmosphere"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`<atmosphere>`."
+        },
+        "configuration": {
+          "description": "`<configid>`: the motor configuration flown.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "geodetic_method": {
+          "description": "`<geodeticmethod>`: `flat`, `spherical` or `wgs84`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "into_wind": {
+          "description": "`<launchintowind>`: whether the rod is pointed into the wind, which OpenRocket then writes\nas the rod's direction.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "latitude_deg": {
+          "description": "`<launchlatitude>`, degrees north.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "launch_altitude_m": {
+          "description": "`<launchaltitude>`: the launch site's height above sea level, m.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude_deg": {
+          "description": "`<launchlongitude>`, degrees east.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_time_s": {
+          "description": "`<maxtime>`, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rod_angle_rad": {
+          "description": "`<launchrodangle>`: the rod's tilt from vertical, rad (the file writes degrees).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rod_direction_rad": {
+          "description": "`<launchroddirection>`: the compass bearing the rod tilts toward, clockwise from north, rad\n(the file writes degrees).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rod_length_m": {
+          "description": "`<launchrodlength>`, m.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "time_step_s": {
+          "description": "`<timestep>`, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wind_from_rad": {
+          "description": "`<winddirection>`, or the average wind's `<direction>`: the compass bearing the wind blows\nfrom, rad (the file writes radians).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wind_levels": {
+          "description": "`<wind model=\"multilevel\">`'s levels, lowest first as written.",
+          "items": {
+            "$ref": "#/$defs/WindLevel"
+          },
+          "type": "array"
+        },
+        "wind_levels_above": {
+          "description": "The multilevel wind's `altituderef`: whether its altitudes are above the ground (`agl`) or\nthe sea (`msl`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wind_model": {
+          "description": "`<windmodeltype>`: which wind the run flew, `Average` or the multilevel one. OpenRocket\nwrites both winds whichever it flew.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wind_speed_m_s": {
+          "description": "`<windaverage>`, or the average wind's `<speed>`: the mean wind speed, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wind_turbulence": {
+          "description": "`<windturbulence>`: the turbulence intensity, the standard deviation of the wind speed over\nits mean.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "wind_levels"
+      ],
+      "type": "object"
+    },
+    "LaunchLug": {
+      "additionalProperties": false,
+      "description": "A launch lug: a tube on the outside of the airframe, parallel to it.",
+      "properties": {
+        "angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "count": {
+          "default": 1,
+          "description": "Number of lugs in a row.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "outer_radius_m": {
+          "description": "Outer radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "spacing_m": {
+          "default": 0.0,
+          "description": "Axial distance between the forward ends of consecutive lugs, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "thickness_m": {
+          "description": "Wall thickness, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "outer_radius_m",
+        "thickness_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "LeftOut": {
+      "additionalProperties": false,
+      "description": "Why a configuration is not among the rocket's.",
+      "properties": {
+        "message": {
+          "description": "The same, in words, naming the motor.",
+          "type": "string"
+        },
+        "why": {
+          "$ref": "#/$defs/NotFlown",
+          "description": "The reason."
+        }
+      },
+      "required": [
+        "why",
+        "message"
+      ],
+      "type": "object"
+    },
+    "MassComponent": {
+      "additionalProperties": false,
+      "description": "A mass of known value: an altimeter bay, ballast, a payload.",
+      "properties": {
+        "mass_kg": {
+          "description": "Mass, kg.",
+          "format": "double",
+          "type": "number"
+        },
+        "packing": {
+          "$ref": "#/$defs/Packing",
+          "description": "Its extent."
+        }
+      },
+      "required": [
+        "mass_kg",
+        "packing"
+      ],
+      "type": "object"
+    },
+    "MassElement": {
+      "additionalProperties": false,
+      "description": "A mass on the motor axis, with its moments of inertia about its own centre of mass.",
+      "properties": {
+        "axial_inertia_kg_m2": {
+          "description": "Moment of inertia about the motor axis, through the element's centre of mass, kg·m².",
+          "format": "double",
+          "type": "number"
+        },
+        "cg_m": {
+          "description": "Centre of mass along the motor axis, m from the nozzle exit toward the forward end.",
+          "format": "double",
+          "type": "number"
+        },
+        "mass_kg": {
+          "description": "Mass, kg.",
+          "format": "double",
+          "type": "number"
+        },
+        "transverse_inertia_kg_m2": {
+          "description": "Moment of inertia about a transverse axis through the element's centre of mass, kg·m².",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mass_kg",
+        "cg_m",
+        "axial_inertia_kg_m2",
+        "transverse_inertia_kg_m2"
+      ],
+      "type": "object"
+    },
+    "Material": {
+      "additionalProperties": false,
+      "description": "A named material.",
+      "properties": {
+        "density": {
+          "$ref": "#/$defs/Density",
+          "description": "Density."
+        },
+        "name": {
+          "description": "Name, for display and for matching imported designs.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "density"
+      ],
+      "type": "object"
+    },
+    "MotorConfiguration": {
+      "additionalProperties": false,
+      "description": "A motor configuration: what the rocket declares, and every motor the mounts put in it.",
+      "properties": {
+        "declared": {
+          "description": "Whether `<rocket>` declares it; one only a mount names is read all the same.",
+          "type": "boolean"
+        },
+        "default": {
+          "description": "Whether the file marks it `default=\"true\"`.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "`configid`.",
+          "type": "string"
+        },
+        "inactive_stages": {
+          "description": "The `<stage number>`s the configuration marks `active=\"false\"`; `None` for one whose number\nis missing or not a count, which is switched off all the same.",
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "type": "array"
+        },
+        "left_out": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeftOut"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why it is not among the rocket's configurations, or `None` when it is."
+        },
+        "motors": {
+          "description": "Its motors, in the order their mounts appear in the file.",
+          "items": {
+            "$ref": "#/$defs/OrkMotor"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "`<name>`, which may be empty.",
+          "type": "string"
+        },
+        "staging": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Staging"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The powered separation it flies, for one among the rocket's configurations that has one\n([`staging`]). The rocket's configuration does not carry it: give it to the flight\n(`hpr::ork::separation` maps it onto one), with a recovery device on each part."
+        },
+        "unread": {
+          "description": "Its motors in parts hpr does not read.",
+          "items": {
+            "$ref": "#/$defs/UnreadMotor"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "default",
+        "declared",
+        "inactive_stages",
+        "motors",
+        "unread"
+      ],
+      "type": "object"
+    },
+    "MotorMount": {
+      "additionalProperties": false,
+      "description": "Makes a body tube or inner tube a motor mount.",
+      "properties": {
+        "overhang_m": {
+          "default": 0.0,
+          "description": "How far the nozzle exit sits aft of the mount's aft end, m (negative when recessed).",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "Motors": {
+      "additionalProperties": false,
+      "description": "Every motor configuration a `.ork` design holds.",
+      "properties": {
+        "configurations": {
+          "description": "The configurations: those `<rocket>` declares in its order, then any only a mount names.",
+          "items": {
+            "$ref": "#/$defs/MotorConfiguration"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "configurations"
+      ],
+      "type": "object"
+    },
+    "MountedMotor": {
+      "additionalProperties": false,
+      "description": "A motor in a mount.",
+      "properties": {
+        "delay": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Delay"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ejection delay chosen, if any."
+        },
+        "designation": {
+          "default": "",
+          "description": "Designation, for display.",
+          "type": "string"
+        },
+        "diameter_m": {
+          "description": "Case outer diameter, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "failed_tubes": {
+          "description": "The tubes whose motor fails to light, by index into the mount's tubes (a cluster's in the\norder of [`InnerTube::cluster_m`](crate::InnerTube::cluster_m), `0` for a single tube; a\ncluster inside another cluster counts the outer copies first, each with all its tubes; a\nmount in a pod counts the pods, in the order of [`PodSet::pods`](crate::PodSet::pods)): a\nmotor out. Each is carried loaded and gives no thrust. An ignition on the mount's burnout\ntakes its first motor that lights, but a recovery device or separation triggered by one\nmotor's index waits on that motor alone: point it at a tube that lights, or it never fires.\nEmpty (the default) when every motor lights.",
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "ignition": {
+          "$ref": "#/$defs/Ignition",
+          "description": "When it lights."
+        },
+        "length_m": {
+          "description": "Case length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "motor": {
+          "$ref": "#/$defs/SolidMotor",
+          "description": "The motor."
+        },
+        "mount": {
+          "description": "The id of the mount component.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mount",
+        "diameter_m",
+        "length_m",
+        "motor"
+      ],
+      "type": "object"
+    },
+    "NoCurve": {
+      "description": "Why a motor has no thrust curve.",
+      "oneOf": [
+        {
+          "const": "hybrid",
+          "description": "A hybrid: hpr flies commercial solid motors only.",
+          "type": "string"
+        },
+        {
+          "const": "no_designation",
+          "description": "The `<motor>` names no designation to look up.",
+          "type": "string"
+        },
+        {
+          "const": "not_found",
+          "description": "Neither an embedded curve, a supplied one nor the bundled catalog has it.",
+          "type": "string"
+        },
+        {
+          "const": "ambiguous",
+          "description": "More than one motor in the bundled catalog has its manufacturer and designation.",
+          "type": "string"
+        },
+        {
+          "const": "unusable",
+          "description": "A curve was found and could not be used: an embedded `.rse` that does not read, or a\ncatalog curve that fails.",
+          "type": "string"
+        }
+      ]
+    },
+    "Node": {
+      "description": "A child of an [`Element`]: another element, or text.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A child element.",
+          "properties": {
+            "attributes": {
+              "description": "The attributes, in document order, as name and value.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "children": {
+              "description": "The children, in document order.",
+              "items": {
+                "$ref": "#/$defs/Node"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "element",
+              "type": "string"
+            },
+            "name": {
+              "description": "The element's name, such as `nosecone`.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "attributes",
+            "children"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Text. Character and entity references are already resolved.",
+          "properties": {
+            "kind": {
+              "const": "text",
+              "type": "string"
+            },
+            "text": {
+              "description": "The text as it stands.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NoseCone": {
+      "additionalProperties": false,
+      "description": "A nose cone: a profile with its tip forward, and an optional shoulder aft of its base.",
+      "properties": {
+        "base_radius_m": {
+          "description": "Base radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "length_m": {
+          "description": "Length from tip to base, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "shape": {
+          "$ref": "#/$defs/NoseShape",
+          "description": "Profile shape."
+        },
+        "shoulder": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Shoulder"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional shoulder."
+        },
+        "wall": {
+          "$ref": "#/$defs/Wall",
+          "description": "Filled, or a wall of a thickness."
+        }
+      },
+      "required": [
+        "shape",
+        "length_m",
+        "base_radius_m",
+        "wall",
+        "material"
+      ],
+      "type": "object"
+    },
+    "NoseShape": {
+      "description": "The shape of a nose cone, or of a transition's profile.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A straight cone.",
+          "properties": {
+            "kind": {
+              "const": "conical",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A circular-arc ogive whose arc radius is `radius_ratio` times the tangent-ogive radius.",
+          "properties": {
+            "kind": {
+              "const": "ogive",
+              "type": "string"
+            },
+            "radius_ratio": {
+              "description": "The arc radius over the tangent-ogive radius: 1 for a tangent ogive, above 1 for a\nsecant ogive, below 1 (down to `R/L`) for a bulged secant ogive.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "radius_ratio"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Half an ellipse: a blunt, rounded tip.",
+          "properties": {
+            "kind": {
+              "const": "elliptical",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "`g = ξⁿ`: `n = 1` is a cone and `n = ½` a paraboloid.",
+          "properties": {
+            "exponent": {
+              "description": "The exponent `n`, in `[0.05, 1]` ([`MIN_POWER_EXPONENT`]).",
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "const": "power_series",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "exponent"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Parabolic series: `K′ = 0` is a cone and `K′ = 1` a full parabola, tangent at the base.",
+          "properties": {
+            "kind": {
+              "const": "parabolic_series",
+              "type": "string"
+            },
+            "parameter": {
+              "description": "The parameter `K′`, in `[0, 1]`.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "parameter"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Haack series: `C = 0` is the von Kármán (LD-Haack) ogive and `C = 1/3` the LV-Haack.",
+          "properties": {
+            "kind": {
+              "const": "haack",
+              "type": "string"
+            },
+            "parameter": {
+              "description": "The parameter `C`, in `[0, 2/3]`.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "parameter"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NotFlown": {
+      "description": "The reasons a configuration cannot be flown as written, in the order they are checked; each is\nchecked across every motor before the next, so the one given is the first on this list that\napplies.",
+      "oneOf": [
+        {
+          "const": "unread_motor",
+          "description": "A motor is in a part hpr does not read, such as a pod.",
+          "type": "string"
+        },
+        {
+          "const": "no_motor",
+          "description": "It holds no motor.",
+          "type": "string"
+        },
+        {
+          "const": "inactive_stage",
+          "description": "It marks a stage inactive, and hpr flies every stage.",
+          "type": "string"
+        },
+        {
+          "const": "no_curve",
+          "description": "A motor has no thrust curve.",
+          "type": "string"
+        },
+        {
+          "const": "no_size",
+          "description": "A motor has no case diameter or length.",
+          "type": "string"
+        },
+        {
+          "const": "ignition_not_flown",
+          "description": "A motor lights when hpr can't light it: at a word hpr does not know, after a negative\ndelay, at the ejection charge of a motor below that states no delay, or at an event of a\nstage below that holds no motor, or motors in more than one mount; or no motor of the\nconfiguration lights at all ([`staging`]). A motor that never lights beside one that does is flown unlit.",
+          "type": "string"
+        },
+        {
+          "const": "airframe_not_as_written",
+          "description": "The airframe or a motor mount was not read exactly as written: reading it raised a\nwarning. A part was left out (a pod set hpr cannot lay out, a parallel stage, a part hpr\ncould not give a shape), a value was dropped or simplified (a rail button's screw\nhead, a material that could not be read), or something was assumed (a shape hpr does not know read\nas a cone). Flying it would fly a\nrocket the design may not be.",
+          "type": "string"
+        },
+        {
+          "const": "separation_not_flown",
+          "description": "Its stages come apart in a way hpr doesn't fly: more than one separation; one that can\ncome before apogee with no motor ahead of it still burning or yet to light when it fires,\nor with a motor behind it not yet spent; one at launch, or at the ignition of a motor that\nnever lights; a negative delay; or an event hpr has no trigger for ([`staging`]).",
+          "type": "string"
+        }
+      ]
+    },
+    "Nozzle": {
+      "additionalProperties": false,
+      "description": "A nozzle, for the ambient-pressure correction of thrust.",
+      "properties": {
+        "exit_radius_m": {
+          "description": "Exit radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "reference_pressure_pa": {
+          "description": "The ambient pressure the thrust curve was measured at, Pa: the static test site's. The\nthrust is then corrected to the ambient pressure in flight.\n\n`None` flies the curve as it is at every ambient pressure, with no correction. That is\nRocketPy's default (`Motor(reference_pressure=None)`, whose `pressure_thrust` is then zero,\n`motor.py:1188-1189`), so a RocketPy input transcribed into hpr says `None`.\n\nWhich to give: motor files don't record where the curve was measured. For a motor tested\nnear sea level, [`STANDARD_SEA_LEVEL_PRESSURE_PA`] adds the thrust a higher site gains\n(16 kPa × `A_e` at 1,400 m); `None` leaves it out. A design must say which: the field is\nrequired, as `null` for `None`, so leaving it out is an error rather than a silent choice.\nMotors read from `.eng` or `.rse` files, or from the catalog, carry no nozzle and so no\ncorrection.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "throat_radius_m": {
+          "description": "Throat radius, m, when known (informational: the thrust curve already carries its effect).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "exit_radius_m",
+        "reference_pressure_pa"
+      ],
+      "type": "object"
+    },
+    "OpenRocketExtension": {
+      "additionalProperties": false,
+      "description": "The `x-openrocket` extension: the parts and sections of a `.ork` that hpr does not read, each\nkept whole where it was.",
+      "properties": {
+        "attributes": {
+          "default": [],
+          "description": "The attributes hpr does not read on an element it does read, such as a material's\n`group`, and those whose value a reader dropped, such as a material's declared `type` where\nthe part needs another.",
+          "items": {
+            "$ref": "#/$defs/KeptAttribute"
+          },
+          "type": "array"
+        },
+        "parts": {
+          "default": [],
+          "description": "The parts hpr does not read, in file order.",
+          "items": {
+            "$ref": "#/$defs/Kept"
+          },
+          "type": "array"
+        },
+        "sections": {
+          "default": [],
+          "description": "The sections of the document hpr does not read, in file order.",
+          "items": {
+            "$ref": "#/$defs/Kept"
+          },
+          "type": "array"
+        },
+        "tags": {
+          "default": [],
+          "description": "The tags hpr does not read in an element it does read — a part, a stage, the rocket, a\nstored simulation, or a tag inside any of those that a reader asked for — such as a part's\n`<appearance>`; and those a reader asked for and dropped or simplified, such as a rail\nbutton's `<screwheight>`, which the design does not hold.",
+          "items": {
+            "$ref": "#/$defs/Kept"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "OrkIgnition": {
+      "additionalProperties": false,
+      "description": "When a motor ignites: an event and a delay after it.",
+      "properties": {
+        "delay_s": {
+          "description": "Seconds after the event, s.",
+          "format": "double",
+          "type": "number"
+        },
+        "event": {
+          "$ref": "#/$defs/IgnitionEvent",
+          "description": "The event."
+        }
+      },
+      "required": [
+        "event",
+        "delay_s"
+      ],
+      "type": "object"
+    },
+    "OrkMotor": {
+      "additionalProperties": false,
+      "description": "A motor in a mount, in one configuration: what the `<motor>` element says, when it ignites in\nthat configuration, and the curve it flies on.",
+      "properties": {
+        "curve": {
+          "$ref": "#/$defs/Curve",
+          "description": "The thrust curve."
+        },
+        "delay": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Delay"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`<delay>`: `none` is a plugged motor, with no ejection charge; a number is the seconds from\nburnout to the charge, and `0` fires it at burnout (OpenRocket's technical documentation,\npages 8 and 10)."
+        },
+        "designation": {
+          "description": "`<designation>`, such as `H148R`.",
+          "type": "string"
+        },
+        "diameter_m": {
+          "description": "`<diameter>`: the case diameter, m.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "digest": {
+          "description": "`<digest>`: OpenRocket's key for the thrust curve, which names an embedded curve.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ignition": {
+          "$ref": "#/$defs/OrkIgnition",
+          "description": "When it ignites in this configuration: the configuration's `<ignitionconfiguration>` where\nthe mount has one, the mount's own default where it does not."
+        },
+        "kind": {
+          "description": "`<type>` as written: `single`, `reload` or `hybrid`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "length_m": {
+          "description": "`<length>`: the case length, m.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "manufacturer": {
+          "description": "`<manufacturer>`.",
+          "type": "string"
+        },
+        "mount": {
+          "description": "The id of the mount component in the rocket.",
+          "type": "string"
+        },
+        "stage": {
+          "description": "The index of the mount's stage in [`Rocket::stages`].",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mount",
+        "stage",
+        "manufacturer",
+        "designation",
+        "ignition",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "Overrides": {
+      "additionalProperties": false,
+      "description": "Values that replace the mass properties computed from geometry. Each applies in turn:\n\n1. **Mass** `m′`: the body is rescaled, `I′ = I m′/m`, keeping its centre and shape. A body with\n   no mass becomes a point mass at its centre, but for a packed part in a layout (a mass\n   component, parachute, streamer or shock cord), which takes `m′` as a solid cylinder of its\n   packing, as OpenRocket 24.12 does ([ADR-063][adr-063]).\n2. **Centre of mass**: the centre moves along the axis to `cg_aft_m` aft of the component's\n   forward end (a stage's, for a stage), with or without its children, and off the axis to\n   `cg_xy_m` when given (otherwise it keeps its offset); the tensor about the centre is\n   unchanged.\n3. **Inertia**: the tensor about the (new) centre is replaced.\n\n[adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21",
+      "properties": {
+        "cg_aft_m": {
+          "description": "Centre of mass, m aft of the forward end of the component (or the stage).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cg_xy_m": {
+          "description": "Centre of mass off the axis, `[x, y]` in body axes, m. For a part inside a cluster's tube or\na pod, it is measured in that one copy as written (a pod on the body's axis), and the copies\ncarry it to each place.",
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "inertia": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InertiaOverride"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Inertia tensor about the centre of mass. For a part inside a cluster's tube or a pod, it is\nin that one copy's axes as written, and turns with each pod."
+        },
+        "mass_kg": {
+          "description": "Mass, kg.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Packing": {
+      "additionalProperties": false,
+      "description": "Where and how compactly a mass or a recovery part is stowed: a solid cylinder.",
+      "properties": {
+        "angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle of that offset from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "radial_offset_m": {
+          "default": 0.0,
+          "description": "Distance of its axis from the body axis, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "radius_m": {
+          "description": "Radius, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "radius_m"
+      ],
+      "type": "object"
+    },
+    "Parachute": {
+      "additionalProperties": false,
+      "description": "A parachute, packed.",
+      "properties": {
+        "canopy_material": {
+          "$ref": "#/$defs/Material",
+          "description": "Canopy fabric (surface)."
+        },
+        "diameter_m": {
+          "description": "Nominal (flat) canopy diameter, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "line_count": {
+          "description": "Number of shroud lines.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "line_length_m": {
+          "description": "Length of each shroud line, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "line_material": {
+          "$ref": "#/$defs/Material",
+          "description": "Shroud line (line)."
+        },
+        "packing": {
+          "$ref": "#/$defs/Packing",
+          "description": "How it is packed."
+        }
+      },
+      "required": [
+        "diameter_m",
+        "canopy_material",
+        "line_count",
+        "line_length_m",
+        "line_material",
+        "packing"
+      ],
+      "type": "object"
+    },
+    "Part": {
+      "description": "A part in the tree. Serialized as an object with one key, the part's kind.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A nose cone (body component).",
+          "properties": {
+            "nose_cone": {
+              "$ref": "#/$defs/NoseCone"
+            }
+          },
+          "required": [
+            "nose_cone"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A body tube (body component).",
+          "properties": {
+            "body_tube": {
+              "$ref": "#/$defs/BodyTube"
+            }
+          },
+          "required": [
+            "body_tube"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A transition (body component).",
+          "properties": {
+            "transition": {
+              "$ref": "#/$defs/Transition"
+            }
+          },
+          "required": [
+            "transition"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "An inner tube (internal): a coupler, motor mount tube or engine block.",
+          "properties": {
+            "inner_tube": {
+              "$ref": "#/$defs/InnerTube"
+            }
+          },
+          "required": [
+            "inner_tube"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A centering ring or bulkhead (internal).",
+          "properties": {
+            "centering_ring": {
+              "$ref": "#/$defs/CenteringRing"
+            }
+          },
+          "required": [
+            "centering_ring"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A fin set (external, on a body tube). Its axial extent is the root chord.",
+          "properties": {
+            "fin_set": {
+              "$ref": "#/$defs/FinSet"
+            }
+          },
+          "required": [
+            "fin_set"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Tube fins (external, on a body tube).",
+          "properties": {
+            "tube_fin_set": {
+              "$ref": "#/$defs/TubeFinSet"
+            }
+          },
+          "required": [
+            "tube_fin_set"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Launch lugs (external, on a body tube). The extent covers the whole row.",
+          "properties": {
+            "launch_lug": {
+              "$ref": "#/$defs/LaunchLug"
+            }
+          },
+          "required": [
+            "launch_lug"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Rail buttons (external, on a body tube). The extent covers the whole row.",
+          "properties": {
+            "rail_button": {
+              "$ref": "#/$defs/RailButton"
+            }
+          },
+          "required": [
+            "rail_button"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Pods (external, on a body tube). Its children are the pod's body components, which stack\nalong the pod's axis; its extent is theirs ([`Component::length_m`]).",
+          "properties": {
+            "pod_set": {
+              "$ref": "#/$defs/PodSet"
+            }
+          },
+          "required": [
+            "pod_set"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A mass component (internal).",
+          "properties": {
+            "mass_component": {
+              "$ref": "#/$defs/MassComponent"
+            }
+          },
+          "required": [
+            "mass_component"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A parachute (internal).",
+          "properties": {
+            "parachute": {
+              "$ref": "#/$defs/Parachute"
+            }
+          },
+          "required": [
+            "parachute"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A streamer (internal).",
+          "properties": {
+            "streamer": {
+              "$ref": "#/$defs/Streamer"
+            }
+          },
+          "required": [
+            "streamer"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A shock cord (internal).",
+          "properties": {
+            "shock_cord": {
+              "$ref": "#/$defs/ShockCord"
+            }
+          },
+          "required": [
+            "shock_cord"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PodSet": {
+      "additionalProperties": false,
+      "description": "Pods beside the airframe: side pods, or outboard motor pods. A pod set attaches to a body tube\nlike a fin set, and its children are the pod's own body components (nose cone, body tubes,\ntransitions), which stack aft from the pod set's position along the pod's axis instead of the\nbody's.\n\n**Copies.** The pod written in the tree is one pod on the body's axis, repeated `count` times\naround it as a rotational pattern: pod `k` is that pod turned by `φ_k = angle + 2π k / count`\nabout the body's axis and moved to `r (cos φ_k, sin φ_k)` ([`Self::pods`]), in\n[body axes](https://github.com/nrdptel/hpr-sim/blob/main/docs/physics/frames.md). Everything\nthe pod holds (fins on its tubes, parts inside them, a motor in a mount) turns and moves with\nit, so what points away from the airframe on one pod does on every pod. Each copy adds its own\nparallel-axis term, `I_O = I_cg + m (|d|² E − d dᵀ)` with `d` the copy's centre from the point\n`O` (J. L. Meriam and L. G. Kraige, *Engineering Mechanics: Dynamics*, appendix B). The pod set\nitself weighs nothing: its mass is its pods'. See the design page's *Pods* section\n(`docs/physics/design.md`) and the decision record on pods, [ADR-089][adr-089].\n\n**A pod of no length.** A pod may be a single body tube of no length, which weighs nothing: what\nhangs from it (fins, a launch lug) sits on a tube of that radius, most often none, so on the\npod's own axis, and is repeated around the body's as any pod is. OpenRocket draws winglets this\nway, calling the tube a \"phantom body\". A pod set may also hold nothing at all, and then weighs\nnothing.\n\n**Flown** since\n[M1.13c1](https://github.com/nrdptel/hpr-sim/blob/main/docs/decisions-and-roadmap.md#m1-13c1):\neach pod's parts take their own normal force and drag, once per pod\n([aerodynamics: Pods](https://nrdptel.github.io/hpr-sim/physics/aero.html#pods)).\n\n[adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27",
+      "properties": {
+        "angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle of the first pod from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "count": {
+          "description": "Number of pods, at least one, spaced evenly around the body's axis.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "radial_offset_m": {
+          "description": "Distance of each pod's axis from the body's axis, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "count",
+        "radial_offset_m"
+      ],
+      "type": "object"
+    },
+    "Position": {
+      "description": "Where an attached part sits along its parent. Offsets are positive aft.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The part's forward end is `aft_offset_m` aft of the parent's forward end.",
+          "properties": {
+            "aft_offset_m": {
+              "default": 0.0,
+              "description": "Offset, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "from": {
+              "const": "top",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The part's middle is `aft_offset_m` aft of the parent's middle.",
+          "properties": {
+            "aft_offset_m": {
+              "default": 0.0,
+              "description": "Offset, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "from": {
+              "const": "middle",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The part's aft end is `aft_offset_m` aft of the parent's aft end.",
+          "properties": {
+            "aft_offset_m": {
+              "default": 0.0,
+              "description": "Offset, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "from": {
+              "const": "bottom",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The part's forward end is `aft_offset_m` aft of the previous sibling's aft end, or of the\nparent's forward end for the first child.",
+          "properties": {
+            "aft_offset_m": {
+              "default": 0.0,
+              "description": "Offset, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "from": {
+              "const": "after",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The part's forward end is at station `station_m`, measured aft of the nose tip.",
+          "properties": {
+            "from": {
+              "const": "absolute",
+              "type": "string"
+            },
+            "station_m": {
+              "description": "Station, m.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "from",
+            "station_m"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Propellant": {
+      "description": "How the propellant is laid out and how its shape evolves. Serialized with a `model` tag\n(`\"column\"`, `\"grains\"`).\n\nNot `Copy`, so that a later model can hold tabulated data.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A fixed-shape column: the default when only a motor's envelope is known.",
+          "properties": {
+            "center_m": {
+              "description": "Centre of the column along the motor axis, m from the nozzle exit.",
+              "format": "double",
+              "type": "number"
+            },
+            "inner_radius_m": {
+              "description": "Inner (bore) radius, m; zero for a solid column.",
+              "format": "double",
+              "type": "number"
+            },
+            "length_m": {
+              "description": "Length, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "mass_kg": {
+              "description": "Initial propellant mass, kg.",
+              "format": "double",
+              "type": "number"
+            },
+            "model": {
+              "const": "column",
+              "type": "string"
+            },
+            "outer_radius_m": {
+              "description": "Outer radius, m.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "model",
+            "mass_kg",
+            "center_m",
+            "outer_radius_m",
+            "inner_radius_m",
+            "length_m"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "BATES grains that regress on their bores and ends.",
+          "properties": {
+            "center_m": {
+              "description": "Centre of the grain stack along the motor axis, m from the nozzle exit.",
+              "format": "double",
+              "type": "number"
+            },
+            "count": {
+              "description": "Number of grains `N`, at least 1.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "density_kg_m3": {
+              "description": "Propellant density `ρ`, kg/m³.",
+              "format": "double",
+              "type": "number"
+            },
+            "inhibited_ends": {
+              "description": "Whether the grain ends are inhibited, so only the bores burn (RocketPy's\n`only_radial_burn`).",
+              "type": "boolean"
+            },
+            "initial_height_m": {
+              "description": "Initial grain height (length) `h₀`, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "initial_inner_radius_m": {
+              "description": "Initial bore radius `r₀`, m, positive.",
+              "format": "double",
+              "type": "number"
+            },
+            "model": {
+              "const": "grains",
+              "type": "string"
+            },
+            "outer_radius_m": {
+              "description": "Grain outer radius `R`, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "separation_m": {
+              "description": "Gap between adjacent grains `s`, m.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "model",
+            "count",
+            "density_kg_m3",
+            "outer_radius_m",
+            "initial_inner_radius_m",
+            "initial_height_m",
+            "separation_m",
+            "center_m",
+            "inhibited_ends"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Which program wrote a document, and from what.",
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Source"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The file the design was read from, if it was read from one."
+        },
+        "tool": {
+          "description": "The program, such as `hpr-sim`.",
+          "type": "string"
+        },
+        "tool_version": {
+          "description": "Its version.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "tool_version"
+      ],
+      "type": "object"
+    },
+    "RailButton": {
+      "additionalProperties": false,
+      "description": "A rail button: a base disc on the airframe, a narrower waist, and a flange that rides in the\nrail, stacked outward along a radial line.",
+      "properties": {
+        "angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "base_height_m": {
+          "description": "Height of the base, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "count": {
+          "default": 1,
+          "description": "Number of buttons in a row.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flange_height_m": {
+          "description": "Height of the flange, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "height_m": {
+          "description": "Total height above the airframe, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "inner_diameter_m": {
+          "description": "Diameter of the waist, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "outer_diameter_m": {
+          "description": "Diameter of the base and the flange, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "spacing_m": {
+          "default": 0.0,
+          "description": "Axial distance between the forward edges of consecutive buttons, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "outer_diameter_m",
+        "inner_diameter_m",
+        "height_m",
+        "base_height_m",
+        "flange_height_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "Recovery": {
+      "additionalProperties": false,
+      "description": "Every recovery setting in a `.ork` design.",
+      "properties": {
+        "devices": {
+          "description": "The parachutes and streamers read, in file order.",
+          "items": {
+            "$ref": "#/$defs/RecoveryDevice"
+          },
+          "type": "array"
+        },
+        "separations": {
+          "description": "Every stage that states when it separates, in file order.",
+          "items": {
+            "$ref": "#/$defs/StageSeparation"
+          },
+          "type": "array"
+        },
+        "unread": {
+          "description": "The parachutes and streamers in parts hpr does not read.",
+          "items": {
+            "$ref": "#/$defs/UnreadDevice"
+          },
+          "type": "array"
+        },
+        "unread_separations": {
+          "description": "The parallel stages that state a separation, which hpr does not read yet.",
+          "items": {
+            "$ref": "#/$defs/UnreadDevice"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "devices",
+        "separations",
+        "unread",
+        "unread_separations"
+      ],
+      "type": "object"
+    },
+    "RecoveryDevice": {
+      "additionalProperties": false,
+      "description": "A parachute's or streamer's recovery settings.",
+      "properties": {
+        "cd": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Dimension"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`<cd>`: a stated drag coefficient, or `auto` for OpenRocket's own (0.8 for a parachute,\nfrom the strip's size for a streamer). `None` where the file says nothing."
+        },
+        "configurations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/EventSetting_for_DeployEvent"
+          },
+          "description": "When it deploys in each configuration that changes that, by `configid`, with anything the\nconfiguration leaves out taken from [`RecoveryDevice::deployment`].",
+          "type": "object"
+        },
+        "deployment": {
+          "$ref": "#/$defs/EventSetting_for_DeployEvent",
+          "description": "When it deploys, as the device states it."
+        },
+        "id": {
+          "description": "The id of the device's component in the rocket.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/DeviceKind",
+          "description": "Parachute or streamer."
+        },
+        "stage": {
+          "description": "The index of its stage in [`Rocket::stages`].",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "stage",
+        "kind",
+        "deployment",
+        "configurations"
+      ],
+      "type": "object"
+    },
+    "ReferenceDiameter": {
+      "description": "How the reference diameter (for aerodynamic coefficients) is chosen.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The widest body component (nose cone, body tube or transition) in any stage. Internal\nparts, shoulders, fins, tube fins, lugs and rail buttons don't count.",
+          "properties": {
+            "kind": {
+              "const": "maximum",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The base of the first nose cone.",
+          "properties": {
+            "kind": {
+              "const": "nose_base",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A given diameter.",
+          "properties": {
+            "diameter_m": {
+              "description": "Diameter, m.",
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "diameter_m"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Rocket": {
+      "additionalProperties": false,
+      "description": "A rocket design: its stages, how its reference diameter is chosen, and its motor\nconfigurations.",
+      "properties": {
+        "configurations": {
+          "default": [],
+          "description": "Motor configurations.",
+          "items": {
+            "$ref": "#/$defs/Configuration"
+          },
+          "type": "array"
+        },
+        "name": {
+          "default": "",
+          "description": "Name.",
+          "type": "string"
+        },
+        "reference_diameter": {
+          "$ref": "#/$defs/ReferenceDiameter",
+          "default": {
+            "kind": "maximum"
+          },
+          "description": "How the reference diameter is chosen."
+        },
+        "stages": {
+          "description": "Stages from the nose aft. The first holds the nose cone.",
+          "items": {
+            "$ref": "#/$defs/Stage"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stages"
+      ],
+      "type": "object"
+    },
+    "SeparationEvent": {
+      "description": "What separates a stage from the one above it, as `<separationevent>` names it. \"This stage\" is\nthe stage that carries the setting, the lower one, which drops away.",
+      "oneOf": [
+        {
+          "const": "launch",
+          "description": "`launch`: at launch, plus the delay.",
+          "type": "string"
+        },
+        {
+          "const": "ignition",
+          "description": "`ignition`: this stage's motor igniting.",
+          "type": "string"
+        },
+        {
+          "const": "burnout",
+          "description": "`burnout`: this stage's motor burning out.",
+          "type": "string"
+        },
+        {
+          "const": "ejection",
+          "description": "`ejection`: this stage's ejection charge.",
+          "type": "string"
+        },
+        {
+          "const": "upper_ignition",
+          "description": "`upperignition`: the motor of the stage above igniting.",
+          "type": "string"
+        },
+        {
+          "const": "altitude_ascending",
+          "description": "`altitudeascending`: a height on the way up.",
+          "type": "string"
+        },
+        {
+          "const": "apogee",
+          "description": "`apogee`.",
+          "type": "string"
+        },
+        {
+          "const": "altitude_descending",
+          "description": "`altitudedescending`: a height on the way down.",
+          "type": "string"
+        },
+        {
+          "const": "never",
+          "description": "`never`.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A word not listed here, kept as written.",
+          "properties": {
+            "other": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "other"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ShockCord": {
+      "additionalProperties": false,
+      "description": "A shock cord, packed.",
+      "properties": {
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (line)."
+        },
+        "packing": {
+          "$ref": "#/$defs/Packing",
+          "description": "How it is packed."
+        }
+      },
+      "required": [
+        "length_m",
+        "material",
+        "packing"
+      ],
+      "type": "object"
+    },
+    "Shoulder": {
+      "additionalProperties": false,
+      "description": "A cylindrical extension of a nose cone or transition that fits inside the adjoining tube.",
+      "properties": {
+        "capped": {
+          "default": false,
+          "description": "Whether a disc closes the shoulder's far end.",
+          "type": "boolean"
+        },
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "outer_radius_m": {
+          "description": "Outer radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "thickness_m": {
+          "description": "Wall thickness, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "outer_radius_m",
+        "thickness_m"
+      ],
+      "type": "object"
+    },
+    "SolidMotor": {
+      "additionalProperties": false,
+      "description": "A solid rocket motor.\n\nNothing here can tell a hybrid's thrust curve from a solid's, so the checks are at the edges:\n[`crate::catalog::CatalogMotor::motor`] refuses hybrids and the `.rse` reader warns about them\n(`.eng` files don't say).",
+      "properties": {
+        "curve": {
+          "$ref": "#/$defs/ThrustCurve"
+        },
+        "dry": {
+          "$ref": "#/$defs/MassElement"
+        },
+        "nozzle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Nozzle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "propellant": {
+          "$ref": "#/$defs/Propellant"
+        }
+      },
+      "required": [
+        "curve",
+        "propellant",
+        "dry"
+      ],
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "description": "The file a design was read from: its format and its SHA-256, which name it without its path.",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/SourceFormat",
+          "description": "The file's format."
+        },
+        "sha256": {
+          "description": "The SHA-256 of the file's bytes, as 64 lowercase hexadecimal digits.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "SourceFormat": {
+      "description": "The formats a design can be read from.",
+      "oneOf": [
+        {
+          "const": "ork",
+          "description": "OpenRocket's `.ork`.",
+          "type": "string"
+        },
+        {
+          "const": "hpr_design",
+          "description": "A document of this format.",
+          "type": "string"
+        }
+      ]
+    },
+    "Stage": {
+      "additionalProperties": false,
+      "description": "A stage: body components stacked from its forward end aft.",
+      "properties": {
+        "components": {
+          "description": "Body components (nose cones, body tubes, transitions), forward to aft.",
+          "items": {
+            "$ref": "#/$defs/Component"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "Unique id.",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "description": "Name.",
+          "type": "string"
+        },
+        "overrides": {
+          "$ref": "#/$defs/Overrides",
+          "description": "Overrides for the whole stage without its motors, applied after every override inside it. A\ncentre-of-mass override is measured aft of the stage's forward end."
+        }
+      },
+      "required": [
+        "id",
+        "components"
+      ],
+      "type": "object"
+    },
+    "StageSeparation": {
+      "additionalProperties": false,
+      "description": "A stage's separation settings.",
+      "properties": {
+        "configurations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/EventSetting_for_SeparationEvent"
+          },
+          "description": "When it separates in each configuration that changes that, by `configid`, with anything\nthe configuration leaves out taken from [`StageSeparation::separation`].",
+          "type": "object"
+        },
+        "id": {
+          "description": "The stage's id in the rocket.",
+          "type": "string"
+        },
+        "separation": {
+          "$ref": "#/$defs/EventSetting_for_SeparationEvent",
+          "description": "When it separates, as the stage states it."
+        },
+        "stage": {
+          "description": "The stage's index in [`Rocket::stages`].",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "stage",
+        "separation",
+        "configurations"
+      ],
+      "type": "object"
+    },
+    "Staging": {
+      "additionalProperties": false,
+      "description": "The one powered separation a configuration flies: where the stack comes apart and when.",
+      "properties": {
+        "after_stage": {
+          "description": "The last stage that stays with the nose; the stages after it drop away.",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "time_s": {
+          "description": "When that is, s after launch: known before the flight.",
+          "format": "double",
+          "type": "number"
+        },
+        "trigger": {
+          "$ref": "#/$defs/StagingTrigger",
+          "description": "When."
+        }
+      },
+      "required": [
+        "after_stage",
+        "trigger",
+        "time_s"
+      ],
+      "type": "object"
+    },
+    "StagingTrigger": {
+      "description": "When a powered separation fires, in the terms of hpr's flight triggers\n(`hpr_sim::recovery::Trigger`, which this crate does not depend on).",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "At a time after launch, s.",
+          "properties": {
+            "time": {
+              "additionalProperties": false,
+              "properties": {
+                "time_s": {
+                  "description": "The time after launch, s.",
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "time_s"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "time"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A delay after the burnout of the motor in a mount (the first tube's, for a cluster, whose\ntubes light together).",
+          "properties": {
+            "burnout": {
+              "additionalProperties": false,
+              "properties": {
+                "delay_s": {
+                  "description": "The delay after its burnout, s.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "mount": {
+                  "description": "The mount's component id.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mount",
+                "delay_s"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "burnout"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "StoredBranch": {
+      "additionalProperties": false,
+      "description": "One stage's stored time series.",
+      "properties": {
+        "events": {
+          "description": "The `<event>`s, in file order.",
+          "items": {
+            "$ref": "#/$defs/StoredEvent"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "`name`: the stage's name.",
+          "type": "string"
+        },
+        "rows": {
+          "description": "The `<datapoint>` rows, each a value per column, as written: SI, angles in radians, latitude\nand longitude in degrees. `None` where the file says `NaN`, a quantity OpenRocket did not\ncompute at that step.",
+          "items": {
+            "items": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "types": {
+          "description": "`types`: each column's name as OpenRocket shows it, such as `Time` or `Altitude`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "types",
+        "rows",
+        "events"
+      ],
+      "type": "object"
+    },
+    "StoredEvent": {
+      "additionalProperties": false,
+      "description": "An event a stored simulation logged.",
+      "properties": {
+        "kind": {
+          "description": "`type`, such as `apogee` or `recoverydevicedeployment`.",
+          "type": "string"
+        },
+        "source": {
+          "description": "`source`: the id of the component it came from, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "time_s": {
+          "description": "`time`, s.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "time_s",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StoredResults": {
+      "additionalProperties": false,
+      "description": "What a stored simulation gave: its summary and its time series.",
+      "properties": {
+        "branches": {
+          "description": "The time series, one per stage, in file order.",
+          "items": {
+            "$ref": "#/$defs/StoredBranch"
+          },
+          "type": "array"
+        },
+        "deployment_speed_m_s": {
+          "description": "`deploymentvelocity`: the speed at the first deployment, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "flight_time_s": {
+          "description": "`flighttime`, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ground_hit_speed_m_s": {
+          "description": "`groundhitvelocity`, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_acceleration_m_s2": {
+          "description": "`maxacceleration`, m/s².",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_altitude_m": {
+          "description": "`maxaltitude`, m.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_mach": {
+          "description": "`maxmach`.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_speed_m_s": {
+          "description": "`maxvelocity`, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "optimum_delay_s": {
+          "description": "`optimumdelay`: the ejection delay that would have fired at apogee, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rod_exit_speed_m_s": {
+          "description": "`launchrodvelocity`: the speed leaving the rod, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "time_to_apogee_s": {
+          "description": "`timetoapogee`, s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "warnings": {
+          "description": "The `<warning>`s OpenRocket stored with the results, each as its text.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "branches",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "StoredSimulation": {
+      "additionalProperties": false,
+      "description": "A simulation stored in a `.ork`.",
+      "properties": {
+        "calculator": {
+          "description": "`<calculator>`, such as `BarrowmanCalculator`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "conditions": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LaunchConditions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`<conditions>`: what the run was flown in."
+        },
+        "name": {
+          "description": "`<name>`.",
+          "type": "string"
+        },
+        "parser_warnings": {
+          "default": false,
+          "description": "Whether reading this simulation required dropping or reinterpreting stored data.",
+          "type": "boolean"
+        },
+        "results": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StoredResults"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`<flightdata>`: what it gave, when OpenRocket saved it."
+        },
+        "simulator": {
+          "description": "`<simulator>`, such as `RK4Simulator`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "description": "The `status` attribute as written: `uptodate`, `outdated`, `loaded`, `external`,\n`notsimulated`, `cantrun` or `aborted` in the files OpenRocket 24.12 writes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "Streamer": {
+      "additionalProperties": false,
+      "description": "A streamer, packed.",
+      "properties": {
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (surface)."
+        },
+        "packing": {
+          "$ref": "#/$defs/Packing",
+          "description": "How it is packed."
+        },
+        "width_m": {
+          "description": "Width, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "length_m",
+        "width_m",
+        "material",
+        "packing"
+      ],
+      "type": "object"
+    },
+    "ThrustCurve": {
+      "additionalProperties": false,
+      "description": "A thrust curve: thrust in newtons against time in seconds from ignition, joined by straight\nlines.\n\nBuilt through [`ThrustCurve::new`], which checks the samples; it serializes as its samples and\nre-checks them when deserialized.",
+      "properties": {
+        "thrusts_n": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "times_s": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "times_s",
+        "thrusts_n"
+      ],
+      "type": "object"
+    },
+    "Transition": {
+      "additionalProperties": false,
+      "description": "A transition between two radii, with optional shoulders at either end.",
+      "properties": {
+        "aft_radius_m": {
+          "description": "Radius at the aft end, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "aft_shoulder": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Shoulder"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional shoulder aft of the aft end."
+        },
+        "clipped": {
+          "default": false,
+          "description": "Whether the profile is clipped from a longer nose cone (`crate::shapes`).",
+          "type": "boolean"
+        },
+        "fore_radius_m": {
+          "description": "Radius at the forward end, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "fore_shoulder": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Shoulder"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional shoulder forward of the fore end."
+        },
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "shape": {
+          "$ref": "#/$defs/NoseShape",
+          "description": "Profile shape."
+        },
+        "wall": {
+          "$ref": "#/$defs/Wall",
+          "description": "Filled, or a wall of a thickness."
+        }
+      },
+      "required": [
+        "shape",
+        "length_m",
+        "fore_radius_m",
+        "aft_radius_m",
+        "wall",
+        "material"
+      ],
+      "type": "object"
+    },
+    "TubeFinSet": {
+      "additionalProperties": false,
+      "description": "Tube fins: open tubes parallel to the body, touching it, spaced evenly around it.",
+      "properties": {
+        "base_angle_rad": {
+          "default": 0.0,
+          "description": "Roll angle of the first tube's axis from `x_B` toward `y_B`, rad.",
+          "format": "double",
+          "type": "number"
+        },
+        "count": {
+          "description": "Number of tubes, at least 1.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "length_m": {
+          "description": "Length, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Material (bulk)."
+        },
+        "outer_radius_m": {
+          "description": "Outer radius, m.",
+          "format": "double",
+          "type": "number"
+        },
+        "thickness_m": {
+          "description": "Wall thickness, m.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "count",
+        "length_m",
+        "outer_radius_m",
+        "thickness_m",
+        "material"
+      ],
+      "type": "object"
+    },
+    "UnreadDevice": {
+      "additionalProperties": false,
+      "description": "A parachute or streamer inside a part hpr does not read, such as a pod.",
+      "properties": {
+        "at": {
+          "description": "Where it is in the file.",
+          "type": "string"
+        },
+        "inside": {
+          "description": "The tag of the outermost part that was not read: a `podset` or `parallelstage`, or else\nthe device's own tag.",
+          "type": "string"
+        },
+        "tag": {
+          "description": "`parachute` or `streamer`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "tag",
+        "inside"
+      ],
+      "type": "object"
+    },
+    "UnreadMotor": {
+      "additionalProperties": false,
+      "description": "A `<motor>` inside a part hpr does not read, such as a pod's mount.",
+      "properties": {
+        "at": {
+          "description": "Where its mount is in the file.",
+          "type": "string"
+        },
+        "designation": {
+          "description": "`<designation>`.",
+          "type": "string"
+        },
+        "inside": {
+          "description": "The tag of the part that was not read: the outermost `podset` or `parallelstage` around\nthe mount, or else the mount's own tag.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why its mount was not read, in words.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "designation",
+        "inside",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "Version": {
+      "description": "A version of the format, `major.minor`.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "Wall": {
+      "description": "Whether a solid of revolution is filled or a wall.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Solid all the way to the axis.",
+          "properties": {
+            "kind": {
+              "const": "filled",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A wall of constant thickness measured normal to the outer surface. A thickness of zero is a\nsurface with no wall: the part keeps its shape and weighs nothing, which is what OpenRocket\nmakes of a part written with no wall ([ADR-061][adr-061]).\n\n[adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21",
+          "properties": {
+            "kind": {
+              "const": "shell",
+              "type": "string"
+            },
+            "thickness_m": {
+              "description": "Wall thickness, m; zero or more.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "thickness_m"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WindLevel": {
+      "additionalProperties": false,
+      "description": "One level of a multilevel wind.",
+      "properties": {
+        "altitude_m": {
+          "description": "Its altitude, m, above the ground or the sea as [`LaunchConditions::wind_levels_above`]\nsays.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "from_rad": {
+          "description": "The bearing it blows from, rad.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "speed_m_s": {
+          "description": "Its mean speed, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "standard_deviation_m_s": {
+          "description": "The standard deviation of its speed, m/s.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A rocket design in the hpr design format.",
+  "properties": {
+    "attachments": {
+      "description": "The source file's other files, in the order it held them: a `.ork` archive's entries\nbesides the design, such as embedded thrust curves and decal images.",
+      "items": {
+        "$ref": "#/$defs/AttachedFile"
+      },
+      "type": "array"
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions",
+      "description": "What the source file holds that hpr does not model, by namespace, kept for writing it\nback."
+    },
+    "format": {
+      "$ref": "#/$defs/Format",
+      "description": "Always `hpr-design`."
+    },
+    "motors": {
+      "$ref": "#/$defs/Motors",
+      "description": "Every motor configuration, flown or not, with why one is not."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "Which program wrote the document, and from what."
+    },
+    "recovery": {
+      "$ref": "#/$defs/Recovery",
+      "description": "When each parachute and streamer opens and each stage separates."
+    },
+    "rocket": {
+      "$ref": "#/$defs/Rocket",
+      "description": "The rocket: its stages and their parts, with every configuration that flies."
+    },
+    "simulations": {
+      "description": "The simulations the source file stored, with their conditions and results.",
+      "items": {
+        "$ref": "#/$defs/StoredSimulation"
+      },
+      "type": "array"
+    },
+    "version": {
+      "$ref": "#/$defs/Version",
+      "description": "The format's version, `major.minor`."
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "provenance",
+    "rocket",
+    "motors",
+    "recovery",
+    "simulations",
+    "extensions",
+    "attachments"
+  ],
+  "title": "hpr design",
+  "type": "object"
+}

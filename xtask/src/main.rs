@@ -31,6 +31,7 @@ mod designs;
 #[cfg(test)]
 mod docs;
 mod examples;
+mod format;
 mod layering;
 mod ork;
 mod ork_corpus_flights;
@@ -38,6 +39,7 @@ mod ork_export;
 mod ork_export_flights;
 mod ork_extensions;
 mod ork_flights;
+mod ork_format;
 mod ork_geometry;
 mod ork_library_flights;
 mod ork_mass;
@@ -69,6 +71,7 @@ Commands:
 {CLI}
 {SITE}
 {EXAMPLES}
+{FORMAT}
 {ORK}
 {ORK_FLIGHTS}
 {ORK_EXPORT_FLIGHTS}
@@ -85,6 +88,7 @@ fn usage() -> String {
         .replace("{CLI}", cli::USAGE)
         .replace("{SITE}", site::USAGE)
         .replace("{EXAMPLES}", examples::USAGE)
+        .replace("{FORMAT}", format::USAGE)
         .replace("{ORK}", ork::USAGE)
         .replace("{ORK_FLIGHTS}", ork_flights::USAGE)
         .replace("{ORK_EXPORT_FLIGHTS}", ork_export_flights::USAGE)
@@ -103,6 +107,7 @@ fn main() -> ExitCode {
         Some("cli") => cli::run(&args.collect::<Vec<_>>()),
         Some("site") => site::run(&args.collect::<Vec<_>>()),
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
+        Some("format") => format::run(&args.collect::<Vec<_>>()),
         Some("ork") => ork::run(&args.collect::<Vec<_>>()),
         Some("ork-flights") => ork_flights::run(&args.collect::<Vec<_>>()),
         Some("ork-export-flights") => ork_export_flights::run(&args.collect::<Vec<_>>()),

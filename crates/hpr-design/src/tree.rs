@@ -53,7 +53,7 @@ pub const LENGTH_TOLERANCE_M: f64 = 1e-9;
 
 /// A rocket design: its stages, how its reference diameter is chosen, and its motor
 /// configurations.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Rocket {
     /// Name.
@@ -70,7 +70,7 @@ pub struct Rocket {
 }
 
 /// A stage: body components stacked from its forward end aft.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Stage {
     /// Unique id.
@@ -87,7 +87,7 @@ pub struct Stage {
 }
 
 /// A node of the design tree: a part, where it sits, and what hangs off it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Component {
     /// Unique id.
@@ -139,7 +139,7 @@ impl Component {
 }
 
 /// A part in the tree. Serialized as an object with one key, the part's kind.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Part {
@@ -398,7 +398,7 @@ impl Part {
 }
 
 /// Where an attached part sits along its parent. Offsets are positive aft.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "from", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Position {
     /// The part's forward end is `aft_offset_m` aft of the parent's forward end.
@@ -434,7 +434,7 @@ pub enum Position {
 }
 
 /// A dimension resolved from the tree instead of stored in the part.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum AutoDimension {
@@ -530,7 +530,7 @@ impl AutoDimension {
 /// 3. **Inertia**: the tensor about the (new) centre is replaced.
 ///
 /// [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
-#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Overrides {
     /// Mass, kg.
@@ -552,7 +552,7 @@ pub struct Overrides {
 
 /// An inertia tensor about the centre of mass in body axes, kg·m². The off-diagonal entries are
 /// the tensor's, `I_xy = −∫ x y dm` ([`crate::mass`]); they default to zero.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InertiaOverride {
     /// `I_xx`, kg·m².
@@ -669,7 +669,7 @@ impl Overrides {
 }
 
 /// How the reference diameter (for aerodynamic coefficients) is chosen.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum ReferenceDiameter {
