@@ -15,20 +15,24 @@
 - **How well it is validated:** against an invented flight whose every reading is known exactly,
   each reading lands within the bound the log's rounding and the filter allow
   ([Checked against](#checked-against)). On a real log, Debrief's public Pnut file, hpr reads
-  1,010 ft where the altimeter states 1,009 ft. That is one flight. The private collection of logs
-  Debrief was built on hasn't been read yet: that is [M7.1](../decisions-and-roadmap.md#m7-1)'s
-  work.
+  1,010 ft where the altimeter's own software states 1,009 ft: one flight, and two readings of one
+  pressure trace rather than a measurement of the height. That log isn't committed, so this check
+  runs only where it has been fetched, not in CI. The private collection of logs Debrief was built
+  on hasn't been read yet: that is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
 - **What it leaves out:** the drogue and main descent rates each on its own, Mach number,
   dynamic pressure, burnout, and anything an accelerometer or GPS would give. It takes the
-  logger's altitude as the logger converted it, with no correction for the day's air
+  logger's altitude as the logger converted it, with no correction for the day's air, and has no
+  check for a barometer's errors near the speed of sound
   ([What it leaves out](#what-it-leaves-out)).
 
 ## Why these rules
 
 Code: `hpr_flightdata::readings`
 ([API reference](../api/hpr_flightdata/readings/index.html)), on the command line
-[`hpr analyze`](../cli.md#hpr-analyze). It came with [M4.2d](../decisions-and-roadmap.md#m4-2d)
-([ADR-108][adr-108]). The one log format read so far is [PerfectFlite's `.pf2`](../format/pf2.md).
+[`hpr analyze`](../cli.md#hpr-analyze). It came with [M4.2d](../decisions-and-roadmap.md#m4-2d),
+the milestone that added `hpr analyze`; the choices below are recorded in [ADR-108][adr-108], the
+decision on how a log is read. The one log format read so far is
+[PerfectFlite's `.pf2`](../format/pf2.md).
 
 A barometric altimeter's altitude is a good record of a flight's heights, with two flaws a
 reading must survive. It moves in steps of its resolution, one foot for a PerfectFlite, so the top
@@ -48,49 +52,58 @@ samples.
 
 Pearson and colleagues define the Hampel filter by the window's median `m_k` and its scale
 `S_k = 1.4826 × median |x_(k−j) − m_k|`: a sample more than `t·S_k` from `m_k` is replaced by `m_k`.
-At `t = 0` every sample is replaced, and the filter is the running median (§1, eqs. 1 and 2).
+At `t = 0` every sample is replaced, and the filter is the running median (§2, eqs. 1 and 2).
 
 Two properties make it the right tool here:
 
 - **It removes any pulse up to `K` samples wide.** Such a pulse holds at most `K` of the window's
   `2K + 1` samples, so the median is never one of them. On the public log below, the ejection
   pulse's high side is two samples wide.
-- **It reads a smooth peak low, never high, and by little.** At the highest sample, `K + 1` of the
-  window's samples lie within `⌈K/2⌉` places of it, so the median is at least the altitude that
-  far from the peak. A coasting rocket's altitude near apogee bends at `g`: the vertical speed,
-  and so drag's vertical share, is zero there. Counting half a sample for the true peak falling
-  between samples, the apogee reads low by at most `g (K·Δt)² / 2` = 9.81 × 0.15² / 2 = **0.11 m**.
+- **It reads a clean peak a little low, and never high.** At 20 samples a second, the apogee of a
+  noise-free trace reads at most 0.077 m low. The reason: at the highest sample, `K + 1` of the
+  window's samples lie within `⌈K/2⌉` places of it (`⌈K/2⌉` is `K/2` rounded up), so the median is
+  no lower than the altitude that far from the peak. The true peak lies within half a sample of
+  the highest sample. Near apogee a coasting rocket's height is bent by gravity alone, as the
+  vertical speed, and so drag's vertical share, is zero there. So the median reads at most
+  `g ((⌈K/2⌉ + ½) Δt)² / 2` low: with `K = 3` and `Δt = 0.05 s`,
+  9.80665 × 0.125² / 2 = **0.077 m**. A property test checks this for every `K` from 1 to 6 and
+  every place the peak can fall between samples.
 
 Debrief uses the Hampel filter at `t = 4` over the same window. hpr doesn't, because of what
-the public Pnut log shows. Its ejection pulse dips 26 ft below the trace, then rises 48 ft above
-it. The dip sits in the rise's own window, widens that window's scale `S_k`, and the Hampel filter
-keeps the rise: its highest value is the pulse's 1,028 ft, 19 ft above the 1,009 ft the altimeter
-states. After the running median, the apogee reads 1,010 ft. The invented flight below repeats that
-shape, so the tests show the difference where anyone can run them.
+the public Pnut log shows. Around its ejection pulse the trace dips below itself just before the
+pulse and stays lower after it. Those samples sit in the pulse's own window and widen its scale
+`S_k`, and the Hampel filter keeps the pulse: its highest value is the pulse's 1,028 ft, against
+the 1,009 ft the altimeter states. After the running median, the apogee reads 1,010 ft. The
+invented flight below repeats that shape, so the tests show the difference where anyone can run
+them.
 
 ## Each reading
 
-In the rules below, the **pad** is the filtered altitude at the log's first sample. A
-PerfectFlite zeroes its altitude on the pad, so a pad more than 3 m from zero means the log didn't
-start there.
+In the rules below, the **climb** begins at the first sample whose filtered altitude is 3 m above
+where the log starts. The **pad** is the median of the altitude before it first rises 1 m, so no
+one sample's jitter sets it; 1 m is hpr's choice, a third of the climb, so that a log which
+begins just before liftoff lends the pad few samples that are already climbing. A PerfectFlite
+zeroes its altitude on the pad, so a pad more than 3 m from zero means the log didn't start there.
 
 | reading | rule | where it comes from |
 |---|---|---|
-| liftoff | the last sample at or below the pad before the filtered altitude first climbs 3 m above it | the barometer |
+| liftoff | the last sample before the climb whose filtered altitude is within half the altitude's resolution (half a foot) of the pad | the barometer |
 | apogee | the filtered altitude's highest value; its time the middle of the run of samples that hold it | the barometer |
 | time to apogee | apogee's time less liftoff's | the barometer |
 | top speed | the highest of the logger's own vertical speed from liftoff to apogee | the logger's speed column, which it works out from its barometer |
 | top acceleration | withheld when the log has no accelerometer | none |
-| landing | the first sample after apogee within 2 m of the pad that stays under 5 m for a second | the barometer |
+| landing | the first sample after apogee within 2 m of the pad that stays under 5 m for a second, and no sooner than a fall from rest in vacuum could lose that height | the barometer |
 | mean descent rate | the filtered height lost from apogee to landing, over the time taken | the barometer |
 
 Liftoff is the last sample before the altitude shows the rocket moving. The rocket had risen less
 than the altitude's resolution then, and passed it within the next sample.
 
 Landing is the first sample within 2 m of the pad, so it comes before touchdown by the time the
-last 2 m took: a third of a second under a main at 6 m/s. The mean descent rate covers the drogue
-and the main together. Splitting it into each leg's own rate is
-[M7.2](../decisions-and-roadmap.md#m7-2)'s work.
+last 2 m took: a third of a second under a main at 6 m/s. A barometer drifts during a flight, so
+the ground can read a little above or below the pad. On the public log it reads below, and the
+trace goes on falling for most of a second after the landing is read. Had it read more than 2 m
+above, no landing would be found. The mean descent rate covers the drogue and the main together.
+Splitting it into each leg's own rate is [M7.2](../decisions-and-roadmap.md#m7-2)'s work.
 
 The top acceleration is withheld rather than worked out from the altitude. Differencing twice
 turns the altitude's one-foot steps into spikes: at 20 samples a second, one step differenced
@@ -106,15 +119,16 @@ its apogee and landing.
 |---|---|---|
 | `too_short` | the log has fewer than 3 samples | all |
 | `no_climb` | the filtered altitude never climbs 3 m above the pad | all |
-| `starts_off_the_pad` | the pad is more than 3 m from the logger's zero | liftoff, and so the top speed |
+| `starts_off_the_pad` | the pad is more than 3 m from the logger's zero | liftoff, and so the top speed and landing |
 | `ends_before_landing` | the log ends before the altitude comes within 2 m of the pad and stays under 5 m for a second | landing |
-| `faster_than_free_fall` | the altitude reaches the pad sooner after apogee than a fall from rest in vacuum could, `√(2h/g)` for an apogee `h` above the pad | landing |
+| `faster_than_free_fall` | the altitude comes down to the landing sample sooner after apogee than a fall from rest in vacuum could lose that height, `√(2h/g)`, allowing a sample for the apogee's time | landing |
 | `no_speed_column` | the log has no speed column | the top speed |
 | `implausible_speed` | the speed column peaks above 4,000 m/s, about twice the fastest amateur rocket | the top speed |
 | `noisy_speed` | from liftoff to apogee the speed swings below zero by more than 20% of its top | the top speed |
 | `speed_peak_at_liftoff` | the speed peaks on the liftoff sample itself: a spike, not a climb | the top speed |
 | `no_accelerometer` | the log has no accelerometer | the top acceleration |
 | `needs` | the reading needs another that was withheld | as the sentence says |
+| `bad_record` | the record breaks what every reader guarantees: channels as long as the clock, and times that increase. Only a record built by hand in a program can | all |
 
 An apogee within half a window of the log's end is read, but marked `is_floor`: the log may have
 stopped before the rocket did.
@@ -133,17 +147,23 @@ hold each within the bound worked out beside it:
 
 | reading | true | hpr reads | allowed |
 |---|---|---|---|
-| liftoff | 0.50 s | 0.55 s | from one sample before to 0.078 s after, when the height first rounds to a foot |
-| apogee | 390.31 m (1,280.5 ft) | 390.14 m (1,280 ft) | 0.26 m: half a foot of rounding and the median's 0.11 m |
-| apogee time | 10.26 s | 10.28 s | 0.25 s, the span over which the rounded peak sits flat |
+| liftoff | 0.50 s | 0.55 s | from 0.50 s to 0.078 s after, when the height first rounds to a foot |
+| apogee | 390.31 m (1,280.5 ft) | 390.14 m (1,280 ft) | 0.23 m: half a foot of rounding and the median's 0.077 m |
+| apogee time | 10.26 s | 10.28 s | one sample, 0.05 s: the middle of the flat run at the top |
+| time to apogee | 9.76 s | 9.73 s | the two readings' errors together |
 | top speed | 80.0 m/s at 2.10 s | 79.9 m/s (262 ft/s) at 2.10 s | half a foot per second |
 | landing | 46.14 s, touchdown | 45.85 s | up to 0.38 s early: 2 m at 6 m/s, and one sample |
+| mean descent rate, 10.28 s to 45.85 s | 10.92 m/s | 10.92 m/s | the two heights' bounds over the span |
+
+The first sample of the flat run at the top would read the apogee over 0.2 s early; a test shows
+that too, so the rule of taking the run's middle is pinned.
 
 The file's highest sample is the pulse's, 400.5 m. The Hampel filter keeps it, and the median
 sets it aside; a test holds both.
 
 **A real flight.** Debrief ships a public PerfectFlite Pnut log, trimmed from a publicly shared
-flight. Its terms upstream are unclear, so it isn't committed here. Where it has been fetched, a
+flight. Its terms upstream are unclear, so it isn't committed here, and CI doesn't have it. Where
+it has been fetched (`cargo xtask refs fetch`), a
 [test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs) reads it and
 holds these numbers:
 
@@ -152,6 +172,10 @@ holds these numbers:
 | apogee | 1,009 ft | 1,010 ft (307.8 m) |
 | highest sample | | 1,028 ft, the ejection pulse, set aside |
 | top speed | | 257 ft/s (78.3 m/s) |
+| liftoff | | 0.15 s |
+
+The altimeter's apogee comes from the same pressure trace, so the agreement shows that hpr reads
+the trace as the altimeter does, not that either is the true height.
 
 A Featherweight Raven flew on the same flight, and Debrief reports it agreeing at about 1,009 ft.
 Reading the Raven's file is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
@@ -165,6 +189,8 @@ Reading the Raven's file is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
 - **Fast flights.** Debrief stops trusting a barometer's altitude above Mach 0.9
   ([the readings note](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-flight-readings.md)).
   hpr has no such check yet, so a fast flight's top speed from a barometer may be off.
+- **Noise and wide pulses.** On a noisy trace the highest of the medians can read above the true
+  peak, and a pulse wider than half the window passes the median. Neither is flagged.
 - **Each leg's descent rate, and deployment events.** One mean rate covers drogue and main.
 - **Mach number, dynamic pressure and burnout.** These need an atmosphere or an accelerometer
   ([M7.2](../decisions-and-roadmap.md#m7-2)).
@@ -175,17 +201,18 @@ Reading the Raven's file is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
 - `hpr_flightdata::synthetic`: the invented flight, its readings against the truth, and the
   Hampel filter keeping the pulse the median removes.
 - `hpr_flightdata::readings`: each withheld code on a log built to trigger it, and each rule at
-  its edge. For example, a 20% swing passes and 22.5% is refused.
-- `hpr_flightdata::filter`: the median's bound at a parabola's peak, a pulse removed, a ramp
-  untouched, the Hampel filter at zero equal to the median, and a property test that every output
-  lies within its window.
+  its edge. For example, a 20% swing passes and 22.5% is refused. A jitter in the first samples
+  leaves the pad where it is. A property test holds the median's peak bound for every `K` from 1
+  to 6 and every place the peak can fall between samples.
+- `hpr_flightdata::filter`: a pulse removed, a ramp untouched, the Hampel filter at zero equal to
+  the median, and a property test that every output lies within its window.
 - `crates/hpr-cli/tests/cli.rs`: `hpr analyze` on a log alone in a folder, its JSON checked against
   the published schema; the public Pnut log, where fetched.
 
 ## References
 
 - R. K. Pearson, Y. Neuvo, J. Astola and M. Gabbouj, *The Class of Generalized Hampel Filters*,
-  23rd European Signal Processing Conference (EUSIPCO), 2015, §1, eqs. 1 and 2. Pinned as
+  23rd European Signal Processing Conference (EUSIPCO), 2015, §2, eqs. 1 and 2. Pinned as
   `pearson-2015-generalized-hampel` in the
   [reference lock file](https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml).
 - Debrief, `lib/analyze/index.ts` and `lib/parsers/perfectflite.ts` (MIT, the project owner's

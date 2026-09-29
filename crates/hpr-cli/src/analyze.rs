@@ -47,7 +47,9 @@ fn read_log(path: &str) -> Result<FlightLog, Failure> {
              loggers' files arrive with milestone M7.1"
         ))
     };
-    let text = String::from_utf8(bytes).map_err(|_| unknown())?;
+    // Only the comments of a `.pf2` can hold anything but ASCII, and hpr doesn't use them: a
+    // comment in another encoding mustn't refuse the flight.
+    let text = String::from_utf8_lossy(&bytes);
     let pf2 = Path::new(path)
         .extension()
         .and_then(|extension| extension.to_str())
@@ -87,6 +89,8 @@ fn document(path: &str, log: &FlightLog, read: &Readings) -> Analyze {
         method: AnalyzeMethod {
             sample_interval_s: read.sample_interval_s,
             median_window_s: read.median_window_s,
+            peak_bound_m: read.peak_bound_m,
+            altitude_resolution_m: log.format.altitude_resolution_m(),
             pad_altitude_m: read.pad_altitude_m,
         },
         liftoff: reading(&read.liftoff, |liftoff| LiftoffReading {
@@ -142,6 +146,7 @@ fn reading<A, B>(reading: &Reading<A>, value: impl FnOnce(&A) -> B) -> LogReadin
                 Reason::SpeedPeakAtLiftoff => WithheldReason::SpeedPeakAtLiftoff,
                 Reason::NoAccelerometer => WithheldReason::NoAccelerometer,
                 Reason::Needs => WithheldReason::Needs,
+                Reason::BadRecord => WithheldReason::BadRecord,
                 _ => WithheldReason::Other,
             },
             detail: withheld.detail.clone(),
@@ -207,7 +212,7 @@ fn text_lines(document: &Analyze) -> Vec<String> {
     }
     lines.push(String::new());
 
-    let row = |name: &str, value: String| format!("{name:<17}{value}");
+    let row = |name: &str, value: String| format!("{name:<18}{value}");
     let withheld = |reading: &WithheldReading| format!("withheld: {}", reading.detail);
     lines.push(row(
         "liftoff",
@@ -226,8 +231,11 @@ fn text_lines(document: &Analyze) -> Vec<String> {
                 value.push_str("; the log ends at its peak, so the rocket may have gone higher");
             }
             lines.push(row("apogee", value));
+            // Above what the median's own rounding of the peak and the altitude's resolution
+            // explain, the median set a pulse aside.
             let highest = &apogee.highest_sample;
-            if highest.altitude_m > apogee.altitude_m {
+            let explained = method.peak_bound_m.unwrap_or(0.0) + method.altitude_resolution_m;
+            if highest.altitude_m - apogee.altitude_m > explained {
                 lines.push(row(
                     "",
                     format!(
@@ -241,7 +249,7 @@ fn text_lines(document: &Analyze) -> Vec<String> {
         LogReading::Withheld(reading) => lines.push(row("apogee", withheld(reading))),
     }
     lines.push(row(
-        "max speed",
+        "top speed",
         match &document.max_speed {
             LogReading::Read(top) => format!(
                 "{} at {:.2} s, {} up: the logger's own, from its barometer",
@@ -253,7 +261,7 @@ fn text_lines(document: &Analyze) -> Vec<String> {
         },
     ));
     lines.push(row(
-        "max acceleration",
+        "top acceleration",
         match &document.max_acceleration {
             LogReading::Read(top) => {
                 format!("{:.1} m/s² at {:.2} s", top.acceleration_m_s2, top.time_s)
@@ -265,10 +273,10 @@ fn text_lines(document: &Analyze) -> Vec<String> {
         "landing",
         match &document.landing {
             LogReading::Read(landing) => {
-                let mut value = format!("{:.2} s", landing.time_s);
-                if let Some(flight) = landing.flight_time_s {
-                    value.push_str(&format!(", {flight:.2} s after liftoff"));
-                }
+                let mut value = format!(
+                    "{:.2} s, {:.2} s after liftoff",
+                    landing.time_s, landing.flight_time_s
+                );
                 value.push_str(&format!(
                     "; {:.2} s from apogee, at {} on average",
                     landing.descent_time_s,
@@ -281,4 +289,37 @@ fn text_lines(document: &Analyze) -> Vec<String> {
     ));
     lines.extend(log.notes.iter().map(|note| format!("note: {note}")));
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every reason and source the library has maps to the command's own, of the same name: a
+    /// library variant added without a mapping would reach the JSON as `other`.
+    #[test]
+    fn every_library_reason_and_source_has_its_own_name() {
+        for reason in Reason::ALL {
+            let withheld = Reading::<()>::Withheld(readings::Withheld {
+                reason,
+                detail: String::new(),
+            });
+            let LogReading::Withheld(mapped) = reading(&withheld, |()| ()) else {
+                panic!("{reason:?} read");
+            };
+            assert_ne!(mapped.reason, WithheldReason::Other, "{reason:?}");
+            assert_eq!(
+                serde_json::to_value(mapped.reason).unwrap(),
+                serde_json::to_value(reason).unwrap()
+            );
+        }
+        for from in Source::ALL {
+            let mapped = source(from);
+            assert_ne!(mapped, ReadingSource::Other, "{from:?}");
+            assert_eq!(
+                serde_json::to_value(mapped).unwrap(),
+                serde_json::to_value(from).unwrap()
+            );
+        }
+    }
 }

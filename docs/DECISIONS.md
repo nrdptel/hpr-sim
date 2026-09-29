@@ -9160,25 +9160,34 @@ upstream terms aren't recorded; ADR-046 said they "may appear in examples and do
    non-optional field Debrief's notes recommend. Debrief's corpus-set thresholds are taken as
    they are (3 m, 2 m and 5 m for a second, 4,000 m/s, 20%) and said to be corpus-set, with no
    citation. The landing adds one bound of hpr's, a fall from rest in vacuum, which only drag can
-   slow.
+   slow: the height lost from apogee to the landing sample may not come down faster, allowing one
+   sample for the apogee's time. The pad is the median of the raw altitude before it first rises
+   `PAD_RISE_M` (1 m, hpr's choice), so one jittery first sample doesn't set it. A pad more than
+   3 m from the logger's zero withholds liftoff (`starts_off_the_pad`), and with it the top speed
+   and the landing (`needs`), which are read against the pad. A record whose channels differ in
+   length from its clock, or whose times don't increase, is withheld whole (`bad_record`): the
+   reader never builds one, but a program can.
 3. **Heights after a running median, not a Hampel filter.** Debrief despikes with a Hampel filter
-   (0.3 s, threshold 4). On the public Pnut log the ejection pulse dips 26 ft, then rises 48 ft,
-   and the dip widens the rise's own window's spread until the filter keeps it: the Hampel-filtered
-   peak is the pulse's 1,028 ft against the 1,009 ft the logger states. The running median (the
-   Hampel filter at threshold 0, Pearson et al. 2015, §1) removes any pulse up to half its window
-   wide and reads a coasting peak low by at most `g (0.15 s)² / 2` = 0.11 m. It reads 1,010 ft.
+   (0.3 s, threshold 4). On the public Pnut log the trace dips just before the ejection pulse and
+   stays lower after it, and those samples widen the pulse's own window's spread until the filter
+   keeps it: the Hampel-filtered peak is the pulse's 1,028 ft against the 1,009 ft the logger
+   states. The running median (the Hampel filter at threshold 0, Pearson et al. 2015, §2) removes
+   any pulse up to half its window wide and reads a noise-free coasting peak low by at most
+   `g ((⌈K/2⌉ + ½) Δt)² / 2`, 0.077 m at 20 Hz with `K = 3`, held by a property test. It reads
+   1,010 ft.
    `filter::hampel` is kept to show the difference in tests. The apogee's time is the middle of the
    run of samples at the filtered peak, as the one-foot resolution leaves it flat: on the invented
-   flight the first sample of the run read 0.21 s early, the middle 0.02 s late.
+   flight the first sample of the run reads over 0.2 s early, the middle 0.02 s late.
 4. **An invented log in CI; the real one only where fetched.** CLAUDE.md's rule on third-party
    data of unclear terms outranks ADR-046's line, so no Debrief fixture is committed.
    `validation/fixtures/logs/synthetic-pnut.pf2` is a flight made up for the tests (boost at
    50 m/s², a drag-free coast, drogue and main at fixed rates, an ejection pulse of the real one's
    shape), written by `hpr_flightdata`'s own test code and held to it. Every reading is checked
    against its closed form within a bound worked out from the rounding and the filter. The public
-   Pnut log is read by a test that runs where `refs/` has it (skipped, and saying so, in CI), which
-   holds the numbers the docs quote: stated 1,009 ft, read 1,010 ft, pulse 1,028 ft, top speed
-   257 ft/s.
+   Pnut log is read by a test that runs where `refs/` has it, which holds the numbers the docs
+   quote: stated 1,009 ft, read 1,010 ft, pulse 1,028 ft, liftoff 0.15 s, top speed 257 ft/s. In
+   CI it prints that it skipped, but the harness still lists it as `ok`, so the docs say plainly
+   that this check isn't in CI.
 5. **`hpr analyze <log>`** reads a `.pf2` by its extension or a first line naming PerfectFlite,
    and refuses anything else, naming M7.1. Its JSON is `output::Analyze`, each reading tagged
    `status: read | withheld` (`schema/cli/analyze.schema.json`). The done-when's "no design file

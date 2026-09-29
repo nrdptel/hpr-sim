@@ -61,7 +61,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 - 2026-09-29: M4.2 CLI (ADR-105 to 108): schemas; `hpr sim` bit for bit; `validate`, `convert` (32 curves round-trip);
-  `hpr analyze` reads `.pf2` alone, the public Pnut 1,010 ft against its stated 1,009.
+  `hpr analyze` reads `.pf2` alone; the public Pnut, where fetched, 1,010 ft against 1,009.
 - 2026-09-28/29: M4.1 The builder (ADR-103, 104): flown bit for bit; `DragModel`; 5 examples; `hpr::guide`.
 - 2026-09-28: M2.2b, f; M2.2 closed (ADR-101, 102): OR mass conventions 68/71 within 1%; L82 live; L19 not met, pinned.
 - 2026-09-28: M2.2e5-e10 Rods, fillets, tube fins, never-lit motors (ADR-094 to 100): 60 OR probes; 20 designs fly, M2.2e met.

@@ -767,7 +767,11 @@ pub struct AnalyzeMethod {
     pub sample_interval_s: Option<f64>,
     /// The running median's span, s: every height and time is read from the altitude after it.
     pub median_window_s: Option<f64>,
-    /// The filtered altitude at the first sample, m: the pad.
+    /// How far below its true peak the running median can read a peak bent by gravity alone, m.
+    pub peak_bound_m: Option<f64>,
+    /// The altitude's resolution in the log's format, m: a PerfectFlite writes whole feet.
+    pub altitude_resolution_m: f64,
+    /// The pad: the median of the altitude before it first rises 1 m, m.
     pub pad_altitude_m: Option<f64>,
 }
 
@@ -817,6 +821,8 @@ pub enum WithheldReason {
     NoAccelerometer,
     /// The reading needs another, which was withheld.
     Needs,
+    /// The record breaks what every reader guarantees; only a record built by hand can.
+    BadRecord,
     /// A reason this build of `hpr` doesn't name.
     Other,
 }
@@ -898,8 +904,8 @@ pub struct LandingReading {
     /// The first sample within 2 m of the pad that stays under 5 m for a second, s: before
     /// touchdown by the time the last 2 m took.
     pub time_s: f64,
-    /// From liftoff to landing, s; `null` if liftoff was withheld.
-    pub flight_time_s: Option<f64>,
+    /// From liftoff to landing, s.
+    pub flight_time_s: f64,
     /// From apogee to landing, s.
     pub descent_time_s: f64,
     /// The mean rate of descent from apogee to landing, m/s: the height lost over the time

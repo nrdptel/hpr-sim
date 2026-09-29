@@ -538,9 +538,12 @@ the rocket lifted off, how high it went, how fast it climbed, and when it landed
 the log. It takes no design file and runs no simulation, so it answers "what did my rocket do?"
 for anyone who flew one, whatever they designed it in.
 
-It reads PerfectFlite's `.pf2` logs so far, from the Pnut, the StratoLogger and the
-StratoLoggerCF altimeters ([the format](format/pf2.md)). Other loggers' files come with
-[M7.1](decisions-and-roadmap.md#m7-1).
+It reads PerfectFlite's `.pf2` logs so far ([the format](format/pf2.md)). The one real file read
+is a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same layout, but no
+file of theirs has been tried. Other loggers' files come with
+[M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats. It has no
+check yet for a barometer's errors near the speed of sound, so on a flight faster than about Mach
+0.9 treat the top speed with care.
 
 ```bash
 hpr analyze flight.pf2
@@ -565,17 +568,17 @@ synthetic-pnut.pf2: PerfectFlite Pnut, serial 0, flight 1
 984 samples every 0.050 s, from 0.00 s to 49.15 s; heights from the altitude after a 0.30 s running median
 the logger states: apogee 390.4 m (1281 ft); ground elevation 182.9 m (600 ft) above sea level
 
-liftoff          0.55 s
-apogee           390.1 m (1280 ft) at 10.28 s, 9.72 s after liftoff
-                 highest sample 400.5 m (1314 ft) at 11.35 s, set aside by the median
-max speed        79.9 m/s (262 ft/s) at 2.10 s, 64.0 m (210 ft) up: the logger's own, from its barometer
-max acceleration withheld: a PerfectFlite logger has no accelerometer; hpr doesn't difference the altitude twice to make one, as its one-foot steps would read as spikes of many g
-landing          45.85 s, 45.30 s after liftoff; 35.58 s from apogee, at 10.9 m/s (36 ft/s) on average
+liftoff           0.55 s
+apogee            390.1 m (1280 ft) at 10.28 s, 9.72 s after liftoff
+                  highest sample 400.5 m (1314 ft) at 11.35 s, set aside by the median
+top speed         79.9 m/s (262 ft/s) at 2.10 s, 64.0 m (210 ft) up: the logger's own, from its barometer
+top acceleration  withheld: a PerfectFlite logger has no accelerometer; hpr doesn't difference the altitude twice to make one, as its one-foot steps would read as spikes of many g
+landing           45.85 s, 45.30 s after liftoff; 35.58 s from apogee, at 10.9 m/s (36 ft/s) on average
 ```
 
 <!-- cli: end -->
 
-The highest sample in the file is 10 m above the apogee: the pressure pulse of the ejection
+The highest sample in the file is 10.4 m above the apogee: the pressure pulse of the ejection
 charge that fired a second after it. The readings are taken from the altitude after a
 [running median](glossary.md#running-median), which sets that pulse aside.
 [Reading a flight log](reading-a-flight-log.md) explains each reading, and how far to trust it.

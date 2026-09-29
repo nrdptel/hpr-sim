@@ -5,13 +5,19 @@ it went, how fast it climbed, when it landed. hpr reads the log on its own. It n
 file and runs no simulation, so it works whatever the rocket was designed in, or if it was never
 designed on a computer at all.
 
-**What works today:** logs from PerfectFlite altimeters (the Pnut, the StratoLogger and the
-StratoLoggerCF), in their `.pf2` format. Other loggers come with
-[M7.1](decisions-and-roadmap.md#m7-1).
+**What works today:** logs from PerfectFlite altimeters in their `.pf2` format. The one real
+file read so far is a Pnut's; the StratoLogger and StratoLoggerCF are expected to write the same
+layout, but no file of theirs has been tried ([the format](format/pf2.md)). Other loggers come
+with [M7.1](decisions-and-roadmap.md#m7-1), the milestone that reads the other formats Debrief
+read.
 
-**How far to trust it:** each reading comes within a few tenths of a metre and a few hundredths
-of a second of the truth on an invented flight whose every number is known. On one real flight it
-reads 1,010 ft where the altimeter states 1,009 ft. The rules behind each reading are on
+**How far to trust it:** on an invented flight whose every number is known, the apogee comes
+within a quarter of a metre and one sample of the truth, and liftoff within a tenth of a second.
+The landing is read at the first sample within 2 m of the pad, so up to 0.4 s before touchdown
+under a main. On one real flight, a public log that isn't committed here and so isn't checked in
+CI, hpr reads 1,010 ft where the altimeter states 1,009 ft. hpr has no check yet for a
+barometer's errors near the speed of sound, so on a flight faster than about Mach 0.9 treat the
+top speed with care. The rules behind each reading are on
 [Flight-log readings](physics/log-readings.md), with what they were checked against. A reading
 the log can't support is left out and says why, rather than printed as a number.
 
@@ -35,8 +41,8 @@ doesn't build one. This program reads the invented log the tests use:
 //! A flight log read on its own: the invented PerfectFlite log the tests use, its readings printed
 //! with where each came from, or why it was withheld. No design file, no simulation.
 //!
-//! It uses only the workspace crate `hpr-flightdata`; a program of your own depends on that one
-//! crate, which doesn't pull in the simulator.
+//! It uses the workspace crate `hpr-flightdata`, which doesn't pull in the simulator, and `serde`
+//! and `serde_json` to print each code as the JSON output spells it.
 //!
 //! Run it from anywhere in the repository:
 //!
@@ -61,12 +67,20 @@ use hpr_flightdata::readings::{self, Reading};
 /// The invented log: a Pnut's file of a flight made up for the tests.
 const LOG: &str = include_str!("../../../validation/fixtures/logs/synthetic-pnut.pf2");
 
+/// A code as the JSON output spells it, such as `no_accelerometer`.
+fn code(value: impl serde::Serialize) -> String {
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|json| json.as_str().map(str::to_owned))
+        .unwrap_or_default()
+}
+
 /// A reading's value as text, or why it was withheld.
 fn show<T>(reading: &Reading<T>, value: impl Fn(&T) -> String) -> String {
     match reading {
         Reading::Read(read) => value(read),
         Reading::Withheld(withheld) => {
-            format!("withheld ({:?}): {}", withheld.reason, withheld.detail)
+            format!("withheld ({}): {}", code(withheld.reason), withheld.detail)
         }
     }
 }
@@ -87,11 +101,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "apogee            {}",
         show(&read.apogee, |apogee| format!(
-            "{:.1} m ({:.0} ft) at {:.2} s, source: {:?}",
+            "{:.1} m ({:.0} ft) at {:.2} s, source: {}",
             apogee.altitude_m,
             apogee.altitude_m / FOOT_M,
             apogee.time_s,
-            apogee.source
+            code(apogee.source)
         ))
     );
     println!(
@@ -104,8 +118,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "top speed         {}",
         show(&read.max_speed, |speed| format!(
-            "{:.1} m/s at {:.2} s, source: {:?}",
-            speed.speed_m_s, speed.time_s, speed.source
+            "{:.1} m/s at {:.2} s, source: {}",
+            speed.speed_m_s,
+            speed.time_s,
+            code(speed.source)
         ))
     );
     println!(
@@ -134,10 +150,10 @@ PerfectFlite Pnut: 984 samples
 it states an apogee of 1281 ft
 
 liftoff           0.55 s
-apogee            390.1 m (1280 ft) at 10.28 s, source: Barometer
+apogee            390.1 m (1280 ft) at 10.28 s, source: barometer
 highest sample    400.5 m at 11.35 s
-top speed         79.9 m/s at 2.10 s, source: LoggerSpeedFromBarometer
-top acceleration  withheld (NoAccelerometer): a PerfectFlite logger has no accelerometer; hpr doesn't difference the altitude twice to make one, as its one-foot steps would read as spikes of many g
+top speed         79.9 m/s at 2.10 s, source: logger_speed_from_barometer
+top acceleration  withheld (no_accelerometer): a PerfectFlite logger has no accelerometer; hpr doesn't difference the altitude twice to make one, as its one-foot steps would read as spikes of many g
 landing           45.85 s; down from apogee at 10.9 m/s on average
 ```
 
@@ -164,7 +180,9 @@ start of the log, and a coast with no drag to 390.3 m (1,280.5 ft) at 10.26 s.
   taken, drogue and main together.
 
 What the file states about itself, such as the altimeter's own apogee of 1,281 ft, is kept in
-`log.stated`, beside hpr's readings and never in their place.
+`log.stated`, beside hpr's readings and never in their place. The codes in brackets, such as
+`no_accelerometer` and `barometer`, are the ones the JSON output of `hpr analyze` uses. The top
+speed is `max_speed` in both.
 
 ## What it doesn't do yet
 
@@ -172,6 +190,8 @@ What the file states about itself, such as the altimeter's own apogee of 1,281 f
 - Split the descent into the drogue's and the main's rates, find the deployments, or give the
   Mach number and dynamic pressure ([M7.2](decisions-and-roadmap.md#m7-2)).
 - Compare a flight with its simulation ([M7.3](decisions-and-roadmap.md#m7-3)).
+- Check a barometric reading near the speed of sound. Debrief stops trusting one above Mach 0.9;
+  hpr doesn't check yet.
 - Correct a barometric altitude for the day's air. The altitude is the altimeter's own
   conversion, which assumes a standard atmosphere
   ([Barometric altimeter](glossary.md#barometric-altimeter)).

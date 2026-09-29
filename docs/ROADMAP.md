@@ -746,7 +746,7 @@
   - [x] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*
     `hpr analyze` is tested on a log with no design file present, its JSON validating. *Result:*
     met (ADR-108): PerfectFlite `.pf2`; an invented log read alone in a folder; the public Pnut
-    log 1,010 ft against its stated 1,009 ft. M4.2 closed with it.
+    log, where fetched, 1,010 ft against its stated 1,009 ft. M4.2 closed with it.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
   - Loft lessons: L67, L68.

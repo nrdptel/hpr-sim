@@ -2057,10 +2057,10 @@ fn analyze_reads_a_log_with_no_design_file_present() {
     for expected in [
         "flight.pf2: PerfectFlite Pnut, serial 0, flight 1",
         "the logger states: apogee 390.4 m (1281 ft)",
-        "apogee           390.1 m (1280 ft) at 10.28 s",
+        "apogee            390.1 m (1280 ft) at 10.28 s",
         "set aside by the median",
-        "max speed        79.9 m/s (262 ft/s) at 2.10 s",
-        "max acceleration withheld: a PerfectFlite logger has no accelerometer",
+        "top speed         79.9 m/s (262 ft/s) at 2.10 s",
+        "top acceleration  withheld: a PerfectFlite logger has no accelerometer",
     ] {
         assert!(printed.contains(expected), "{expected:?} in\n{printed}");
     }
@@ -2073,12 +2073,11 @@ fn analyze_refuses_what_it_cannot_read() {
     let folder = tempfile::tempdir().unwrap();
     let missing = folder.path().join("none.pf2");
     let document = json_error(&["analyze", missing.to_str().unwrap()], 1, "input");
+    let message = document["error"]["message"].as_str().unwrap();
+    // The operating system's own "not found", the same code on all three.
     assert!(
-        document["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("none.pf2"),
-        "{document:#}"
+        message.contains("none.pf2: ") && message.contains("(os error 2)"),
+        "{message}"
     );
 
     let design = repo_file("validation/fixtures/ork/pod-flights/pods-none.ork");
@@ -2100,6 +2099,19 @@ fn analyze_refuses_what_it_cannot_read() {
         message.contains(".pf2 line 3: the time 0 s doesn't come after"),
         "{message}"
     );
+
+    // A comment in another encoding than UTF-8 doesn't refuse the flight.
+    let latin = folder.path().join("latin.pf2");
+    let mut bytes = std::fs::read(root().join(SYNTHETIC_LOG)).unwrap();
+    let at = bytes.windows(9).position(|w| w == b"Comments:").unwrap() + 10;
+    bytes.splice(at..at, *b"caf\xe9 ");
+    std::fs::write(&latin, bytes).unwrap();
+    let document = json(
+        &["analyze", latin.to_str().unwrap()],
+        0,
+        "analyze.schema.json",
+    );
+    assert_eq!(document["apogee"]["status"], "read");
 
     // A PerfectFlite log named otherwise is read by its first line.
     let renamed = folder.path().join("flight.txt");

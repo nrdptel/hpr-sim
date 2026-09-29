@@ -45,11 +45,20 @@ pub struct FlightLog {
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum LogFormat {
-    /// PerfectFlite's `.pf2`, written by the Pnut, the StratoLogger and the StratoLoggerCF.
+    /// PerfectFlite's `.pf2`, as its software writes a Pnut's flights. The StratoLogger and
+    /// StratoLoggerCF are expected to write the same layout, as Debrief's reader assumes; no file
+    /// of theirs has been read.
     PerfectFlitePf2,
 }
 
 impl LogFormat {
+    /// The altitude's resolution in the format, m: a PerfectFlite writes whole feet.
+    pub fn altitude_resolution_m(self) -> f64 {
+        match self {
+            Self::PerfectFlitePf2 => crate::perfectflite::FOOT_M,
+        }
+    }
+
     /// The format's usual file extension, with its dot.
     pub fn extension(self) -> &'static str {
         match self {

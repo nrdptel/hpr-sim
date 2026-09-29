@@ -1,8 +1,8 @@
 //! A flight log read on its own: the invented PerfectFlite log the tests use, its readings printed
 //! with where each came from, or why it was withheld. No design file, no simulation.
 //!
-//! It uses only the workspace crate `hpr-flightdata`; a program of your own depends on that one
-//! crate, which doesn't pull in the simulator.
+//! It uses the workspace crate `hpr-flightdata`, which doesn't pull in the simulator, and `serde`
+//! and `serde_json` to print each code as the JSON output spells it.
 //!
 //! Run it from anywhere in the repository:
 //!
@@ -27,12 +27,20 @@ use hpr_flightdata::readings::{self, Reading};
 /// The invented log: a Pnut's file of a flight made up for the tests.
 const LOG: &str = include_str!("../../../validation/fixtures/logs/synthetic-pnut.pf2");
 
+/// A code as the JSON output spells it, such as `no_accelerometer`.
+fn code(value: impl serde::Serialize) -> String {
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|json| json.as_str().map(str::to_owned))
+        .unwrap_or_default()
+}
+
 /// A reading's value as text, or why it was withheld.
 fn show<T>(reading: &Reading<T>, value: impl Fn(&T) -> String) -> String {
     match reading {
         Reading::Read(read) => value(read),
         Reading::Withheld(withheld) => {
-            format!("withheld ({:?}): {}", withheld.reason, withheld.detail)
+            format!("withheld ({}): {}", code(withheld.reason), withheld.detail)
         }
     }
 }
@@ -53,11 +61,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "apogee            {}",
         show(&read.apogee, |apogee| format!(
-            "{:.1} m ({:.0} ft) at {:.2} s, source: {:?}",
+            "{:.1} m ({:.0} ft) at {:.2} s, source: {}",
             apogee.altitude_m,
             apogee.altitude_m / FOOT_M,
             apogee.time_s,
-            apogee.source
+            code(apogee.source)
         ))
     );
     println!(
@@ -70,8 +78,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "top speed         {}",
         show(&read.max_speed, |speed| format!(
-            "{:.1} m/s at {:.2} s, source: {:?}",
-            speed.speed_m_s, speed.time_s, speed.source
+            "{:.1} m/s at {:.2} s, source: {}",
+            speed.speed_m_s,
+            speed.time_s,
+            code(speed.source)
         ))
     );
     println!(

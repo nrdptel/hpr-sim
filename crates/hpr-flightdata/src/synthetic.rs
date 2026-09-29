@@ -240,34 +240,45 @@ mod tests {
         assert!((read.sample_interval_s.unwrap() - DT).abs() < 1e-12);
         assert_eq!(read.pad_altitude_m, Some(0.0));
 
-        // Liftoff: the last sample at 0 ft. The rocket rises past half a foot, and rounds to
-        // 1 ft, `√(2 · 0.1524 / 50)` = 0.078 s after liftoff: one sample.
+        // Liftoff: the last sample at 0 ft. The rocket is at 0 m until 0.5 s, a sample, so the
+        // reading is no earlier; it rises past half a foot, and rounds to 1 ft,
+        // `√(2 · 0.1524 / 50)` = 0.078 s after liftoff, so the reading is no later.
         let liftoff = read.liftoff.value().unwrap();
         assert_eq!(liftoff.source, Source::Barometer);
         let rounds_up = (2.0 * half_foot / BOOST_M_S2).sqrt();
         assert!(
-            liftoff.time_s >= LIFTOFF_S - DT && liftoff.time_s <= LIFTOFF_S + rounds_up,
+            liftoff.time_s >= LIFTOFF_S && liftoff.time_s <= LIFTOFF_S + rounds_up,
             "{}",
             liftoff.time_s
         );
 
-        // Apogee: at most half a foot of rounding plus the median's `g (3 · Δt)² / 2` low, and
-        // never above the rounded peak.
+        // Apogee: at most half a foot of rounding plus the median's bound, 0.077 m, either way.
         let apogee = read.apogee.value().unwrap();
-        let bound = half_foot + 0.5 * G * (3.0 * DT) * (3.0 * DT);
+        let bound = half_foot + read.peak_bound_m.unwrap();
+        assert!((read.peak_bound_m.unwrap() - readings::peak_bound_m(3, DT)).abs() < 1e-12);
         assert!(
             (apogee.altitude_m - truth.apogee_m).abs() <= bound,
             "{} against {} ± {bound}",
             apogee.altitude_m,
             truth.apogee_m
         );
-        // Within the span over which the rounded trace can sit at its top: the heights within
-        // 1 ft of the peak, `√(2 · 0.3048 / g)` = 0.25 s either side.
-        let plateau = (2.0 * FOOT_M / G).sqrt();
+        // The middle of the run at the top, within a sample: the trace is symmetric about apogee,
+        // and each end of the run lies within a sample of where it crosses the run's level. The
+        // run's first sample, which the reading doesn't take, is more than a sample early.
         assert!(
-            (apogee.time_s - truth.apogee_s).abs() <= plateau,
+            (apogee.time_s - truth.apogee_s).abs() <= DT,
             "{}",
             apogee.time_s
+        );
+        let filtered = crate::filter::running_median(&log.altitude_m, 3);
+        let first = filtered
+            .iter()
+            .position(|h| *h == apogee.altitude_m)
+            .unwrap();
+        assert!(
+            truth.apogee_s - log.time_s[first] > 4.0 * DT,
+            "{}",
+            log.time_s[first]
         );
         assert!(!apogee.is_floor);
         assert_eq!(
@@ -305,7 +316,7 @@ mod tests {
             landing.time_s,
             truth.landing_s
         );
-        assert_eq!(landing.flight_time_s, Some(landing.time_s - liftoff.time_s));
+        assert_eq!(landing.flight_time_s, landing.time_s - liftoff.time_s);
         assert_eq!(landing.descent_time_s, landing.time_s - apogee.time_s);
         // The mean rate: the true heights at the two readings' times, over the same span, to
         // within the heights' own bounds.

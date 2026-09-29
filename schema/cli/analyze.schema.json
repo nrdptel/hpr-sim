@@ -52,6 +52,11 @@
       "description": "How the readings were taken; `null` throughout for a log too short to read.",
       "type": "object",
       "properties": {
+        "altitude_resolution_m": {
+          "description": "The altitude's resolution in the log's format, m: a PerfectFlite writes whole feet.",
+          "type": "number",
+          "format": "double"
+        },
         "median_window_s": {
           "description": "The running median's span, s: every height and time is read from the altitude after it.",
           "type": [
@@ -61,7 +66,15 @@
           "format": "double"
         },
         "pad_altitude_m": {
-          "description": "The filtered altitude at the first sample, m: the pad.",
+          "description": "The pad: the median of the altitude before it first rises 1 m, m.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "peak_bound_m": {
+          "description": "How far below its true peak the running median can read a peak bent by gravity alone, m.",
           "type": [
             "number",
             "null"
@@ -76,7 +89,10 @@
           ],
           "format": "double"
         }
-      }
+      },
+      "required": [
+        "altitude_resolution_m"
+      ]
     },
     "AnalyzedLog": {
       "description": "The log `hpr analyze` read.",
@@ -224,11 +240,8 @@
           "format": "double"
         },
         "flight_time_s": {
-          "description": "From liftoff to landing, s; `null` if liftoff was withheld.",
-          "type": [
-            "number",
-            "null"
-          ],
+          "description": "From liftoff to landing, s.",
+          "type": "number",
           "format": "double"
         },
         "mean_descent_rate_m_s": {
@@ -248,6 +261,7 @@
       },
       "required": [
         "time_s",
+        "flight_time_s",
         "descent_time_s",
         "mean_descent_rate_m_s",
         "source"
@@ -620,6 +634,11 @@
           "description": "The reading needs another, which was withheld.",
           "type": "string",
           "const": "needs"
+        },
+        {
+          "description": "The record breaks what every reader guarantees; only a record built by hand can.",
+          "type": "string",
+          "const": "bad_record"
         },
         {
           "description": "A reason this build of `hpr` doesn't name.",

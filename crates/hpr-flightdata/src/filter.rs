@@ -5,14 +5,13 @@
 /// window with no finite sample gives `NaN`. An even count takes the mean of the middle two.
 ///
 /// This is the standard median filter, the Hampel filter at threshold `t = 0` (R. K. Pearson et
-/// al., *The Class of Generalized Hampel Filters*, EUSIPCO 2015, §1, eqs. 1 and 2, with `K =
+/// al., *The Class of Generalized Hampel Filters*, EUSIPCO 2015, §2, eqs. 1 and 2, with `K =
 /// half`). It removes any excursion narrower than `half + 1` samples, such as the pressure pulse an
 /// ejection charge punches into a barometric altitude, and leaves a monotonic run exactly as it
-/// was. At a smooth peak it reads low, never high: by the fall over `⌈half/2⌉` samples from the
-/// highest sample, as `half + 1` of the window's samples lie that close to it. Counting the half
-/// sample by which the true peak can miss a sample too, a trace sampled every `Δt` whose downward
-/// acceleration near its peak is at most `a` reads at most `a (half·Δt)² / 2` below its true peak,
-/// for `half ≥ 2`.
+/// was. At a noise-free peak it reads low, never high: by the fall over `⌈half/2⌉` samples from
+/// the highest sample, as `half + 1` of the window's samples lie that close to it
+/// ([`crate::readings::peak_bound_m`] gives the bound for a peak bent by gravity). With noise, the
+/// highest of the medians can read above the peak.
 pub fn running_median(values: &[f64], half: usize) -> Vec<f64> {
     let mut window = Vec::with_capacity(2 * half + 1);
     (0..values.len())
@@ -29,13 +28,13 @@ pub fn running_median(values: &[f64], half: usize) -> Vec<f64> {
 /// The Hampel filter: each sample more than `threshold` robust standard deviations from its
 /// window's median replaced by that median, the scale being 1.4826 times the window's median
 /// absolute deviation (R. K. Pearson et al., *The Class of Generalized Hampel Filters*, EUSIPCO
-/// 2015, §1, eqs. 1 and 2, with `K = half` and `t = threshold`). Windows are cut short at the ends
+/// 2015, §2, eqs. 1 and 2, with `K = half` and `t = threshold`). Windows are cut short at the ends
 /// and skip `NaN`s, as in [`running_median`], which is this filter at `threshold = 0`.
 ///
 /// hpr reads heights after [`running_median`] instead (see
 /// [`MEDIAN_WINDOW_S`](crate::readings::MEDIAN_WINDOW_S)); this is here to show why: a pulse
-/// flanked by a dip, as an ejection charge's is, widens its own window's spread until the filter
-/// keeps it.
+/// among other large departures, as an ejection charge's is, widens its own window's spread until
+/// the filter keeps it.
 pub fn hampel(values: &[f64], half: usize, threshold: f64) -> Vec<f64> {
     let mut window = Vec::with_capacity(2 * half + 1);
     (0..values.len())

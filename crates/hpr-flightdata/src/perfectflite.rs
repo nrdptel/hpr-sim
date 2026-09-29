@@ -1,4 +1,6 @@
-//! PerfectFlite's `.pf2` flight logs: the Pnut, the StratoLogger and the StratoLoggerCF.
+//! PerfectFlite's `.pf2` flight logs, as its software writes a Pnut's flights. The StratoLogger and
+//! StratoLoggerCF are expected to write the same layout, as Debrief's reader assumes; no file of
+//! theirs has been read.
 //!
 //! A `.pf2` is text: the logger's name on the first line, a preamble of `Key: value` lines, a
 //! `Data:` line naming the columns, then one row per sample, comma-separated, at about 20 Hz:
@@ -26,9 +28,12 @@
 //! follows the one in Debrief (`lib/parsers/perfectflite.ts`, MIT, the project owner's own; see
 //! `THIRD-PARTY-NOTICES.md`), which was written from exported files and cites no document; the
 //! units above are its reading, borne out by the Pnut fixture Debrief ships, whose preamble states
-//! its apogee with a foot mark. The one departure: Debrief assumes the column order, and this reader
-//! takes it from the `Data:` line when there is one. A stated apogee or elevation in anything but
-//! feet is refused rather than guessed at.
+//! its apogee with a foot mark. Where this reader departs from Debrief's: it takes the column order
+//! from the `Data:` line when there is one, where Debrief assumes it; and it refuses what Debrief
+//! passes over, naming the line: an empty or non-numeric cell, a time that doesn't increase, and a
+//! line that isn't a row once the rows have begun. A stated apogee or elevation in a unit other
+//! than feet is refused rather than guessed at. A byte-order mark is dropped, and lines may end
+//! in CR, LF or both.
 
 use crate::error::LogError;
 use crate::log::{FlightLog, LogFormat, Stated};
@@ -85,6 +90,8 @@ impl TemperatureUnit {
 /// line without a time or an altitude column; [`LogError::Unit`] for a stated height that isn't
 /// in feet; [`LogError::NoData`] if there are no rows.
 pub fn read(text: &str) -> Result<FlightLog, LogError> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let text = text.replace("\r\n", "\n").replace('\r', "\n");
     let mut lines = text
         .lines()
         .enumerate()
@@ -261,7 +268,8 @@ fn data_columns(
 }
 
 /// A stated height, such as `1009' AGL`, in metres; `None`, with a note, for one that isn't a
-/// number, such as `PWRLOSS`.
+/// number hpr can read, such as `PWRLOSS`. A number in a unit other than feet (`'`, `ft`, `feet`)
+/// is refused.
 fn stated_feet(
     value: &str,
     number: usize,
@@ -278,16 +286,28 @@ fn stated_feet(
         ));
         return Ok(None);
     };
-    if !rest.trim_start().starts_with('\'') {
-        return Err(LogError::Unit {
-            format: FORMAT,
-            line: number,
-            message: format!(
-                "the {what} {value:?} isn't marked as feet ('), the only unit this reader knows"
-            ),
-        });
+    let rest = rest.trim_start();
+    let word: String = rest
+        .chars()
+        .take_while(char::is_ascii_alphabetic)
+        .collect::<String>()
+        .to_ascii_lowercase();
+    if rest.starts_with('\'') || word == "ft" || word == "feet" {
+        return Ok(Some(feet * FOOT_M));
     }
-    Ok(Some(feet * FOOT_M))
+    if word.is_empty() {
+        notes.push(format!(
+            "the file states its {what} as {value:?}, which isn't a height hpr can read"
+        ));
+        return Ok(None);
+    }
+    Err(LogError::Unit {
+        format: FORMAT,
+        line: number,
+        message: format!(
+            "the {what} {value:?} is in {word:?}, not feet ('), the only unit this reader knows"
+        ),
+    })
 }
 
 /// Puts the rows' values into the log's channels, in SI.
@@ -414,9 +434,24 @@ mod tests {
         assert!(log.notes[0].contains("PWRLOSS"), "{:?}", log.notes);
         let error = read("PerfectFlite Pnut\nApogee: 390 m AGL\n0, 0, 0\n").unwrap_err();
         assert!(
-            matches!(&error, LogError::Unit { line: 2, message, .. } if message.contains("\"390 m AGL\"")),
+            matches!(&error, LogError::Unit { line: 2, message, .. } if message.contains("\"390 m AGL\" is in \"m\"")),
             "{error}"
         );
+    }
+
+    /// A byte-order mark is dropped; CR-only line ends read as lines; `ft` is feet; a height
+    /// hpr can't read, such as one with a thousands comma, is noted and left out.
+    #[test]
+    fn marks_line_ends_and_odd_heights() {
+        let log = read(
+            "\u{feff}PerfectFlite Pnut\rApogee: 1,009' AGL\rGround Elevation: 600 ft\r0, 0, 0\r",
+        )
+        .unwrap();
+        assert_eq!(log.logger, "PerfectFlite Pnut");
+        assert_eq!(log.time_s.len(), 1);
+        assert_eq!(log.stated.apogee_m, None);
+        assert!(log.notes[0].contains("\"1,009' AGL\""), "{:?}", log.notes);
+        assert_eq!(log.stated.ground_elevation_msl_m, Some(600.0 * FOOT_M));
     }
 
     /// Each refusal names its line and what is wrong.
