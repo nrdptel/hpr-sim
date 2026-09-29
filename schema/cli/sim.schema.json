@@ -486,6 +486,10 @@
       "description": "A metric's extreme and when it came.",
       "type": "object",
       "properties": {
+        "after_apogee": {
+          "description": "Whether it came after apogee, in the fall. With no recovery device flown, as `hpr sim`\nflies today, a peak in the fall is not a prediction: the fall rests on small-angle\naerodynamics far outside their range.",
+          "type": "boolean"
+        },
         "height_above_ground_m": {
           "description": "The height above the launch site then, m.",
           "type": "number",
@@ -505,7 +509,8 @@
       "required": [
         "value",
         "time_s",
-        "height_above_ground_m"
+        "height_above_ground_m",
+        "after_apogee"
       ]
     },
     "SimDesign": {
@@ -739,7 +744,7 @@
       ]
     },
     "Summary": {
-      "description": "A flight's metrics, as the library's `hpr_sim::metrics::FlightSummary` gives them. Heights are\nthe centre of gravity's above the launch site; speeds are relative to the ground.",
+      "description": "A flight's metrics, as the library's `hpr_sim::metrics::FlightSummary` gives them, each peak\nmarked if it came after apogee. Heights are the centre of gravity's above the launch site;\nspeeds are relative to the ground.",
       "type": "object",
       "properties": {
         "apogee": {

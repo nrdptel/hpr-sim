@@ -662,9 +662,9 @@ The example leaves out several kinds of part and setting that a design can have:
 
 ## What it can't do yet
 
-- **Only in Rust, or in JSON.** [The builder](the-builder.md) builds the same rocket in fewer
-  lines; a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python
-  ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
+- **Built only in Rust, or in JSON.** [The builder](the-builder.md) builds the same rocket in
+  fewer lines, and [`hpr sim`](cli.md#hpr-sim) flies the JSON file from a terminal, though without
+  its parachutes yet. Python ([M4.3](decisions-and-roadmap.md#m4-3)) is planned.
 - **Import from one other program.** [OpenRocket](glossary.md#openrocket) `.ork` files are read
   ([`.ork` design files](format/ork.md)), though few of their motor configurations fly yet and
   their recovery settings are not flown; RockSim `.rkt` files

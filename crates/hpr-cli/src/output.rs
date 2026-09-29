@@ -323,8 +323,9 @@ pub struct Launch {
     pub atmosphere: String,
 }
 
-/// A flight's metrics, as the library's `hpr_sim::metrics::FlightSummary` gives them. Heights are
-/// the centre of gravity's above the launch site; speeds are relative to the ground.
+/// A flight's metrics, as the library's `hpr_sim::metrics::FlightSummary` gives them, each peak
+/// marked if it came after apogee. Heights are the centre of gravity's above the launch site;
+/// speeds are relative to the ground.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
 pub struct Summary {
     /// Why the flight ended.
@@ -392,6 +393,10 @@ pub struct Peak {
     pub time_s: f64,
     /// The height above the launch site then, m.
     pub height_above_ground_m: f64,
+    /// Whether it came after apogee, in the fall. With no recovery device flown, as `hpr sim`
+    /// flies today, a peak in the fall is not a prediction: the fall rests on small-angle
+    /// aerodynamics far outside their range.
+    pub after_apogee: bool,
 }
 
 /// The highest point.

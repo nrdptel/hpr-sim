@@ -17,7 +17,8 @@ scripts. Its other commands are registered but not available yet: each refuses a
 >   rocket of [the example below](#flying-a-design) through `hpr sim` and through the Rust library,
 >   and gets identical numbers, to the last bit. How close those are to a real flight is the
 >   [Accuracy](accuracy.md) page's subject. `hpr sim` flies no parachute or stage separation yet,
->   so its landings are not predictions ([what it leaves out](#what-hpr-sim-doesnt-fly-yet)).
+>   so where and how fast its rocket comes down are not predictions
+>   ([what it leaves out](#what-hpr-sim-doesnt-fly-yet)).
 > - `hpr motors show` works out each figure from the motor's
 >   [thrust curve](glossary.md#thrust-curve) with the same code a flight uses. On all 32 bundled
 >   curves, that code matches ThrustCurve.org's own statistics code to 1.8e-15, relative
@@ -92,7 +93,7 @@ pods-none (pods-none.ork), configuration 00000000-0000-4000-8000-000000000097
   1 × 168H54-10A (from the bundled catalog) in "Motor mount" (00000000-0000-4000-8000-000000000003), lit at launch
   launched at 0° N, 0° E, 0 m above sea level, from a 1.5 m vertical rail, in calm air
 See the Accuracy page before trusting these numbers: https://nrdptel.github.io/hpr-sim/accuracy.html
-note: the file has no recovery device, so the rocket falls from apogee on its airframe alone, on aerodynamics that hold only at small angles of attack: its landing time, speed and place are not a prediction
+note: the file has no recovery device, so the rocket falls from apogee on its airframe alone, on aerodynamics that hold only at small angles of attack: its landing time, speed and place, and any peak it sets in the fall, are not a prediction
 
 event                   time     height       speed
 liftoff               0.00 s      0.3 m     0.0 m/s
@@ -108,7 +109,7 @@ top Mach number       0.525
 rail exit speed       21.3 m/s
 static margin, rail   2.69 calibres
 least static margin   2.69 calibres at 0.15 s, before apogee
-landing               17.4 m from the pad at 29.71 s, at 65.9 m/s: with no recovery device, not a prediction
+landing               17.4 m from the pad at 29.71 s, at 65.9 m/s: with no recovery device flown, not a prediction
 ```
 
 <!-- cli: end -->
@@ -140,10 +141,12 @@ and give it: `hpr sim my-rocket.ork --motor AeroTech_H128W.eng`.
 
 **The landing is not a prediction.** `hpr sim` flies no parachute yet, so the rocket falls from
 apogee on its airframe alone. hpr's aerodynamics hold only at small
-[angles of attack](glossary.md#angle-of-attack), and a falling airframe turns far past them: some
-settle into a steady tail-first glide, which is why this one comes down away from the pad in
-calm air (issue [#241](https://github.com/nrdptel/hpr-sim/issues/241)). The ascent, up to apogee,
-is what to read.
+[angles of attack](glossary.md#angle-of-attack), and a falling airframe turns far past them, so
+where it lands, and how fast, are artifacts of the model; one test design glides tail-first far
+from the pad in calm air (issue [#241](https://github.com/nrdptel/hpr-sim/issues/241)). So is a
+top speed or Mach number set in the fall: a rocket that falls faster than it climbed shows its
+top speed after apogee, and `hpr sim` marks it "in the fall: not a prediction" (`after_apogee` in
+the JSON). The ascent, up to apogee, is what to read.
 
 ### The launch
 
@@ -181,7 +184,7 @@ pods-none (pods-none.ork), configuration 00000000-0000-4000-8000-000000000097
   1 × 168H54-10A (from the bundled catalog) in "Motor mount" (00000000-0000-4000-8000-000000000003), lit at launch
   launched at 32.99° N, 106.97° W, 1400 m above sea level, from a 3 m rail 85° above the horizon, leaning toward 270°, in a 5 m/s wind from 270°
 See the Accuracy page before trusting these numbers: https://nrdptel.github.io/hpr-sim/accuracy.html
-note: the file has no recovery device, so the rocket falls from apogee on its airframe alone, on aerodynamics that hold only at small angles of attack: its landing time, speed and place are not a prediction
+note: the file has no recovery device, so the rocket falls from apogee on its airframe alone, on aerodynamics that hold only at small angles of attack: its landing time, speed and place, and any peak it sets in the fall, are not a prediction
 
 event                   time     height       speed
 liftoff               0.00 s      0.3 m     0.0 m/s
@@ -197,10 +200,13 @@ top Mach number       0.556
 rail exit speed       30.2 m/s
 static margin, rail   2.71 calibres
 least static margin   2.71 calibres at 0.21 s, before apogee
-landing               310.4 m from the pad at 28.71 s, at 70.3 m/s: with no recovery device, not a prediction
+landing               310.4 m from the pad at 28.71 s, at 70.3 m/s: with no recovery device flown, not a prediction
 ```
 
 <!-- cli: end -->
+
+It climbs about 4% higher than the first example, not 8%: the lean and the wind tip its climb away
+from the vertical.
 
 ### The motor and the configuration
 
@@ -220,18 +226,19 @@ landing               310.4 m from the pad at 28.71 s, at 70.3 m/s: with no reco
 
 `hpr sim` refuses, with the reason, rather than fly something other than the design:
 
-- a configuration of several motors with `--motor`, which flies one;
+- with `--motor`, a configuration with motors in more than one mount, as `--motor` flies one;
 - a rocket whose stages separate under power, or a motor lit by a stage's separation;
 - with `--motor`, a `.ork` rocket of more than one stage, or a configuration that switches a
   stage off;
 - a `.ork` rocket hpr couldn't read exactly as written, such as one with a parallel stage;
 - a design whose checks find errors, unless `--accept-design-errors` is given;
-- a hybrid motor: hpr flies solid motors only.
+- a hybrid motor in a `.rse` file, which says so: hpr flies solid motors only. A `.eng` file
+  doesn't say what kind of motor it holds, so a hybrid's is flown as a solid; check the motor.
 
 ### Exporting the recording
 
 `--export FILE` writes the flight's recording: every quantity hpr tracks, every 0.01 s (set it
-with `--interval`), and at every event. The file's extension picks the format; repeat `--export`
+with `--interval`, down to 0.001 s), and at every event. The file's extension picks the format; repeat `--export`
 for several files. `hpr sim` won't write over a file it reads.
 
 | extension | what it holds |
@@ -239,9 +246,11 @@ for several files. `hpr sim` won't write over a file it reads.
 | `.csv` | one row per sample, with a header naming each column and its unit |
 | `.json` | the same columns and rows |
 | `.parquet` | the same, as Apache Parquet, for data tools such as pandas |
-| `.geojson` | the rocket's path over the Earth, with its landmarks, for web maps |
+| `.geojson` | the rocket's path over the Earth, for web maps |
 | `.kml` | the same path, for Google Earth |
 
+The maps mark no landing point: with no recovery device flown, where the rocket comes down is not
+a prediction, and neither is the path's end after apogee.
 [Exporting a flight](exporting-a-flight.md) says what each column and field means.
 
 ### What `hpr sim` doesn't fly yet

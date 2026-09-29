@@ -31,6 +31,10 @@ pub const DEFAULT_RAIL_LENGTH_M: f64 = 1.5;
 /// The recording's interval when `--interval` isn't given, s.
 pub const DEFAULT_INTERVAL_S: f64 = 0.01;
 
+/// The finest recording interval `--interval` takes, s: a finer one fills memory on a long fall,
+/// at a million rows every 17 minutes of flight.
+pub const MIN_INTERVAL_S: f64 = 0.001;
+
 /// `hpr sim`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct SimArgs {
@@ -96,7 +100,7 @@ pub struct SimArgs {
     /// (repeat for several)
     #[arg(long, value_name = "FILE")]
     pub export: Vec<String>,
-    /// The recording's interval, s; a row is also recorded at every event
+    /// The recording's interval, s, at least 0.001; a row is also recorded at every event
     #[arg(long, value_name = "S", default_value_t = DEFAULT_INTERVAL_S)]
     pub interval: f64,
     /// Fly a design whose checks find errors, such as a motor wider than its mount
@@ -109,6 +113,12 @@ pub(crate) fn run(args: &SimArgs, to: &mut Out<'_>) -> Result<(), Failure> {
     // Everything that can be refused is refused before the flight: the exports, the recording's
     // interval, the design, the motor, the site.
     let exports = exports(args)?;
+    if args.interval.is_nan() || args.interval < MIN_INTERVAL_S {
+        return Err(Failure::Input(format!(
+            "--interval {}: the recording's interval is at least {MIN_INTERVAL_S} s",
+            args.interval
+        )));
+    }
     let mut recorder = Recorder::new(Channel::ALL.to_vec(), Some(args.interval))
         .map_err(|error| Failure::Input(format!("--interval: {error}")))?;
     let mut read = read_design(&args.design)?;
@@ -387,8 +397,8 @@ struct Read {
 fn descent(recovery: &str) -> String {
     format!(
         "{recovery}, so the rocket falls from apogee on its airframe alone, on aerodynamics that \
-         hold only at small angles of attack: its landing time, speed and place are not a \
-         prediction"
+         hold only at small angles of attack: its landing time, speed and place, \
+         and any peak it sets in the fall, are not a prediction"
     )
 }
 
@@ -500,7 +510,11 @@ impl Read {
         let id = match &self.ork {
             Some(motors) => {
                 let chosen = ork_configuration(motors, wanted)?.ok_or_else(|| {
-                    unchosen(motors.configurations.iter().map(|c| &c.id), "the file")
+                    unchosen(
+                        motors.configurations.iter().map(|c| &c.id),
+                        "the file",
+                        self.no_motor_flies(None),
+                    )
                 })?;
                 if let Some(staging) = &chosen.staging {
                     return Err(powered_separation(&chosen.id, staging));
@@ -535,6 +549,7 @@ impl Read {
                     unchosen(
                         self.rocket.configurations.iter().map(|c| &c.id),
                         "the design",
+                        None,
                     )
                 })?
                 .id
@@ -720,13 +735,21 @@ fn motor_fixes(why: ork::NotFlown) -> bool {
     )
 }
 
-/// The refusal when no configuration was named and none can be taken as the one.
-fn unchosen<'a>(ids: impl Iterator<Item = &'a String>, what: &str) -> Failure {
+/// The refusal when no configuration was named and none can be taken as the one; `blocked`,
+/// why no motor of the user's own flies the rocket either, if none does.
+fn unchosen<'a>(
+    ids: impl Iterator<Item = &'a String>,
+    what: &str,
+    blocked: Option<String>,
+) -> Failure {
     let ids = owned(ids);
     if ids.is_empty() {
-        Failure::Input(format!(
-            "{what} has no motor configuration: give a motor with --motor"
-        ))
+        Failure::Input(match blocked {
+            None => format!("{what} has no motor configuration: give a motor with --motor"),
+            Some(why) => {
+                format!("{what} has no motor configuration, nor can it fly with --motor: {why}")
+            }
+        })
     } else {
         Failure::Input(format!(
             "{what} has {} configurations and names none the default: say which with --config \
@@ -908,7 +931,17 @@ fn export_format(path: &str) -> Result<ExportFormat, Failure> {
     }
 }
 
-/// A recording file's contents.
+/// A caveat for a peak the fall from apogee set: with no recovery device flown, not a prediction.
+fn in_fall(peak: &Peak) -> &'static str {
+    if peak.after_apogee {
+        ", in the fall: not a prediction"
+    } else {
+        ""
+    }
+}
+
+/// A recording file's contents. The maps draw no landing point: with no recovery device flown,
+/// where the rocket came down is not a prediction, and a pin on a map reads as one.
 fn contents(
     format: ExportFormat,
     recorder: &Recorder,
@@ -916,6 +949,12 @@ fn contents(
     summary: &FlightSummary,
     name: &str,
 ) -> Result<Vec<u8>, hpr_sim::SimError> {
+    let unpinned = FlightSummary {
+        landing: None,
+        body_landings: Vec::new(),
+        ..summary.clone()
+    };
+    let summary = &unpinned;
     Ok(match format {
         ExportFormat::Csv => export::csv(recorder)?.into_bytes(),
         ExportFormat::Json => export::json(recorder)?.into_bytes(),
@@ -943,8 +982,10 @@ fn ignition(ignition: &Ignition) -> String {
     }
 }
 
-/// The library's summary, field for field.
+/// The library's summary, field for field, each peak marked if it came after apogee.
 fn summary(summary: &FlightSummary) -> Summary {
+    let apogee_s = summary.apogee.map(|apogee| apogee.time_s);
+    let mark = |p: metrics::Peak| peak(p, apogee_s);
     Summary {
         termination: match summary.termination {
             hpr_sim::Termination::GroundHit => Termination::GroundHit,
@@ -956,19 +997,19 @@ fn summary(summary: &FlightSummary) -> Summary {
             _ => Termination::Other,
         },
         launch_height_m: summary.launch_height_m,
-        rail_exit_speed_m_s: summary.rail_exit_speed_m_s.map(peak),
+        rail_exit_speed_m_s: summary.rail_exit_speed_m_s.map(mark),
         apogee: summary.apogee.map(|apogee| Apogee {
             time_s: apogee.time_s,
             height_above_ground_m: apogee.height_above_ground_m,
             gain_m: apogee.gain_m,
         }),
-        max_speed_m_s: summary.max_speed_m_s.map(peak),
-        max_mach: summary.max_mach.map(peak),
-        max_dynamic_pressure_pa: summary.max_dynamic_pressure_pa.map(peak),
-        max_acceleration_m_s2: summary.max_acceleration_m_s2.map(peak),
-        max_descent_acceleration_m_s2: summary.max_descent_acceleration_m_s2.map(peak),
-        min_static_margin_cal: summary.min_static_margin_cal.map(peak),
-        min_flight_margin_cal: summary.min_flight_margin_cal.map(peak),
+        max_speed_m_s: summary.max_speed_m_s.map(mark),
+        max_mach: summary.max_mach.map(mark),
+        max_dynamic_pressure_pa: summary.max_dynamic_pressure_pa.map(mark),
+        max_acceleration_m_s2: summary.max_acceleration_m_s2.map(mark),
+        max_descent_acceleration_m_s2: summary.max_descent_acceleration_m_s2.map(mark),
+        min_static_margin_cal: summary.min_static_margin_cal.map(mark),
+        min_flight_margin_cal: summary.min_flight_margin_cal.map(mark),
         rail_exit_stability: summary.rail_exit_stability.map(|stability| Stability {
             time_s: stability.time_s,
             height_above_ground_m: stability.height_above_ground_m,
@@ -983,11 +1024,12 @@ fn summary(summary: &FlightSummary) -> Summary {
     }
 }
 
-fn peak(peak: metrics::Peak) -> Peak {
+fn peak(peak: metrics::Peak, apogee_s: Option<f64>) -> Peak {
     Peak {
         value: peak.value,
         time_s: peak.time_s,
         height_above_ground_m: peak.height_above_ground_m,
+        after_apogee: apogee_s.is_some_and(|apogee| peak.time_s > apogee),
     }
 }
 
@@ -1184,12 +1226,19 @@ fn print(flight: &SimFlight, out: &mut dyn Write) -> io::Result<()> {
     if let Some(speed) = &summary.max_speed_m_s {
         writeln!(
             out,
-            "top speed             {:.1} m/s at {:.2} s",
-            speed.value, speed.time_s
+            "top speed             {:.1} m/s at {:.2} s{}",
+            speed.value,
+            speed.time_s,
+            in_fall(speed)
         )?;
     }
     if let Some(mach) = &summary.max_mach {
-        writeln!(out, "top Mach number       {:.3}", mach.value)?;
+        writeln!(
+            out,
+            "top Mach number       {:.3}{}",
+            mach.value,
+            in_fall(mach)
+        )?;
     }
     if let Some(speed) = &summary.rail_exit_speed_m_s {
         writeln!(out, "rail exit speed       {:.1} m/s", speed.value)?;
@@ -1211,7 +1260,7 @@ fn print(flight: &SimFlight, out: &mut dyn Write) -> io::Result<()> {
         writeln!(
             out,
             "landing               {:.1} m from the pad at {:.2} s, at {:.1} m/s: with no \
-             recovery device, not a prediction",
+             recovery device flown, not a prediction",
             landing.distance_m, landing.time_s, landing.ground_hit_speed_m_s
         )?;
     }

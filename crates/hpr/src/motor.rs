@@ -115,7 +115,8 @@ impl Motor {
     /// The one motor in the text of a RASP `.eng` file, with the file's size, masses and thrust
     /// curve ([`SolidMotor::from_envelope`]). The file's warnings and its list of delays are
     /// dropped (read the file with [`hpr_motor::eng::parse`] to see them): set the delay with
-    /// [`Motor::with_delay_s`].
+    /// [`Motor::with_delay_s`]. A `.eng` file doesn't say what kind of motor it holds, so a
+    /// hybrid's file is read as a solid motor; hpr models solid motors only.
     ///
     /// # Errors
     ///
