@@ -18,22 +18,34 @@
 //! - **Attributes** no reader asks for on an element hpr does read, such as a material's `group`.
 //!
 //! The readers record every tag and attribute they ask for while [`super::design`] reads, so one is
-//! kept exactly when nothing asked for it.
+//! kept when nothing asked for it. One a reader asked for and then dropped or simplified — a rail
+//! button's screw height, a drag override, a ring's count above one, a word with no reading — is
+//! kept too, since the design does not hold what it says: an export writes it back in place of
+//! what the design would, and reading that export warns of it again.
 //!
 //! **What is not.** The text of a second copy of a tag a reader takes once by name; its attributes
 //! and unread children are kept. Everything is still in the document itself, which
-//! [`super::OrkFile`] keeps whole ([ADR-051][adr-051]); writing a `.ork` back out is [M3.2][m3-2]'s
-//! work, and it starts from both.
+//! [`super::OrkFile`] keeps whole ([ADR-051][adr-051]); [`super::export`] writes a design back out
+//! from the design and these.
 //!
-//! **The path.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each step among its
-//! parent's `<subcomponents>` children, the way a warning's path does; a section's step counts
-//! among its parent's child elements, and so does a tag's, marked `@`, at any depth:
-//! `openrocket/rocket/stage[0]/nosecone[0]/@appearance[3]`. An attribute keeps the path of the
-//! element it was on. [`element_at`] follows a path back.
+//! **The path.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each part's step among
+//! all its parent's `<subcomponents>` children, the way a warning's path does, since the order of
+//! parts is where they stack. A section's step, and a tag's, marked `@` at any depth, counts only
+//! among the parent's child elements of its own name: `openrocket/rocket/stage[0]/nosecone[0]/
+//! @appearance[0]` is the nose cone's first `<appearance>`, wherever it stood among the other
+//! tags. OpenRocket does not read meaning into the order of tags, and counting this way lets an
+//! export put each one back without knowing that order ([ADR-109][adr-109]). A tag that belongs
+//! to one configuration, by its `configid` attribute, names it in its step and counts only among
+//! the tags of its name for that configuration: `…/parachute[0]/@deploymentconfiguration(b)[0]`
+//! is the parachute's `<deploymentconfiguration>` for configuration `b`, wherever the file put it
+//! among the other configurations', since an export writes them in the design's order of
+//! configurations. A `configid` that is empty or holds a `/`, `(`, `)`, `[` or `]` is not named,
+//! and its tag counts among the others of its name that name none. An attribute keeps the path
+//! of the element it was on. [`element_at`] follows a path back.
 //!
 //! [l66]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l66
 //! [adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
-//! [m3-2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-2
+//! [adr-109]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-109-m32-split-and-a-ork-written-from-the-design-2026-09-29
 
 use std::collections::BTreeSet;
 
@@ -65,11 +77,13 @@ pub struct OpenRocketExtension {
     pub sections: Vec<Kept>,
     /// The tags hpr does not read in an element it does read — a part, a stage, the rocket, a
     /// stored simulation, or a tag inside any of those that a reader asked for — such as a part's
-    /// `<appearance>`.
+    /// `<appearance>`; and those a reader asked for and dropped or simplified, such as a rail
+    /// button's `<screwheight>`, which the design does not hold.
     #[serde(default)]
     pub tags: Vec<Kept>,
     /// The attributes hpr does not read on an element it does read, such as a material's
-    /// `group`.
+    /// `group`, and those whose value a reader dropped, such as a material's declared `type` where
+    /// the part needs another.
     #[serde(default)]
     pub attributes: Vec<KeptAttribute>,
 }
@@ -107,7 +121,9 @@ pub(super) fn read(
     let root = &document.root;
     // hpr reads the first `<rocket>` and the first `<simulations>`; a second is kept whole.
     let (mut rocket_seen, mut simulations_seen) = (false, false);
-    for (index, child) in root.elements().enumerate() {
+    let mut sections = Counter::default();
+    for child in root.elements() {
+        let index = sections.next(&child.name);
         match child.name.as_str() {
             "rocket" if !std::mem::replace(&mut rocket_seen, true) => {
                 unasked(child, "openrocket/rocket", asked, &mut kept);
@@ -118,19 +134,20 @@ pub(super) fn read(
             }
             "simulations" if !std::mem::replace(&mut simulations_seen, true) => {
                 // Anything beside the `<simulation>`s is kept, counted among its own name.
-                let mut seen: std::collections::BTreeMap<&str, usize> = Default::default();
+                let mut seen = Counter::default();
                 for other in child.elements().filter(|e| e.name != "simulation") {
-                    let index = seen.entry(other.name.as_str()).or_default();
+                    let index = seen.next(&other.name);
                     kept.sections.push(Kept {
                         at: format!("openrocket/simulations/{}[{index}]", other.name),
                         element: other.clone(),
                     });
-                    *index += 1;
                 }
                 for (index, simulation) in child.children_named("simulation").enumerate() {
                     let at = format!("openrocket/simulations/simulation[{index}]");
                     keep_attributes(simulation, &at, asked, &mut kept);
-                    for (index, inside) in simulation.elements().enumerate() {
+                    let mut seen = Counter::default();
+                    for inside in simulation.elements() {
+                        let index = seen.next(&inside.name);
                         let path = format!("{at}/{}[{index}]", inside.name);
                         if reads::asked(asked, simulation, &inside.name) {
                             unasked(inside, &path, asked, &mut kept);
@@ -156,11 +173,14 @@ pub(super) fn read(
 /// looking inside the ones a reader did. The parts inside it are [`parts`]'s.
 fn unasked(element: &Element, at: &str, asked: &Reads, kept: &mut OpenRocketExtension) {
     keep_attributes(element, at, asked, kept);
-    for (index, tag) in element.elements().enumerate() {
+    let mut seen = Counter::default();
+    for tag in element.elements() {
+        let key = tag_key(tag);
+        let index = seen.next(&key);
         if tag.name == "subcomponents" {
             continue;
         }
-        let path = format!("{at}/@{}[{index}]", tag.name);
+        let path = format!("{at}/@{key}[{index}]");
         if reads::asked(asked, element, &tag.name) {
             unasked(tag, &path, asked, kept);
         } else {
@@ -226,12 +246,12 @@ pub fn element_at<'a>(document: &'a Document, at: &str) -> Option<&'a Element> {
         let index = rest.strip_suffix(']')?.parse().ok()?;
         Some((name.to_owned(), index))
     };
-    // A tag step, `@name[k]`: the k-th child element, which must be called `name`.
+    // A tag step, `@name[k]` or `@name(configid)[k]`: the k-th child element with that key.
     let tag = |here: &'a Element, text: &str| -> Option<&'a Element> {
-        let (name, index) = step(text.strip_prefix('@')?)?;
+        let (key, index) = step(text.strip_prefix('@')?)?;
         here.elements()
+            .filter(|child| tag_key(child) == key)
             .nth(index)
-            .filter(|child| child.name == name)
     };
     match steps.next()? {
         "rocket" => {
@@ -263,10 +283,7 @@ pub fn element_at<'a>(document: &'a Document, at: &str) -> Option<&'a Element> {
                 return Some(simulation);
             };
             let (name, index) = step(text)?;
-            let mut here = simulation
-                .elements()
-                .nth(index)
-                .filter(|child| child.name == name)?;
+            let mut here = simulation.children_named(&name).nth(index)?;
             for text in steps {
                 here = tag(here, text)?;
             }
@@ -274,11 +291,52 @@ pub fn element_at<'a>(document: &'a Document, at: &str) -> Option<&'a Element> {
         }
         text => {
             let (name, index) = step(text)?;
-            let section = root
-                .elements()
-                .nth(index)
-                .filter(|child| child.name == name)?;
+            let section = root.children_named(&name).nth(index)?;
             steps.next().is_none().then_some(section)
         }
+    }
+}
+
+/// The key a tag's step names it by, which it counts among: its name, and, when it belongs to one
+/// configuration, that configuration's id in brackets, `deploymentconfiguration(b)`. The id is
+/// left out when it is empty or holds a character a path gives meaning to, `/`, `(`, `)`, `[` or
+/// `]`, so that the path still reads back.
+///
+/// The attribute is looked up directly rather than through [`Element::attribute`], so a path is
+/// never a read that [`reads`] records; the extension is read after the recording has stopped in
+/// any case ([`super::design`]).
+pub(crate) fn tag_key(element: &Element) -> String {
+    match element
+        .attributes
+        .iter()
+        .find(|(name, _)| name == "configid")
+    {
+        // The readers trim a configuration's id, and the writers write it trimmed.
+        Some((_, configid)) => configuration_key(&element.name, configid.trim()),
+        None => element.name.clone(),
+    }
+}
+
+/// The key of the tag step for a `<name>` of configuration `configid`, as [`tag_key`] gives it
+/// for such an element.
+pub(crate) fn configuration_key(name: &str, configid: &str) -> String {
+    if configid.is_empty() || configid.contains(['/', '(', ')', '[', ']']) {
+        name.to_owned()
+    } else {
+        format!("{name}({configid})")
+    }
+}
+
+/// Counts the child elements met so far by name, for a step that counts among its own name.
+#[derive(Default)]
+pub(super) struct Counter(std::collections::BTreeMap<String, usize>);
+
+impl Counter {
+    /// How many elements called `name` came before this one; counts this one.
+    pub(super) fn next(&mut self, name: &str) -> usize {
+        let count = self.0.entry(name.to_owned()).or_default();
+        let index = *count;
+        *count += 1;
+        index
     }
 }

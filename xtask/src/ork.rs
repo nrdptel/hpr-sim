@@ -23,9 +23,12 @@ use hpr_io::ork::{self, ATTACHED_TAGS, AXIAL_OFFSET, Dimension, INSTANCE_COUNT, 
 use serde_json::{Value, json};
 
 pub const USAGE: &str = "\
-  ork [--dir <path>]…      Read every .ork file in the reference library and print how many
-                           opened, in which container and schema version. Per-file detail
-                           (private corpus) goes to corpus-out/ork-survey.json.";
+  ork [--dir <path>]… [--export <dir>]
+                           Read every .ork file in the reference library and print how many
+                           opened, in which container and schema version, and whether each
+                           design reads back the same once written out again. Per-file detail
+                           (private corpus) goes to corpus-out/ork-survey.json; --export also
+                           saves each written file under <dir>, by the original's path.";
 
 /// Where the per-file detail goes. Gitignored: it names files in a private corpus.
 const REPORT: &str = "corpus-out/ork-survey.json";
@@ -42,7 +45,8 @@ const OPENROCKET_RADII: &str = "validation/fixtures/ork/openrocket-automatic-rad
 
 /// How `hpr_io::ork::rocket` begins the warning for a radius it gave OpenRocket's default radius;
 /// a test below holds the two together, so a reworded warning cannot quietly count as none.
-const DEFAULT_RADIUS: &str = "an automatic radius with no fixed radius anywhere along its chain";
+pub(crate) const DEFAULT_RADIUS: &str =
+    "an automatic radius with no fixed radius anywhere along its chain";
 
 /// How `hpr_io::ork::rocket` ends the warning for a document with no design in it, whether it has
 /// no `<rocket>` or one holding nothing; held to the importer by the same test.
@@ -71,12 +75,18 @@ const NOT_WELL_FORMED: [(&str, &str, &str); 2] = [
 pub fn run(args: &[String]) -> Result<(), String> {
     let root = root()?;
     let mut dirs: Vec<PathBuf> = Vec::new();
+    let mut export_to: Option<PathBuf> = None;
     let mut rest = args.iter();
     while let Some(argument) = rest.next() {
         match argument.as_str() {
             "--dir" => dirs.push(PathBuf::from(
                 rest.next().ok_or_else(|| format!("usage:\n{USAGE}"))?,
             )),
+            "--export" => {
+                export_to = Some(PathBuf::from(
+                    rest.next().ok_or_else(|| format!("usage:\n{USAGE}"))?,
+                ));
+            }
             _ => return Err(format!("usage:\n{USAGE}")),
         }
     }
@@ -107,7 +117,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     // The OpenRocket fixture names designs in the library; a run over other directories need not
     // reach any of them.
     let library = dirs.is_empty() && root.join(JAR).is_file();
-    report(&root, &files, library)
+    report(&root, &files, library, export_to.as_deref())
 }
 
 /// The tags that hold an angle. A `.ork` writes them in degrees and says so nowhere, so this is
@@ -255,7 +265,12 @@ fn resolved_dimension(placed: &PlacedComponent, tag: &str) -> Option<f64> {
 /// One file to read: how to name it, and its bytes.
 type Case = (String, Vec<u8>);
 
-fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
+fn report(
+    root: &Path,
+    files: &[Case],
+    library: bool,
+    export_to: Option<&Path>,
+) -> Result<(), String> {
     let openrocket = openrocket_radii(root, &root.join(OPENROCKET_RADII))?;
     let mut radii_designs = 0usize;
     let mut radii_compared = 0usize;
@@ -265,6 +280,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut recovery_tally = crate::ork_recovery::RecoveryTally::default();
     let mut simulation_tally = crate::ork_simulations::SimulationTally::default();
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
+    let mut export_tally = crate::ork_export::ExportTally::new(root, export_to);
     let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
     let mut mass = crate::ork_mass::MassTally::load(root, library)?;
     let mut supply = crate::ork_supply::Supply::load(root, library)?;
@@ -375,6 +391,13 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                 let recovery_here = recovery_tally.add(&whole);
                 let simulations_here = simulation_tally.add(&whole);
                 let extensions_here = extension_tally.add(&whole, &read.value.document);
+                let export_here = export_tally.add(
+                    name,
+                    &whole,
+                    &read.value.document,
+                    &read.value.attachments,
+                    supply.curves(),
+                );
                 let mut defaulted_here = 0usize;
                 for warning in &spine.warnings {
                     if warning.message.starts_with(DEFAULT_RADIUS) {
@@ -575,6 +598,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     "recovery": recovery_here,
                     "simulations": simulations_here,
                     "extensions": extensions_here,
+                    "export": export_here,
                     "rocketserializer": geometry_here,
                     "openrocket_mass": mass_here,
                     "container": read.value.container.as_str(),
@@ -712,6 +736,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     summary["recovery"] = recovery_tally.summary();
     summary["simulations"] = simulation_tally.summary();
     summary["extensions"] = extension_tally.summary();
+    summary["export"] = export_tally.summary();
     let path = root.join(REPORT);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
@@ -855,6 +880,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     recovery_tally.print();
     simulation_tally.print();
     extension_tally.print();
+    export_tally.print();
     geometry.print();
     mass.print();
     if !spine_errors.is_empty() {
@@ -893,6 +919,9 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
         return Err(failure);
     }
     if let Some(failure) = extension_tally.failure() {
+        return Err(failure);
+    }
+    if let Some(failure) = export_tally.failure() {
         return Err(failure);
     }
     if let Some(failure) = geometry.failure() {
@@ -1023,7 +1052,7 @@ fn openrocket_radii(root: &Path, path: &Path) -> Result<BTreeMap<String, Vec<f64
     Ok(radii)
 }
 
-fn print_counts<K: std::fmt::Display>(title: &str, counts: &BTreeMap<K, usize>) {
+pub(crate) fn print_counts<K: std::fmt::Display>(title: &str, counts: &BTreeMap<K, usize>) {
     if counts.is_empty() {
         println!("  {title}: none");
         return;

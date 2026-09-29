@@ -4,6 +4,12 @@
 //! the element it was looked up in, whether the tag was there or not. A tag of a part the walk read
 //! that no reader ever asked for is one hpr does not model, and is kept whole.
 //!
+//! A reader that asks for a tag and then drops or simplifies what it says — a count hpr caps, a
+//! word it has no reading for, a value it does not model — [`forget`]s it, and the tag is kept
+//! whole too: the design then holds what the file said even where hpr does not read it, and an
+//! export writes it back as it was. A tag forgotten anywhere in the read stays forgotten, whoever
+//! else asks for it.
+//!
 //! Recording is scoped to one call and keyed by the element's address, which is only compared
 //! within that call, while the document it points into is borrowed.
 
@@ -38,9 +44,26 @@ pub(super) fn note_attribute(element: &Element, name: &str) {
     });
 }
 
-/// Whether a reader asked `element` for its child tag `name` in `reads`.
+/// Records that a reader dropped or simplified what `element`'s child tag `name` says, in every
+/// copy of it, so that it is kept as if no reader had asked for it, when a recording is on.
+pub(super) fn forget(element: &Element, name: &str) {
+    READS.with(|reads| {
+        if let Some(reads) = reads.borrow_mut().as_mut() {
+            reads.insert((address(element), forgotten_key(name)));
+        }
+    });
+}
+
+/// Records that a reader dropped or simplified what `element`'s attribute `name` says, so that it
+/// is kept as if no reader had asked for it, when a recording is on.
+pub(super) fn forget_attribute(element: &Element, name: &str) {
+    forget(element, &attribute_key(name));
+}
+
+/// Whether a reader asked `element` for its child tag `name` in `reads`, and none forgot it.
 pub(super) fn asked(reads: &Reads, element: &Element, name: &str) -> bool {
-    reads.contains(&(address(element), name.to_owned()))
+    let at = address(element);
+    reads.contains(&(at, name.to_owned())) && !reads.contains(&(at, forgotten_key(name)))
 }
 
 /// Whether a reader asked `element` for its attribute `name` in `reads`.
@@ -51,6 +74,12 @@ pub(super) fn asked_attribute(reads: &Reads, element: &Element, name: &str) -> b
 /// An attribute's key in the recording: `@` and its name, which no tag name can be.
 fn attribute_key(name: &str) -> String {
     format!("@{name}")
+}
+
+/// A forgotten tag's or attribute's key in the recording: `!` and its key, which no tag or
+/// attribute name starts with.
+fn forgotten_key(key: &str) -> String {
+    format!("!{key}")
 }
 
 /// Puts back the recording that was on before, even if the read panics.

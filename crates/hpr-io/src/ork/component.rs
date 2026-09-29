@@ -27,7 +27,7 @@ use super::attached::{self, finish};
 use super::document::{Document, Element};
 use super::motors::{self, MountRead};
 use super::recovery::{self, DeviceRead, SeparationRead};
-use super::value::Values;
+use super::value::{OVERRIDE_FLAGS, Values};
 use super::warning::{Imported, Warning, WarningKind};
 
 /// The body tags this milestone reads. Anything else in a `<subcomponents>` is counted and left.
@@ -427,6 +427,8 @@ fn body_tube(
         // empty one is a mass quietly missing rather than a design that fails (issue #130).
         (Wall::Filled {}, None) => {
             values.warn_at(WarningKind::Skipped, FILLED_TO_NOTHING);
+            // The design holds no `filled`, so the tag is kept for an export to write back.
+            values.forget(&["thickness"]);
             0.0
         }
         (Wall::Shell { thickness_m }, _) => thickness_m,
@@ -547,6 +549,7 @@ fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
                 WarningKind::Dropped,
                 format!("a wall {thickness_m} m thick is no wall; it was read as none"),
             );
+            values.forget(&["thickness"]);
             Wall::Shell { thickness_m: 0.0 }
         }
         (None, _) => Wall::Shell {
@@ -590,6 +593,7 @@ fn shoulder(
                 WarningKind::Dropped,
                 format!("the {end} shoulder's wall is {stated_m} m thick, which is no wall; it was read as none"),
             );
+            values.forget(&[&format!("{end}shoulderthickness")]);
             0.0
         }
         _ => 0.0,
@@ -649,6 +653,8 @@ fn shape(values: &mut Values<'_>) -> NoseShape {
                      default for one; it was read as a cone"
                 ),
             );
+            // The design holds a cone, not the shape named: the name is kept as written.
+            values.forget(&["shape"]);
             NoseShape::Conical {}
         }
         (other, _) => {
@@ -657,6 +663,7 @@ fn shape(values: &mut Values<'_>) -> NoseShape {
                 WarningKind::Unusual,
                 format!("`{other}` is not a shape this reader knows; it was read as a cone"),
             );
+            values.forget(&["shape", "shapeparameter"]);
             NoseShape::Conical {}
         }
     }
@@ -724,6 +731,8 @@ pub(super) fn material_or(
                  needed; its number was taken as a `{want}` one"
             ),
         );
+        // The design holds the kind the part needs, so the file's own is kept as written.
+        super::reads::forget_attribute(element, "type");
     }
     let density = element
         .attribute("density")
@@ -736,6 +745,7 @@ pub(super) fn material_or(
                 WarningKind::Dropped,
                 format!("the material `{name}` states no density; it weighs nothing"),
             );
+            super::reads::forget_attribute(element, "density");
             named(&name, 0.0)
         }
     }
@@ -749,8 +759,9 @@ pub(super) fn material_or(
 /// (measured, ADR-061). A part that overrides both, with flags that disagree, cannot be said in
 /// `hpr-design`: the mass flag decides, because mass is the quantity the flag is written for (95 of
 /// the 104 in the reference corpus are `overridesubcomponentsmass`), and the disagreement is
-/// reported. The drag override is read by [`super::value::Values::overrides`] but waits on the
-/// milestone that charges drag to a part.
+/// reported, and the file's flags are kept as written for an export to put back. The drag override
+/// is read by [`super::value::Values::overrides`] but waits on the milestone that charges drag to a
+/// part; until then it is kept as written too.
 pub(super) fn overrides(values: &mut Values<'_>) -> (Overrides, bool) {
     let read = values.overrides();
     let mass_flag = read.subcomponents_mass.unwrap_or_default();
@@ -770,6 +781,8 @@ pub(super) fn overrides(values: &mut Values<'_>) -> (Overrides, bool) {
                  the mass flag was taken"
             ),
         );
+        // The flags are kept as written, all together, since their order says which wins.
+        values.forget(&OVERRIDE_FLAGS);
     }
     (
         Overrides {
@@ -801,6 +814,7 @@ fn reference_diameter(
                      component was used"
                 ),
             ));
+            super::reads::forget(element, "referencetype");
             ReferenceDiameter::Maximum {}
         }
     }
@@ -875,6 +889,8 @@ impl Ids {
                 "`{wanted}` is already the id of another component; this one was called `{id}`"
             ),
         );
+        // The design holds the new id, so the file's is kept as written.
+        values.forget(&["id"]);
         id
     }
 }

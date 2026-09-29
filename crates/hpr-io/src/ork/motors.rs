@@ -589,6 +589,7 @@ fn delay(text: &str, values: &mut Values<'_>) -> Option<Delay> {
                     "`delay` says `{text}`, which is neither `none` nor a delay; it was ignored"
                 ),
             );
+            values.forget(&["delay"]);
             None
         }
     }

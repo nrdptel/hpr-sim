@@ -619,7 +619,7 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
         super::reads::note(wind, "windlevel");
         wind.children_named("windlevel")
             .map(|level| {
-                let mut number = |name: &str| attribute_number(level, name, at, warnings);
+                let mut number = |name: &str| kept_number(level, name, at, warnings);
                 WindLevel {
                     altitude_m: number("altitude"),
                     speed_m_s: number("speed"),
@@ -667,6 +667,7 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
     let mut values = Values::new(element, at, warnings);
     let legacy_speed = values.number(&["windaverage"]);
     let legacy_from = values.number(&["winddirection"]);
+    let average_wind = average;
     for (what, legacy, average) in [
         ("speed", legacy_speed, average_speed),
         ("direction", legacy_from, average_from),
@@ -674,6 +675,11 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
         if let (Some(legacy), Some(average)) = (legacy, average)
             && legacy != average
         {
+            // The average `wind`'s tag, named as the quantity is, says what the design does not
+            // hold: it is kept as written.
+            if let Some(wind) = average_wind {
+                super::reads::forget(wind, what);
+            }
             values.warn_at(
                 WarningKind::Dropped,
                 format!(
@@ -728,11 +734,27 @@ fn attribute_number(
     }
 }
 
+/// [`attribute_number`], keeping an attribute that is not a number as written
+/// ([`super::reads::forget_attribute`]), for an element that is read whatever its attributes say.
+/// An `event` that is left out is not: an attribute kept on it would go back on the next one.
+fn kept_number(
+    element: &Element,
+    name: &str,
+    at: &str,
+    warnings: &mut Vec<Warning>,
+) -> Option<f64> {
+    let number = attribute_number(element, name, at, warnings);
+    if number.is_none() && element.attribute(name).is_some() {
+        super::reads::forget_attribute(element, name);
+    }
+    number
+}
+
 fn results(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredResults {
     // Looked up directly below, not through `Values`.
     super::reads::note(element, "warning");
     super::reads::note(element, "databranch");
-    let mut number = |name: &str| attribute_number(element, name, at, warnings);
+    let mut number = |name: &str| kept_number(element, name, at, warnings);
     let mut results = StoredResults {
         max_altitude_m: number("maxaltitude"),
         max_speed_m_s: number("maxvelocity"),

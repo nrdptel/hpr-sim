@@ -369,6 +369,7 @@ fn trigger<E: Clone>(
                     WarningKind::Dropped,
                     format!("`{tag}` is empty; it was read as not stated"),
                 );
+                values.forget(&[&tag]);
                 None
             }
             Some(text) => {
