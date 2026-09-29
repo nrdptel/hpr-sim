@@ -126,6 +126,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-107: `hpr validate` shares the project's own validation check; `hpr convert` translates `.eng` and `.rse` by the format notes][adr-107] | [M4.2c](#m4-2c): `hpr validate` re-runs the RocketPy validation cases and makes the check the project's automated tests make, with the same code, so the two fail together; it needs a copy of the repository. `hpr convert` writes a motor as `.eng` or `.rse`: the thrust curve, size and masses come back bit for bit, what `.rse` adds is filled the way ThrustCurve.org's `.rse` files are, and what `.eng` can't hold is dropped with a warning ([The command line](cli.md#hpr-convert)) |
 | [ADR-108: A flight log read alone: PerfectFlite's `.pf2` first, heights after a running median, an invented log in CI][adr-108] | [M4.2d](#m4-2d): `hpr analyze` reads a PerfectFlite altimeter's log, with no design file, and prints liftoff, apogee, the top speed and landing, each saying where it came from or why the log can't support it. Heights come from the altitude after a running median, not the Hampel filter Debrief used, because on a real log the Hampel filter kept an ejection charge's pressure pulse as the apogee. The tests read an invented log whose every reading is known; the one public real log, whose terms are unclear, is read only where it has been fetched ([Flight-log readings](physics/log-readings.md)) |
 | [ADR-109: M3.2 split, and a `.ork` written from the design][adr-109] | [M3.2](#m3-2) is split: the writer first ([M3.2a](#m3-2a)), then OpenRocket loading and flying what it writes ([M3.2b](#m3-2b)). hpr writes a `.ork` from its own design, each value as the reader reads it, and puts back everything it keeps but doesn't model where it was. A value the reader drops, such as a rail button's screw height, is kept and written back, so OpenRocket still reads it. Each number is written as the shortest decimal that reads back to the same bits. Ids that aren't UUIDs are left out, since OpenRocket refuses a file holding one ([Writing a `.ork`](format/ork.md#writing-a-ork-back-out)) |
+| [ADR-110: M3.2b: OpenRocket's flights of the export, compared by count][adr-110] | OpenRocket 24.12 flies each corpus design twice, as written and as hpr writes it back out, and only counts are committed. Every design it opens as written must open as exported, a design it refuses must be refused for the same reason, and every configuration flown both ways must reach the original's apogee within 0.5% ([Checked in OpenRocket](format/ork.md#checked-in-openrocket)) |
 
 ## The roadmap
 
@@ -313,9 +314,9 @@ missing or its status disagrees.
 | <a id="m4-2b"></a>[M4.2b][phase-2] | Flying a design from the command line (`hpr sim`), with its recording exported ([ADR-106][adr-106], [The command line](cli.md#hpr-sim)) | done |
 | <a id="m4-2c"></a>[M4.2c][phase-2] | Checking the validation cases (`hpr validate`) and converting motor files (`hpr convert`) from the command line ([ADR-107][adr-107], [`hpr validate`](cli.md#hpr-validate), [`hpr convert`](cli.md#hpr-convert)) | done |
 | <a id="m4-2d"></a>[M4.2d][phase-2] | Reading a flight log from the command line (`hpr analyze`), with no design file: PerfectFlite's `.pf2` first, and liftoff, apogee, the top speed and landing ([ADR-108][adr-108], [Reading a flight log](reading-a-flight-log.md)) | done |
-| <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | not yet done |
+| <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | done |
 | <a id="m3-2a"></a>[M3.2a][phase-2] | The writer: a design written back out as a `.ork`, reading back as the same design ([ADR-109][adr-109], [Writing a `.ork`](format/ork.md#writing-a-ork-back-out)) | done |
-| <a id="m3-2b"></a>[M3.2b][phase-2] | OpenRocket 24.12 loading and flying the written files | not yet done |
+| <a id="m3-2b"></a>[M3.2b][phase-2] | OpenRocket 24.12 loading and flying the written files, within 0.5% of the original's apogee ([ADR-110][adr-110], [Checked in OpenRocket](format/ork.md#checked-in-openrocket)) | done |
 | <a id="m3-3"></a>[M3.3][phase-2] | hpr's own open design file format | not yet done |
 | <a id="m4-3"></a>[M4.3][phase-2] | Python bindings | not yet done |
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
@@ -548,6 +549,7 @@ is the milestone that added or will add that test.
 [adr-107]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-107-hpr-validate-shares-the-projects-own-validation-check-hpr-convert-translates-eng-and-rse-by-the-format-notes-2026-09-29
 [adr-108]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-108-a-flight-log-read-alone-perfectflites-pf2-first-heights-after-a-running-median-an-invented-log-in-ci-2026-09-29
 [adr-109]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-109-m32-split-and-a-ork-written-from-the-design-2026-09-29
+[adr-110]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-110-m32b-openrockets-flights-of-the-export-compared-by-count-2026-09-29
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

@@ -115,6 +115,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-107 | `hpr validate` shares the project's own validation check; `hpr convert` translates `.eng` and `.rse` by the format notes | accepted |
 | ADR-108 | A flight log read alone: PerfectFlite's `.pf2` first, heights after a running median, an invented log in CI | accepted |
 | ADR-109 | M3.2 split, and a `.ork` written from the design | accepted |
+| ADR-110 | M3.2b: OpenRocket's flights of the export, compared by count | accepted |
 
 ---
 
@@ -9275,3 +9276,40 @@ every value would need a map back to the tag it came from.
 **Not chosen: comparing designs with the kept tags' paths ignored.** It would hide a tag put back
 in the wrong element.
 
+
+## ADR-110: M3.2b: OpenRocket's flights of the export, compared by count (2026-09-29)
+
+**Context.** M3.2's bullets: every corpus design, read by hpr and written back out, loads in
+OpenRocket 24.12, and OpenRocket's flight of the written file is within 0.5% of its flight of the
+original. M3.2a (ADR-109) wrote files that read back in hpr as the same design, but OpenRocket
+reads more than hpr does. Flown before a kept `<preset>` was moved first (ADR-109, point 6), a jar
+example flew 0.6% to 0.9% low and a private design 10% to 11%: the check must fly files, not only
+read them. The designs are other people's, so neither the files nor per-design results can be
+committed.
+
+**Decision.**
+
+1. **Two `flights.py` records, compared.** Both are gitignored: OpenRocket's calm-air flights
+   (seed 1, conditions from each file's first stored simulation) of the originals under `refs/` and
+   in the jar (`corpus-out/openrocket-flights.json`), and of the files
+   `cargo xtask ork --export corpus-out/ork-export` writes (`corpus-out/openrocket-export-flights.json`).
+   `cargo xtask ork-export-flights` matches them configuration by configuration and commits counts
+   by source (`validation/reports/openrocket-export-flights.{json,md}`), never a file name.
+2. **The records must be comparable.** It refuses two records made with different jars, scripts or
+   seeds, and an export record whose files' SHA-256 are not those of the files hpr writes now.
+3. **"Every corpus design" means every design OpenRocket 24.12 opens as written.** An export can't
+   be expected to open where its original doesn't. Of the others, a design hpr can't read has no
+   export, and one hpr reads must be refused as its original is, with the same error. The bar is
+   met when every export of an opened original opens, no design is refused for a new reason, no
+   configuration flies one way only, and every configuration flown both ways is within 0.5%.
+4. **CI holds the committed report to itself**: its page is its JSON, its total the sum of its
+   sources, and it meets the bar. CI has neither OpenRocket nor the corpus, so `--check`, which
+   remakes the report and compares, runs only where both are.
+
+**Measured** (2026-09-29): 75 designs; OpenRocket opens 71 as written and all 71 exports. The other
+four: hpr reads two of them, and OpenRocket refuses those two exports with the originals' errors.
+151 configurations fly both ways, all within 0.5%, 142 to the same apogee bit for bit; the largest
+difference is 0.000162%. Eighteen configurations fly neither way (no motor, or aborted both times).
+
+**Not chosen: a tolerance tighter than 0.5%.** The flights agree far more closely, but the
+milestone's bar is 0.5%, and the report publishes the largest difference beside it.
