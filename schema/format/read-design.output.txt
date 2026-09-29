@@ -1,0 +1,1 @@
+read demo-dual-deploy.hpr: stages 1, parts 7, motor configurations 1

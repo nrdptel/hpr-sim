@@ -51,10 +51,35 @@ jobs:
       - uses: actions/checkout@v7
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
+      # The design format's generated TypeScript and Python readers run in xtask's tests (M3.3c):
+      # Node.js runs TypeScript as it is from 22.18, and the Python needs 3.11.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
       - run: cargo test --workspace --all-features --locked
       # Runs every example program, such as the Getting started page's first flight, and checks
       # that it prints what its committed `<name>.output.txt` says, on each OS.
       - run: cargo run --locked --quiet --package xtask -- examples --check --locked
+
+  # Checks every public design's document, written as a literal of the generated `DesignFile`
+  # type, with `tsc --strict` and `mypy --strict` at pinned versions (M3.3c, ADR-113). The
+  # compilers come from npm and PyPI, so this runs once, on Linux.
+  types:
+    name: types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      # setup-uv publishes no moving major tag, so it is pinned to a release's commit.
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - run: cargo run --locked --quiet --package xtask -- format --typecheck
 
   # Runs every case in the validation lock against its committed reference, with no oracle and no
   # network, and fails if a metric is outside its tolerance or if the committed report is not this
