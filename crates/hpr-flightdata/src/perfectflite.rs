@@ -134,6 +134,7 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
         battery_v: None,
         notes: Vec::new(),
     };
+    let mut notes = Notes::default();
     let mut columns: Option<Vec<Column>> = None;
     let mut rows: Vec<(usize, Vec<f64>)> = Vec::new();
 
@@ -155,7 +156,7 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
             ));
         }
         let Some((key, value)) = line.split_once(':') else {
-            log.notes.push(format!(
+            notes.push(format!(
                 "line {number}, {:?}, isn't a `Key: value` line and was skipped",
                 short(line)
             ));
@@ -163,11 +164,11 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
         };
         let value = value.trim();
         match key.trim().to_ascii_lowercase().as_str() {
-            "data" => columns = Some(data_columns(value, number, &mut log.notes)?),
-            "apogee" => log.stated.apogee_m = stated_feet(value, number, "apogee", &mut log.notes)?,
+            "data" => columns = Some(data_columns(value, number, &mut notes)?),
+            "apogee" => log.stated.apogee_m = stated_feet(value, number, "apogee", &mut notes)?,
             "ground elevation" => {
                 log.stated.ground_elevation_msl_m =
-                    stated_feet(value, number, "ground elevation", &mut log.notes)?;
+                    stated_feet(value, number, "ground elevation", &mut notes)?;
             }
             "numsamps" => log.stated.samples = value.parse().ok(),
             "flight number" => log.flight_number = value.parse().ok(),
@@ -198,18 +199,38 @@ pub fn read(text: &str) -> Result<FlightLog, LogError> {
             log.time_s.len()
         ));
     }
-    if log.notes.len() > MAX_NOTES {
-        let more = log.notes.len() - (MAX_NOTES - 1);
-        log.notes.truncate(MAX_NOTES - 1);
+    // The file-wide notes above come first, then those about single lines.
+    log.notes.extend(notes.kept);
+    if notes.left_out > 0 {
         log.notes.push(format!(
-            "and {more} more notes, left out so that a broken file's list stays short"
+            "and {} more notes about single lines, left out so that a broken file's list stays \
+             short",
+            notes.left_out
         ));
     }
     Ok(log)
 }
 
-/// The most notes a log keeps; past it, the last says how many more there were.
+/// The most notes about single lines a log keeps; past it, one more note counts the rest.
 const MAX_NOTES: usize = 20;
+
+/// Notes about single lines as the reader meets them: the first [`MAX_NOTES`] kept, the rest
+/// only counted, so a file of many broken lines can't fill memory with them.
+#[derive(Default)]
+struct Notes {
+    kept: Vec<String>,
+    left_out: usize,
+}
+
+impl Notes {
+    fn push(&mut self, note: String) {
+        if self.kept.len() < MAX_NOTES {
+            self.kept.push(note);
+        } else {
+            self.left_out += 1;
+        }
+    }
+}
 
 /// Whether a line is a data row: it starts with a number and has a comma, as Debrief tells them.
 fn is_data_row(line: &str) -> bool {
@@ -239,11 +260,7 @@ fn data_row(line: &str, number: usize) -> Result<Vec<f64>, LogError> {
 }
 
 /// The columns a `Data:` line names, such as `(Time, Altitude, Velocity, Temperature (F), Voltage)`.
-fn data_columns(
-    value: &str,
-    number: usize,
-    notes: &mut Vec<String>,
-) -> Result<Vec<Column>, LogError> {
+fn data_columns(value: &str, number: usize, notes: &mut Notes) -> Result<Vec<Column>, LogError> {
     let inner = value.strip_prefix('(').unwrap_or(value);
     let inner = inner.strip_suffix(')').unwrap_or(inner);
     let columns: Vec<Column> = inner
@@ -295,7 +312,7 @@ fn stated_feet(
     value: &str,
     number: usize,
     what: &str,
-    notes: &mut Vec<String>,
+    notes: &mut Notes,
 ) -> Result<Option<f64>, LogError> {
     let end = value
         .find(|c: char| !(c.is_ascii_digit() || matches!(c, '.' | '-' | '+')))
@@ -473,7 +490,11 @@ mod tests {
     fn stated_heights_are_feet_or_nothing() {
         let log = read("PerfectFlite Pnut\nApogee: PWRLOSS\n0, 0, 0\n").unwrap();
         assert_eq!(log.stated.apogee_m, None);
-        assert!(log.notes[0].contains("PWRLOSS"), "{:?}", log.notes);
+        assert!(
+            log.notes.iter().any(|note| note.contains("PWRLOSS")),
+            "{:?}",
+            log.notes
+        );
         let error = read("PerfectFlite Pnut\nApogee: 390 m AGL\n0, 0, 0\n").unwrap_err();
         assert!(
             matches!(&error, LogError::Unit { line: 2, message, .. } if message.contains("\"390 m AGL\" is in \"m\"")),
@@ -481,18 +502,23 @@ mod tests {
         ); // `AGL` names the height's zero, not its unit: noted, and the flight still reads.
         let log = read("PerfectFlite Pnut\nApogee: 1009 AGL\n0, 0, 0\n").unwrap();
         assert_eq!(log.stated.apogee_m, None);
-        assert!(log.notes[0].contains("no unit"), "{:?}", log.notes);
+        assert!(
+            log.notes.iter().any(|note| note.contains("no unit")),
+            "{:?}",
+            log.notes
+        );
     }
 
-    /// A header of many unreadable lines keeps a short list of notes, saying how many it left out:
-    /// 1,000 skipped lines and the missing `Data:` line, less the 19 kept.
+    /// A header of many unreadable lines keeps a short list of notes, the file-wide one first,
+    /// and counts the 980 it left out of the 1,000 skipped lines.
     #[test]
     fn notes_stay_few() {
         let text = format!("PerfectFlite Pnut\n{}0, 0, 0\n", "x\n".repeat(1000));
         let log = read(&text).unwrap();
-        assert_eq!(log.notes.len(), MAX_NOTES);
+        assert_eq!(log.notes.len(), MAX_NOTES + 2);
+        assert!(log.notes[0].contains("no `Data:` line"), "{:?}", log.notes);
         assert!(
-            log.notes[MAX_NOTES - 1].starts_with("and 982 more notes"),
+            log.notes[MAX_NOTES + 1].starts_with("and 980 more notes"),
             "{:?}",
             log.notes
         );
@@ -518,7 +544,11 @@ mod tests {
         assert_eq!(log.logger, "PerfectFlite Pnut");
         assert_eq!(log.time_s.len(), 1);
         assert_eq!(log.stated.apogee_m, None);
-        assert!(log.notes[0].contains("\"1,009' AGL\""), "{:?}", log.notes);
+        assert!(
+            log.notes.iter().any(|note| note.contains("\"1,009' AGL\"")),
+            "{:?}",
+            log.notes
+        );
         assert_eq!(log.stated.ground_elevation_msl_m, Some(600.0 * FOOT_M));
     }
 

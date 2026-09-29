@@ -205,7 +205,9 @@ Reading the Raven's file is [M7.1](../decisions-and-roadmap.md#m7-1)'s work.
   may be off, and so may the top speed, which the logger works out from that altitude and which
   can itself read low.
 - **Noise and wide pulses.** On a noisy trace the highest of the medians can read above the true
-  peak, and a pulse wider than half the window passes the median. Neither is flagged.
+  peak, and a pulse wider than half the window passes the median. Neither is flagged. Noise of a
+  foot or two can also trip `faster_than_free_fall` on a low flight that fell with little drag,
+  such as one whose recovery didn't deploy: its allowance covers the rounding, not noise.
 - **Each leg's descent rate, and deployment events.** One mean rate covers drogue and main.
 - **Mach number, dynamic pressure and burnout.** These need an atmosphere or an accelerometer
   ([M7.2](../decisions-and-roadmap.md#m7-2)).

@@ -84,8 +84,8 @@ A file is refused, with its line number, when:
 - a line after the rows began isn't a row.
 
 These are noted and read around. [`hpr analyze`](../cli.md#hpr-analyze) prints each note as a
-`note:` line, and its JSON output lists them in `log.notes`. Past 20 notes, the last says how
-many more were left out:
+`note:` line, and its JSON output lists them in `log.notes`. A file with many unreadable lines
+keeps the first 20 notes about them and counts the rest in one more:
 
 - no `Data:` line: the columns are taken to be the five above, in that order, as Debrief takes them;
 - a column the reader doesn't know: left out;

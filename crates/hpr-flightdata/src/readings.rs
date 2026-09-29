@@ -872,7 +872,7 @@ mod tests {
     }
 
     /// A clock too fine for the median's window is withheld whole, saying so, at the edge: 0.3 s
-    /// is 1,000 samples either side at 0.15 ms, and more just below it.
+    /// is 1,000 samples either side at 0.15 ms, and 1,001 at 0.3/2002 s.
     #[test]
     fn a_clock_too_fine_for_the_window_is_withheld() {
         let with_interval = |interval: f64| {
@@ -882,7 +882,7 @@ mod tests {
             }
             read(&log)
         };
-        for interval in [1e-30, 1e-6, 0.000_149] {
+        for interval in [1e-30, 1e-6, MEDIAN_WINDOW_S / 2002.0] {
             let read = with_interval(interval);
             assert_eq!(
                 reason(&read.apogee),
