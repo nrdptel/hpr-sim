@@ -35,3 +35,7 @@ Thumbs.db
 # insta's pending snapshots, reviewed before any is accepted
 *.snap.new
 *.pending-snap
+
+# The Python package's native module, as `maturin develop` leaves it in the source tree
+crates/hpr-py/python/hpr/*.so
+crates/hpr-py/python/hpr/*.pyd

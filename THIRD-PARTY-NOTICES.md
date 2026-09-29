@@ -162,6 +162,8 @@ adds a source.
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `parquet` | Apache-2.0 | `hpr-sim` (tests only, as `parquet-reader`) | Apache's own Parquet implementation, the independent reader of the Parquet files `hpr-sim` writes by hand; no default features, so no Arrow and no compression codecs (ADR-080) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
+| `numpy` | BSD-2-Clause | `hpr-py` | hands a flight's recording and a motor's thrust curve to Python as NumPy arrays (ADR-114) |
+| `pyo3` | MIT OR Apache-2.0 | `hpr-py` | the Python bindings: the `hpr` package's classes, functions and exception, built as one abi3 extension module per operating system (ADR-114) |
 | `pulldown-cmark` | MIT | `xtask` | reads the documentation site's Markdown, with the parser mdBook itself uses, to check its links and labels (ADR-016) |
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |
 | `rand_xoshiro` | MIT OR Apache-2.0 | `hpr-core` (tests only) | an independent xoshiro256++ and SplitMix64 that `hpr_core::random` is checked against, bit for bit |
@@ -191,6 +193,18 @@ of it is committed.
 | rustdoc (part of the pinned Rust toolchain) | MIT OR Apache-2.0 | run-only | builds the API reference (ADR-019) |
 | rustdoc's static files: its CSS and JavaScript, and normalize.css | MIT OR Apache-2.0; MIT | bundled in the built site | copied into `api/static.files/` by every `cargo doc`, with rustdoc's `COPYRIGHT` file naming each resource's terms and the licence texts beside it |
 | Fira, Source Serif 4, Source Code Pro and Nanum Barun Gothic fonts | OFL-1.1 | bundled in the built site | shipped by rustdoc with their licence texts in `api/static.files/` |
+
+## The Python package's tools and dependencies
+
+The `hpr` Python package is built from `crates/hpr-py` (ADR-114). Its wheels are CI artifacts,
+never published, and nothing below is committed.
+
+| package | license | mode | notes |
+|---|---|---|---|
+| `maturin` 1.15.0 | MIT OR Apache-2.0 | run-only | builds the wheel (`scripts/python-tests.sh`); fetched by `uvx` |
+| `numpy` | BSD-3-Clause | run-only | the wheel's one run-time dependency, installed beside it by `pip`; not bundled |
+| `pytest` 9.1.1 | MIT | run-only | runs the package's tests (`crates/hpr-py/tests/`) |
+| CPython 3.10 and 3.13 | PSF-2.0 | run-only | the tests' interpreters, fetched by `uv`; the abi3 extension links no Python library on Linux or macOS, and Python's `python3.dll` on Windows |
 
 ## Reference library (`validation/refs.lock.toml`)
 

@@ -27,7 +27,7 @@ Each crate's front page links back to the pages here that explain its models.
 
 hpr-sim is split into [crates](glossary.md#crate), Rust's packages, so that a program takes only
 what it needs, and so that the models, which don't read or write files or use the network, also
-build for the web. Ten crates hold most of the code today:
+build for the web. Eleven crates hold most of the code today:
 
 | crate | what it holds | not yet | the guide's pages |
 |---|---|---|---|
@@ -41,8 +41,9 @@ build for the web. Ten crates hold most of the code today:
 | [`hpr_sim`](api/hpr_sim/index.html) | The flight: the launch rail, the equations of motion, time integration, events and recovery | Staging and [air starts](glossary.md#air-start) fly, checked by tests and against OpenRocket's two-stage, cluster and air-start examples, each flight within 5% in apogee and largest speed ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket). Three cluster apogees are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee. A [cluster](glossary.md#cluster) flies, one mount of several tubes or one mount per motor, and so does a motor out, checked by tests against a hand calculation. A nose cone, a section or a payload can leave the airframe, optionally pushed by its charge, and land on its own under its own parachute or tumbling ([ejection](glossary.md#ejection), [M1.11a](decisions-and-roadmap.md#m1-11a), [M1.11b](decisions-and-roadmap.md#m1-11b)), checked against exact answers only. | [How a flight is simulated](how-a-flight-is-simulated.md), [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md), [Recovery](physics/recovery.md), [Staging](physics/staging.md) |
 | [`hpr_flightdata`](api/hpr_flightdata/index.html) | Reading a flight log on its own, with no design and no simulation: PerfectFlite's `.pf2` so far, and liftoff, apogee, the top speed, landing and the descent, each saying where it came from or why it was withheld. Depend on this crate directly rather than on `hpr`, which pulls in the simulator | Other loggers' files ([M7.1](decisions-and-roadmap.md#m7-1)); the descent's legs, Mach number and the rest of the readings ([M7.2](decisions-and-roadmap.md#m7-2)) | [Reading a flight log](reading-a-flight-log.md), [Flight-log readings](physics/log-readings.md), [`.pf2` files](format/pf2.md) |
 | [`hpr_validate`](api/hpr_validate/index.html) | The validation harness: cases, reference data, metrics and reports | Whole flights against RocketPy ([M2.1b2](decisions-and-roadmap.md#m2-1b2)) | [Accuracy](accuracy.md), [Checking a claim](checking-a-claim.md) |
+| [`hpr_py`](api/hpr_py/index.html) | The `hpr` Python package: the builder's environment, motor, rocket and flight from Python, designs read from files, and a flight's recording as NumPy arrays. Built by maturin into one wheel per operating system; not on PyPI | A drag table and RocketPy's example flight ([M4.3b](decisions-and-roadmap.md#m4-3b)); models written in Python ([M4.3c](decisions-and-roadmap.md#m4-3c)) | [Python](python.md) |
 
-The other seven crates are for planned work. Each has a front page that says what it will hold.
+The other six crates are for planned work. Each has a front page that says what it will hold.
 One already holds some code, `hpr_io`, as its row says:
 
 | crate | what it will hold | planned in |
@@ -51,7 +52,6 @@ One already holds some code, `hpr_io`, as its row says:
 | [`hpr_net`](api/hpr_net/index.html) | Optional online data, cached for offline use: weather, soundings, elevation and motor data | [M5.1](decisions-and-roadmap.md#m5-1) |
 | [`hpr_analysis`](api/hpr_analysis/index.html) | Monte Carlo dispersion (flying many copies of a flight with randomly scattered inputs), sensitivity analysis, optimization, and competition challenges such as a target apogee | [M6.1](decisions-and-roadmap.md#m6-1) to [M6.3](decisions-and-roadmap.md#m6-3) |
 | [`hpr_forensics`](api/hpr_forensics/index.html) | A flown flight against a simulation of it: what will differ, what that says about drag, mass, impulse and wind, and what went wrong | [M7.3](decisions-and-roadmap.md#m7-3) to [M7.4](decisions-and-roadmap.md#m7-4) |
-| [`hpr_py`](api/hpr_py/index.html) | Python bindings | [M4.3](decisions-and-roadmap.md#m4-3) |
 | [`hpr_ffi`](api/hpr_ffi/index.html) | A C interface, for other languages | [M4.4](decisions-and-roadmap.md#m4-4) |
 | [`hpr_wasm`](api/hpr_wasm/index.html) | WebAssembly bindings, for the browser | [M4.4](decisions-and-roadmap.md#m4-4) |
 

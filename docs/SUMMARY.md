@@ -10,6 +10,8 @@
 
 [The builder](the-builder.md)
 
+[Python](python.md)
+
 [Models of your own](custom-models.md)
 
 [The command line](cli.md)

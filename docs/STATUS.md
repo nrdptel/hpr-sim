@@ -4,14 +4,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.3 (Python
-  bindings, `hpr-py`). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1-3, M4.1-2.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.3b (a drag
+  table, RocketPy's Calisto from Python). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1-3, M4.1-2, M4.3a.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-29; M3.3c: TypeScript and Python types and readers from the schema (ADR-113).
+- **Last updated:** 2026-09-29; M4.3a: the `hpr` Python package, wheels and pytest on three OSes (ADR-114).
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** M4.3 (ROADMAP). Format (ADR-111 to 113): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change
+- **Next (resume here):** M4.3b (ROADMAP). Python (ADR-114): `crates/hpr-py` wraps the builder; add a drag table (a `DragModel`), then a `# %%` example flying the Calisto JSON as
+  `hpr-validate`'s `fly_whole_flight` does (gravity, h0, dry-CG metrics differ). `gate.sh python` builds the wheel and runs pytest,
+  `docs/python.md`'s blocks included. Format (ADR-111 to 113): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change
   needs `cargo xtask format` (schema, TS, Python; `cargo test` runs node and python3) and `cargo xtask ork`; one that stops old documents reading needs a new minor version, a step in `migrate.rs`, the old schema kept, and a fixture its program wrote (ADR-112 §2). `.ork` export (ADR-109, 110): writers mirror readers; after a writer change, rerun ork.md's three commands and commit the report. Logs (ADR-108): `synthetic-pnut.pf2` is rewritten by `HPR_WRITE_SYNTHETIC_LOG=1`; the public Pnut test
   runs only where `refs/` has Debrief. CLI (ADR-105 to 108): a command goes live by leaving `registry::PLANNED`, adding its output type to `output::schemas`,
   then `cargo xtask cli`; examples name repo files from the root, and write bare names to scratch. `hpr sim`'s recovery, staging: #240. Tube fins: OR's slope and centre per part in `openrocket-tube-fin-aero.json`
@@ -60,6 +62,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-29: M4.3a Python (ADR-114): 38 pytest tests on 3.10, 3.13, three OSes; prints the Rust example's digits.
 - 2026-09-29: M3.3 `.hpr`, `.hprz`, types (ADR-111 to 113): 73 of 73 round-trip, 109 flown to the same apogee; TS, Python readers
   agree with the schema on 4,892 mutations; `hpr convert`/`sim` take all three. M3.2 `.ork` writer (ADR-109, 110): OR flies 151 of 151 within 0.5%.
 - 2026-09-29: M4.2 CLI (ADR-105 to 108): schemas; `hpr sim` bit for bit; `validate`, `convert` (32 curves round-trip);
@@ -75,7 +78,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   sizes. On each issue click *edited* → the oldest revision (*created*) → *Delete revision from history*.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`, `clippy`, `doc`, `deny`,
   `wasm-check`, `site`, `types`, the three `test (...)` and `validate (...)`; block force pushes; no approvals.
-- **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them? The design types (ADR-113) could go to npm/PyPI.
+- **crates.io and PyPI names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved; the Python wheel is `hpr-sim` (ADR-114), CI artifacts only. Reserve them? The design types (ADR-113) could go to npm/PyPI.
 - **OpenRocket example outputs in fixtures** (no action if fine): `openrocket-automatic-radius.json`,
   `-flights.json`, `-base-drag.json`, `-drag-curves.json`, `-tube-fin-aero.json` commit numbers OR computed for its GPL examples.
 - **A glance at GPL source** (no action if fine): M3.1d2's research read about 15 lines of
@@ -84,15 +87,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-103 to 113 (M4.1, M4.2, M3.2, M3.3): TS and Python types by xtask, not a third-party generator; 0.2 renames `source_files`, records the airframe's reason; breaking changes migrate; `.hpr`/`.hprz`, unknown keys refused, `hpr-format` over `hpr-io`; OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
-- ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings,
-  8 at most; L19 left unmet, not bought with OR's unmeasured slope and centre.
+- ADR-103 to 114 (M4.1, M4.2, M3.2, M3.3, M4.3): Python wraps the builder, unit-named, abi3-py310; TS and Python types by xtask, not a third-party generator; 0.2 renames `source_files`, records the airframe's reason; breaking changes migrate; `.hpr`/`.hprz`, unknown keys refused, `hpr-format` over `hpr-io`; OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
+- ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings, 8 at most; L19 left unmet.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; tumble
   areas integrated; a shift's cycloid; a released part at `v_O + ω×c`; pods one stack repeated,
   Barrowman's once per pod, on six OR probes; a rod as OR records it; the old flag as OR reads it.
-- ADR-077 to 080 (M1.10): dense-output peaks, no margin past κ = √10; flutter by TN 4197 eq. 18;
-  exports as core text, GeoJSON on the ellipsoid, Parquet by hand.
+- ADR-077 to 080 (M1.10): dense-output peaks, no margin past κ = √10; flutter by TN 4197 eq. 18; exports as core text, GeoJSON on the ellipsoid, Parquet by hand.
 - ADR-071 to ADR-076: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
   flights by id, differences only; public copies out; a cause sized by OR flying without it; M1.9's
   body 0 flies on, a motor per tube.
@@ -107,8 +108,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-047 to 050: a flare attaches by NACA 1135's wedge limit under the cone tables' 30°; model 2
   closed on the base; a step in radius keeps its model (#87, #120, #121); a reduced element takes
   the generalized method with a tangent cone of its own, a cylinder's and a boattail's refuse (#123).
-- ADR-046: Debrief folded in; `hpr-flightdata` off `hpr-sim`, `hpr-forensics` added, Phase 5
-  re-cut, `hpr analyze` in M4.2. Its `.ork` parser is clean room, `COMPETITION.md` is not.
+- ADR-046: Debrief folded in; `hpr-flightdata` off `hpr-sim`, `hpr-forensics` added, Phase 5 re-cut, `hpr analyze` in M4.2.
 - ADR-038 to ADR-040: the march behind a blunt tip starts from the tangent cone, not TN D-4865's
   Newtonian state (which fails on the Arcas nose from Mach 3.96), handover capped at 24°; M1.8e's
   15% bullet is **not met** for the body alone.

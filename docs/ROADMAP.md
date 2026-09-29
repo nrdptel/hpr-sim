@@ -674,32 +674,21 @@
   - [x] **M1.12b Mass released in flight.** Met (ADR-088), bars kept: after a release, mass
     properties to 1e-15, momentum to 1.5e-13 and angular momentum to 7.3e-12, the rest in 6-DOF.
 
-- [x] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19). Split a to c (ADR-089).
-  - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.
-    Mass properties off the axis; each pod's normal force and drag, and its interference with the
-    body, from a cited source.
-  - The `.ork` importer (M3.1) reads pods.
-
-  *Done when:*
-  - A pod's mass properties match the hand-computed parallel-axis values.
-  - A pod design matches OpenRocket within the per-case tolerance, with the limits of both codes'
-    pod models stated in the docs.
-  - [x] **M1.13a Pod mass** (ADR-089). *Done when:* the first bullet is met, and what a pod holds
-    (a motor too) is repeated in every pod. *Result:* met: two pods, and one off the axis with its
-    `I_yz = −m y z`, to 1e-15 kg, m and kg·m²; a motor in a 3-pod set is three motors.
-  - [x] **M1.13b `.ork` pods**, read into `PodSet`. *Done when:* `cargo xtask ork` reads and counts
-    every corpus pod set, and their parts' cached numbers are held as the airframe's are. Split
-    b1, b2 (ADR-090). *Result:* met: 9 of 9 read (12 pods), cached numbers 71 of 75 agree.
-    - [x] **M1.13b1 Pods of body components.** Met: 5 of 9 read, placed as OpenRocket places
-      them to 1e-15 m on 9 probes.
-    - [x] **M1.13b2 Pods of no length**, and an empty pod set. Met (ADR-091): the other 4 read.
-  - [x] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
-    Split c1, c2 (ADR-092). *Result:* met by c2.
-    - [x] **M1.13c1 Pods fly**, each pod's parts on Barrowman's rules, once per pod. Met: hand
-      values to 1e-11; a private lug-pod design within 2.2% of OpenRocket.
-    - [x] **M1.13c2 A pod design against OpenRocket.** *Done when:* the second bullet is met by a
-      pod design with bodies and fins, as probes flown in OpenRocket. *Result:* met (ADR-093): six
-      probes, apogee +0.41% to +0.81%, speed to +1.24%, the pods' change within 0.32 points.
+- [x] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19). Split a to c (ADR-089). Side pods
+  and outboard motor pods (M1.9's clusters): mass off the axis, each pod's normal force, drag and
+  body interference from a cited source; the `.ork` importer reads pods. *Done when* a pod's mass
+  properties match the hand-computed parallel-axis values, and a pod design matches OpenRocket
+  within the per-case tolerance, both codes' pod limits stated in the docs. Met:
+  - [x] **M1.13a Pod mass** (ADR-089): two pods, one off the axis (`I_yz = −m y z`), to 1e-15; a
+    motor in a 3-pod set is three motors.
+  - [x] **M1.13b `.ork` pods** (ADR-090): 9 of 9 read (12 pods), cached numbers 71 of 75 agree.
+    - [x] **M1.13b1 Pods of body components.** 5 of 9, placed as OR does to 1e-15 m, 9 probes.
+    - [x] **M1.13b2 Pods of no length**, and an empty pod set (ADR-091): the other 4.
+  - [x] **M1.13c Pod aerodynamics** (ADR-092), met by c2.
+    - [x] **M1.13c1 Pods fly**, Barrowman's rules once per pod: hand values to 1e-11; a private
+      lug-pod design within 2.2% of OR.
+    - [x] **M1.13c2 A pod design against OpenRocket** (ADR-093): six probes, apogee +0.41% to
+      +0.81%, speed to +1.24%, the pods' change within 0.32 points.
 ## Phase 2: Library surfaces and interop
 
 - [x] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
@@ -772,6 +761,17 @@
   *Done when:*
   - pytest passes in CI.
   - A notebook-style example reproduces a RocketPy example flight via hpr within the M2.1 tolerance.
+
+  Split into a to c (ADR-114).
+  - [x] **M4.3a The package.** `hpr` over the builder, recordings as NumPy arrays, designs from
+    files. *Done when:* pytest passes in CI on Linux, macOS and Windows against a wheel built
+    there; a Python flight prints what the Rust builder's example prints; the guide's page runs in
+    the tests.
+  - [ ] **M4.3b RocketPy's example.** *Done when:* a flight takes a drag table (`C_D0` by Mach,
+    power on and off); a notebook-style example flies RocketPy's Calisto from Python within M2.1's
+    3% on every scored metric, run in CI.
+  - [ ] **M4.3c Python models.** *Done when:* a drag and a wind written as Python functions fly,
+    their exceptions reach Python, and a flight with Python's constant drag equals a table's.
 
 - [ ] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings.
