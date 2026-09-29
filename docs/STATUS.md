@@ -78,7 +78,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   sizes. On each issue click *edited* → the oldest revision (*created*) → *Delete revision from history*.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`, `clippy`, `doc`, `deny`,
   `wasm-check`, `site`, `types`, the three `test (...)` and `validate (...)`; block force pushes; no approvals.
-- **crates.io and PyPI names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved; the Python wheel is `hpr-sim` (ADR-114), CI artifacts only. Reserve them? The design types (ADR-113) could go to npm/PyPI.
+- **crates.io and PyPI names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved; the Python wheel is `hpr-sim` (ADR-114), built in CI, kept nowhere (licence texts first). Reserve them? The design types (ADR-113) could go to npm/PyPI.
 - **OpenRocket example outputs in fixtures** (no action if fine): `openrocket-automatic-radius.json`,
   `-flights.json`, `-base-drag.json`, `-drag-curves.json`, `-tube-fin-aero.json` commit numbers OR computed for its GPL examples.
 - **A glance at GPL source** (no action if fine): M3.1d2's research read about 15 lines of

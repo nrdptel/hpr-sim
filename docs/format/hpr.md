@@ -259,8 +259,8 @@ Three limits come first:
   them](#how-far-to-trust-the-readers)).
 - They read version 0.2 only, which is a draft, so copy the file again when hpr's format version
   changes.
-- They read designs; they don't fly them. Python bindings for flying come in a later milestone,
-  [M4.3](../decisions-and-roadmap.md#m4-3), not started.
+- They read designs; they don't fly them. To fly a design from Python, use the `hpr` package
+  ([Python](../python.md)).
 
 | language | file | needs |
 |---|---|---|

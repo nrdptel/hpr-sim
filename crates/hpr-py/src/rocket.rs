@@ -161,28 +161,23 @@ impl Rocket {
     #[staticmethod]
     #[pyo3(signature = (path, configuration = None))]
     fn from_file(path: std::path::PathBuf, configuration: Option<&str>) -> PyResult<Self> {
-        let (design, notes) = read_design(&path)?;
-        let configuration = match configuration {
-            Some(id) => id.to_owned(),
-            None => match design.configurations.as_slice() {
-                [only] => only.id.clone(),
-                [] => {
-                    return Err(error(format!(
-                        "{}: the design has no motor configuration hpr can fly (an .ork file's \
-                         configuration is left out when hpr can't fly it as written, such as one \
-                         whose motor has no thrust curve in the file or hpr's catalog)",
-                        path.display()
-                    )));
-                }
-                many => {
-                    let ids: Vec<&str> = many.iter().map(|c| c.id.as_str()).collect();
-                    return Err(error(format!(
-                        "{}: name one of the design's {} configurations: {}",
-                        path.display(),
-                        ids.len(),
-                        ids.join(", ")
-                    )));
-                }
+        let (design, motors, notes) = read_design(&path)?;
+        let configuration = match &motors {
+            Some(motors) => ork_configuration(&path, motors, configuration)?,
+            None => match configuration {
+                Some(id) => id.to_owned(),
+                None => match design.configurations.as_slice() {
+                    [only] => only.id.clone(),
+                    many => {
+                        let ids: Vec<&str> = many.iter().map(|c| c.id.as_str()).collect();
+                        return Err(error(format!(
+                            "{}: name one of the design's {} configurations: {}",
+                            path.display(),
+                            ids.len(),
+                            ids.join(", ")
+                        )));
+                    }
+                },
             },
         };
         Ok(Self {
@@ -463,11 +458,19 @@ impl Rocket {
     ) -> PyResult<PyRefMut<'py, Self>> {
         let drag = match (diameter_m, cd_s_m2) {
             (Some(nominal_diameter_m), None) => {
-                let kind: CanopyType = by_name("canopy type", canopy.unwrap_or("flat_circular"))?;
+                let kind: Option<CanopyType> = match (canopy, drag_coefficient) {
+                    (Some(canopy), _) => Some(by_name("canopy type", canopy)?),
+                    (None, Some(_)) => None,
+                    (None, None) => Some(CanopyType::FlatCircular),
+                };
                 DeviceDrag::Canopy {
                     nominal_diameter_m,
-                    drag_coefficient: drag_coefficient.unwrap_or(kind.drag_coefficient()),
-                    kind: Some(kind),
+                    drag_coefficient: match (drag_coefficient, kind) {
+                        (Some(drag_coefficient), _) => drag_coefficient,
+                        (None, Some(kind)) => kind.drag_coefficient(),
+                        (None, None) => CanopyType::FlatCircular.drag_coefficient(),
+                    },
+                    kind,
                 }
             }
             (None, Some(cd_s_m2)) if drag_coefficient.is_none() && canopy.is_none() => {
@@ -575,7 +578,13 @@ fn extension(path: &Path) -> Option<String> {
 /// `.ork` reader's warnings, an older format version migrated, an airframe not flown as written, and
 /// the recovery devices and stage separations the file holds, which a rocket read from a file
 /// doesn't fly.
-fn read_design(path: &Path) -> PyResult<(hpr::hpr_design::Rocket, Vec<String>)> {
+fn read_design(
+    path: &Path,
+) -> PyResult<(
+    hpr::hpr_design::Rocket,
+    Option<hpr::hpr_io::ork::Motors>,
+    Vec<String>,
+)> {
     let failed = |e: &dyn std::fmt::Display| error(format!("{}: {e}", path.display()));
     let bytes = std::fs::read(path).map_err(|e| failed(&e))?;
     let mut notes = Vec::new();
@@ -601,6 +610,12 @@ fn read_design(path: &Path) -> PyResult<(hpr::hpr_design::Rocket, Vec<String>)> 
                 (opened.value, opened.written_as)
             } else {
                 let opened = hpr::hpr_format::container::read(&bytes).map_err(|e| failed(&e))?;
+                let attachments = opened.value.attachments.len();
+                if attachments > 0 {
+                    notes.push(format!(
+                        "the container's {attachments} attachment(s) are not read"
+                    ));
+                }
                 (opened.value.design, opened.written_as)
             };
             if written_as != hpr::hpr_format::VERSION {
@@ -624,7 +639,7 @@ fn read_design(path: &Path) -> PyResult<(hpr::hpr_design::Rocket, Vec<String>)> 
             let rocket: hpr::hpr_design::Rocket =
                 serde_json::from_slice(&bytes).map_err(|e| failed(&e))?;
             stack_note(&rocket, &mut notes);
-            return Ok((rocket, notes));
+            return Ok((rocket, None, notes));
         }
         _ => {
             return Err(error(format!(
@@ -637,20 +652,84 @@ fn read_design(path: &Path) -> PyResult<(hpr::hpr_design::Rocket, Vec<String>)> 
     let devices = design.recovery.devices.len();
     if devices > 0 {
         notes.push(format!(
-            "the file's {devices} recovery device(s) are not flown: add parachutes with \
-             add_parachute"
+            "the file's {devices} recovery device(s) are not flown; the parachutes added with \
+             add_parachute are"
         ));
     }
     stack_note(&design.rocket, &mut notes);
-    Ok((design.rocket, notes))
+    Ok((design.rocket, Some(design.motors), notes))
+}
+
+/// The motor configuration of a `.ork` file, or of an hpr design read from one, that a rocket
+/// read from it flies, chosen as `hpr sim` chooses: the one named, or the file's default, or its
+/// only one. One that stages under power, or that hpr can't fly as written, is refused with why.
+fn ork_configuration(
+    path: &Path,
+    motors: &hpr::hpr_io::ork::Motors,
+    wanted: Option<&str>,
+) -> PyResult<String> {
+    let configurations = &motors.configurations;
+    let ids = || {
+        configurations
+            .iter()
+            .map(|c| c.id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let chosen = match wanted {
+        Some(id) => configurations.iter().find(|c| c.id == id).ok_or_else(|| {
+            error(format!(
+                "{}: the file has no motor configuration `{id}`; its configurations: {}",
+                path.display(),
+                ids()
+            ))
+        })?,
+        None => match (motors.default_configuration(), configurations.as_slice()) {
+            (Some(chosen), _) | (None, [chosen]) => chosen,
+            (None, []) => {
+                return Err(error(format!(
+                    "{}: the file has no motor configuration",
+                    path.display()
+                )));
+            }
+            (None, _) => {
+                return Err(error(format!(
+                    "{}: name one of the file's {} motor configurations: {}",
+                    path.display(),
+                    configurations.len(),
+                    ids()
+                )));
+            }
+        },
+    };
+    if let Some(staging) = &chosen.staging {
+        return Err(error(format!(
+            "{}: configuration {} separates under power: stage {} drops away at {:.3} s, which \
+             the Python package doesn't fly yet; the Rust library does, as its example \
+             ork_two_stage shows",
+            path.display(),
+            chosen.id,
+            staging.after_stage + 1,
+            staging.time_s
+        )));
+    }
+    if let Some(left_out) = &chosen.left_out {
+        return Err(error(format!(
+            "{}: configuration {} doesn't fly as written: {}",
+            path.display(),
+            chosen.id,
+            left_out.message
+        )));
+    }
+    Ok(chosen.id.clone())
 }
 
 /// The note that a design of several stages flies as one stack.
 fn stack_note(rocket: &hpr::hpr_design::Rocket, notes: &mut Vec<String>) {
     if rocket.stages.len() > 1 {
         notes.push(
-            "the stages fly as one stack, with no separation: a motor lit by a separation never \
-             lights"
+            "the stages fly as one stack: no stage drops away, a motor lit by another's burnout \
+             lights on the whole stack, and one lit by a separation never lights"
                 .to_owned(),
         );
     }

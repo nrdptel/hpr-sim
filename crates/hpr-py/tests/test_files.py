@@ -1,5 +1,7 @@
 """Motors and rockets read from files: the repository's public ones."""
 
+import re
+
 import numpy as np
 import pytest
 
@@ -64,9 +66,31 @@ def test_an_hpr_document_of_an_older_version(repo):
     assert flight.apogee_m > 0.0
 
 
-def test_a_design_with_no_flyable_configuration_says_so(repo):
-    with pytest.raises(hpr.HprError, match="no motor configuration hpr can fly"):
+def test_an_ork_configuration_that_does_not_fly_says_why(repo):
+    # The probe's motor has no thrust curve in the file or in hpr's catalog.
+    with pytest.raises(hpr.HprError, match="doesn't fly as written: .*thrust curve"):
         hpr.Rocket.from_file(repo / "validation/fixtures/ork/rod-flights/rod-5-north.ork")
+
+
+def two_stage_ork(repo, tmp_path):
+    """The made-up two-stage `.ork` the Rust example `ork_two_stage` holds inline."""
+    example = (repo / "crates/hpr/examples/ork_two_stage.rs").read_text(encoding="utf-8")
+    (document,) = re.findall(r'const ORK: &str = r#"(.*?)"#;', example, re.DOTALL)
+    path = tmp_path / "two-stage.ork"
+    path.write_text(document, encoding="utf-8")
+    return path
+
+
+def test_a_powered_separation_is_refused(repo, tmp_path):
+    # hpr sim refuses it too: flown whole, the booster would ride to the ground with the
+    # sustainer lit on it.
+    with pytest.raises(hpr.HprError, match="separates under power: stage 1 drops away at 3.450 s"):
+        hpr.Rocket.from_file(two_stage_ork(repo, tmp_path))
+
+
+def test_an_ork_configuration_that_is_not_there(repo, tmp_path):
+    with pytest.raises(hpr.HprError, match="no motor configuration `nope`; its configurations"):
+        hpr.Rocket.from_file(two_stage_ork(repo, tmp_path), "nope")
 
 
 def test_a_configuration_that_isnt_there(repo):

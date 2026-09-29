@@ -196,8 +196,8 @@ of it is committed.
 
 ## The Python package's tools and dependencies
 
-The `hpr` Python package is built from `crates/hpr-py` (ADR-114). Its wheels are CI artifacts,
-never published, and nothing below is committed.
+The `hpr` Python package is built from `crates/hpr-py` (ADR-114). Its wheels are built and
+tested in CI and kept nowhere, never published, and nothing below is committed.
 
 | package | license | mode | notes |
 |---|---|---|---|

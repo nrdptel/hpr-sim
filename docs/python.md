@@ -4,8 +4,8 @@ This page shows how to fly a rocket from Python with the `hpr` package. The pack
 four types as the Rust [builder](the-builder.md): an `Environment`, a `Motor`, a `Rocket` and a
 `Flight`. You describe the rocket part by part from the nose back, or read it from a design file,
 then fly it from a rail. A flight's metrics come back as numbers and dictionaries, and its
-recording as [NumPy](https://numpy.org/) arrays. You need Python 3.10 or later and some Python.
-Today you also build the package yourself, which needs the Rust toolchain
+recording as [NumPy](https://numpy.org/) arrays. You need Python 3.10 or later and some
+familiarity with it. Today you also build the package yourself, which needs the Rust toolchain
 ([Install it](#install-it)).
 
 > **How far to trust it.** The package adds no physics. Each call hands its numbers to the Rust
@@ -13,14 +13,16 @@ Today you also build the package yourself, which needs the Rust toolchain
 > Rust builder makes from the same numbers. A test builds [The builder](the-builder.md)'s example
 > rocket in Python and matches every digit that Rust example prints
 > ([`test_prints_what_the_rust_example_prints`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-py/tests/test_builder.py)).
-> The last digits of a number can still differ between builds, as a release build rounds a little
-> differently from a debug one. So what that page and [Accuracy](accuracy.md) say about the
-> numbers holds here too. The rocket below has never been flown for real, so no flight checks
-> it. Where it lands in a wind is the least certain number of all: on two of RocketPy's example
+> Digits beyond those printed can differ between a release and a debug build. Because the code is
+> the same, what that page and [Accuracy](accuracy.md) say about the numbers holds here too. The
+> rocket below has never been flown for real, so no flight checks it. Where it lands in a wind is the least certain number of all: on two of RocketPy's example
 > rockets, hpr's drift and RocketPy's differ by 11 to 43%
 > ([Getting started](getting-started.md#how-far-to-trust-it) explains why). The package is new
-> and covers less than the Rust library ([What is not here yet](#what-is-not-here-yet)). It is
-> built and tested on Linux, macOS and Windows, but not published on PyPI, Python's package index.
+> and covers less than the Rust library ([What is not here yet](#what-is-not-here-yet)). Two gaps
+> matter most if you bring a design file: it flies without the parachutes it stores, and most
+> `.ork` configurations are refused ([A design from a file](#a-design-from-a-file)). The package
+> is built and tested on Linux, macOS and Windows, but not published on PyPI, Python's package
+> index.
 
 ## Install it
 
@@ -41,8 +43,8 @@ the environment to the build, so after a change to the Rust code, run it again.
 
 To install elsewhere, build a *wheel* instead, the file `pip install` takes:
 `maturin build --release --manifest-path crates/hpr-py/Cargo.toml` writes it to `target/wheels/`.
-One wheel serves every CPython (the standard Python) from 3.10 on, on the operating system and
-processor that built it. `scripts/python-tests.sh` builds one and runs the package's tests on it,
+One wheel serves every CPython (the standard Python) from 3.10 on (tested on 3.10 and 3.13), on
+the operating system and processor that built it. `scripts/python-tests.sh` builds one and runs the package's tests on it,
 which needs [uv](https://docs.astral.sh/uv/).
 
 The package imports as `hpr`. Its distribution name, the one `pip` lists, is `hpr-sim`.
@@ -52,7 +54,8 @@ The package imports as `hpr`. Its distribution name, the one `pip` lists, is `hp
 This builds a simpler version of the rocket in [Your own rocket](your-own-rocket.md) and
 [The builder](the-builder.md): a 54 mm airframe with an ogive nose, three fins and a Cesaroni
 H54, whose recovery bay here is a point mass and whose nose has no shoulder. It flies from a 1.8 m
-rail leaning 5° into a 5 m/s west wind, with a parachute opened by the motor's ejection charge.
+rail leaning 5° into a 5 m/s west wind, with a parachute opened by the motor's ejection charge at
+the end of its [ejection delay](glossary.md#ejection-delay).
 
 ```python
 import hpr
@@ -106,8 +109,9 @@ Line by line:
   1.5 mm wall. The tube is 0.9 m long with a 1.15 mm wall. The motor tube is 0.2 m long, with a
   29 mm bore and a 1 mm wall.
 - Parts go on from the nose back: the nose, then tubes. Fins, a motor tube and masses go on or in
-  the tube before them. Each part names its material by an id from the built-in list,
-  `hpr.materials()`, and takes its mass from its shape and that material's density.
+  the tube before them.
+- Each part names its material by an id from the built-in list, `hpr.materials()`, and takes its
+  mass from its shape and that material's density.
 - The fins' lengths are named, so two can't swap unseen: the root chord, tip chord and span, and
   the sweep, how far aft of the root's leading edge the tip's is.
 - `Motor.from_catalog` finds one of the [32 bundled motors](physics/motor.md#the-bundled-motors)
@@ -127,7 +131,8 @@ The stability margin is the distance from the
 1.92. That example packs its 200 g recovery bay into a 15 cm cylinder, which moves the bay's
 centre, and so the rocket's centre of gravity, aft: about 0.4 calibres less. It also gives the
 nose a capped shoulder, which adds mass at the front: about 0.2 calibres more. A test holds both
-steps to these sizes.
+steps to these sizes
+([`test_the_margin_moves_as_the_python_page_says`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-py/tests/test_options.py)).
 
 ## The recording
 
@@ -168,7 +173,8 @@ parachute's charge fires), `"deployment"` (it is open) and `"ground_hit"`. Here 
 charge fires at 13.5 s, the H54's 3.5 s burn plus its 10 s delay, 0.17 s before apogee.
 
 `flight.landing` is a dictionary of the landing: its `time_s`, `latitude_deg`, `longitude_deg`,
-`east_m` and `north_m` of the pad, `distance_m`, `ground_hit_speed_m_s` and `descent_rate_m_s`.
+`east_m` and `north_m` of the pad, `distance_m`, `ground_hit_speed_m_s`, `descent_rate_m_s`, and
+`body`, which separated body landed (`None` for a rocket that didn't come apart).
 `flight.summary` has every metric of the flight as a dictionary: the apogee, top speed, Mach
 number and dynamic pressure, the stability margins and the landings, each explained in
 [Flight metrics](physics/metrics.md). `flight.to_json()` is the whole record as JSON text.
@@ -178,7 +184,13 @@ number and dynamic pressure, the stability margins and the landings, each explai
 `Rocket.from_file` reads a design instead of building one: an hpr design (`.hpr` or `.hprz`,
 [The hpr design format](format/hpr.md)), an OpenRocket `.ork` file ([`.ork` design
 files](format/ork.md)), or a rocket's JSON. It flies the
-[motor configuration](glossary.md#configuration) you name, or the design's only one.
+[motor configuration](glossary.md#configuration) you name, or the file's default one, or its only
+one, as `hpr sim` does.
+
+Most `.ork` files won't fly yet. A configuration flies only if every motor lights at launch and
+has a thrust curve, in the file or among hpr's 32 bundled motors: that is 4 of the 170
+configurations in the reference library. Otherwise `from_file` raises `HprError` and says why, and
+Python can't yet swap in a motor as `hpr sim --motor` does.
 
 A design read from a file flies **without** the parachutes and stage separations it stores. Add
 parachutes with `add_parachute`; until you do, it falls to the ground unslowed, and its landing
@@ -187,7 +199,8 @@ warnings, a design written by an older version of the format, and what the file 
 flown.
 
 This one is [RocketPy](glossary.md#rocketpy)'s example rocket, Calisto, from the file the
-validation suite uses, with its two parachutes as RocketPy's example gives them:
+validation suite uses, with its two parachutes as RocketPy's example gives them. The path is the
+repository's, so run it from the repository's root:
 
 ```python
 calisto = hpr.Rocket.from_file("validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json")
@@ -203,8 +216,10 @@ example: apogee 2807 m, landing at 5.2 m/s
 ```
 
 This flight uses hpr's own drag, in calm air. The validation suite flies the same design with
-hpr's own drag too, in a wind and in RocketPy's atmosphere, and its apogee is within 0.609% of
-RocketPy's ([Whole flights with each code's own drag](accuracy.md#whole-flights-with-each-codes-own-drag),
+hpr's own drag too, in a wind and in RocketPy's atmosphere, and its apogee is 0.609% below
+RocketPy's. That is the closest of the suite's six rockets: on the others, hpr's own drag puts the
+apogee from 7.280% below RocketPy's to 10.302% above
+([Whole flights with each code's own drag](accuracy.md#whole-flights-with-each-codes-own-drag),
 [same-drag and predicted mode](glossary.md#same-drag-and-predicted-mode)). Flying Calisto from
 Python as that suite does, and comparing it with RocketPy, is the next step
 ([M4.3b](decisions-and-roadmap.md#m4-3b)).
@@ -230,21 +245,42 @@ no motor with a bundled thrust curve matches `Z9000`
 
 Every value is in SI units, and every argument and attribute that carries one names it, as the Rust
 API does: `length_m`, `mass_kg`, `apogee_m`, `max_speed_m_s`, `wind_from_deg`. Names that pick one
-of several things are strings, in any case, with spaces or hyphens for the underscores:
+of several things are strings, in any case, with a space or hyphen allowed where the name has an
+underscore:
 
 | argument | the choices |
 |---|---|
 | a nose's or transition's `shape` | `"conical"`, `"ogive"`, `"elliptical"`, `"power_series"`, `"parabolic_series"`, `"haack"` ([Shapes](physics/shapes.md)). `parameter` is an ogive's radius ratio (1, a tangent ogive, by default), a Haack series' `C` (0, the von Kármán, by default), and a power series' exponent or a parabolic series' `K`, which those two need |
 | fins' `cross_section` | `"square"` (the default), `"rounded"`, `"airfoil"` |
 | a part's `position` | `"top"`, `"middle"`, `"bottom"` or `"after"` the tube it is in, then `offset_m` aft of that. A mass is at the top by default; fins and a motor tube sit flush with the tube's aft end |
-| a parachute's `trigger` | `"apogee"` (the default), `"altitude"` with `altitude_m`, `"time"` with `time_s`, `"motor_delay"` with `motor`, the motor's number (0, the first, by default) |
+| a parachute's `trigger` | `"apogee"` (the default); `"altitude"` with `altitude_m`, on the way down past that height above the pad; `"time"` with `time_s` after launch; `"motor_delay"` with `motor`, the motor's number (0, the first, by default) |
 | a parachute's `canopy` | `"flat_circular"` (the default), `"conical"`, `"biconical"`, `"triconical"`, `"extended_skirt10_flat"`, `"extended_skirt14_full"`, `"hemispherical"`, `"annular"`, `"cross"`, `"flat_ribbon"`, `"conical_ribbon"`, `"ringslot"`, `"ringsail"` ([Recovery](physics/recovery.md)) |
 
 A parachute is either a canopy `diameter_m` across, with its type's drag coefficient or your own
-`drag_coefficient`, or a drag area `cd_s_m2`, as RocketPy's `cd_s`.
+`drag_coefficient`, or a [drag area](glossary.md#drag-area) `cd_s_m2`, its drag coefficient
+times its area in m², as RocketPy's `cd_s`.
 
-Each class and method has a docstring listing its arguments: `help(hpr.Rocket.add_fins)`, for
-example. The Rust reference for the package, [`hpr_py`](api/hpr_py/index.html), says how it is
+## Every class and method
+
+| call | what it does |
+|---|---|
+| `Environment(latitude_deg, longitude_deg, elevation_m, wind_speed_m_s=, wind_from_deg=)` | the launch site and a wind |
+| `Motor.from_catalog(name, delay_s=)`, `Motor.from_file(path, delay_s=)`, `Motor.from_eng(text)`, `Motor.from_rse(text)` | a motor; its `designation`, `diameter_m`, `length_m`, `delay_s`, `total_impulse_ns`, `propellant_mass_kg` and `thrust_curve()`, two arrays |
+| `Rocket(name, diameter_m)`, `Rocket.from_file(path, configuration=)` | a rocket, built or read; its `name`, `configuration` and `notes` |
+| `add_nose(shape, length_m, material, wall_m=, parameter=, shoulder_length_m=, shoulder_wall_m=, capped_shoulder=, name=)` | the nose: hollow with `wall_m`, solid without; a shoulder, capped or not |
+| `add_tube(length_m, wall_m, material, diameter_m=, name=)` | a body tube |
+| `add_transition(length_m, aft_diameter_m, wall_m, material, shape=, parameter=, solid=, name=)` | a shoulder or boattail between tubes |
+| `add_fins(count, root_chord_m=, tip_chord_m=, span_m=, sweep_m=, thickness_m=, material=, cross_section=, cant_deg=, position=, offset_m=, name=)` | trapezoidal fins |
+| `add_motor_tube(length_m, inner_diameter_m, wall_m, material, overhang_m=, position=, offset_m=, name=)` | the motor tube |
+| `add_mass(mass_kg, position=, offset_m=, packed_length_m=, packed_diameter_m=, name=)` | a mass, at a point or packed in a cylinder |
+| `set_motor(motor)`, `add_parachute(name, ...)` | the motor, and a parachute |
+| `mass_properties(time_s=)`, `static_margin_cal(time_s=, mach=)`, `margin(time_s=, mach=)`, `design_json()` | the mass, centre of gravity and inertia; the margin; the design as JSON |
+| `Flight(rocket, environment, rail_length_m, inclination_deg=, heading_deg=, interval_s=)` | the flight; its `apogee_m`, `apogee_time_s`, `max_speed_m_s`, `max_mach`, `rail_exit_speed_m_s`, `landing`, `summary`, `events`, `columns`, `series`, `flight[name]` and `to_json()` |
+
+
+An argument written `name=` above can be left out, and is given by name: `add_fins`' lengths
+have no default, but are named too. Each class and method has a docstring that says what its
+arguments mean: `help(hpr.Rocket.add_fins)`, for example. The Rust reference for the package, [`hpr_py`](api/hpr_py/index.html), says how it is
 built.
 
 ## What is not here yet
@@ -256,8 +292,11 @@ The package covers the Rust builder, not the whole library. Not yet:
 - Drag, wind and other models written as Python functions
   ([M4.3c](decisions-and-roadmap.md#m4-3c)). Rust programs have them today
   ([Models of your own](custom-models.md)).
-- Staging and mass shifts. A staged design read from a file flies as one stack whose upper motors
-  never light, and `rocket.notes` says so.
+- Staging and mass shifts. A configuration that drops a stage under power is refused. Any other
+  design of several stages flies as one stack: no stage drops away, a motor lit by another's
+  burnout lights on the whole stack, one lit by a separation never does, and `rocket.notes` says
+  so.
+- Swapping a motor into a design read from a file, as `hpr sim --motor` does.
 - Parachutes and separations stored in a design file, as above.
 - Wind that changes with height, and weather files: only the Rust library flies them.
 - Type stubs, so an editor sees the docstrings but not the arguments' types.

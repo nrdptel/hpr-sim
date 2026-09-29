@@ -3,7 +3,7 @@
 use hpr::hpr_sim::{Channel, Recorder};
 use numpy::{PyArray1, PyArrayMethods};
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList};
 
 use crate::rocket::Rocket;
 use crate::{error, to_python};
@@ -155,8 +155,9 @@ impl Flight {
     }
 
     /// Where and how it landed, as a dictionary: `time_s`, `latitude_deg`, `longitude_deg`,
-    /// `east_m` and `north_m` of the pad, `distance_m`, `ground_hit_speed_m_s` and
-    /// `descent_rate_m_s`; `None` if it didn't land.
+    /// `east_m` and `north_m` of the pad, `distance_m`, `ground_hit_speed_m_s`,
+    /// `descent_rate_m_s`, and `body`, the separated body it is about (`None`, the rocket
+    /// itself, for a flight with no separation); `None` if it didn't land.
     #[getter]
     fn landing<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         to_python(py, &self.flight.landing())
@@ -225,6 +226,18 @@ impl Flight {
     /// dictionary of arrays.
     fn keys(&self) -> Vec<String> {
         self.columns.clone()
+    }
+
+    /// The recording's column names, one by one: `for name in flight`.
+    fn __iter__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        PyList::new(py, &self.columns)?
+            .try_iter()
+            .map(Bound::into_any)
+    }
+
+    /// The number of columns in the recording.
+    fn __len__(&self) -> usize {
+        self.columns.len()
     }
 
     /// One column of the recording as a NumPy array: `flight["height_above_ground_m"]`.

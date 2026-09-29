@@ -192,7 +192,8 @@ def test_mass_properties_are_a_tensor_of_rows():
 def test_a_flight_reads_as_a_dictionary_of_arrays():
     flight = hpr.Flight(small_rocket(), hpr.Environment(0.0, 0.0, 0.0), 1.8, interval_s=0.1)
     assert "mach" in flight and "altitude" not in flight
-    assert flight.keys() == flight.columns
+    assert flight.keys() == flight.columns == list(flight)
+    assert len(flight) == len(flight.columns)
     assert dict(zip(flight.keys(), (flight[k] for k in flight.keys()))).keys() == flight.series.keys()
 
 
@@ -205,3 +206,8 @@ def test_notes_from_reading_a_design(repo):
     assert json_design.notes == []
     older = hpr.Rocket.from_file(repo / "crates/hpr-format/fixtures/embedded-curve-0.1.hpr")
     assert any("version 0.1 of the hpr design format" in note for note in older.notes)
+    staged = hpr.Rocket.from_file(
+        repo / "validation/designs/synthetic-two-stage-75mm-54mm.json", "j760-i175"
+    )
+    assert any("the stages fly as one stack" in note for note in staged.notes)
+

@@ -9559,7 +9559,9 @@ behind the `DragModel` and `Wind` traits.
    bullets are b's and a's.
 2. **What it wraps.** The `hpr` builder (ADR-103), not the crates below it: `Environment`,
    `Motor`, `Rocket` and `Flight`, as the Rust builder has them, with `Rocket.from_file` reading a
-   design as `hpr sim` does (`.hpr`, `.hprz`, `.ork`, a rocket's JSON). No physics is added, so the
+   design as `hpr sim` does (`.hpr`, `.hprz`, `.ork`, a rocket's JSON): the same configuration
+   chosen, the same refusals of one that stages under power or doesn't fly as written, and its
+   notes kept in `Rocket.notes`. No physics is added, so the
    bindings' tests hold a Python flight to the Rust example's printed output rather than to a
    reference of their own.
 3. **"RocketPy-like."** RocketPy's shape, not its names: the same four objects, a `Flight` that
@@ -9579,13 +9581,14 @@ behind the `DragModel` and `Wind` traits.
    `cargo test` doesn't compile the crate; clippy and rustdoc check it on Linux, and the `python`
    job compiles it on each OS with warnings as errors.
 6. **Not published.** The distribution name is `hpr-sim`; PyPI is Neer's call (CLAUDE.md, rule 9).
-   CI keeps each OS's wheel as an artifact.
+   CI builds and tests each OS's wheel but keeps none: a wheel handed out, even as a CI artifact,
+   is a binary distribution, and needs the licence texts of what it links first.
 
 **Consequences.** A builder change shows up in Python only when a binding exposes it. The
 guide's [Python page](python.md) runs in the tests, block by block, against its printed output.
 A design read from a file flies without its stored parachutes and separations, as the builder's
 `Rocket::from_design` does; `Rocket.notes` says what isn't flown. Type stubs (`.pyi`) are not
-written yet, so editors see the classes' docstrings but not their signatures' types. Before any
-publishing, the wheel needs the licence texts of what it links (rust-numpy's BSD-2-Clause asks
-for its notice in binary distributions).
+written yet, so editors see the classes' docstrings but not their signatures' types. Before a
+wheel is handed out anywhere, it needs the licence texts of what it links (rust-numpy's
+BSD-2-Clause asks for its notice in binary distributions).
 
