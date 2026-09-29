@@ -1816,10 +1816,7 @@ fn convert_writes_a_catalog_motor_and_rewrites_a_file() {
             .value;
     let engine = &written.engines[0];
     assert_eq!(engine.initial_mass_g, 44.1);
-    assert_eq!(
-        engine.mass_fraction_pct,
-        Some(100.0 * engine.propellant_mass_g / 44.1)
-    );
+    assert_eq!(engine.mass_fraction_pct, Some(54.421_768_707_482_99));
     let text = text_ok(&["convert", &curve_file(ENG_CURVE), &path("same.eng")]);
     assert_eq!(
         text,

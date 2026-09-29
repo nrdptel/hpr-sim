@@ -429,8 +429,8 @@ the file, bit for bit, but for a mass of 16 or 17 digits (below). The formats wr
 Masses move between kilograms and grams by moving the decimal point, not by multiplying, which
 would round: `0.0041` kg times 1000 is `4.1000000000000005` in a computer's arithmetic, while
 moving the point gives `4.1`. A mass written with 16 or 17 digits may still change in its last
-digit; a warning says so. A flight reads a `.rse` file's grams, and the catalog's, by multiplying,
-so the same motor flown from a `.eng` file and from its converted `.rse` can differ in a mass's
+digit; a warning says so. A flight turns a `.rse` file's grams into kilograms by dividing by
+1000, and the catalog's by multiplying by 0.001, so the same motor flown from a `.eng` file and from its converted `.rse` can differ in a mass's
 last digit, a part in 10¹⁶.
 
 Some things come back written differently, though they mean the same:

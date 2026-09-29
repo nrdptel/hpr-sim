@@ -103,8 +103,10 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             .collect(),
         _ => Vec::new(),
     };
+    let has_hybrid = matches!(&motors, Motors::Rse(file) if file.engines.iter().any(is_hybrid));
     match (&args.delays, undelayed.is_empty()) {
-        (Some(_), true) => {
+        // A hybrid needs no delays, but the conversion refuses it, for the real reason.
+        (Some(_), true) if !has_hybrid => {
             return Err(Failure::Input(
                 "--delays gives the delays of a .rse motor that has none, for a .eng file; no \
                  motor this conversion writes needs them"
@@ -183,15 +185,19 @@ pub(crate) fn run(args: &ConvertArgs, to: &mut Out<'_>) -> Result<(), Failure> {
 /// Whether a `.rse` engine gives no delays a `.eng` header could take: none, or none
 /// [`DelayList`] reads. A hybrid is left to the conversion, which refuses it.
 fn needs_delays(engine: &RseEngine) -> bool {
-    let hybrid = engine
-        .motor_type
-        .as_deref()
-        .is_some_and(|kind| kind.trim().eq_ignore_ascii_case("hybrid"));
-    !hybrid
+    !is_hybrid(engine)
         && engine
             .delays
             .as_deref()
             .is_none_or(|delays| DelayList::parse(delays).delays.is_empty())
+}
+
+/// Whether a `.rse` engine says it is a hybrid, which [`convert::rse_to_eng`] refuses.
+fn is_hybrid(engine: &RseEngine) -> bool {
+    engine
+        .motor_type
+        .as_deref()
+        .is_some_and(|kind| kind.trim().eq_ignore_ascii_case("hybrid"))
 }
 
 /// Joins a maker of several words with `_`, as [`convert::rse_to_eng`] does: a `.eng` header is
@@ -260,9 +266,11 @@ impl CatalogFigures {
                         "mm",
                     );
                     set(&name, &mut entry.length_mm, self.length_mm, "length", "mm");
-                    // A header that is already the mass hpr flies keeps its digits.
+                    // Written as `.eng`, a header that is already the mass hpr flies keeps its
+                    // digits; as `.rse`, the catalog's grams are written as it gives them.
+                    let flown = |kg: f64, g: f64| !to_rse && kg.to_bits() == flown_kg(g).to_bits();
                     if let Some(g) = self.propellant_mass_g
-                        && entry.propellant_mass_kg.to_bits() != flown_kg(g).to_bits()
+                        && !flown(entry.propellant_mass_kg, g)
                     {
                         let kg = convert::g_to_kg(g);
                         set(
@@ -274,7 +282,7 @@ impl CatalogFigures {
                         );
                     }
                     if let Some(g) = self.total_mass_g
-                        && entry.total_mass_kg.to_bits() != flown_kg(g).to_bits()
+                        && !flown(entry.total_mass_kg, g)
                     {
                         let kg = convert::g_to_kg(g);
                         set(&name, &mut entry.total_mass_kg, kg, "loaded mass", "kg");
@@ -341,14 +349,15 @@ fn rescale(engine: &mut RseEngine, length: f64, propellant: f64, initial: f64) -
     }
     if engine.propellant_mass_g != propellant && propellant > 0.0 && engine.propellant_mass_g > 0.0
     {
-        let ratio = engine.propellant_mass_g / propellant;
+        // Multiplied, then divided: a ratio taken first would round once more.
+        let new = engine.propellant_mass_g;
         if let Some(isp) = &mut engine.isp_s {
-            *isp /= ratio;
+            *isp = *isp * propellant / new;
             changed.push("Isp");
         }
         let mut any = false;
         for mass in engine.points.iter_mut().filter_map(|p| p.mass_g.as_mut()) {
-            *mass *= ratio;
+            *mass = *mass * new / propellant;
             any = true;
         }
         if any {
@@ -356,10 +365,10 @@ fn rescale(engine: &mut RseEngine, length: f64, propellant: f64, initial: f64) -
         }
     }
     if engine.length_mm != length && length > 0.0 {
-        let ratio = engine.length_mm / length;
+        let new = engine.length_mm;
         let mut any = false;
         for cg in engine.points.iter_mut().filter_map(|p| p.cg_mm.as_mut()) {
-            *cg *= ratio;
+            *cg = *cg * new / length;
             any = true;
         }
         if any {
@@ -497,4 +506,45 @@ fn file_name(path: &str) -> String {
         || path.to_owned(),
         |name| name.to_string_lossy().into_owned(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each figure worked out from a replaced mass or length follows it: `massFrac` as
+    /// `propWt / initWt`, `Isp` as `1 / propWt`, `m` as `propWt` and `cg` as the length.
+    #[test]
+    fn rescaled_figures_follow_the_replaced_ones() {
+        let text = "<engine-database><engine-list><engine mfg=\"M\" code=\"X1\" dia=\"29\" \
+                    len=\"100\" initWt=\"80\" propWt=\"40\" massFrac=\"50\" Isp=\"100\"><data>\
+                    <eng-data t=\"0\" f=\"0\" m=\"40\" cg=\"50\"/><eng-data t=\"1\" f=\"20\" \
+                    m=\"20\" cg=\"50\"/><eng-data t=\"2\" f=\"0\" m=\"0\" cg=\"50\"/></data>\
+                    </engine></engine-list></engine-database>";
+        let mut motors = Motors::Rse(rse::parse(text).unwrap().value);
+        let figures = CatalogFigures {
+            diameter_mm: 29.0,
+            length_mm: 110.0,
+            propellant_mass_g: Some(50.0),
+            total_mass_g: Some(100.0),
+        };
+        let warnings = figures.apply(&mut motors, true);
+        let Motors::Rse(file) = motors else {
+            unreachable!("apply keeps the format")
+        };
+        let engine = &file.engines[0];
+        assert_eq!(engine.mass_fraction_pct, Some(50.0));
+        assert_eq!(engine.isp_s, Some(80.0));
+        let masses: Vec<Option<f64>> = engine.points.iter().map(|p| p.mass_g).collect();
+        assert_eq!(masses, [Some(50.0), Some(25.0), Some(0.0)]);
+        let cgs: Vec<Option<f64>> = engine.points.iter().map(|p| p.cg_mm).collect();
+        assert_eq!(cgs, [Some(55.0); 3]);
+        assert_eq!(
+            warnings.last().map(|w| w.message.as_str()),
+            Some(
+                "rescaled massFrac, Isp, m, cg to the catalog's figures: they are worked out \
+                 from the masses and the length"
+            )
+        );
+    }
 }
