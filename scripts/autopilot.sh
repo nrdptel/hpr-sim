@@ -33,7 +33,8 @@
 #   HPR_PERMISSION_MODE (default bypassPermissions; set it to auto for the classifier-checked mode),
 #   HPR_CYCLE_MAX_HOURS (default 10), HPR_STALL_MINUTES (default 120), HPR_LIMIT_POLL_MINUTES (default 10),
 #   HPR_KEEP_LOGS (default 20 cycle transcripts kept uncompressed; archives beyond 3x that are
-#     deleted), HPR_CARGO_JOBS (default 6; caps both cargo jobs and test threads during the run)
+#     deleted), HPR_CARGO_JOBS (default 6; caps both cargo jobs and test threads during the run),
+#   HPR_TARGET_MAX_GB (default 40; `cargo clean` before a cycle once target/ holds more; 0 never)
 
 set -uo pipefail
 # Job control, so each cycle's `claude` is forked as its own process-group leader. The whole group
@@ -101,6 +102,8 @@ KEEP_LOGS="${HPR_KEEP_LOGS:-20}"   # cycle transcripts to keep uncompressed; old
 # of an unchecked string is a way to run a command.
 case "$KEEP_LOGS" in ''|*[!0-9]*) KEEP_LOGS=20 ;; esac
 [ "$KEEP_LOGS" -lt 1 ] && KEEP_LOGS=1
+TARGET_MAX_GB="${HPR_TARGET_MAX_GB:-40}"   # clean target/ before a cycle once it holds more; 0 never
+case "$TARGET_MAX_GB" in ''|*[!0-9]*) TARGET_MAX_GB=40 ;; esac
 
 # Cap the parallelism of the run's builds and tests. Measured with scripts/build-memory.sh over
 # three cold `cargo test --workspace --all-features --no-run` builds on this 10-core, 16 GB
@@ -300,6 +303,34 @@ prune_logs() {
   return 0
 }
 
+# Cargo never deletes build output: each change to a dependency, a feature or a compiler flag adds
+# files to target/ beside the old ones. By 2026-09-28 it held 79 GB and the disk was 89% full.
+# Before each cycle, log the folder's size and the free disk, and run `cargo clean` once the folder
+# holds more than TARGET_MAX_GB. A clean costs the next cycle a build from scratch, so it waits for
+# the folder to grow rather than running every cycle. Sizes are GB of 1024^3 bytes.
+target_gb_now() {
+  { du -sk "$ROOT/target" 2>/dev/null || echo 0; } | awk 'NR == 1 { printf "%.1f", $1 / 1048576 }'
+}
+disk_free_gb_now() {
+  df -k "$ROOT" 2>/dev/null | awk 'NR == 2 { printf "%.0f", $4 / 1048576 }'
+}
+check_target() {
+  local gb free_before
+  [ -d "$ROOT/target" ] || return 0
+  gb=$(target_gb_now)
+  free_before=$(disk_free_gb_now)
+  log "Build output: ${gb} GB in target/, ${free_before} GB free on the disk."
+  [ "$TARGET_MAX_GB" -gt 0 ] || return 0
+  awk -v g="$gb" -v m="$TARGET_MAX_GB" 'BEGIN { exit !(g > m) }' || return 0
+  log "target/ is over ${TARGET_MAX_GB} GB: running cargo clean, so the next cycle builds from scratch."
+  if "$CARGO_BIN" clean --quiet >/dev/null 2>&1; then
+    log "Cleaned target/: ${free_before} GB free before, $(disk_free_gb_now) GB after."
+  else
+    log "cargo clean failed; target/ is left as it was."
+  fi
+  return 0
+}
+
 # What else is holding memory before the run starts. Advisory only: this never touches a process.
 memory_baseline() {
   local total_gb hogs
@@ -351,6 +382,8 @@ if [ -z "$CLAUDE_BIN" ]; then
 fi
 command -v "$CLAUDE_BIN" >/dev/null 2>&1 || { echo "Claude Code binary not found: $CLAUDE_BIN" >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 not found (needed for log parsing and the hooks)" >&2; exit 1; }
+# For check_target's clean. A loop started outside a login shell may not have ~/.cargo/bin on PATH.
+CARGO_BIN="$(command -v cargo 2>/dev/null || echo "$HOME/.cargo/bin/cargo")"
 if [ -z "$(git config user.email 2>/dev/null)" ]; then
   echo "git identity not set; run scripts/preflight.sh first" >&2; exit 1
 fi
@@ -533,6 +566,7 @@ while :; do
   if [ -f "$STATE/STOP" ]; then log "STOP file found. Autopilot stopped."; notify "Autopilot stopped."; break; fi
 
   prune_logs
+  check_target
   cycle=$(( cycle + 1 ))
   echo "$cycle" > "$STATE/cycle"
   stamp=$(date +%Y%m%d-%H%M%S)
