@@ -107,8 +107,13 @@ pub fn write(design: &Design, attachments: &[Attachment]) -> Result<Imported<Vec
     let zip = |error: &dyn std::fmt::Display| OrkError::Zip {
         reason: error.to_string(),
     };
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
+    // Every entry is stamped 1980-01-01, zip's zero date, so the bytes written never depend on the
+    // clock. `SimpleFileOptions::default()` reads the clock when a crate further down the build
+    // enables zip's `time` feature, and on `wasm32-unknown-unknown` that call panics, so the options
+    // start from the constant `DEFAULT` instead and name the date as well.
+    let options = zip::write::SimpleFileOptions::DEFAULT
+        .compression_method(zip::CompressionMethod::Deflated)
+        .last_modified_time(zip::DateTime::DEFAULT);
     let mut archive = zip::ZipWriter::new(Cursor::new(Vec::new()));
     archive
         .start_file(DESIGN_ENTRY, options)
