@@ -21,7 +21,8 @@ use std::fs;
 use std::path::Path;
 
 use serde_json::{Value, json};
-use sha2::{Digest as _, Sha256};
+
+use crate::ork_supply::sha256;
 
 pub const USAGE: &str = "\
   ork-export-flights [--check]
@@ -42,6 +43,10 @@ const EXPORT_DIR: &str = "corpus-out/ork-export";
 /// The committed report and its page.
 const REPORT: &str = "validation/reports/openrocket-export-flights.json";
 const PAGE: &str = "validation/reports/openrocket-export-flights.md";
+
+/// Where the guide explains the check, and the roadmap's row for M3.2.
+const GUIDE: &str = "https://nrdptel.github.io/hpr-sim/format/ork.html#checked-in-openrocket";
+const ROADMAP_ROW: &str = "https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m3-2";
 
 /// M3.2's bar: the export's apogee within this share of the original's, in percent.
 pub(crate) const TOLERANCE_PERCENT: f64 = 0.5;
@@ -68,15 +73,19 @@ pub(crate) struct Tally {
     pub unread: usize,
     /// Configurations of the designs opened both ways.
     pub configurations: usize,
+    /// Designs with at least one configuration compared.
+    pub designs_compared: usize,
     /// Of those, the ones flown to an apogee both ways.
     pub compared: usize,
     /// Of those, the ones whose apogees are the same number.
     pub identical: usize,
     /// Of those compared, the ones within [`TOLERANCE_PERCENT`].
     pub within: usize,
-    /// Configurations flown to no apogee either way: no motor, or a flight OpenRocket aborted.
+    /// Configurations flown to no apogee either way, alike: no motor both times, or a flight
+    /// OpenRocket aborted both times for the same cause.
     pub flown_neither: usize,
-    /// Configurations flown one way and not the other, or found one way only.
+    /// Configurations flown one way and not the other, left unflown for different reasons, or
+    /// found one way only.
     pub unmatched: usize,
     /// The largest difference of the export's apogee from the original's, in percent of it.
     pub largest_percent: f64,
@@ -92,6 +101,7 @@ impl Tally {
         self.refused_differently += other.refused_differently;
         self.unread += other.unread;
         self.configurations += other.configurations;
+        self.designs_compared += other.designs_compared;
         self.compared += other.compared;
         self.identical += other.identical;
         self.within += other.within;
@@ -100,10 +110,12 @@ impl Tally {
         self.largest_percent = self.largest_percent.max(other.largest_percent);
     }
 
-    /// Whether M3.2's two bullets hold: every export opens where its original does, and every
-    /// configuration flies to within the tolerance of the original's apogee.
+    /// Whether M3.2's two bullets hold: every export opens where its original does and is refused
+    /// alike where it does not, and every configuration flies to within the tolerance of the
+    /// original's apogee.
     pub(crate) fn met(&self) -> bool {
         self.exports_opened == self.originals_opened
+            && self.only_exports_opened == 0
             && self.refused_differently == 0
             && self.unmatched == 0
             && self.within == self.compared
@@ -117,21 +129,49 @@ fn original_of(export: &str) -> Option<String> {
     Some(path.replacen(".jar/", ".jar!", 1))
 }
 
-/// A design's configurations, by id: the apogee OpenRocket flew it to, if it flew to one.
-fn apogees(design: &Value) -> BTreeMap<String, Option<f64>> {
+/// How a configuration's flight came out.
+#[derive(Debug, PartialEq)]
+enum Outcome {
+    /// Flown to this apogee, in metres.
+    Apogee(f64),
+    /// Not flown: it has no motor.
+    NoMotor,
+    /// Aborted, with the causes OpenRocket gave.
+    Aborted(Vec<Value>),
+    /// Refused, or anything else the record says: compared as it stands.
+    Other(Value),
+}
+
+/// A design's configurations, by id, and how OpenRocket's flight of each came out.
+fn outcomes(design: &Value) -> BTreeMap<String, Outcome> {
     design["flights"]
         .as_array()
         .into_iter()
         .flatten()
         .filter_map(|flight| {
             let id = flight["configuration"].as_str()?.to_owned();
-            let flown = flight.get("refused").is_none()
-                && flight["has_motors"].as_bool() == Some(true)
-                && flight["aborted"].as_bool() == Some(false);
-            let apogee = flown
-                .then(|| flight["summary"]["max_altitude_m"].as_f64())
-                .flatten();
-            Some((id, apogee))
+            let apogee = flight["summary"]["max_altitude_m"].as_f64();
+            let outcome = match (
+                flight.get("refused"),
+                flight["has_motors"].as_bool(),
+                flight["aborted"].as_bool(),
+            ) {
+                (None, Some(true), Some(false)) if apogee.is_some() => {
+                    Outcome::Apogee(apogee.unwrap_or_default())
+                }
+                (None, Some(false), _) => Outcome::NoMotor,
+                (None, Some(true), Some(true)) => Outcome::Aborted(
+                    flight["events"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter(|event| event["type"] == "SIM_ABORT")
+                        .map(|event| event["cause"].clone())
+                        .collect(),
+                ),
+                _ => Outcome::Other(flight.get("refused").cloned().unwrap_or(Value::Null)),
+            };
+            Some((id, outcome))
         })
         .collect()
 }
@@ -152,9 +192,11 @@ fn refusal(design: &Value) -> &Value {
 }
 
 /// Compares the two records, by the source each design came from.
+/// `unread` says, of an original with no export, whether hpr cannot read it.
 pub(crate) fn compare(
     originals: &Value,
     exports: &Value,
+    mut unread: impl FnMut(&str) -> bool,
 ) -> Result<BTreeMap<String, Tally>, String> {
     let list = |record: &Value, name: &str| -> Result<Vec<Value>, String> {
         record["designs"]
@@ -178,17 +220,25 @@ pub(crate) fn compare(
             .entry(crate::ork_corpus_flights::source(file).to_owned())
             .or_default();
         tally.designs += 1;
-        // hpr writes only what it reads; a file it can't read has no export (NOT_WELL_FORMED).
-        let Some(export) = written.get(file) else {
+        // hpr writes only what it reads; a file it can't read has no export (NOT_WELL_FORMED),
+        // which `unread` confirms.
+        let Some(export) = written.remove(file) else {
             if opened(original) {
                 return Err(format!(
                     "design #{index} ({}): OpenRocket opened it, but it has no export flight",
                     crate::ork_corpus_flights::source(file)
                 ));
             }
+            if !unread(file) {
+                return Err(format!(
+                    "design #{index} ({}): hpr reads it, but it has no export flight",
+                    crate::ork_corpus_flights::source(file)
+                ));
+            }
             tally.unread += 1;
             continue;
         };
+        let export = &export;
         match (opened(original), opened(export)) {
             (true, true) => {
                 tally.originals_opened += 1;
@@ -211,26 +261,48 @@ pub(crate) fn compare(
         if !opened(export) {
             continue;
         }
-        let (before, after) = (apogees(original), apogees(export));
-        for (id, apogee) in &before {
+        let (before, after) = (outcomes(original), outcomes(export));
+        let compared = tally.compared;
+        for (id, outcome) in &before {
             tally.configurations += 1;
-            match (apogee, after.get(id)) {
-                (Some(before), Some(Some(after))) => {
+            match (outcome, after.get(id)) {
+                (Outcome::Apogee(before), Some(Outcome::Apogee(after))) => {
+                    // An apogee at or below the launch has no difference in percent to take.
+                    let percent = if before == after {
+                        0.0
+                    } else if *before > 0.0 {
+                        100.0 * ((after - before) / before).abs()
+                    } else {
+                        tally.unmatched += 1;
+                        continue;
+                    };
                     tally.compared += 1;
                     if before == after {
                         tally.identical += 1;
                     }
-                    let percent = 100.0 * ((after - before) / before).abs();
                     if percent <= TOLERANCE_PERCENT {
                         tally.within += 1;
                     }
                     tally.largest_percent = tally.largest_percent.max(round(percent));
                 }
-                (None, Some(None)) => tally.flown_neither += 1,
+                (Outcome::NoMotor | Outcome::Aborted(_) | Outcome::Other(_), Some(other))
+                    if outcome == other =>
+                {
+                    tally.flown_neither += 1;
+                }
                 _ => tally.unmatched += 1,
             }
         }
+        if tally.compared > compared {
+            tally.designs_compared += 1;
+        }
         tally.unmatched += after.keys().filter(|id| !before.contains_key(*id)).count();
+    }
+    if !written.is_empty() {
+        return Err(format!(
+            "{EXPORTS} flew {} design(s) {ORIGINALS} does not have: fly the originals again",
+            written.len()
+        ));
     }
     Ok(tallies)
 }
@@ -267,8 +339,15 @@ pub fn run(args: &[String]) -> Result<(), String> {
             ));
         }
     }
-    fresh(&root, &exports)?;
-    let tallies = compare(&originals, &exports)?;
+    current(&root, &originals)?;
+    let mut sources = Sources::new(&root);
+    fresh(&root, &originals, &exports, &mut sources)?;
+    let unread = |file: &str| {
+        sources
+            .bytes(file)
+            .is_ok_and(|bytes| hpr_io::ork::read(&bytes).is_err())
+    };
+    let tallies = compare(&originals, &exports, unread)?;
     let report = report(&originals, &tallies);
     let json = format!(
         "{}\n",
@@ -298,10 +377,97 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
 }
 
-/// Fails unless every design [`EXPORTS`] flew is the file hpr writes today: each original is read
-/// and written again, and the SHA-256 compared. No error names a file.
-fn fresh(root: &Path, exports: &Value) -> Result<(), String> {
-    let mut jar: Option<BTreeMap<String, Vec<u8>>> = None;
+/// OpenRocket's flight scripts, whose SHA-256 each record holds.
+const SCRIPTS: [(&str, &str); 3] = [
+    ("flights.py", "validation/oracles/openrocket/flights.py"),
+    ("events.py", "validation/oracles/openrocket/events.py"),
+    (
+        "geometry.py",
+        "validation/oracles/rocketserializer/geometry.py",
+    ),
+];
+
+/// Fails unless the records were flown with today's scripts and the pinned jar.
+fn current(root: &Path, record: &Value) -> Result<(), String> {
+    for (name, path) in SCRIPTS {
+        let bytes = fs::read(root.join(path)).map_err(|error| format!("{path}: {error}"))?;
+        if record["inputs_sha256"][name].as_str() != Some(&sha256(&bytes)) {
+            return Err(format!(
+                "the records were not flown by the current {path}: fly both again"
+            ));
+        }
+    }
+    let jar = crate::ork::JAR;
+    let bytes = fs::read(root.join(jar)).map_err(|error| format!("{jar}: {error}"))?;
+    if record["jar_sha256"].as_str() != Some(&sha256(&bytes)) {
+        return Err(format!(
+            "the records were not flown with {jar}: fly both again"
+        ));
+    }
+    Ok(())
+}
+
+/// The originals' bytes, by their key in [`ORIGINALS`]: a file under the root, or an entry of
+/// the jar, read once.
+struct Sources {
+    root: std::path::PathBuf,
+    jar: Option<BTreeMap<String, Vec<u8>>>,
+}
+
+impl Sources {
+    fn new(root: &Path) -> Self {
+        Self {
+            root: root.to_path_buf(),
+            jar: None,
+        }
+    }
+
+    fn bytes(&mut self, key: &str) -> Result<Vec<u8>, String> {
+        let Some((_, entry)) = key.rsplit_once('!') else {
+            return fs::read(self.root.join(key)).map_err(|_| "not under refs/".to_owned());
+        };
+        let entries = match &mut self.jar {
+            Some(entries) => entries,
+            None => self.jar.insert(
+                crate::ork::examples_in_jar(&self.root.join(crate::ork::JAR))?
+                    .into_iter()
+                    .filter_map(|(name, bytes)| Some((name.rsplit_once('!')?.1.to_owned(), bytes)))
+                    .collect(),
+            ),
+        };
+        entries
+            .get(entry)
+            .cloned()
+            .ok_or_else(|| "not in the jar".to_owned())
+    }
+}
+
+/// Fails unless both records flew today's files: each original is the file [`ORIGINALS`] flew,
+/// and each design [`EXPORTS`] flew is the file hpr writes from it today, as `cargo xtask ork
+/// --export` writes it. No error names a file.
+fn fresh(
+    root: &Path,
+    originals: &Value,
+    exports: &Value,
+    sources: &mut Sources,
+) -> Result<(), String> {
+    for (index, design) in originals["designs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .enumerate()
+    {
+        let file = design["file"].as_str().unwrap_or_default();
+        let bytes = sources
+            .bytes(file)
+            .map_err(|why| format!("original #{index}: {why}"))?;
+        if design["sha256"].as_str() != Some(&sha256(&bytes)) {
+            return Err(format!(
+                "original #{index} is not the file {ORIGINALS} flew: fly the originals again"
+            ));
+        }
+    }
+    let supply = crate::ork_supply::Supply::load(root, true)?;
     for (index, design) in exports["designs"]
         .as_array()
         .into_iter()
@@ -310,37 +476,15 @@ fn fresh(root: &Path, exports: &Value) -> Result<(), String> {
     {
         let file = design["file"].as_str().unwrap_or_default();
         let original = original_of(file).unwrap_or_default();
-        let bytes = match original.split_once('!') {
-            Some((_, entry)) => {
-                let entries = match &mut jar {
-                    Some(entries) => entries,
-                    None => jar.insert(
-                        crate::ork::examples_in_jar(&root.join(crate::ork::JAR))?
-                            .into_iter()
-                            .filter_map(|(name, bytes)| {
-                                Some((name.split_once('!')?.1.to_owned(), bytes))
-                            })
-                            .collect(),
-                    ),
-                };
-                entries
-                    .get(entry)
-                    .cloned()
-                    .ok_or_else(|| format!("export #{index}: its original is not in the jar"))?
-            }
-            None => fs::read(root.join(&original))
-                .map_err(|_| format!("export #{index}: its original is not under refs/"))?,
-        };
+        let bytes = sources
+            .bytes(&original)
+            .map_err(|why| format!("export #{index}: its original is {why}"))?;
         let read = hpr_io::ork::read(&bytes)
             .map_err(|_| format!("export #{index}: its original no longer reads"))?;
-        let design_now = hpr_io::ork::design(&read.value).value;
+        let design_now = hpr_io::ork::design_with(&read.value, supply.curves()).value;
         let written = hpr_io::ork::export::write(&design_now, &read.value.attachments)
-            .map_err(|error| format!("export #{index}: {error}"))?;
-        let digest: String = Sha256::digest(&written.value)
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect();
-        if design["sha256"].as_str() != Some(digest.as_str()) {
+            .map_err(|_| format!("export #{index}: its original no longer writes"))?;
+        if design["sha256"].as_str() != Some(&sha256(&written.value)) {
             return Err(format!(
                 "export #{index} is not the file hpr writes today: run `cargo xtask ork --export \
                  {EXPORT_DIR}`, then flights.py for {EXPORTS}"
@@ -381,23 +525,26 @@ pub(crate) fn page(report: &Value) -> Result<String, String> {
         "Generated by `cargo xtask ork-export-flights` from two records of OpenRocket {}'s calm-air \
          flights (seed {}): of each design in the reference corpus as written, and of the same \
          design read by hpr and written again. A configuration passes when the export's apogee \
-         is within {TOLERANCE_PERCENT}% of the original's. The designs are private, so only \
-         counts are published.\n",
+         is within {TOLERANCE_PERCENT}% of the original's; *identical* means the same apogee to \
+         the last bit. Both flights are OpenRocket's, so this checks the written file, not hpr's \
+         physics. The designs are private, so only counts are published. What the check is for, \
+         and how to run it: [Checked in OpenRocket]({GUIDE}).\n",
         report["openrocket"].as_str().unwrap_or("?"),
         report["seed"]
     );
     let _ = writeln!(
         out,
-        "| source | designs | originals opened | exports opened | configurations | flown neither way | compared | identical | within {TOLERANCE_PERCENT}% | unmatched | largest difference |"
+        "| source | designs | originals opened | exports opened | designs compared | configurations | flown neither way | compared | identical | within {TOLERANCE_PERCENT}% | unmatched | largest difference |"
     );
-    let _ = writeln!(out, "|---|---|---|---|---|---|---|---|---|---|---|");
+    let _ = writeln!(out, "|---|---|---|---|---|---|---|---|---|---|---|---|");
     for (name, tally) in sources.iter().chain([(&"total".to_owned(), &total)]) {
         let _ = writeln!(
             out,
-            "| {name} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}% |",
+            "| {name} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}% |",
             tally.designs,
             tally.originals_opened,
             tally.exports_opened,
+            tally.designs_compared,
             tally.configurations,
             tally.flown_neither,
             tally.compared,
@@ -407,25 +554,44 @@ pub(crate) fn page(report: &Value) -> Result<String, String> {
             tally.largest_percent
         );
     }
+    let refused = total.designs.saturating_sub(total.originals_opened);
+    let mut outcomes = Vec::new();
+    for (count, what) in [
+        (total.unread, "hpr can't read, so it writes nothing"),
+        (
+            total.refused_both,
+            "OpenRocket refuses as exported with the original's error",
+        ),
+        (
+            total.refused_differently,
+            "OpenRocket refuses as exported with another error",
+        ),
+        (total.only_exports_opened, "OpenRocket opens as exported"),
+    ] {
+        if count > 0 {
+            outcomes.push(format!("{count} {what}"));
+        }
+    }
+    if refused > 0 {
+        let _ = writeln!(
+            out,
+            "\nOpenRocket did not open {refused} design(s) as written: of those, {}.",
+            outcomes.join("; ")
+        );
+    }
     let _ = writeln!(
         out,
-        "\nOf the {} designs OpenRocket did not open as written, hpr does not read {}, so has none \
-         to write; OpenRocket refused the export of {} for the reason it refused the original, of \
-         {} for another, and opened {}. A configuration is flown \
-         neither way when it has no motor or OpenRocket aborted its flight both times; one flown \
-         only one way, or found only one way, is unmatched.",
-        total.designs - total.originals_opened,
-        total.unread,
-        total.refused_both,
-        total.refused_differently,
-        total.only_exports_opened
+        "\nA design is compared when at least one of its configurations flies both ways. A \
+         configuration is flown neither way when it has no motor, or OpenRocket aborted it for the \
+         same cause, both times. One flown only one way, left unflown for different reasons, or \
+         found only one way, is unmatched."
     );
     let _ = writeln!(
         out,
-        "\nM3.2's bar ({}): every export opens where its original does and is refused for the same \
-         reason where it does not, and every configuration flown both ways is within \
-         {TOLERANCE_PERCENT}%.",
-        if total.met() { "met" } else { "not met" }
+        "\nThe bar, from the roadmap's [M3.2]({ROADMAP_ROW}) (writing `.ork` files): every export \
+         opens where its original does and is refused for the same reason where it does not, and \
+         every configuration flown both ways is within {TOLERANCE_PERCENT}%. **{}.**",
+        if total.met() { "Met" } else { "Not met" }
     );
     Ok(out)
 }
@@ -440,8 +606,9 @@ mod tests {
         serde_json::from_str(&text).expect("JSON")
     }
 
-    /// The committed page is the committed report's, the total is the sum of its sources, and it
-    /// meets M3.2's bar: CI has no records to make them from, so it holds them to each other.
+    /// The committed page is the committed report's, the total is the sum of its sources, it
+    /// meets M3.2's bar, and it was flown by the committed scripts: CI has no records to make it
+    /// from, so it holds it to itself.
     #[test]
     fn the_committed_report_is_its_page_and_meets_the_bar() {
         let root = crate::ork::root().expect("the workspace root");
@@ -469,45 +636,93 @@ mod tests {
                     + tally.unread
             );
             assert!(tally.configurations >= tally.compared + tally.flown_neither);
+            assert!(tally.designs_compared <= tally.exports_opened);
         }
         assert!(total.met(), "{total:?}");
         assert!(total.compared > 0 && total.largest_percent <= TOLERANCE_PERCENT);
         assert_eq!(report["tolerance_percent"], json!(TOLERANCE_PERCENT));
+        for (name, path) in SCRIPTS {
+            let bytes = fs::read(root.join(path)).expect("the script");
+            assert_eq!(
+                report["inputs_sha256"][name].as_str(),
+                Some(sha256(&bytes).as_str()),
+                "{path} changed since the report's flights: fly both records again"
+            );
+        }
     }
+
+    fn flight(id: &str, apogee: f64) -> Value {
+        json!({"configuration": id, "has_motors": true, "aborted": false,
+               "summary": {"max_altitude_m": apogee}})
+    }
+
+    fn unpowered(id: &str) -> Value {
+        json!({"configuration": id, "has_motors": false})
+    }
+
+    fn aborted(id: &str, cause: &str) -> Value {
+        json!({"configuration": id, "has_motors": true, "aborted": true,
+               "events": [{"type": "SIM_ABORT", "cause": cause}],
+               "summary": {"max_altitude_m": 10.0}})
+    }
+
+    fn design(file: &str, flights: Vec<Value>) -> Value {
+        json!({"file": file, "flights": flights})
+    }
+
+    fn refused(file: &str, why: &str) -> Value {
+        json!({"file": file, "refused": why})
+    }
+
+    fn exported(file: &str) -> String {
+        format!("{EXPORT_DIR}/{}", file.replace('!', "/"))
+    }
+
+    /// One original and its export, compared on their own: the tally of their source.
+    fn one(original: Value, export: Value) -> Tally {
+        let file = original["file"].as_str().expect("a file").to_owned();
+        let mut export = export;
+        export["file"] = json!(exported(&file));
+        let tallies = compare(
+            &json!({"designs": [original]}),
+            &json!({"designs": [export]}),
+            |_| false,
+        )
+        .expect("compared");
+        tallies.into_values().next().expect("one source")
+    }
+
+    const FILE: &str = "refs/loft-fixtures/a.ork";
 
     /// Two records of invented designs: one flown the same and a hair apart, one past the bar, one
     /// refused both ways alike and one not, one with a configuration only its export has; each
     /// lands where it should.
     #[test]
     fn records_compare_configuration_by_configuration() {
-        let flight = |id: &str, apogee: f64| {
-            json!({"configuration": id, "has_motors": true, "aborted": false,
-                   "summary": {"max_altitude_m": apogee}})
-        };
-        let design = |file: &str, flights: Vec<Value>| json!({"file": file, "flights": flights});
-        let refused = |file: &str| json!({"file": file, "refused": "no"});
-        let refused_otherwise = |file: &str| json!({"file": file, "refused": "other"});
         let originals = json!({"designs": [
             design("refs/loft-fixtures/a.ork", vec![flight("1", 100.0), flight("2", 200.0)]),
             design("refs/other/b.ork", vec![flight("1", 100.0)]),
-            refused("refs/other/c.ork"),
-            refused("refs/other/e.ork"),
+            refused("refs/other/c.ork", "no"),
+            refused("refs/other/e.ork", "no"),
             design("refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/d.ork", vec![flight("1", 50.0)]),
         ]});
         let exports = json!({"designs": [
             design("corpus-out/ork-export/refs/loft-fixtures/a.ork", vec![flight("1", 100.0), flight("2", 200.4)]),
             design("corpus-out/ork-export/refs/other/b.ork", vec![flight("1", 101.0)]),
-            refused("corpus-out/ork-export/refs/other/c.ork"),
-            refused_otherwise("corpus-out/ork-export/refs/other/e.ork"),
+            refused("corpus-out/ork-export/refs/other/c.ork", "no"),
+            refused("corpus-out/ork-export/refs/other/e.ork", "other"),
             design("corpus-out/ork-export/refs/openrocket/OpenRocket-24.12.jar/datafiles/examples/d.ork", vec![flight("1", 50.0), flight("9", 1.0)]),
         ]});
-        let tallies = compare(&originals, &exports).expect("compared");
+        let tallies = compare(&originals, &exports, |_| false).expect("compared");
         let library = &tallies["refs/loft-fixtures"];
         assert_eq!(
             (library.compared, library.identical, library.within),
             (2, 1, 2)
         );
-        assert_eq!(library.largest_percent, 0.2);
+        assert_eq!(
+            (library.designs_compared, library.largest_percent),
+            (1, 0.2)
+        );
         let elsewhere = &tallies["elsewhere under refs/"];
         assert_eq!(
             (
@@ -529,5 +744,103 @@ mod tests {
         let examples = &tallies["OpenRocket's examples"];
         assert_eq!((examples.identical, examples.unmatched), (1, 1));
         assert!(library.met() && !elsewhere.met() && !examples.met());
+    }
+
+    /// A configuration left unflown counts as flown neither way only when both flights say why
+    /// alike; otherwise it is unmatched, and the bar fails.
+    #[test]
+    fn unflown_configurations_must_be_unflown_alike() {
+        let alike = one(
+            design(FILE, vec![unpowered("1"), aborted("2", "tumbled")]),
+            design("", vec![unpowered("1"), aborted("2", "tumbled")]),
+        );
+        assert_eq!((alike.flown_neither, alike.unmatched), (2, 0));
+        assert!(alike.met());
+        for export in [
+            vec![unpowered("1")],
+            vec![aborted("1", "another cause")],
+            vec![flight("1", 10.0)],
+            vec![],
+        ] {
+            let apart = one(
+                design(FILE, vec![aborted("1", "tumbled")]),
+                design("", export),
+            );
+            assert_eq!((apart.flown_neither, apart.unmatched), (0, 1));
+            assert!(!apart.met());
+        }
+    }
+
+    /// The bar's edge: 0.5% passes, a hair more fails; an apogee at the launch compares only to
+    /// itself.
+    #[test]
+    fn the_tolerance_is_inclusive_and_a_zero_apogee_is_not_divided_by() {
+        let at = |after: f64| {
+            one(
+                design(FILE, vec![flight("1", 200.0)]),
+                design("", vec![flight("1", after)]),
+            )
+        };
+        assert!(at(201.0).met());
+        assert!(!at(201.0 + 1e-9).met());
+        let zero = |after: f64| {
+            one(
+                design(FILE, vec![flight("1", 0.0)]),
+                design("", vec![flight("1", after)]),
+            )
+        };
+        let same = zero(0.0);
+        assert_eq!(
+            (same.compared, same.identical, same.largest_percent),
+            (1, 1, 0.0)
+        );
+        let apart = zero(1.0);
+        assert_eq!((apart.compared, apart.unmatched), (0, 1));
+        assert!(!apart.met());
+    }
+
+    /// Each way a design can open or not: the bar fails unless the export does as the original.
+    #[test]
+    fn exports_open_as_their_originals_do() {
+        let opens = design(FILE, vec![flight("1", 10.0)]);
+        assert!(one(opens.clone(), opens.clone()).met());
+        let lost = one(opens.clone(), refused("", "no"));
+        assert_eq!((lost.originals_opened, lost.exports_opened), (1, 0));
+        assert!(!lost.met());
+        let gained = one(refused(FILE, "no"), opens);
+        assert_eq!(gained.only_exports_opened, 1);
+        assert!(!gained.met());
+        let alike = one(refused(FILE, "no"), refused("", "no"));
+        assert_eq!(alike.refused_both, 1);
+        assert!(alike.met());
+        assert!(!one(refused(FILE, "no"), refused("", "other")).met());
+    }
+
+    /// A design missing from one record: an original hpr can't read is counted as such, and any
+    /// other gap is an error, whichever record has it.
+    #[test]
+    fn a_design_missing_from_one_record_is_explained_or_refused() {
+        let originals = json!({"designs": [refused(FILE, "malformed")]});
+        let none = json!({"designs": []});
+        let unread = compare(&originals, &none, |_| true).expect("compared");
+        assert_eq!(unread["refs/loft-fixtures"].unread, 1);
+        assert!(unread["refs/loft-fixtures"].met());
+        assert!(compare(&originals, &none, |_| false).is_err());
+        let opened = json!({"designs": [design(FILE, vec![])]});
+        assert!(compare(&opened, &none, |_| true).is_err());
+        let extra = json!({"designs": [design(&exported(FILE), vec![])]});
+        assert!(compare(&none, &extra, |_| true).is_err());
+    }
+
+    /// An export's path leads back to its original's key, a jar entry's `!` included.
+    #[test]
+    fn export_paths_lead_back_to_their_originals() {
+        for file in [
+            FILE,
+            "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/d.ork",
+        ] {
+            assert_eq!(original_of(&exported(file)).as_deref(), Some(file));
+        }
+        assert_eq!(original_of("elsewhere/a.ork"), None);
     }
 }
