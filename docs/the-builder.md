@@ -177,8 +177,8 @@ The best delay is the time from [burnout](glossary.md#burnout), the end of the t
 apogee, so the charge fires at the top. It is 10.5 s on the H54, near the 10 s delay that motor's
 designation names. The H54 burns out at 3.5 s, so on the leaning rail at the top of this page its
 10 s delay fires at 13.5 s, 0.2 s before its apogee. The F52 wants 8 s. The F15 leaves the rail
-at only 10 m/s, the slowest of the three. That is when the fins steer least, so the F15 is the
-one most turned by the wind.
+at only 10 m/s, the slowest of the three, and a slow rocket's fins have the least air to
+steer with.
 
 ## Beyond the builder
 
@@ -193,7 +193,7 @@ crates the builder is made of.
   [`.ork` page](format/ork.md) shows. A second stage also needs a separation, and a recovery
   device on each part it makes, both added through `simulation()` below; the
   [`ork_two_stage` example](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)
-  flies one.
+  flies one, building its simulation with `Simulation::new` rather than through the builder.
 - **Change the flight.** A flight builder's `simulation()` hands over the simulation `fly()` would
   run. The `motor_choice` example passes it to `hpr_sim::metrics::optimum_delays`. The
   simulation's methods add a separation, events of your own, moving or released masses, or

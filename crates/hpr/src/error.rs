@@ -3,6 +3,7 @@
 use hpr_aero::AeroError;
 use hpr_atmos::AtmosError;
 use hpr_core::CoreError;
+use hpr_design::checks::Severity;
 use hpr_design::{DesignError, Finding};
 use hpr_motor::MotorError;
 use hpr_sim::SimError;
@@ -53,9 +54,9 @@ pub enum Error {
     /// The design's checks ([`hpr_design::checks`]) found errors: every finding, errors and
     /// warnings, in the checks' order.
     #[error(
-        "the design's checks found {} finding(s), errors among them; the first is {:?}",
+        "the design's checks found {} finding(s), errors among them; the first error is {}",
         .0.len(),
-        .0.first()
+        first_error(.0)
     )]
     DesignChecks(Vec<Finding>),
     /// From the design: its tree, parts and mass properties.
@@ -127,4 +128,12 @@ pub(crate) fn finite(what: &'static str, value: f64) -> Result<f64, Error> {
     } else {
         Err(Error::Domain { what, value })
     }
+}
+
+/// The first finding that is an error, for [`Error::DesignChecks`]'s message.
+fn first_error(findings: &[Finding]) -> String {
+    findings
+        .iter()
+        .find(|finding| finding.severity() == Severity::Error)
+        .map_or_else(|| "missing".to_owned(), |finding| format!("{finding:?}"))
 }

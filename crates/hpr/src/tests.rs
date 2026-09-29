@@ -614,14 +614,15 @@ fn degenerate_designs_error_or_stay_finite() {
     // NaN tokens, wherever a number goes.
     let (what, value) = domain(rocket.add_nose(Nose::solid(ogive, f64::NAN, abs())));
     assert!(what == "nose length, m" && value.is_nan());
-    // A shape parameter out of its range: a tangent ogive's radius ratio is at least 1.
+    // A shape parameter out of its range: an ogive's radius ratio, its arc's radius over a tangent
+    // ogive's, is at least the nose's radius over its length, 0.025 / 0.2 here.
     let short_arc = NoseShape::Ogive { radius_ratio: 0.1 };
     let design_domain = |result: Result<&mut Rocket, Error>| match result {
-        Err(Error::Design(DesignError::Domain { what, .. })) => what,
+        Err(Error::Design(DesignError::Domain { what, value })) => (what, value),
         other => panic!("expected the design's domain error, got {other:?}"),
     };
-    let what = design_domain(rocket.add_nose(Nose::solid(short_arc, 0.2, abs())));
-    assert!(what.contains("ogive"), "{what}");
+    let (what, value) = design_domain(rocket.add_nose(Nose::solid(short_arc, 0.2, abs())));
+    assert!(what.contains("ogive") && value == 0.1, "{what} {value}");
     let nan_wall = Nose::hollow(ogive, 0.2, f64::NAN, abs());
     assert_eq!(domain(rocket.add_nose(nan_wall)).0, "nose wall, m");
     let nan_tube = Tube::new(f64::INFINITY, 0.001, abs());
