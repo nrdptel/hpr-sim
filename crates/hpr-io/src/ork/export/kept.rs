@@ -2,9 +2,10 @@
 //! parts, sections, tags and attributes.
 //!
 //! A kept part goes back at its place among its parent's parts, since the order of parts is where
-//! they stack. A section or a tag goes back as the next of its name in its parent, which is where
-//! its path's count says it was ([`super::super::extensions`]); it is written before the parent's
-//! `<subcomponents>`, where OpenRocket writes its tags. An attribute goes back on its element.
+//! they stack. A section or a tag goes back as the next of its name in its parent — of its name
+//! and configuration, for a tag that belongs to one — which is where its path's count says it was
+//! ([`super::super::extensions`]); it is written before the parent's `<subcomponents>`, where
+//! OpenRocket writes its tags. An attribute goes back on its element.
 //!
 //! **What is kept wins over what is written.** A tag or attribute is kept when no reader asked for
 //! it, or when a reader asked and then dropped or simplified what it says, so that the design
@@ -18,7 +19,7 @@
 //! is left out with a warning rather than put somewhere it was not.
 
 use super::super::document::{Document, Element, Node};
-use super::super::extensions::OpenRocketExtension;
+use super::super::extensions::{OpenRocketExtension, tag_key};
 use super::super::warning::{Warning, WarningKind};
 use super::xml::{Build as _, element};
 
@@ -121,30 +122,44 @@ fn insert_part(document: &mut Document, at: &str, part: &Element) -> bool {
     true
 }
 
-/// Puts a section or a tag back as the next of its name in the element at its parent's path.
+/// Puts a section or a tag back as the next of its name in the element at its parent's path: the
+/// next of its name and configuration, for a tag that belongs to one.
 fn insert_tag(document: &mut Document, at: &str, tag: &Element) -> bool {
     let Some((parent, last)) = split(at) else {
         return false;
     };
-    let Some((name, index)) = step(last.strip_prefix('@').unwrap_or(last)) else {
-        return false;
+    let (key, index) = match last.strip_prefix('@') {
+        Some(last) => match step(last) {
+            Some((key, index)) if key == tag_key(tag) => (key.to_owned(), index),
+            _ => return false,
+        },
+        // A section's step counts among its name alone.
+        None => match step(last) {
+            Some((name, index)) if name == tag.name => (name.to_owned(), index),
+            _ => return false,
+        },
     };
-    if name != tag.name {
-        return false;
-    }
+    let tagged = last.starts_with('@');
+    let same = |element: &Element| {
+        if tagged {
+            tag_key(element) == key
+        } else {
+            element.name == key
+        }
+    };
     let Some(parent) = element_at_mut(document, parent) else {
         return false;
     };
     // Every copy of a name is kept or none is, so the first kept copy takes the place of what the
-    // writer wrote of that name.
+    // writer wrote of that name (and configuration).
     if index == 0 {
         parent
             .children
-            .retain(|child| !matches!(child, Node::Element(e) if e.name == name));
+            .retain(|child| !matches!(child, Node::Element(e) if same(e)));
     }
-    // Its count says how many of its name came before it, and they have all been put back by now:
+    // Its count says how many of its key came before it, and they have all been put back by now:
     // the extension lists them in document order.
-    if parent.children_named(name).count() != index {
+    if parent.elements().filter(|e| same(e)).count() != index {
         return false;
     }
     let place = parent
@@ -175,8 +190,15 @@ fn element_at_mut<'a>(document: &'a mut Document, at: &str) -> Option<&'a mut El
     for text in steps {
         if let Some(text) = text.strip_prefix('@') {
             in_tags = true;
-            let (name, index) = step(text)?;
-            here = nth_named(here, name, index)?;
+            let (key, index) = step(text)?;
+            here = here
+                .children
+                .iter_mut()
+                .filter_map(|child| match child {
+                    Node::Element(element) if tag_key(element) == key => Some(element),
+                    _ => None,
+                })
+                .nth(index)?;
         } else if rocket && !in_tags {
             let (name, index) = step(text)?;
             let holder = nth_named(here, "subcomponents", 0)?;

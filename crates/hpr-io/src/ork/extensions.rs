@@ -34,8 +34,14 @@
 //! among the parent's child elements of its own name: `openrocket/rocket/stage[0]/nosecone[0]/
 //! @appearance[0]` is the nose cone's first `<appearance>`, wherever it stood among the other
 //! tags. OpenRocket does not read meaning into the order of tags, and counting this way lets an
-//! export put each one back without knowing that order ([ADR-109][adr-109]). An attribute keeps
-//! the path of the element it was on. [`element_at`] follows a path back.
+//! export put each one back without knowing that order ([ADR-109][adr-109]). A tag that belongs
+//! to one configuration, by its `configid` attribute, names it in its step and counts only among
+//! the tags of its name for that configuration: `…/parachute[0]/@deploymentconfiguration(b)[0]`
+//! is the parachute's `<deploymentconfiguration>` for configuration `b`, wherever the file put it
+//! among the other configurations', since an export writes them in the design's order of
+//! configurations. A `configid` that is empty or holds a `/`, `(`, `)`, `[` or `]` is not named,
+//! and its tag counts among the others of its name that name none. An attribute keeps the path
+//! of the element it was on. [`element_at`] follows a path back.
 //!
 //! [l66]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l66
 //! [adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
@@ -169,11 +175,12 @@ fn unasked(element: &Element, at: &str, asked: &Reads, kept: &mut OpenRocketExte
     keep_attributes(element, at, asked, kept);
     let mut seen = Counter::default();
     for tag in element.elements() {
-        let index = seen.next(&tag.name);
+        let key = tag_key(tag);
+        let index = seen.next(&key);
         if tag.name == "subcomponents" {
             continue;
         }
-        let path = format!("{at}/@{}[{index}]", tag.name);
+        let path = format!("{at}/@{key}[{index}]");
         if reads::asked(asked, element, &tag.name) {
             unasked(tag, &path, asked, kept);
         } else {
@@ -239,10 +246,12 @@ pub fn element_at<'a>(document: &'a Document, at: &str) -> Option<&'a Element> {
         let index = rest.strip_suffix(']')?.parse().ok()?;
         Some((name.to_owned(), index))
     };
-    // A tag step, `@name[k]`: the k-th child element called `name`.
+    // A tag step, `@name[k]` or `@name(configid)[k]`: the k-th child element with that key.
     let tag = |here: &'a Element, text: &str| -> Option<&'a Element> {
-        let (name, index) = step(text.strip_prefix('@')?)?;
-        here.children_named(&name).nth(index)
+        let (key, index) = step(text.strip_prefix('@')?)?;
+        here.elements()
+            .filter(|child| tag_key(child) == key)
+            .nth(index)
     };
     match steps.next()? {
         "rocket" => {
@@ -285,6 +294,35 @@ pub fn element_at<'a>(document: &'a Document, at: &str) -> Option<&'a Element> {
             let section = root.children_named(&name).nth(index)?;
             steps.next().is_none().then_some(section)
         }
+    }
+}
+
+/// The key a tag's step names it by, which it counts among: its name, and, when it belongs to one
+/// configuration, that configuration's id in brackets, `deploymentconfiguration(b)`. The id is
+/// left out when it is empty or holds a character a path gives meaning to, `/`, `(`, `)`, `[` or
+/// `]`, so that the path still reads back.
+///
+/// The attribute is looked up directly rather than through [`Element::attribute`], so a path is
+/// never a read that [`reads`] records; the extension is read after the recording has stopped in
+/// any case ([`super::design`]).
+pub(crate) fn tag_key(element: &Element) -> String {
+    match element
+        .attributes
+        .iter()
+        .find(|(name, _)| name == "configid")
+    {
+        Some((_, configid)) => configuration_key(&element.name, configid),
+        None => element.name.clone(),
+    }
+}
+
+/// The key of the tag step for a `<name>` of configuration `configid`, as [`tag_key`] gives it
+/// for such an element.
+pub(crate) fn configuration_key(name: &str, configid: &str) -> String {
+    if configid.is_empty() || configid.contains(['/', '(', ')', '[', ']']) {
+        name.to_owned()
+    } else {
+        format!("{name}({configid})")
     }
 }
 

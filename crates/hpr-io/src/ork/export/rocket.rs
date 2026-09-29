@@ -36,7 +36,7 @@ use hpr_design::{Density, Finish, Material};
 use super::super::Design;
 use super::super::attached::cluster_pattern;
 use super::super::document::Element;
-use super::super::extensions::OpenRocketExtension;
+use super::super::extensions::{OpenRocketExtension, tag_key};
 use super::super::value::Dimension;
 use super::super::warning::{Warning, WarningKind};
 use super::xml::{self, Build as _};
@@ -1002,24 +1002,36 @@ impl<'a> Writer<'a> {
     /// OpenRocket writes twice, such as a fin tab's place, has its second copy's attributes kept,
     /// and they need it there to go back to. The copy carries the first one's text, as
     /// OpenRocket's does.
+    ///
+    /// A tag that belongs to one configuration is written once for it by its own writer, and is
+    /// not copied. A count is only believed as far as there could be copies to fill: the tags
+    /// written here and everything kept in this element, one copy each. A design edited or built
+    /// by hand could say `@length[2000000]`; what is kept there then has no place, and the splice
+    /// warns of it, rather than two million copies being written.
     fn copies(&self, element: &mut Element, at: &str) {
         let prefix = format!("{at}/@");
-        let steps: Vec<(String, usize)> = self
+        let paths: Vec<&str> = self
             .kept
             .tags
             .iter()
             .map(|kept| kept.at.as_str())
             .chain(self.kept.attributes.iter().map(|kept| kept.at.as_str()))
             .filter_map(|path| path.strip_prefix(&prefix))
+            .collect();
+        let most = element.elements().count().saturating_add(paths.len());
+        let steps: Vec<(String, usize)> = paths
+            .iter()
             .filter_map(|rest| {
                 let step = rest.split('/').next()?;
                 let (name, index) = step.split_once('[')?;
                 Some((name.to_owned(), index.strip_suffix(']')?.parse().ok()?))
             })
+            .filter(|(name, index)| !name.contains('(') && *index < most)
             .collect();
         for (name, index) in steps {
-            let have = element.children_named(&name).count();
-            let Some(text) = element.children_named(&name).next().map(Element::text) else {
+            let plain = |child: &&Element| tag_key(child) == name;
+            let have = element.elements().filter(plain).count();
+            let Some(text) = element.elements().find(plain).map(Element::text) else {
                 continue;
             };
             for _ in have..=index {

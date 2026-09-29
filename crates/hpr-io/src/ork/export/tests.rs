@@ -837,3 +837,101 @@ fn ids_openrocket_would_refuse_are_left_out() {
     assert_eq!(ids(is), ids(was));
     assert_eq!(ids(was)[1], "0f0e0d0c-0b0a-4900-8800-070605040302");
 }
+
+/// A design whose parts list their configurations' tags `b`'s first, while the rocket declares
+/// configuration `a` before `b`, the order the export writes them in. Each tag for `b` may hold
+/// something the reader drops, and so keeps: `b_motor` in its motor, `b_ignition` in its
+/// ignition, and `b_deploy` in its parachute's deployment.
+fn configurations_listed_backwards(b_motor: &str, b_ignition: &str, b_deploy: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Probe</name><referencetype>maximum</referencetype>
+    <motorconfiguration configid="a" default="true"><name>First</name></motorconfiguration>
+    <motorconfiguration configid="b"><name>Second</name></motorconfiguration>
+    <subcomponents><stage><name>Sustainer</name><id>sustainer</id><subcomponents>
+      <nosecone><name>Nose</name><id>nose</id>
+        <length>0.25</length><thickness>0.002</thickness><shape>conical</shape>
+        <aftradius>auto</aftradius></nosecone>
+      <bodytube><name>Tube</name><id>tube</id>
+        <length>0.8</length><thickness>0.0015</thickness><radius>0.05</radius>
+        <motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+          <overhang>0.005</overhang>
+          <motor configid="b"><type>single</type><manufacturer>Estes</manufacturer>
+            <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>
+            {b_motor}</motor>
+          <motor configid="a"><type>single</type><manufacturer>Estes</manufacturer>
+            <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>
+            <delay>none</delay></motor>
+          <ignitionconfiguration configid="b">{b_ignition}</ignitionconfiguration>
+          <ignitionconfiguration configid="a"><ignitionevent>burnout</ignitionevent>
+            <ignitiondelay>0.5</ignitiondelay></ignitionconfiguration>
+        </motormount>
+        <subcomponents>
+          <parachute><name>Main</name><id>main</id>
+            <axialoffset method="top">0.02</axialoffset>
+            <packedlength>0.08</packedlength><packedradius>0.02</packedradius>
+            <material type="surface" density="0.067">Invented nylon</material>
+            <deployevent>apogee</deployevent><deploydelay>0.0</deploydelay>
+            <deploymentconfiguration configid="b">{b_deploy}</deploymentconfiguration>
+            <deploymentconfiguration configid="a"><deployevent>altitude</deployevent>
+              <deployaltitude>200.0</deployaltitude></deploymentconfiguration>
+            <diameter>0.9</diameter><linecount>8</linecount><linelength>0.8</linelength>
+            <linematerial type="line" density="0.0023">Invented line</linematerial></parachute>
+        </subcomponents></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#
+    )
+}
+
+/// A tag that belongs to one configuration is kept by that configuration, not by its place in
+/// the file. Here each part lists configuration `b`'s tag before `a`'s, and the export writes
+/// `a`'s first, in the design's order; what the reader kept from `b`'s tag — an empty deployment
+/// event, an unreadable motor delay or ignition delay — must go back into `b`'s tag, where it
+/// changes nothing `a` says. Counted by place, it would land in `a`'s and replace what `a` says:
+/// `a`'s parachute would open at apogee, its motor would lose its plug, or its ignition its
+/// delay. The design and the reader's warnings come back the same, and it is written the same
+/// again.
+#[test]
+fn a_configurations_kept_tags_go_back_to_that_configuration() {
+    for (b_motor, b_ignition, b_deploy) in [
+        (
+            "<delay>4</delay>",
+            "<ignitionevent>ejection</ignitionevent>",
+            "<deployevent></deployevent>",
+        ),
+        (
+            "<delay>soon</delay>",
+            "<ignitionevent>ejection</ignitionevent>",
+            "<deployevent>altitude</deployevent><deployaltitude>150</deployaltitude>",
+        ),
+        (
+            "<delay>4</delay>",
+            "<ignitionevent>ejection</ignitionevent><ignitiondelay>soon</ignitiondelay>",
+            "<deployevent>altitude</deployevent><deployaltitude>150</deployaltitude>",
+        ),
+    ] {
+        let xml = configurations_listed_backwards(b_motor, b_ignition, b_deploy);
+        let xml = super::rocket::tests::uuids(&xml);
+        let original = design(&read(xml.as_bytes()).expect("readable").value);
+        assert!(!original.warnings.is_empty(), "b's tag drops something");
+        assert!(!original.value.extensions.x_openrocket.tags.is_empty());
+        let written = document(&original.value);
+        assert!(written.warnings.is_empty(), "{:?}", written.warnings);
+        let text = written.value.to_xml();
+        let back = design(&read(text.as_bytes()).expect("readable").value);
+        assert_eq!(back.value, original.value, "{text}");
+        assert_eq!(back.warnings, original.warnings, "{text}");
+        assert_eq!(document(&back.value).value.to_xml(), text);
+        // `a` still says what it said.
+        let root = root_of(&text);
+        let parachute = by_id(&root, "main");
+        let a = for_configuration(parachute, "deploymentconfiguration", "a");
+        assert_eq!(text_of(a, "deployevent").as_deref(), Some("altitude"));
+        let mount = by_id(&root, "tube").child("motormount").expect("a mount");
+        let a = for_configuration(mount, "motor", "a");
+        assert_eq!(text_of(a, "delay").as_deref(), Some("none"));
+        let a = for_configuration(mount, "ignitionconfiguration", "a");
+        assert_eq!(text_of(a, "ignitiondelay").as_deref(), Some("0.5"));
+    }
+}

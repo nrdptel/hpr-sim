@@ -36,20 +36,25 @@ use hpr_motor::Delay;
 
 use super::super::Design;
 use super::super::document::Element;
+use super::super::extensions::{Counter, configuration_key};
 use super::super::motors::{Ignition, MotorConfiguration, OrkMotor};
 use super::xml::{self, Build as _};
 
 /// The tags the rocket itself carries for its motors: one `<motorconfiguration>` per
 /// configuration it declared.
 pub(super) fn rocket(design: &Design) -> Vec<Element> {
+    let mut seen = Counter::default();
     design
         .motors
         .configurations
         .iter()
         .filter(|configuration| configuration.declared)
-        .enumerate()
-        .map(|(index, configuration)| {
-            let flying = flying_flags(design, index);
+        .map(|configuration| {
+            // The step of its `<motorconfiguration>` in a kept path, as the extension counts it.
+            let key = configuration_key("motorconfiguration", &configuration.id);
+            let index = seen.next(&key);
+            let at = format!("openrocket/rocket/@{key}[{index}]");
+            let flying = flying_flags(design, &at, configuration.inactive_stages.len());
             motor_configuration(configuration, &flying)
         })
         .collect()
@@ -93,14 +98,30 @@ enum Flag {
     On,
 }
 
-/// The places among the `<stage>` flags of the `index`-th `<motorconfiguration>` where the file
-/// had a flag whose number the design keeps: a stage that flies.
-fn flying_flags(design: &Design, index: usize) -> BTreeSet<usize> {
-    let prefix = format!("openrocket/rocket/@motorconfiguration[{index}]/@stage[");
-    design
-        .extensions
-        .x_openrocket
-        .attributes
+/// The places among the `<stage>` flags of the `<motorconfiguration>` at path `at`, which switches
+/// off `inactive` stages, where the file had a flag whose number the design keeps: a stage that
+/// flies.
+///
+/// A place is only believed as far as there could be flags to fill it: one for each stage
+/// switched off, each thing kept in the configuration, and each stage the rocket has or keeps.
+/// A design edited or built by hand could say `@stage[2000000]`; the number kept there then has
+/// no place, and the splice warns of it, rather than two million flags being written.
+fn flying_flags(design: &Design, at: &str, inactive: usize) -> BTreeSet<usize> {
+    let kept = &design.extensions.x_openrocket;
+    let inside = format!("{at}/");
+    let within = kept
+        .tags
+        .iter()
+        .map(|kept| kept.at.as_str())
+        .chain(kept.attributes.iter().map(|kept| kept.at.as_str()))
+        .filter(|path| path.starts_with(&inside))
+        .count();
+    let most = inactive
+        .saturating_add(within)
+        .saturating_add(design.rocket.stages.len())
+        .saturating_add(kept.parts.len());
+    let prefix = format!("{inside}@stage[");
+    kept.attributes
         .iter()
         .filter(|attribute| attribute.name == "number")
         .filter_map(|attribute| {
@@ -111,6 +132,7 @@ fn flying_flags(design: &Design, index: usize) -> BTreeSet<usize> {
                 .parse()
                 .ok()
         })
+        .filter(|&place: &usize| place < most)
         .collect()
 }
 
@@ -123,7 +145,8 @@ fn flying_flags(design: &Design, index: usize) -> BTreeSet<usize> {
 /// flag that left no trace in the design, one that flies with no number: it is written as one.
 fn stage_flags(inactive: &[Option<u32>], flying: &BTreeSet<usize>) -> Vec<Flag> {
     let mut off = inactive.iter();
-    let last = flying.last().map_or(0, |last| last + 1);
+    // `flying_flags` bounds every place well below `usize::MAX`; saturating says so anyway.
+    let last = flying.last().map_or(0, |last| last.saturating_add(1));
     let mut flags = Vec::with_capacity(inactive.len() + flying.len());
     for place in 0.. {
         if flying.contains(&place) {
@@ -227,6 +250,7 @@ pub(super) mod tests {
     use hpr_design::tree::Component;
 
     use super::super::super::document::{Document, Element, Node};
+    use super::super::super::extensions::tag_key;
     use super::super::super::motors::{CaseSize, Curve, IgnitionEvent, SuppliedCurves};
     use super::super::super::{Design, OrkFile, design_with, read};
     use super::super::recovery;
@@ -346,10 +370,18 @@ pub(super) mod tests {
     /// are spliced into rather than written from nothing.
     fn numbers_back(design: &Design, root: &mut Element) {
         for attribute in &design.extensions.x_openrocket.attributes {
-            let Some((configuration, flag)) = attribute
+            // `…/@motorconfiguration(id)[k]/@stage[f]`, or with no id where the file named none.
+            let Some((key, configuration, flag)) = attribute
                 .at
-                .strip_prefix("openrocket/rocket/@motorconfiguration[")
+                .strip_prefix("openrocket/rocket/@")
                 .and_then(|rest| rest.split_once("]/@stage["))
+                .and_then(|(step, flag)| {
+                    let (key, configuration) = step.split_once('[')?;
+                    Some((key, configuration, flag))
+                })
+                .filter(|(key, _, _)| {
+                    *key == "motorconfiguration" || key.starts_with("motorconfiguration(")
+                })
             else {
                 continue;
             };
@@ -360,7 +392,16 @@ pub(super) mod tests {
                 continue;
             };
             let on = nth(root, "rocket", 0)
-                .and_then(|rocket| nth(rocket, "motorconfiguration", configuration))
+                .and_then(|rocket| {
+                    rocket
+                        .children
+                        .iter_mut()
+                        .filter_map(|child| match child {
+                            Node::Element(e) if tag_key(e) == key => Some(e),
+                            _ => None,
+                        })
+                        .nth(configuration)
+                })
                 .and_then(|element| nth(element, "stage", flag));
             if let Some(on) = on
                 && on
