@@ -119,6 +119,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-100: A motor whose ignition never comes flown unlit][adr-100] | [M2.2e10](#m2-2e10) flies a `.ork` motor set `never`, or lit at an event that never comes (`burnout` or `ejectioncharge` in the bottom stage, or a plugged motor's charge), unlit and loaded, as OpenRocket does on five probes of its two-stage example; a separation at such a motor's burnout or charge never comes. One more private design flies, 0.88% above OpenRocket in apogee, which makes the 20 designs [M2.2](#m2-2) asks for. It corrects [ADR-076][adr-076]'s reading of one private record |
 | [ADR-101: OpenRocket's mass conventions rolled up][adr-101] | [M2.2b](#m2-2b) closes: each mass convention OpenRocket was found to follow is hpr's rule or a departure pinned by a test. The corpus survey, run again on 71 files (51 distinct by content), has mass and centre of mass within 1% on 68, pitch inertia on 56 and roll inertia on 57 with OpenRocket's fin shortcut; each file outside in mass, centre or roll has a named cause ([mass page](physics/mass.md#checked-against-openrocket)). The comparison as a whole stays open for two Loft lessons, [L19](#l19) and [L82](#l82), moved to [M2.2f](#m2-2f) |
 | [ADR-102: Tube fins' centre of pressure measured against OpenRocket][adr-102] | [M2.2f](#m2-2f) keeps OpenRocket 24.12's answers for tube fins as a record: 14 probe designs and its *Tube fin rocket*, at five Mach numbers. Its tubes lift 1.26 to 1.86 times what hpr's ring wings do, the same per tube whatever their number, and act a quarter of their length aft of the leading edge up to Mach 0.5, its flat fins' rule. No measurement supports either, so hpr keeps its model; slender-body theory adds a body interference that hpr leaves out and OpenRocket does not vary with the count ([#234](https://github.com/nrdptel/hpr-sim/issues/234)). [L19](#l19)'s quarter-calibre bar is not met: up to Mach 0.5 hpr's centre of pressure is 0.42 to 3.0 calibres forward of OpenRocket's, 1.07 on the *Tube fin rocket*, and a test pins each gap ([tube fins](physics/aero.md#tube-fins)) |
+| [ADR-103: The builder API wraps the crates' own types, with no default materials][adr-103] | [M4.1](#m4-1) is split: the builder first ([M4.1a](#m4-1a)), then models of your own and a guide in the API reference ([M4.1b](#m4-1b)). The builder's `Environment`, `Motor`, `Rocket` and `Flight` make the crates' own design tree and simulation and hand them over, so no physics is written twice. Every part names its material and wall, since a default would be a guess at the rocket's mass. Degenerate numbers are refused where they are given, each by name ([L95](#l95); [The builder](the-builder.md)) |
 
 ## The roadmap
 
@@ -299,6 +300,8 @@ missing or its status disagrees.
 | <a id="m1-13c1"></a>[M1.13c1][phase-1] | Pods fly: each pod's parts with Barrowman's normal force and their own drag, once per pod ([ADR-092][adr-092], [aerodynamics: Pods](physics/aero.md#pods)) | done |
 | <a id="m1-13c2"></a>[M1.13c2][phase-1] | A pod design with bodies and fins against OpenRocket, the limits of both codes' pod models stated ([ADR-093][adr-093], [aerodynamics: Pods](physics/aero.md#pods)) | done |
 | <a id="m4-1"></a>[M4.1][phase-2] | A simpler interface, with a builder for environments, motors, rockets and flights | not yet done |
+| <a id="m4-1a"></a>[M4.1a][phase-2] | The builder: environments, motors, rockets part by part, and flights, over the crates' own types ([ADR-103][adr-103], [The builder](the-builder.md)) | done |
+| <a id="m4-1b"></a>[M4.1b][phase-2] | Models of your own: a drag model the flight calls in place of hpr's, through a trait, with a guide in the API reference | not yet done |
 | <a id="m4-2"></a>[M4.2][phase-2] | A command-line tool | not yet done |
 | <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | not yet done |
 | <a id="m3-3"></a>[M3.3][phase-2] | hpr's own open design file format | not yet done |
@@ -421,6 +424,7 @@ is the milestone that added or will add that test.
 | <a id="l91"></a>[L91][lessons-tests] | Exact volumes of nose cones (cone, tangent ogive, Haack), which hpr's tests check | [M1.4a](#m1-4a) |
 | <a id="l93"></a>[L93][lessons-tests] | Staging: the sustainer lights at the booster's burnout plus its delay, the mass steps at the separation, and a trigger never reached lights nothing | [M1.9a](#m1-9a) |
 | <a id="l94"></a>[L94][lessons-tests] | The optimum ejection delay must come out the same whether the delay flown opens the parachute early or late | [M1.10a](#m1-10a) |
+| <a id="l95"></a>[L95][lessons-tests] | A degenerate design, with a zero radius, a NaN, no fins or a negative mass, must be refused or fly to finite numbers, never to a NaN | [M4.1a](#m4-1a) |
 
 [adr-000]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-000-kickoff-decisions-2026-09-16
 [adr-001]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-001-license-and-workspace-layout-2026-09-17
@@ -523,6 +527,7 @@ is the milestone that added or will add that test.
 [adr-100]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-100-a-motor-whose-ignition-never-comes-flown-unlit-as-openrocket-flies-it-2026-09-28
 [adr-101]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-101-openrockets-mass-conventions-rolled-up-m22-left-open-for-two-lessons-2026-09-28
 [adr-102]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-102-tube-fins-centre-of-pressure-measured-against-openrocket-l19s-bar-not-met-the-gap-pinned-2026-09-28
+[adr-103]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-103-the-builder-api-wraps-the-crates-own-types-with-no-default-materials-2026-09-28
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

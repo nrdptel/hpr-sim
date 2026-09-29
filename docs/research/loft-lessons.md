@@ -164,7 +164,7 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 | L92 | Terminal descent: 1.1 kg, Cd 0.8, 1 m canopy, ρ 1.225, g 9.80665, canopy drag only, gives 5.294 m/s (Loft allowed ±30%) | lib/sim/simulate.test.ts:166-201 | M1.7a | `hpr_sim::recovery::tests::descent_rate_equals_terminal_velocity` |
 | L93 | Staging: sustainer lights at booster burnout plus delay, mass steps at separation, an unreachable trigger never lights | lib/sim/staging.test.ts:267-311,687-800 | M1.9a, M1.9 | `hpr_sim::staging::tests::serial_plan_timing_and_mass_step` |
 | L94 | Optimum delay is the same whether the flown delay is early or late | lib/sim/flight.test.ts:1044-1063 | M1.10a, M1.10 | `hpr_sim::metrics::tests::optimum_delay_independent_of_flown_delay` |
-| L95 | Degenerate designs (zero radius, NaN tokens, zero fins, negative mass) must error or stay finite | lib/sim/robustness.test.ts:41-62 | M4.1 | `hpr::tests::degenerate_designs_error_or_stay_finite` |
+| L95 | Degenerate designs (zero radius, NaN tokens, zero fins, negative mass) must error or stay finite | lib/sim/robustness.test.ts:41-62 | M4.1a, M4.1 | `hpr::tests::degenerate_designs_error_or_stay_finite` |
 | L96 | Monte Carlo: same seed gives identical samples; zero dispersion gives sd 0 and the nominal flight | lib/sim/montecarlo.test.ts:37-310 | M6.1 | `hpr_analysis::montecarlo::tests::zero_dispersion_reproduces_nominal_flight` |
 | L97 | Ballast trim: CP 0.80 m, CG 0.55 m, 2 kg, d 0.1 m, nose 0.15 m gives 0.285714 kg for 3.0 cal; a sized canopy lands within 3% of target | lib/sim/trim.test.ts:14-72; lib/sim/recovery.test.ts:55-80 | M8.1 | `hpr_design::assist::tests::ballast_and_canopy_sizing_round_trip` |
 

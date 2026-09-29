@@ -4,14 +4,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.1 (the
-  facade API). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2, M2.3a-b, M2.4, M3.1.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.1b (custom
+  models, rustdoc guide). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1a.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-28; M2.2f closed M2.2 (ADR-102): L82 live, L19 not met and pinned.
+- **Last updated:** 2026-09-28; M4.1a shipped the builder (ADR-103): L95 live.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** nothing in flight; start M4.1. Tube fins: OR's slope and centre per part
+- **Next (resume here):** start M4.1b. Plan (ADR-103): a `DragModel` trait in `hpr-aero` beside
+  `AeroModel`'s `drag_table` (the table's path is the template), `Simulation::with_drag_model`
+  (sets `aero_overridden`), a `FlightBuilder` hook, then `custom_drag` and two more examples in
+  `crates/hpr/examples` and a `hpr::guide` module. Builder: `the-builder.md`. Tube fins: OR's slope and centre per part
   in `openrocket-tube-fin-aero.json` (`tube_fin_aero.py`, ADR-102); a new OR with #3235 moves its
   centre past Mach 0.5; body interference open (#234). #185: `unlit_motors.py`. Tube-fin drag likely low (#228);
   public drag curves: `PUBLIC_DRAG_CURVES`'s doc. Library runs need `drag_curves.py` (ADR-097).
@@ -57,11 +60,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-28: M4.1a The builder (ADR-103): `own_rocket`'s rocket flown bit for bit; L95 pinned, 8 designs; 2 examples.
 - 2026-09-28: M2.2f, M2.2 closed (ADR-102): L82 live; L19 not met: tube-fin CP 0.42-3.0 cal fwd of OR's to Mach 0.5 on 14 probes, pinned.
 - 2026-09-28: M2.2b OR's mass conventions rolled up (ADR-101): rerun 68/71 mass and CG within 1%; L51, L87 owned.
-- 2026-09-28: M2.2e10 Never-lit motors (ADR-100): 5 OR probes; `C04` flies, +0.88%; 20 designs, M2.2e met.
-- 2026-09-28: M2.2e8, e9 Tube fins (ADR-098, 099): `auto` radius on 19 OR probes to 1e-15; ring wings, the example +6.95%, +0.03% on OR's drag.
-- 2026-09-28: M2.2e5-e7 Tilted rod, old flag, fillets, a bore's auto radius (ADR-094 to 097): 36 OR probes; `C12`, `C05`, `C01`, `C06` fly; `C10` not (#184).
+- 2026-09-28: M2.2e5-e10 Rods, fillets, tube fins, never-lit motors (ADR-094 to 100): 60 OR probes; 20 designs fly, M2.2e met.
 - 2026-09-27: M1.13 Pods (a to c2, ADR-089 to ADR-093): mass and placement to 1e-15; aero to 1e-11 by hand; 6 OR probes within 0.81%.
 - 2026-09-26: M1.11a, b, M1.12 Pieces, tumbling, moving mass (ADR-085 to 088): `v_e` to 0.1%; hand values to 1e-15.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
@@ -82,9 +84,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-098, 099, 102 (M2.2e8, e9, f): tube fins close the ring, 8 at most; ring wings, no interference;
-  centre past `A=2/3` a judgement; L19 left unmet, not bought with OR's unmeasured slope and centre.
-- ADR-096, 097 (M2.2e7): fillets a section prism; a nose's `auto` bore; drag causes on OR's drag.
+- ADR-103 (M4.1a): the builder wraps the crates' types, no default materials; M4.1 split a, b.
+- ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings,
+  8 at most; L19 left unmet, not bought with OR's unmeasured slope and centre.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; tumble
   areas integrated; a shift's cycloid; a released part at `v_O + ω×c`; pods one stack repeated,
@@ -94,10 +96,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-071 to ADR-076: M2.2e's corpus is the library's 27 `.ork` (`.CDX1`, `.rkt` wait, #168); private
   flights by id, differences only; public copies out; a cause sized by OR flying without it; M1.9's
   body 0 flies on, a motor per tube.
-- ADR-068, ADR-069: M2.2d split; OR flies public designs in calm air, speed point "unstated"; hpr
-  flies OR's record unrecovered, design checks recorded, causes named.
-- ADR-062 to ADR-066: M2.2b2-b5, c split; exact fin inertia and sections, clusters, fillets pinned
-  as departures; packed parts as OR packs them; screens apart; the oracle integrates one file twice.
+- ADR-062 to ADR-069: M2.2b2-d split; exact fin inertia, fillets pinned as departures; packed parts
+  as OR packs them; OR flies public designs in calm air; hpr flies OR's record unrecovered.
 - ADR-059 to ADR-061: key geometry agrees unless apart from RocketSerializer and OR; no `orhelper`;
   M2.2 split a to e, mass first, thresholds set first; a `.ork`'s unsaid is OR's.
 - ADR-055 to ADR-058: a motor's curve is its file's own first; only what lights at launch flies;

@@ -4,7 +4,7 @@
 from the source by rustdoc, Rust's documentation tool.** Use it when you write a program with
 hpr-sim, as [Getting started](getting-started.md) does. This page says which crate holds what, and
 links each crate's reference. The library is pre-alpha: none of its interface is stable yet, any of
-it can change, and a simpler one is planned ([M4.1](decisions-and-roadmap.md#m4-1), a builder API).
+it can change, and the simplest way in is the `hpr` crate's builder ([The builder](the-builder.md)).
 
 **Where to read it.** On the site, the crate names below open the reference. On GitHub they lead
 nowhere, because the reference is built rather than stored in the repository. Build it on your own
@@ -27,10 +27,11 @@ Each crate's front page links back to the pages here that explain its models.
 
 hpr-sim is split into [crates](glossary.md#crate), Rust's packages, so that a program takes only
 what it needs, and so that the models, which don't read or write files or use the network, also
-build for the web. Seven crates hold most of the code today:
+build for the web. Eight crates hold most of the code today:
 
 | crate | what it holds | not yet | the guide's pages |
 |---|---|---|---|
+| [`hpr`](api/hpr/index.html) | One crate to depend on: the builder for environments, motors, rockets and flights, the other crates re-exported by name, and [`hpr::ork::separation`](api/hpr/ork/fn.separation.html), which turns a `.ork` file's staging into a flight's separation ([example](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)) | Models of your own through traits, and a guide in the reference ([M4.1b](decisions-and-roadmap.md#m4-1b)); one motor per built rocket | [The builder](the-builder.md) |
 | [`hpr_core`](api/hpr_core/index.html) | Vectors and quaternions (a compact way to store a rotation), frames, the Earth's shape and gravity, interpolation tables and numerical integration of functions | | [Frames](physics/frames.md), [Geodesy](physics/geodesy.md), [Gravity](physics/gravity.md), [Interpolation tables](physics/interpolation.md), [Adaptive quadrature](physics/quadrature.md) |
 | [`hpr_atmos`](api/hpr_atmos/index.html) | The standard atmosphere, humidity, soundings, wind profiles and turbulence | A flight doesn't use the turbulence yet | [Atmosphere](physics/atmosphere.md), [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
 | [`hpr_motor`](api/hpr_motor/index.html) | Solid motors: thrust curves, mass and inertia through the burn, `.eng` and `.rse` files, and the [32 bundled curves](physics/motor.md#the-bundled-motors) | Hybrid and liquid motors, which are out of scope | [Solid motors](physics/motor.md), [`.eng` files](format/eng.md), [`.rse` files](format/rse.md) |
@@ -39,12 +40,11 @@ build for the web. Seven crates hold most of the code today:
 | [`hpr_sim`](api/hpr_sim/index.html) | The flight: the launch rail, the equations of motion, time integration, events and recovery | Staging and [air starts](glossary.md#air-start) fly, checked by tests and against OpenRocket's two-stage, cluster and air-start examples, each flight within 5% in apogee and largest speed ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket). Three cluster apogees are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee. A [cluster](glossary.md#cluster) flies, one mount of several tubes or one mount per motor, and so does a motor out, checked by tests against a hand calculation. A nose cone, a section or a payload can leave the airframe, optionally pushed by its charge, and land on its own under its own parachute or tumbling ([ejection](glossary.md#ejection), [M1.11a](decisions-and-roadmap.md#m1-11a), [M1.11b](decisions-and-roadmap.md#m1-11b)), checked against exact answers only. | [How a flight is simulated](how-a-flight-is-simulated.md), [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md), [Recovery](physics/recovery.md), [Staging](physics/staging.md) |
 | [`hpr_validate`](api/hpr_validate/index.html) | The validation harness: cases, reference data, metrics and reports | Whole flights against RocketPy ([M2.1b2](decisions-and-roadmap.md#m2-1b2)) | [Accuracy](accuracy.md), [Checking a claim](checking-a-claim.md) |
 
-The other nine crates are for planned work. Each has a front page that says what it will hold.
-Two already hold some code, `hpr` and `hpr_io`, as their rows say:
+The other eight crates are for planned work. Each has a front page that says what it will hold.
+One already holds some code, `hpr_io`, as its row says:
 
 | crate | what it will hold | planned in |
 |---|---|---|
-| [`hpr`](api/hpr/index.html) | One crate to depend on, with a builder for environments, motors, rockets and flights. Today it holds only [`hpr::ork::separation`](api/hpr/ork/fn.separation.html), which turns a `.ork` file's staging into a flight's separation ([example](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)) | [M4.1](decisions-and-roadmap.md#m4-1) |
 | [`hpr_format`](api/hpr_format/index.html) | hpr's own design file format | [M3.3](decisions-and-roadmap.md#m3-3) |
 | [`hpr_io`](api/hpr_io/index.html) | Import and export of OpenRocket, RockSim and RASAero designs, export to RocketPy, and OpenRocket's parts database. A `.ork` file's container, design document and components are read into a design ([the format page](format/ork.md)); so are its motors, when each lights, and its recovery settings. One powered separation comes out as a [`Staging`](api/hpr_io/ork/staging/struct.Staging.html): its time is known before the flight, and then a motor ahead of it is still burning or yet to light and none behind it is. Any other separation that could come before apogee is refused, a sustainer already burnt out at the split included. The configuration's rocket doesn't carry the `Staging`: [`hpr::ork::separation`](api/hpr/ork/fn.separation.html) turns it into the flight's separation, which you pass to the flight yourself, with a recovery device on each part, since hpr refuses the flight without them ([example](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs)); parachutes are read but not flown yet. An ERA5 weather file (netCDF classic) gives the atmosphere over a launch site at launch time ([ERA5 weather files](format/era5.md)) | [M3.1a](decisions-and-roadmap.md#m3-1a) and [M2.3a](decisions-and-roadmap.md#m2-3a) done; [M3.1b](decisions-and-roadmap.md#m3-1b) to [M3.6](decisions-and-roadmap.md#m3-6), [M5.5](decisions-and-roadmap.md#m5-5) next |
 | [`hpr_net`](api/hpr_net/index.html) | Optional online data, cached for offline use: weather, soundings, elevation and motor data | [M5.1](decisions-and-roadmap.md#m5-1) |

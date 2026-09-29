@@ -639,15 +639,9 @@
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
   - Mean absolute apogee error is reported against the 5% target.
   - Each outlier has an explanation.
-  - [x] **M2.3a ERA5 weather.** netCDF classic read from the specification; ERA5 levels at a site.
-    *Done when:* classic and 64-bit offset files read value for value as the Unidata library reads
-    them (every type, records, the lone-record padding, packing), the Users Guide's departures
-    from netCDF4-python pinned, netCDF-4 and CDF-5 refused with the conversion; ERA5 levels at
-    Bella Lui's and NDRT 2020's sites on the hour match RocketPy 1.13's reading (temperature,
-    wind, geopotential height) to 1e-12, between hours weighted in time, the height conversion's
-    difference published with numbers; the Data Store's netCDF-4 file for NDRT 2020, converted as
-    the guide says, reads like the older file of the same analysis; and a guide page explains
-    getting, converting and reading an ERA5 file, with an example CI runs.
+  - [x] **M2.3a ERA5 weather.** Met: netCDF classic and 64-bit offset read as Unidata's library
+    reads them, netCDF-4 refused with the conversion; ERA5 levels match RocketPy 1.13's to 1e-12;
+    a guide page and an example CI runs.
   - [x] **M2.3b RocketPy's logged flights.** Met (ADR-082): seven flights in their ERA5 weather,
     apogee and ascent RMS each, hpr read as the logs' barometers; mean absolute apogee error 6.04%
     against 5%, outside it; the five outliers explained (drag, impulse) by claims the report checks.
@@ -710,19 +704,13 @@
   - [x] **M1.13b `.ork` pods**, read into `PodSet`. *Done when:* `cargo xtask ork` reads and counts
     every corpus pod set, and their parts' cached numbers are held as the airframe's are. Split
     b1, b2 (ADR-090). *Result:* met: 9 of 9 read (12 pods), cached numbers 71 of 75 agree.
-    - [x] **M1.13b1 Pods of body components.** *Done when:* every corpus pod set is counted; those
-      whose pods are body components with a length are read, each part placed as OpenRocket 24.12
-      places it; and their parts' cached numbers are held. *Result:* met: 5 of 9 read (8 pods),
-      placed to 1e-15 m on 9 probes; cached numbers 71 of 75 agree, the pods' 4 among them.
-    - [x] **M1.13b2 Pods of no length**, which hang fins off the axis, and an empty pod set.
-      *Done when:* M1.13b's bullet is met: the 4 pod sets b1 leaves out are read. *Result:* met
-      (ADR-091): all 4 read; fin roots and lug axes in pods where OpenRocket puts them to 1e-15 m.
+    - [x] **M1.13b1 Pods of body components.** Met: 5 of 9 read, placed as OpenRocket places
+      them to 1e-15 m on 9 probes.
+    - [x] **M1.13b2 Pods of no length**, and an empty pod set. Met (ADR-091): the other 4 read.
   - [x] **M1.13c Pod aerodynamics**, from a cited source. *Done when:* the second bullet is met.
     Split c1, c2 (ADR-092). *Result:* met by c2.
-    - [x] **M1.13c1 Pods fly**, each pod's parts on Barrowman's rules, once per pod. *Done when:*
-      a pod's normal force, centre of pressure, drag and roll damping match hand-worked values from
-      the cited equations, and a design with pods flies. *Result:* met: 1e-11 and 1e-12, fins'
-      damping to hand-summed strips 1e-7; a private lug-pod design within 2.2% of OpenRocket.
+    - [x] **M1.13c1 Pods fly**, each pod's parts on Barrowman's rules, once per pod. Met: hand
+      values to 1e-11; a private lug-pod design within 2.2% of OpenRocket.
     - [x] **M1.13c2 A pod design against OpenRocket.** *Done when:* the second bullet is met by a
       pod design with bodies and fins, as probes flown in OpenRocket. *Result:* met (ADR-093): six
       probes, apogee +0.41% to +0.81%, speed to +1.24%, the pods' change within 0.32 points.
@@ -736,6 +724,17 @@
   - The examples run in CI.
   - rustdoc has zero warnings.
   - A "custom aero model" example overrides a built-in model through the trait.
+
+  Split into a and b (ADR-103).
+  - [x] **M4.1a The builder.** `Environment`, `Motor`, `Rocket` (parts from the nose back, one
+    motor tube, parachutes) and `Flight`, over the crates' own types.
+    - Loft lessons: L95.
+    *Done when:* the builder's rocket is `own_rocket.rs`'s, flown bit for bit the same; L95's test
+    passes, each refusal pinned; two builder examples run in CI; a guide page explains it.
+    *Result:* met (ADR-103): equal `FlightResult`s; 8 spoiled designs, 7 refused by part, 1 finite.
+  - [ ] **M4.1b Custom models and the rustdoc guide.** A drag-model trait the flight calls in
+    place of hpr's own, the custom aero example, two more examples, and a rustdoc guide. *Done
+    when:* the three bullets above are met with at least 4 builder examples.
 
 - [ ] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|analyze|diagnose` (stubs
   are fine for commands whose milestone hasn't come yet), `--json` everywhere, and shell
