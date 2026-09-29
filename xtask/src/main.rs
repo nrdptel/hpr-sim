@@ -35,6 +35,7 @@ mod layering;
 mod ork;
 mod ork_corpus_flights;
 mod ork_export;
+mod ork_export_flights;
 mod ork_extensions;
 mod ork_flights;
 mod ork_geometry;
@@ -70,6 +71,7 @@ Commands:
 {EXAMPLES}
 {ORK}
 {ORK_FLIGHTS}
+{ORK_EXPORT_FLIGHTS}
 {REAL_FLIGHTS}
   help                     Print this message.";
 
@@ -85,6 +87,7 @@ fn usage() -> String {
         .replace("{EXAMPLES}", examples::USAGE)
         .replace("{ORK}", ork::USAGE)
         .replace("{ORK_FLIGHTS}", ork_flights::USAGE)
+        .replace("{ORK_EXPORT_FLIGHTS}", ork_export_flights::USAGE)
         .replace("{REAL_FLIGHTS}", real_flights::USAGE)
 }
 
@@ -102,6 +105,7 @@ fn main() -> ExitCode {
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
         Some("ork") => ork::run(&args.collect::<Vec<_>>()),
         Some("ork-flights") => ork_flights::run(&args.collect::<Vec<_>>()),
+        Some("ork-export-flights") => ork_export_flights::run(&args.collect::<Vec<_>>()),
         Some("real-flights") => real_flights::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());

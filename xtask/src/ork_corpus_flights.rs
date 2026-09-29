@@ -18,7 +18,7 @@ use serde_json::Value;
 pub(crate) const RECORD: &str = "corpus-out/openrocket-flights.json";
 
 /// Where a design in the record came from.
-fn source(file: &str) -> &'static str {
+pub(crate) fn source(file: &str) -> &'static str {
     if file.starts_with("refs/loft-fixtures/") {
         "refs/loft-fixtures"
     } else if file.contains(".jar!") {

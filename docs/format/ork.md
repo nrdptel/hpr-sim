@@ -7,8 +7,9 @@ without being typed again.
 
 **What works today:** hpr reads the three `.ork` container forms and turns the XML into a design tree.
 It keeps what it doesn't model, and writes a design back out as a `.ork` that reads back as the
-same design ([writing a `.ork` back out](#writing-a-ork-back-out)). Whether OpenRocket flies the
-written file the same is not checked yet. Layout is normalized; comments, processing instructions
+same design ([writing a `.ork` back out](#writing-a-ork-back-out)). OpenRocket 24.12 opens each
+written file whose original it opens, and flies it to the original's apogee within 0.5%
+([checked in OpenRocket](#checked-in-openrocket)). Layout is normalized; comments, processing instructions
 and XML namespaces are dropped.
 
 It currently builds supported stages, body components, tubes, rings, fins, lugs, rail buttons,
@@ -71,6 +72,9 @@ such as a powered stage separation.
   position and a radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
   default of 25 mm, with a warning
   ([when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
+- **A written file flies in OpenRocket as its original does.** Of 151 configurations OpenRocket
+  flies both ways, all 151 reach the original's apogee within 0.5%, and 142 exactly. This checks
+  the file, not hpr's physics ([checked in OpenRocket](#checked-in-openrocket)).
 
 ## Opening a file today
 
@@ -2853,10 +2857,11 @@ How this was decided is in [ADR-058][adr-058].
 as OpenRocket packs one. It writes from hpr's design alone, not from a copy of the file it came
 from, so a design built in hpr is written the same way. One exception: a value kept from the
 original file is written as the file had it, even after the design is edited. Read back, the
-written file gives the same design, bit for bit, for every design in the reference library (a
-private collection of other people's designs, so its counts are published but its files are
-not). **Not checked yet:** that OpenRocket opens every written file and flies it as it flies the
-original, to 0.5% of the apogee. That is [M3.2b](../decisions-and-roadmap.md#m3-2b)'s check.
+written file gives the same design, bit for bit, for each of the 73 designs hpr reads among the
+`.ork` files the checks use ([which files](#checked-in-openrocket)). Some are other people's
+private designs, so the counts are published but those files are not. OpenRocket 24.12 opens
+every written file whose original it opens, and flies each configuration it can fly (151) to
+the original's apogee within 0.5%: the largest difference is 0.000162%.
 
 The written file is not a copy of the original. It is laid out afresh, and it states some values
 the original left to OpenRocket's defaults, such as each part's roll angle.
@@ -2898,11 +2903,10 @@ because `0.3` would read back as a different number. Angles are stored in radian
 degrees. The writer picks the shortest number of degrees that converts back to exactly the stored
 radians: a fin set at 45° is written `45`.
 
-**What OpenRocket insists on.** These were found by opening written files in OpenRocket 24.12. In
-a first try, by hand, it opened every written file of the reference library whose original it
-opens: 71 of 73, the other two failing as their originals do.
-[M3.2b](../decisions-and-roadmap.md#m3-2b), OpenRocket flying the written files, makes that a
-committed check.
+**What OpenRocket insists on.** These were found by opening written files in OpenRocket 24.12, and
+flying them ([checked in OpenRocket](#checked-in-openrocket)). Reading a file back in hpr is not
+enough: before the last of these was found, every design read back the same, yet one of
+OpenRocket's own examples flew 0.6% to 0.9% low and a private design 10% to 11% low.
 
 - An id that isn't a UUID (a 36-character code such as `0f0e0d0c-0b0a-4900-8800-070605040302`)
   makes OpenRocket refuse the whole file. So such an id is left out, and OpenRocket gives the part
@@ -2946,6 +2950,83 @@ cargo xtask ork --export corpus-out/written  # also saves each written file, by 
 How this was decided is in [ADR-109][adr-109].
 
 [adr-109]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-109-m32-split-and-a-ork-written-from-the-design-2026-09-29
+
+### Checked in OpenRocket
+
+**In short.** OpenRocket 24.12 flew each design twice: as the original file, and as hpr's export
+of it. Every export opened where its original did, and every
+[configuration](../glossary.md#configuration) that flew both ways reached the same apogee within
+0.5%. Both flights are OpenRocket's, so this checks the file hpr writes, not hpr's physics; how
+hpr's own flights compare is in [hpr's flights against OpenRocket's](#hprs-flights-against-openrockets).
+hpr itself flies a written file exactly as it flies the original, since it reads back the same
+design.
+
+**The files.** The check uses every `.ork` file the survey (`cargo xtask ork`) finds:
+
+| where | files |
+|---|---|
+| the example designs that ship with OpenRocket | 17 |
+| the private design library ([the corpus](#openrockets-flights-of-the-private-designs); the report's `refs/loft-fixtures`) | 27 |
+| other `.ork` files under `refs/`, mostly Loft's and Debrief's test designs ([listed above](#openrockets-flights-of-the-private-designs); the report's *elsewhere under refs/*) | 31 |
+| all | 75 |
+
+hpr reads 73 of them; the other two are malformed XML, which OpenRocket refuses too. OpenRocket's
+examples and most of the other files are public.
+
+**How they are flown.** Each flight takes its launch conditions from the file's
+[first stored simulation](#what-openrocket-last-did-stored-simulations), or OpenRocket's defaults
+when it has none, in calm air, with random seed 1. So a difference between the two flights comes
+from the file alone. A configuration passes when the export's apogee is within 0.5% of the
+original's. The 0.5% is the roadmap's bar
+([M3.2](../decisions-and-roadmap.md#m3-2), writing `.ork` files), set before measuring. The
+flights agree about 3,000 times more closely, so the report also gives the largest difference.
+
+| quantity | count |
+|---|---|
+| designs | 75 |
+| opened as written | 71 |
+| opened as exported, of those | 71 |
+| designs with a configuration flown both ways | 48 |
+| configurations of the opened designs | 169 |
+| configurations flown neither way | 18 |
+| configurations flown both ways | 151 |
+| within 0.5% of the original's apogee | 151 |
+| the same apogee to the last bit | 142 |
+| largest apogee difference | 0.000162% |
+
+- **Four designs don't open as written.** hpr can't read two of them, so it writes nothing.
+  OpenRocket refuses the exports of the other two with the same error as their originals.
+- **23 opened designs have nothing to fly.** They have no configuration, or none with a motor.
+- **Eighteen configurations fly neither way.** Seventeen have no motor. OpenRocket aborts the
+  other one both times, for the same cause.
+- **Nine configurations differ, but by very little.** All nine are in the private design library
+  (the report's `refs/loft-fixtures` row). The largest
+  difference is 0.000162%. Their cause has not been traced.
+
+The committed report,
+[`openrocket-export-flights.md`](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-export-flights.md),
+gives these counts by where the designs came from. The flights themselves stay in the gitignored
+`corpus-out/`, since they could identify private designs
+([OpenRocket's flights of the private designs](#openrockets-flights-of-the-private-designs)).
+
+**Running it again.** It needs Java 17, the OpenRocket jar fetched by `cargo xtask refs fetch`,
+and a Python environment at `refs/venv` with JPype, which lets the [oracle](../glossary.md#oracle)
+scripts drive OpenRocket, as for [OpenRocket's mass](../physics/mass.md#checked-against-openrocket).
+Without the private library, the commands fly the public files alone.
+The first command flies the originals, and is needed only when `refs/` or the flight scripts
+change. The second writes each design back out; the third flies those files; the last compares:
+
+```text
+refs/venv/bin/python validation/oracles/openrocket/flights.py corpus-out/openrocket-flights.json refs --jar
+cargo xtask ork --export corpus-out/ork-export
+refs/venv/bin/python validation/oracles/openrocket/flights.py corpus-out/openrocket-export-flights.json corpus-out/ork-export
+cargo xtask ork-export-flights
+```
+
+The last command stops with an error when the flights are stale: when hpr would now write
+different files, when an original has changed since it was flown, or when the two sets of
+flights used a different OpenRocket or different scripts. With `--check`, it compares its result
+with the committed report instead of writing it.
 
 ## What is not read yet
 

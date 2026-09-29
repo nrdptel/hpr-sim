@@ -34,7 +34,7 @@ pub const USAGE: &str = "\
 const REPORT: &str = "corpus-out/ork-survey.json";
 
 /// The pinned OpenRocket jar, whose `datafiles/examples/` entries are designs in their own right.
-const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
+pub(crate) const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
 
 /// The directories read when none are given. Generated scratch files are excluded by `collect`.
 const DEFAULT_DIRS: [&str; 1] = ["refs"];

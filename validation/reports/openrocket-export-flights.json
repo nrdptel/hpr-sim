@@ -1,0 +1,82 @@
+{
+  "inputs_sha256": {
+    "events.py": "313b72db4daae061e476be01cd429db7c2f34432ae45d314f1bbb1586e1f585d",
+    "flights.py": "73b0dd1fd62bcaca0803fd5634b569cffc34a6172e964c8e97be3a24c61a4c82",
+    "geometry.py": "d410d9327f1fec89911cf3f597d7cde62559ccc2936106a48f1fc3c4184cc072"
+  },
+  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+  "openrocket": "24.12",
+  "seed": 1,
+  "source": "cargo xtask ork-export-flights (M3.2b, ADR-110)",
+  "sources": {
+    "OpenRocket's examples": {
+      "compared": 55,
+      "configurations": 56,
+      "designs": 17,
+      "designs_compared": 17,
+      "exports_opened": 17,
+      "flown_neither": 1,
+      "identical": 55,
+      "largest_percent": 0.0,
+      "only_exports_opened": 0,
+      "originals_opened": 17,
+      "refused_both": 0,
+      "refused_differently": 0,
+      "unmatched": 0,
+      "unread": 0,
+      "within": 55
+    },
+    "elsewhere under refs/": {
+      "compared": 8,
+      "configurations": 24,
+      "designs": 31,
+      "designs_compared": 4,
+      "exports_opened": 27,
+      "flown_neither": 16,
+      "identical": 8,
+      "largest_percent": 0.0,
+      "only_exports_opened": 0,
+      "originals_opened": 27,
+      "refused_both": 2,
+      "refused_differently": 0,
+      "unmatched": 0,
+      "unread": 2,
+      "within": 8
+    },
+    "refs/loft-fixtures": {
+      "compared": 88,
+      "configurations": 89,
+      "designs": 27,
+      "designs_compared": 27,
+      "exports_opened": 27,
+      "flown_neither": 1,
+      "identical": 79,
+      "largest_percent": 0.000162,
+      "only_exports_opened": 0,
+      "originals_opened": 27,
+      "refused_both": 0,
+      "refused_differently": 0,
+      "unmatched": 0,
+      "unread": 0,
+      "within": 88
+    }
+  },
+  "tolerance_percent": 0.5,
+  "total": {
+    "compared": 151,
+    "configurations": 169,
+    "designs": 75,
+    "designs_compared": 48,
+    "exports_opened": 71,
+    "flown_neither": 18,
+    "identical": 142,
+    "largest_percent": 0.000162,
+    "only_exports_opened": 0,
+    "originals_opened": 71,
+    "refused_both": 2,
+    "refused_differently": 0,
+    "unmatched": 0,
+    "unread": 2,
+    "within": 151
+  }
+}
