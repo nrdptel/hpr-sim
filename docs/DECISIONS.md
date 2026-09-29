@@ -8572,22 +8572,22 @@ answers: pods (ADR-089 to ADR-091), clusters (ADR-075), fillets (ADR-096) and tu
 
 **Decision.**
 
-1. **Each convention ADR-060 lists, where it stands.** Every departure below is pinned by a test
-   in `hpr_validate::openrocket`. Other departures the probes found along the way, such as the
-   elliptical fin's outline and a mass component's packed length, are on the guide's mass page.
+1. **Each convention ADR-060 lists, where it stands.** Every departure below is held by a test.
+   Other departures the probes found along the way are in the guide: the elliptical fin's outline
+   on the mass page, a mass component's packed length in the `.ork` format guide.
 
    | convention | now | settled by |
    |---|---|---|
    | a shoulder written with no wall | OpenRocket's rule: it weighs nothing | ADR-061 |
    | a part weighed by volume, with no material | OpenRocket's rule: 680 kg/m³ | ADR-061 |
-   | which override wins (L51) | OpenRocket's mass on every probe; the centre under a mass override covering a part that has its own is a departure (3.7 and 19.7 mm); flags that disagree are a limitation (4.7 mm) | ADR-061 |
+   | which override wins (L51) | OpenRocket's mass on every probe; the centre under a covering mass override that states no centre is a departure (3.7 mm; 19.7 mm when the part inside has its own override); flags that disagree are a limitation (4.7 mm) | ADR-061 |
    | inertia under a mass override | departure: hpr scales all it covers | ADR-061 |
    | rounded and airfoil fin sections | departure: hpr's cited sections | ADR-062 |
    | roll inertia | explained by OpenRocket's fin shortcut; hpr keeps its exact integral | ADR-062 |
    | packed parts with no size, overrides on weightless parts | OpenRocket's rule | ADR-063 |
    | clusters | every tube weighed where it is; OpenRocket stacks them on the cluster's axis, so roll and pitch depart | ADR-075 |
-   | fin fillets | OpenRocket's mass and centre; pitch departs (to −0.64%), hpr's being the exact prism | ADR-096 |
-   | pods | OpenRocket's mass, centre and roll; pitch with one or two pods departs (0.3% to 1.0%); an override on an empty pod set is dropped | ADR-090, ADR-091 |
+   | fin fillets | OpenRocket's mass and centre; pitch apart by −0.64% to +0.43%, pinned: hpr's is the exact prism, OpenRocket's rule for fins unmeasured | ADR-096 |
+   | pods | OpenRocket's mass and centre, and roll with its fin shortcut; pitch with one or two pods that have a length departs (0.3% to 1.1%); an override on an empty pod set is dropped | ADR-090, ADR-091 |
    | tube fins | OpenRocket's radius and mass; roll and pitch depart | ADR-098 |
    | parts hpr still keeps unread (parallel stages, some fin sets) | departure: kept whole, design marked reduced | ADR-058, ADR-064 |
    | stored results (L87) | references only when current and plausible | ADR-065 |
@@ -8601,14 +8601,14 @@ answers: pods (ADR-089 to ADR-091), clusters (ADR-075), fillets (ADR-096) and tu
    supersedes that assignment. Their tests do not exist: `tube_fin_cp_within_0_25_cal_of_oracle`
    and `excused_cases_stay_in_the_census_statistics_against_both_references`. L19's bar is not
    met today. On the *Tube fin rocket* at rod clearance, hpr's margin is 0.79 calibres against
-   OpenRocket's 1.87 (ADR-099). The two centres of mass there agree within 0.002 calibres
-   (`validation/reports/openrocket-flights.json`), so the gap is the centre of pressure's: hpr's is
-   1.07 calibres forward of OpenRocket's, further than Loft's 0.9. M2.2f is done when the test asserts L19's 0.25 calibres and passes. If that
+   OpenRocket's 1.87 (ADR-099). The two centres of mass there are 0.002 calibres apart
+   (`validation/reports/openrocket-flights.json`), so the gap is the centre of pressure's:
+   hpr's is 1.07 calibres forward of OpenRocket's, further than Loft's 0.9. M2.2f is done when the test asserts L19's 0.25 calibres and passes. If that
    cannot hold, an ADR gives the measurement, and the lesson's row names a test that pins the gap
-   under a name saying so, as L18's does.
+   and says so, as L18's row does.
 
 **Evidence.** `cargo xtask ork`, run on 2026-09-28 with OpenRocket's record unchanged, passes on
-71 files, 51 distinct designs:
+71 files, 51 distinct by content:
 
 | quantity | within 0.1% | within 1% | median |
 |---|---|---|---|
