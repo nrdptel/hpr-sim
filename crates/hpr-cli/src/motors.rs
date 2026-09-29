@@ -78,7 +78,7 @@ impl MotorFile {
             .find(|format| format.extension()[1..] == extension)
     }
 
-    fn output(self) -> FileFormat {
+    pub(crate) fn output(self) -> FileFormat {
         match self {
             Self::Eng => FileFormat::Eng,
             Self::Rse => FileFormat::Rse,
@@ -95,7 +95,7 @@ pub(crate) fn run(command: &MotorsCommand, to: &mut Out<'_>) -> Result<(), Failu
 }
 
 /// The bundled catalog.
-fn catalog() -> Result<Catalog, Failure> {
+pub(crate) fn catalog() -> Result<Catalog, Failure> {
     Catalog::bundled().map_err(|error| Failure::Input(format!("the bundled catalog: {error}")))
 }
 
@@ -496,7 +496,7 @@ fn delay_out(delay: delay::Delay) -> Result<Delay, Failure> {
     }
 }
 
-fn warning_kind(kind: ReadWarning) -> Result<WarningKind, Failure> {
+pub(crate) fn warning_kind(kind: ReadWarning) -> Result<WarningKind, Failure> {
     match kind {
         ReadWarning::Skipped => Ok(WarningKind::Skipped),
         ReadWarning::Dropped => Ok(WarningKind::Dropped),
@@ -505,7 +505,7 @@ fn warning_kind(kind: ReadWarning) -> Result<WarningKind, Failure> {
     }
 }
 
-fn read_warnings(warnings: &[ParseWarning]) -> Result<Vec<Warning>, Failure> {
+pub(crate) fn read_warnings(warnings: &[ParseWarning]) -> Result<Vec<Warning>, Failure> {
     warnings
         .iter()
         .map(|warning| {

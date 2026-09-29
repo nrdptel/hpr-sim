@@ -177,10 +177,14 @@ Round-trip stable: a file hpr writes reads back to exactly the values it was wri
   A literal one would read back as a space [X §3.3.3]. Escape `<comments>` text as
   `&amp; &lt; &gt;` with CR as `&#13;`, without CDATA, and write it verbatim (no trimming).
 - Flags are written `1` or `0`. The rendering attributes are not kept, so they are not written.
-- Not implemented yet: converting from `.eng` would fill what `.eng` lacks the way the observed
-  files do: a (0, 0) origin, `Itot` (trapezoid), `peakThrust`, `burn-time` = last `t`, `avgThrust`
-  = Itot/burn-time, `m` by the impulse fraction above, `cg` = len/2, and both auto-calc flags
-  `1`.
+- Converting from `.eng` (`hpr_motor::convert`, `hpr convert`, since [M4.2c](../decisions-and-roadmap.md#m4-2c), the command-line conversion) fills what `.eng`
+  lacks the way the observed files do: a (0, 0) origin, `Itot` (trapezoid), `peakThrust`,
+  `burn-time` = last `t`, `avgThrust` = Itot/burn-time, `m` by the impulse fraction above, `cg` =
+  len/2, both auto-calc flags `1`, `massFrac` and `Isp` as observed, and `Type="unspecified"`,
+  which the guide requires. Delays trade `-` for `,` and `P` for `1000`; masses move from kg to g
+  by moving the decimal point in their shortest digits, not by multiplying. Converting to `.eng`
+  drops `Type`, the flags, the stated figures and `m` and `cg`, each named in a warning, and
+  refuses a hybrid and an engine without `delays`.
 - Invariant (test it): whenever `write(parse(x))` succeeds, `parse(write(parse(x))) == parse(x)`,
   with f64 compared by bits and strings compared exactly.
 

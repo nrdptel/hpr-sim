@@ -3,10 +3,11 @@
 `hpr` is hpr-sim's command-line tool. This page is for anyone who wants to use it from a terminal
 or a script. It says what each command does, shows its output, and lists the exit codes.
 
-Today `hpr` does three things. It flies a design, read from an OpenRocket file or an hpr
+Today `hpr` does five things. It flies a design, read from an OpenRocket file or an hpr
 [design file](glossary.md#design-file), and prints how the flight went. It looks up motors, from
-the catalog built into it or from a motor file of your own. And it writes shell completion
-scripts. Its other commands are registered but not available yet: each refuses and names the
+the catalog built into it or from a motor file of your own. It converts motor files between the
+two common formats. It runs hpr-sim's own validation cases and checks them against the published
+results. And it writes shell completion scripts. Its other commands are registered but not available yet: each refuses and names the
 [milestone](glossary.md#milestone), the step of the roadmap, that brings it
 ([the table below](#the-commands)).
 
@@ -24,6 +25,11 @@ scripts. Its other commands are registered but not available yet: each refuses a
 >   curves, that code matches ThrustCurve.org's own statistics code to 1.8e-15, relative
 >   ([Solid motors](physics/motor.md#validation)). `hpr motors list` only repeats the catalog's
 >   figures as [ThrustCurve.org](glossary.md#thrustcurveorg) states them.
+> - `hpr convert` keeps every number the two motor formats share. A test converts a `.eng` file
+>   to `.rse` and back and gets every value again, bit for bit, and does the same the other way
+>   ([what it drops](#what-a-conversion-keeps)).
+> - `hpr validate` makes the same check, with the same code, as the one the project's automated
+>   tests make on every change ([Checking the validation](#hpr-validate)).
 > - The tests in
 >   [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
 >   run every command as a user would, and check each `--json` document against its
@@ -57,8 +63,8 @@ only the files each command really reads. "Not yet" commands exit with
 | command | what it does | reads | prints | status |
 |---|---|---|---|---|
 | `hpr sim` | Fly a .ork or hpr design from a rail and print its flight; export its recording | `.ork`, hpr design `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](cli.md#hpr-sim)) |
-| `hpr validate` | Run the committed validation cases and report them | - | - | not yet: [M4.2c](decisions-and-roadmap.md#m4-2c) |
-| `hpr convert` | Convert motor and design files between formats | - | - | not yet: [M4.2c](decisions-and-roadmap.md#m4-2c) |
+| `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
+| `hpr convert` | Convert a motor file between .eng and .rse, or write a catalog motor as either | `.eng`, `.rse`, the bundled catalog | `.eng` or `.rse`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
 | `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2](decisions-and-roadmap.md#m5-2) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
@@ -359,10 +365,111 @@ motor with no charge. hpr shows it as "0 (at burnout, or plugged)" and ends the 
 warning; the Estes F15 in the catalog is one example. The warning's "RASP spec" is the `.eng`
 format's description ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)).
 
+## `hpr convert`
+
+`hpr convert` writes a motor as a RASP `.eng` file or a RockSim `.rse` file, the two formats
+ThrustCurve.org offers ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)). Give it the
+file to read and the file to write; the extensions pick the formats. It reads a file, or a motor of
+the bundled catalog by its name, as `hpr motors show` does:
+
+```bash
+hpr convert H170M H170M.eng
+```
+
+An existing file of that name is replaced; the file being read never is. Converting a `.eng`
+file to `.eng` again rewrites it in hpr's layout. Here the Estes F15's `.rse` file, from the
+catalog's curves, becomes a `.eng` file:
+
+<!-- cli: example `hpr convert crates/hpr-motor/data/thrustcurve/curves/5f923edb1bca5800041716ab.rse F15.eng`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr convert crates/hpr-motor/data/thrustcurve/curves/5f923edb1bca5800041716ab.rse F15.eng
+read   5f923edb1bca5800041716ab.rse
+wrote  F15.eng: F15
+warning: line 3: engine "F15": delay 0 in "0,4,6,8" is ambiguous: the RASP spec means an ejection charge with no delay, but files mostly mean plugged
+warning: F15: dropped the comments' blank lines and the spaces that end their lines: a .eng comment is one line of text
+warning: F15: dropped Type, auto-calc-mass, auto-calc-cg, avgThrust, peakThrust, throatDia, exitDia, Itot, burn-time, massFrac, Isp, m, cg: a .eng file has no place for them. hpr flies the same motor without them, as it works the mass and centre of gravity out from the curve and the masses
+```
+
+<!-- cli: end -->
+
+### What a conversion keeps
+
+Both formats give a motor's name, maker, diameter and length, its loaded and propellant masses,
+its delays, and its thrust curve. Those are kept: converting a file and converting the result back
+gives every one of them again, bit for bit. The formats write some of them differently, and
+`hpr convert` translates:
+
+| | `.eng` | `.rse` |
+|---|---|---|
+| masses | kilograms | grams |
+| a plugged motor's delay | `P` | `1000` |
+| delays | `6-10-14` | `6,10,14` |
+| the curve's first point, zero thrust at ignition | left out | written |
+
+Masses move between kilograms and grams by moving the decimal point, not by multiplying, which
+would round: `0.0041` kg times 1000 is `4.1000000000000005` in a computer's arithmetic, while
+moving the point gives `4.1`. A mass written with 16 or 17 digits may still change in its last
+digit; a warning says so.
+
+A `.rse` file also gives figures a `.eng` file has no place for: the motor's type, its total
+impulse, average and peak thrust, burn time, [specific impulse](glossary.md#specific-impulse),
+and the mass and centre of gravity at each point of the curve. Going to `.eng`, they are dropped,
+and a warning names them. hpr flies the same motor without them: it works the mass and centre
+of gravity out from the curve and the masses, whichever format it reads. Going to `.rse`, they
+are filled in the way RockSim's own files are: the total impulse by adding up the curve, the
+remaining propellant falling in step with the impulse delivered, the centre of gravity at half
+the length, and the type `unspecified`. The rules and the counts behind them are in the
+[`.rse` format notes](https://github.com/nrdptel/hpr-sim/blob/main/docs/format/rse.md#writer-policy-strict-round-trip-stable).
+
+`hpr convert` refuses a hybrid motor's `.rse` file, which a `.eng` file couldn't mark as a hybrid
+(hpr models solid motors only). A `.eng` header must give delays, so a `.rse` motor without them
+is refused until `--delays` gives them, such as `--delays P` for a plugged motor.
+
+## `hpr validate`
+
+`hpr validate` runs every validation case: each flies a rocket in hpr and compares the result with
+a reference simulator's, metric by metric ([Accuracy](accuracy.md) explains them). It then checks
+three things, and fails, with exit status 1, if any is wrong:
+
+| check | what it catches |
+|---|---|
+| every scored metric within its tolerance | a change that made hpr less accurate than its gate allows |
+| the run reproduces the committed report, `validation/reports/latest.md` and `.json` | a report that no longer says what the code computes |
+| the committed reports hold to the accepted accuracy census | a result that got worse without anyone accepting it in writing ([the census](accuracy.md#the-census)) |
+
+It is the check the project's automated tests make on every change, `cargo xtask validate
+--check`, run by the same code, so the two pass and fail together. It writes nothing. It needs a
+copy of the repository, as the cases, their references and the reports are files in it: run it
+from the copy's folder, or name the folder with `--root`:
+
+```bash
+hpr validate --root path/to/hpr-sim
+```
+
+It prints a line per case, then the totals, the census and the report's check. A case with a
+tolerance shows its largest scored difference; a *predicted* case, which flies its rocket from
+the design alone, shows how many metrics fall within their target; a *known gap* is a case hpr
+refuses to fly, with its reason. In outline:
+
+```text
+<case>: <n> metric(s), worst scored <±x.xx>%
+<case>: predicted, <n> metric(s) reported, <k> within target, largest <metric> <±x.xx>%
+<case>: known gap, <n> metric(s) not scored: hpr <why it refuses>
+validate: <cases> case(s), <metrics> metric(s) (<counts aside>), ok
+census: the committed reports hold to the accepted census (<rows> rows)
+validate: the committed report reproduces
+```
+
+When the check fails, the totals end in `FAILED` or the last line is missing, and standard error
+gives each reason. The run takes a few seconds.
+
 ## JSON output
 
 With `--json`, a command prints exactly one [JSON](https://www.json.org) document on standard
-output, and nothing on standard error. That holds when the command fails, too. Each document has
+output, and nothing on standard error. That holds when the command fails, too. A failure prints an
+error document, except that `hpr validate` prints its own document when its check fails, with
+`passed` set to `false` and the reasons in `problems`. Each document has
 a published [JSON Schema](https://json-schema.org), which describes its fields and units:
 
 | output | schema |
@@ -370,6 +477,8 @@ a published [JSON Schema](https://json-schema.org), which describes its fields a
 | `hpr sim` | [`sim.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/sim.schema.json) |
 | `hpr motors list` | [`motors-list.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/motors-list.schema.json) |
 | `hpr motors show` | [`motors-show.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/motors-show.schema.json) |
+| `hpr convert` | [`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json) |
+| `hpr validate` | [`validate.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/validate.schema.json) |
 | `hpr completions` | [`completions.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/completions.schema.json) |
 | any failure | [`error.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/error.schema.json) |
 
@@ -461,7 +570,7 @@ $ echo $?
 | status | `kind` in JSON | meaning |
 |---|---|---|
 | 0 | - | The command did what was asked. |
-| 1 | `input` | An input was missing, unreadable or refused, such as a motor the catalog doesn't have. |
+| 1 | `input` | An input was missing, unreadable or refused, such as a motor the catalog doesn't have. Also `hpr validate`'s check failing, with its own document rather than an error one. |
 | 2 | `usage` | The command line was wrong: an unknown command or option, or a missing argument. |
 | 3 | `not_available` | The command is registered, but the milestone that brings it hasn't come yet. |
 
@@ -484,9 +593,12 @@ you press Tab. Save it where your shell looks for completions:
 
 - **Parachutes and stage separation.** `hpr sim` flies the stack whole and brings it down with
   no recovery device ([what it doesn't fly yet](#what-hpr-sim-doesnt-fly-yet)).
-- **Commands still to come.** Checking the validation cases (`hpr validate`) and converting files
-  (`hpr convert`) come in [M4.2c](decisions-and-roadmap.md#m4-2c), and reading a flight log
-  (`hpr analyze`) in [M4.2d](decisions-and-roadmap.md#m4-2d).
+- **Commands still to come.** Reading a flight log (`hpr analyze`) comes in
+  [M4.2d](decisions-and-roadmap.md#m4-2d).
+- **Design files aren't converted.** `hpr convert` converts motor files only. Writing a design
+  as an OpenRocket file is [M3.2](decisions-and-roadmap.md#m3-2)'s work.
+- **`hpr validate` needs the repository.** The cases and their reference results are files in it,
+  not part of the tool.
 - **Only 32 motors are built in.** Any other motor needs its `.eng` or `.rse` file. `hpr` never
   goes online to fetch one.
 - **No ready-built program.** `hpr` is built from source with Rust; downloads for macOS, Windows

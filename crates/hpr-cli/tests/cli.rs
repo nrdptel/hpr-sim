@@ -1425,3 +1425,351 @@ fn the_guides_launch_figures_hold() {
         "{vertical} {upright} {calm}"
     );
 }
+
+/// Copies `from` into `to`, folders and all.
+fn copy_tree(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let target = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_tree(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), &target).unwrap();
+        }
+    }
+}
+
+/// What `hpr validate` reads: the validation folder, and the files written from the census.
+fn validation_copy() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    copy_tree(&root().join("validation"), &dir.path().join("validation"));
+    copy_tree(&root().join("docs/images"), &dir.path().join("docs/images"));
+    for file in ["README.md", "docs/accuracy.md"] {
+        std::fs::copy(root().join(file), dir.path().join(file)).unwrap();
+    }
+    dir
+}
+
+/// Replaces the first `from` in the file at `path` with `to`, and returns what it held.
+fn spoil(path: &Path, from: &str, to: &str) -> String {
+    let text = std::fs::read_to_string(path).unwrap();
+    assert!(text.contains(from), "{} has no `{from}`", path.display());
+    std::fs::write(path, text.replacen(from, to, 1)).unwrap();
+    text
+}
+
+/// `hpr validate` runs every case and passes on the repository, as `cargo xtask validate
+/// --check` does in the gate: the same cases, the same totals, the same census.
+#[test]
+fn validate_passes_on_the_repository() {
+    let root = root().canonicalize().unwrap();
+    let root = root.to_string_lossy();
+    let document = json(&["validate", "--root", &root], 0, "validate.schema.json");
+    assert_eq!(document["passed"], true);
+    assert_eq!(document["reproduced"], true);
+    assert_eq!(document["problems"], Value::Array(Vec::new()));
+    let committed: Value = serde_json::from_str(
+        &std::fs::read_to_string(repo_file("validation/reports/latest.json")).unwrap(),
+    )
+    .unwrap();
+    let cases: Vec<&Value> = document["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|case| &case["case"])
+        .collect();
+    let committed_cases: Vec<&Value> = committed["cases"].as_array().unwrap().iter().collect();
+    assert_eq!(cases, committed_cases);
+    assert_eq!(
+        document["totals"]["metrics"].as_u64().unwrap() as usize,
+        committed["comparisons"].as_array().unwrap().len()
+    );
+    assert_eq!(document["totals"]["failed"], 0);
+    let census: Value = serde_json::from_str(
+        &std::fs::read_to_string(repo_file("validation/reports/census.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        document["census"]["rows"].as_u64().unwrap() as usize,
+        census["census"]["rows"].as_array().unwrap().len()
+    );
+    assert_eq!(document["census"]["changes"], Value::Array(Vec::new()));
+    // As text: a line per case, the totals, the census and the reproduction, as xtask prints.
+    let text = text_ok(&["validate", "--root", &root]);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), cases.len() + 3, "{text}");
+    assert!(lines[cases.len()].starts_with("validate: 20 case(s), "));
+    assert!(lines[cases.len()].ends_with(", ok"));
+    assert!(lines[cases.len() + 1].starts_with("census: the committed reports hold"));
+    assert_eq!(
+        lines[cases.len() + 2],
+        "validate: the committed report reproduces"
+    );
+}
+
+/// `hpr validate` fails where `cargo xtask validate --check` does, with its reasons: a copy of
+/// the repository passes, then fails spoiled each way the check looks at.
+#[test]
+fn validate_fails_where_the_check_fails() {
+    let dir = validation_copy();
+    let at = dir.path().to_string_lossy().into_owned();
+    let run = |code| json(&["validate", "--root", &at], code, "validate.schema.json");
+    assert_eq!(run(0)["passed"], true, "the copy is whole");
+    let problems = |document: &Value| -> Vec<String> {
+        document["problems"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p.as_str().unwrap().to_owned())
+            .collect()
+    };
+
+    // A committed report that isn't this run's.
+    let latest = dir.path().join("validation/reports/latest.json");
+    let committed = std::fs::read_to_string(&latest).unwrap();
+    let mut report: Value = serde_json::from_str(&committed).unwrap();
+    let measured = &mut report["comparisons"][0]["measured"];
+    *measured = Value::from(measured.as_f64().unwrap() * 1.01);
+    std::fs::write(&latest, serde_json::to_string_pretty(&report).unwrap()).unwrap();
+    let document = run(1);
+    assert_eq!(document["passed"], false);
+    assert_eq!(document["reproduced"], false);
+    assert!(
+        problems(&document)
+            .iter()
+            .any(|p| p.starts_with("the committed report is not this run's")),
+        "{document:#}"
+    );
+    std::fs::write(&latest, committed).unwrap();
+
+    // A file written from the census, edited by hand.
+    let readme = dir.path().join("README.md");
+    let was = spoil(
+        &readme,
+        "<!-- census: end -->",
+        "edited\n<!-- census: end -->",
+    );
+    let document = run(1);
+    assert_eq!(document["reproduced"], true);
+    assert_eq!(
+        document["census"]["stale"],
+        serde_json::json!(["README.md is not what the accepted census writes"])
+    );
+    assert_eq!(
+        problems(&document),
+        ["1 output(s) are stale: run `cargo xtask census --accept`"]
+    );
+    std::fs::write(&readme, was).unwrap();
+
+    // A metric outside its tolerance, which also moves the report.
+    let case = dir.path().join("validation/cases/descent-valetudo.toml");
+    let was = spoil(&case, "relative = 0.03", "relative = 1e-12");
+    let document = run(1);
+    assert_eq!(document["totals"]["failed"], 1);
+    let problems = problems(&document);
+    assert!(
+        problems.contains(&"1 metric(s) outside tolerance".to_owned()),
+        "{problems:?}"
+    );
+    // As text, the lines go to standard output and the reasons to standard error.
+    let output = hpr(&["validate", "--root", &at]);
+    assert_eq!(output.status.code(), Some(1));
+    let stdout = text(&output.stdout);
+    assert!(
+        stdout
+            .lines()
+            .any(|line| line.starts_with("descent-valetudo: ")
+                && line.ends_with(", 1 OUT OF TOLERANCE")),
+        "{stdout}"
+    );
+    assert!(stdout.contains(", FAILED\n"), "{stdout}");
+    let stderr = text(&output.stderr);
+    assert!(
+        stderr.starts_with("error: ") && stderr.contains("1 metric(s) outside tolerance"),
+        "{stderr}"
+    );
+    std::fs::write(&case, was).unwrap();
+    assert_eq!(run(0)["passed"], true, "restored");
+}
+
+/// A folder that isn't a copy of the repository is an input error.
+#[test]
+fn validate_needs_a_copy_of_the_repository() {
+    let dir = tempfile::tempdir().unwrap();
+    let at = dir.path().to_string_lossy().into_owned();
+    let document = json_error(&["validate", "--root", &at], 1, "input");
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("not a copy of the hpr-sim repository"),
+        "{message}"
+    );
+}
+
+/// A bundled `.rse` curve and a `.eng` one.
+const RSE_CURVE: &str = "curves/5f923edb1bca5800041716ab.rse";
+const ENG_CURVE: &str = "curves/5f4294d20002e90000000724.eng";
+
+/// `hpr convert` round-trips a `.eng` file through `.rse`, and a `.rse` file through `.eng`: the
+/// motors come back as they were, and the second file of each trip is the first's, byte for byte.
+#[test]
+fn convert_round_trips_eng_and_rse() {
+    use hpr::hpr_motor::{eng, rse};
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let read = |name: &str| std::fs::read_to_string(dir.path().join(name)).unwrap();
+
+    // .eng → .rse → .eng: every value of every entry, bit for bit.
+    let original = eng::parse(&std::fs::read_to_string(curve_file(ENG_CURVE)).unwrap())
+        .unwrap()
+        .value;
+    let there = json(
+        &["convert", &curve_file(ENG_CURVE), &path("a.rse")],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(there["output"]["format"], "rse");
+    assert_eq!(there["motors"], serde_json::json!(["131-G84-GR-10A"]));
+    assert_eq!(there["warnings"], Value::Array(Vec::new()));
+    let back = json(
+        &["convert", &path("a.rse"), &path("b.eng")],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(eng::parse(&read("b.eng")).unwrap().value, original);
+    // What `.eng` has no place for is said, and only that.
+    let [warning] = &back["warnings"].as_array().unwrap()[..] else {
+        panic!("{back:#}");
+    };
+    assert_eq!(warning["kind"], "dropped");
+    assert!(
+        warning["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("dropped Type, auto-calc-mass, auto-calc-cg, avgThrust, peakThrust, Itot, burn-time, massFrac, Isp, m, cg:"),
+        "{warning:#}"
+    );
+    // Converted again, the file is the same, byte for byte.
+    text_ok(&["convert", &path("b.eng"), &path("c.rse")]);
+    assert_eq!(read("c.rse"), read("a.rse"));
+
+    // .rse → .eng → .rse: the code, maker, casing, masses, delays and points.
+    let original = rse::parse(&std::fs::read_to_string(curve_file(RSE_CURVE)).unwrap())
+        .unwrap()
+        .value;
+    text_ok(&["convert", &curve_file(RSE_CURVE), &path("d.eng")]);
+    text_ok(&["convert", &path("d.eng"), &path("e.rse")]);
+    let back = rse::parse(&read("e.rse")).unwrap().value;
+    assert_eq!(back.engines.len(), original.engines.len());
+    for (a, b) in original.engines.iter().zip(&back.engines) {
+        assert_eq!(
+            (&a.code, &a.manufacturer, &a.delays),
+            (&b.code, &b.manufacturer, &b.delays)
+        );
+        for (x, y) in [
+            (a.diameter_mm, b.diameter_mm),
+            (a.length_mm, b.length_mm),
+            (a.initial_mass_g, b.initial_mass_g),
+            (a.propellant_mass_g, b.propellant_mass_g),
+        ] {
+            assert_eq!(x.to_bits(), y.to_bits());
+        }
+        let points = |e: &hpr::hpr_motor::rse::RseEngine| -> Vec<(u64, u64)> {
+            e.points
+                .iter()
+                .map(|p| (p.time_s.to_bits(), p.thrust_n.to_bits()))
+                .collect()
+        };
+        assert_eq!(points(a), points(b));
+    }
+    text_ok(&["convert", &path("e.rse"), &path("f.eng")]);
+    assert_eq!(read("f.eng"), read("d.eng"));
+}
+
+/// A catalog motor is written from its bundled curve, and the same format in and out rewrites the
+/// file in hpr's layout.
+#[test]
+fn convert_writes_a_catalog_motor_and_rewrites_a_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let document = json(
+        &["convert", "H170M", &path("h.eng")],
+        0,
+        "convert.schema.json",
+    );
+    assert_eq!(document["input"]["kind"], "catalog");
+    assert_eq!(document["input"]["format"], "rse");
+    assert_eq!(document["motors"], serde_json::json!(["H170M"]));
+    let flown =
+        hpr::Motor::from_eng(&std::fs::read_to_string(dir.path().join("h.eng")).unwrap()).unwrap();
+    let catalog = hpr::Motor::from_catalog("H170M").unwrap();
+    // The curve the catalog flies, point for point.
+    assert_eq!(flown.solid_motor().curve(), catalog.solid_motor().curve());
+    let text = text_ok(&["convert", &curve_file(ENG_CURVE), &path("same.eng")]);
+    assert_eq!(
+        text,
+        "read   5f4294d20002e90000000724.eng\nwrote  same.eng: 131-G84-GR-10A\n"
+    );
+}
+
+/// What `hpr convert` refuses: an output that isn't a motor file, the input itself, a missing
+/// folder, a name that isn't a file or a catalog motor, `--delays` where it can't be used, and a
+/// `.rse` motor without delays written as `.eng` until `--delays` gives them.
+#[test]
+fn convert_refuses_what_it_cant_write() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = |name: &str| dir.path().join(name).to_string_lossy().into_owned();
+    let refused = |args: &[&str], says: &str| {
+        let document = json_error(args, 1, "input");
+        let message = document["error"]["message"].as_str().unwrap().to_owned();
+        assert!(message.contains(says), "{args:?}: {message}");
+    };
+    let eng = curve_file(ENG_CURVE);
+    refused(
+        &["convert", &eng, &path("out.txt")],
+        "writes a .eng or a .rse file",
+    );
+    refused(
+        &["convert", &eng, &eng],
+        "that is the file hpr convert reads",
+    );
+    refused(
+        &["convert", &eng, &path("missing/out.rse")],
+        "there is no folder",
+    );
+    refused(
+        &["convert", "no-such-motor", &path("out.rse")],
+        "neither a .eng or .rse file nor a motor in the bundled catalog",
+    );
+    refused(
+        &["convert", &eng, &path("out.rse"), "--delays", "P"],
+        "--delays gives a .rse motor's missing delays",
+    );
+    let rse = std::fs::read_to_string(curve_file(RSE_CURVE)).unwrap();
+    let start = rse.find(" delays=\"").unwrap();
+    let end = start + 1 + rse[start + 1..].find('"').unwrap();
+    let end = end + 1 + rse[end + 1..].find('"').unwrap();
+    let undelayed = format!("{}{}", &rse[..start], &rse[end + 1..]);
+    std::fs::write(dir.path().join("undelayed.rse"), undelayed).unwrap();
+    refused(
+        &["convert", &path("undelayed.rse"), &path("out.eng")],
+        "gives no delays, and a .eng header must; give them with --delays",
+    );
+    json(
+        &[
+            "convert",
+            &path("undelayed.rse"),
+            &path("out.eng"),
+            "--delays",
+            "P",
+        ],
+        0,
+        "convert.schema.json",
+    );
+    assert!(
+        std::fs::read_to_string(dir.path().join("out.eng"))
+            .unwrap()
+            .lines()
+            .any(|line| line.starts_with("F15 ") && line.split_whitespace().nth(3) == Some("P"))
+    );
+}

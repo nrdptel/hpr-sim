@@ -26,10 +26,12 @@
     reason = "the command-line tool reads files; it is not part of the pure core"
 )]
 
+pub mod convert;
 pub mod motors;
 pub mod output;
 pub mod registry;
 pub mod sim;
+pub mod validate;
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -100,10 +102,10 @@ pub struct Cli {
 pub enum Command {
     /// Fly a .ork or hpr design from a rail and print its flight; export its recording
     Sim(sim::SimArgs),
-    /// Run the committed validation cases and report them (not available yet)
-    Validate(Planned),
-    /// Convert motor and design files between formats (not available yet)
-    Convert(Planned),
+    /// Run the validation cases and check them against the committed reports and the census
+    Validate(validate::ValidateArgs),
+    /// Convert a motor file between .eng and .rse, or write a catalog motor as either
+    Convert(convert::ConvertArgs),
     /// Look up motors in the bundled catalog, or read a .eng or .rse motor file
     #[command(subcommand)]
     Motors(motors::MotorsCommand),
@@ -173,6 +175,9 @@ pub(crate) enum Failure {
     },
     /// Standard output couldn't be written, such as a closed pipe.
     Output(io::Error),
+    /// The command wrote its output, and it says the check failed, as `hpr validate`'s does. The
+    /// reason goes to standard error, without `--json`; with it, the document says it.
+    Checked(String),
 }
 
 /// Where a command's output goes, and in which form.
@@ -242,10 +247,10 @@ where
         Some(Availability::Available { .. }) => match cli.command {
             Command::Motors(motors) => motors::run(&motors, &mut to),
             Command::Sim(args) => sim::run(&args, &mut to),
+            Command::Validate(args) => validate::run(&args, &mut to),
+            Command::Convert(args) => convert::run(&args, &mut to),
             Command::Completions(args) => completions(args.shell, &mut to),
-            Command::Validate(_)
-            | Command::Convert(_)
-            | Command::Weather(_)
+            Command::Weather(_)
             | Command::Mc(_)
             | Command::Optimize(_)
             | Command::Compare(_)
@@ -293,6 +298,12 @@ fn report(
                 ),
                 Exit::NotAvailable,
             )
+        }
+        Failure::Checked(message) => {
+            if !json {
+                let _ = writeln!(err, "error: {message}");
+            }
+            return Exit::Failure;
         }
         // A closed pipe (`hpr motors list | head -1`): the reader stopped reading, which is its
         // choice, not a failure, and whether it happens depends on the pipe's buffer. Anything

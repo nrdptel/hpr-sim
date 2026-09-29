@@ -18,6 +18,7 @@
 mod bundled;
 pub mod catalog;
 pub mod class;
+pub mod convert;
 pub mod curve;
 pub mod delay;
 pub mod eng;

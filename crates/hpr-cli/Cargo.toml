@@ -29,6 +29,8 @@ workspace = true
 [dependencies]
 # `parquet`: `hpr sim --export` writes Parquet; the writer adds no dependency.
 hpr = { workspace = true, features = ["parquet"] }
+# `hpr validate` runs the harness and makes `cargo xtask validate --check`'s check (ADR-107).
+hpr-validate.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 schemars.workspace = true

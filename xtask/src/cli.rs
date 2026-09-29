@@ -6,7 +6,9 @@
 //!   (`hpr_cli::registry::command_table`);
 //! - each example in `docs/cli.md`: the command run in-process, with what it printed. An argument
 //!   with a `/` in it is a file of the repository, given from its root, as a reader who runs the
-//!   example from a copy of it types it.
+//!   example from a copy of it types it. One without a `/` that ends in a file extension of
+//!   letters, such as `F15.eng`, is a file the command writes: it goes to a scratch folder, so
+//!   running the page never writes into the repository.
 //!
 //! `--check` (and the test below, which the gate runs) fails when a committed copy differs.
 
@@ -228,18 +230,35 @@ fn tracked(root: &Path, path: &str) -> bool {
             .is_ok_and(|output| output.status.success())
 }
 
+/// Whether an argument without a `/` names a file the command writes: it ends in an extension of
+/// letters, as `F15.eng` does and `0.01` doesn't.
+fn written(arg: &str) -> bool {
+    !arg.contains('/')
+        && !arg.starts_with('-')
+        && Path::new(arg)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.chars().all(|c| c.is_ascii_alphabetic()))
+}
+
 /// A fenced block with the command line and what it printed, and its exit status if not 0; and
-/// that status. The command's paths are read from `root`.
+/// that status. The command's paths are read from `root`; the files it writes go to a scratch
+/// folder, removed afterwards.
 fn example(command: &str, root: &Path) -> (String, u8) {
     let (mut out, mut err) = (Vec::new(), Vec::new());
+    let scratch = std::env::temp_dir().join(format!("hpr-cli-examples-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&scratch);
     let args = command.split_whitespace().map(|arg| {
         if arg.contains('/') {
             root.join(arg).into_os_string()
+        } else if written(arg) {
+            scratch.join(arg).into_os_string()
         } else {
             arg.into()
         }
     });
     let exit = hpr_cli::run(args, &mut out, &mut err);
+    let _ = std::fs::remove_dir_all(&scratch);
     let mut block = format!("```text\n$ {command}\n");
     block.push_str(&String::from_utf8_lossy(&out));
     block.push_str(&String::from_utf8_lossy(&err));
@@ -253,6 +272,16 @@ fn example(command: &str, root: &Path) -> (String, u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_written_file_is_a_name_with_a_letter_extension() {
+        assert!(written("F15.eng"));
+        assert!(written("flight.csv"));
+        assert!(!written("0.01"));
+        assert!(!written("H170M"));
+        assert!(!written("--json"));
+        assert!(!written("curves/x.rse"));
+    }
 
     #[test]
     fn the_cli_outputs_are_current() {

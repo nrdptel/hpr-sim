@@ -112,6 +112,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-104 | A drag model replaces the zero-lift drag only, as a drag table does | accepted |
 | ADR-105 | The command line's surface: every command registered, JSON by schema, a generated table | accepted |
 | ADR-106 | `hpr sim` flies the library's flight, the stack whole, from a stated launch | accepted |
+| ADR-107 | `hpr validate` makes xtask's check with its code; `hpr convert` trades `.eng` and `.rse` by the format notes | accepted |
 
 ---
 
@@ -9061,3 +9062,54 @@ the motor-file test finds only the path on both maps. `hpr-io`'s
 README's and guide's tables list `hpr sim` as available; its reference is the guide's page,
 `docs/cli.md#hpr-sim`. Issues #240 (recovery and staging in `hpr sim`) and #241 (the
 no-recovery descent) hold what is left.
+
+## ADR-107: `hpr validate` makes xtask's check with its code; `hpr convert` trades `.eng` and `.rse` by the format notes (2026-09-29)
+
+**Context.** M4.2c is done when `hpr validate` fails where `cargo xtask validate --check` does,
+and `hpr convert` round-trips `.eng` and `.rse` motor files. The check (the report reproduced,
+every scored metric in tolerance, the census held, ADR-084) lived in `xtask`, which a user's `hpr`
+can't call. `hpr_motor` wrote each format back to itself, but converting between them was only
+sketched in `docs/format/rse.md` ("not implemented yet"). The formats weigh in different units:
+`.eng` in kg, `.rse` in g, and multiplying by 1000 rounds in binary for about a quarter of
+four-decimal masses (`0.0041 × 1000 = 4.1000000000000005`).
+
+**Decision.**
+
+1. **One check, in `hpr-validate`.** `committed::check` holds a run to the committed reports and
+   the census; `summary` gives the per-case and total lines. `cargo xtask validate --check` and
+   `hpr validate` both call them, so they pass and fail together by construction; xtask's output
+   is byte for byte what it printed before the move. `hpr-cli` depends on `hpr-validate` (the
+   crate map's row changes); `census --accept` stays in xtask.
+2. **`hpr validate` needs a copy of the repository** (`--root`, the current folder by default),
+   runs every case (no `--fast`: a partial run can't reproduce the whole report) and writes
+   nothing. A failing check prints its own document, `passed: false` with the reasons, and exits 1;
+   it is a result, not an unreadable input, so it isn't an error document. A release build of the
+   check reproduces the committed report too (the check compares the digits the platforms share).
+3. **`hpr convert` converts motor files**, by `hpr_motor::convert`, in the pure core. To `.rse`
+   it fills what RockSim's files give, as the format notes observed them (the origin, `Itot`,
+   `peakThrust`, `burn-time`, `avgThrust`, `m` by the impulse fraction, `cg` at half the length,
+   the flags, `massFrac`, `Isp`), and `Type="unspecified"`, which RockSim's guide requires. To
+   `.eng` it drops those, named in a warning; hpr reads none of them for a solid motor. Delays
+   trade `-` for `,` and `P` for `1000`. A hybrid and an engine without delays are refused, the
+   latter until `--delays` gives them. A catalog motor converts from its bundled curve. The output
+   is replaced if it exists, never when it is the input. Design files are not converted (M3.2).
+4. **Masses move by the decimal point.** A mass is printed in its shortest digits, its exponent
+   shifted by three and read back, so a mass of up to 15 significant digits comes back bit for
+   bit (such decimals never share a double; a proptest pins it). One of 16 or 17 digits may fall
+   between the other unit's doubles; the conversion says so in a warning.
+5. **What "round-trips" means, measured.** `.eng` to `.rse` and back gives the same file model,
+   bit for bit; `.rse` to `.eng` and back gives the same code, maker, casing, masses, delays and
+   points, bit for bit, the rest filled again by rule. After one conversion a file is a fixed
+   point, byte for byte. Over the 32 bundled curves: all 29 `.eng` files come back whole except
+   two whose delays are respelled (`p`, `1000` to `P`, read as the same delays) and two with a
+   17-digit mass, each warned; the 3 `.rse` files keep every shared value.
+6. **The guide's examples may write files.** An argument with no `/` ending in an extension of
+   letters (`F15.eng`) goes to a scratch folder, so `cargo xtask cli` never writes into the
+   repository.
+
+**Consequences.** M4.2c's two commands leave `registry::PLANNED`; the README's and the guide's
+tables list them as available; `schema/cli/` gains `convert.schema.json` and
+`validate.schema.json`. The facade's `hpr::Motor::from_rse` still divides grams by 1000 in
+binary, so a motor read from a converted `.rse` may differ from its `.eng` in a mass's last bit;
+nothing claims them equal. `hpr validate` output lines change whenever the report does, so the
+guide describes them in outline instead of quoting a run.

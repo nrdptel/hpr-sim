@@ -365,7 +365,7 @@ fn exports(args: &SimArgs) -> Result<Vec<(&str, ExportFormat)>, Failure> {
 
 /// A path as the file system knows it, to compare two: the file's canonical path if it exists,
 /// or its folder's with its name.
-fn same_file(path: &str) -> PathBuf {
+pub(crate) fn same_file(path: &str) -> PathBuf {
     let path = Path::new(path);
     if let Ok(canonical) = path.canonicalize() {
         return canonical;

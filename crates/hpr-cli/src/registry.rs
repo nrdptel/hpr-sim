@@ -57,6 +57,25 @@ pub fn availability(name: &str) -> Option<Availability> {
                 "a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml`".to_owned(),
             ],
         }),
+        "validate" => Some(Availability::Available {
+            reads: vec![
+                "a copy of the hpr-sim repository: its cases, references and committed reports"
+                    .to_owned(),
+            ],
+            writes: text_or_json(),
+        }),
+        "convert" => Some(Availability::Available {
+            reads: MotorFile::ALL
+                .iter()
+                .map(|format| format!("`{}`", format.extension()))
+                .chain(["the bundled catalog".to_owned()])
+                .collect(),
+            writes: vec![
+                "`.eng` or `.rse`".to_owned(),
+                "text".to_owned(),
+                "JSON".to_owned(),
+            ],
+        }),
         "completions" => Some(Availability::Available {
             reads: Vec::new(),
             writes: vec![format!("a {} script", shells()), "JSON".to_owned()],
@@ -69,9 +88,7 @@ pub fn availability(name: &str) -> Option<Availability> {
 }
 
 /// The commands registered before their milestone, each with the milestone that brings it.
-pub const PLANNED: [(&str, &str); 8] = [
-    ("validate", "M4.2c"),
-    ("convert", "M4.2c"),
+pub const PLANNED: [(&str, &str); 6] = [
     ("analyze", "M4.2d"),
     ("weather", "M5.2"),
     ("mc", "M6.1"),
@@ -268,7 +285,7 @@ mod tests {
         let readme = command_table(Links::Readme);
         assert!(readme.contains("(https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)"));
         assert!(
-            readme.contains("(https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2c)")
+            readme.contains("(https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m4-2d)")
         );
     }
 

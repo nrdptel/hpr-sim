@@ -565,6 +565,131 @@ pub struct InputWarning {
     pub message: String,
 }
 
+/// `hpr convert`: the motors read, and the file they were written to.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Convert {
+    /// Where the motors came from: a motor file, or the bundled catalog.
+    pub input: MotorSource,
+    /// The file written.
+    pub output: ConvertedFile,
+    /// The motors written, by the names the file gives them, in its order.
+    pub motors: Vec<String>,
+    /// What the reader flagged in the input, then what the conversion dropped or wrote
+    /// differently, such as `.rse` figures a `.eng` file has no place for.
+    pub warnings: Vec<Warning>,
+}
+
+/// A motor file `hpr convert` wrote.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct ConvertedFile {
+    /// The path as given.
+    pub path: String,
+    /// Its format: `eng` or `rse`.
+    pub format: FileFormat,
+}
+
+/// `hpr validate`: every validation case run, and the run held to the committed reports.
+///
+/// Printed whether or not the check passes; when it fails, the exit status is 1.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Validate {
+    /// Whether the check passed: every scored metric within its tolerance, the run reproducing
+    /// the committed report, and the committed reports holding to the accepted census. The
+    /// same as `cargo xtask validate --check`.
+    pub passed: bool,
+    /// How each case came out, in the order the case lock runs them.
+    pub cases: Vec<ValidateCase>,
+    /// The whole run, counted.
+    pub totals: ValidateTotals,
+    /// Whether the run reproduces `validation/reports/latest.{md,json}` to the digits the
+    /// platforms share.
+    pub reproduced: bool,
+    /// The committed reports against the accepted census; `null` when it couldn't be taken,
+    /// which `problems` says why.
+    pub census: Option<CensusHeld>,
+    /// Why the check failed, one reason each; empty when it passed.
+    pub problems: Vec<String>,
+}
+
+/// How one validation case came out.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ValidateCase {
+    /// A known gap: hpr refuses the flight, so nothing is compared.
+    Gap {
+        /// The case's id.
+        case: String,
+        /// The metrics the case would compare.
+        metrics: usize,
+        /// Why hpr refuses it.
+        refusal: String,
+    },
+    /// Predicted mode: every metric reported against a target, none gating.
+    Predicted {
+        /// The case's id.
+        case: String,
+        /// The metrics reported.
+        metrics: usize,
+        /// How many are within their target.
+        within_target: usize,
+        /// The metric furthest from its reference; `null` if none has a relative difference.
+        largest: Option<LargestDifference>,
+    },
+    /// Every metric held to its tolerance.
+    Scored {
+        /// The case's id.
+        case: String,
+        /// The metrics compared.
+        metrics: usize,
+        /// The largest relative difference among the scored metrics, as a fraction (0.01 is 1%),
+        /// without its sign.
+        worst_scored: f64,
+        /// The metrics the case declares not scored.
+        not_scored: Vec<String>,
+        /// How many metrics are outside their tolerance.
+        failed: usize,
+    },
+}
+
+/// A predicted case's largest difference.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct LargestDifference {
+    /// The metric, such as `apogee_m`.
+    pub metric: String,
+    /// hpr's value against the reference's, as a signed fraction: 0.01 is 1% above it.
+    pub relative: f64,
+}
+
+/// A validation run, counted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct ValidateTotals {
+    /// The cases run.
+    pub cases: usize,
+    /// The metrics compared or reported.
+    pub metrics: usize,
+    /// The metrics their cases declare not scored.
+    pub not_scored: usize,
+    /// The metrics reported against a target (predicted mode).
+    pub predicted: usize,
+    /// How many of those are outside their target.
+    pub outside_target: usize,
+    /// The scored metrics outside their tolerance.
+    pub failed: usize,
+}
+
+/// The committed reports against the accepted accuracy census.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct CensusHeld {
+    /// The accepted census's rows.
+    pub rows: usize,
+    /// Each row that differs from it, in words.
+    pub changes: Vec<String>,
+    /// How many of those differ for the worse.
+    pub worse: usize,
+    /// Each file written from the census whose committed text isn't what it writes.
+    pub stale: Vec<String>,
+}
+
 /// `hpr completions`: a shell completion script.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct Completions {
@@ -632,6 +757,8 @@ pub fn schemas() -> Vec<(&'static str, String)> {
         ("motors-show.schema.json", schema::<MotorShow>()),
         ("sim.schema.json", schema::<SimFlight>()),
         ("completions.schema.json", schema::<Completions>()),
+        ("convert.schema.json", schema::<Convert>()),
+        ("validate.schema.json", schema::<Validate>()),
         ("error.schema.json", schema::<ErrorDocument>()),
     ];
     schemas.sort_by_key(|(name, _)| *name);
