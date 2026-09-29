@@ -333,7 +333,8 @@ missing or its status disagrees.
 | <a id="m4-3b"></a>[M4.3b][phase-2] | A drag table on a flight, and RocketPy's example rocket, Calisto, flown from Python within 3% of RocketPy ([ADR-115][adr-115], [Python](python.md#rocketpys-example-flown-as-the-suite-flies-it)) | done |
 | <a id="m4-3c"></a>[M4.3c][phase-2] | Drag and wind models written as Python functions, their exceptions raised in Python ([ADR-116][adr-116], [Python](python.md#drag-and-wind-of-your-own)) | done |
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
-| <a id="m5-1a"></a>[M5.1a][phase-2] | The cache, its freshness rule and an offline mode that never fetches, tested on recorded responses ([ADR-117][adr-117], [Online data and the cache](online-data.md)) | done |
+| <a id="m5-1a"></a>[M5.1a][phase-2] | The cache, its freshness rule and an offline mode that never fetches, tested with a hand-written sample response ([ADR-117][adr-117], [Online data and the cache](online-data.md)) | done |
+| <a id="m5-1b"></a>[M5.1b][phase-2] | The HTTP transport, with rustls, behind a cargo feature, and the platform's cache folder | not yet done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
 | <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
 | <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |

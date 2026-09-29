@@ -17,7 +17,9 @@ pub enum Mode {
     Offline,
 }
 
-/// Something that fetches a URL's bytes: HTTP in M5.1b, recorded fixtures in tests.
+/// Something that fetches a URL's bytes: HTTP from
+/// [M5.1b, the HTTP transport](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-1b),
+/// recorded fixtures in tests.
 pub trait Transport {
     /// The body at `url`.
     ///
@@ -39,6 +41,7 @@ pub struct Source {
 }
 
 /// How a [`Fetched`] body relates to its source.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Freshness {
     /// Fetched by this call.
@@ -60,6 +63,8 @@ pub struct Fetched {
     pub freshness: Freshness,
     /// The source's attribution, to show with the data.
     pub attribution: String,
+    /// Online, why the fetch failed when a stale copy was returned in its place.
+    pub stale_reason: Option<String>,
 }
 
 /// A cache in front of a transport.
@@ -92,33 +97,46 @@ impl<T: Transport> Client<T> {
     /// copy is returned as [`Freshness::Stale`] when there is one. Offline, the transport is never
     /// called: any cached copy is returned, [`Freshness::Stale`] if it is past its TTL.
     ///
+    /// A copy dated after `now_s` is never fresh. Online, a cache entry that cannot be read is
+    /// treated as missing and overwritten by the fetch.
+    ///
     /// # Errors
     /// [`NetError::NotCached`] offline with no copy; [`NetError::Transport`] online when the fetch
     /// fails with no copy; cache errors as [`Cache::get`] and [`Cache::put`] give them.
     pub fn fetch(&self, source: &Source, url: &str, now_s: u64) -> Result<Fetched, NetError> {
-        let cached = self.cache.get(url)?;
-        let answer = |entry: crate::CacheEntry, fresh: bool| Fetched {
-            body: entry.body,
-            fetched_at_s: entry.fetched_at_s,
-            freshness: if fresh {
-                Freshness::Cached
-            } else {
-                Freshness::Stale
-            },
-            attribution: source.attribution.clone(),
+        // Online, an unreadable entry is a miss: the fetch below overwrites it. Offline it is the
+        // error, since there is nothing else to answer with.
+        let cached = match (self.cache.get(url), self.mode) {
+            (Ok(cached), _) => cached,
+            (Err(_), Mode::Online) => None,
+            (Err(e), Mode::Offline) => return Err(e),
         };
-        let is_fresh =
-            |entry: &crate::CacheEntry| now_s.saturating_sub(entry.fetched_at_s) < source.ttl_s;
+        let answer =
+            |entry: crate::CacheEntry, fresh: bool, stale_reason: Option<String>| Fetched {
+                body: entry.body,
+                fetched_at_s: entry.fetched_at_s,
+                freshness: if fresh {
+                    Freshness::Cached
+                } else {
+                    Freshness::Stale
+                },
+                attribution: source.attribution.clone(),
+                stale_reason,
+            };
+        // A copy dated after `now_s` (saved while the clock ran fast) is not fresh.
+        let is_fresh = |entry: &crate::CacheEntry| {
+            entry.fetched_at_s <= now_s && now_s - entry.fetched_at_s < source.ttl_s
+        };
         if let Some(entry) = cached {
             if is_fresh(&entry) {
-                return Ok(answer(entry, true));
+                return Ok(answer(entry, true, None));
             }
             if self.mode == Mode::Offline {
-                return Ok(answer(entry, false));
+                return Ok(answer(entry, false, None));
             }
             return match self.transport.get(url) {
                 Ok(body) => self.store(source, url, body, now_s),
-                Err(_) => Ok(answer(entry, false)),
+                Err(reason) => Ok(answer(entry, false, Some(reason))),
             };
         }
         if self.mode == Mode::Offline {
@@ -149,6 +167,7 @@ impl<T: Transport> Client<T> {
             fetched_at_s: now_s,
             freshness: Freshness::Fetched,
             attribution: source.attribution.clone(),
+            stale_reason: None,
         })
     }
 }
@@ -206,7 +225,7 @@ impl Transport for Replay {
     }
 }
 
-impl<T: Transport> Transport for &T {
+impl<T: Transport + ?Sized> Transport for &T {
     fn get(&self, url: &str) -> Result<Vec<u8>, String> {
         (**self).get(url)
     }

@@ -1,16 +1,18 @@
 //! Optional online data sources with an on-disk cache and an explicit offline mode: weather,
 //! soundings, elevation, ThrustCurve and motor stock.
 //!
-//! **Guide:** [Start here][guide-start] says what works today and what is planned.
+//! **Guide:** [Online data and the cache][guide-page] says what works today and what is planned.
 //!
-//! [guide-start]: https://nrdptel.github.io/hpr-sim/start-here.html
+//! [guide-page]: https://nrdptel.github.io/hpr-sim/online-data.html
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
 //! Status: pre-alpha. This crate does network and file I/O, so it is never a dependency of the pure
 //! core. Milestone [M5.1a][roadmap] adds the cache and the offline mode: a [`Client`] asks a
 //! [`Transport`] for a URL's bytes only when it is [`Mode::Online`] and its [`Cache`] holds no
 //! fresh copy. In [`Mode::Offline`] it never calls the transport; it answers from the cache, stale
-//! or not, and says which. The HTTP transport is milestone M5.1b.
+//! or not, and says which. The HTTP transport comes with [M5.1b, HTTP over this cache][m5-1b].
+//!
+//! [m5-1b]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-1b
 //!
 //! ```
 //! use hpr_net::{Cache, Client, Freshness, Mode, NetError, Source, Transport};
@@ -53,6 +55,7 @@ pub use cache::{Cache, CacheEntry};
 pub use client::{Client, Fetched, Freshness, Mode, Replay, Source, Transport};
 
 /// Why a fetch failed.
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum NetError {
     /// Offline, and the cache holds no copy of the URL.

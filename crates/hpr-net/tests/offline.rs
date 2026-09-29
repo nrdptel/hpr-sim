@@ -1,6 +1,17 @@
 //! The client against recorded fixtures: the transport is called only online, and only when the
 //! cache holds no fresh copy (M5.1a).
 
+#![allow(
+    clippy::disallowed_methods,
+    clippy::disallowed_types,
+    reason = "the tests read the committed fixture and write a cache; not the pure core"
+)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "the helpers stop at the failure, as `#[test]` functions may (clippy.toml)"
+)]
+
 use std::path::Path;
 
 use hpr_net::{Cache, Client, Freshness, Mode, NetError, Replay, Source, Transport};
@@ -112,6 +123,8 @@ fn a_failed_fetch_falls_back_to_a_stale_copy() {
     let got = online.fetch(&source(), URL, 1_000 + 2 * HOUR_S).unwrap();
     assert_eq!(got.freshness, Freshness::Stale);
     assert_eq!(got.body, recorded_body());
+    assert_eq!(got.fetched_at_s, 1_000);
+    assert_eq!(got.stale_reason.as_deref(), Some("no route to host"));
 
     // With nothing cached, the transport's error comes through.
     let err = online
@@ -130,5 +143,55 @@ fn an_unrecorded_url_fails_like_the_network() {
         .unwrap_err();
     assert!(
         matches!(err, NetError::Transport { ref reason, .. } if reason.starts_with("no recording"))
+    );
+}
+
+#[test]
+fn a_copy_dated_after_now_is_stale() {
+    // Saved while the clock ran fast: it must not count as fresh until the clock catches up.
+    let dir = tempfile::tempdir().unwrap();
+    let cache = Cache::new(dir.path());
+    let transport = replay();
+    Client::new(&transport, cache.clone(), Mode::Online)
+        .fetch(&source(), URL, 1_000_000)
+        .unwrap();
+    let offline = Client::new(Forbidden, cache.clone(), Mode::Offline);
+    assert_eq!(
+        offline.fetch(&source(), URL, 1_000).unwrap().freshness,
+        Freshness::Stale
+    );
+    let online = Client::new(&transport, cache, Mode::Online);
+    assert_eq!(
+        online.fetch(&source(), URL, 1_000).unwrap().freshness,
+        Freshness::Fetched
+    );
+    assert_eq!(transport.calls(), 2);
+}
+
+#[test]
+fn a_corrupt_entry_is_refetched_online_and_an_error_offline() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache = Cache::new(dir.path());
+    let transport = replay();
+    let online = Client::new(&transport, cache.clone(), Mode::Online);
+    online.fetch(&source(), URL, 1_000).unwrap();
+    for entry in std::fs::read_dir(dir.path()).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "json") {
+            std::fs::write(path, b"").unwrap();
+        }
+    }
+    let offline = Client::new(Forbidden, cache, Mode::Offline);
+    assert!(matches!(
+        offline.fetch(&source(), URL, 1_010),
+        Err(NetError::CorruptEntry { .. })
+    ));
+    let again = online.fetch(&source(), URL, 1_010).unwrap();
+    assert_eq!(again.freshness, Freshness::Fetched);
+    assert_eq!(transport.calls(), 2);
+    // The refetch repaired the entry.
+    assert_eq!(
+        online.fetch(&source(), URL, 1_020).unwrap().freshness,
+        Freshness::Cached
     );
 }

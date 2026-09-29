@@ -9703,8 +9703,9 @@ held about an hour.
    a TTL old is refetched online.
 3. Offline returns any cached copy, marked `Stale` past its TTL, and never calls the transport;
    with no copy it is `NotCached`. Online, a failed fetch with an old copy returns the copy as
-   `Stale`, since stale weather with a label beats no flight; with no copy the error comes
-   through.
+   `Stale` with the transport's reason in `stale_reason`, since stale weather with a label beats
+   no flight; with no copy the error comes through. A copy dated after `now_s` is never fresh.
+   Online, an unreadable entry is a miss and the fetch overwrites it; offline it is the error.
 4. The cache stores `<key>.bin` and `<key>.json` per URL, the key being 64-bit FNV-1a of the URL.
    The metadata keeps the URL, so a hash collision reads as a miss. Each file is written to a
    temporary name unique to the process and the call, then renamed, the metadata last.

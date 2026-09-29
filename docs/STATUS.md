@@ -11,7 +11,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** M5.1b (ROADMAP, ADR-117): a `ureq`+rustls `Transport` behind feature `http` in `hpr-net`, a loopback test server replaying `tests/fixtures/replay`, the platform cache dir; M5.1a's `Client`/`Cache`/`Replay` are in. Python (ADR-114 to
+- **Next (resume here):** if PR `m5.1a-cache-offline` is still open, its gate passed and its review findings are fixed: run `scripts/ci-wait.sh`, mark it ready, squash-merge. Then M5.1b (ROADMAP, ADR-117): a `ureq`+rustls `Transport` behind feature `http` in `hpr-net`, a loopback test server replaying `tests/fixtures/replay`, the platform cache dir; M5.1a's `Client`/`Cache`/`Replay` are in. Python (ADR-114 to
   116): `crates/hpr-py` wraps the builder; `models.rs` holds Python drag and wind (a call re-attaches the GIL; a raised
   exception is kept in `Raised` and `Flight` raises it). `gate.sh python` builds the wheel and runs pytest, `docs/python.md`'s
   blocks and `examples/calisto.py` (its table is in the page) included. Format (ADR-111 to 113): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change
