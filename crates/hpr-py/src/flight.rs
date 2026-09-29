@@ -11,6 +11,7 @@ use pyo3::types::{PyDict, PyList};
 use crate::models::{PythonDrag, PythonWind, Raised};
 use crate::rocket::Rocket;
 use crate::{error, key, to_python};
+use pyo3::{PyTraverseError, PyVisit};
 
 /// Where a rocket flies: the launch site, the US Standard Atmosphere 1976, and a wind.
 ///
@@ -20,8 +21,8 @@ use crate::{error, key, to_python};
 /// with no wind, or a wind of `wind_speed_m_s` blowing **from** `wind_from_deg`, clockwise from
 /// true north, the same at every height. Or a wind of your own, as a Python function given as
 /// `wind`: called as `wind(height_m)` with a height above sea level, m, it returns the air's
-/// velocity as a tuple `(east_m_s, north_m_s)`. An exception it raises stops the flight and is
-/// raised by `Flight`.
+/// velocity `(east_m_s, north_m_s)`, the way the air moves (a west wind is `(+speed, 0)`). An
+/// exception it raises stops the flight and is raised by `Flight`.
 ///
 /// `gravity` says how gravity is found along the flight: `"ellipsoidal"`, the default, is the
 /// full normal gravity vector at the rocket's position; `"vertical"` is its exact size along the
@@ -31,8 +32,8 @@ use crate::{error, key, to_python};
 #[derive(Debug)]
 pub struct Environment {
     environment: hpr::Environment,
-    /// Where a Python wind function's exception is kept until its flight raises it.
-    raised: Raised,
+    /// A Python wind function, bound to each flight's own exception slot as the flight starts.
+    wind: Option<Py<PyAny>>,
 }
 
 #[pymethods]
@@ -54,23 +55,28 @@ impl Environment {
         if gravity != GravityModel::default() {
             environment = environment.with_gravity(gravity).map_err(error)?;
         }
-        let raised = Raised::default();
-        if let Some(wind) = wind {
+        if let Some(wind) = &wind {
+            callable("wind", wind)?;
             if wind_speed_m_s != 0.0 || wind_from_deg != 0.0 {
                 return Err(error(
                     "a wind function and a constant wind were both given; give one",
                 ));
             }
-            environment = environment.with_wind(PythonWind::new(wind, raised.clone()));
         } else if wind_speed_m_s != 0.0 || wind_from_deg != 0.0 {
             environment = environment
                 .with_constant_wind(wind_speed_m_s, wind_from_deg)
                 .map_err(error)?;
         }
-        Ok(Self {
-            environment,
-            raised,
-        })
+        Ok(Self { environment, wind })
+    }
+
+    /// The wind function, for Python's garbage collector: a function that holds this environment
+    /// makes a cycle it can then find.
+    fn __traverse__(&self, visit: PyVisit<'_>) -> Result<(), PyTraverseError> {
+        if let Some(wind) = &self.wind {
+            visit.call(wind)?;
+        }
+        Ok(())
     }
 
     fn __repr__(&self) -> String {
@@ -82,6 +88,19 @@ impl Environment {
             site.height_m
         )
     }
+}
+
+/// Refuses a `what` function that can't be called, as it is given rather than mid-flight.
+fn callable(what: &str, function: &Py<PyAny>) -> PyResult<()> {
+    Python::attach(|py| {
+        if function.bind(py).is_callable() {
+            Ok(())
+        } else {
+            Err(error(format!(
+                "`{what}` must be a function, and is not callable"
+            )))
+        }
+    })
 }
 
 /// A gravity model by its name: one of the library's `GravityModel`s that takes no number, read
@@ -268,8 +287,8 @@ impl DragTable {
 /// `drag_table` is flown in place of hpr's own drag, and so is a Python function given as `drag`:
 /// called as `drag(mach, thrusting)`, with `thrusting` true while a motor burns, it returns the
 /// rocket's zero-lift drag coefficient `C_D0` on the rocket's reference area. An exception a
-/// function raises, the drag's or the environment's wind's, stops the flight and is raised here
-/// as it was raised.
+/// function raises, the drag's or the environment's wind's, stops the flight, even at a trial
+/// step the integrator would have retried shorter, and is raised here as it was raised.
 ///
 /// Heights are the rocket's centre of gravity's, above the launch site: it stands on the rail at
 /// the start, so the first height isn't zero. Speeds are relative to the ground.
@@ -315,10 +334,25 @@ impl Flight {
         let mut recorder = Recorder::new(Channel::ALL.to_vec(), interval_s).map_err(error)?;
         // A copy, so the rocket isn't held borrowed while the flight runs without the GIL.
         let rocket = rocket.borrow().rocket.clone();
-        let mut builder = hpr::Flight::builder(&rocket, &environment.environment, rail_length_m)
+        // One slot for this flight's functions: its drag and its environment's wind.
+        let raised = Raised::default();
+        let with_wind;
+        let environment = match &environment.wind {
+            Some(wind) => {
+                with_wind = environment
+                    .environment
+                    .clone()
+                    .with_wind(PythonWind::new(wind.clone_ref(py), raised.clone()));
+                &with_wind
+            }
+            None => &environment.environment,
+        };
+        let mut builder = hpr::Flight::builder(&rocket, environment, rail_length_m)
             .inclination_deg(inclination_deg)
             .heading_deg(heading_deg);
-        let raised = Raised::default();
+        if let Some(drag) = &drag {
+            callable("drag", drag)?;
+        }
         match (drag_table, drag) {
             (Some(_), Some(_)) => {
                 return Err(error(
@@ -331,19 +365,15 @@ impl Flight {
             }
             (None, None) => {}
         }
-        // A wind function's exception left by an earlier flight in this environment that ended
-        // anyway is not this flight's.
-        drop(environment.raised.take());
         // The flight holds the GIL only while a Python function runs, so other Python threads run
         // while it flies.
         let flown = py.detach(|| builder.fly_with(&mut recorder));
-        // A function's exception stops the flight, so at most one of the two holds one: the
-        // cause of the library's error, raised in its place.
-        let raised = raised.take().or_else(|| environment.raised.take());
-        let flight = match (flown, raised) {
-            (Err(_), Some(raised)) => return Err(raised),
-            (flown, _) => flown.map_err(error)?,
-        };
+        // A function's exception is raised in place of the library's error, or of a flight the
+        // library finished anyway: the exception stopped this flight's functions.
+        if let Some(raised) = raised.take() {
+            return Err(raised);
+        }
+        let flight = flown.map_err(error)?;
         let columns = recorder.columns();
         let rows = recorder.rows();
         let values = (0..columns.len())

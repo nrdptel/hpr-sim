@@ -4,7 +4,8 @@ This page shows how to fly a model of your own in place of one of hpr-sim's: a d
 or an atmosphere. You might have a drag curve from a wind tunnel, from another program, or from
 your own flights, or a wind profile from a weather balloon that none of the built-in winds fits.
 The page runs two example programs and walks through them. It follows on from
-[The builder](the-builder.md), and needs some Rust.
+[The builder](the-builder.md), and needs some Rust. From Python, a drag and a wind can be plain
+functions ([Python](python.md#drag-and-wind-of-your-own)).
 
 > **How far to trust it.** As far as your model, and no further than hpr-sim's other models, which
 > still fly the rest of the rocket and are not yet validated against real flights
