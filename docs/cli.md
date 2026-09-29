@@ -723,8 +723,9 @@ you press Tab. Save it where your shell looks for completions:
 - **One log format.** `hpr analyze` reads PerfectFlite's `.pf2` so far; other loggers' files,
   and readings such as the drogue and main descent rates and the Mach number, come with
   [M7.1](decisions-and-roadmap.md#m7-1) and [M7.2](decisions-and-roadmap.md#m7-2).
-- **Design files aren't converted.** `hpr convert` converts motor files only. Writing a design
-  as an OpenRocket file is [M3.2](decisions-and-roadmap.md#m3-2)'s work.
+- **Design files aren't converted.** `hpr convert` converts motor files only. The library writes
+  a design as an OpenRocket file ([writing a `.ork`](format/ork.md#writing-a-ork-back-out)); the
+  command line can't yet.
 - **`hpr validate` needs the repository.** The cases and their reference results are files in it,
   not part of the tool. It re-flies only the RocketPy comparisons.
 - **RockSim is unchecked.** OpenRocket opens the files `hpr convert` writes; whether RockSim

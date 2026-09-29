@@ -2755,8 +2755,8 @@ is in [ADR-057][adr-057].
 OpenRocket's 3D-view settings, a simulation's plug-ins, a part's colour, a material's group. hpr keeps
 each whole, beside
 the design, in an *extension* (a named slot for data another program wrote) called `x-openrocket`,
-at a path that leads back to where it was, so that writing the file back out
-([M3.2](../decisions-and-roadmap.md#m3-2)) can put it back. A design whose rocket is missing parts
+at a path that leads back to where it was, so that writing the file back out puts it back
+([writing a `.ork` back out](#writing-a-ork-back-out)). A design whose rocket is missing parts
 this way says it is **reduced**; the flag is on the design, not on its rocket, so check it before
 using the rocket on its own.
 
@@ -2788,8 +2788,9 @@ for one of two reasons: no reader asked for it, or the reader that asked dropped
 tag goes back in place of anything the writer would have written under that name from the design.
 Take a rail button with a 3 mm screw head. hpr warns that it dropped the screw, and the file it
 writes still says `<screwheight>0.003</screwheight>`. So OpenRocket reads the screw the original
-had, and reading the written file raises the same warning again. The same warning also keeps the
-rocket's configurations from flying in hpr, as the original's did
+had. Reading the written file gives the same "screw dropped" warning. As with the original, that
+warning means hpr doesn't fly the rocket's configurations, since only a rocket read without such
+a warning flies
 ([ADR-055](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21)).
 
 Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
@@ -2845,13 +2846,18 @@ How this was decided is in [ADR-058][adr-058].
 
 ## Writing a `.ork` back out
 
-**In short.** `hpr_io::ork::export` writes a design as a `.ork` file that OpenRocket 24.12 can
-open: schema 1.10, zipped with the design as `rocket.ork`, as OpenRocket packs one. It writes
-from hpr's design alone, not from a copy of the file it came from, so a design built or changed
-in hpr is written the same way. Read back, the written file gives the same design, bit for bit,
-for every design in the reference library. **Not checked yet:** that OpenRocket flies the written
-file as it flies the original, to 0.5% of the apogee. That is
-[M3.2b](../decisions-and-roadmap.md#m3-2b)'s check.
+**In short.** `hpr_io::ork::export` writes a design as a `.ork` file for OpenRocket 24.12: schema
+1.10 (the file-format version OpenRocket 24.12 writes), zipped with the design as `rocket.ork`,
+as OpenRocket packs one. It writes from hpr's design alone, not from a copy of the file it came
+from, so a design built in hpr is written the same way. One exception: a value kept from the
+original file is written as the file had it, even after the design is edited. Read back, the
+written file gives the same design, bit for bit, for every design in the reference library (a
+private collection of other people's designs, so its counts are published but its files are
+not). **Not checked yet:** that OpenRocket opens every written file and flies it as it flies the
+original, to 0.5% of the apogee. That is [M3.2b](../decisions-and-roadmap.md#m3-2b)'s check.
+
+The written file is not a copy of the original. It is laid out afresh, and it states some values
+the original left to OpenRocket's defaults, such as each part's roll angle.
 
 **How it is written.** Each part of the design is written as the tags hpr reads it from. What hpr
 keeps but doesn't model goes back where it was
@@ -2868,8 +2874,12 @@ though hpr doesn't model the screw. Two functions do the work:
 The API reference has a worked example
 ([`hpr_io::ork::export`](https://nrdptel.github.io/hpr-sim/api/hpr_io/ork/export/index.html)).
 
-**Three lessons from Loft's exporter** are tests here ([L67](../decisions-and-roadmap.md#l67),
-[L68](../decisions-and-roadmap.md#l68)):
+**Seven mistakes of Loft's exporter** ([Loft](../glossary.md#loft-lesson) is the project before
+hpr-sim) are pinned by two tests, `round_trip_keeps_delays_ignition_conditions_and_override_flags`
+([L67](../decisions-and-roadmap.md#l67)) and `fin_points_clusters_and_floats_round_trip_exactly`
+([L68](../decisions-and-roadmap.md#l68)), in `hpr_io::ork::export::tests`. They run on invented
+designs, as does a third test holding a small design's written document to one worked out by
+hand:
 
 | Loft wrote | hpr writes |
 |---|---|
@@ -2886,7 +2896,11 @@ because `0.3` would read back as a different number. Angles are stored in radian
 degrees. The writer picks the shortest number of degrees that converts back to exactly the stored
 radians: a fin set at 45° is written `45`.
 
-**What OpenRocket insists on.** These were found by opening written files in OpenRocket 24.12:
+**What OpenRocket insists on.** These were found by opening written files in OpenRocket 24.12. In
+a first try, by hand, it opened every written file of the reference library whose original it
+opens: 71 of 73, the other two failing as their originals do.
+[M3.2b](../decisions-and-roadmap.md#m3-2b), OpenRocket flying the written files, makes that a
+committed check.
 
 - An id that isn't a UUID (a 36-character code such as `0f0e0d0c-0b0a-4900-8800-070605040302`)
   makes OpenRocket refuse the whole file. So such an id is left out, and OpenRocket gives the part
