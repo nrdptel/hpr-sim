@@ -34,7 +34,7 @@
       }
     },
     "notes": {
-      "description": "What the flight leaves out of the design, such as its parachutes.",
+      "description": "What the flight leaves out of the design, such as its parachutes, and what to make of the\nnumbers it leaves out.",
       "type": "array",
       "items": {
         "type": "string"
@@ -45,10 +45,10 @@
       "$ref": "#/$defs/Summary"
     },
     "warnings": {
-      "description": "What the design's reader accepted with a caveat, in file order.",
+      "description": "What the design's or the motor file's reader accepted with a caveat, and what the design's\nchecks found unusual but buildable.",
       "type": "array",
       "items": {
-        "$ref": "#/$defs/DesignWarning"
+        "$ref": "#/$defs/InputWarning"
       }
     }
   },
@@ -91,6 +91,29 @@
         "height_above_ground_m"
       ]
     },
+    "DesignConfiguration": {
+      "description": "A motor configuration of the design file.",
+      "type": "object",
+      "properties": {
+        "flies": {
+          "description": "Whether `hpr sim` flies it as the file has it, without `--motor`.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "Its id, which `--config` takes.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Its name, as the file writes it; often empty.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "flies"
+      ]
+    },
     "DesignFormat": {
       "description": "A design file format.",
       "oneOf": [
@@ -104,29 +127,6 @@
           "type": "string",
           "const": "hpr_json"
         }
-      ]
-    },
-    "DesignWarning": {
-      "description": "Something the design's reader accepted with a caveat.",
-      "type": "object",
-      "properties": {
-        "at": {
-          "description": "Where in the file: a path of element names from the root, or a zip entry's name.",
-          "type": "string"
-        },
-        "kind": {
-          "description": "How serious it is.",
-          "$ref": "#/$defs/WarningKind"
-        },
-        "message": {
-          "description": "What was found, and how it was read.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "at",
-        "kind",
-        "message"
       ]
     },
     "EventKind": {
@@ -143,7 +143,7 @@
           "const": "rail_exit"
         },
         {
-          "description": "Every motor lit so far has burned out.",
+          "description": "Every motor lit, or due to light at a known time, has burned out.",
           "type": "string",
           "const": "burnout"
         },
@@ -153,7 +153,7 @@
           "const": "apogee"
         },
         {
-          "description": "The centre of mass reached the ground.",
+          "description": "The centre of mass came down to the launch site's height.",
           "type": "string",
           "const": "ground_hit"
         },
@@ -279,8 +279,31 @@
         }
       ]
     },
+    "InputWarning": {
+      "description": "Something a reader accepted with a caveat, or the design's checks found unusual.",
+      "type": "object",
+      "properties": {
+        "at": {
+          "description": "Where: in a `.ork` file, a path of element names from the root or a zip entry's name; in a\nmotor file, its name and line; `design checks` for a check's finding.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "How serious it is.",
+          "$ref": "#/$defs/WarningKind"
+        },
+        "message": {
+          "description": "What was found, and how it was read.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "kind",
+        "message"
+      ]
+    },
     "Landing": {
-      "description": "Where and how fast a body landed.",
+      "description": "Where and how fast a body landed: where its centre of mass came down to the launch site's\nheight on the ellipsoid. There is no terrain.",
       "type": "object",
       "properties": {
         "body": {
@@ -298,7 +321,7 @@
           "format": "double"
         },
         "distance_m": {
-          "description": "Distance from the launch site, m.",
+          "description": "Horizontal distance from the launch site, m.",
           "type": "number",
           "format": "double"
         },
@@ -493,6 +516,17 @@
           "description": "The id of the motor configuration flown.",
           "type": "string"
         },
+        "configuration_name": {
+          "description": "Its name, as the file writes it; often empty.",
+          "type": "string"
+        },
+        "configurations": {
+          "description": "Every motor configuration the file holds, the one flown among them, before `--motor`\nchanged any.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DesignConfiguration"
+          }
+        },
         "file": {
           "description": "The file's name, without its folder.",
           "type": "string"
@@ -510,7 +544,9 @@
         "file",
         "format",
         "name",
-        "configuration"
+        "configuration",
+        "configuration_name",
+        "configurations"
       ]
     },
     "SimEvent": {
@@ -557,26 +593,45 @@
       "description": "One motor flown.",
       "type": "object",
       "properties": {
+        "count": {
+          "description": "How many of it fly: one per tube of a cluster, and one per pod of a pod set.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
         "designation": {
           "description": "Its designation, such as `168H54-10A`.",
           "type": "string"
         },
         "ignition": {
-          "description": "When it lights: `launch`, or how the design says.",
+          "description": "When it lights, in words: `at launch`, or as the design says.",
           "type": "string"
         },
         "mount": {
-          "description": "The id of the motor mount it is in.",
+          "description": "The id of the motor mount it is in, which `--mount` takes.",
+          "type": "string"
+        },
+        "mount_name": {
+          "description": "The mount's name, as the file writes it.",
           "type": "string"
         },
         "source": {
           "description": "Where it comes from.",
           "$ref": "#/$defs/SimMotorSource"
+        },
+        "unlit": {
+          "description": "How many of those never light: in a tube the design marks failed, or set never to light.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
         }
       },
       "required": [
         "designation",
         "mount",
+        "mount_name",
+        "count",
+        "unlit",
         "source",
         "ignition"
       ]
@@ -650,7 +705,7 @@
           "format": "double"
         },
         "flight_margin": {
-          "description": "The margin at the flight's angle of attack.",
+          "description": "The flight margin: the air along the axis, at the flight's Mach number. The angle of attack\nis left out.",
           "$ref": "#/$defs/Margin"
         },
         "height_above_ground_m": {
@@ -664,7 +719,7 @@
           "format": "double"
         },
         "static_margin": {
-          "description": "The margin at zero angle of attack.",
+          "description": "The static margin: the air along the axis, at Mach 0.",
           "$ref": "#/$defs/Margin"
         },
         "time_s": {
@@ -706,7 +761,7 @@
           }
         },
         "landing": {
-          "description": "Where and how fast the rocket landed.",
+          "description": "Where and how fast the rocket landed. With no recovery device flown, as `hpr sim` flies\ntoday, the fall from apogee rests on small-angle aerodynamics far outside their range: not\na prediction (the notes say so).",
           "anyOf": [
             {
               "$ref": "#/$defs/Landing"
@@ -725,7 +780,7 @@
           "format": "double"
         },
         "max_acceleration_m_s2": {
-          "description": "The top acceleration of the nose tip from liftoff until a recovery device opens, m/s².",
+          "description": "The top acceleration of the nose tip relative to the launch site's frame, from liftoff\nuntil a recovery device opens, m/s²: the motion's, not what an accelerometer reads.",
           "anyOf": [
             {
               "$ref": "#/$defs/Peak"
@@ -780,7 +835,7 @@
           ]
         },
         "min_flight_margin_cal": {
-          "description": "The least stability margin at the flight's angle of attack, calibres, over the same span.",
+          "description": "The least flight margin, calibres, over the same span: the margin at the flight's Mach\nnumber, along the axis.",
           "anyOf": [
             {
               "$ref": "#/$defs/Peak"

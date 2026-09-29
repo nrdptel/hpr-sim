@@ -6,7 +6,7 @@ landing (GeoJSON or KML, which Google Earth, QGIS and most web maps open). It fl
 [Getting started](getting-started.md) again and writes all five files. It needs the first page's
 setup, and a little Rust.
 
-Without Rust, `hpr sim --export` writes the same five formats for a `.ork` or hpr design file,
+Without writing Rust, `hpr sim --export` writes the same five formats for a `.ork` or hpr design file,
 every quantity hpr tracks in each ([The command line](cli.md#exporting-the-recording)).
 
 > **The files are exact, the flight is not validated.** Every number in a file reads back to

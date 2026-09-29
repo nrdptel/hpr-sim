@@ -12,7 +12,7 @@ use hpr_design::{
     FinSet, Ignition, InnerTube, MassComponent, MotorMount, MountedMotor, NoseCone, Overrides,
     Packing, Part, ReferenceDiameter, Shoulder, Stage, Wall,
 };
-use hpr_motor::Delay;
+use hpr_motor::{Delay, MotorError};
 use hpr_sim::{EventKind, FlightSettings, Rail, Simulation};
 
 use crate::rocket::{Fins, Mass, MotorTube, Nose, Transition, Tube, material};
@@ -412,11 +412,23 @@ fn motors_come_from_the_catalog_or_a_file() {
     assert!(matches!(Motor::from_eng(&two), Err(Error::MotorCount(2))));
 
     let text = include_str!("../../hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000719.rse");
-    // Its engine: `code="H170M" dia="38." len="191."`, millimetres read as metres.
+    // Its engine: `code="H170M" dia="38." len="191." initWt="330." propWt="182.5"`, sizes in
+    // millimetres and masses in grams, converted to metres and kilograms.
     let file = Motor::from_rse(text).unwrap();
     assert_eq!(file.designation(), "H170M");
     assert_eq!((file.diameter_m(), file.length_m()), (0.038, 0.191));
     assert_eq!(file.delay(), None);
+    let solid = file.solid_motor();
+    let propellant = solid.propellant_initial_mass_kg();
+    assert!((propellant - 0.1825).abs() < 1e-12, "{propellant}");
+    let loaded = propellant + solid.dry().mass_kg;
+    assert!((loaded - 0.330).abs() < 1e-12, "{loaded}");
+    let hybrid = text.replacen("Type=\"reloadable\"", "Type=\" Hybrid\"", 1);
+    assert_ne!(hybrid, text);
+    assert!(matches!(
+        Motor::from_rse(&hybrid),
+        Err(Error::Motor(MotorError::Inconsistent(message))) if message.contains("hybrid")
+    ));
     let engine = text.find("<engine ").unwrap();
     let end = text.find("</engine>").unwrap() + "</engine>".len();
     let two = format!("{}{}{}", &text[..end], &text[engine..end], &text[end..]);

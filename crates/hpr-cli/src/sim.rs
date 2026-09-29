@@ -3,22 +3,25 @@
 //! The flight is the library's own: the design becomes an [`hpr::Rocket`] with
 //! [`hpr::Rocket::from_design`], and [`hpr::Flight::builder`] flies it, so what this prints is
 //! what a program calling the facade gets, number for number. The stack flies whole: no recovery
-//! device and no separation is flown yet, which the output's notes say.
+//! device and no separation is flown yet, which the output's notes say. What would make the
+//! flight another rocket than the file's is refused (ADR-106).
 
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use hpr::hpr_design::{self, Configuration, Ignition, MountedMotor, checks};
 use hpr::hpr_io::ork;
+use hpr::hpr_motor::text::{ParseWarning, WarningKind as ReadWarning};
+use hpr::hpr_motor::{eng, rse};
 use hpr::hpr_sim::metrics::{self, FlightSummary};
 use hpr::hpr_sim::{self, Channel, FlightSettings, Recorder, export};
 use hpr::{Environment, Flight, Motor, Rocket};
 
 use crate::motors::MotorFile;
 use crate::output::{
-    Apogee, DesignFormat, DesignWarning, EventKind, Export, ExportFormat, FileFormat, Landing,
-    Launch, Margin, Peak, SimDesign, SimEvent, SimFlight, SimMotor, SimMotorSource, Stability,
-    Summary, Termination, WarningKind,
+    Apogee, DesignConfiguration, DesignFormat, EventKind, Export, ExportFormat, FileFormat,
+    InputWarning, Landing, Launch, Margin, Peak, SimDesign, SimEvent, SimFlight, SimMotor,
+    SimMotorSource, Stability, Summary, Termination, WarningKind,
 };
 use crate::{Failure, Out};
 
@@ -36,15 +39,15 @@ pub struct SimArgs {
     /// The motor configuration to fly, by its id [default: the design's default, or its only one]
     #[arg(long, value_name = "ID")]
     pub config: Option<String>,
-    /// Fly this motor in place of the configuration's: a catalog designation or common name, or
-    /// a .eng or .rse file
+    /// Fly this motor in place of the configuration's, lit at launch: a catalog designation or
+    /// common name, or a .eng or .rse file
     #[arg(long, value_name = "NAME_OR_FILE")]
     pub motor: Option<String>,
-    /// The motor mount, by its component id, that --motor goes in, where the configuration
-    /// doesn't say
+    /// The motor mount, by its component id, that --motor goes in [default: the configuration's,
+    /// or the design's only one]
     #[arg(long, value_name = "ID", requires = "motor")]
     pub mount: Option<String>,
-    /// The launch site's latitude, degrees north
+    /// The launch site's latitude, degrees north (south is negative)
     #[arg(
         long,
         value_name = "DEG",
@@ -52,7 +55,7 @@ pub struct SimArgs {
         allow_negative_numbers = true
     )]
     pub latitude: f64,
-    /// The launch site's longitude, degrees east (negative west)
+    /// The launch site's longitude, degrees east (west is negative)
     #[arg(
         long,
         value_name = "DEG",
@@ -60,7 +63,7 @@ pub struct SimArgs {
         allow_negative_numbers = true
     )]
     pub longitude: f64,
-    /// The launch site's elevation above sea level, m
+    /// The launch site's height above sea level, m
     #[arg(
         long,
         value_name = "M",
@@ -81,7 +84,13 @@ pub struct SimArgs {
     #[arg(long, value_name = "M_S")]
     pub wind: Option<f64>,
     /// The direction the wind blows from, degrees clockwise from north
-    #[arg(long, value_name = "DEG", default_value_t = 0.0, requires = "wind")]
+    #[arg(
+        long,
+        value_name = "DEG",
+        default_value_t = 0.0,
+        requires = "wind",
+        allow_negative_numbers = true
+    )]
     pub wind_from: f64,
     /// Write the flight's recording to this file: .csv, .json, .parquet, .geojson or .kml
     /// (repeat for several)
@@ -97,26 +106,34 @@ pub struct SimArgs {
 
 /// Runs `hpr sim`.
 pub(crate) fn run(args: &SimArgs, to: &mut Out<'_>) -> Result<(), Failure> {
-    // Everything that can be refused is refused before the flight: an export's format, the
-    // design, the motor, the site.
-    let exports = args
-        .export
-        .iter()
-        .map(|path| export_format(path).map(|format| (path.as_str(), format)))
-        .collect::<Result<Vec<_>, _>>()?;
+    // Everything that can be refused is refused before the flight: the exports, the recording's
+    // interval, the design, the motor, the site.
+    let exports = exports(args)?;
+    let mut recorder = Recorder::new(Channel::ALL.to_vec(), Some(args.interval))
+        .map_err(|error| Failure::Input(format!("--interval: {error}")))?;
     let mut read = read_design(&args.design)?;
+    let configurations = read.configurations();
     let (configuration, motor_source) = match &args.motor {
         Some(name) => {
-            let (motor, source) = motor(name)?;
+            let (motor, source, warnings) = motor(name)?;
+            read.warnings.extend(warnings);
             let id = read.swap(args.config.as_deref(), args.mount.as_deref(), &motor)?;
             (id, source)
         }
         None => (read.flown(args.config.as_deref())?, SimMotorSource::Design),
     };
-    let design_name = read.rocket.name.clone();
+    let configuration_name = configurations
+        .iter()
+        .find(|c| c.id == configuration)
+        .map(|c| c.name.clone())
+        .unwrap_or_default();
+    // Only the configuration flown: the design's checks look at every configuration, and
+    // another's error isn't this flight's.
+    read.rocket.configurations.retain(|c| c.id == configuration);
     let flown_motors = read
         .rocket
-        .configuration(&configuration)
+        .configurations
+        .first()
         .map(|flown| flown.motors.clone())
         .unwrap_or_default();
     // The stack flies whole, so a motor lit by its stage's separation would never light.
@@ -130,7 +147,42 @@ pub(crate) fn run(args: &SimArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             motor.designation
         )));
     }
-    let rocket = Rocket::from_design(read.rocket.clone(), &configuration).map_err(input)?;
+    let (errors, findings): (Vec<_>, Vec<_>) = checks::check(&read.rocket)
+        .map_err(|error| Failure::Input(format!("the design doesn't hold together: {error}")))?
+        .into_iter()
+        .partition(|finding| finding.severity() == checks::Severity::Error);
+    if !errors.is_empty() {
+        if !args.accept_design_errors {
+            return Err(Failure::Input(format!(
+                "the design's checks found {}, which hpr sim flies only with \
+                 --accept-design-errors: {}",
+                count(errors.len(), "error"),
+                findings_text(&errors)
+            )));
+        }
+        read.notes.push(format!(
+            "flown with --accept-design-errors past {}, so its numbers are not a buildable \
+             rocket's: {}",
+            count(errors.len(), "error"),
+            findings_text(&errors)
+        ));
+    }
+    read.warnings
+        .extend(findings.iter().map(|finding| InputWarning {
+            at: "design checks".to_owned(),
+            kind: WarningKind::Unusual,
+            message: finding_text(finding),
+        }));
+    // How many of each motor fly: a cluster's tubes and a pod set's pods each carry one.
+    let placed = read
+        .rocket
+        .assemble(&configuration)
+        .map_err(|error| Failure::Input(format!("the design doesn't hold together: {error}")))?
+        .motors;
+    let names = component_names(&read.rocket);
+    let design_name = read.rocket.name.clone();
+
+    let rocket = Rocket::from_design(read.rocket, &configuration).map_err(input)?;
     let mut environment = Environment::new(args.latitude, args.longitude, args.elevation)
         .map_err(|error| Failure::Input(format!("the launch site: {error}")))?;
     if let Some(speed) = args.wind {
@@ -152,45 +204,26 @@ pub(crate) fn run(args: &SimArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             accept_design_errors: true,
             ..FlightSettings::default()
         });
-        let findings = checks::check(rocket.design()).map_err(|error| {
-            Failure::Input(format!("the design doesn't hold together: {error}"))
-        })?;
-        let errors: Vec<_> = findings
-            .into_iter()
-            .filter(|finding| finding.severity() == checks::Severity::Error)
-            .collect();
-        if !errors.is_empty() {
-            read.notes.push(format!(
-                "flown with --accept-design-errors past {}, so its numbers are not a buildable \
-                 rocket's: {}",
-                count(errors.len(), "error"),
-                findings_text(&errors)
-            ));
-        }
     }
-    let (flight, recorder) = if exports.is_empty() {
-        (builder.fly().map_err(input)?, None)
+    let flight = if exports.is_empty() {
+        builder.fly()
     } else {
-        let mut recorder = Recorder::new(Channel::ALL.to_vec(), Some(args.interval))
-            .map_err(|error| Failure::Input(format!("--interval: {error}")))?;
-        let flight = builder.fly_with(&mut recorder).map_err(input)?;
-        (flight, Some(recorder))
-    };
+        builder.fly_with(&mut recorder)
+    }
+    .map_err(input)?;
 
     let mut written = Vec::new();
-    if let Some(recorder) = &recorder {
-        let name = format!("{design_name}, {configuration}");
-        for (path, format) in &exports {
-            let contents = contents(*format, recorder, &environment, flight.summary(), &name)
-                .map_err(|error| Failure::Input(format!("{path}: {error}")))?;
-            std::fs::write(path, contents)
-                .map_err(|error| Failure::Input(format!("{path}: {error}")))?;
-            written.push(Export {
-                path: (*path).to_owned(),
-                format: *format,
-                rows: recorder.rows().len(),
-            });
-        }
+    let name = format!("{design_name}, {configuration}");
+    for (path, format) in &exports {
+        let contents = contents(*format, &recorder, &environment, flight.summary(), &name)
+            .map_err(|error| Failure::Input(format!("{path}: {error}")))?;
+        std::fs::write(path, contents)
+            .map_err(|error| Failure::Input(format!("{path}: {error}")))?;
+        written.push(Export {
+            path: (*path).to_owned(),
+            format: *format,
+            rows: recorder.rows().len(),
+        });
     }
 
     let document = SimFlight {
@@ -199,14 +232,28 @@ pub(crate) fn run(args: &SimArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             format: read.format,
             name: design_name,
             configuration,
+            configuration_name,
+            configurations,
         },
         motors: flown_motors
             .iter()
-            .map(|flown| SimMotor {
-                designation: flown.designation.clone(),
-                mount: flown.mount.clone(),
-                source: motor_source.clone(),
-                ignition: ignition(&flown.ignition),
+            .map(|flown| {
+                let mine = placed.iter().filter(|p| {
+                    p.mount == flown.mount && p.mounted.designation == flown.designation
+                });
+                SimMotor {
+                    designation: flown.designation.clone(),
+                    mount: flown.mount.clone(),
+                    mount_name: names
+                        .iter()
+                        .find(|(id, _)| *id == flown.mount)
+                        .map(|(_, name)| name.clone())
+                        .unwrap_or_default(),
+                    count: mine.clone().count(),
+                    unlit: mine.filter(|p| p.fails).count(),
+                    source: motor_source.clone(),
+                    ignition: ignition(&flown.ignition),
+                }
             })
             .collect(),
         launch: Launch {
@@ -229,27 +276,23 @@ pub(crate) fn run(args: &SimArgs, to: &mut Out<'_>) -> Result<(), Failure> {
     to.emit(&document, |out| print(&document, out))
 }
 
-/// A library error, as the command reports it: a design's failed checks in full, with the way
-/// past them.
+/// A library error, as the command reports it.
 fn input(error: hpr::Error) -> Failure {
-    match error {
-        hpr::Error::Sim(hpr_sim::SimError::DesignChecks(findings)) => Failure::Input(format!(
-            "the design's checks found {}, which hpr sim flies only with \
-             --accept-design-errors: {}",
-            count(findings.len(), "error"),
-            findings_text(&findings)
-        )),
-        error => Failure::Input(error.to_string()),
-    }
+    Failure::Input(error.to_string())
 }
 
 /// Findings as their JSON, one after another.
 fn findings_text(findings: &[checks::Finding]) -> String {
     findings
         .iter()
-        .map(|finding| serde_json::to_string(finding).unwrap_or_else(|_| format!("{finding:?}")))
+        .map(finding_text)
         .collect::<Vec<_>>()
         .join("; ")
+}
+
+/// A finding as its JSON: its kind and the parts and sizes it is about.
+fn finding_text(finding: &checks::Finding) -> String {
+    serde_json::to_string(finding).unwrap_or_else(|_| format!("{finding:?}"))
 }
 
 /// `n` things, in words: `1 error`, `2 errors`.
@@ -269,6 +312,64 @@ fn file_name(path: &str) -> String {
     )
 }
 
+/// The `--export` files and their formats, refused before the flight if a format is unknown, a
+/// file's folder is missing, a file is given twice, or a file is one this run reads.
+fn exports(args: &SimArgs) -> Result<Vec<(&str, ExportFormat)>, Failure> {
+    let inputs: Vec<PathBuf> = std::iter::once(args.design.as_str())
+        .chain(
+            args.motor
+                .as_deref()
+                .filter(|motor| MotorFile::of(motor).is_some()),
+        )
+        .map(same_file)
+        .collect();
+    let mut seen = Vec::new();
+    let mut exports = Vec::new();
+    for path in &args.export {
+        let format = export_format(path)?;
+        let file = same_file(path);
+        if inputs.contains(&file) {
+            return Err(Failure::Input(format!(
+                "{path}: this run reads that file, and --export would write over it"
+            )));
+        }
+        if seen.contains(&file) {
+            return Err(Failure::Input(format!(
+                "{path}: --export names the file twice"
+            )));
+        }
+        if let Some(folder) = Path::new(path).parent()
+            && !folder.as_os_str().is_empty()
+            && !folder.is_dir()
+        {
+            return Err(Failure::Input(format!(
+                "{path}: there is no folder {}",
+                folder.display()
+            )));
+        }
+        seen.push(file);
+        exports.push((path.as_str(), format));
+    }
+    Ok(exports)
+}
+
+/// A path as the file system knows it, to compare two: the file's canonical path if it exists,
+/// or its folder's with its name.
+fn same_file(path: &str) -> PathBuf {
+    let path = Path::new(path);
+    if let Ok(canonical) = path.canonicalize() {
+        return canonical;
+    }
+    let folder = match path.parent() {
+        Some(folder) if !folder.as_os_str().is_empty() => folder,
+        _ => Path::new("."),
+    };
+    match (folder.canonicalize(), path.file_name()) {
+        (Ok(folder), Some(name)) => folder.join(name),
+        _ => path.to_path_buf(),
+    }
+}
+
 /// A design read, with the configurations it could fly and what the reader said.
 struct Read {
     format: DesignFormat,
@@ -279,8 +380,21 @@ struct Read {
     /// ([`ork::airframe_not_as_written`]).
     airframe: Option<String>,
     notes: Vec<String>,
-    warnings: Vec<DesignWarning>,
+    warnings: Vec<InputWarning>,
 }
+
+/// The note on the descent, after what the design says of its recovery.
+fn descent(recovery: &str) -> String {
+    format!(
+        "{recovery}, so the rocket falls from apogee on its airframe alone, on aerodynamics that \
+         hold only at small angles of attack: its landing time, speed and place are not a \
+         prediction"
+    )
+}
+
+/// The note for a design of more than one stage.
+const WHOLE_STACK: &str =
+    "the stages fly as one stack: hpr sim flies no separation yet, so none comes apart";
 
 /// Reads a `.ork` or an hpr design file, by its extension.
 fn read_design(path: &str) -> Result<Read, Failure> {
@@ -297,19 +411,16 @@ fn read_design(path: &str) -> Result<Read, Failure> {
             let mut warnings = file.warnings;
             warnings.extend(design.warnings);
             let design = design.value;
-            let mut notes = Vec::new();
             let devices = design.recovery.devices.len();
-            if devices > 0 {
-                notes.push(format!(
-                    "the file's {} {} not flown yet: the rocket comes down on its airframe \
-                     alone, so its landing speed, landing time and drift are not a recovered \
-                     flight's",
+            let mut notes = vec![if devices == 0 {
+                descent("the file has no recovery device")
+            } else {
+                descent(&format!(
+                    "the file's {} {} not flown yet",
                     count(devices, "recovery device"),
                     if devices == 1 { "is" } else { "are" },
-                ));
-            } else {
-                notes.push(NO_RECOVERY.to_owned());
-            }
+                ))
+            }];
             if design.rocket.stages.len() > 1 {
                 notes.push(WHOLE_STACK.to_owned());
             }
@@ -326,7 +437,7 @@ fn read_design(path: &str) -> Result<Read, Failure> {
                 ork: Some(design.motors),
                 airframe: ork::airframe_not_as_written(&file.value),
                 notes,
-                warnings: warnings.iter().map(design_warning).collect(),
+                warnings: warnings.iter().map(ork_warning).collect(),
             })
         }
         Some("json") => {
@@ -334,12 +445,7 @@ fn read_design(path: &str) -> Result<Read, Failure> {
                 serde_json::from_slice(&bytes()?).map_err(|error| {
                     Failure::Input(format!("{path}: not an hpr design file: {error}"))
                 })?;
-            let mut notes = vec![
-                "an hpr design file holds no recovery devices, so none is flown: the rocket \
-                 comes down on its airframe alone, and its landing speed, landing time and drift \
-                 are not a recovered flight's"
-                    .to_owned(),
-            ];
+            let mut notes = vec![descent("an hpr design file holds no recovery devices")];
             if rocket.stages.len() > 1 {
                 notes.push(WHOLE_STACK.to_owned());
             }
@@ -358,14 +464,37 @@ fn read_design(path: &str) -> Result<Read, Failure> {
     }
 }
 
-/// The note for a `.ork` with no recovery device.
-const NO_RECOVERY: &str = "the file has no recovery device, so none is flown: the rocket comes down on its airframe alone";
-
-/// The note for a design of more than one stage.
-const WHOLE_STACK: &str =
-    "the stages fly as one stack: hpr sim flies no separation yet, so none comes apart";
-
 impl Read {
+    /// Every configuration of the file, and whether it flies as the file has it.
+    fn configurations(&self) -> Vec<DesignConfiguration> {
+        match &self.ork {
+            Some(motors) => motors
+                .configurations
+                .iter()
+                .map(|c| DesignConfiguration {
+                    id: c.id.clone(),
+                    name: c.name.clone(),
+                    flies: c.left_out.is_none()
+                        && c.staging.is_none()
+                        && self.rocket.configuration(&c.id).is_some(),
+                })
+                .collect(),
+            None => self
+                .rocket
+                .configurations
+                .iter()
+                .map(|c| DesignConfiguration {
+                    id: c.id.clone(),
+                    name: c.name.clone(),
+                    flies: !c
+                        .motors
+                        .iter()
+                        .any(|m| matches!(m.ignition, Ignition::Separation { .. })),
+                })
+                .collect(),
+        }
+    }
+
     /// The configuration flown as the design has it: `--config`, or the default or only one.
     fn flown(&self, wanted: Option<&str>) -> Result<String, Failure> {
         let id = match &self.ork {
@@ -377,15 +506,25 @@ impl Read {
                     return Err(powered_separation(&chosen.id, staging));
                 }
                 if let Some(left_out) = &chosen.left_out {
+                    let mut hint = match self.no_motor_flies(Some(chosen)) {
+                        None => "; give a motor with --motor".to_owned(),
+                        Some(why) => format!("; nor can it with --motor: {why}"),
+                    };
+                    let flying: Vec<String> = self
+                        .configurations()
+                        .into_iter()
+                        .filter(|c| c.flies)
+                        .map(|c| c.id)
+                        .collect();
+                    if !flying.is_empty() {
+                        hint.push_str(&format!(
+                            "; the file's configurations that fly as written: {}",
+                            list(&flying)
+                        ));
+                    }
                     return Err(Failure::Input(format!(
-                        "configuration {} can't be flown as the file has it: {}{}",
-                        chosen.id,
-                        left_out.message,
-                        if motor_fixes(left_out.why) {
-                            "; give a motor with --motor"
-                        } else {
-                            ""
-                        }
+                        "configuration {} can't be flown as the file has it: {}{hint}",
+                        chosen.id, left_out.message
                     )));
                 }
                 chosen.id.clone()
@@ -404,56 +543,79 @@ impl Read {
         // A configuration the reader didn't leave out is among the rocket's; this is its check.
         if self.rocket.configuration(&id).is_none() {
             return Err(Failure::Input(format!(
-                "configuration {id} can't be flown as the file has it; give a motor with --motor"
+                "configuration {id} can't be flown as the file has it"
             )));
         }
         Ok(id)
     }
 
+    /// Why no motor of the user's own flies the `.ork` rocket in `chosen` (or, with none, in a
+    /// configuration of its own), if none does: its airframe or stages aren't what hpr sim flies
+    /// whole, or the configuration is left out for more than its motor. A configuration's
+    /// `LeftOut` names only its first reason, so each is asked of the file directly.
+    fn no_motor_flies(&self, chosen: Option<&ork::MotorConfiguration>) -> Option<String> {
+        if let Some(why) = &self.airframe {
+            return Some(format!(
+                "the airframe was not read exactly as written: {why}"
+            ));
+        }
+        if let Some(chosen) = chosen {
+            if let Some(staging) = &chosen.staging {
+                return Some(separation_text(staging));
+            }
+            if !chosen.inactive_stages.is_empty() {
+                return Some(format!(
+                    "configuration {} switches a stage off, and hpr flies every stage",
+                    chosen.id
+                ));
+            }
+            if !chosen.unread.is_empty() {
+                return Some(format!(
+                    "a motor of configuration {} is in a part hpr doesn't read",
+                    chosen.id
+                ));
+            }
+        }
+        let stages = self.rocket.stages.len();
+        if stages > 1 {
+            return Some(format!(
+                "the rocket has {stages} stages, and hpr sim can't yet tell when they would \
+                 separate with a motor of your own"
+            ));
+        }
+        match chosen.and_then(|chosen| chosen.left_out.as_ref()) {
+            Some(left_out) if !motor_fixes(left_out.why) => Some(left_out.message.clone()),
+            _ => None,
+        }
+    }
+
     /// Puts `motor`, lit at launch, in the configuration `--config` names, or the default or
     /// only one, or where there is none to choose, in a configuration named after the motor; and
-    /// returns that configuration's id. A `.ork` configuration hpr leaves out for its airframe,
-    /// its stages or its separation is refused: a motor of its own doesn't make that rocket
-    /// flyable.
+    /// returns that configuration's id. A `.ork` rocket that no motor of the user's flies as the
+    /// file's is refused ([`Read::no_motor_flies`]).
     fn swap(
         &mut self,
         wanted: Option<&str>,
         mount: Option<&str>,
         motor: &Motor,
     ) -> Result<String, Failure> {
-        if let Some(why) = &self.airframe {
-            return Err(Failure::Input(format!(
-                "the rocket can't be flown with any motor: the airframe was not read exactly as \
-                 written: {why}"
-            )));
-        }
         let chosen: Option<(String, Vec<String>)> = match &self.ork {
-            Some(motors) => match ork_configuration(motors, wanted)? {
-                Some(chosen) => {
-                    if let Some(staging) = &chosen.staging {
-                        return Err(powered_separation(&chosen.id, staging));
-                    }
-                    if let Some(left_out) = &chosen.left_out
-                        && !motor_fixes(left_out.why)
-                    {
-                        return Err(Failure::Input(format!(
-                            "configuration {} can't be flown with any motor: {}",
-                            chosen.id, left_out.message
-                        )));
-                    }
-                    Some((
-                        chosen.id.clone(),
-                        mounts_of(chosen.motors.iter().map(|m| &m.mount)),
-                    ))
+            Some(motors) => {
+                let chosen = ork_configuration(motors, wanted)?;
+                if let Some(why) = self.no_motor_flies(chosen) {
+                    let what = chosen.map_or_else(
+                        || "the rocket".to_owned(),
+                        |c| format!("configuration {}", c.id),
+                    );
+                    return Err(Failure::Input(format!(
+                        "{what} can't be flown with a motor of your own: {why}"
+                    )));
                 }
-                None => None,
-            },
-            None => self.hpr_configuration(wanted)?.map(|chosen| {
-                (
-                    chosen.id.clone(),
-                    mounts_of(chosen.motors.iter().map(|m| &m.mount)),
-                )
-            }),
+                chosen.map(|c| (c.id.clone(), owned(c.motors.iter().map(|m| &m.mount))))
+            }
+            None => self
+                .hpr_configuration(wanted)?
+                .map(|c| (c.id.clone(), owned(c.motors.iter().map(|m| &m.mount)))),
         };
         let (id, configured) =
             chosen.unwrap_or_else(|| (motor.designation().to_owned(), Vec::new()));
@@ -473,7 +635,8 @@ impl Read {
         let mounts = mounts(&self.rocket);
         if configured.len() > 1 {
             return Err(Failure::Input(format!(
-                "configuration {id} has {} motors, in {}; --motor flies one motor on its own",
+                "configuration {id} has {} motors, in {}; --motor flies one motor in place of \
+                 them all, so it takes a configuration of one",
                 configured.len(),
                 list(configured)
             )));
@@ -535,7 +698,7 @@ impl Read {
             (Some(id), _) => self.rocket.configuration(id).map(Some).ok_or_else(|| {
                 Failure::Input(format!(
                     "the design has no configuration `{id}`; its configurations: {}",
-                    list(&mounts_of(configurations.iter().map(|c| &c.id)))
+                    list(&owned(configurations.iter().map(|c| &c.id)))
                 ))
             }),
             (None, [only]) => Ok(Some(only)),
@@ -559,7 +722,7 @@ fn motor_fixes(why: ork::NotFlown) -> bool {
 
 /// The refusal when no configuration was named and none can be taken as the one.
 fn unchosen<'a>(ids: impl Iterator<Item = &'a String>, what: &str) -> Failure {
-    let ids = mounts_of(ids);
+    let ids = owned(ids);
     if ids.is_empty() {
         Failure::Input(format!(
             "{what} has no motor configuration: give a motor with --motor"
@@ -595,7 +758,7 @@ fn ork_configuration<'a>(
             .ok_or_else(|| {
                 Failure::Input(format!(
                     "the file has no motor configuration `{id}`; its configurations: {}",
-                    list(&mounts_of(configurations.iter().map(|c| &c.id)))
+                    list(&owned(configurations.iter().map(|c| &c.id)))
                 ))
             }),
         None => Ok(
@@ -607,35 +770,59 @@ fn ork_configuration<'a>(
     }
 }
 
+/// What a powered separation is, in words.
+fn separation_text(staging: &ork::Staging) -> String {
+    format!(
+        "stage {} drops away under power at {:.3} s, which hpr sim doesn't fly yet; the library \
+         does, as its example ork_two_stage shows",
+        staging.after_stage + 1,
+        staging.time_s
+    )
+}
+
 /// The refusal of a configuration whose stages come apart under power.
 fn powered_separation(id: &str, staging: &ork::Staging) -> Failure {
     Failure::Input(format!(
-        "configuration {id} separates under power (stage {} drops away at {:.3} s), which hpr \
-         sim doesn't fly yet; the library does, as its example ork_two_stage shows",
-        staging.after_stage + 1,
-        staging.time_s
+        "configuration {id} separates under power: {}",
+        separation_text(staging)
     ))
 }
 
 /// Every motor mount's component id, in the design's order.
 fn mounts(rocket: &hpr_design::Rocket) -> Vec<String> {
-    fn walk(components: &[hpr_design::Component], mounts: &mut Vec<String>) {
-        for component in components {
-            if component.motor_mount.is_some() {
-                mounts.push(component.id.clone());
-            }
-            walk(&component.children, mounts);
-        }
-    }
     let mut mounts = Vec::new();
-    for stage in &rocket.stages {
-        walk(&stage.components, &mut mounts);
-    }
+    walk(rocket, &mut |component| {
+        if component.motor_mount.is_some() {
+            mounts.push(component.id.clone());
+        }
+    });
     mounts
 }
 
-/// Owned copies of ids or mounts, for a message or a comparison.
-fn mounts_of<'a>(ids: impl Iterator<Item = &'a String>) -> Vec<String> {
+/// Every component's id and name.
+fn component_names(rocket: &hpr_design::Rocket) -> Vec<(String, String)> {
+    let mut names = Vec::new();
+    walk(rocket, &mut |component| {
+        names.push((component.id.clone(), component.name.clone()));
+    });
+    names
+}
+
+/// Calls `visit` on every component, attached parts after their parent's.
+fn walk(rocket: &hpr_design::Rocket, visit: &mut dyn FnMut(&hpr_design::Component)) {
+    fn each(components: &[hpr_design::Component], visit: &mut dyn FnMut(&hpr_design::Component)) {
+        for component in components {
+            visit(component);
+            each(&component.children, visit);
+        }
+    }
+    for stage in &rocket.stages {
+        each(&stage.components, visit);
+    }
+}
+
+/// Owned copies of ids, for a message or a comparison.
+fn owned<'a>(ids: impl Iterator<Item = &'a String>) -> Vec<String> {
     ids.cloned().collect()
 }
 
@@ -647,29 +834,59 @@ fn list(items: &[String]) -> String {
     }
 }
 
-/// A `--motor`: a `.eng` or `.rse` file by its extension, or a catalog name.
-fn motor(name: &str) -> Result<(Motor, SimMotorSource), Failure> {
+/// A `--motor`: a `.eng` or `.rse` file by its extension, with the reader's warnings, or a
+/// catalog name.
+fn motor(name: &str) -> Result<(Motor, SimMotorSource, Vec<InputWarning>), Failure> {
     let refused = |error: hpr::Error| Failure::Input(format!("{name}: {error}"));
-    match MotorFile::of(name) {
-        Some(format) => {
-            let bytes =
-                std::fs::read(name).map_err(|error| Failure::Input(format!("{name}: {error}")))?;
-            let text = String::from_utf8(bytes)
-                .map_err(|_| Failure::Input(format!("{name}: not a text file in UTF-8")))?;
-            let (motor, format) = match format {
-                MotorFile::Eng => (Motor::from_eng(&text).map_err(refused)?, FileFormat::Eng),
-                MotorFile::Rse => (Motor::from_rse(&text).map_err(refused)?, FileFormat::Rse),
-            };
-            let source = SimMotorSource::File {
-                file: file_name(name),
-                format,
-            };
-            Ok((motor, source))
-        }
-        None => Ok((
-            Motor::from_catalog(name).map_err(refused)?,
-            SimMotorSource::Catalog,
-        )),
+    let Some(format) = MotorFile::of(name) else {
+        let motor = Motor::from_catalog(name).map_err(refused)?;
+        return Ok((motor, SimMotorSource::Catalog, Vec::new()));
+    };
+    let bytes = std::fs::read(name).map_err(|error| Failure::Input(format!("{name}: {error}")))?;
+    let text = String::from_utf8(bytes)
+        .map_err(|_| Failure::Input(format!("{name}: not a text file in UTF-8")))?;
+    let (motor, format, warnings) = match format {
+        MotorFile::Eng => (
+            Motor::from_eng(&text).map_err(refused)?,
+            FileFormat::Eng,
+            eng::parse(&text).map(|parsed| parsed.warnings),
+        ),
+        MotorFile::Rse => (
+            Motor::from_rse(&text).map_err(refused)?,
+            FileFormat::Rse,
+            rse::parse(&text).map(|parsed| parsed.warnings),
+        ),
+    };
+    let file = file_name(name);
+    let warnings = warnings
+        .unwrap_or_default()
+        .iter()
+        .map(|warning| motor_warning(&file, warning))
+        .collect();
+    Ok((motor, SimMotorSource::File { file, format }, warnings))
+}
+
+fn motor_warning(file: &str, warning: &ParseWarning) -> InputWarning {
+    InputWarning {
+        at: format!("{file}, line {}", warning.line),
+        kind: match warning.kind {
+            ReadWarning::Skipped => WarningKind::Skipped,
+            ReadWarning::Dropped => WarningKind::Dropped,
+            _ => WarningKind::Unusual,
+        },
+        message: warning.message.clone(),
+    }
+}
+
+fn ork_warning(warning: &ork::Warning) -> InputWarning {
+    InputWarning {
+        at: warning.at.clone(),
+        kind: match warning.kind {
+            ork::WarningKind::Skipped => WarningKind::Skipped,
+            ork::WarningKind::Dropped => WarningKind::Dropped,
+            _ => WarningKind::Unusual,
+        },
+        message: warning.message.clone(),
     }
 }
 
@@ -715,7 +932,7 @@ fn contents(
 /// When a motor lights, in words.
 fn ignition(ignition: &Ignition) -> String {
     match ignition {
-        Ignition::Launch => "launch".to_owned(),
+        Ignition::Launch => "at launch".to_owned(),
         Ignition::Time { time_s } => format!("{time_s} s after launch"),
         Ignition::Burnout { mount, delay_s } => {
             format!("{delay_s} s after the motor in {mount} burns out")
@@ -723,18 +940,6 @@ fn ignition(ignition: &Ignition) -> String {
         Ignition::Separation { delay_s } => format!("{delay_s} s after its stage separates"),
         Ignition::Never => "never".to_owned(),
         other => format!("{other:?}"),
-    }
-}
-
-fn design_warning(warning: &ork::Warning) -> DesignWarning {
-    DesignWarning {
-        at: warning.at.clone(),
-        kind: match warning.kind {
-            ork::WarningKind::Skipped => WarningKind::Skipped,
-            ork::WarningKind::Dropped => WarningKind::Dropped,
-            _ => WarningKind::Unusual,
-        },
-        message: warning.message.clone(),
     }
 }
 
@@ -840,27 +1045,70 @@ fn event(event: &hpr_sim::FlightEvent) -> SimEvent {
     }
 }
 
-/// The text form: what flew, from where, its events and its metrics.
+/// An angle north or south, east or west: `32.99° N`, `106.97° W`.
+fn hemisphere(value: f64, positive: &str, negative: &str) -> String {
+    if value < 0.0 {
+        format!("{}° {negative}", -value)
+    } else {
+        format!("{value}° {positive}")
+    }
+}
+
+/// The text form: what flew, from where, what it leaves out, its events and its figures.
 fn print(flight: &SimFlight, out: &mut dyn Write) -> io::Result<()> {
     let design = &flight.design;
+    let named = |name: &str, id: &str| {
+        if name.is_empty() {
+            id.to_owned()
+        } else {
+            format!("\"{name}\" ({id})")
+        }
+    };
     writeln!(
         out,
         "{} ({}), configuration {}",
-        design.name, design.file, design.configuration
+        design.name,
+        design.file,
+        named(&design.configuration_name, &design.configuration)
     )?;
+    let others: Vec<String> = design
+        .configurations
+        .iter()
+        .filter(|c| c.id != design.configuration)
+        .map(|c| named(&c.name, &c.id))
+        .collect();
+    if !others.is_empty() {
+        writeln!(out, "  its other configurations: {}", others.join(", "))?;
+    }
     for motor in &flight.motors {
         let source = match &motor.source {
             SimMotorSource::Design => "the design's".to_owned(),
             SimMotorSource::Catalog => "from the bundled catalog".to_owned(),
             SimMotorSource::File { file, .. } => format!("from {file}"),
         };
+        let unlit = if motor.unlit > 0 {
+            format!(", {} never lit", motor.unlit)
+        } else {
+            String::new()
+        };
         writeln!(
             out,
-            "  {} ({source}) in {}, lit at {}",
-            motor.designation, motor.mount, motor.ignition
+            "  {} × {} ({source}) in {}, lit {}{unlit}",
+            motor.count,
+            motor.designation,
+            named(&motor.mount_name, &motor.mount),
+            motor.ignition
         )?;
     }
     let launch = &flight.launch;
+    let rail = if launch.inclination_deg == 90.0 {
+        format!("a {} m vertical rail", launch.rail_length_m)
+    } else {
+        format!(
+            "a {} m rail {}° above the horizon, leaning toward {}°",
+            launch.rail_length_m, launch.inclination_deg, launch.heading_deg
+        )
+    };
     let wind = if launch.wind_speed_m_s == 0.0 {
         "calm air".to_owned()
     } else {
@@ -871,20 +1119,22 @@ fn print(flight: &SimFlight, out: &mut dyn Write) -> io::Result<()> {
     };
     writeln!(
         out,
-        "  launched at {}° N, {}° E, {} m up, from a {} m rail at {}° heading {}°, in {wind} and \
-         the standard atmosphere",
-        launch.latitude_deg,
-        launch.longitude_deg,
+        "  launched at {}, {}, {} m above sea level, from {rail}, in {wind}",
+        hemisphere(launch.latitude_deg, "N", "S"),
+        hemisphere(launch.longitude_deg, "E", "W"),
         launch.elevation_m,
-        launch.rail_length_m,
-        launch.inclination_deg,
-        launch.heading_deg
     )?;
     writeln!(
         out,
         "See the Accuracy page before trusting these numbers: \
          https://nrdptel.github.io/hpr-sim/accuracy.html"
     )?;
+    for note in &flight.notes {
+        writeln!(out, "note: {note}")?;
+    }
+    for warning in &flight.warnings {
+        writeln!(out, "warning: {}: {}", warning.at, warning.message)?;
+    }
     writeln!(out)?;
     writeln!(
         out,
@@ -918,59 +1168,67 @@ fn print(flight: &SimFlight, out: &mut dyn Write) -> io::Result<()> {
             event.speed_m_s
         )?;
     }
+    writeln!(
+        out,
+        "(heights are the centre of gravity's above the site; speeds are over the ground)"
+    )?;
     writeln!(out)?;
     let summary = &flight.summary;
     if let Some(apogee) = &summary.apogee {
         writeln!(
             out,
-            "apogee            {:.1} m above the site at {:.2} s",
+            "apogee                {:.1} m above the site at {:.2} s",
             apogee.height_above_ground_m, apogee.time_s
         )?;
     }
     if let Some(speed) = &summary.max_speed_m_s {
         writeln!(
             out,
-            "top speed         {:.1} m/s at {:.2} s",
+            "top speed             {:.1} m/s at {:.2} s",
             speed.value, speed.time_s
         )?;
     }
     if let Some(mach) = &summary.max_mach {
-        writeln!(out, "top Mach          {:.3}", mach.value)?;
+        writeln!(out, "top Mach number       {:.3}", mach.value)?;
     }
     if let Some(speed) = &summary.rail_exit_speed_m_s {
-        writeln!(out, "rail exit speed   {:.1} m/s", speed.value)?;
+        writeln!(out, "rail exit speed       {:.1} m/s", speed.value)?;
     }
     if let Some(margin) = summary
         .rail_exit_stability
         .and_then(|stability| stability.static_margin.margin_cal)
     {
-        writeln!(out, "margin off rail   {margin:.2} calibres")?;
+        writeln!(out, "static margin, rail   {margin:.2} calibres")?;
     }
     if let Some(margin) = &summary.min_static_margin_cal {
         writeln!(
             out,
-            "least margin      {:.2} calibres at {:.2} s",
+            "least static margin   {:.2} calibres at {:.2} s, before apogee",
             margin.value, margin.time_s
         )?;
     }
     if let Some(landing) = &summary.landing {
         writeln!(
             out,
-            "landing           {:.1} m from the pad at {:.2} s, at {:.1} m/s",
+            "landing               {:.1} m from the pad at {:.2} s, at {:.1} m/s: with no \
+             recovery device, not a prediction",
             landing.distance_m, landing.time_s, landing.ground_hit_speed_m_s
         )?;
     }
-    if summary.termination != Termination::GroundHit {
-        writeln!(out, "the flight ended: {:?}", summary.termination)?;
+    let ended = match summary.termination {
+        Termination::GroundHit => None,
+        Termination::NoLiftoff => Some("the rocket never left the rail's foot"),
+        Termination::StalledOnRail => Some("the rocket stalled on the rail"),
+        Termination::TimeCap => Some("the flight reached its time limit before landing"),
+        Termination::StepLimit => Some("the integrator reached its step limit before landing"),
+        Termination::Separated => Some("the stack separated"),
+        Termination::Other => Some("the flight ended in a way this build doesn't name"),
+    };
+    if let Some(ended) = ended {
+        writeln!(out, "the flight ended: {ended}")?;
     }
     for export in &flight.exports {
         writeln!(out, "wrote {} ({} rows)", export.path, export.rows)?;
-    }
-    for note in &flight.notes {
-        writeln!(out, "note: {note}")?;
-    }
-    for warning in &flight.warnings {
-        writeln!(out, "warning: {}: {}", warning.at, warning.message)?;
     }
     Ok(())
 }

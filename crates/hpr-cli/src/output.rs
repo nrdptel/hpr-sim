@@ -217,10 +217,12 @@ pub struct SimFlight {
     pub events: Vec<SimEvent>,
     /// The recording files written, in the order given.
     pub exports: Vec<Export>,
-    /// What the flight leaves out of the design, such as its parachutes.
+    /// What the flight leaves out of the design, such as its parachutes, and what to make of the
+    /// numbers it leaves out.
     pub notes: Vec<String>,
-    /// What the design's reader accepted with a caveat, in file order.
-    pub warnings: Vec<DesignWarning>,
+    /// What the design's or the motor file's reader accepted with a caveat, and what the design's
+    /// checks found unusual but buildable.
+    pub warnings: Vec<InputWarning>,
 }
 
 /// The design flown.
@@ -234,6 +236,22 @@ pub struct SimDesign {
     pub name: String,
     /// The id of the motor configuration flown.
     pub configuration: String,
+    /// Its name, as the file writes it; often empty.
+    pub configuration_name: String,
+    /// Every motor configuration the file holds, the one flown among them, before `--motor`
+    /// changed any.
+    pub configurations: Vec<DesignConfiguration>,
+}
+
+/// A motor configuration of the design file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct DesignConfiguration {
+    /// Its id, which `--config` takes.
+    pub id: String,
+    /// Its name, as the file writes it; often empty.
+    pub name: String,
+    /// Whether `hpr sim` flies it as the file has it, without `--motor`.
+    pub flies: bool,
 }
 
 /// A design file format.
@@ -251,11 +269,17 @@ pub enum DesignFormat {
 pub struct SimMotor {
     /// Its designation, such as `168H54-10A`.
     pub designation: String,
-    /// The id of the motor mount it is in.
+    /// The id of the motor mount it is in, which `--mount` takes.
     pub mount: String,
+    /// The mount's name, as the file writes it.
+    pub mount_name: String,
+    /// How many of it fly: one per tube of a cluster, and one per pod of a pod set.
+    pub count: usize,
+    /// How many of those never light: in a tube the design marks failed, or set never to light.
+    pub unlit: usize,
     /// Where it comes from.
     pub source: SimMotorSource,
-    /// When it lights: `launch`, or how the design says.
+    /// When it lights, in words: `at launch`, or as the design says.
     pub ignition: String,
 }
 
@@ -318,18 +342,22 @@ pub struct Summary {
     pub max_mach: Option<Peak>,
     /// The top dynamic pressure, Pa.
     pub max_dynamic_pressure_pa: Option<Peak>,
-    /// The top acceleration of the nose tip from liftoff until a recovery device opens, m/s².
+    /// The top acceleration of the nose tip relative to the launch site's frame, from liftoff
+    /// until a recovery device opens, m/s²: the motion's, not what an accelerometer reads.
     pub max_acceleration_m_s2: Option<Peak>,
     /// The top acceleration under the recovery devices, m/s²: the opening shock.
     pub max_descent_acceleration_m_s2: Option<Peak>,
     /// The least static stability margin, calibres, from the rail exit to apogee or the first
     /// deployment.
     pub min_static_margin_cal: Option<Peak>,
-    /// The least stability margin at the flight's angle of attack, calibres, over the same span.
+    /// The least flight margin, calibres, over the same span: the margin at the flight's Mach
+    /// number, along the axis.
     pub min_flight_margin_cal: Option<Peak>,
     /// The stability as the rocket left the rail.
     pub rail_exit_stability: Option<Stability>,
-    /// Where and how fast the rocket landed.
+    /// Where and how fast the rocket landed. With no recovery device flown, as `hpr sim` flies
+    /// today, the fall from apogee rests on small-angle aerodynamics far outside their range: not
+    /// a prediction (the notes say so).
     pub landing: Option<Landing>,
     /// Where each part that came apart from the rocket landed, if any did.
     pub body_landings: Vec<Landing>,
@@ -391,9 +419,10 @@ pub struct Stability {
     pub cg_station_m: f64,
     /// The reference diameter the margins are counted in, m.
     pub reference_diameter_m: f64,
-    /// The margin at zero angle of attack.
+    /// The static margin: the air along the axis, at Mach 0.
     pub static_margin: Margin,
-    /// The margin at the flight's angle of attack.
+    /// The flight margin: the air along the axis, at the flight's Mach number. The angle of attack
+    /// is left out.
     pub flight_margin: Margin,
 }
 
@@ -417,7 +446,8 @@ pub struct Margin {
     pub margin_cal: Option<f64>,
 }
 
-/// Where and how fast a body landed.
+/// Where and how fast a body landed: where its centre of mass came down to the launch site's
+/// height on the ellipsoid. There is no terrain.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
 pub struct Landing {
     /// The body: `null` for the rocket, or the index of a part that came apart from it.
@@ -432,7 +462,7 @@ pub struct Landing {
     pub east_m: f64,
     /// Distance north of the launch site, m.
     pub north_m: f64,
-    /// Distance from the launch site, m.
+    /// Horizontal distance from the launch site, m.
     pub distance_m: f64,
     /// The speed at the ground, m/s.
     pub ground_hit_speed_m_s: f64,
@@ -463,11 +493,11 @@ pub enum EventKind {
     Liftoff,
     /// The rocket left the rail.
     RailExit,
-    /// Every motor lit so far has burned out.
+    /// Every motor lit, or due to light at a known time, has burned out.
     Burnout,
     /// The highest point.
     Apogee,
-    /// The centre of mass reached the ground.
+    /// The centre of mass came down to the launch site's height.
     GroundHit,
     /// A recovery device's charge fired.
     Trigger,
@@ -518,10 +548,11 @@ pub enum ExportFormat {
     Kml,
 }
 
-/// Something the design's reader accepted with a caveat.
+/// Something a reader accepted with a caveat, or the design's checks found unusual.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
-pub struct DesignWarning {
-    /// Where in the file: a path of element names from the root, or a zip entry's name.
+pub struct InputWarning {
+    /// Where: in a `.ork` file, a path of element names from the root or a zip entry's name; in a
+    /// motor file, its name and line; `design checks` for a check's finding.
     pub at: String,
     /// How serious it is.
     pub kind: WarningKind,

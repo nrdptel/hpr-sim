@@ -698,7 +698,9 @@ fn sim_flies_a_public_ork_as_the_library_does() {
     assert!(apogee > 100.0, "{apogee}");
     let text = text_ok(&["sim", &design, "--motor", "H54"]);
     assert!(
-        text.contains(&format!("apogee            {apogee:.1} m")),
+        text.contains(&format!(
+            "\napogee                {apogee:.1} m above the site"
+        )),
         "{text}"
     );
     assert!(
@@ -787,28 +789,43 @@ fn sim_flies_an_hpr_design_from_a_given_launch() {
             "--wind",
             "5",
             "--wind-from",
-            "270",
+            "-90",
         ],
         0,
         "sim.schema.json",
     );
     let design: hpr::hpr_design::Rocket =
         serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    // A wind from -90°, which is 270°: a west wind.
     let environment = hpr::Environment::new(32.99, -106.97, 1400.0)
         .unwrap()
-        .with_constant_wind(5.0, 270.0)
+        .with_constant_wind(5.0, -90.0)
         .unwrap();
-    let (flight, _) = library_flight(design, "i175", "", None, &environment, |b| {
+    let (flight, _) = library_flight(design.clone(), "i175", "", None, &environment, |b| {
         b.inclination_deg(85.0).heading_deg(90.0)
     });
     same_flight(&document, &flight);
     assert_eq!(document["design"]["format"], "hpr_json");
     assert_eq!(document["motors"][0]["source"]["kind"], "design");
-    assert_eq!(document["motors"][0]["ignition"], "launch");
+    assert_eq!(document["motors"][0]["ignition"], "at launch");
+    assert_eq!(document["motors"][0]["count"], 1);
     assert_eq!(document["launch"]["longitude_deg"], -106.97);
-    assert_eq!(document["launch"]["wind_from_deg"], 270.0);
-    // The wind blows the rocket east of the pad: it leans into a west wind and drifts with it.
-    assert!(flight.landing().unwrap().east_m.abs() > 1.0);
+    assert_eq!(document["launch"]["wind_from_deg"], -90.0);
+    // The rail leans east, downwind: the rocket climbs to apogee east of where the same rail
+    // leaning west, into the wind, puts it. (Where it lands isn't asserted: with no recovery
+    // device the descent isn't a prediction, #241.)
+    let (upwind, _) = library_flight(design, "i175", "", None, &environment, |b| {
+        b.inclination_deg(85.0).heading_deg(270.0)
+    });
+    let east_at_apogee = |flight: &hpr::Flight| {
+        let mut events = flight.result().events.iter();
+        let apogee = events
+            .rfind(|e| e.kind == hpr::hpr_sim::EventKind::Apogee)
+            .unwrap();
+        apogee.sample.cg_enu_m.x
+    };
+    let (east, west) = (east_at_apogee(&flight), east_at_apogee(&upwind));
+    assert!(east > west + 10.0, "{east} m, {west} m");
 }
 
 /// What `hpr sim` refuses, each with status 1 and an error document naming the reason.
@@ -905,7 +922,10 @@ fn sim_refuses_what_it_cant_fly() {
     std::fs::write(&staged, &example[start..end]).unwrap();
     let staged = staged.to_string_lossy().into_owned();
     refused(&["sim", &staged], "separates under power");
-    refused(&["sim", &staged, "--motor", "F15"], "separates under power");
+    refused(
+        &["sim", &staged, "--motor", "F15"],
+        "drops away under power",
+    );
 
     // The probe with a parallel stage hpr doesn't read: its airframe isn't the file's, so no
     // motor flies it, though its configuration's first reason is the missing curve.
@@ -955,4 +975,182 @@ fn sim_notes_accepted_design_errors() {
             .any(|note| note.contains("recovery device is not flown")),
         "{notes:?}"
     );
+}
+
+/// The probe's own motor, as written: an AeroTech H128W with OpenRocket's digest of its curve.
+const PROBE_MOTOR: &str = "<manufacturer>AeroTech</manufacturer><designation>H128W</designation>\
+                           <digest>501239de7374691072270406476cb243</digest>\
+                           <diameter>0.029</diameter><length>0.194</length>";
+
+/// The probe with `from` replaced by `to`, written to `folder` as `name`; its path.
+fn probe_with(folder: &Path, name: &str, from: &str, to: &str) -> String {
+    let xml = std::fs::read_to_string(repo_file(PROBE)).unwrap();
+    assert_eq!(xml.matches(from).count(), 1, "{from}");
+    let path = folder.join(name);
+    std::fs::write(&path, xml.replacen(from, to, 1)).unwrap();
+    path.to_string_lossy().into_owned()
+}
+
+/// A `.ork` flies its own configuration as the library flies it, when its motor is one the
+/// catalog holds: the probe with the H54 written in place of its H128W.
+#[test]
+fn sim_flies_a_orks_own_motor_as_the_library_does() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = probe_with(
+        folder.path(),
+        "own.ork",
+        PROBE_MOTOR,
+        "<manufacturer>Cesaroni Technology</manufacturer><designation>168H54-10A</designation>\
+         <diameter>0.029</diameter><length>0.187</length>",
+    );
+    let document = json(&["sim", &path], 0, "sim.schema.json");
+    let file = hpr::hpr_io::ork::read(&std::fs::read(&path).unwrap())
+        .unwrap()
+        .value;
+    let design = hpr::hpr_io::ork::design(&file).value;
+    let id = design.motors.default_configuration().unwrap().id.clone();
+    let environment = hpr::Environment::new(0.0, 0.0, 0.0).unwrap();
+    let (flight, _) = library_flight(design.rocket, &id, "", None, &environment, |b| b);
+    same_flight(&document, &flight);
+    assert_eq!(document["motors"][0]["source"]["kind"], "design");
+    assert_eq!(document["motors"][0]["designation"], "168H54-10A");
+    assert_eq!(document["design"]["configurations"][0]["flies"], true);
+}
+
+/// A `.ork` with no motor configuration flies `--motor` in its only mount, in a configuration
+/// named after the motor, as the library flies it there.
+#[test]
+fn sim_flies_a_motor_in_a_file_with_no_configuration() {
+    let folder = tempfile::tempdir().unwrap();
+    let xml = std::fs::read_to_string(repo_file(PROBE)).unwrap();
+    let cut = |xml: &str, open: &str, close: &str| {
+        let start = xml.find(open).unwrap();
+        let end = xml[start..].find(close).unwrap() + start + close.len();
+        format!("{}{}", &xml[..start], &xml[end..])
+    };
+    let bare = cut(&xml, "<motor configid", "</motor>");
+    let bare = cut(&bare, "<motorconfiguration ", "</motorconfiguration>");
+    let path = folder.path().join("bare.ork");
+    std::fs::write(&path, bare).unwrap();
+    let path = path.to_string_lossy().into_owned();
+    let document = json_error(&["sim", &path], 1, "input");
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("no motor configuration: give a motor with --motor"),
+        "{message}"
+    );
+
+    let document = json(&["sim", &path, "--motor", "H54"], 0, "sim.schema.json");
+    assert_eq!(document["design"]["configuration"], "168H54-10A");
+    assert_eq!(document["design"]["configurations"], serde_json::json!([]));
+    let (rocket, _, mount) = probe_design();
+    let motor = hpr::Motor::from_catalog("H54").unwrap();
+    let environment = hpr::Environment::new(0.0, 0.0, 0.0).unwrap();
+    let (flight, _) = library_flight(
+        rocket,
+        "168H54-10A",
+        &mount,
+        Some(&motor),
+        &environment,
+        |b| b,
+    );
+    same_flight(&document, &flight);
+}
+
+/// What `--motor` refuses on top of the rest: a configuration that switches a stage off, a hybrid
+/// motor, and a pod set's motors are counted, one per pod.
+#[test]
+fn sim_motor_refusals_and_counts() {
+    let folder = tempfile::tempdir().unwrap();
+    let off = probe_with(
+        folder.path(),
+        "off.ork",
+        r#"<stage number="0" active="true"/>"#,
+        r#"<stage number="0" active="false"/>"#,
+    );
+    let document = json_error(&["sim", &off, "--motor", "H54"], 1, "input");
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(message.contains("switches a stage off"), "{message}");
+    let document = json_error(&["sim", &off], 1, "input");
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(message.contains("nor can it with --motor"), "{message}");
+
+    let rse = std::fs::read_to_string(curve_file("curves/5f923edb1bca5800041716ab.rse")).unwrap();
+    let at = rse.find("Type=\"").unwrap() + "Type=\"".len();
+    let end = rse[at..].find('"').unwrap() + at;
+    let hybrid = folder.path().join("hybrid.rse");
+    std::fs::write(&hybrid, format!("{}hybrid{}", &rse[..at], &rse[end..])).unwrap();
+    let probe = repo_file(PROBE);
+    let document = json_error(
+        &["sim", &probe, "--motor", &hybrid.to_string_lossy()],
+        1,
+        "input",
+    );
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(message.contains("hybrid"), "{message}");
+
+    let pods = repo_file("validation/fixtures/ork/pod-flights/pods-motors-2.ork");
+    let document = json(&["sim", &pods, "--motor", "H54"], 0, "sim.schema.json");
+    assert_eq!(document["motors"][0]["count"], 2);
+    assert_eq!(document["motors"][0]["unlit"], 0);
+}
+
+/// `--export` never writes over a file the run reads, nor the same file twice, and a missing
+/// folder or a bad interval is refused before the flight.
+#[test]
+fn sim_exports_are_checked_before_the_flight() {
+    let folder = tempfile::tempdir().unwrap();
+    let design = folder.path().join("design.json");
+    std::fs::copy(
+        repo_file("validation/designs/synthetic-54mm-three-fin.json"),
+        &design,
+    )
+    .unwrap();
+    let before = std::fs::read(&design).unwrap();
+    let design = design.to_string_lossy().into_owned();
+    let csv = folder.path().join("f.csv").to_string_lossy().into_owned();
+    let lost = folder
+        .path()
+        .join("no/f.csv")
+        .to_string_lossy()
+        .into_owned();
+    for (args, reason) in [
+        (
+            vec!["--export", design.as_str()],
+            "this run reads that file",
+        ),
+        (
+            vec!["--export", &csv, "--export", &csv],
+            "names the file twice",
+        ),
+        (vec!["--export", &lost], "there is no folder"),
+        (vec!["--interval", "0"], "--interval"),
+    ] {
+        let mut line = vec!["sim", design.as_str()];
+        line.extend(args);
+        let document = json_error(&line, 1, "input");
+        let message = document["error"]["message"].as_str().unwrap();
+        assert!(message.contains(reason), "{line:?}: {message}");
+    }
+    assert_eq!(std::fs::read(&design).unwrap(), before);
+    assert!(!Path::new(&csv).exists());
+}
+
+/// The guide's launch section says the example rocket climbs about 8% higher from a 1,400 m site
+/// than from sea level, and that 45° N moves its apogee by less than 0.2%.
+#[test]
+fn the_guides_launch_figures_hold() {
+    let probe = repo_file(PROBE);
+    let apogee = |extra: &[&str]| {
+        let mut args = vec!["sim", probe.as_str(), "--motor", "H54"];
+        args.extend(extra);
+        json(&args, 0, "sim.schema.json")["summary"]["apogee"]["height_above_ground_m"]
+            .as_f64()
+            .unwrap()
+    };
+    let sea = apogee(&[]);
+    let high = apogee(&["--elevation", "1400"]) / sea - 1.0;
+    assert!((0.075..0.085).contains(&high), "{high}");
+    let north = apogee(&["--latitude", "45"]) / sea - 1.0;
+    assert!(north.abs() < 0.002, "{north}");
 }

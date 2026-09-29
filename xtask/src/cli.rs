@@ -173,13 +173,10 @@ fn examples(page: &str, root: &Path) -> Result<String, String> {
         // A path is a file of the repository, from its root: the xtask runs from the root, or
         // from `xtask/` under the tests, so it is given to the command whole.
         for path in command.split_whitespace().filter(|arg| arg.contains('/')) {
-            if path.starts_with('/')
-                || path.split('/').any(|part| part == "..")
-                || !root.join(path).is_file()
-            {
+            if !tracked(root, path) {
                 return Err(format!(
                     "{PAGE}: the example `{command}` names `{path}`, which isn't a file of the \
-                     repository given from its root"
+                     repository given from its root (an argument with a `/` is a path)"
                 ));
             }
         }
@@ -193,6 +190,13 @@ fn examples(page: &str, root: &Path) -> Result<String, String> {
         };
         let end = block_end(rest, line_end, PAGE, &format!("the example `{command}`"))?;
         let (block, code) = example(command, root);
+        // The command was given the root's whole path; the page must not show it.
+        if block.contains(&*root.to_string_lossy()) {
+            return Err(format!(
+                "{PAGE}: the example `{command}` prints the repository's own path, which differs \
+                 from machine to machine"
+            ));
+        }
         if code != expected {
             return Err(format!(
                 "{PAGE}: the example `{command}` exits {code}, not {expected}: fix the command, or \
@@ -207,6 +211,21 @@ fn examples(page: &str, root: &Path) -> Result<String, String> {
     }
     result.push_str(rest);
     Ok(result)
+}
+
+/// Whether `path`, given from the repository's root, is a file git tracks there: never a
+/// gitignored one, such as the private designs under `refs/`, and nothing outside the root.
+fn tracked(root: &Path, path: &str) -> bool {
+    let relative = Path::new(path)
+        .components()
+        .all(|part| matches!(part, std::path::Component::Normal(_)));
+    relative
+        && root.join(path).is_file()
+        && std::process::Command::new("git")
+            .args(["ls-files", "--error-unmatch", "--", path])
+            .current_dir(root)
+            .output()
+            .is_ok_and(|output| output.status.success())
 }
 
 /// A fenced block with the command line and what it printed, and its exit status if not 0; and
@@ -312,6 +331,14 @@ mod tests {
                 "which isn't a file of the repository",
             ),
             ("hpr motors show xtask/", "`xtask/`, which isn't"),
+            (
+                "hpr motors show C:/Windows/win.ini",
+                "`C:/Windows/win.ini`, which isn't",
+            ),
+            (
+                "hpr motors show target/nothing.eng",
+                "which isn't a file of the repository",
+            ),
         ] {
             let page = format!("{EXAMPLE}{command}` -->\n{END}\n");
             assert!(
@@ -320,13 +347,20 @@ mod tests {
             );
         }
         // A file of the repository is read from the root wherever the xtask runs, and the page
-        // shows the path as given.
-        let command =
-            "hpr motors show crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000735.eng";
+        // shows the path as given; an output that shows the root's own path is refused.
+        let command = "hpr sim validation/fixtures/ork/pod-flights/pods-none.ork --motor H54";
         let page = format!("{EXAMPLE}{command}` -->\n{END}\n");
         let written = examples(&page, &root).unwrap();
         assert!(written.contains(&format!("$ {command}\n")), "{written}");
-        assert!(written.contains("H54"), "{written}");
+        assert!(written.contains("168H54-10A"), "{written}");
+        let command =
+            "hpr motors show crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000735.eng";
+        let page = format!("{EXAMPLE}{command}` -->\n{END}\n");
+        assert!(
+            examples(&page, &root)
+                .unwrap_err()
+                .contains("prints the repository's own path")
+        );
     }
 
     #[test]

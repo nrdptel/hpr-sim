@@ -10,19 +10,23 @@ scripts. Its other commands are registered but not available yet: each refuses a
 [milestone](glossary.md#milestone), the step of the roadmap, that brings it
 ([the table below](#the-commands)).
 
-> **How far to trust it.** `hpr sim` flies the library's own flight: a
-> [test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs) flies a
-> public `.ork` file both ways and finds every number the same, to the last bit. How close that
-> flight is to a real one is the [Accuracy](accuracy.md) page's subject. `hpr sim` doesn't fly
-> parachutes or stage separations yet ([what it leaves out](#what-hpr-sim-doesnt-fly-yet)).
-> `hpr motors show` works out each figure from the motor's
-> [thrust curve](glossary.md#thrust-curve) with the same code a flight uses. On all 32 bundled
-> curves, that code matches ThrustCurve.org's own statistics code to 1.8e-15, relative
-> ([Solid motors](physics/motor.md#validation)). `hpr motors list` only repeats the catalog's
-> figures as [ThrustCurve.org](glossary.md#thrustcurveorg) states them. The tests in
-> [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
-> run every command as a user would, and check each `--json` document against its
-> [published schema](#json-output).
+> **How far to trust it.**
+>
+> - `hpr sim` prints what the library computes: a
+>   [test](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs) flies the
+>   rocket of [the example below](#flying-a-design) through `hpr sim` and through the Rust library,
+>   and gets identical numbers, to the last bit. How close those are to a real flight is the
+>   [Accuracy](accuracy.md) page's subject. `hpr sim` flies no parachute or stage separation yet,
+>   so its landings are not predictions ([what it leaves out](#what-hpr-sim-doesnt-fly-yet)).
+> - `hpr motors show` works out each figure from the motor's
+>   [thrust curve](glossary.md#thrust-curve) with the same code a flight uses. On all 32 bundled
+>   curves, that code matches ThrustCurve.org's own statistics code to 1.8e-15, relative
+>   ([Solid motors](physics/motor.md#validation)). `hpr motors list` only repeats the catalog's
+>   figures as [ThrustCurve.org](glossary.md#thrustcurveorg) states them.
+> - The tests in
+>   [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
+>   run every command as a user would, and check each `--json` document against its
+>   [published schema](#json-output).
 
 ## Running it
 
@@ -69,10 +73,10 @@ only the files each command really reads. "Not yet" commands exit with
 
 `hpr sim` flies a design from a launch rail to the ground, and prints what happened: its
 [events](glossary.md#event), its [apogee](glossary.md#apogee) and top speed, its
-[stability margin](glossary.md#stability-margin) as it leaves the rail, and where it landed. It
+[stability margin](glossary.md#stability-margin) as it leaves the rail, and where it came down. It
 reads an [OpenRocket](glossary.md#openrocket) `.ork` file, or an hpr design file (`.json`, the
-tree [Your own rocket](your-own-rocket.md) describes). The flight is the one the library flies
-for a program, with the same code and the same numbers.
+tree [Your own rocket](your-own-rocket.md) describes). It runs the same simulation code as the
+Rust library, so a Rust program flying the same design gets the same numbers.
 
 ### Flying a design
 
@@ -85,9 +89,10 @@ puts the catalog's Cesaroni H54 in its motor mount instead:
 ```text
 $ hpr sim validation/fixtures/ork/pod-flights/pods-none.ork --motor H54
 pods-none (pods-none.ork), configuration 00000000-0000-4000-8000-000000000097
-  168H54-10A (from the bundled catalog) in 00000000-0000-4000-8000-000000000003, lit at launch
-  launched at 0° N, 0° E, 0 m up, from a 1.5 m rail at 90° heading 0°, in calm air and the standard atmosphere
+  1 × 168H54-10A (from the bundled catalog) in "Motor mount" (00000000-0000-4000-8000-000000000003), lit at launch
+  launched at 0° N, 0° E, 0 m above sea level, from a 1.5 m vertical rail, in calm air
 See the Accuracy page before trusting these numbers: https://nrdptel.github.io/hpr-sim/accuracy.html
+note: the file has no recovery device, so the rocket falls from apogee on its airframe alone, on aerodynamics that hold only at small angles of attack: its landing time, speed and place are not a prediction
 
 event                   time     height       speed
 liftoff               0.00 s      0.3 m     0.0 m/s
@@ -95,42 +100,68 @@ rail exit             0.15 s      1.8 m    21.3 m/s
 burnout               3.50 s    466.0 m   136.3 m/s
 apogee               11.21 s    846.1 m     0.1 m/s
 ground hit           29.71 s      0.0 m    65.9 m/s
+(heights are the centre of gravity's above the site; speeds are over the ground)
 
-apogee            846.1 m above the site at 11.21 s
-top speed         178.3 m/s at 2.31 s
-top Mach          0.525
-rail exit speed   21.3 m/s
-margin off rail   2.69 calibres
-least margin      2.69 calibres at 0.15 s
-landing           17.4 m from the pad at 29.71 s, at 65.9 m/s
-note: the file has no recovery device, so none is flown: the rocket comes down on its airframe alone
+apogee                846.1 m above the site at 11.21 s
+top speed             178.3 m/s at 2.31 s
+top Mach number       0.525
+rail exit speed       21.3 m/s
+static margin, rail   2.69 calibres
+least static margin   2.69 calibres at 0.15 s, before apogee
+landing               17.4 m from the pad at 29.71 s, at 65.9 m/s: with no recovery device, not a prediction
 ```
 
 <!-- cli: end -->
 
-The first lines say what flew: the rocket's name and file, the
-[configuration](glossary.md#configuration) (OpenRocket names each by a long id), the motor and
-the mount it sits in, and the launch. Then come the events, with the centre of gravity's height
-above the launch site and the rocket's speed; the height at liftoff isn't zero, as the rocket
-stands on the rail. Last come the flight's figures and the notes. A `note:` says what the flight
-leaves out of the design; here, that the design has no parachute, so the rocket falls on its
-airframe alone and lands fast.
+What each part says:
 
-Without `--motor`, the file's own motor flies, if hpr has its thrust curve: a curve stored in the
-`.ork` file, or a motor of the built-in catalog. This one's hasn't, so `hpr sim` refuses and says
-why ([the failure example](#json-output) shows it).
+| lines | what they say |
+|---|---|
+| the first | the rocket's name, its file, and the [configuration](glossary.md#configuration) flown, by its name in quotes when the file gives one and by its id; other configurations follow on a line of their own |
+| `1 × ...` | the motor, how many of it fly (a [cluster](glossary.md#cluster)'s tubes and a [pod](glossary.md#pod) set's pods each carry one), and the motor mount it sits in, by name and id |
+| `launched at ...` | the site, the rail and the wind, [below](#the-launch) |
+| `note:` | what the flight leaves out of the design, and which numbers that spoils |
+| `warning:` | what hpr's `.ork` or motor-file reader accepted with a caveat, such as a part it left out, and what the [design's checks](physics/design.md#checks) found unusual but buildable |
+| the events | each [event](glossary.md#event)'s time, the height of the [centre of gravity](glossary.md#centre-of-gravity-cg) above the launch site, and the speed over the ground; the height at liftoff isn't zero, as the rocket stands on the rail |
+| the figures | the apogee; the top speed and [Mach number](glossary.md#mach-number); the speed at [rail exit](glossary.md#rail-exit-and-rail-exit-velocity); the static margin there, in [calibres](glossary.md#calibre-caliber), at Mach 0; its least value from the rail exit to apogee; and the landing |
+
+**Expect to need `--motor`.** A `.ork` file names its motor but rarely carries its
+[thrust curve](glossary.md#thrust-curve). hpr flies the file's own motor only if the file embeds
+the curve or the motor is one of the 32 in its catalog, and few real designs' motors are
+([`.ork` files](format/ork.md)). Otherwise `hpr sim` refuses and says why:
+
+```text
+$ hpr sim validation/fixtures/ork/pod-flights/pods-none.ork
+error: configuration 00000000-0000-4000-8000-000000000097 can't be flown as the file has it: no thrust curve for H128W: ...; give a motor with --motor
+```
+
+Download the motor's `.eng` or `.rse` file from [ThrustCurve.org](glossary.md#thrustcurveorg)
+and give it: `hpr sim my-rocket.ork --motor AeroTech_H128W.eng`.
+
+**The landing is not a prediction.** `hpr sim` flies no parachute yet, so the rocket falls from
+apogee on its airframe alone. hpr's aerodynamics hold only at small
+[angles of attack](glossary.md#angle-of-attack), and a falling airframe turns far past them: some
+settle into a steady tail-first glide, which is why this one comes down away from the pad in
+calm air (issue [#241](https://github.com/nrdptel/hpr-sim/issues/241)). The ascent, up to apogee,
+is what to read.
 
 ### The launch
 
 Every flight starts from a rail, at a site, in the
 [standard atmosphere](glossary.md#standard-atmosphere). Without options, the site is at sea level
-on the equator, the rail is vertical and 1.5 m long, and the air is calm. Give your own: the air's
-density and gravity depend on the site, and a leaning rail and a wind change where the rocket
-goes.
+at 0° N, 0° E, the rail is vertical and 1.5 m long, and the air is calm. The rail has no
+friction. `hpr sim` doesn't read the launch conditions an OpenRocket file stores with its
+simulations: give them with these options.
+
+**Set `--elevation` for any real field.** The air thins with height, so the same rocket flies
+higher from a high site: from 1,400 m, the rocket above climbs about 8% higher than from sea
+level. Latitude changes gravity only a little: at 45° N its apogee moves by less than 0.2%. Set
+`--latitude` and `--longitude` too before exporting a map, which is drawn where you say the pad
+is.
 
 | option | what it sets | default |
 |---|---|---|
-| `--latitude DEG` | the site's latitude, degrees north | 0 |
+| `--latitude DEG` | the site's latitude, degrees north (south is negative) | 0 |
 | `--longitude DEG` | the site's longitude, degrees east (west is negative) | 0 |
 | `--elevation M` | the site's height above sea level, m | 0 |
 | `--rail-length M` | the rail's length, from the rocket's aft end to the rail's top, m | 1.5 |
@@ -139,31 +170,69 @@ goes.
 | `--wind M_S` | a wind of this speed at every height, m/s | calm |
 | `--wind-from DEG` | where the wind blows from, clockwise from north, degrees: 270 is a west wind | 0 |
 
-OpenRocket measures its launch rod's angle from the vertical instead, so its 5° is 85 here.
+OpenRocket measures its launch rod's angle from the vertical instead, so its 5° is 85 here. This
+flies the same rocket from Spaceport America's field, on a rail leaning 5° into a west wind:
+
+<!-- cli: example `hpr sim validation/fixtures/ork/pod-flights/pods-none.ork --motor H54 --latitude 32.99 --longitude -106.97 --elevation 1400 --rail-length 3 --inclination 85 --heading 270 --wind 5 --wind-from 270`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr sim validation/fixtures/ork/pod-flights/pods-none.ork --motor H54 --latitude 32.99 --longitude -106.97 --elevation 1400 --rail-length 3 --inclination 85 --heading 270 --wind 5 --wind-from 270
+pods-none (pods-none.ork), configuration 00000000-0000-4000-8000-000000000097
+  1 × 168H54-10A (from the bundled catalog) in "Motor mount" (00000000-0000-4000-8000-000000000003), lit at launch
+  launched at 32.99° N, 106.97° W, 1400 m above sea level, from a 3 m rail 85° above the horizon, leaning toward 270°, in a 5 m/s wind from 270°
+See the Accuracy page before trusting these numbers: https://nrdptel.github.io/hpr-sim/accuracy.html
+note: the file has no recovery device, so the rocket falls from apogee on its airframe alone, on aerodynamics that hold only at small angles of attack: its landing time, speed and place are not a prediction
+
+event                   time     height       speed
+liftoff               0.00 s      0.3 m     0.0 m/s
+rail exit             0.21 s      3.3 m    30.2 m/s
+burnout               3.50 s    468.6 m   144.4 m/s
+apogee               11.48 s    877.4 m    11.3 m/s
+ground hit           28.71 s      0.0 m    70.3 m/s
+(heights are the centre of gravity's above the site; speeds are over the ground)
+
+apogee                877.4 m above the site at 11.48 s
+top speed             184.3 m/s at 2.35 s
+top Mach number       0.556
+rail exit speed       30.2 m/s
+static margin, rail   2.71 calibres
+least static margin   2.71 calibres at 0.21 s, before apogee
+landing               310.4 m from the pad at 28.71 s, at 70.3 m/s: with no recovery device, not a prediction
+```
+
+<!-- cli: end -->
 
 ### The motor and the configuration
 
-- `--config ID` flies the configuration of that id. Without it, `hpr sim` flies the file's
-  default configuration, or its only one. If it can't tell which, it refuses and lists the ids.
-- `--motor NAME` flies a motor of the built-in catalog, by its designation or common name
-  (`H54`, `168H54-10A`). `--motor FILE` flies the motor in a `.eng` or `.rse` file
+- `--config ID` flies the configuration of that id. The output's first lines list the file's
+  configurations. Without it, `hpr sim` flies the file's default configuration, or its only one;
+  if it can't tell which, it refuses and lists the ids.
+- `--motor NAME` flies a motor of the built-in catalog, by its
+  [designation](glossary.md#motor-designation) or common name (`H54`, `168H54-10A`);
+  `hpr motors list` shows the catalog. `--motor FILE` flies the motor in a `.eng` or `.rse` file
   ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)). Either way, the motor goes in
-  the configuration's motor mount and lights at launch. `hpr motors list` shows the catalog.
+  the configuration's motor mount, in place of the file's motor, and lights at launch.
 - `--mount ID` says which mount `--motor` goes in, when the design has several and no
-  configuration says.
-- `--accept-design-errors` flies a design whose checks find errors, such as a motor wider than
-  its mount. The flight's notes then list the errors: such a rocket can't be built as drawn.
+  configuration says, or to move the motor to another.
+- `--accept-design-errors` flies a design whose [checks](physics/design.md#checks) find errors,
+  such as a motor wider than its mount. The flight's notes then list the errors: such a rocket
+  can't be built as drawn.
 
-`hpr sim` refuses, with the reason, rather than fly something other than the design: a
-configuration of several motors with `--motor`, which flies one; a rocket whose stages separate
-under power; and a `.ork` rocket hpr couldn't read exactly as written, such as one with a
-parallel stage. A `warning:` line reports anything the reader accepted with a caveat.
+`hpr sim` refuses, with the reason, rather than fly something other than the design:
+
+- a configuration of several motors with `--motor`, which flies one;
+- a rocket whose stages separate under power, or a motor lit by a stage's separation;
+- with `--motor`, a `.ork` rocket of more than one stage, or a configuration that switches a
+  stage off;
+- a `.ork` rocket hpr couldn't read exactly as written, such as one with a parallel stage;
+- a design whose checks find errors, unless `--accept-design-errors` is given;
+- a hybrid motor: hpr flies solid motors only.
 
 ### Exporting the recording
 
 `--export FILE` writes the flight's recording: every quantity hpr tracks, every 0.01 s (set it
 with `--interval`), and at every event. The file's extension picks the format; repeat `--export`
-for several files.
+for several files. `hpr sim` won't write over a file it reads.
 
 | extension | what it holds |
 |---|---|
@@ -178,12 +247,12 @@ for several files.
 ### What `hpr sim` doesn't fly yet
 
 - **Recovery devices.** A `.ork` file's parachutes and streamers are read but not flown, and an
-  hpr design file holds none. The rocket comes down on its airframe alone, so its landing speed,
-  landing time and drift are not a recovered flight's; its notes say so. A program can fly them
-  ([Getting started](getting-started.md)).
-- **Separation.** A design's stages fly as one stack. A `.ork` configuration whose
-  [booster](glossary.md#booster) drops away under power is refused; the library flies it, as
-  [Staging](physics/staging.md#using-it-today) shows.
+  hpr design file holds none. The fall from apogee is not a prediction; the output's notes say so.
+  A Rust program can fly them ([Getting started](getting-started.md)); `hpr sim` will, with issue
+  [#240](https://github.com/nrdptel/hpr-sim/issues/240).
+- **Separation.** A design's stages fly as one [stack](glossary.md#stage). A `.ork` configuration
+  whose [booster](glossary.md#booster) drops away under power is refused; the library flies it,
+  as [Staging](physics/staging.md#using-it-today) shows.
 - **Real weather.** One wind at every height, in the standard atmosphere. A launch day's weather
   comes with `hpr weather`, in [M5.2](decisions-and-roadmap.md#m5-2).
 
@@ -294,9 +363,11 @@ a published [JSON Schema](https://json-schema.org), which describes its fields a
 | any failure | [`error.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/error.schema.json) |
 
 Units are SI, and each field's name says its unit: `total_impulse_ns` is in newton-seconds and
-`diameter_m` in metres. The one exception is `hpr motors list`, which keeps the catalog's
-millimetres, and says so in its field names. Numbers are not rounded, so a converted value can
-end in digits such as `0.0036000000000000003`; they carry no more precision than the curve file.
+`diameter_m` in metres. The exceptions say so in their names too: `hpr sim` gives angles in
+degrees (`latitude_deg`) and margins in calibres (`margin_cal`), and `hpr motors list` keeps the
+catalog's millimetres (`diameter_mm`). Numbers are not rounded, so a converted value can end in
+digits such as `0.0036000000000000003`; a motor's figures carry no more precision than its curve
+file.
 
 hpr is pre-alpha, so the fields may still change. The schemas are published beside the code, and a
 change to a document changes its schema in the same commit.
@@ -352,8 +423,9 @@ $ hpr motors show B4 --json
 
 <!-- cli: end -->
 
-A failure prints an error document. Its `kind` matches the exit status. Here `hpr sim` refuses the
-test rocket above without `--motor`, as hpr has no curve for its motor:
+A failure prints an error document. Its `kind` matches the exit status, and `milestone` is set
+only for a command not available yet. Here `hpr sim` refuses the test rocket above without
+`--motor`, as hpr has no curve for its motor:
 
 <!-- cli: example `hpr sim validation/fixtures/ork/pod-flights/pods-none.ork --json`, exits 1; written by `cargo xtask cli`; do not edit -->
 
@@ -399,11 +471,11 @@ you press Tab. Save it where your shell looks for completions:
 
 ## What it leaves out
 
-- **Flights without parachutes or separation.** `hpr sim` flies the stack whole and brings it
-  down with no recovery device ([what it doesn't fly yet](#what-hpr-sim-doesnt-fly-yet)).
-  Checking the validation cases (`hpr validate`) and converting files (`hpr convert`) come in
-  [M4.2c](decisions-and-roadmap.md#m4-2c), and reading a flight log (`hpr analyze`) in
-  [M4.2d](decisions-and-roadmap.md#m4-2d).
+- **Parachutes and stage separation.** `hpr sim` flies the stack whole and brings it down with
+  no recovery device ([what it doesn't fly yet](#what-hpr-sim-doesnt-fly-yet)).
+- **Commands still to come.** Checking the validation cases (`hpr validate`) and converting files
+  (`hpr convert`) come in [M4.2c](decisions-and-roadmap.md#m4-2c), and reading a flight log
+  (`hpr analyze`) in [M4.2d](decisions-and-roadmap.md#m4-2d).
 - **Only 32 motors are built in.** Any other motor needs its `.eng` or `.rse` file. `hpr` never
   goes online to fetch one.
 - **No ready-built program.** `hpr` is built from source with Rust; downloads for macOS, Windows
