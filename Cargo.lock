@@ -540,6 +540,7 @@ dependencies = [
  "hpr-net",
  "hpr-sim",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]

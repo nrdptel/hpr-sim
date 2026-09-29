@@ -28,6 +28,7 @@ hpr-forensics.workspace = true
 hpr-format.workspace = true
 hpr-io.workspace = true
 hpr-net = { workspace = true, optional = true }
+thiserror.workspace = true
 
 [features]
 default = []

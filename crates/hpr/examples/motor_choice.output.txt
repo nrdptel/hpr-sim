@@ -1,0 +1,7 @@
+My 29 mm rocket from a 1.8 m vertical rail, in 5 m/s of wind from the west
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+motor        liftoff  margin  rail exit   apogee  top speed  best delay
+               (kg)   (cal)     (m/s)      (m)     (m/s)        (s)
+F52C           0.548    3.32       18.5    438.6        106         8.0
+168H54-10A     0.675    1.92       21.7   1134.6        186        10.5

@@ -10,6 +10,8 @@
 
 [Your own rocket](your-own-rocket.md)
 
+[The builder](the-builder.md)
+
 [How a flight is simulated](how-a-flight-is-simulated.md)
 
 [Accuracy](accuracy.md)
