@@ -311,7 +311,8 @@ pub(crate) fn tag_key(element: &Element) -> String {
         .iter()
         .find(|(name, _)| name == "configid")
     {
-        Some((_, configid)) => configuration_key(&element.name, configid),
+        // The readers trim a configuration's id, and the writers write it trimmed.
+        Some((_, configid)) => configuration_key(&element.name, configid.trim()),
         None => element.name.clone(),
     }
 }

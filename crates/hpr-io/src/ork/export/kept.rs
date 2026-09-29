@@ -5,7 +5,9 @@
 //! they stack. A section or a tag goes back as the next of its name in its parent — of its name
 //! and configuration, for a tag that belongs to one — which is where its path's count says it was
 //! ([`super::super::extensions`]); it is written before the parent's `<subcomponents>`, where
-//! OpenRocket writes its tags. An attribute goes back on its element.
+//! OpenRocket writes its tags, but for a catalogue `<preset>`, which goes first, after the part's
+//! name and id: OpenRocket applies a preset where it reads it, over the sizes read before. An
+//! attribute goes back on its element.
 //!
 //! **What is kept wins over what is written.** A tag or attribute is kept when no reader asked for
 //! it, or when a reader asked and then dropped or simplified what it says, so that the design
@@ -29,6 +31,7 @@ const PRESET: &str = "preset";
 /// Puts everything in `kept` back into `document`, and says what could not be.
 pub(super) fn splice(document: &mut Document, kept: &OpenRocketExtension) -> Vec<Warning> {
     let mut warnings = Vec::new();
+    let mut refused_ids = Vec::new();
     let mut lost = |at: &str, what: &str| {
         warnings.push(Warning::new(
             at,
@@ -45,6 +48,20 @@ pub(super) fn splice(document: &mut Document, kept: &OpenRocketExtension) -> Vec
         }
     }
     for kept in kept.sections.iter().chain(&kept.tags) {
+        // A part's own id, kept when another part already had it: OpenRocket 24.12 refuses a
+        // whole file over an id that is not a UUID, so such a one is not put back.
+        if kept.element.name == "id" && !super::rocket::is_uuid(kept.element.text().trim()) {
+            refused_ids.push(Warning::new(
+                &kept.at,
+                WarningKind::Dropped,
+                format!(
+                    "the file's id `{}` is not a UUID, which OpenRocket 24.12 refuses a file \
+                     over; it was left out, and the part will read back under another",
+                    kept.element.text().trim()
+                ),
+            ));
+            continue;
+        }
         if !insert_tag(document, &kept.at, &kept.element) {
             lost(&kept.at, "a tag");
         }
@@ -66,6 +83,7 @@ pub(super) fn splice(document: &mut Document, kept: &OpenRocketExtension) -> Vec
             None => lost(&attribute.at, "an attribute"),
         }
     }
+    warnings.extend(refused_ids);
     warnings
 }
 
@@ -167,14 +185,22 @@ fn insert_tag(document: &mut Document, at: &str, tag: &Element) -> bool {
     }
     let place = if tag.name == PRESET {
         // OpenRocket applies a catalogue preset where it reads the tag, over the sizes and
-        // material read before it: after the part's own, the catalogue's would replace them.
-        parent
+        // material read before it: after the part's own, the catalogue's would replace them. So
+        // it goes after the part's name and id, and after any preset already put back.
+        match parent
             .children
             .iter()
-            .position(
-                |child| matches!(child, Node::Element(e) if e.name != "name" && e.name != "id"),
-            )
-            .unwrap_or(parent.children.len())
+            .rposition(|child| matches!(child, Node::Element(e) if e.name == PRESET))
+        {
+            Some(last) => last + 1,
+            None => parent
+                .children
+                .iter()
+                .position(
+                    |child| matches!(child, Node::Element(e) if e.name != "name" && e.name != "id"),
+                )
+                .unwrap_or(parent.children.len()),
+        }
     } else {
         parent
             .children

@@ -1230,7 +1230,7 @@ fn invented(id: &str, tag: &str) -> bool {
 
 /// Whether `text` is a UUID as OpenRocket writes one: 8, 4, 4, 4 and 12 hexadecimal digits,
 /// joined by hyphens.
-fn is_uuid(text: &str) -> bool {
+pub(super) fn is_uuid(text: &str) -> bool {
     let groups: Vec<&str> = text.split('-').collect();
     groups.len() == 5
         && groups.iter().zip([8, 4, 4, 4, 12]).all(|(group, length)| {

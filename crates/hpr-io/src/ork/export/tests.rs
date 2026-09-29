@@ -911,28 +911,36 @@ fn a_configurations_kept_tags_go_back_to_that_configuration() {
             "<deployevent>altitude</deployevent><deployaltitude>150</deployaltitude>",
         ),
     ] {
-        let xml = configurations_listed_backwards(b_motor, b_ignition, b_deploy);
-        let xml = super::rocket::tests::uuids(&xml);
-        let original = design(&read(xml.as_bytes()).expect("readable").value);
-        assert!(!original.warnings.is_empty(), "b's tag drops something");
-        assert!(!original.value.extensions.x_openrocket.tags.is_empty());
-        let written = document(&original.value);
-        assert!(written.warnings.is_empty(), "{:?}", written.warnings);
-        let text = written.value.to_xml();
-        let back = design(&read(text.as_bytes()).expect("readable").value);
-        assert_eq!(back.value, original.value, "{text}");
-        assert_eq!(back.warnings, original.warnings, "{text}");
-        assert_eq!(document(&back.value).value.to_xml(), text);
-        // `a` still says what it said.
-        let root = root_of(&text);
-        let parachute = by_id(&root, "main");
-        let a = for_configuration(parachute, "deploymentconfiguration", "a");
-        assert_eq!(text_of(a, "deployevent").as_deref(), Some("altitude"));
-        let mount = by_id(&root, "tube").child("motormount").expect("a mount");
-        let a = for_configuration(mount, "motor", "a");
-        assert_eq!(text_of(a, "delay").as_deref(), Some("none"));
-        let a = for_configuration(mount, "ignitionconfiguration", "a");
-        assert_eq!(text_of(a, "ignitiondelay").as_deref(), Some("0.5"));
+        // The readers trim a configuration's id; a path to a tag of one must too.
+        for padded in [false, true] {
+            let xml = configurations_listed_backwards(b_motor, b_ignition, b_deploy);
+            let xml = if padded {
+                xml.replace(r#"configid="b""#, r#"configid=" b ""#)
+            } else {
+                xml
+            };
+            let xml = super::rocket::tests::uuids(&xml);
+            let original = design(&read(xml.as_bytes()).expect("readable").value);
+            assert!(!original.warnings.is_empty(), "b's tag drops something");
+            assert!(!original.value.extensions.x_openrocket.tags.is_empty());
+            let written = document(&original.value);
+            assert!(written.warnings.is_empty(), "{:?}", written.warnings);
+            let text = written.value.to_xml();
+            let back = design(&read(text.as_bytes()).expect("readable").value);
+            assert_eq!(back.value, original.value, "{text}");
+            assert_eq!(back.warnings, original.warnings, "{text}");
+            assert_eq!(document(&back.value).value.to_xml(), text);
+            // `a` still says what it said.
+            let root = root_of(&text);
+            let parachute = by_id(&root, "main");
+            let a = for_configuration(parachute, "deploymentconfiguration", "a");
+            assert_eq!(text_of(a, "deployevent").as_deref(), Some("altitude"));
+            let mount = by_id(&root, "tube").child("motormount").expect("a mount");
+            let a = for_configuration(mount, "motor", "a");
+            assert_eq!(text_of(a, "delay").as_deref(), Some("none"));
+            let a = for_configuration(mount, "ignitionconfiguration", "a");
+            assert_eq!(text_of(a, "ignitiondelay").as_deref(), Some("0.5"));
+        }
     }
 }
 
@@ -1004,5 +1012,58 @@ fn a_preset_is_written_before_the_parts_own_sizes() {
     for own in ["<length>", "<thickness>", "<radius>", "<material "] {
         assert!(at("<preset ") < at(own), "{own} in {text}");
     }
+    assert_eq!(design_of(text.as_bytes()), original);
+}
+
+/// Two parts that share an id that is not a UUID: the second reads under a new one, and the file's
+/// own is kept. OpenRocket 24.12 refuses a whole file over such an id, so neither is written, and
+/// each is warned of.
+#[test]
+fn a_repeated_id_that_is_not_a_uuid_is_not_written() {
+    let tube = r#"<bodytube><name>Tube</name><id>tube</id>
+        <material type="bulk" density="700.0">Invented paper</material>
+        <length>0.3</length><thickness>0.001</thickness><radius>0.02</radius></bodytube>"#;
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Probe</name><referencetype>maximum</referencetype>
+    <subcomponents><stage><name>Sustainer</name><subcomponents>{tube}{tube}
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#
+    );
+    let file = read(xml.as_bytes()).expect("readable").value;
+    let original = design(&file).value;
+    let written = document(&original);
+    let text = written.value.to_xml();
+    assert!(!text.contains("<id>tube"), "{text}");
+    let about_ids = written
+        .warnings
+        .iter()
+        .filter(|w| w.message.contains("is not a UUID"))
+        .count();
+    assert_eq!(about_ids, 2, "{:?}", written.warnings);
+}
+
+/// Two kept presets go back in the file's order, both before the part's own sizes: OpenRocket
+/// applies each where it reads it.
+#[test]
+fn two_presets_go_back_in_order() {
+    let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Probe</name><referencetype>maximum</referencetype>
+    <subcomponents><stage><name>Sustainer</name><subcomponents>
+      <bodytube><name>Tube</name><id>0f0e0d0c-0b0a-4900-8800-070605040302</id>
+        <preset type="BODY_TUBE" manufacturer="Invented" partno="IT-1" digest="01"/>
+        <preset type="BODY_TUBE" manufacturer="Invented" partno="IT-2" digest="02"/>
+        <length>0.5</length><thickness>0.001</thickness><radius>0.02</radius></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#;
+    let original = design_of(xml);
+    let text = document(&original).value.to_xml();
+    let at = |tag: &str| text.find(tag).unwrap_or_else(|| panic!("{tag} in {text}"));
+    assert!(
+        at("IT-1") < at("IT-2") && at("IT-2") < at("<length>"),
+        "{text}"
+    );
     assert_eq!(design_of(text.as_bytes()), original);
 }
