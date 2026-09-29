@@ -149,9 +149,11 @@ fn element_at_mut<'a>(document: &'a mut Document, at: &str) -> Option<&'a mut El
     let Some(first) = steps.next() else {
         return Some(here);
     };
-    let (name, index) = step(first)?;
+    // `rocket` and `simulations` are the first of their name, and their step says no count;
+    // a section's step does.
+    let (name, index) = step(first).unwrap_or((first, 0));
     here = nth_named(here, name, index)?;
-    let rocket = name == "rocket" && index == 0;
+    let rocket = first == "rocket";
     let mut in_tags = false;
     for text in steps {
         if let Some(text) = text.strip_prefix('@') {

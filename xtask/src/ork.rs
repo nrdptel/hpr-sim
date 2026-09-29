@@ -23,9 +23,12 @@ use hpr_io::ork::{self, ATTACHED_TAGS, AXIAL_OFFSET, Dimension, INSTANCE_COUNT, 
 use serde_json::{Value, json};
 
 pub const USAGE: &str = "\
-  ork [--dir <path>]…      Read every .ork file in the reference library and print how many
-                           opened, in which container and schema version. Per-file detail
-                           (private corpus) goes to corpus-out/ork-survey.json.";
+  ork [--dir <path>]… [--export <dir>]
+                           Read every .ork file in the reference library and print how many
+                           opened, in which container and schema version, and whether each
+                           design reads back the same once written out again. Per-file detail
+                           (private corpus) goes to corpus-out/ork-survey.json; --export also
+                           saves each written file under <dir>, by the original's path.";
 
 /// Where the per-file detail goes. Gitignored: it names files in a private corpus.
 const REPORT: &str = "corpus-out/ork-survey.json";
@@ -42,7 +45,8 @@ const OPENROCKET_RADII: &str = "validation/fixtures/ork/openrocket-automatic-rad
 
 /// How `hpr_io::ork::rocket` begins the warning for a radius it gave OpenRocket's default radius;
 /// a test below holds the two together, so a reworded warning cannot quietly count as none.
-const DEFAULT_RADIUS: &str = "an automatic radius with no fixed radius anywhere along its chain";
+pub(crate) const DEFAULT_RADIUS: &str =
+    "an automatic radius with no fixed radius anywhere along its chain";
 
 /// How `hpr_io::ork::rocket` ends the warning for a document with no design in it, whether it has
 /// no `<rocket>` or one holding nothing; held to the importer by the same test.
@@ -71,12 +75,18 @@ const NOT_WELL_FORMED: [(&str, &str, &str); 2] = [
 pub fn run(args: &[String]) -> Result<(), String> {
     let root = root()?;
     let mut dirs: Vec<PathBuf> = Vec::new();
+    let mut export_to: Option<PathBuf> = None;
     let mut rest = args.iter();
     while let Some(argument) = rest.next() {
         match argument.as_str() {
             "--dir" => dirs.push(PathBuf::from(
                 rest.next().ok_or_else(|| format!("usage:\n{USAGE}"))?,
             )),
+            "--export" => {
+                export_to = Some(PathBuf::from(
+                    rest.next().ok_or_else(|| format!("usage:\n{USAGE}"))?,
+                ));
+            }
             _ => return Err(format!("usage:\n{USAGE}")),
         }
     }
@@ -107,7 +117,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     // The OpenRocket fixture names designs in the library; a run over other directories need not
     // reach any of them.
     let library = dirs.is_empty() && root.join(JAR).is_file();
-    report(&root, &files, library)
+    report(&root, &files, library, export_to.as_deref())
 }
 
 /// The tags that hold an angle. A `.ork` writes them in degrees and says so nowhere, so this is
@@ -255,7 +265,12 @@ fn resolved_dimension(placed: &PlacedComponent, tag: &str) -> Option<f64> {
 /// One file to read: how to name it, and its bytes.
 type Case = (String, Vec<u8>);
 
-fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
+fn report(
+    root: &Path,
+    files: &[Case],
+    library: bool,
+    export_to: Option<&Path>,
+) -> Result<(), String> {
     let openrocket = openrocket_radii(root, &root.join(OPENROCKET_RADII))?;
     let mut radii_designs = 0usize;
     let mut radii_compared = 0usize;
@@ -265,7 +280,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut recovery_tally = crate::ork_recovery::RecoveryTally::default();
     let mut simulation_tally = crate::ork_simulations::SimulationTally::default();
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
-    let mut export_tally = crate::ork_export::ExportTally::default();
+    let mut export_tally = crate::ork_export::ExportTally::new(root, export_to);
     let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
     let mut mass = crate::ork_mass::MassTally::load(root, library)?;
     let mut supply = crate::ork_supply::Supply::load(root, library)?;

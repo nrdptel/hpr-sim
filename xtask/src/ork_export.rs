@@ -2,6 +2,8 @@
 //! (`hpr_io::ork::export`), read again, and compared with the design it was written from.
 
 use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use hpr_io::ork::{self, Attachment, Design, Document, Imported, SuppliedCurves, export};
 use serde_json::{Value, json};
@@ -12,8 +14,14 @@ const PARTS: [&str; 5] = ["rocket", "motors", "recovery", "simulations", "extens
 /// The counts, summed over the designs.
 #[derive(Debug, Default)]
 pub(crate) struct ExportTally {
+    /// The workspace root, and where to save each written file, if anywhere.
+    root: PathBuf,
+    out: Option<PathBuf>,
     designs: usize,
     same: usize,
+    /// Designs that read back the same but for what the reader had assumed: a radius with nothing
+    /// to take given OpenRocket's default (ADR-054), which the export states.
+    assumed: usize,
     fixed_points: usize,
     /// The parts of the design that came back different, by part.
     differing: BTreeMap<String, usize>,
@@ -27,6 +35,15 @@ pub(crate) struct ExportTally {
 }
 
 impl ExportTally {
+    /// A tally that saves each written file under `out`, by the original's path from `root`.
+    pub(crate) fn new(root: &Path, out: Option<&Path>) -> Self {
+        Self {
+            root: root.to_path_buf(),
+            out: out.map(Path::to_path_buf),
+            ..Self::default()
+        }
+    }
+
     /// Writes `design` out with `attachments`, reads it back with `curves`, and compares; returns
     /// the per-file detail.
     pub(crate) fn add(
@@ -45,6 +62,19 @@ impl ExportTally {
                 return json!({ "error": error.to_string() });
             }
         };
+        if let Some(out) = &self.out {
+            let relative = Path::new(name)
+                .strip_prefix(&self.root)
+                .unwrap_or(Path::new(name));
+            let path = out.join(relative.to_string_lossy().replace('!', "/"));
+            let saved = path
+                .parent()
+                .map_or(Ok(()), fs::create_dir_all)
+                .and_then(|()| fs::write(&path, &written.value));
+            if saved.is_err() {
+                self.failed.push(name.to_owned());
+            }
+        }
         for warning in &written.warnings {
             *self.warnings.entry(warning.message.clone()).or_default() += 1;
         }
@@ -63,6 +93,8 @@ impl ExportTally {
         let differences = differences(&design.value, &back);
         if differences.is_empty() {
             self.same += 1;
+        } else if assumed_radius(design, &differences) {
+            self.assumed += 1;
         }
         for (part, _) in &differences {
             *self.differing.entry(part.clone()).or_default() += 1;
@@ -88,6 +120,7 @@ impl ExportTally {
         json!({
             "designs": self.designs,
             "read_back_the_same": self.same,
+            "read_back_stating_an_assumed_radius": self.assumed,
             "written_again_the_same": self.fixed_points,
             "parts_differing": self.differing,
             "warnings": self.warnings,
@@ -100,10 +133,11 @@ impl ExportTally {
     /// Prints the counts under the rest of the survey.
     pub(crate) fn print(&self) {
         println!(
-            "  written back out as .ork: {} design(s); {} read back the same, {} written again \
-             byte for byte; {} failed",
+            "  written back out as .ork: {} design(s); {} read back the same, {} stating a radius \
+             the reader assumed; {} written again byte for byte; {} failed",
             self.designs,
             self.same,
+            self.assumed,
             self.fixed_points,
             self.failed.len()
         );
@@ -115,7 +149,7 @@ impl ExportTally {
 
     /// Why the survey should fail: a design that does not come back as it went out.
     pub(crate) fn failure(&self) -> Option<String> {
-        let apart = self.designs - self.same;
+        let apart = self.designs - self.same - self.assumed;
         let moved = self.designs - self.fixed_points;
         (apart + moved + self.failed.len() > 0).then(|| {
             format!(
@@ -127,6 +161,22 @@ impl ExportTally {
     }
 }
 
+/// Whether the only differences are the ones a radius the reader assumed makes: the original
+/// gave an automatic radius with nothing to take OpenRocket's default, with a warning that keeps
+/// its configurations from flying (ADR-054, ADR-055); the export writes that radius as stated, so
+/// the design read back has no warning, and flies.
+fn assumed_radius(design: &Imported<Design>, differences: &[(String, String)]) -> bool {
+    let warned = design
+        .warnings
+        .iter()
+        .any(|warning| warning.message.starts_with(crate::ork::DEFAULT_RADIUS));
+    let flown_only = differences.iter().all(|(part, at)| {
+        (part == "rocket" && at.starts_with("/configurations"))
+            || (part == "motors" && at.starts_with("/configurations/") && at.ends_with("/left_out"))
+    });
+    warned && flown_only
+}
+
 /// Each part of the design that differs, and the first place in it, as a JSON pointer.
 fn differences(original: &Design, back: &Design) -> Vec<(String, String)> {
     if original == back {
@@ -135,12 +185,29 @@ fn differences(original: &Design, back: &Design) -> Vec<(String, String)> {
     let (Ok(left), Ok(right)) = (serde_json::to_value(original), serde_json::to_value(back)) else {
         return vec![("design".to_owned(), String::new())];
     };
-    let found: Vec<(String, String)> = PARTS
-        .iter()
-        .filter_map(|part| {
-            pointer(&left[part], &right[part], String::new()).map(|at| ((*part).to_owned(), at))
-        })
-        .collect();
+    // Each field of each part that differs, so one difference cannot hide another.
+    let mut found = Vec::new();
+    for part in PARTS {
+        match (&left[part], &right[part]) {
+            (Value::Object(l), Value::Object(r)) => {
+                let keys: std::collections::BTreeSet<&String> = l.keys().chain(r.keys()).collect();
+                for key in keys {
+                    let (a, b) = (
+                        l.get(key).unwrap_or(&Value::Null),
+                        r.get(key).unwrap_or(&Value::Null),
+                    );
+                    if let Some(at) = pointer(a, b, format!("/{key}")) {
+                        found.push((part.to_owned(), at));
+                    }
+                }
+            }
+            (l, r) => {
+                if let Some(at) = pointer(l, r, String::new()) {
+                    found.push((part.to_owned(), at));
+                }
+            }
+        }
+    }
     if found.is_empty() {
         // Equal as JSON but not as values: a difference JSON cannot show, such as -0 and 0.
         return vec![("design".to_owned(), " (equal as JSON)".to_owned())];
