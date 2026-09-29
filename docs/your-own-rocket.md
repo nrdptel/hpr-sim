@@ -662,10 +662,12 @@ The example leaves out several kinds of part and setting that a design can have:
 
 ## What it can't do yet
 
-- **Only in Rust, or in JSON.** A simpler builder ([M4.1](decisions-and-roadmap.md#m4-1), the simpler library interface),
-  a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
-- **No import from other programs.** [OpenRocket](glossary.md#openrocket) `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)
-  and RockSim `.rkt` files ([M3.4](decisions-and-roadmap.md#m3-4), RockSim import) can't be read yet.
+- **Only in Rust, or in JSON.** [The builder](the-builder.md) builds the same rocket in fewer
+  lines; a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python
+  ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
+- **Import from one other program.** [OpenRocket](glossary.md#openrocket) `.ork` files are read
+  ([`.ork` design files](format/ork.md)); RockSim `.rkt` files
+  ([M3.4](decisions-and-roadmap.md#m3-4), RockSim import) can't be read yet.
 - **Drag near and past Mach 1 is lightly checked.** Since
   [M1.8b1](decisions-and-roadmap.md#m1-8b1) (drag through Mach 1), hpr's own drag, like its normal
   force, carries a flight from Mach 0 to 5, and a flight that reaches Mach 5 stops with an error.

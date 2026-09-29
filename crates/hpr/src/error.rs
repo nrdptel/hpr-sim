@@ -3,7 +3,7 @@
 use hpr_aero::AeroError;
 use hpr_atmos::AtmosError;
 use hpr_core::CoreError;
-use hpr_design::DesignError;
+use hpr_design::{DesignError, Finding};
 use hpr_motor::MotorError;
 use hpr_sim::SimError;
 use thiserror::Error;
@@ -21,8 +21,8 @@ pub enum Error {
         value: f64,
     },
     /// Parts added in an order the rocket can't be built in, such as fins before any body tube.
-    #[error("{0}")]
-    Order(&'static str),
+    #[error(transparent)]
+    Order(Order),
     /// A material id that isn't built in; [`hpr_design::materials`] lists them.
     #[error("no built-in material `{0}` (`hpr_design::materials` lists them)")]
     UnknownMaterial(String),
@@ -37,6 +37,9 @@ pub enum Error {
         /// The designations it matches.
         candidates: Vec<String>,
     },
+    /// A motor with an empty designation, which the design would take as a duplicate id.
+    #[error("a motor needs a designation")]
+    EmptyDesignation,
     /// A motor file holds no motor, or more than one where one was expected.
     #[error("the motor file holds {0} motors, not one")]
     MotorCount(usize),
@@ -46,6 +49,10 @@ pub enum Error {
     /// A configuration id the design doesn't hold.
     #[error("the design has no configuration `{0}`")]
     NoSuchConfiguration(String),
+    /// The design's checks ([`hpr_design::checks`]) found errors: every finding, errors and
+    /// warnings, in the checks' order.
+    #[error("the design's checks found errors: {0:?}")]
+    DesignChecks(Vec<Finding>),
     /// From the design: its tree, parts and mass properties.
     #[error(transparent)]
     Design(#[from] DesignError),
@@ -64,6 +71,30 @@ pub enum Error {
     /// From the geodesy: a launch site that isn't on the Earth.
     #[error(transparent)]
     Core(#[from] CoreError),
+}
+
+/// What is out of order when a part can't go where it was added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum Order {
+    /// A nose added after another body part: the nose goes first.
+    #[error("the nose goes first, before any other body part")]
+    NoseNotFirst,
+    /// A transition with no body part before it to start from.
+    #[error("a transition needs a body part before it")]
+    NothingBeforeTransition,
+    /// Fins, a motor tube or a mass with no body tube to go on.
+    #[error("fins, a motor tube and masses go on a body tube: add one first")]
+    NoTube,
+    /// A second motor tube: a built rocket has one.
+    #[error("the rocket has a motor tube already")]
+    SecondMotorTube,
+    /// A motor with no motor tube to go in.
+    #[error("a motor needs a motor tube to go in")]
+    NoMotorTube,
+    /// A part added to a rocket read from a design, which the builder doesn't change.
+    #[error("parts can't be added to a rocket read from a design")]
+    ReadFromDesign,
 }
 
 /// `value` if it is finite and positive, [`Error::Domain`] otherwise.

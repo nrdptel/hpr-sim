@@ -8,9 +8,9 @@
 
 [Exporting a flight](exporting-a-flight.md)
 
-[Your own rocket](your-own-rocket.md)
-
 [The builder](the-builder.md)
+
+[Your own rocket](your-own-rocket.md)
 
 [How a flight is simulated](how-a-flight-is-simulated.md)
 

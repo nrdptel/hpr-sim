@@ -527,7 +527,7 @@ is the milestone that added or will add that test.
 [adr-100]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-100-a-motor-whose-ignition-never-comes-flown-unlit-as-openrocket-flies-it-2026-09-28
 [adr-101]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-101-openrockets-mass-conventions-rolled-up-m22-left-open-for-two-lessons-2026-09-28
 [adr-102]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-102-tube-fins-centre-of-pressure-measured-against-openrocket-l19s-bar-not-met-the-gap-pinned-2026-09-28
-[adr-103]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-103-the-builder-api-wraps-the-crates-own-types-with-no-default-materials-2026-09-29
+[adr-103]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-103-the-builder-api-wraps-the-crates-own-types-with-no-default-materials-2026-09-28
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

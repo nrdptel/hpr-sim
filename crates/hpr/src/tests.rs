@@ -17,8 +17,8 @@ use hpr_sim::{EventKind, FlightSettings, Rail, Simulation};
 
 use crate::rocket::{Fins, Mass, MotorTube, Nose, Transition, Tube, material};
 use crate::{
-    CanopyType, Device, DeviceDrag, Environment, Error, Flight, Motor, NoseShape, Position, Rocket,
-    Trigger,
+    CanopyType, Device, DeviceDrag, Environment, Error, Flight, Motor, NoseShape, Order, Position,
+    Rocket, Trigger,
 };
 
 /// The rocket of the example `own_rocket` in `hpr-sim`, built part by part with the builder.
@@ -32,7 +32,7 @@ fn built() -> Rocket {
                 0.0015,
                 material("abs").unwrap(),
             )
-            .with_shoulder(0.06, 0.0015, true),
+            .with_capped_shoulder(0.06, 0.0015),
         )
         .unwrap()
         .add_tube(Tube::new(0.9, 0.00115, material("kraft_phenolic").unwrap()))
@@ -43,9 +43,9 @@ fn built() -> Rocket {
         )
         .unwrap()
         .add_fins(
-            Fins::trapezoidal(
+            Fins::new(
                 3,
-                [0.1, 0.04, 0.045, 0.05],
+                trapezoid([0.1, 0.04, 0.045, 0.05]),
                 0.003175,
                 material("birch_plywood").unwrap(),
             )
@@ -63,6 +63,16 @@ fn built() -> Rocket {
         .unwrap()
         .add_parachute(parachute());
     rocket
+}
+
+/// A trapezoidal planform from its root chord, tip chord, span and sweep, m.
+fn trapezoid([root_chord_m, tip_chord_m, span_m, sweep_m]: [f64; 4]) -> FinPlanform {
+    FinPlanform::Trapezoidal {
+        root_chord_m,
+        tip_chord_m,
+        span_m,
+        sweep_m,
+    }
 }
 
 /// The example's parachute, opened by the motor's ejection charge.
@@ -272,7 +282,7 @@ fn the_builder_names_its_parts_and_configuration() {
         .unwrap()
         .add_transition(Transition::conical(0.1, 0.05, 0.002, paper.clone()))
         .unwrap()
-        .add_tube(Tube::new(0.5, 0.002, paper).with_diameter_m(0.05))
+        .add_tube(Tube::new(0.5, 0.002, paper))
         .unwrap();
     let components = &stepped.design().stages[0].components;
     assert_eq!(ids(components), ["tube", "transition", "tube-2"]);
@@ -283,26 +293,31 @@ fn the_builder_names_its_parts_and_configuration() {
         (transition.fore_radius_m, transition.aft_radius_m),
         (0.05, 0.025)
     );
+    // The tube behind it takes its aft diameter.
+    let Part::BodyTube(tube) = &components[2].part else {
+        panic!("not a tube: {:?}", components[2].part);
+    };
+    assert_eq!(tube.outer_radius_m, 0.025);
 }
 
 /// Parts in an order the tree can't take, and a rocket read from a design, are refused.
 #[test]
 fn parts_out_of_order_are_refused() {
     let paper = material("kraft_phenolic").unwrap();
-    let fins = Fins::trapezoidal(3, [0.1, 0.05, 0.05, 0.03], 0.003, paper.clone());
+    let fins = Fins::new(3, trapezoid([0.1, 0.05, 0.05, 0.03]), 0.003, paper.clone());
     let mut rocket = Rocket::new("Out of order", 0.05).unwrap();
     assert!(matches!(
         rocket.add_fins(fins.clone()),
-        Err(Error::Order(what)) if what.starts_with("fins, a motor tube and masses")
+        Err(Error::Order(Order::NoTube))
     ));
     assert!(matches!(
         rocket.add_transition(Transition::conical(0.1, 0.03, 0.002, paper.clone())),
-        Err(Error::Order(what)) if what.starts_with("a transition")
+        Err(Error::Order(Order::NothingBeforeTransition))
     ));
     let motor = Motor::from_catalog("F52C").unwrap();
     assert!(matches!(
         rocket.set_motor(motor.clone()),
-        Err(Error::Order(what)) if what.starts_with("a motor needs")
+        Err(Error::Order(Order::NoMotorTube))
     ));
     rocket
         .add_tube(Tube::new(0.5, 0.001, paper.clone()))
@@ -310,13 +325,13 @@ fn parts_out_of_order_are_refused() {
     let ogive = NoseShape::Ogive { radius_ratio: 1.0 };
     assert!(matches!(
         rocket.add_nose(Nose::solid(ogive, 0.1, paper.clone())),
-        Err(Error::Order(what)) if what.starts_with("the nose goes first")
+        Err(Error::Order(Order::NoseNotFirst))
     ));
     let tube = MotorTube::new(0.1, 0.029, 0.001, paper.clone());
     rocket.add_motor_tube(tube.clone()).unwrap();
     assert!(matches!(
         rocket.add_motor_tube(tube),
-        Err(Error::Order(what)) if what.starts_with("the rocket has a motor tube")
+        Err(Error::Order(Order::SecondMotorTube))
     ));
     // No motor yet: nothing to fly or to weigh.
     assert!(matches!(rocket.assemble(), Err(Error::NoMotor)));
@@ -328,7 +343,7 @@ fn parts_out_of_order_are_refused() {
     let mut read = Rocket::from_design(by_hand(), "h54").unwrap();
     assert!(matches!(
         read.add_tube(Tube::new(0.5, 0.001, paper)),
-        Err(Error::Order(what)) if what.starts_with("parts can't be added")
+        Err(Error::Order(Order::ReadFromDesign))
     ));
     assert!(matches!(
         Rocket::from_design(by_hand(), "j350"),
@@ -356,15 +371,44 @@ fn motors_come_from_the_catalog_or_a_file() {
         Err(Error::Domain { what: "motor delay, s", value }) if value == -1.0
     ));
     assert_eq!(
-        catalog.clone().with_delay(Delay::Plugged).delay(),
+        catalog.clone().with_delay(Delay::Plugged).unwrap().delay(),
         Some(Delay::Plugged)
     );
+    assert!(matches!(
+        catalog.clone().with_delay(Delay::Seconds(f64::NAN)),
+        Err(Error::Domain {
+            what: "motor delay, s",
+            ..
+        })
+    ));
+    // A common name two motors share is refused, both listed, not guessed.
+    match Motor::from_catalog("I175") {
+        Err(Error::AmbiguousMotor { name, candidates }) => {
+            assert_eq!(name, "I175");
+            assert_eq!(candidates.len(), 2, "{candidates:?}");
+            assert!(
+                candidates.iter().any(|c| c.ends_with("I175WS")),
+                "{candidates:?}"
+            );
+        }
+        other => panic!("expected an ambiguous name, got {other:?}"),
+    }
+    // The F15's curve is a RockSim `.rse` file.
+    let f15 = Motor::from_catalog("F15").unwrap();
+    assert_eq!((f15.diameter_m(), f15.length_m()), (0.029, 0.114));
 
     let text = include_str!("../../hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000863.eng");
+    // Its header: `I377CT 38 292 8-18 0.25 0.56 Loki`, millimetres read as metres.
     let file = Motor::from_eng(text).unwrap();
-    assert!(file.diameter_m() > 0.0 && file.length_m() > 0.0);
+    assert_eq!(file.designation(), "I377CT");
+    assert_eq!((file.diameter_m(), file.length_m()), (0.038, 0.292));
+    assert_eq!(file.delay(), None);
     let two = format!("{text}\n{text}");
     assert!(matches!(Motor::from_eng(&two), Err(Error::MotorCount(2))));
+    assert!(matches!(
+        Motor::new(" ", catalog.solid_motor().clone(), 0.029, 0.1),
+        Err(Error::EmptyDesignation)
+    ));
     assert!(matches!(
         Motor::new("x", catalog.solid_motor().clone(), 0.0, 0.1),
         Err(Error::Domain { what: "motor diameter, m", value }) if value == 0.0
@@ -413,20 +457,132 @@ fn the_rail_leans_where_it_is_headed() {
         .fly()
         .unwrap();
     // East, and a little south: the Earth's rotation turns a flight to its right in the northern
-    // hemisphere (0.16 m in 337 m here).
+    // hemisphere (0.16 m in 337 m here; the plumb line's curve alone gives 0.001 m).
     let apogee = east.result().event(EventKind::Apogee).unwrap().sample;
     let (east_m, north_m) = (apogee.cg_enu_m.x, apogee.cg_enu_m.y);
     assert!(
-        east_m > 100.0 && north_m < 0.0 && north_m > -1e-3 * east_m,
+        east_m > 100.0 && north_m < -0.1 && north_m > -1e-3 * east_m,
         "{:?}",
         apogee.cg_enu_m
     );
+    // Refused in the degrees they were given: flat, and past the vertical.
+    for inclination_deg in [0.0, 95.0, f64::NAN] {
+        let refused = Flight::builder(&rocket, &environment, 1.8)
+            .inclination_deg(inclination_deg)
+            .fly();
+        assert!(
+            matches!(
+                refused,
+                Err(Error::Domain { what: "rail inclination, degrees above the horizon", value })
+                    if value.to_bits() == inclination_deg.to_bits()
+            ),
+            "{inclination_deg}: {refused:?}"
+        );
+    }
+    // A whole rail keeps its own angles, exactly, unless the degrees are set too.
+    let rail = Rail {
+        azimuth_rad: 0.3,
+        elevation_rad: 1.4,
+        ..Rail::vertical(1.8)
+    };
+    let launch = Flight::builder(&rocket, &environment, 1.0).rail(rail);
+    assert_eq!(launch.simulation().unwrap().rail(), rail);
+    let steeper = launch.inclination_deg(89.0).simulation().unwrap();
+    assert_eq!(steeper.rail().elevation_rad, 89.0_f64.to_radians());
+    assert_eq!(steeper.rail().azimuth_rad, 0.3);
+}
+
+/// A packed mass's position places its packing's end, so packing it moves its centre by half its
+/// length (the guide says so); placed by its middle, it doesn't move.
+#[test]
+fn packing_a_mass_moves_its_centre_unless_placed_by_its_middle() {
+    // A tube, its motor, and the bay: the rocket's mass and the `z` of its centre of gravity.
+    let with_bay = |bay: Mass| {
+        let paper = material("kraft_phenolic").unwrap();
+        let mut rocket = Rocket::new("Bay", 0.0563).unwrap();
+        rocket
+            .add_tube(Tube::new(0.9, 0.00115, paper.clone()))
+            .unwrap()
+            .add_motor_tube(MotorTube::new(0.2, 0.029, 0.001, paper))
+            .unwrap()
+            .add_mass(bay)
+            .unwrap()
+            .set_motor(Motor::from_catalog("H54").unwrap())
+            .unwrap();
+        let properties = rocket.mass_properties(0.0).unwrap();
+        (properties.mass_kg, properties.cg_m.z)
+    };
+    let top = Position::Top { aft_offset_m: 0.07 };
+    let (mass_kg, point_z) = with_bay(Mass::new(0.2, top));
+    let (_, packed_z) = with_bay(Mass::new(0.2, top).packed(0.15, 0.05));
+    // The bay's centre moves 0.075 m aft, and the rocket's by 0.2 × 0.075 / its mass.
+    let shift_m = 0.2 * 0.075 / mass_kg;
+    assert!(
+        ((point_z - packed_z) - shift_m).abs() < 1e-12,
+        "{} against {shift_m}",
+        point_z - packed_z
+    );
+    let middle = Position::Middle { aft_offset_m: 0.0 };
+    let (_, point_z) = with_bay(Mass::new(0.2, middle));
+    let (_, packed_z) = with_bay(Mass::new(0.2, middle).packed(0.15, 0.05));
+    assert!((point_z - packed_z).abs() < 1e-15, "{point_z} {packed_z}");
+}
+
+/// Weighing a rocket runs the checks a flight runs: a motor wider than its tube is refused by
+/// both, not weighed by one and refused by the other.
+#[test]
+fn weighing_refuses_what_flying_refuses() {
+    let mut rocket = built();
+    rocket
+        .set_motor(Motor::from_catalog("K400C").unwrap())
+        .unwrap();
+    let wider = |findings: &[hpr_design::Finding]| {
+        findings
+            .iter()
+            .any(|finding| matches!(finding, hpr_design::Finding::MotorWiderThanMount { .. }))
+    };
+    match rocket.mass_properties(0.0) {
+        Err(Error::DesignChecks(findings)) => assert!(wider(&findings), "{findings:?}"),
+        other => panic!("expected the design checks, got {other:?}"),
+    }
     assert!(matches!(
-        Flight::builder(&rocket, &environment, 1.8)
-            .inclination_deg(0.0)
-            .fly(),
-        Err(Error::Sim(hpr_sim::SimError::Domain { what, .. })) if what.contains("elevation")
+        rocket.margin(0.0, 0.3),
+        Err(Error::DesignChecks(_))
     ));
+    match Flight::builder(&rocket, &environment(), 1.8).fly() {
+        Err(Error::Sim(hpr_sim::SimError::DesignChecks(findings))) => {
+            assert!(wider(&findings), "{findings:?}");
+        }
+        other => panic!("expected the design checks, got {other:?}"),
+    }
+    assert!(matches!(
+        built().mass_properties(-1.0),
+        Err(Error::Domain {
+            what: "time, s",
+            ..
+        })
+    ));
+}
+
+/// `fly_with` shows the observer every step: a recorder's last row is the flight's end.
+#[test]
+fn an_observer_sees_the_flight() {
+    use hpr_sim::{Channel, Recorder};
+    let rocket = built();
+    let mut recorder = Recorder::new(vec![Channel::Time, Channel::Mass], None).unwrap();
+    let flight = Flight::builder(&rocket, &environment(), 1.8)
+        .fly_with(&mut recorder)
+        .unwrap();
+    let last = recorder.rows().last().unwrap();
+    let end = flight.result().final_sample;
+    assert_eq!((last[0], last[1]), (end.time_s, end.mass_kg));
+    assert_eq!(
+        flight,
+        Flight::builder(&rocket, &environment(), 1.8).fly().unwrap()
+    );
+    // A flight's record reads back as the same flight.
+    let text = serde_json::to_string(&flight).unwrap();
+    assert_eq!(serde_json::from_str::<Flight>(&text).unwrap(), flight);
 }
 
 /// Loft lesson L95: a degenerate design must be refused or fly to finite numbers, never to a NaN
@@ -468,9 +624,9 @@ fn degenerate_designs_error_or_stay_finite() {
     );
     assert_eq!(domain(rocket.add_mass(nan_place)).0, "position, m");
     assert!(matches!(
-        rocket.add_fins(Fins::trapezoidal(
+        rocket.add_fins(Fins::new(
             3,
-            [0.1, f64::NAN, 0.05, 0.0],
+            trapezoid([0.1, f64::NAN, 0.05, 0.0]),
             0.003,
             abs()
         )),
@@ -487,7 +643,12 @@ fn degenerate_designs_error_or_stay_finite() {
 
     // Zero fins.
     assert!(matches!(
-        rocket.add_fins(Fins::trapezoidal(0, [0.1, 0.05, 0.05, 0.0], 0.003, abs())),
+        rocket.add_fins(Fins::new(
+            0,
+            trapezoid([0.1, 0.05, 0.05, 0.0]),
+            0.003,
+            abs()
+        )),
         Err(Error::Design(_))
     ));
 

@@ -7,7 +7,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.1b (custom
   models, rustdoc guide). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1a.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-29; M4.1a shipped the builder (ADR-103): L95 live.
+- **Last updated:** 2026-09-28; M4.1a shipped the builder (ADR-103): L95 live.
 
 ## Handoff (overwrite each session)
 
@@ -60,7 +60,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-29: M4.1a The builder (ADR-103): `own_rocket`'s rocket flown bit for bit; L95 pinned, 8 designs; 2 examples.
+- 2026-09-28: M4.1a The builder (ADR-103): `own_rocket`'s rocket flown bit for bit; L95 pinned, 8 designs; 2 examples.
 - 2026-09-28: M2.2f, M2.2 closed (ADR-102): L82 live; L19 not met: tube-fin CP 0.42-3.0 cal fwd of OR's to Mach 0.5 on 14 probes, pinned.
 - 2026-09-28: M2.2b OR's mass conventions rolled up (ADR-101): rerun 68/71 mass and CG within 1%; L51, L87 owned.
 - 2026-09-28: M2.2e5-e10 Rods, fillets, tube fins, never-lit motors (ADR-094 to 100): 60 OR probes; 20 designs fly, M2.2e met.

@@ -32,9 +32,14 @@ impl Environment {
     ///
     /// The elevation is taken as both the site's height above mean sea level, which the
     /// atmosphere and wind are read at, and its height above the WGS 84 ellipsoid, which the
-    /// flight's position is measured from: hpr has no geoid model, so the two differ by the geoid
-    /// undulation only if you give one ([`hpr_sim::Environment::with_geoid_undulation_m`], through
-    /// [`Environment::from_sim`]). Heights in a flight's results are above the site.
+    /// flight's position is measured from, as if the geoid undulation, the gap between the two,
+    /// were zero; hpr has no geoid model. The air is read where you said; the site's gravity is
+    /// off by the free-air gradient, about 3.1 µm/s² per metre of undulation. To give an
+    /// undulation `N`, build an [`hpr_sim::Environment`] on the site's ellipsoidal height
+    /// `h = H + N`, set `N` with [`hpr_sim::Environment::with_geoid_undulation_m`], and wrap it
+    /// with [`Environment::from_sim`]; the air is then read at `H`. Heights in a flight's results
+    /// are above the site. Longitude is positive east, so a site in the Americas has a negative
+    /// one.
     ///
     /// # Errors
     ///

@@ -16,29 +16,33 @@
 //! - [`Rocket`]: parts added from the nose back, the motor, and the recovery devices.
 //! - [`Flight`]: the rocket flown from a rail, with its apogee, speeds and landing.
 //!
+//! **How far to trust it:** the builder adds no physics of its own. It makes the same design
+//! tree and flies the same simulation as the crates below it, and a test flies a rocket built
+//! both ways to the same numbers, bit for bit. So its numbers are as good as those models are;
+//! the guide's [Accuracy][guide-accuracy] page says how good that is, with every comparison made.
+//!
+//! [guide-accuracy]: https://nrdptel.github.io/hpr-sim/accuracy.html
+//!
 //! ```
 //! use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
 //! use hpr::{
-//!     CanopyType, Device, DeviceDrag, Environment, Flight, Motor, NoseShape, Position, Rocket,
-//!     Trigger,
+//!     CanopyType, Device, DeviceDrag, Environment, FinPlanform, Flight, Motor, NoseShape,
+//!     Position, Rocket, Trigger,
 //! };
 //!
 //! let environment = Environment::new(32.99, -106.97, 1400.0)?;
+//! let ogive = NoseShape::Ogive { radius_ratio: 1.0 };
+//! let planform = FinPlanform::Trapezoidal {
+//!     root_chord_m: 0.1,
+//!     tip_chord_m: 0.04,
+//!     span_m: 0.045,
+//!     sweep_m: 0.05,
+//! };
 //! let mut rocket = Rocket::new("Small", 0.0563)?;
 //! rocket
-//!     .add_nose(Nose::hollow(
-//!         NoseShape::Ogive { radius_ratio: 1.0 },
-//!         0.22,
-//!         0.0015,
-//!         material("abs")?,
-//!     ))?
+//!     .add_nose(Nose::hollow(ogive, 0.22, 0.0015, material("abs")?))?
 //!     .add_tube(Tube::new(0.9, 0.00115, material("kraft_phenolic")?))?
-//!     .add_fins(Fins::trapezoidal(
-//!         3,
-//!         [0.1, 0.04, 0.045, 0.05],
-//!         0.003175,
-//!         material("birch_plywood")?,
-//!     ))?
+//!     .add_fins(Fins::new(3, planform, 0.003175, material("birch_plywood")?))?
 //!     .add_motor_tube(MotorTube::new(0.2, 0.029, 0.001, material("kraft_phenolic")?))?
 //!     .add_mass(Mass::new(0.2, Position::Top { aft_offset_m: 0.07 }))?
 //!     .set_motor(Motor::from_catalog("H54")?.with_delay_s(10.0)?)?
@@ -69,7 +73,7 @@ pub mod ork;
 pub mod rocket;
 
 pub use environment::Environment;
-pub use error::Error;
+pub use error::{Error, Order};
 pub use flight::{Flight, FlightBuilder};
 pub use motor::Motor;
 pub use rocket::Rocket;
@@ -88,7 +92,7 @@ pub use hpr_motor;
 pub use hpr_net;
 pub use hpr_sim;
 
-pub use hpr_design::{FinCrossSection, NoseShape, Position};
+pub use hpr_design::{FinCrossSection, FinPlanform, NoseShape, Position};
 pub use hpr_sim::{CanopyType, Device, DeviceDrag, Trigger};
 
 #[cfg(test)]

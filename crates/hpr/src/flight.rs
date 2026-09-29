@@ -2,6 +2,7 @@
 
 use hpr_sim::metrics::{FlightMetrics, FlightSummary, Landing};
 use hpr_sim::{FlightResult, FlightSettings, Observer, Rail, Simulation};
+use serde::{Deserialize, Serialize};
 
 use crate::environment::Environment;
 use crate::error::{Error, finite};
@@ -13,25 +14,41 @@ use crate::rocket::Rocket;
 pub struct FlightBuilder<'a> {
     rocket: &'a Rocket,
     environment: &'a Environment,
-    rail_length_m: f64,
-    inclination_deg: f64,
-    heading_deg: f64,
+    rail: Rail,
+    /// The rail's angles, degrees, where set: they take the place of the rail's own.
+    inclination_deg: Option<f64>,
+    heading_deg: Option<f64>,
     settings: FlightSettings,
 }
 
 impl FlightBuilder<'_> {
-    /// The rail's angle above the horizon, degrees: 90 is vertical, the default.
+    /// The rail's angle above the horizon, degrees: 90, the default, is vertical, and 85 leans
+    /// 5° off it. (OpenRocket's launch rod angle is measured from the vertical instead: its 5° is
+    /// 85 here.)
     #[must_use]
     pub fn inclination_deg(mut self, inclination_deg: f64) -> Self {
-        self.inclination_deg = inclination_deg;
+        self.inclination_deg = Some(inclination_deg);
         self
     }
 
     /// The direction the rail leans toward, clockwise from true north, degrees: 0, the
-    /// default, is north and 90 is east. It matters only off the vertical.
+    /// default, is north and 90 is east. A wind's direction is where it blows from, so a rail
+    /// leaning into a west wind has both at 270. On a vertical rail the heading still turns the
+    /// rocket about its axis, which way its fins face: that matters to a rocket with one or two
+    /// fins in a set, hardly at all to one with three or more.
     #[must_use]
     pub fn heading_deg(mut self, heading_deg: f64) -> Self {
-        self.heading_deg = heading_deg;
+        self.heading_deg = Some(heading_deg);
+        self
+    }
+
+    /// The whole rail, in place of the one [`Flight::builder`] made: its length, its angles in
+    /// radians, the rocket's roll on it and its friction ([`Rail`]).
+    /// [`FlightBuilder::inclination_deg`] and [`FlightBuilder::heading_deg`], called before or
+    /// after, still set its angles.
+    #[must_use]
+    pub fn rail(mut self, rail: Rail) -> Self {
+        self.rail = rail;
         self
     }
 
@@ -48,18 +65,26 @@ impl FlightBuilder<'_> {
     /// # Errors
     ///
     /// - [`Error::NoMotor`] for a rocket with no motor.
-    /// - [`Error::Domain`] for an inclination or heading that isn't finite.
+    /// - [`Error::Domain`] for an inclination outside `(0°, 90°]` or a heading that isn't
+    ///   finite.
     /// - [`Error::Sim`] for what [`Simulation::new`] and [`Simulation::with_recovery`] refuse: a
-    ///   rail that isn't positive in length, an inclination outside `(0°, 90°]`, a design with
-    ///   errors in it ([`hpr_design::checks`]), a recovery device the flight can't fly.
+    ///   rail that isn't positive in length, a design with errors in it
+    ///   ([`hpr_design::checks`]), a recovery device the flight can't fly.
     pub fn simulation(&self) -> Result<Simulation, Error> {
         let configuration_id = self.rocket.configuration_id().ok_or(Error::NoMotor)?;
-        let rail = Rail {
-            length_m: self.rail_length_m,
-            azimuth_rad: finite("rail heading, degrees", self.heading_deg)?.to_radians(),
-            elevation_rad: finite("rail inclination, degrees", self.inclination_deg)?.to_radians(),
-            ..Rail::vertical(self.rail_length_m)
-        };
+        let mut rail = self.rail;
+        if let Some(inclination_deg) = self.inclination_deg {
+            if !(inclination_deg > 0.0 && inclination_deg <= 90.0) {
+                return Err(Error::Domain {
+                    what: "rail inclination, degrees above the horizon",
+                    value: inclination_deg,
+                });
+            }
+            rail.elevation_rad = inclination_deg.to_radians();
+        }
+        if let Some(heading_deg) = self.heading_deg {
+            rail.azimuth_rad = finite("rail heading, degrees", heading_deg)?.to_radians();
+        }
         rail.validate()?;
         let simulation = Simulation::new(
             self.rocket.design(),
@@ -106,16 +131,16 @@ impl FlightBuilder<'_> {
 /// Heights are the rocket's centre of gravity's, above the launch site: the rocket stands on
 /// the rail at the start, so the first height is not zero. Speeds are relative to the ground.
 /// [`Flight::summary`] has every metric; the methods below are the ones most asked for.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Flight {
     result: FlightResult,
     summary: FlightSummary,
 }
 
 impl Flight {
-    /// A flight of `rocket` in `environment` from a vertical rail `rail_length_m` long, measured
-    /// from the rocket's aft end at the start to the rail's top. Set the rest on the builder;
-    /// [`FlightBuilder::fly`] flies it.
+    /// A flight of `rocket` in `environment` from a vertical, frictionless rail `rail_length_m`
+    /// long, measured from the rocket's aft end at the start to the rail's top. Set the rest on
+    /// the builder; [`FlightBuilder::fly`] flies it.
     #[must_use]
     pub fn builder<'a>(
         rocket: &'a Rocket,
@@ -125,9 +150,9 @@ impl Flight {
         FlightBuilder {
             rocket,
             environment,
-            rail_length_m,
-            inclination_deg: 90.0,
-            heading_deg: 0.0,
+            rail: Rail::vertical(rail_length_m),
+            inclination_deg: None,
+            heading_deg: None,
             settings: FlightSettings::default(),
         }
     }

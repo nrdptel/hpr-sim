@@ -18,13 +18,13 @@ use std::error::Error;
 use hpr::hpr_sim::metrics::optimum_delays;
 use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
 use hpr::{
-    CanopyType, Device, DeviceDrag, Environment, FinCrossSection, Flight, Motor, NoseShape,
-    Position, Rocket, Trigger,
+    CanopyType, Device, DeviceDrag, Environment, FinCrossSection, FinPlanform, Flight, Motor,
+    NoseShape, Position, Rocket, Trigger,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
     // The rocket of `build_and_fly`, without its motor for now.
-    let mut rocket = Rocket::new("My 29 mm rocket", 0.0563)?;
+    let mut rocket = Rocket::new("My 54 mm rocket", 0.0563)?;
     rocket
         .add_nose(
             Nose::hollow(
@@ -33,16 +33,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                 0.0015,
                 material("abs")?,
             )
-            .with_shoulder(0.06, 0.0015, true),
+            .with_capped_shoulder(0.06, 0.0015),
         )?
         .add_tube(Tube::new(0.9, 0.00115, material("kraft_phenolic")?))?
         .add_motor_tube(
             MotorTube::new(0.2, 0.029, 0.001, material("kraft_phenolic")?).with_overhang_m(0.005),
         )?
         .add_fins(
-            Fins::trapezoidal(
+            Fins::new(
                 3,
-                [0.1, 0.04, 0.045, 0.05],
+                FinPlanform::Trapezoidal {
+                    root_chord_m: 0.1,
+                    tip_chord_m: 0.04,
+                    span_m: 0.045,
+                    sweep_m: 0.05,
+                },
                 0.003175,
                 material("birch_plywood")?,
             )
@@ -57,16 +62,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         ));
     let environment = Environment::new(32.99, -106.97, 1400.0)?.with_constant_wind(5.0, 270.0)?;
 
-    println!("My 29 mm rocket from a 1.8 m vertical rail, in 5 m/s of wind from the west");
+    println!("My 54 mm rocket from a 1.8 m vertical rail, in 5 m/s of wind from the west");
     println!("Not yet validated: see the Accuracy page before trusting these numbers.");
     println!();
     println!("motor        liftoff  margin  rail exit   apogee  top speed  best delay");
     println!("               (kg)   (cal)     (m/s)      (m)     (m/s)        (s)");
-    // The two 29 mm motors with a bundled thrust curve. `set_motor` swaps the motor in the tube.
-    for name in ["F52C", "168H54-10A"] {
+    // The three 29 mm motors with a bundled thrust curve. `set_motor` swaps the motor in the tube.
+    for name in ["F15", "F52C", "168H54-10A"] {
         rocket.set_motor(Motor::from_catalog(name)?)?;
         let mass_kg = rocket.mass_properties(0.0)?.mass_kg;
-        let margin_cal = rocket.static_margin_cal(0.0, 0.3)?;
+        let margin_cal = rocket.static_margin_cal(0.0, 0.3)?.ok_or("no margin")?;
         let launch = Flight::builder(&rocket, &environment, 1.8);
         let flight = launch.fly()?;
         // The best delay: from burnout to apogee, with the parachute held. The builder has no

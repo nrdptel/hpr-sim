@@ -1,6 +1,8 @@
 //! A solid rocket motor, ready to go in a rocket's motor tube.
 
+use hpr_motor::catalog::bundled_curve_text;
 use hpr_motor::{Catalog, Delay, SolidMotor, eng};
+use serde::Serialize;
 
 use crate::error::{Error, non_negative, positive};
 
@@ -22,7 +24,10 @@ use crate::error::{Error, non_negative, positive};
 /// assert_eq!(motor.diameter_m(), 0.029);
 /// # Ok::<(), hpr::Error>(())
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+///
+/// It serializes, for a record of what was flown, but doesn't deserialize: its constructors check
+/// what goes in.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Motor {
     designation: String,
     diameter_m: f64,
@@ -37,13 +42,17 @@ impl Motor {
     ///
     /// # Errors
     ///
-    /// [`Error::Domain`] for a diameter or length that isn't finite and positive.
+    /// [`Error::EmptyDesignation`] for an empty designation, and [`Error::Domain`] for a diameter
+    /// or length that isn't finite and positive.
     pub fn new(
         designation: &str,
         motor: SolidMotor,
         diameter_m: f64,
         length_m: f64,
     ) -> Result<Self, Error> {
+        if designation.trim().is_empty() {
+            return Err(Error::EmptyDesignation);
+        }
         Ok(Self {
             designation: designation.to_owned(),
             diameter_m: positive("motor diameter, m", diameter_m)?,
@@ -64,20 +73,21 @@ impl Motor {
     /// # Errors
     ///
     /// - [`Error::NoSuchMotor`] if no motor with a bundled curve matches.
-    /// - [`Error::AmbiguousMotor`] if different designations match, as a common name can.
-    /// - [`Error::Motor`] if the catalog can't be read (never, for the bundled one: its tests
-    ///   read it).
+    /// - [`Error::AmbiguousMotor`] if several motors match, as a common name can (`"I175"`
+    ///   matches two); each is listed by its manufacturer and designation.
+    /// - [`Error::Motor`] if the catalog or the motor's curve can't be read (never, for the
+    ///   bundled ones: their tests read them all).
     pub fn from_catalog(name: &str) -> Result<Self, Error> {
         let catalog = Catalog::bundled()?;
-        let mut matches = Vec::new();
-        for entry in catalog.find(name) {
-            let known = matches
-                .iter()
-                .any(|seen: &&hpr_motor::CatalogMotor| seen.designation == entry.designation);
-            if !known && entry.bundled_motor().is_ok() {
-                matches.push(entry);
-            }
-        }
+        let matches = catalog
+            .find(name)
+            .filter(|entry| {
+                entry
+                    .curves
+                    .iter()
+                    .any(|curve| bundled_curve_text(&curve.file).is_some())
+            })
+            .collect::<Vec<_>>();
         let entry = match matches[..] {
             [] => return Err(Error::NoSuchMotor(name.to_owned())),
             [entry] => entry,
@@ -86,7 +96,7 @@ impl Motor {
                     name: name.to_owned(),
                     candidates: matches
                         .iter()
-                        .map(|entry| entry.designation.clone())
+                        .map(|entry| format!("{} {}", entry.manufacturer_abbrev, entry.designation))
                         .collect(),
                 });
             }
@@ -100,8 +110,9 @@ impl Motor {
     }
 
     /// The one motor in the text of a RASP `.eng` file, with the file's size, masses and thrust
-    /// curve ([`SolidMotor::from_envelope`]). The file's warnings are dropped; read the file with
-    /// [`hpr_motor::eng::parse`] to see them.
+    /// curve ([`SolidMotor::from_envelope`]). The file's warnings and its list of delays are
+    /// dropped (read the file with [`hpr_motor::eng::parse`] to see them): set the delay with
+    /// [`Motor::with_delay_s`].
     ///
     /// # Errors
     ///
@@ -136,10 +147,16 @@ impl Motor {
 
     /// The same motor with `delay` as its ejection delay: a time, or a plugged motor
     /// ([`Delay::Plugged`]), which has no ejection charge.
-    #[must_use]
-    pub fn with_delay(mut self, delay: Delay) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Domain`] for a time that is negative or not finite.
+    pub fn with_delay(mut self, delay: Delay) -> Result<Self, Error> {
+        if let Delay::Seconds(delay_s) = delay {
+            non_negative("motor delay, s", delay_s)?;
+        }
         self.delay = Some(delay);
-        self
+        Ok(self)
     }
 
     /// The designation, such as `168H54-10A`.

@@ -573,9 +573,8 @@ If you propose a change to the program itself in a pull request, two more comman
   and landing, and links the page for each model.
 - [Your own rocket](your-own-rocket.md) builds a rocket of your own, with your dimensions and a
   bundled motor, and shows its centre of pressure, centre of gravity and
-  [stability margin](glossary.md#stability-margin). A
-  simpler builder ([M4.1](decisions-and-roadmap.md#m4-1), the simpler library interface) and OpenRocket import
-  ([M3.1](decisions-and-roadmap.md#m3-1)) are planned.
+  [stability margin](glossary.md#stability-margin). [The builder](the-builder.md) does the same
+  in fewer lines, and [`.ork` design files](format/ork.md) reads a design from OpenRocket.
 - [Accuracy](accuracy.md) gathers every validation result, and
   [Checking a claim](checking-a-claim.md) shows how to trace a number to its source and its test.
 - [The API reference](api.md) documents every type used here, and

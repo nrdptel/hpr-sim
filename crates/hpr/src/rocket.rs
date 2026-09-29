@@ -10,19 +10,23 @@
 //!
 //! Every part names its material. [`material`] finds a built-in one by id; the list, with each
 //! density's source, is [`hpr_design::materials`]. The builder has no default materials or wall
-//! thicknesses, because each one would be a guess at your rocket's mass.
+//! thicknesses, because each one would be a guess at your rocket's mass. Every outer surface has
+//! the design's default finish, mass-production paint ([`hpr_design::Finish`]), which sets its
+//! skin friction; the builder can't change it yet.
 
 use hpr_aero::{AeroModel, Flow};
+use hpr_design::checks::{check, has_errors};
 use hpr_design::{
     Assembly, AutoDimension, BodyTube, Component, Configuration, FinCrossSection, FinPlanform,
     FinSet, Ignition, InnerTube, MassComponent, MassProperties, Material, MotorMount, MountedMotor,
-    NoseCone, NoseShape, Overrides, Packing, Part, Position, ReferenceDiameter, Shoulder, Stage,
-    Wall, materials,
+    NoseCone, NoseShape, Overrides, Packing, Part, Position, Profile, ReferenceDiameter, Shoulder,
+    Stage, Wall, materials,
 };
 use hpr_sim::Device;
 use hpr_sim::metrics::{self, Margin};
+use serde::{Deserialize, Serialize};
 
-use crate::error::{Error, finite, non_negative, positive};
+use crate::error::{Error, Order, finite, non_negative, positive};
 use crate::motor::Motor;
 
 /// The built-in material with id `id`, such as `"abs"`, `"kraft_phenolic"` or
@@ -38,7 +42,7 @@ pub fn material(id: &str) -> Result<Material, Error> {
 }
 
 /// A nose cone. Its base takes the rocket's diameter.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nose {
     shape: NoseShape,
     length_m: f64,
@@ -73,18 +77,29 @@ impl Nose {
         }
     }
 
-    /// The same nose with a shoulder `length_m` long and `wall_m` thick behind its base, to fit
-    /// inside the tube behind it: its outer radius is that tube's inner radius. A `capped`
-    /// shoulder has a disc of the same thickness closing its aft end.
+    /// The same nose with a shoulder, the sleeve behind its base that fits inside the tube
+    /// behind it: `length_m` long, `wall_m` thick, open at its aft end. Its outer radius is that
+    /// tube's inner radius.
     #[must_use]
-    pub fn with_shoulder(mut self, length_m: f64, wall_m: f64, capped: bool) -> Self {
+    pub fn with_shoulder(mut self, length_m: f64, wall_m: f64) -> Self {
         self.shoulder = Some(Shoulder {
             length_m,
             outer_radius_m: 0.0,
             thickness_m: wall_m,
-            capped,
+            capped: false,
         });
         self
+    }
+
+    /// The same nose with a shoulder as [`Nose::with_shoulder`] makes it, closed at its aft end
+    /// by a disc as thick as its wall.
+    #[must_use]
+    pub fn with_capped_shoulder(self, length_m: f64, wall_m: f64) -> Self {
+        let mut nose = self.with_shoulder(length_m, wall_m);
+        if let Some(shoulder) = &mut nose.shoulder {
+            shoulder.capped = true;
+        }
+        nose
     }
 
     /// The same nose with `name`, which the design file keeps.
@@ -96,7 +111,7 @@ impl Nose {
 }
 
 /// A body tube: a length of the airframe.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tube {
     length_m: f64,
     wall_m: f64,
@@ -106,7 +121,8 @@ pub struct Tube {
 }
 
 impl Tube {
-    /// A tube `length_m` long with a wall `wall_m` thick, of the rocket's diameter.
+    /// A tube `length_m` long with a wall `wall_m` thick. Its outer diameter is the aft diameter
+    /// of the body part before it, or the rocket's if it is the first.
     #[must_use]
     pub fn new(length_m: f64, wall_m: f64, material: Material) -> Self {
         Self {
@@ -118,8 +134,9 @@ impl Tube {
         }
     }
 
-    /// The same tube with outer diameter `diameter_m` instead of the rocket's, for a rocket whose
-    /// airframe steps up or down at a [`Transition`].
+    /// The same tube with outer diameter `diameter_m`. A diameter other than the aft diameter of
+    /// the part before it makes a step in the airframe, which the design's checks warn of; a
+    /// [`Transition`] joins two diameters smoothly.
     #[must_use]
     pub fn with_diameter_m(mut self, diameter_m: f64) -> Self {
         self.diameter_m = Some(diameter_m);
@@ -134,9 +151,9 @@ impl Tube {
     }
 }
 
-/// A transition: a shoulder or boattail between two diameters. Its fore end takes the diameter
-/// of the body part before it.
-#[derive(Debug, Clone, PartialEq)]
+/// A transition between two diameters: a boattail narrowing toward the tail, or a cone stepping
+/// the airframe up or down. Its fore end takes the diameter of the body part before it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Transition {
     shape: NoseShape,
     length_m: f64,
@@ -188,7 +205,7 @@ impl Transition {
 /// A set of identical fins spaced evenly around the last body tube, flush with its aft end
 /// unless placed elsewhere with [`Fins::at`]. Their edges are square unless
 /// [`Fins::with_cross_section`] says otherwise.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Fins {
     set: FinSet,
     position: Position,
@@ -196,50 +213,25 @@ pub struct Fins {
 }
 
 impl Fins {
-    /// `count` trapezoidal fins of root chord `root_chord_m`, tip chord `tip_chord_m`, span
-    /// `span_m` and thickness `thickness_m`, the tip's leading edge `sweep_m` aft of the root's.
+    /// `count` fins of the shape `planform`, `thickness_m` thick. The planform names its
+    /// dimensions: a trapezoid's root and tip chords, its span, and how far aft of the root's
+    /// leading edge the tip's is ([`FinPlanform`]).
+    ///
+    /// ```
+    /// use hpr::FinPlanform;
+    /// use hpr::rocket::{Fins, material};
+    ///
+    /// let planform = FinPlanform::Trapezoidal {
+    ///     root_chord_m: 0.1,
+    ///     tip_chord_m: 0.04,
+    ///     span_m: 0.045,
+    ///     sweep_m: 0.05,
+    /// };
+    /// let fins = Fins::new(3, planform, 0.003175, material("birch_plywood")?);
+    /// # Ok::<(), hpr::Error>(())
+    /// ```
     #[must_use]
-    pub fn trapezoidal(
-        count: u32,
-        [root_chord_m, tip_chord_m, span_m, sweep_m]: [f64; 4],
-        thickness_m: f64,
-        material: Material,
-    ) -> Self {
-        Self::of(
-            count,
-            FinPlanform::Trapezoidal {
-                root_chord_m,
-                tip_chord_m,
-                span_m,
-                sweep_m,
-            },
-            thickness_m,
-            material,
-        )
-    }
-
-    /// `count` elliptical fins of root chord `root_chord_m`, span `span_m` and thickness
-    /// `thickness_m`.
-    #[must_use]
-    pub fn elliptical(
-        count: u32,
-        root_chord_m: f64,
-        span_m: f64,
-        thickness_m: f64,
-        material: Material,
-    ) -> Self {
-        Self::of(
-            count,
-            FinPlanform::Elliptical {
-                root_chord_m,
-                span_m,
-            },
-            thickness_m,
-            material,
-        )
-    }
-
-    fn of(count: u32, planform: FinPlanform, thickness_m: f64, material: Material) -> Self {
+    pub fn new(count: u32, planform: FinPlanform, thickness_m: f64, material: Material) -> Self {
         Self {
             set: FinSet {
                 count,
@@ -273,7 +265,8 @@ impl Fins {
         self
     }
 
-    /// The same fins at `position` along their tube.
+    /// The same fins at `position` along their tube: [`Position`] places their root's leading
+    /// edge (`Top`, `After`, `Absolute`), its trailing edge (`Bottom`) or its middle (`Middle`).
     #[must_use]
     pub fn at(mut self, position: Position) -> Self {
         self.position = position;
@@ -290,7 +283,7 @@ impl Fins {
 
 /// The tube inside the airframe that holds the motor, flush with the last body tube's aft end
 /// unless placed elsewhere with [`MotorTube::at`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MotorTube {
     length_m: f64,
     inner_diameter_m: f64,
@@ -340,13 +333,16 @@ impl MotorTube {
 
 /// A mass inside the last body tube: a parachute and its cord, an altimeter bay, ballast.
 ///
-/// It is a solid cylinder along the axis, as long and as wide as its packing, which is a point
-/// unless given with [`Mass::packed`]. The packing changes only its moments of inertia.
-#[derive(Debug, Clone, PartialEq)]
+/// It is a solid cylinder along the axis, as long and as wide as its packing, or a point until
+/// [`Mass::packed`] gives it a size. Its [`Position`] places the packing's fore end (`Top`,
+/// `After`, `Absolute`), its aft end (`Bottom`) or its middle (`Middle`). So packing a mass
+/// moves its centre by half the packed length, unless it is placed by its middle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Mass {
     mass_kg: f64,
     position: Position,
-    packing: Packing,
+    packed_length_m: f64,
+    packed_diameter_m: f64,
     name: String,
 }
 
@@ -357,12 +353,8 @@ impl Mass {
         Self {
             mass_kg,
             position,
-            packing: Packing {
-                length_m: 0.0,
-                radius_m: 0.0,
-                radial_offset_m: 0.0,
-                angle_rad: 0.0,
-            },
+            packed_length_m: 0.0,
+            packed_diameter_m: 0.0,
             name: String::new(),
         }
     }
@@ -370,8 +362,8 @@ impl Mass {
     /// The same mass packed in a cylinder `length_m` long and `diameter_m` across.
     #[must_use]
     pub fn packed(mut self, length_m: f64, diameter_m: f64) -> Self {
-        self.packing.length_m = length_m;
-        self.packing.radius_m = 0.5 * diameter_m;
+        self.packed_length_m = length_m;
+        self.packed_diameter_m = diameter_m;
         self
     }
 
@@ -385,33 +377,38 @@ impl Mass {
 
 /// A rocket: its design, its motor and its recovery devices.
 ///
+/// It serializes, for a record of what was flown, but doesn't deserialize: the builder's methods
+/// check what goes in, so a rocket is built with them, or read from a design with
+/// [`Rocket::from_design`].
+///
 /// ```
 /// use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
-/// use hpr::{Motor, NoseShape, Position, Rocket};
+/// use hpr::{FinPlanform, Motor, NoseShape, Position, Rocket};
 ///
 /// let mut rocket = Rocket::new("Small", 0.0563)?;
 /// let ogive = NoseShape::Ogive { radius_ratio: 1.0 };
+/// let planform = FinPlanform::Trapezoidal {
+///     root_chord_m: 0.1,
+///     tip_chord_m: 0.04,
+///     span_m: 0.045,
+///     sweep_m: 0.05,
+/// };
 /// rocket
 ///     .add_nose(Nose::hollow(ogive, 0.22, 0.0015, material("abs")?))?
 ///     .add_tube(Tube::new(0.9, 0.00115, material("kraft_phenolic")?))?
-///     .add_fins(Fins::trapezoidal(
-///         3,
-///         [0.1, 0.04, 0.045, 0.05],
-///         0.003175,
-///         material("birch_plywood")?,
-///     ))?
+///     .add_fins(Fins::new(3, planform, 0.003175, material("birch_plywood")?))?
 ///     .add_motor_tube(MotorTube::new(0.2, 0.029, 0.001, material("kraft_phenolic")?))?
 ///     .set_motor(Motor::from_catalog("H54")?)?;
 ///
 /// // Unstable as it stands: the motor's weight puts the centre of gravity behind the centre of
 /// // pressure, and the margin, in calibres, is negative.
-/// assert!(rocket.static_margin_cal(0.0, 0.3)? < 0.0);
+/// assert!(rocket.static_margin_cal(0.0, 0.3)?.is_some_and(|margin| margin < 0.0));
 /// // 200 g near the top of the tube, a recovery bay, brings it forward of it.
 /// rocket.add_mass(Mass::new(0.2, Position::Top { aft_offset_m: 0.07 }))?;
-/// assert!(rocket.static_margin_cal(0.0, 0.3)? > 1.0);
+/// assert!(rocket.static_margin_cal(0.0, 0.3)?.is_some_and(|margin| margin > 1.0));
 /// # Ok::<(), hpr::Error>(())
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Rocket {
     design: hpr_design::Rocket,
     configuration_id: Option<String>,
@@ -421,7 +418,7 @@ pub struct Rocket {
 }
 
 /// The builder's place in the tree.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 struct Build {
     /// The rocket's body diameter, m.
     diameter_m: f64,
@@ -437,8 +434,9 @@ struct Build {
 const STAGE_ID: &str = "sustainer";
 
 impl Rocket {
-    /// An empty rocket called `name`, of body diameter `diameter_m`. Its reference diameter, the
-    /// one the stability margin is counted in, is its largest body diameter.
+    /// An empty rocket called `name`, of outer body diameter `diameter_m`: the nose's base
+    /// diameter, and the first tube's unless it says otherwise. Its reference diameter, the one
+    /// the stability margin is counted in, is its largest body diameter.
     ///
     /// # Errors
     ///
@@ -467,9 +465,10 @@ impl Rocket {
         })
     }
 
-    /// A rocket from a design you already have, such as a design file read with `serde_json` or
-    /// an OpenRocket file read with [`hpr_io::ork`], flown in its configuration
-    /// `configuration_id`. Parts can't be added to it; recovery devices can.
+    /// A rocket from a design you already have, flown in its configuration `configuration_id`:
+    /// a design file read with `serde_json`, an OpenRocket file read with [`hpr_io::ork`], or a
+    /// built rocket's [`Rocket::design`] changed with [`hpr_design`] to hold what the builder
+    /// can't, such as a cluster or pods. Parts can't be added to it; recovery devices can.
     ///
     /// # Errors
     ///
@@ -493,17 +492,16 @@ impl Rocket {
     /// - [`Error::Order`] if a body part is already in place, or the rocket was read from a
     ///   design.
     /// - [`Error::Domain`] for a length, wall or shoulder dimension that isn't finite and
-    ///   positive.
+    ///   positive; [`Error::Design`] for a shape whose parameter is out of its range.
     pub fn add_nose(&mut self, nose: Nose) -> Result<&mut Self, Error> {
         let build = self.build()?;
         if build.aft_radius_m.is_some() {
-            return Err(Error::Order(
-                "the nose goes first, before any other body part",
-            ));
+            return Err(Error::Order(Order::NoseNotFirst));
         }
         let radius_m = 0.5 * build.diameter_m;
         positive("nose length, m", nose.length_m)?;
         check_wall("nose wall, m", nose.wall)?;
+        Profile::nose(nose.shape, nose.length_m, radius_m)?;
         let mut auto = Vec::new();
         if let Some(shoulder) = &nose.shoulder {
             positive("nose shoulder length, m", shoulder.length_m)?;
@@ -520,7 +518,7 @@ impl Rocket {
         });
         let mut component = self.component("nose", &nose.name, part, None);
         component.auto = auto;
-        self.push_body(component, radius_m, false);
+        self.push_body(component, radius_m, false)?;
         Ok(self)
     }
 
@@ -532,10 +530,10 @@ impl Rocket {
     /// - [`Error::Domain`] for a length, wall or diameter that isn't finite and positive.
     pub fn add_tube(&mut self, tube: Tube) -> Result<&mut Self, Error> {
         let build = self.build()?;
-        let diameter_m = positive(
-            "tube diameter, m",
-            tube.diameter_m.unwrap_or(build.diameter_m),
-        )?;
+        let before_m = build
+            .aft_radius_m
+            .map_or(build.diameter_m, |radius_m| 2.0 * radius_m);
+        let diameter_m = positive("tube diameter, m", tube.diameter_m.unwrap_or(before_m))?;
         let part = Part::BodyTube(BodyTube {
             length_m: positive("tube length, m", tube.length_m)?,
             outer_radius_m: 0.5 * diameter_m,
@@ -543,7 +541,7 @@ impl Rocket {
             material: tube.material,
         });
         let component = self.component("tube", &tube.name, part, None);
-        self.push_body(component, 0.5 * diameter_m, true);
+        self.push_body(component, 0.5 * diameter_m, true)?;
         Ok(self)
     }
 
@@ -554,16 +552,24 @@ impl Rocket {
     /// - [`Error::Order`] if there is no body part before it, or the rocket was read from a
     ///   design.
     /// - [`Error::Domain`] for a length or wall that isn't finite and positive, or an aft
-    ///   diameter that is negative or not finite.
+    ///   diameter that is negative or not finite; [`Error::Design`] for a shape whose parameter
+    ///   is out of its range.
     pub fn add_transition(&mut self, transition: Transition) -> Result<&mut Self, Error> {
         let fore_radius_m = self
             .build()?
             .aft_radius_m
-            .ok_or(Error::Order("a transition needs a body part before it"))?;
+            .ok_or(Error::Order(Order::NothingBeforeTransition))?;
         positive("transition length, m", transition.length_m)?;
         check_wall("transition wall, m", transition.wall)?;
         let aft_radius_m =
             0.5 * non_negative("transition aft diameter, m", transition.aft_diameter_m)?;
+        Profile::transition(
+            transition.shape,
+            transition.length_m,
+            fore_radius_m,
+            aft_radius_m,
+            false,
+        )?;
         let part = Part::Transition(hpr_design::Transition {
             shape: transition.shape,
             clipped: false,
@@ -576,7 +582,7 @@ impl Rocket {
             material: transition.material,
         });
         let component = self.component("transition", &transition.name, part, None);
-        self.push_body(component, aft_radius_m, false);
+        self.push_body(component, aft_radius_m, false)?;
         Ok(self)
     }
 
@@ -611,7 +617,7 @@ impl Rocket {
     ///   that is negative or not finite, or a position that isn't finite.
     pub fn add_motor_tube(&mut self, tube: MotorTube) -> Result<&mut Self, Error> {
         if self.build()?.motor_tube.is_some() {
-            return Err(Error::Order("the rocket has a motor tube already"));
+            return Err(Error::Order(Order::SecondMotorTube));
         }
         let wall_m = positive("motor tube wall, m", tube.wall_m)?;
         let part = Part::InnerTube(InnerTube {
@@ -645,12 +651,17 @@ impl Rocket {
     ///   that isn't finite.
     pub fn add_mass(&mut self, mass: Mass) -> Result<&mut Self, Error> {
         non_negative("mass, kg", mass.mass_kg)?;
-        non_negative("packed length, m", mass.packing.length_m)?;
-        non_negative("packed diameter, m", mass.packing.radius_m)?;
+        non_negative("packed length, m", mass.packed_length_m)?;
+        non_negative("packed diameter, m", mass.packed_diameter_m)?;
         check_position(mass.position)?;
         let part = Part::MassComponent(MassComponent {
             mass_kg: mass.mass_kg,
-            packing: mass.packing,
+            packing: Packing {
+                length_m: mass.packed_length_m,
+                radius_m: 0.5 * mass.packed_diameter_m,
+                radial_offset_m: 0.0,
+                angle_rad: 0.0,
+            },
         });
         let component = self.component("mass", &mass.name, part, Some(mass.position));
         self.attach(component)?;
@@ -668,7 +679,7 @@ impl Rocket {
             .build()?
             .motor_tube
             .clone()
-            .ok_or(Error::Order("a motor needs a motor tube to go in"))?;
+            .ok_or(Error::Order(Order::NoMotorTube))?;
         let id = motor.designation().to_owned();
         self.design.configurations = vec![Configuration {
             id: id.clone(),
@@ -689,8 +700,9 @@ impl Rocket {
     }
 
     /// Adds a recovery device: a parachute, a streamer or a tumble, with what opens it.
-    /// [`Trigger::MotorDelay`](hpr_sim::Trigger::MotorDelay) with motor 0 opens it at the
-    /// motor's ejection charge. The device adds drag, not mass: add its mass with
+    /// [`Trigger::MotorDelay`](hpr_sim::Trigger::MotorDelay) with motor 0, the first motor, opens
+    /// it at the motor's ejection charge, which needs the motor's delay set
+    /// ([`Motor::with_delay_s`]). The device adds drag, not mass: add its mass with
     /// [`Rocket::add_mass`].
     pub fn add_parachute(&mut self, device: Device) -> &mut Self {
         self.recovery.push(device);
@@ -716,14 +728,22 @@ impl Rocket {
         &self.recovery
     }
 
-    /// The parts placed and the motor in its tube ([`hpr_design::Rocket::assemble`]).
+    /// The parts placed and the motor in its tube ([`hpr_design::Rocket::assemble`]), once the
+    /// design's checks ([`hpr_design::checks`]) find no errors: the same checks a flight runs, so
+    /// what this weighs is what [`crate::Flight`] would fly.
     ///
     /// # Errors
     ///
-    /// [`Error::NoMotor`] before the rocket has a motor, and [`Error::Design`] for a tree that
-    /// doesn't hold together, such as a motor wider than its tube's bore.
+    /// - [`Error::NoMotor`] before the rocket has a motor.
+    /// - [`Error::DesignChecks`] with every finding if the checks find an error, such as a motor
+    ///   wider than its tube's bore or a motor tube wider than the airframe.
+    /// - [`Error::Design`] for a tree that doesn't hold together.
     pub fn assemble(&self) -> Result<Assembly, Error> {
         let id = self.configuration_id.as_deref().ok_or(Error::NoMotor)?;
+        let findings = check(&self.design)?;
+        if has_errors(&findings) {
+            return Err(Error::DesignChecks(findings));
+        }
         Ok(self.design.assemble(id)?)
     }
 
@@ -734,45 +754,52 @@ impl Rocket {
     ///
     /// # Errors
     ///
-    /// As [`Rocket::assemble`].
+    /// As [`Rocket::assemble`], and [`Error::Domain`] for a time that is negative or not finite.
     pub fn mass_properties(&self, time_s: f64) -> Result<MassProperties, Error> {
-        Ok(self.assemble()?.mass_properties(finite("time, s", time_s)?))
+        let time_s = non_negative("time, s", time_s)?;
+        Ok(self.assemble()?.mass_properties(time_s))
     }
 
     /// The static stability margin `time_s` seconds after the motor lights, at Mach `mach` with
     /// the air along the axis, calibres of the reference diameter: how far the centre of pressure
-    /// is behind the centre of gravity. [`Rocket::margin`] gives the rest of it.
+    /// is behind the centre of gravity. `None` where [`hpr_sim::metrics::margin`] leaves it
+    /// undefined: a normal force that doesn't restore, or a centre of pressure too ill-conditioned
+    /// to place. [`Rocket::margin`] gives the rest of it.
     ///
     /// # Errors
     ///
-    /// As [`Rocket::margin`], and [`Error::Domain`] with a NaN value where the margin is
-    /// undefined because the rocket has no normal force.
-    pub fn static_margin_cal(&self, time_s: f64, mach: f64) -> Result<f64, Error> {
-        self.margin(time_s, mach)?.margin_cal.ok_or(Error::Domain {
-            what: "static margin with no normal force, calibres",
-            value: f64::NAN,
-        })
+    /// As [`Rocket::margin`].
+    pub fn static_margin_cal(&self, time_s: f64, mach: f64) -> Result<Option<f64>, Error> {
+        Ok(self.margin(time_s, mach)?.margin_cal)
     }
 
     /// The centre of pressure and the static margin `time_s` seconds after the motor lights, at
-    /// Mach `mach` with the air along the axis ([`hpr_sim::metrics::margin`]).
+    /// Mach `mach` with the air along the axis ([`hpr_sim::metrics::margin`]). Its centre of
+    /// pressure is a station: metres aft of the nose tip, positive.
     ///
     /// # Errors
     ///
-    /// As [`Rocket::assemble`], [`Error::Aero`] for a rocket the aerodynamic model can't take,
-    /// and [`Error::Sim`] for a Mach number out of its range.
+    /// As [`Rocket::mass_properties`], [`Error::Aero`] for a rocket the aerodynamic model can't
+    /// take, and [`Error::Sim`] for a Mach number out of its range.
     pub fn margin(&self, time_s: f64, mach: f64) -> Result<Margin, Error> {
-        let assembly = self.assemble()?;
-        let aero = AeroModel::new(&assembly.layout)?;
-        let cg_station_m = -assembly.mass_properties(finite("time, s", time_s)?).cg_m.z;
+        let cg_station_m = -self.mass_properties(time_s)?.cg_m.z;
+        let aero = AeroModel::new(&self.assemble()?.layout)?;
         Ok(metrics::margin(&aero, &Flow::axial(mach), cg_station_m)?)
     }
 
     /// The builder's place, or [`Error::Order`] for a rocket read from a design.
     fn build(&self) -> Result<&Build, Error> {
-        self.build.as_ref().ok_or(Error::Order(
-            "parts can't be added to a rocket read from a design",
-        ))
+        self.build
+            .as_ref()
+            .ok_or(Error::Order(Order::ReadFromDesign))
+    }
+
+    /// The builder's stage: its one, the first.
+    fn stage(&mut self) -> Result<&mut Stage, Error> {
+        self.design
+            .stages
+            .first_mut()
+            .ok_or(Error::Order(Order::ReadFromDesign))
     }
 
     /// A component of the stage, its id `kind` or, if that is taken, `kind-2`, `kind-3` and on.
@@ -812,8 +839,13 @@ impl Rocket {
 
     /// Adds a body component with aft radius `aft_radius_m`; a `tube` takes the attached parts
     /// that follow.
-    fn push_body(&mut self, component: Component, aft_radius_m: f64, tube: bool) {
-        let components = &mut self.design.stages[0].components;
+    fn push_body(
+        &mut self,
+        component: Component,
+        aft_radius_m: f64,
+        tube: bool,
+    ) -> Result<(), Error> {
+        let components = &mut self.stage()?.components;
         components.push(component);
         let index = components.len() - 1;
         if let Some(build) = &mut self.build {
@@ -822,14 +854,16 @@ impl Rocket {
                 build.tube = Some(index);
             }
         }
+        Ok(())
     }
 
     /// Attaches `component` to the last body tube.
     fn attach(&mut self, component: Component) -> Result<(), Error> {
-        let index = self.build()?.tube.ok_or(Error::Order(
-            "fins, a motor tube and masses go on a body tube: add one first",
-        ))?;
-        self.design.stages[0].components[index]
+        let index = self.build()?.tube.ok_or(Error::Order(Order::NoTube))?;
+        self.stage()?
+            .components
+            .get_mut(index)
+            .ok_or(Error::Order(Order::NoTube))?
             .children
             .push(component);
         Ok(())
