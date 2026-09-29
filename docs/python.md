@@ -220,9 +220,86 @@ hpr's own drag too, in a wind and in RocketPy's atmosphere, and its apogee is 0.
 RocketPy's. That is the closest of the suite's six rockets: on the others, hpr's own drag puts the
 apogee from 7.280% below RocketPy's to 10.302% above
 ([Whole flights with each code's own drag](accuracy.md#whole-flights-with-each-codes-own-drag),
-[same-drag and predicted mode](glossary.md#same-drag-and-predicted-mode)). Flying Calisto from
-Python as that suite does, and comparing it with RocketPy, is the next step
-([M4.3b](decisions-and-roadmap.md#m4-3b)).
+[same-drag and predicted mode](glossary.md#same-drag-and-predicted-mode)). The next section flies
+Calisto from Python as that suite does, and compares it with RocketPy.
+
+## RocketPy's example, flown as the suite flies it
+
+This section flies Calisto again, this time the way the validation suite flies it against
+RocketPy. It is for checking hpr against [RocketPy](glossary.md#rocketpy), or for moving a RocketPy
+script across. Both codes fly the same drag and the same inputs, so the comparison tests the rest
+of the physics: the equations of motion, the atmosphere, the rail and the parachutes. It is a
+comparison between two codes, not with a real flight.
+
+Three options make it RocketPy's flight:
+
+- **A drag table.** `DragTable` holds a zero-lift drag coefficient `C_D0` against Mach number, as
+  RocketPy's `power_off_drag` and `power_on_drag` do. Its power-on curve is flown while the motor
+  burns, its power-off curve the rest of the time. Pass it to a flight as `drag_table=`; it
+  replaces hpr's own drag, and nothing else. `DragTable.from_csv` reads RocketPy's two-column
+  drag files.
+- **RocketPy's gravity.** `Environment(..., gravity="vertical_taylor")` uses RocketPy's formula
+  for gravity instead of hpr's default. Near the ground the two differ by parts in a million.
+- **One parachute at a time.** RocketPy flies only the last parachute to open, and hpr adds
+  together every one that is open. `add_parachute(..., released_by=1)` cuts a parachute away
+  once parachute number 1, the second added, is fully open.
+
+Here is a table with less drag while the motor burns:
+
+```python
+table = hpr.DragTable([(0.0, 0.5), (3.0, 0.5)], [(0.0, 0.45), (3.0, 0.45)])
+print(f"C_D0 at Mach 0.6: {table.cd0(0.6):.2f} coasting, {table.cd0(0.6, thrusting=True):.2f} burning")
+flight = hpr.Flight(calisto, site, 5.2, inclination_deg=85.0, drag_table=table)
+print(f"apogee {flight.apogee_m:.0f} m")
+```
+
+```text
+C_D0 at Mach 0.6: 0.50 coasting, 0.45 burning
+apogee 2650 m
+```
+
+The example
+[`crates/hpr-py/examples/calisto.py`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-py/examples/calisto.py)
+puts it all together. It is written as notebook cells (`# %%`), which editors such as VS Code run
+one at a time. It reads the rocket, the wind, the drag and the parachutes from the repository's
+files, then flies them. Then it measures each metric as RocketPy defines it, and not always as
+hpr's own summary does:
+
+- RocketPy follows the rocket's dry centre of mass, its centre of mass without propellant. It
+  measures heights from where that point starts, a metre or so above the pad here.
+- RocketPy's rail exit is when its forward rail button leaves the rail, after 3.745 m of travel.
+  hpr's rail exit is its last guide's, at 5.2 m.
+- RocketPy's flight ends when the dry centre of mass is back at its starting height.
+
+Run from the repository's root, `python crates/hpr-py/examples/calisto.py` prints:
+
+<!-- calisto.py prints -->
+```text
+The dry centre of mass starts 1.250 m above the ground.
+metric                                  hpr   RocketPy  difference
+apogee_agl_m                        2613.59    2612.22      +0.05%
+apogee_time_s                         22.88      22.85      +0.10%
+max_speed_m_s                        243.56     243.52      +0.01%
+max_mach                             0.7321     0.7329      -0.12%
+max_acceleration_m_s2                112.35     112.24      +0.10%
+max_acceleration_power_on_m_s2       112.35     112.24      +0.10%
+rail_exit_speed_m_s                   28.19      28.20      -0.05%
+rail_exit_time_s                     0.2945     0.2947      -0.07%
+burnout_altitude_agl_m               684.23     684.10      +0.02%
+burnout_speed_m_s                    235.65     235.60      +0.02%
+flight_time_s                        260.83     260.53      +0.11%
+apogee_drift_m                       422.52     426.36      -0.90%
+landing_drift_m                     1277.25    1261.50      +1.25%
+impact_speed_m_s                     5.4550     5.4560      -0.02%
+largest difference 1.25%, within 3%: True
+```
+
+Every metric is within 3% of RocketPy's, the bound the validation suite holds this flight to
+([M2.1](decisions-and-roadmap.md#m2-1)). These are the suite's numbers: a test holds each to within
+0.1% of what the suite's report records for the same flight
+([`test_calisto.py`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-py/tests/test_calisto.py)).
+The drifts differ most. On two of RocketPy's other example rockets, flown in a wind, the drifts
+differ by 11 to 43% ([Getting started](getting-started.md#how-far-to-trust-it) explains why).
 
 ## When something is wrong
 
@@ -264,7 +341,8 @@ times its area in m², as RocketPy's `cd_s`.
 
 | call | what it does |
 |---|---|
-| `Environment(latitude_deg, longitude_deg, elevation_m, wind_speed_m_s=, wind_from_deg=)` | the launch site and a wind |
+| `Environment(latitude_deg, longitude_deg, elevation_m, wind_speed_m_s=, wind_from_deg=, gravity=)` | the launch site, a wind, and the gravity model: `"ellipsoidal"` (the default), `"vertical"` or `"vertical_taylor"` (RocketPy's) |
+| `DragTable(power_off, power_on=, reference_diameter_m=)`, `DragTable.from_csv(power_off, power_on=, reference_diameter_m=)` | a drag coefficient against Mach number, from `(mach, cd)` rows or CSV files; its `cd0(mach, thrusting=)`, `has_power_on` and `reference_diameter_m` |
 | `Motor.from_catalog(name, delay_s=)`, `Motor.from_file(path, delay_s=)`, `Motor.from_eng(text)`, `Motor.from_rse(text)` | a motor; its `designation`, `diameter_m`, `length_m`, `delay_s`, `total_impulse_ns`, `propellant_mass_kg` and `thrust_curve()`, two arrays |
 | `Rocket(name, diameter_m)`, `Rocket.from_file(path, configuration=)` | a rocket, built or read; its `name`, `configuration` and `notes` |
 | `add_nose(shape, length_m, material, wall_m=, parameter=, shoulder_length_m=, shoulder_wall_m=, capped_shoulder=, name=)` | the nose: hollow with `wall_m`, solid without; a shoulder, capped or not |
@@ -273,9 +351,9 @@ times its area in m², as RocketPy's `cd_s`.
 | `add_fins(count, root_chord_m=, tip_chord_m=, span_m=, sweep_m=, thickness_m=, material=, cross_section=, cant_deg=, position=, offset_m=, name=)` | trapezoidal fins |
 | `add_motor_tube(length_m, inner_diameter_m, wall_m, material, overhang_m=, position=, offset_m=, name=)` | the motor tube |
 | `add_mass(mass_kg, position=, offset_m=, packed_length_m=, packed_diameter_m=, name=)` | a mass, at a point or packed in a cylinder |
-| `set_motor(motor)`, `add_parachute(name, ...)` | the motor, and a parachute |
+| `set_motor(motor)`, `add_parachute(name, ..., released_by=)` | the motor, and a parachute, cut away once parachute `released_by` is fully open |
 | `mass_properties(time_s=)`, `static_margin_cal(time_s=, mach=)`, `margin(time_s=, mach=)`, `design_json()` | the mass, centre of gravity and inertia; the margin; the design as JSON |
-| `Flight(rocket, environment, rail_length_m, inclination_deg=, heading_deg=, interval_s=)` | the flight; its `apogee_m`, `apogee_time_s`, `max_speed_m_s`, `max_mach`, `rail_exit_speed_m_s`, `landing`, `summary`, `events`, `columns`, `series`, `flight[name]` and `to_json()` |
+| `Flight(rocket, environment, rail_length_m, inclination_deg=, heading_deg=, interval_s=, drag_table=)` | the flight; its `apogee_m`, `apogee_time_s`, `max_speed_m_s`, `max_mach`, `rail_exit_speed_m_s`, `landing`, `summary`, `events`, `columns`, `series`, `flight[name]` and `to_json()` |
 
 
 An argument written `name=` above can be left out, and is given by name: `add_fins`' lengths
@@ -287,8 +365,6 @@ built.
 
 The package covers the Rust builder, not the whole library. Not yet:
 
-- A drag curve of your own, from RocketPy or a wind tunnel, and RocketPy's example flight
-  reproduced in Python ([M4.3b](decisions-and-roadmap.md#m4-3b)).
 - Drag, wind and other models written as Python functions
   ([M4.3c](decisions-and-roadmap.md#m4-3c)). Rust programs have them today
   ([Models of your own](custom-models.md)).

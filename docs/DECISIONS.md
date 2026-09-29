@@ -120,6 +120,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-112 | M3.3b: the `.hprz` container, the first migration (0.2), and the design format on the command line | accepted |
 | ADR-113 | M3.3c: TypeScript and Python types, and a reader for each, generated from the schema by xtask | accepted |
 | ADR-114 | M4.3 split a to c; the Python package wraps the builder, SI names, flies on construction, one abi3 wheel per OS | accepted |
+| ADR-115 | M4.3b: a drag table on the builder, gravity and a parachute release in Python; Calisto measured in the example, not in the library | accepted |
 
 ---
 
@@ -9592,3 +9593,44 @@ written yet, so editors see the classes' docstrings but not their signatures' ty
 wheel is handed out anywhere, it needs the licence texts of what it links (rust-numpy's
 BSD-2-Clause asks for its notice in binary distributions).
 
+## ADR-115: M4.3b: a drag table, and RocketPy's Calisto from Python (2026-09-29)
+
+**Context.** M4.3b asks for a flight that takes a drag table (`C_D0` by Mach, power on and off),
+and a notebook-style example that flies RocketPy's Calisto from Python within M2.1's 3% on every
+scored metric, run in CI. The validation suite's `fly_whole_flight` flies that case through
+`hpr_sim` directly. Its setup differs from what the builder and the package offered in four ways:
+the drag table (`Simulation::with_drag_table`), RocketPy's gravity formula
+(`GravityModel::VerticalTaylor`), one parachute at a time (`Device::with_release_by`), and metrics
+measured as RocketPy defines them. RocketPy's metrics follow the dry centre of mass from its start
+at the ground. Its rail exit is the forward button's, after `effective_1rl`. Its landing is when
+that point is back at its starting height.
+
+**Decision.**
+
+1. **The builder takes a table.** `FlightBuilder::drag_table(DragTable)` sets it as `drag_model`
+   sets a model. The last one set is flown, as `AeroModel` has it. `Environment::with_gravity`
+   swaps the gravity model and keeps the site and the Earth's rotation.
+2. **The package exposes them.** `hpr.DragTable(power_off, power_on=None, *,
+   reference_diameter_m=None)` takes `(mach, cd)` rows, linear between rows and held at the ends,
+   as `parse_mach_csv`'s tables are. `DragTable.from_csv` reads RocketPy's two-column files. The
+   rest are keyword arguments: `Flight(..., drag_table=)`, `Environment(..., gravity=)` and
+   `add_parachute(..., released_by=)`. `gravity` names one of the three models that take no number,
+   read through `GravityModel`'s `serde` tag. `released_by` is the other parachute's index, as in
+   Rust; a bad index is refused when the rocket flies, by the simulation's own check.
+3. **RocketPy's definitions stay in the example.** The library gains no RocketPy-shaped metrics.
+   `crates/hpr-py/examples/calisto.py` measures them on the flight's recording and events: the dry
+   centre of mass is found by turning its body-frame position by each row's attitude. `h0` comes
+   from a first flight of the rocket before its parachutes are added. The rail exit is the step
+   that crosses `effective_1rl`, solved at constant acceleration. The landing is interpolated
+   linearly between the two steps that cross `h0`. The main opens `h0` above RocketPy's 800 m, as
+   the suite has it.
+4. **Checked twice.** `test_calisto.py` runs the example on the built wheel. It takes the scored
+   metrics from the committed report's rows for the case that carry a relative tolerance. It holds
+   each to 3% of RocketPy's value, and to 0.1% of the suite's own measurement of the same flight.
+   The guide's printed table must equal what the example prints.
+
+**Consequences.** Every scored metric is within 3%; the largest difference is the landing drift's,
++1.25%, as in the suite's report. The example agrees with the suite's hpr numbers to 0.04% or
+better. The largest gap is the rail exit speed's, from the constant-acceleration step. Only the windy
+case is flown from Python; the calm one and predicted mode stay the suite's. The example reads
+the reference fixture's JSON, so it runs only from a checkout, not from an installed wheel alone.

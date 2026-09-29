@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hpr_aero::DragModel;
+use hpr_aero::{DragModel, DragTable};
 use hpr_sim::metrics::{FlightMetrics, FlightSummary, Landing};
 use hpr_sim::{FlightResult, FlightSettings, Observer, Rail, Simulation};
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,8 @@ pub struct FlightBuilder<'a> {
     settings: FlightSettings,
     /// A drag model flown in place of hpr's drag buildup, where set.
     drag_model: Option<Arc<dyn DragModel>>,
+    /// A drag table flown in place of hpr's drag buildup, where set; never with a model.
+    drag_table: Option<DragTable>,
 }
 
 impl FlightBuilder<'_> {
@@ -72,7 +74,8 @@ impl FlightBuilder<'_> {
     /// diameter; unlike a drag table's, a model's number isn't rescaled, so a curve measured on
     /// another area is converted before it is returned. The normal force, centre of pressure,
     /// roll and damping stay hpr's, so the stability margin a [`Rocket`] reports doesn't change.
-    /// The last model set is the one flown, and every flight of this builder shares it.
+    /// The last model or table set is the one flown ([`FlightBuilder::drag_table`]), and every
+    /// flight of this builder shares it.
     ///
     /// ```
     /// # use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
@@ -119,6 +122,55 @@ impl FlightBuilder<'_> {
     #[must_use]
     pub fn shared_drag_model(mut self, model: Arc<dyn DragModel>) -> Self {
         self.drag_model = Some(model);
+        self.drag_table = None;
+        self
+    }
+
+    /// Flies `table`'s drag in place of hpr's drag buildup: another tool's zero-lift drag
+    /// coefficient `C_D0` against Mach number, as RocketPy's `power_off_drag` and
+    /// `power_on_drag` curves are ([`DragTable`], [`Simulation::with_drag_table`]). Its power-on
+    /// curve, where it has one, is flown while a motor thrusts, and its power-off curve at every
+    /// other time. Between its Mach numbers the table interpolates linearly; past its ends it
+    /// holds the end values. A table on a reference diameter of its own
+    /// ([`DragTable::with_reference_diameter_m`]) is rescaled to the rocket's reference area by
+    /// the ratio of the two areas, `C_D0 · (d_table / d_rocket)²`. The normal force, centre of
+    /// pressure, roll and damping stay hpr's. The last model or table set is the one flown
+    /// ([`FlightBuilder::drag_model`]).
+    ///
+    /// ```
+    /// # use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
+    /// # use hpr::{Environment, FinPlanform, Flight, Motor, NoseShape, Position, Rocket};
+    /// use hpr::hpr_aero::DragTable;
+    ///
+    /// # let mut rocket = Rocket::new("Small", 0.0563)?;
+    /// # rocket
+    /// #     .add_nose(Nose::hollow(NoseShape::Ogive { radius_ratio: 1.0 }, 0.22, 0.0015, material("abs")?))?
+    /// #     .add_tube(Tube::new(0.9, 0.00115, material("kraft_phenolic")?))?
+    /// #     .add_fins(Fins::new(
+    /// #         3,
+    /// #         FinPlanform::Trapezoidal { root_chord_m: 0.1, tip_chord_m: 0.04, span_m: 0.045, sweep_m: 0.05 },
+    /// #         0.003175,
+    /// #         material("birch_plywood")?,
+    /// #     ))?
+    /// #     .add_motor_tube(MotorTube::new(0.2, 0.029, 0.001, material("kraft_phenolic")?))?
+    /// #     .add_mass(Mass::new(0.2, Position::Top { aft_offset_m: 0.07 }))?
+    /// #     .set_motor(Motor::from_catalog("H54")?)?;
+    /// let environment = Environment::new(32.99, -106.97, 1400.0)?;
+    /// let launch = Flight::builder(&rocket, &environment, 1.8);
+    /// // C_D0 of 0.45 up to Mach 0.8, 0.6 by Mach 1.2; 0.05 less while the motor burns.
+    /// let table = DragTable::from_csv(
+    ///     "mach,cd\n0,0.45\n0.8,0.45\n1.2,0.6\n",
+    ///     Some("mach,cd\n0,0.40\n0.8,0.40\n1.2,0.55\n"),
+    /// )?;
+    /// let tabled = launch.clone().drag_table(table).fly()?.apogee_m().ok_or("no apogee")?;
+    /// let own = launch.fly()?.apogee_m().ok_or("no apogee")?;
+    /// assert_ne!(tabled, own);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub fn drag_table(mut self, table: DragTable) -> Self {
+        self.drag_table = Some(table);
+        self.drag_model = None;
         self
     }
 
@@ -158,6 +210,9 @@ impl FlightBuilder<'_> {
         )?;
         if let Some(model) = &self.drag_model {
             simulation = simulation.with_shared_drag_model(Arc::clone(model));
+        }
+        if let Some(table) = &self.drag_table {
+            simulation = simulation.with_drag_table(table.clone());
         }
         if self.rocket.recovery().is_empty() {
             Ok(simulation)
@@ -222,6 +277,7 @@ impl Flight {
             heading_deg: None,
             settings: FlightSettings::default(),
             drag_model: None,
+            drag_table: None,
         }
     }
 

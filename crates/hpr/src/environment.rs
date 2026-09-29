@@ -1,6 +1,7 @@
 //! Where and in what weather a rocket flies.
 
 use hpr_atmos::{Atmosphere, ConstantWind, Wind};
+use hpr_core::earth::{Earth, GravityModel};
 use hpr_core::geodesy::Geodetic;
 
 use crate::error::{Error, finite};
@@ -79,6 +80,30 @@ impl Environment {
     pub fn with_atmosphere(mut self, atmosphere: impl Atmosphere + 'static) -> Self {
         self.sim.atmosphere = std::sync::Arc::new(atmosphere);
         self
+    }
+
+    /// The same place and weather, with gravity evaluated by `gravity` in place of the default,
+    /// [`GravityModel::Ellipsoidal`]: the full normal gravity vector at the rocket's position.
+    /// [`GravityModel::VerticalTaylor`] is RocketPy's formula, for like-for-like comparisons with
+    /// it; [`GravityModel`] has the rest. The Earth's rotation is kept.
+    ///
+    /// ```
+    /// use hpr::Environment;
+    /// use hpr::hpr_core::earth::GravityModel;
+    ///
+    /// let environment =
+    ///     Environment::new(32.99, -106.97, 1400.0)?.with_gravity(GravityModel::VerticalTaylor)?;
+    /// assert_eq!(environment.sim().earth.gravity_model(), GravityModel::VerticalTaylor);
+    /// # Ok::<(), hpr::Error>(())
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Core`] for a constant gravity that is negative or not finite.
+    pub fn with_gravity(mut self, gravity: GravityModel) -> Result<Self, Error> {
+        let earth = &self.sim.earth;
+        self.sim.earth = Earth::new(*earth.field(), self.sim.site(), gravity, earth.rotation())?;
+        Ok(self)
     }
 
     /// An environment built with [`hpr_sim`] directly.

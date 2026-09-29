@@ -6,6 +6,7 @@ guide's Python page walks through them: https://nrdptel.github.io/hpr-sim/python
 """
 
 from hpr._hpr import (
+    DragTable,
     Environment,
     Flight,
     HprError,
@@ -16,6 +17,7 @@ from hpr._hpr import (
 )
 
 __all__ = [
+    "DragTable",
     "Environment",
     "Flight",
     "HprError",

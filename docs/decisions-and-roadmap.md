@@ -327,7 +327,7 @@ missing or its status disagrees.
 | <a id="m3-3c"></a>[M3.3c][phase-2] | TypeScript and Python types generated from the schema, each with a reader that checks a document ([ADR-113][adr-113], [TypeScript and Python](format/hpr.md#typescript-and-python)) | done |
 | <a id="m4-3"></a>[M4.3][phase-2] | Python bindings | not yet done |
 | <a id="m4-3a"></a>[M4.3a][phase-2] | The `hpr` Python package: the builder's environment, motor, rocket and flight, designs read from files, recordings as NumPy arrays, and wheels built and tested on three operating systems ([ADR-114][adr-114], [Python](python.md)) | done |
-| <a id="m4-3b"></a>[M4.3b][phase-2] | A drag table on a flight, and RocketPy's example rocket, Calisto, flown from Python within 3% of RocketPy | not yet done |
+| <a id="m4-3b"></a>[M4.3b][phase-2] | A drag table on a flight, and RocketPy's example rocket, Calisto, flown from Python within 3% of RocketPy | done |
 | <a id="m4-3c"></a>[M4.3c][phase-2] | Drag and wind models written as Python functions | not yet done |
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |

@@ -433,11 +433,15 @@ impl Rocket {
     /// `"apogee"`; `"altitude"`, on the way down past `altitude_m` above the pad; `"time"`, at
     /// `time_s` after launch; or `"motor_delay"`, at the ejection delay of the motor numbered
     /// `motor` (0, the first, by default), which needs a delay in seconds. It is fully open
-    /// `lag_s` seconds later. An argument that doesn't apply to the choices made is refused.
+    /// `lag_s` seconds later. With `released_by`, the number of another parachute (0 for the
+    /// first added, 1 for the second, and so on), it is cut away once that one is fully open, as
+    /// a drogue is when the main opens; RocketPy flies only its last parachute to open, which is
+    /// the same. An argument that doesn't apply to the choices made is refused, and a
+    /// `released_by` that names no other parachute is refused when the rocket flies.
     #[pyo3(signature = (
         name, *, diameter_m = None, canopy = None, drag_coefficient = None,
         cd_s_m2 = None, trigger = "apogee", altitude_m = None, time_s = None, motor = None,
-        lag_s = 0.0
+        lag_s = 0.0, released_by = None
     ))]
     #[expect(
         clippy::too_many_arguments,
@@ -455,6 +459,7 @@ impl Rocket {
         time_s: Option<f64>,
         motor: Option<usize>,
         lag_s: f64,
+        released_by: Option<usize>,
     ) -> PyResult<PyRefMut<'py, Self>> {
         let drag = match (diameter_m, cd_s_m2) {
             (Some(nominal_diameter_m), None) => {
@@ -499,8 +504,11 @@ impl Rocket {
                 )));
             }
         };
-        slf.rocket
-            .add_parachute(Device::new(name, drag, trigger).with_lag_s(lag_s));
+        let mut device = Device::new(name, drag, trigger).with_lag_s(lag_s);
+        if let Some(index) = released_by {
+            device = device.with_release_by(index);
+        }
+        slf.rocket.add_parachute(device);
         Ok(slf)
     }
 
