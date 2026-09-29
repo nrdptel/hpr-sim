@@ -21,8 +21,8 @@ It is a Rust library first, meant to be built into other programs, as
 [RocketPy](glossary.md#rocketpy) is. RocketPy is an open-source rocket flight simulator, written in
 Python and used as a Python library. Python bindings and a graphical app are planned for hpr-sim.
 OpenRocket `.ork` design files are read today. The command-line tool, `hpr`, flies a `.ork` or
-hpr design file, looks up and converts motor files, and re-runs the validation
-([The command line](cli.md)).
+hpr design file, looks up and converts motor files, re-runs the validation, and reads an
+altimeter's flight log ([The command line](cli.md)).
 
 It is also built to be checked. Every model cites a published source, and tests pin every model.
 The simulator is compared against RocketPy, [OpenRocket](https://openrocket.info/) and the logs
@@ -46,6 +46,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Flight | The launch rail, powered flight and coast to apogee, with an [adaptive time step](glossary.md#adaptive-time-step) and [events](glossary.md#event) such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
 | Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads the whole design: the stages and body components, the tubes, rings, fins, lugs and recovery gear on and inside them, the motor configurations, when parachutes open, and the simulations OpenRocket stored. The airframe's shape is cross-checked against a second reader and OpenRocket itself (positions against OpenRocket alone; mass and centre of gravity in [Mass properties](physics/mass.md#checked-against-openrocket)). Pods are read, weighed and flown, but no pod with bodies or fins has been checked against OpenRocket yet ([Pods](physics/aero.md#pods)), parallel stages are kept but not modelled, a part hpr cannot shape honestly is left out with a warning, and only a configuration whose motors all light at launch and have a thrust curve flies: 2 of the 170 in the reference library | [`.ork` design files](format/ork.md) |
+| Flight logs | Reads a PerfectFlite altimeter's `.pf2` log on its own, with no design file, and takes liftoff, apogee, the top speed, landing and the descent from it, each saying where it came from or why the log can't support it | [Reading a flight log](reading-a-flight-log.md), [Flight-log readings](physics/log-readings.md), [`.pf2` files](format/pf2.md) |
 
 ## What doesn't work yet
 
@@ -139,17 +140,15 @@ out.
   with a motor you give ([The command line](cli.md#hpr-sim)).
 - **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization or
   app.** They are on the [roadmap][roadmap].
-- **No flight-log analyzer yet — the crates are empty, and its milestones come after the file
-  formats, the command-line tool and the Python bindings.** When it does arrive it will not need
-  the rest of this: reading a log from an altimeter or tracker and getting the flight's readings
-  off it — apogee, maximum speed, burnout, descent rates — is planned as something you can use on
-  its own, with no design file and no simulation. [M7.1](decisions-and-roadmap.md#m7-1) reads the
-  loggers' files and [M7.2](decisions-and-roadmap.md#m7-2) takes the readings, each saying whether
-  an instrument measured it or hpr worked it out, or withheld with the reason when the log cannot
-  support it. Comparing that flight with a simulation of it is separate
-  ([M7.3](decisions-and-roadmap.md#m7-3)). The loggers planned first are Altus Metrum (AltOS),
-  Featherweight (Raven, Blue Raven and the GPS tracker), Missile Works RRC3, Eggtimer,
-  PerfectFlite, Entacore AIM, Mercury/AltimeterCloud, CATS, and plain CSV with column mapping.
+- **The flight-log analyzer reads one logger so far.** `hpr analyze` reads a PerfectFlite
+  altimeter's `.pf2` log on its own, with no design file and no simulation, and prints liftoff,
+  apogee, the top speed, landing and the descent, each saying where it came from, or withheld with
+  the reason the log can't support it ([Reading a flight log](reading-a-flight-log.md)). The other
+  loggers come with [M7.1](decisions-and-roadmap.md#m7-1): Altus Metrum (AltOS), Featherweight
+  (Raven, Blue Raven and the GPS tracker), Missile Works RRC3, Eggtimer, Entacore AIM,
+  Mercury/AltimeterCloud, CATS, and plain CSV with column mapping. The rest of the readings, such
+  as burnout and each leg of the descent, come with [M7.2](decisions-and-roadmap.md#m7-2), and
+  comparing a flight with a simulation of it with [M7.3](decisions-and-roadmap.md#m7-3).
 
 ## How far to trust it
 

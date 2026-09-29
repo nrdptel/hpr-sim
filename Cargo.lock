@@ -746,6 +746,10 @@ version = "0.1.0"
 dependencies = [
  "hpr-atmos",
  "hpr-core",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

@@ -1,0 +1,9 @@
+PerfectFlite Pnut: 984 samples
+it states an apogee of 1281 ft
+
+liftoff           0.55 s
+apogee            390.1 m (1280 ft) at 10.28 s, source: Barometer
+highest sample    400.5 m at 11.35 s
+top speed         79.9 m/s at 2.10 s, source: LoggerSpeedFromBarometer
+top acceleration  withheld (NoAccelerometer): a PerfectFlite logger has no accelerometer; hpr doesn't difference the altitude twice to make one, as its one-foot steps would read as spikes of many g
+landing           45.85 s; down from apogee at 10.9 m/s on average

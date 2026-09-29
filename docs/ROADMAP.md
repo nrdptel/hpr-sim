@@ -719,7 +719,7 @@
     when:* the three bullets above are met with at least 4 builder examples. *Result:* met
     (ADR-104): `custom_drag` flies `DragModel`s; 5 builder examples; `hpr::guide`.
 
-- [ ] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|analyze|diagnose` (stubs
+- [x] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|analyze|diagnose` (stubs
   are fine for commands whose milestone hasn't come yet), `--json` everywhere, and shell
   completions. The README's command and format table is generated from the registered commands
   (Loft lesson P10). `hpr analyze <log>` reads a flight log and prints its readings; it takes no
@@ -728,9 +728,7 @@
 
   *Done when:* `assert_cmd` tests cover every implemented command and the JSON output validates
   against the published schemas, and `hpr analyze` is tested on a log with no design file
-  present.
-
-  Split into a to d (ADR-105).
+  present. Split into a to d (ADR-105).
   - [x] **M4.2a The command surface and `hpr motors`.** Every command registered, the rest refusing
     with their milestone (exit 3); `--json`, schemas generated from the output types, exit codes,
     completions, and the README's command table generated from the registry. *Done when:*
@@ -745,8 +743,10 @@
     xtask validate --check` does, and `hpr convert` round-trips `.eng` and `.rse` motor files.
     *Result:* met (ADR-107): one check for both, failing a spoiled copy three ways; 29 `.eng` and 3
     `.rse` bundled curves round-trip, 4 differences warned or read the same.
-  - [ ] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*
-    `hpr analyze` is tested on a log with no design file present, its JSON validating.
+  - [x] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*
+    `hpr analyze` is tested on a log with no design file present, its JSON validating. *Result:*
+    met (ADR-108): PerfectFlite `.pf2`; an invented log read alone in a folder; the public Pnut
+    log 1,010 ft against its stated 1,009 ft. M4.2 closed with it.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
   - Loft lessons: L67, L68.

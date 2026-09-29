@@ -113,6 +113,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-105 | The command line's surface: every command registered, JSON by schema, a generated table | accepted |
 | ADR-106 | `hpr sim` flies the library's flight, the stack whole, from a stated launch | accepted |
 | ADR-107 | `hpr validate` shares the project's own validation check; `hpr convert` translates `.eng` and `.rse` by the format notes | accepted |
+| ADR-108 | A flight log read alone: PerfectFlite's `.pf2` first, heights after a running median, an invented log in CI | accepted |
 
 ---
 
@@ -9134,3 +9135,61 @@ tables list them as available; `schema/cli/` gains `convert.schema.json` and
 turn grams into kilograms in binary, so a motor read from a converted `.rse` may differ from its
 `.eng` in a mass's last bit; nothing claims them equal. `hpr validate` output lines change
 whenever the report does, so the guide describes them in outline instead of quoting a run.
+
+## ADR-108: A flight log read alone: PerfectFlite's `.pf2` first, heights after a running median, an invented log in CI (2026-09-29)
+
+**Context.** M4.2d is done when `hpr analyze` is tested on a log with no design file present, its
+JSON validating. `hpr-flightdata` was an empty skeleton; the importers are M7.1 and the readings
+M7.2 (ADR-046). M4.2d needs one reader and enough readings for the command to be worth running.
+Debrief's notes (`docs/research/debrief-*.md`) give the formats, the thresholds and the
+provenance design. Its twelve public fixtures come from publicly shared flights, but their
+upstream terms aren't recorded; ADR-046 said they "may appear in examples and doctests".
+
+**Decision.**
+
+1. **The first reader is PerfectFlite's `.pf2`** (`hpr_flightdata::perfectflite`): plain text, a
+   barometer only, and a public Pnut log that states its own apogee, which makes it the cheapest
+   format with a real cross-check. Units from Debrief's reading of exported files (feet, ft/s,
+   °F); the columns from the `Data:` line where Debrief assumed them; a stated height not marked
+   in feet refused rather than guessed; SI at the boundary. The record, `log::FlightLog`, is the
+   one every later reader fills.
+2. **A first set of readings** (`hpr_flightdata::readings`): liftoff, apogee and the time to it,
+   the top speed in the climb, landing and the mean descent rate. The top acceleration is
+   withheld for a log with no accelerometer. Each reading is `Reading::Read` with a `Source`, or
+   `Reading::Withheld` with a `Reason` code and a sentence carrying the log's numbers, the
+   non-optional field Debrief's notes recommend. Debrief's corpus-set thresholds are taken as
+   they are (3 m, 2 m and 5 m for a second, 4,000 m/s, 20%) and said to be corpus-set, with no
+   citation. The landing adds one bound of hpr's, a fall from rest in vacuum, which only drag can
+   slow.
+3. **Heights after a running median, not a Hampel filter.** Debrief despikes with a Hampel filter
+   (0.3 s, threshold 4). On the public Pnut log the ejection pulse dips 26 ft, then rises 48 ft,
+   and the dip widens the rise's own window's spread until the filter keeps it: the Hampel-filtered
+   peak is the pulse's 1,028 ft against the 1,009 ft the logger states. The running median (the
+   Hampel filter at threshold 0, Pearson et al. 2015, §1) removes any pulse up to half its window
+   wide and reads a coasting peak low by at most `g (0.15 s)² / 2` = 0.11 m. It reads 1,010 ft.
+   `filter::hampel` is kept to show the difference in tests. The apogee's time is the middle of the
+   run of samples at the filtered peak, as the one-foot resolution leaves it flat: on the invented
+   flight the first sample of the run read 0.21 s early, the middle 0.02 s late.
+4. **An invented log in CI; the real one only where fetched.** CLAUDE.md's rule on third-party
+   data of unclear terms outranks ADR-046's line, so no Debrief fixture is committed.
+   `validation/fixtures/logs/synthetic-pnut.pf2` is a flight made up for the tests (boost at
+   50 m/s², a drag-free coast, drogue and main at fixed rates, an ejection pulse of the real one's
+   shape), written by `hpr_flightdata`'s own test code and held to it. Every reading is checked
+   against its closed form within a bound worked out from the rounding and the filter. The public
+   Pnut log is read by a test that runs where `refs/` has it (skipped, and saying so, in CI), which
+   holds the numbers the docs quote: stated 1,009 ft, read 1,010 ft, pulse 1,028 ft, top speed
+   257 ft/s.
+5. **`hpr analyze <log>`** reads a `.pf2` by its extension or a first line naming PerfectFlite,
+   and refuses anything else, naming M7.1. Its JSON is `output::Analyze`, each reading tagged
+   `status: read | withheld` (`schema/cli/analyze.schema.json`). The done-when's "no design file
+   present" is tested literally: the log copied alone into an empty folder, `hpr` run there.
+
+**Consequences.** M4.2 closes. The readings are checked on one invented flight and one real
+one; the private corpus waits for M7.1, and each leg's descent rate, Mach number and burnout for
+M7.2. A barometric altitude is printed as the logger converted it, uncorrected for the day's air.
+
+**Not chosen: commit Debrief's public fixtures**, as ADR-046 allowed. Their upstream terms are
+unrecorded, and the invented log checks more (a closed-form truth) in CI.
+
+**Not chosen: the Hampel filter with a physical bound on climb rate.** It would need a speed to
+bound by, which is what the pulse corrupts; the median needs nothing.

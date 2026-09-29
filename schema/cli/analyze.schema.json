@@ -1,0 +1,632 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Analyze",
+  "description": "`hpr analyze`: a flight log's readings, taken from the log alone, with no design file and no\nsimulation. Heights are metres above the logger's own zero, which a PerfectFlite takes on the\npad; times are seconds on the log's clock.",
+  "type": "object",
+  "properties": {
+    "apogee": {
+      "description": "The highest point.",
+      "$ref": "#/$defs/LogReading2"
+    },
+    "landing": {
+      "description": "Landing, and the descent before it.",
+      "$ref": "#/$defs/LogReading5"
+    },
+    "liftoff": {
+      "description": "Liftoff.",
+      "$ref": "#/$defs/LogReading"
+    },
+    "log": {
+      "description": "The log read.",
+      "$ref": "#/$defs/AnalyzedLog"
+    },
+    "max_acceleration": {
+      "description": "The top acceleration.",
+      "$ref": "#/$defs/LogReading4"
+    },
+    "max_speed": {
+      "description": "The top vertical speed from liftoff to apogee.",
+      "$ref": "#/$defs/LogReading3"
+    },
+    "method": {
+      "description": "How the readings were taken.",
+      "$ref": "#/$defs/AnalyzeMethod"
+    },
+    "stated": {
+      "description": "What the file states about the flight: the logger's own figures, printed beside hpr's\nreadings and never in place of them.",
+      "$ref": "#/$defs/LoggerStated"
+    }
+  },
+  "required": [
+    "log",
+    "stated",
+    "method",
+    "liftoff",
+    "apogee",
+    "max_speed",
+    "max_acceleration",
+    "landing"
+  ],
+  "$defs": {
+    "AnalyzeMethod": {
+      "description": "How the readings were taken; `null` throughout for a log too short to read.",
+      "type": "object",
+      "properties": {
+        "median_window_s": {
+          "description": "The running median's span, s: every height and time is read from the altitude after it.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "pad_altitude_m": {
+          "description": "The filtered altitude at the first sample, m: the pad.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "sample_interval_s": {
+          "description": "The median interval between samples, s.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      }
+    },
+    "AnalyzedLog": {
+      "description": "The log `hpr analyze` read.",
+      "type": "object",
+      "properties": {
+        "firmware": {
+          "description": "The logger's firmware version, as the file states it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "first_time_s": {
+          "description": "The first sample's time, s.",
+          "type": "number",
+          "format": "double"
+        },
+        "flight_number": {
+          "description": "The flight's number in the logger's memory, as the file states it.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "format": {
+          "description": "Its format.",
+          "$ref": "#/$defs/LogFormatName"
+        },
+        "last_time_s": {
+          "description": "The last sample's time, s.",
+          "type": "number",
+          "format": "double"
+        },
+        "logger": {
+          "description": "The logger, as the file names it.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "What the reader noticed and worked around, such as a sample count that differs from the\none the file states.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "description": "The file, as given.",
+          "type": "string"
+        },
+        "samples": {
+          "description": "How many samples the file holds.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "serial_number": {
+          "description": "The logger's serial number, as the file states it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "format",
+        "logger",
+        "samples",
+        "first_time_s",
+        "last_time_s",
+        "notes"
+      ]
+    },
+    "ApogeeReading": {
+      "description": "The highest point.",
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "description": "The filtered altitude there, m.",
+          "type": "number",
+          "format": "double"
+        },
+        "highest_sample": {
+          "description": "The highest sample the log holds before the filter: above the apogee when the median set\na pulse aside.",
+          "$ref": "#/$defs/HighestSample"
+        },
+        "is_floor": {
+          "description": "Whether the log may have ended before the peak, so the altitude is a floor.",
+          "type": "boolean"
+        },
+        "source": {
+          "description": "Where it came from.",
+          "$ref": "#/$defs/ReadingSource"
+        },
+        "time_after_liftoff_s": {
+          "description": "When, s after liftoff; `null` if liftoff was withheld.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "time_s": {
+          "description": "When, s.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "time_s",
+        "altitude_m",
+        "is_floor",
+        "highest_sample",
+        "source"
+      ]
+    },
+    "HighestSample": {
+      "description": "The highest sample of the altitude.",
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "description": "The altitude, m.",
+          "type": "number",
+          "format": "double"
+        },
+        "time_s": {
+          "description": "When, s.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "time_s",
+        "altitude_m"
+      ]
+    },
+    "LandingReading": {
+      "description": "Landing, and the descent before it.",
+      "type": "object",
+      "properties": {
+        "descent_time_s": {
+          "description": "From apogee to landing, s.",
+          "type": "number",
+          "format": "double"
+        },
+        "flight_time_s": {
+          "description": "From liftoff to landing, s; `null` if liftoff was withheld.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "mean_descent_rate_m_s": {
+          "description": "The mean rate of descent from apogee to landing, m/s: the height lost over the time\ntaken, drogue and main together.",
+          "type": "number",
+          "format": "double"
+        },
+        "source": {
+          "description": "Where it came from.",
+          "$ref": "#/$defs/ReadingSource"
+        },
+        "time_s": {
+          "description": "The first sample within 2 m of the pad that stays under 5 m for a second, s: before\ntouchdown by the time the last 2 m took.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "time_s",
+        "descent_time_s",
+        "mean_descent_rate_m_s",
+        "source"
+      ]
+    },
+    "LiftoffReading": {
+      "description": "Liftoff.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "Where it came from.",
+          "$ref": "#/$defs/ReadingSource"
+        },
+        "time_s": {
+          "description": "The last sample on the pad, s: the rocket had risen less than the altitude's resolution\nthen, and rose past it within one sample interval after.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "time_s",
+        "source"
+      ]
+    },
+    "LogFormatName": {
+      "description": "A flight log's format.",
+      "oneOf": [
+        {
+          "description": "PerfectFlite's `.pf2`: the Pnut, the StratoLogger and the StratoLoggerCF.",
+          "type": "string",
+          "const": "perfect_flite_pf2"
+        },
+        {
+          "description": "A format this build of `hpr` doesn't name.",
+          "type": "string",
+          "const": "other"
+        }
+      ]
+    },
+    "LogReading": {
+      "description": "A reading, or why the log can't support it.",
+      "oneOf": [
+        {
+          "description": "The reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "read"
+            }
+          },
+          "$ref": "#/$defs/LiftoffReading",
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "description": "The log can't support the reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "withheld"
+            }
+          },
+          "$ref": "#/$defs/WithheldReading",
+          "required": [
+            "status"
+          ]
+        }
+      ]
+    },
+    "LogReading2": {
+      "description": "A reading, or why the log can't support it.",
+      "oneOf": [
+        {
+          "description": "The reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "read"
+            }
+          },
+          "$ref": "#/$defs/ApogeeReading",
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "description": "The log can't support the reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "withheld"
+            }
+          },
+          "$ref": "#/$defs/WithheldReading",
+          "required": [
+            "status"
+          ]
+        }
+      ]
+    },
+    "LogReading3": {
+      "description": "A reading, or why the log can't support it.",
+      "oneOf": [
+        {
+          "description": "The reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "read"
+            }
+          },
+          "$ref": "#/$defs/MaxSpeedReading",
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "description": "The log can't support the reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "withheld"
+            }
+          },
+          "$ref": "#/$defs/WithheldReading",
+          "required": [
+            "status"
+          ]
+        }
+      ]
+    },
+    "LogReading4": {
+      "description": "A reading, or why the log can't support it.",
+      "oneOf": [
+        {
+          "description": "The reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "read"
+            }
+          },
+          "$ref": "#/$defs/MaxAccelerationReading",
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "description": "The log can't support the reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "withheld"
+            }
+          },
+          "$ref": "#/$defs/WithheldReading",
+          "required": [
+            "status"
+          ]
+        }
+      ]
+    },
+    "LogReading5": {
+      "description": "A reading, or why the log can't support it.",
+      "oneOf": [
+        {
+          "description": "The reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "read"
+            }
+          },
+          "$ref": "#/$defs/LandingReading",
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "description": "The log can't support the reading.",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "withheld"
+            }
+          },
+          "$ref": "#/$defs/WithheldReading",
+          "required": [
+            "status"
+          ]
+        }
+      ]
+    },
+    "LoggerStated": {
+      "description": "What a flight log states about the flight.",
+      "type": "object",
+      "properties": {
+        "apogee_m": {
+          "description": "The apogee the logger computed, m above its own zero; `null` if the file states none, or\nstates something that isn't a height, such as a PerfectFlite's `PWRLOSS`.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "ground_elevation_msl_m": {
+          "description": "The launch site's elevation, m above mean sea level, as the logger states it.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      }
+    },
+    "MaxAccelerationReading": {
+      "description": "The top acceleration.",
+      "type": "object",
+      "properties": {
+        "acceleration_m_s2": {
+          "description": "The acceleration, m/s².",
+          "type": "number",
+          "format": "double"
+        },
+        "time_s": {
+          "description": "When, s.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "acceleration_m_s2",
+        "time_s"
+      ]
+    },
+    "MaxSpeedReading": {
+      "description": "The top vertical speed from liftoff to apogee.",
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "description": "The filtered altitude then, m.",
+          "type": "number",
+          "format": "double"
+        },
+        "source": {
+          "description": "Where it came from.",
+          "$ref": "#/$defs/ReadingSource"
+        },
+        "speed_m_s": {
+          "description": "The speed, m/s, up.",
+          "type": "number",
+          "format": "double"
+        },
+        "time_s": {
+          "description": "When, s.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "speed_m_s",
+        "time_s",
+        "altitude_m",
+        "source"
+      ]
+    },
+    "ReadingSource": {
+      "description": "Where a reading's value came from.",
+      "oneOf": [
+        {
+          "description": "The logger's barometric altitude, after the running median.",
+          "type": "string",
+          "const": "barometer"
+        },
+        {
+          "description": "A speed column the logger computed from its own barometric altitude.",
+          "type": "string",
+          "const": "logger_speed_from_barometer"
+        },
+        {
+          "description": "A source this build of `hpr` doesn't name.",
+          "type": "string",
+          "const": "other"
+        }
+      ]
+    },
+    "WithheldReading": {
+      "description": "Why a reading was withheld.",
+      "type": "object",
+      "properties": {
+        "detail": {
+          "description": "The reason in words, with the log's own numbers.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "The reason, as a code.",
+          "$ref": "#/$defs/WithheldReason"
+        }
+      },
+      "required": [
+        "reason",
+        "detail"
+      ]
+    },
+    "WithheldReason": {
+      "description": "The reason a reading was withheld.",
+      "oneOf": [
+        {
+          "description": "The log has fewer than three samples.",
+          "type": "string",
+          "const": "too_short"
+        },
+        {
+          "description": "The altitude never climbs 3 m above the pad.",
+          "type": "string",
+          "const": "no_climb"
+        },
+        {
+          "description": "The log's first altitude is more than 3 m from the logger's zero: it didn't start on the\npad.",
+          "type": "string",
+          "const": "starts_off_the_pad"
+        },
+        {
+          "description": "The log ends before the rocket is seen to land.",
+          "type": "string",
+          "const": "ends_before_landing"
+        },
+        {
+          "description": "The altitude reaches the ground sooner than a fall from rest at apogee in vacuum could.",
+          "type": "string",
+          "const": "faster_than_free_fall"
+        },
+        {
+          "description": "The log has no speed column.",
+          "type": "string",
+          "const": "no_speed_column"
+        },
+        {
+          "description": "The top speed is above 4,000 m/s.",
+          "type": "string",
+          "const": "implausible_speed"
+        },
+        {
+          "description": "The climb's speed swings negative by more than 20% of its top.",
+          "type": "string",
+          "const": "noisy_speed"
+        },
+        {
+          "description": "The top speed falls on the liftoff sample itself.",
+          "type": "string",
+          "const": "speed_peak_at_liftoff"
+        },
+        {
+          "description": "The log has no accelerometer.",
+          "type": "string",
+          "const": "no_accelerometer"
+        },
+        {
+          "description": "The reading needs another, which was withheld.",
+          "type": "string",
+          "const": "needs"
+        },
+        {
+          "description": "A reason this build of `hpr` doesn't name.",
+          "type": "string",
+          "const": "other"
+        }
+      ]
+    }
+  }
+}

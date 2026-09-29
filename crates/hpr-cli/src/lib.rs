@@ -26,6 +26,7 @@
     reason = "the command-line tool reads files; it is not part of the pure core"
 )]
 
+pub mod analyze;
 pub mod convert;
 pub mod motors;
 pub mod output;
@@ -117,8 +118,8 @@ pub enum Command {
     Optimize(Planned),
     /// Compare a flight log with its simulation (not available yet)
     Compare(Planned),
-    /// Read a flight log and print its readings, with no design file (not available yet)
-    Analyze(Planned),
+    /// Read a flight log and print its readings, with no design file
+    Analyze(analyze::AnalyzeArgs),
     /// Diagnose what went wrong in a flight from its log (not available yet)
     Diagnose(Planned),
     /// Print a shell completion script for hpr
@@ -249,12 +250,12 @@ where
             Command::Sim(args) => sim::run(&args, &mut to),
             Command::Validate(args) => validate::run(&args, &mut to),
             Command::Convert(args) => convert::run(&args, &mut to),
+            Command::Analyze(args) => analyze::run(&args, &mut to),
             Command::Completions(args) => completions(args.shell, &mut to),
             Command::Weather(_)
             | Command::Mc(_)
             | Command::Optimize(_)
             | Command::Compare(_)
-            | Command::Analyze(_)
             | Command::Diagnose(_) => Err(Failure::Input(format!(
                 "hpr {command} is marked available in the command registry, but this build \
                  has no code for it"

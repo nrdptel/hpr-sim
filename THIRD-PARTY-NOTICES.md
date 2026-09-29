@@ -120,6 +120,12 @@ adds a source.
 - **fusionspace-loft** (MIT, the project owner's own), `fixtures/demo-*.ork` at `64f51ef1b3`: seven
   hand-made demonstration designs, copied unchanged into `validation/fixtures/ork/loft-demo/` as
   the public files `hpr_io::ork`'s snapshot test reads (M3.1d1, snapshots of public designs).
+- **fusionspace-debrief** (MIT, the project owner's own), `lib/parsers/perfectflite.ts` and
+  `lib/analyze/index.ts` at `9e72db8`: the layout and units of PerfectFlite's `.pf2` in
+  `hpr_flightdata::perfectflite`, and the corpus-set thresholds `hpr_flightdata::readings` takes
+  (a 3 m climb for liftoff, landing below 2 m and staying under 5 m for a second, the 4,000 m/s and
+  20% guards on a peak speed), as its documentation says. No code was copied; no flight file of
+  Debrief's is committed.
 - **DOPRI5** (BSD-2-Clause), E. Hairer and G. Wanner's `dopri5.f`, version of 2004: the
   Dormand–Prince coefficients, the error norm, the PI step-size controller, the starting-step
   estimate and the dense-output formula, re-expressed in Rust in `hpr_sim::integrator`. Its license
@@ -207,6 +213,7 @@ same license and mode.
 | `tir-33-centuri-cp` | J. S. Barrowman, Calculating the Center of Pressure of a Model Rocket, Centuri TIR-33, 1970 (standalone scan) | unknown terms | fetched | cited, not copied or redistributed |
 | `niskanen-2009-thesis` | S. Niskanen, Development of an Open Source model rocket simulation software, MSc thesis, 2009 | CC BY-NC-ND 1.0 Finland | fetched | read for methods only; no text copied |
 | `openrocket-techdoc-13.05` | S. Niskanen, OpenRocket technical documentation, v13.05, 2013 | CC BY-SA 3.0 | fetched | read for methods; M1.7b transcribes appendix C's streamer correlation, section 3.5's two tumbling coefficients and Table 3.4's eight fin efficiency factors as numbers, with their printed pages; no text copied |
+| `pearson-2015-generalized-hampel` | R. K. Pearson, Y. Neuvo, J. Astola and M. Gabbouj, The Class of Generalized Hampel Filters, 23rd European Signal Processing Conference (EUSIPCO), 2015 | unknown terms | fetched | cited for the running median `hpr-flightdata` smooths an altitude with (the Hampel filter at threshold zero, §1, eqs. 1 and 2); no text copied |
 | `us-std-atmosphere-1976` | U.S. Standard Atmosphere, 1976 (NOAA-S/T-76-1562, NASA-TM-X-74335) | US government work | fetched | cited, not copied |
 | `nasa-tn-d-4013` | J. C. Ferris, Static stability investigation of a single-stage sounding rocket at Mach numbers from 0.60 to 1.20, NASA TN D-4013, 1967 | US government work | fetched | cited; M1.8a reads its model's dimensions and its plotted normal-force slopes and centres of pressure, and M1.8b1 its plotted axial force, into `validation/fixtures/aero/arcas-robin-wind-tunnel.json`, with figure and page |
 | `nasa-tn-d-4014` | C. D. Babb and D. E. Fuller, Static stability investigation of a sounding-rocket vehicle at Mach numbers from 1.50 to 4.63, NASA TN D-4014, 1967 | US government work | fetched | cited; M1.8a reads its plotted normal-force slopes and centres of pressure, M1.8b1 its plotted axial and chamber axial force, and M1.8c its plotted roll effectiveness (Fig. 14), into `validation/fixtures/aero/arcas-robin-wind-tunnel.json`, with figure and page; M1.8e6 reads its fins-off normal force above +4° and pitching moment into `arcas-robin-high-alpha.json` and `arcas-robin-fins-off-moment.json` |

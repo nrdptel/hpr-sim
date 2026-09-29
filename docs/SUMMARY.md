@@ -14,6 +14,8 @@
 
 [The command line](cli.md)
 
+[Reading a flight log](reading-a-flight-log.md)
+
 [Your own rocket](your-own-rocket.md)
 
 [How a flight is simulated](how-a-flight-is-simulated.md)
@@ -47,6 +49,7 @@
 - [Released mass](physics/released-mass.md)
 - [Flight metrics](physics/metrics.md)
 - [Fin flutter](physics/flutter.md)
+- [Flight-log readings](physics/log-readings.md)
 
 # Numerical tools
 
@@ -59,6 +62,7 @@
 - [RASP `.eng` motor files](format/eng.md)
 - [RockSim `.rse` motor files](format/rse.md)
 - [ERA5 weather files](format/era5.md)
+- [PerfectFlite `.pf2` flight logs](format/pf2.md)
 
 # Reference
 

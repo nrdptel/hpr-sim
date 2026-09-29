@@ -254,8 +254,10 @@ You don't have to take these numbers on trust. Four ways to test them:
   pressure and turn it into height with the standard atmosphere, so on a day warmer or colder than
   standard they read off by roughly 3 to 4% of the height for every 10 °C of difference. Give hpr
   the day's temperature too: `Ussa76::with_offset` shifts the standard atmosphere, and
-  `Environment::new` takes it. hpr can't read an altimeter's flight
-  log yet: that comes with [M7.1](decisions-and-roadmap.md#m7-1), the flight-log milestone.
+  `Environment::new` takes it. hpr reads a PerfectFlite altimeter's log
+  ([Reading a flight log](reading-a-flight-log.md)); other altimeters' logs come with
+  [M7.1](decisions-and-roadmap.md#m7-1), and comparing one with a simulation with
+  [M7.3](decisions-and-roadmap.md#m7-3).
 - **Compare with another simulator, by hand.** Enter the same rocket, motor, rail and wind in
   OpenRocket or RocketPy, and compare the apogee. Give both the same surface finish and rail
   guides: for this rocket, the OpenRocket file's finish and launch lugs take hpr's drag
