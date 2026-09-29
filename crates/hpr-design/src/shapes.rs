@@ -42,7 +42,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::DesignError;
 
 /// The shape of a nose cone, or of a transition's profile.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum NoseShape {

@@ -72,7 +72,7 @@ use crate::material::Material;
 use crate::shapes::check_dimension;
 
 /// The outline of one fin.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum FinPlanform {
@@ -104,7 +104,9 @@ pub enum FinPlanform {
 }
 
 /// The shape of a fin's section along its chord.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum FinCrossSection {
@@ -118,7 +120,7 @@ pub enum FinCrossSection {
 }
 
 /// A rectangular tab below a fin's root, reaching into the body.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FinTab {
     /// Depth below the root, m.
@@ -130,7 +132,7 @@ pub struct FinTab {
 }
 
 /// Fillets along each fin's root: a concave joint on both faces, running the root chord.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FinFillet {
     /// Radius of the fillet's concave face, m.
@@ -140,7 +142,7 @@ pub struct FinFillet {
 }
 
 /// A set of identical fins spaced evenly around the body.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FinSet {
     /// Number of fins, at least 1.
@@ -800,7 +802,7 @@ fn span_less_sine(x: f64) -> f64 {
 }
 
 /// Tube fins: open tubes parallel to the body, touching it, spaced evenly around it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TubeFinSet {
     /// Number of tubes, at least 1.

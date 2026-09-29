@@ -34,8 +34,8 @@ or a public trait gets an entry in `DECISIONS.md` first.
 | `hpr-analysis` | Monte Carlo, sensitivity, optimization, challenge specs (`parallel` feature uses rayon) | sim |
 | `hpr-flightdata` | flight-log importers, the canonical flight record, filtering and smoothing, time alignment, and the readings taken from a flight with the provenance of each | core, atmos |
 | `hpr-forensics` | a flight against a simulation of it: residuals, parameter identification, fault diagnosis | flightdata, sim, analysis |
-| `hpr-format` | the new open design format: types, JSON Schema, versioning and migrations, container | design |
-| `hpr-io` | foreign formats: `.ork`, `.rkt`, `.CDX1`, RocketPy export, `.orc` parts DB; netCDF classic and ERA5 weather (ADR-081) | design, format, motor (ADR-055), atmos (ADR-081) |
+| `hpr-format` | the new open design format: types, JSON Schema, versioning and migrations, container | design, io (ADR-111) |
+| `hpr-io` | foreign formats: `.ork`, `.rkt`, `.CDX1`, RocketPy export, `.orc` parts DB; netCDF classic and ERA5 weather (ADR-081) | design, motor (ADR-055), atmos (ADR-081) |
 | `hpr-net` | optional online sources plus the on-disk cache: Open-Meteo, NOAA GFS/RAP, soundings, elevation, ThrustCurve, motor.fusionspace.co | atmos, motor |
 | `hpr` (facade) | re-exports plus a RocketPy-like builder API (`Environment`, `Motor`, `Rocket`, `Flight`) | the crates above |
 | `hpr-cli` | `hpr` binary: `sim`, `validate`, `convert`, `motors`, `weather`, `mc`, `optimize`, `compare`, `analyze`, `diagnose`, `completions` (ADR-105) | facade, validate (ADR-107) |

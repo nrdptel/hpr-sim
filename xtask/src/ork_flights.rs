@@ -760,7 +760,10 @@ impl Observer for Peaks {
 
 /// `simulation` with `staging`'s separation, the booster tumbling from it and the sustainer from
 /// its apogee: hpr's descent of a separated body needs a device on each (ADR-074).
-fn staged(simulation: Simulation, staging: &ork::Staging) -> Result<Simulation, SimError> {
+pub(crate) fn staged(
+    simulation: Simulation,
+    staging: &ork::Staging,
+) -> Result<Simulation, SimError> {
     let assembly = simulation.assembly();
     let separation = hpr::ork::separation(staging, assembly)?;
     let last = assembly.layout.stages.len().saturating_sub(1);

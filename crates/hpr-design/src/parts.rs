@@ -86,7 +86,7 @@ fn check_angle(what: &'static str, value: f64) -> Result<(), DesignError> {
 }
 
 /// A cylindrical extension of a nose cone or transition that fits inside the adjoining tube.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Shoulder {
     /// Length, m.
@@ -149,7 +149,7 @@ impl Shoulder {
 }
 
 /// A nose cone: a profile with its tip forward, and an optional shoulder aft of its base.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NoseCone {
     /// Profile shape.
@@ -207,7 +207,7 @@ fn revolved(profile: &Profile, wall: Wall, density: f64) -> Result<MassPropertie
 }
 
 /// A transition between two radii, with optional shoulders at either end.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Transition {
     /// Profile shape.
@@ -269,7 +269,7 @@ impl Transition {
 }
 
 /// An airframe tube.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct BodyTube {
     /// Length, m.
@@ -326,7 +326,7 @@ impl BodyTube {
 /// (`docs/physics/design.md`, the decision record on clusters, [ADR-075][adr-075]).
 ///
 /// [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InnerTube {
     /// Length, m.
@@ -424,7 +424,7 @@ impl InnerTube {
 /// ([aerodynamics: Pods](https://nrdptel.github.io/hpr-sim/physics/aero.html#pods)).
 ///
 /// [adr-089]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-089-a-pod-is-a-stack-of-body-components-repeated-around-the-axis-2026-09-27
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PodSet {
     /// Number of pods, at least one, spaced evenly around the body's axis.
@@ -475,7 +475,7 @@ impl PodSet {
 }
 
 /// A flat annular ring, or a bulkhead when the inner radius is zero.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CenteringRing {
     /// Thickness along the axis, m.
@@ -547,7 +547,7 @@ fn instances(
 }
 
 /// A launch lug: a tube on the outside of the airframe, parallel to it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct LaunchLug {
     /// Length, m.
@@ -599,7 +599,7 @@ impl LaunchLug {
 
 /// A rail button: a base disc on the airframe, a narrower waist, and a flange that rides in the
 /// rail, stacked outward along a radial line.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RailButton {
     /// Diameter of the base and the flange, m.
@@ -680,7 +680,7 @@ impl RailButton {
 }
 
 /// Where and how compactly a mass or a recovery part is stowed: a solid cylinder.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Packing {
     /// Length, m.
@@ -710,7 +710,7 @@ impl Packing {
 }
 
 /// A mass of known value: an altimeter bay, ballast, a payload.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MassComponent {
     /// Mass, kg.
@@ -731,7 +731,7 @@ impl MassComponent {
 }
 
 /// A parachute, packed.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Parachute {
     /// Nominal (flat) canopy diameter, m.
@@ -774,7 +774,7 @@ impl Parachute {
 }
 
 /// A streamer, packed.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Streamer {
     /// Length, m.
@@ -802,7 +802,7 @@ impl Streamer {
 }
 
 /// A shock cord, packed.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ShockCord {
     /// Length, m.

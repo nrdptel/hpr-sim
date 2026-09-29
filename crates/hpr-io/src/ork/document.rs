@@ -86,7 +86,8 @@ pub struct Document {
 }
 
 /// An XML element: its name, its attributes in the order they were written, and its children.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Element {
     /// The element's name, such as `nosecone`.
     pub name: String,
@@ -97,8 +98,9 @@ pub struct Element {
 }
 
 /// A child of an [`Element`]: another element, or text.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
+#[serde(deny_unknown_fields)]
 pub enum Node {
     /// A child element.
     Element(Element),

@@ -31,7 +31,7 @@ pub const NFPA_1125_THRESHOLD: f64 = 0.05;
 ///
 /// Built through [`ThrustCurve::new`], which checks the samples; it serializes as its samples and
 /// re-checks them when deserialized.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(try_from = "CurveData", into = "CurveData")]
 pub struct ThrustCurve {
     /// Sample times, s, non-decreasing and starting at 0.
@@ -43,7 +43,8 @@ pub struct ThrustCurve {
 }
 
 /// The serialized form of a [`ThrustCurve`]: its samples as given.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct CurveData {
     times_s: Vec<f64>,
     thrusts_n: Vec<f64>,

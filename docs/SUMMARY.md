@@ -58,6 +58,7 @@
 
 # File formats
 
+- [The hpr design format (`.hpr`)](format/hpr.md)
 - [OpenRocket `.ork` design files](format/ork.md)
 - [RASP `.eng` motor files](format/eng.md)
 - [RockSim `.rse` motor files](format/rse.md)

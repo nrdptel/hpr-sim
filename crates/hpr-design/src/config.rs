@@ -29,7 +29,7 @@ use crate::shapes::check_dimension;
 use crate::tree::{Layout, Rocket};
 
 /// Makes a body tube or inner tube a motor mount.
-#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MotorMount {
     /// How far the nozzle exit sits aft of the mount's aft end, m (negative when recessed).
@@ -39,7 +39,7 @@ pub struct MotorMount {
 
 /// A set of motors to fly with: at most one per mount. A mount that is a cluster
 /// ([`InnerTube::cluster_m`](crate::InnerTube::cluster_m)) takes its motor in every tube.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Configuration {
     /// Unique id among the configurations.
@@ -56,7 +56,7 @@ pub struct Configuration {
 /// [ADR-074][adr-074]).
 ///
 /// [adr-074]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-074-ignition-times-and-powered-staging-the-sustainer-flies-on-as-a-rigid-body-2026-09-25
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Ignition {
@@ -98,7 +98,7 @@ impl Ignition {
 }
 
 /// A motor in a mount.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MountedMotor {
     /// The id of the mount component.

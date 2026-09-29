@@ -2135,12 +2135,14 @@ fn embedded_rse_curves_are_read() {
     let motor = &configuration.motors[0];
     let Curve::Embedded {
         entry,
+        text,
         motor: solid,
     } = &motor.curve
     else {
         panic!("the embedded curve: {:?}", motor.curve);
     };
     assert_eq!(entry, "thrustcurves/d1935f00.rse");
+    assert!(text.starts_with("<engine-database>"), "{text}");
     let impulse_ns = solid.curve().total_impulse_ns();
     assert!((impulse_ns - 102.5).abs() <= 1e-9 * 102.5, "{impulse_ns}");
     assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(6.0)));

@@ -55,9 +55,10 @@ pub(crate) const OVERRIDE_FLAGS: [&str; 4] = [
 // <https://nrdptel.github.io/hpr-sim/format/ork.html>.
 
 /// A number a `.ork` writes, which OpenRocket may be working out for itself.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub enum Dimension {
     /// A number the designer typed.
     Stated {

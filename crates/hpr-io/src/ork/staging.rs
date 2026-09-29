@@ -68,7 +68,7 @@ use super::recovery::{SeparationEvent, StageSeparation};
 
 /// When a powered separation fires, in the terms of hpr's flight triggers
 /// (`hpr_sim::recovery::Trigger`, which this crate does not depend on).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum StagingTrigger {
@@ -88,7 +88,7 @@ pub enum StagingTrigger {
 }
 
 /// The one powered separation a configuration flies: where the stack comes apart and when.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Staging {

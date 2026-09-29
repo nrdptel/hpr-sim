@@ -38,7 +38,8 @@ use crate::error::MotorError;
 use crate::mass::MassElement;
 
 /// A stack of identical BATES grains.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct BatesGrains {
     /// Number of grains `N`, at least 1.
     pub count: u32,

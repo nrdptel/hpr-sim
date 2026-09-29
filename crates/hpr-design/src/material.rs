@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::DesignError;
 
 /// A density, with its units in the variant.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Density {
     /// Mass per volume.
@@ -42,7 +42,7 @@ impl Density {
 }
 
 /// A named material.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Material {
     /// Name, for display and for matching imported designs.

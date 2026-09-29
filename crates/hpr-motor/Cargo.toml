@@ -18,6 +18,8 @@ wasm = true
 [dependencies]
 hpr-core.workspace = true
 roxmltree.workspace = true
+# The hpr design format's JSON Schema covers the motors a design embeds (M3.3).
+schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

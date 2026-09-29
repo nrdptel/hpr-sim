@@ -38,8 +38,9 @@ use super::value::Values;
 use super::warning::{Warning, WarningKind};
 
 /// A simulation stored in a `.ork`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct StoredSimulation {
     /// `<name>`.
     pub name: String,
@@ -222,8 +223,9 @@ impl StoredSimulation {
 
 /// The launch conditions a stored simulation was flown in. Each is `None` where the file does not
 /// say.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct LaunchConditions {
     /// `<configid>`: the motor configuration flown.
     pub configuration: Option<String>,
@@ -270,8 +272,9 @@ pub struct LaunchConditions {
 }
 
 /// One level of a multilevel wind.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct WindLevel {
     /// Its altitude, m, above the ground or the sea as [`LaunchConditions::wind_levels_above`]
     /// says.
@@ -285,9 +288,10 @@ pub struct WindLevel {
 }
 
 /// The atmosphere a stored simulation was flown in.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "model")]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub enum Atmosphere {
     /// `isa`: the International Standard Atmosphere.
     Isa,
@@ -306,8 +310,9 @@ pub enum Atmosphere {
 }
 
 /// What a stored simulation gave: its summary and its time series.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct StoredResults {
     /// `maxaltitude`, m.
     pub max_altitude_m: Option<f64>,
@@ -517,8 +522,9 @@ fn is_fatal_event(kind: &str) -> bool {
 }
 
 /// One stage's stored time series.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct StoredBranch {
     /// `name`: the stage's name.
     pub name: String,
@@ -546,8 +552,9 @@ impl StoredBranch {
 }
 
 /// An event a stored simulation logged.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct StoredEvent {
     /// `time`, s.
     pub time_s: f64,
