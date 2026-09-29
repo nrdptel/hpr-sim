@@ -44,6 +44,7 @@ use serde::{Deserialize, Serialize};
 use crate::afterbody::SEPARATION_ONSET_RAD;
 use crate::body::{BodyGeometry, sinc};
 use crate::crossflow::BodyLift;
+use crate::custom::{DragModel, DragQuery, SharedDragModel};
 use crate::drag::{
     BUILDUP_MACH_LIMIT, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
     axial_drag_alpha_factor, body_friction_form_factor, couple_afterbody,
@@ -947,6 +948,9 @@ pub struct AeroModel {
     tube_fin_sets: Vec<TubeFinSetAero>,
     drag_terms: Vec<ComponentDragTerms>,
     drag_table: Option<DragTable>,
+    /// A program's own drag model ([`crate::custom`]), in place of the buildup and any table.
+    #[serde(skip)]
+    drag_model: Option<SharedDragModel>,
     normal_force_table: Option<NormalForceTable>,
     /// Whether the aft base keeps its whole drag while a motor burns
     /// ([`AeroModel::with_full_base_drag_under_power`]).
@@ -1453,22 +1457,38 @@ impl AeroModel {
             tube_fin_sets,
             drag_terms,
             drag_table: None,
+            drag_model: None,
             normal_force_table: None,
             full_base_drag_under_power: false,
         })
     }
 
     /// This model with `table` replacing the drag buildup's zero-lift drag
-    /// ([`crate::table`]).
+    /// ([`crate::table`]), and any drag model ([`AeroModel::with_drag_model`]).
     #[must_use]
     pub fn with_drag_table(mut self, table: DragTable) -> Self {
         self.drag_table = Some(table);
+        self.drag_model = None;
         self
     }
 
     /// The drag override table, if any.
     pub fn drag_table(&self) -> Option<&DragTable> {
         self.drag_table.as_ref()
+    }
+
+    /// This model with `model` replacing the drag buildup's zero-lift drag, and any drag table
+    /// ([`crate::custom`]). The normal force, centre of pressure and roll stay this model's.
+    #[must_use]
+    pub fn with_drag_model(mut self, model: impl DragModel + 'static) -> Self {
+        self.drag_model = Some(SharedDragModel(Arc::new(model)));
+        self.drag_table = None;
+        self
+    }
+
+    /// The drag model in place of the buildup, if any.
+    pub fn drag_model(&self) -> Option<&dyn DragModel> {
+        self.drag_model.as_ref().map(|shared| &*shared.0)
     }
 
     /// This model with the aft base's drag kept whole while a motor burns: the thrusting motors'
@@ -1555,15 +1575,17 @@ impl AeroModel {
     }
 
     /// The whole rocket's drag at `flow` and `conditions`: the zero-lift drag of the buildup, or of
-    /// the override table when there is one, and the axial coefficient at the flow's angle of
-    /// attack.
+    /// the override table or drag model when there is one, and the axial coefficient at the
+    /// flow's angle of attack.
     ///
     /// # Errors
     ///
     /// - [`AeroError::Mach`] outside `[0, 5)` for the buildup
     ///   ([`crate::drag::BUILDUP_MACH_LIMIT`]), and from Mach 0.8 around a tube fin set's
-    ///   ([`crate::tube_fins::TUBE_FIN_MACH_LIMIT`]); with an override table any finite Mach number
-    ///   from 0 is accepted ([`AeroError::Domain`] otherwise).
+    ///   ([`crate::tube_fins::TUBE_FIN_MACH_LIMIT`]); with an override table or a drag model any
+    ///   finite Mach number from 0 is accepted ([`AeroError::Domain`] otherwise).
+    /// - Whatever a drag model returns, and [`AeroError::Domain`] for a coefficient from it that
+    ///   is negative or not finite.
     /// - Without a table, [`AeroError::InComponent`] around [`AeroError::Unsupported`] for a nose or
     ///   shoulder shape the buildup has no drag data for
     ///   ([`crate::drag::ComponentDragTerms::unsupported`]).
@@ -1575,7 +1597,28 @@ impl AeroModel {
         conditions.validate()?;
         let conditions = &self.read(conditions);
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
-        let mut drag = if let Some(table) = &self.drag_table {
+        let mut drag = if let Some(custom) = &self.drag_model {
+            flow.validate_angles()?;
+            if !(flow.mach.is_finite() && flow.mach >= 0.0) {
+                return Err(AeroError::Domain {
+                    what: "Mach number for a drag model",
+                    value: flow.mach,
+                });
+            }
+            let coefficient = custom
+                .0
+                .zero_lift_drag(&DragQuery::new(flow, conditions, self))?;
+            if !(coefficient.is_finite() && coefficient >= 0.0) {
+                return Err(AeroError::Domain {
+                    what: "zero-lift drag coefficient from a drag model",
+                    value: coefficient,
+                });
+            }
+            Drag {
+                zero_lift_coefficient: coefficient,
+                ..Drag::default()
+            }
+        } else if let Some(table) = &self.drag_table {
             flow.validate_angles()?;
             let lookup = table.lookup(flow.mach, conditions.thrusting)?;
             let scale = match table.reference_diameter_m {
@@ -1591,20 +1634,7 @@ impl AeroModel {
                 ..Drag::default()
             }
         } else {
-            flow.validate_for_buildup()?;
-            // Refused here as in the normal force, not wrapped in the tubes' component.
-            self.check_tube_fins(flow.mach)?;
-            let reynolds = conditions.reynolds_per_m * self.length_m;
-            let mut sum = Drag::default();
-            for terms in &self.drag_terms {
-                let d = terms.evaluate(reynolds, flow.mach, conditions, self.reference_area_m2)?;
-                sum.friction += d.friction;
-                sum.pressure += d.pressure;
-                sum.base += d.base;
-                sum.parasitic += d.parasitic;
-            }
-            sum.zero_lift_coefficient = sum.friction + sum.pressure + sum.base + sum.parasitic;
-            sum
+            self.buildup_sum(flow, conditions)?
         };
         drag.axial_coefficient = drag.zero_lift_coefficient * factor;
         if !(drag.zero_lift_coefficient.is_finite() && drag.axial_coefficient.is_finite()) {
@@ -1614,6 +1644,52 @@ impl AeroModel {
             });
         }
         Ok(drag)
+    }
+
+    /// The drag buildup's drag at `flow` and `conditions`, whatever override the model has: the
+    /// sum of every component's zero-lift terms, and the axial coefficient at the flow's angle of
+    /// attack. Without an override it is [`AeroModel::drag`]; with one, what the override
+    /// replaces, which a drag model can adjust ([`crate::custom::DragQuery::buildup`]).
+    ///
+    /// # Errors
+    ///
+    /// As [`AeroModel::drag`] without an override.
+    pub fn buildup_drag(
+        &self,
+        flow: &Flow,
+        conditions: &DragConditions,
+    ) -> Result<Drag, AeroError> {
+        conditions.validate()?;
+        let conditions = &self.read(conditions);
+        let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
+        let mut drag = self.buildup_sum(flow, conditions)?;
+        drag.axial_coefficient = drag.zero_lift_coefficient * factor;
+        if !(drag.zero_lift_coefficient.is_finite() && drag.axial_coefficient.is_finite()) {
+            return Err(AeroError::Domain {
+                what: "drag coefficient",
+                value: drag.zero_lift_coefficient,
+            });
+        }
+        Ok(drag)
+    }
+
+    /// The buildup's zero-lift terms and their sum at `flow`, on conditions already read
+    /// ([`AeroModel::read`]); the axial coefficient is left for the caller.
+    fn buildup_sum(&self, flow: &Flow, conditions: &DragConditions) -> Result<Drag, AeroError> {
+        flow.validate_for_buildup()?;
+        // Refused here as in the normal force, not wrapped in the tubes' component.
+        self.check_tube_fins(flow.mach)?;
+        let reynolds = conditions.reynolds_per_m * self.length_m;
+        let mut sum = Drag::default();
+        for terms in &self.drag_terms {
+            let d = terms.evaluate(reynolds, flow.mach, conditions, self.reference_area_m2)?;
+            sum.friction += d.friction;
+            sum.pressure += d.pressure;
+            sum.base += d.base;
+            sum.parasitic += d.parasitic;
+        }
+        sum.zero_lift_coefficient = sum.friction + sum.pressure + sum.base + sum.parasitic;
+        Ok(sum)
     }
 
     /// Each component's share of the drag buildup at `flow` and `conditions`, in layout order: its

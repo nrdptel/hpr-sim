@@ -3,7 +3,8 @@
 //!
 //! **Guide:** [Start here][guide-start] says what works and how far to trust it, [Getting
 //! started][guide-first] flies a first rocket, and [The builder][guide-builder] walks through
-//! this crate's API.
+//! this crate's API. The [`guide`] module is the same walk-through in this reference, in five
+//! short chapters.
 //!
 //! [guide-start]: https://nrdptel.github.io/hpr-sim/start-here.html
 //! [guide-first]: https://nrdptel.github.io/hpr-sim/getting-started.html
@@ -68,6 +69,7 @@
 pub mod environment;
 pub mod error;
 pub mod flight;
+pub mod guide;
 pub mod motor;
 pub mod ork;
 pub mod rocket;

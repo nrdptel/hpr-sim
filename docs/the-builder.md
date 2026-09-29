@@ -3,7 +3,7 @@
 This page shows the shortest way to fly a rocket of your own with hpr-sim. The `hpr`
 [crate](glossary.md#crate) has four types for it: `Environment`, `Motor`, `Rocket` and `Flight`.
 You describe the rocket part by part from the nose back, put a motor in it, and fly it from a
-rail. The page runs two example programs and walks through them. It needs the setup from
+rail. The page runs three example programs and walks through them. It needs the setup from
 [Getting started](getting-started.md), and some Rust.
 
 > **How far to trust it.** The builder adds no physics. It writes the same
@@ -180,6 +180,40 @@ designation names. The H54 burns out at 3.5 s, so on the leaning rail at the top
 at only 10 m/s, the slowest of the three, and a slow rocket's fins have the least air to
 steer with.
 
+## Sizing fins
+
+The third example builds the same rocket with fins of five spans, the fin's height from the body
+tube to its tip, and flies each from a vertical rail in 5 m/s of wind from the west:
+
+```bash
+cargo run --example fin_sizing -p hpr
+```
+
+<!-- quote: crates/hpr/examples/fin_sizing.output.txt -->
+```text
+My 54 mm rocket on an H54, fins of five spans, in 5 m/s of wind from the west
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+fin span  liftoff  margin   apogee  apogee drift  landing drift
+    (mm)     (kg)   (cal)      (m)   upwind (m)  downwind (m)
+      25    0.666   -2.11   too little margin to fly
+      35    0.671    0.33   too little margin to fly
+      45    0.675    1.92   1133.9          117           1071
+      55    0.680    2.97   1109.8          154           1004
+      65    0.684    3.67   1088.0          175            957
+```
+
+Because a rocket is a value built by a function, a design study is a loop. The example's
+`rocket(span_m)` builds the rocket with fins of that span, and the loop weighs and flies each.
+
+- **The margin** grows fast with the span: from −2.11 calibres, a CP ahead of the CG, to 3.67.
+  The usual rule of thumb asks for at least one calibre, so the program doesn't fly the two
+  smallest; the example's own fins are the 45 mm ones.
+- **Bigger fins cost height**: 45.9 m of apogee from the 45 mm fins to the 65 mm. They add drag and
+  a few grams, and they turn the rocket further into the wind, as the apogee drift shows: 117 m
+  upwind with the smallest fins flown, 175 m with the largest.
+- **The landing** is closer with bigger fins, since the parachute opens further upwind.
+
 ## Beyond the builder
 
 The builder covers a single-stage rocket with one motor. Two ways lead further, both into the
@@ -198,7 +232,9 @@ crates the builder is made of.
   run. The `motor_choice` example passes it to `hpr_sim::metrics::optimum_delays`. The
   simulation's methods add a separation, events of your own, moving or released masses, or
   another program's drag table (`with_drag_table`, as
-  [Getting started](getting-started.md#how-far-to-trust-it) uses one). `run(&mut ())` flies it,
+  [Getting started](getting-started.md#how-far-to-trust-it) uses one). A drag model of your own
+  needs no detour: the flight builder's `drag_model` takes it
+  ([Models of your own](custom-models.md)). `run(&mut ())` flies it,
   with no observer watching. A flight flown that way returns the simulation's own result, without the
   builder's `Flight` methods; `hpr_sim::FlightMetrics` gives the same metrics
   ([Flight metrics](physics/metrics.md)).
@@ -219,9 +255,6 @@ that guards against it here.
 
 ## What it can't do yet
 
-- **Models of your own.** A drag model of your own, in place of hpr's, is planned
-  ([M4.1b](decisions-and-roadmap.md#m4-1b)). Until then a drag table goes in through
-  `simulation()`, as above.
 - **One motor, one stage.** Clusters, staging and pods go through the design, as above; the
   [staging page](physics/staging.md) explains how they fly.
 - **Launch lugs and rail buttons** also go through the design. Without rail buttons the rocket
@@ -231,6 +264,10 @@ that guards against it here.
 
 ## Where next
 
+- [Models of your own](custom-models.md) flies a drag model and a wind of your own in hpr-sim's
+  place.
+- The API reference's [`guide`](api/hpr/guide/index.html) module is this page's walk-through in
+  five short chapters, each with code that CI runs.
 - [The API reference](api.md) documents every method, starting at the `hpr` crate.
 - [Your own rocket](your-own-rocket.md) builds the same rocket without the builder, and shows
   every field a part has.

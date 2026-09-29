@@ -109,6 +109,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-101 | OpenRocket's mass conventions rolled up; M2.2 left open for two lessons | accepted |
 | ADR-102 | Tube fins' centre of pressure measured against OpenRocket; L19's bar not met, the gap pinned | accepted |
 | ADR-103 | The builder API wraps the crates' own types, with no default materials | accepted |
+| ADR-104 | A drag model replaces the zero-lift drag only, as a drag table does | accepted |
 
 ---
 
@@ -8832,3 +8833,58 @@ refuses a 54 mm motor in the 29 mm tube both ways.
   `Error::Sim(SimError::Design)` from a flight, the crate each came through.
 - Custom drag waits for M4.1b. Until then a drag table (`Simulation::with_drag_table`) through
   `FlightBuilder::simulation` is the way to put another source's drag in hpr's place.
+
+## ADR-104: A drag model replaces the zero-lift drag only, as a drag table does (2026-09-29)
+
+**Context.** M4.1b asks for trait-based custom models: a drag model the flight calls in place of
+hpr's own, an example that overrides a built-in model through the trait, and a rustdoc guide.
+The wind and the atmosphere were already traits (`hpr_atmos::Wind`, `Atmosphere`), taken by
+`Environment::with_wind` and `with_atmosphere`; the drag was a table or hpr's buildup. A drag
+table already had a path through the model and the flight, pinned by tests: the template.
+
+**Decision.**
+
+1. **`hpr_aero::DragModel` gives the zero-lift drag coefficient only**, on the rocket's reference
+   area, from a `DragQuery`: the flow, the drag conditions (Reynolds number per metre, whether a
+   motor is thrusting, as the buildup reads them) and hpr's own buildup at that flow
+   (`DragQuery::buildup`, which calls the new `AeroModel::buildup_drag`). As with a table, the
+   flight scales it by `f(α)` for the angle of attack; the normal force, centre of pressure, roll
+   and damping stay hpr's, so a rocket's margin doesn't change. A whole-force model (normal force
+   and moments) would have to replace the local-flow damping too (ADR-032's reasoning), and is
+   left until someone needs one.
+2. **A model and a table replace each other**: the last set is the one flown, on
+   `AeroModel`, `Simulation` and `FlightBuilder`. Neither is added to the other.
+3. **A model is held as `Arc<dyn DragModel>`**, `Debug + Send + Sync` as a `Wind` is, and
+   `Arc<T>` is itself a model, so the facade's clonable `FlightBuilder` shares one model across
+   flights. Two `AeroModel`s are equal when they hold the same model (`Arc::ptr_eq`); the model
+   is skipped when an `AeroModel` is serialized, which is for inspection only.
+4. **Checks.** A coefficient that is negative or not finite is refused with
+   `AeroError::Domain { what: "zero-lift drag coefficient from a drag model" }`, and a Mach
+   number that is negative or not finite before the model is asked; the model's own errors pass
+   through unchanged. Like a table, a model accepts any finite Mach number; the flight's normal
+   force still ends at Mach 5.
+5. **A model is the whole stack's**, as a table is: a flight with a powered separation refuses it
+   at the separation, since the sustainer's own model is built from the design.
+6. **Examples.** `custom_drag` (hpr's drag scaled, and a curve against Mach number with power-on
+   and power-off columns, invented), `custom_wind` (a veering wind through the `Wind` trait) and
+   `fin_sizing` (a design study as a loop) join `build_and_fly` and `motor_choice`: five builder
+   examples. The guide in the reference is `hpr::guide`, five chapters of docs with doctests;
+   the site's page is *Models of your own*.
+
+**Evidence.** `cargo test -p hpr-aero custom`: a model handing back the buildup gives the
+buildup's `C_D0` and `C_A` bit for bit over Mach 0 to 4.9 and 0° to 120°; a constant model equals
+a constant table to Mach 7; the model sees the conditions as read under
+`with_full_base_drag_under_power`; each refusal pinned by its `what`. `cargo test -p hpr`
+(`a_drag_model_is_flown_in_place_of_hprs_drag`): the builder's rocket flown with that model has a
+`Flight` equal to the one without, and a constant model's `FlightResult` equals the constant
+table's. `staging_refuses_what_it_cannot_fly` refuses a model at a powered separation, and fails
+when `with_drag_model` doesn't mark the override (mutation checked). A wind that isn't finite
+stops the flight, named by the Reynolds number's check (`a_wind_that_is_not_finite_stops_the_flight`).
+
+**Consequences.**
+
+- M4.1 closes: the examples run in CI, rustdoc builds with no warnings, and `custom_drag`
+  overrides hpr's drag through the trait.
+- An atmosphere of your own has no test of its own through the facade yet, and no example.
+- The Python and WebAssembly bindings (M4.3, M4.4) will need a way to call back into their
+  languages for a drag model; that is theirs to design.

@@ -1,5 +1,8 @@
 //! A flight: a rocket launched from a rail in an environment, flown to the ground.
 
+use std::sync::Arc;
+
+use hpr_aero::DragModel;
 use hpr_sim::metrics::{FlightMetrics, FlightSummary, Landing};
 use hpr_sim::{FlightResult, FlightSettings, Observer, Rail, Simulation};
 use serde::{Deserialize, Serialize};
@@ -19,6 +22,8 @@ pub struct FlightBuilder<'a> {
     inclination_deg: Option<f64>,
     heading_deg: Option<f64>,
     settings: FlightSettings,
+    /// A drag model flown in place of hpr's drag buildup, where set.
+    drag_model: Option<Arc<dyn DragModel>>,
 }
 
 impl FlightBuilder<'_> {
@@ -60,6 +65,54 @@ impl FlightBuilder<'_> {
         self
     }
 
+    /// Flies `model`'s drag in place of hpr's drag buildup: a model of your own, from a wind
+    /// tunnel, another tool or your flights, or hpr's own adjusted
+    /// ([`hpr_aero::custom`], [`Simulation::with_drag_model`]). The model gives the zero-lift
+    /// drag coefficient on the rocket's reference area, the area of a circle of its diameter;
+    /// the normal force, centre of pressure and damping stay hpr's, so the stability margin a
+    /// [`Rocket`] reports doesn't change. The last model set is the one flown.
+    ///
+    /// ```
+    /// # use hpr::rocket::{Fins, Mass, MotorTube, Nose, Tube, material};
+    /// # use hpr::{Environment, FinPlanform, Flight, Motor, NoseShape, Position, Rocket};
+    /// use hpr::hpr_aero::{AeroError, DragModel, DragQuery};
+    ///
+    /// /// hpr's own drag, 20% higher.
+    /// #[derive(Debug)]
+    /// struct Rougher;
+    ///
+    /// impl DragModel for Rougher {
+    ///     fn zero_lift_drag(&self, query: &DragQuery<'_>) -> Result<f64, AeroError> {
+    ///         Ok(1.2 * query.buildup()?.zero_lift_coefficient)
+    ///     }
+    /// }
+    ///
+    /// # let mut rocket = Rocket::new("Small", 0.0563)?;
+    /// # rocket
+    /// #     .add_nose(Nose::hollow(NoseShape::Ogive { radius_ratio: 1.0 }, 0.22, 0.0015, material("abs")?))?
+    /// #     .add_tube(Tube::new(0.9, 0.00115, material("kraft_phenolic")?))?
+    /// #     .add_fins(Fins::new(
+    /// #         3,
+    /// #         FinPlanform::Trapezoidal { root_chord_m: 0.1, tip_chord_m: 0.04, span_m: 0.045, sweep_m: 0.05 },
+    /// #         0.003175,
+    /// #         material("birch_plywood")?,
+    /// #     ))?
+    /// #     .add_motor_tube(MotorTube::new(0.2, 0.029, 0.001, material("kraft_phenolic")?))?
+    /// #     .add_mass(Mass::new(0.2, Position::Top { aft_offset_m: 0.07 }))?
+    /// #     .set_motor(Motor::from_catalog("H54")?)?;
+    /// let environment = Environment::new(32.99, -106.97, 1400.0)?;
+    /// let launch = Flight::builder(&rocket, &environment, 1.8);
+    /// let own = launch.fly()?;
+    /// let rougher = launch.drag_model(Rougher).fly()?;
+    /// assert!(rougher.apogee_m() < own.apogee_m());
+    /// # Ok::<(), hpr::Error>(())
+    /// ```
+    #[must_use]
+    pub fn drag_model(mut self, model: impl DragModel + 'static) -> Self {
+        self.drag_model = Some(Arc::new(model));
+        self
+    }
+
     /// The [`Simulation`] [`FlightBuilder::fly`] runs, for what the facade doesn't offer: user
     /// events, staging, mass shifts and the rest of [`hpr_sim`].
     ///
@@ -87,13 +140,16 @@ impl FlightBuilder<'_> {
             rail.azimuth_rad = finite("rail heading, degrees", heading_deg)?.to_radians();
         }
         rail.validate()?;
-        let simulation = Simulation::new(
+        let mut simulation = Simulation::new(
             self.rocket.design(),
             configuration_id,
             self.environment.sim().clone(),
             rail,
             self.settings,
         )?;
+        if let Some(model) = &self.drag_model {
+            simulation = simulation.with_drag_model(Arc::clone(model));
+        }
         if self.rocket.recovery().is_empty() {
             Ok(simulation)
         } else {
@@ -156,6 +212,7 @@ impl Flight {
             inclination_deg: None,
             heading_deg: None,
             settings: FlightSettings::default(),
+            drag_model: None,
         }
     }
 

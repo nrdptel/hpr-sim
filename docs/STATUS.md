@@ -4,17 +4,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.1b (custom
-  models, rustdoc guide). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1a.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M4.2 (the
+  CLI). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1, M4.1.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-28; M4.1a shipped the builder (ADR-103): L95 live.
+- **Last updated:** 2026-09-29; M4.1b shipped custom drag models and `hpr::guide` (ADR-104).
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** start M4.1b. Plan (ADR-103): a `DragModel` trait in `hpr-aero` beside
-  `AeroModel`'s `drag_table` (the table's path is the template), `Simulation::with_drag_model`
-  (sets `aero_overridden`), a `FlightBuilder` hook, then `custom_drag` and two more examples in
-  `crates/hpr/examples` and a `hpr::guide` module. Builder: `the-builder.md`. Tube fins: OR's slope and centre per part
+- **Next (resume here):** start M4.2, the CLI (`crates/hpr-cli` per `ARCHITECTURE.md`); likely
+  split: `sim` and `analyze` with `--json` and schemas first, stubs for the rest. Custom models
+  (ADR-104): `hpr_aero::custom`, `custom-models.md`; the guide in rustdoc is `crates/hpr/src/guide.rs`. Tube fins: OR's slope and centre per part
   in `openrocket-tube-fin-aero.json` (`tube_fin_aero.py`, ADR-102); a new OR with #3235 moves its
   centre past Mach 0.5; body interference open (#234). #185: `unlit_motors.py`. Tube-fin drag likely low (#228);
   public drag curves: `PUBLIC_DRAG_CURVES`'s doc. Library runs need `drag_curves.py` (ADR-097).
@@ -60,6 +59,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-29: M4.1b, M4.1 closed (ADR-104): `DragModel` flown bit for bit as hpr's own; 5 builder examples; `hpr::guide`.
 - 2026-09-28: M4.1a The builder (ADR-103): `own_rocket`'s rocket flown bit for bit; L95 pinned, 8 designs; 2 examples.
 - 2026-09-28: M2.2f, M2.2 closed (ADR-102): L82 live; L19 not met: tube-fin CP 0.42-3.0 cal fwd of OR's to Mach 0.5 on 14 probes, pinned.
 - 2026-09-28: M2.2b OR's mass conventions rolled up (ADR-101): rerun 68/71 mass and CG within 1%; L51, L87 owned.
@@ -84,7 +84,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-103 (M4.1a): the builder wraps the crates' types, no default materials; M4.1 split a, b.
+- ADR-103, 104 (M4.1): the builder wraps the crates' types, no default materials; drag models `C_D0` only.
 - ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings,
   8 at most; L19 left unmet, not bought with OR's unmeasured slope and centre.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights

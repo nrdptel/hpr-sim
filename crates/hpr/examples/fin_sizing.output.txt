@@ -1,0 +1,10 @@
+My 54 mm rocket on an H54, fins of five spans, in 5 m/s of wind from the west
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+fin span  liftoff  margin   apogee  apogee drift  landing drift
+    (mm)     (kg)   (cal)      (m)   upwind (m)  downwind (m)
+      25    0.666   -2.11   too little margin to fly
+      35    0.671    0.33   too little margin to fly
+      45    0.675    1.92   1133.9          117           1071
+      55    0.680    2.97   1109.8          154           1004
+      65    0.684    3.67   1088.0          175            957

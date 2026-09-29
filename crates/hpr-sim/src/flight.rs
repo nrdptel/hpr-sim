@@ -35,7 +35,7 @@
 use std::fmt;
 use std::ops::ControlFlow;
 
-use hpr_aero::{AeroModel, DragTable, NormalForceTable};
+use hpr_aero::{AeroModel, DragModel, DragTable, NormalForceTable};
 use hpr_core::DVec3;
 use hpr_design::Rocket;
 use hpr_design::checks::{check, has_errors};
@@ -329,7 +329,8 @@ pub struct Simulation {
     rocket: Rocket,
     /// The configuration flown.
     configuration_id: String,
-    /// Whether the aerodynamics were replaced by a table, which is the whole stack's only.
+    /// Whether the aerodynamics were replaced by a table or a drag model, which is the whole
+    /// stack's only.
     aero_overridden: bool,
     /// Whether the recovery charges are held: no device on the stack fires, whatever its trigger
     /// ([`crate::metrics::optimum_delays`] flies the ascent so).
@@ -400,10 +401,64 @@ impl Simulation {
         })
     }
 
-    /// Flies another tool's `C_D0(M)` table instead of the drag buildup.
+    /// Flies another tool's `C_D0(M)` table instead of the drag buildup, and instead of any drag
+    /// model ([`Simulation::with_drag_model`]).
     #[must_use]
     pub fn with_drag_table(mut self, table: DragTable) -> Self {
         self.vehicle.aero = self.vehicle.aero.clone().with_drag_table(table);
+        self.aero_overridden = true;
+        self
+    }
+
+    /// Flies a drag model of your own instead of the drag buildup, and instead of any drag table
+    /// ([`hpr_aero::custom`]). The model gives the zero-lift drag coefficient; the flight scales
+    /// it for the angle of attack, and the normal force, centre of pressure, roll and damping
+    /// stay hpr's. Like a table, the model is the whole stack's: a flight with a powered
+    /// separation refuses it at the separation, since the sustainer would fly on without it.
+    ///
+    /// # Examples
+    ///
+    /// Valetudo with a drag coefficient of 0.45 at every speed:
+    ///
+    /// ```
+    /// use hpr_aero::{AeroError, DragModel, DragQuery};
+    /// use hpr_core::geodesy::Geodetic;
+    /// use hpr_design::Rocket;
+    /// use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation};
+    ///
+    /// #[derive(Debug)]
+    /// struct Constant(f64);
+    ///
+    /// impl DragModel for Constant {
+    ///     fn zero_lift_drag(&self, _query: &DragQuery<'_>) -> Result<f64, AeroError> {
+    ///         Ok(self.0)
+    ///     }
+    /// }
+    ///
+    /// let rocket: Rocket = serde_json::from_str(include_str!(
+    ///     "../../../validation/designs/rocketpy-valetudo.json"
+    /// ))?;
+    /// let site = Geodetic::from_degrees(32.99, -106.97, 1400.0)?;
+    /// // The apogee's height with a constant drag coefficient `cd`.
+    /// let apogee_m = |cd: f64| -> Result<f64, Box<dyn std::error::Error>> {
+    ///     let flight = Simulation::new(
+    ///         &rocket,
+    ///         "example",
+    ///         Environment::standard(site)?,
+    ///         Rail::vertical(3.0),
+    ///         FlightSettings::default(),
+    ///     )?
+    ///     .with_drag_model(Constant(cd))
+    ///     .run(&mut ())?;
+    ///     let apogee = flight.event(EventKind::Apogee).ok_or("no apogee")?;
+    ///     Ok(apogee.sample.cg_enu_m.z)
+    /// };
+    /// assert!(apogee_m(0.9)? < apogee_m(0.45)?);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub fn with_drag_model(mut self, model: impl DragModel + 'static) -> Self {
+        self.vehicle.aero = self.vehicle.aero.clone().with_drag_model(model);
         self.aero_overridden = true;
         self
     }
@@ -1731,8 +1786,9 @@ impl Simulation {
                     }
                     if self.aero_overridden {
                         return Err(SimError::Domain {
-                            what: "time of a powered separation (a drag or normal-force table \
-                                   is the whole stack's, and the sustainer has none)",
+                            what: "time of a powered separation (a drag table or drag model, \
+                                   or a normal-force table, is the whole stack's, and the \
+                                   sustainer has none)",
                             value: t,
                         });
                     }
