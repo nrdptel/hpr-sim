@@ -180,8 +180,9 @@ Here `x` is a station measured aft of the nose tip, and `C_Nα,i` is component `
   on the rail and in the descent too, at its solver's steps, so it can differ from hpr's least
   below. No page compares hpr's margins with RocketPy's yet. Against OpenRocket, in calm air at
   rod clearance, where a rocket is still slow, hpr's margin at the flight's Mach number is within
-  0.016 calibres on the 33 flights of OpenRocket's own examples, and up to 0.11 calibres higher on
-  18 flights of private designs, cause not yet traced ([Accuracy](../accuracy.md)). Near Mach 1
+  0.016 calibres on 33 of the 34 flights of OpenRocket's own examples (on the *Tube fin rocket* it
+  is 1.08 calibres below OpenRocket's, [tube fins](aero.md#tube-fins)), and from 0.017 lower to
+  0.11 higher on 35 flights of private designs, cause not yet traced ([Accuracy](../accuracy.md)). Near Mach 1
   hpr puts the Arcas Robin's centre of pressure up to 2.36 calibres behind the wind tunnel's
   ([Normal force through Mach 1](aero.md#normal-force-through-mach-1)), so there its flight margin
   reads high.

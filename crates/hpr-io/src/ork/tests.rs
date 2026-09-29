@@ -3745,15 +3745,45 @@ fn ignitions_and_one_powered_separation_are_read_as_hpr_flies_them() {
         ),
         case("never", Some("6.0"), None, "2.0", Some(("never", "0.0"))),
         case("payapo", None, None, "3.0", Some(("apogee", "1.0"))),
-        // Left out.
-        case("plug", Some("6.0"), None, "none", None),
-        case("off", Some("6.0"), Some(("never", "0.0")), "0.0", None),
-        case("word", Some("6.0"), Some(("sometime", "0.0")), "0.0", None),
-        case("negign", Some("6.0"), Some(("launch", "-1.0")), "0.0", None),
+        // Never lit, as `unlit_motors.py`'s probes set OpenRocket's example: a plugged booster's
+        // charge never fires, `never` never comes, and the bottom stage has no stage below to
+        // burn out or fire a charge. Its own burnout or charge never comes, so neither does its
+        // separation.
+        case("plug", Some("6.0"), None, "none", Some(("never", "0.0"))),
+        Case {
+            booster_lights: Some(("never", "0.0")),
+            ..case(
+                "off",
+                Some("6.0"),
+                Some(("launch", "0.0")),
+                "0.0",
+                Some(("never", "0.0")),
+            )
+        },
         Case {
             booster_lights: Some(("burnout", "0.0")),
             ..case("bottom", Some("6.0"), Some(("launch", "0.0")), "0.0", None)
         },
+        Case {
+            booster_lights: Some(("ejectioncharge", "0.0")),
+            ..case(
+                "bottomej",
+                Some("6.0"),
+                Some(("launch", "0.0")),
+                "0.0",
+                Some(("ejection", "0.0")),
+            )
+        },
+        // Left out.
+        case("word", Some("6.0"), Some(("sometime", "0.0")), "0.0", None),
+        case("negign", Some("6.0"), Some(("launch", "-1.0")), "0.0", None),
+        case(
+            "upnever",
+            Some("6.0"),
+            Some(("never", "0.0")),
+            "0.0",
+            Some(("upperignition", "0.0")),
+        ),
         case(
             "asc",
             Some("6.0"),
@@ -4010,17 +4040,29 @@ fn ignitions_and_one_powered_separation_are_read_as_hpr_flies_them() {
     // A payload with no motor: at apogee plus a delay, after the climb, so the climb flies whole.
     flies("payapo", std::slice::from_ref(&launch), None);
 
-    // A plugged booster's charge never fires, so the sustainer it lights never would.
-    refused("plug", NotFlown::IgnitionNotFlown, "plugged");
-    refused("off", NotFlown::IgnitionNotFlown, "never to light");
+    // A plugged booster's charge never fires, so the sustainer it lights never does: the booster
+    // lifts the stack with the sustainer loaded on it.
+    let never = hpr_design::Ignition::Never;
+    flies("plug", &[never.clone(), launch.clone()], None);
+    // A booster set `never`, or in the bottom stage lit at the stage below's burnout or charge,
+    // which it has not, never lights: so its own burnout or charge never separates it, and the
+    // sustainer lit at launch lifts the whole stack.
+    flies("off", &[launch.clone(), never.clone()], None);
+    flies("bottom", &[launch.clone(), never.clone()], None);
+    flies("bottomej", &[launch.clone(), never.clone()], None);
+
     refused(
         "word",
         NotFlown::IgnitionNotFlown,
         "`sometime` is not known",
     );
     refused("negign", NotFlown::IgnitionNotFlown, "-1 s, is not a time");
-    // The booster has no stage below it to burn out.
-    refused("bottom", NotFlown::IgnitionNotFlown, "is the bottom stage");
+    // At the ignition of a sustainer set never to light.
+    refused(
+        "upnever",
+        NotFlown::SeparationNotFlown,
+        "the stage above's ignition, which never comes",
+    );
     refused("asc", NotFlown::SeparationNotFlown, "on the way up");
     refused(
         "negsep",
@@ -4074,6 +4116,278 @@ fn ignitions_and_one_powered_separation_are_read_as_hpr_flies_them() {
         "pay",
         NotFlown::SeparationNotFlown,
         "can come before apogee",
+    );
+}
+
+/// OpenRocket 24.12 flies a motor whose ignition never comes unlit and loaded, as hpr reads it
+/// ([`hpr_design::Ignition::Never`]): `unlit_motors.py` sets its two-stage example's booster as
+/// the cases `off`, `bottom`, `bottomej` and `plug` above set theirs (`plug`'s sustainer is
+/// `automatic`, as in `booster-plugged-automatic`). In each, one motor lights, at launch; nothing
+/// separates; and the stack loses exactly the lit motor's propellant by apogee.
+#[test]
+fn openrocket_flies_a_motor_whose_ignition_never_comes_unlit() {
+    let text = include_str!("../../../../validation/fixtures/ork/openrocket-unlit-motors.json");
+    let record: serde_json::Value = serde_json::from_str(text).expect("the probe record");
+    assert_eq!(record["openrocket"], "24.12");
+    assert_eq!(
+        record["jar_sha256"],
+        "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897"
+    );
+    for (name, bytes) in [
+        (
+            "unlit_motors.py",
+            include_bytes!("../../../../validation/oracles/openrocket/unlit_motors.py").as_slice(),
+        ),
+        (
+            "events.py",
+            include_bytes!("../../../../validation/oracles/openrocket/events.py").as_slice(),
+        ),
+    ] {
+        use sha2::Digest as _;
+        let digest: String = sha2::Sha256::digest(bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        assert_eq!(
+            record["inputs_sha256"][name], digest,
+            "{name} changed since the record was written: rerun it"
+        );
+    }
+    let probes = &record["probes"];
+    let propellant_kg = |motor: &serde_json::Value| {
+        motor["launch_mass_kg"].as_f64().unwrap() - motor["burnout_mass_kg"].as_f64().unwrap()
+    };
+    let lost_kg = |probe: &serde_json::Value| {
+        probe["launch_mass_kg"].as_f64().unwrap() - probe["apogee_mass_kg"].as_f64().unwrap()
+    };
+    let kinds = |probe: &serde_json::Value, kind: &str| -> Vec<f64> {
+        probe["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["type"] == kind)
+            .map(|e| e["time_s"].as_f64().unwrap())
+            .collect()
+    };
+    // Each probe as set: the booster's ignition, the sustainer's, and the booster's separation.
+    for (name, booster, sustainer, separation) in [
+        ("booster-never", "NEVER", "LAUNCH", "NEVER"),
+        ("booster-burnout", "BURNOUT", "LAUNCH", "BURNOUT"),
+        (
+            "booster-ejection-charge",
+            "EJECTION_CHARGE",
+            "LAUNCH",
+            "EJECTION",
+        ),
+        ("booster-plugged", "LAUNCH", "EJECTION_CHARGE", "NEVER"),
+        ("booster-plugged-automatic", "LAUNCH", "AUTOMATIC", "NEVER"),
+        ("sustainer-at-charge", "LAUNCH", "EJECTION_CHARGE", "NEVER"),
+        ("h148r-pair-booster-never", "NEVER", "LAUNCH", "NEVER"),
+    ] {
+        let probe = &probes[name];
+        assert_eq!(probe["booster"]["ignition_event"], booster, "{name}");
+        assert_eq!(probe["sustainer"]["ignition_event"], sustainer, "{name}");
+        assert_eq!(probe["booster_separation_event"], separation, "{name}");
+    }
+    for (name, lit, unlit) in [
+        ("booster-never", "sustainer", "booster"),
+        ("booster-burnout", "sustainer", "booster"),
+        ("booster-ejection-charge", "sustainer", "booster"),
+        ("booster-plugged", "booster", "sustainer"),
+        ("booster-plugged-automatic", "booster", "sustainer"),
+    ] {
+        let probe = &probes[name];
+        assert_eq!(kinds(probe, "IGNITION"), [0.0], "{name}");
+        assert!(kinds(probe, "STAGE_SEPARATION").is_empty(), "{name}");
+        assert_eq!(probe["branches"], 1, "{name}");
+        // The unlit motor has propellant to lose, and keeps it.
+        assert!(propellant_kg(&probe[unlit]) > 0.1, "{name}");
+        assert!(
+            (lost_kg(probe) - propellant_kg(&probe[lit])).abs() < 1e-9,
+            "{name}: lost {} kg",
+            lost_kg(probe)
+        );
+    }
+    assert_eq!(
+        probes["booster-plugged"]["booster"]["ejection_delay_s"],
+        serde_json::Value::Null
+    );
+    // The controls: as written, both light and the booster drops away; and a booster's charge,
+    // 14 s after its burnout when not plugged, lights a sustainer set to it.
+    let written = &probes["as-written"];
+    assert_eq!(kinds(written, "IGNITION").len(), 2);
+    assert_eq!(kinds(written, "STAGE_SEPARATION").len(), 1);
+    let charge = &probes["sustainer-at-charge"];
+    assert_eq!(charge["booster"]["ejection_delay_s"], 14.0);
+    let [launch, sustainer] = kinds(charge, "IGNITION")[..] else {
+        panic!("two ignitions");
+    };
+    assert_eq!(launch, 0.0);
+    assert!(
+        (sustainer - (kinds(charge, "BURNOUT")[0] + 14.0)).abs() < 1e-9,
+        "{sustainer}"
+    );
+    // Two like motors: OpenRocket's mass column loses nothing while the sustainer burns (#185), so
+    // the probes above fly two different motors.
+    let pair = &probes["h148r-pair-booster-never"];
+    assert_eq!(
+        pair["sustainer"]["designation"],
+        pair["booster"]["designation"]
+    );
+    assert_eq!(kinds(pair, "IGNITION"), [0.0]);
+    assert!(lost_kg(pair).abs() < 1e-12, "{}", lost_kg(pair));
+}
+
+/// A motor lit at the charge of a stage below whose motor never lights never lights either, and is
+/// read as [`hpr_design::Ignition::Never`], so the flight carries it loaded; a configuration in
+/// which no motor lights, or one that separates on the pad, is left out.
+#[test]
+fn a_motor_waiting_on_one_that_never_lights_is_never_lit() {
+    let f15 = |config: &str, lights: Option<&str>| {
+        let lights = lights.map_or_else(String::new, |event| {
+            format!(
+                "<ignitionconfiguration configid='{config}'><ignitionevent>{event}\
+                 </ignitionevent><ignitiondelay>0.0</ignitiondelay></ignitionconfiguration>"
+            )
+        });
+        format!(
+            "<motor configid='{config}'><type>single</type><manufacturer>Estes</manufacturer>\
+             <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>\
+             <delay>0.0</delay></motor>{lights}"
+        )
+    };
+    let tube = |id: &str, motors: &[(&str, Option<&str>)]| {
+        let motors: String = motors.iter().map(|&(c, l)| f15(c, l)).collect();
+        format!(
+            "<bodytube><name>{id}</name><id>{id}</id>\
+             <material type='bulk' density='680.0'>Cardboard</material>\
+             <length>0.4</length><thickness>0.001</thickness><radius>0.0147</radius>\
+             <motormount><ignitionevent>automatic</ignitionevent><overhang>0.0</overhang>\
+             {motors}</motormount></bodytube>"
+        )
+    };
+    let nose = r#"<nosecone><name>Nose</name><id>nose</id>
+          <material type="bulk" density="1000.0">Plastic</material>
+          <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+          <aftradius>0.0147</aftradius></nosecone>"#;
+    let stage = |id: &str, separates: &str, parts: &str| {
+        format!(
+            "<stage><name>{id}</name><id>{id}</id><separationevent>{separates}\
+             </separationevent><separationdelay>0.0</separationdelay>\
+             <subcomponents>{parts}</subcomponents></stage>"
+        )
+    };
+    // `chain`: the top motor at the middle one's charge (`automatic`), the middle one `never`, the
+    // bottom one at launch. `none`: the bottom one `never` too. `pad`, two stages: the booster
+    // `never`, the sustainer at launch, and the booster dropped at the sustainer's ignition.
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Three-stage</name>
+    <motorconfiguration configid="chain"/><motorconfiguration configid="none"/>
+    <subcomponents>{top}{middle}{bottom}</subcomponents></rocket>
+</openrocket>"#,
+        top = stage(
+            "top",
+            "never",
+            &format!(
+                "{nose}{}",
+                tube("top-tube", &[("chain", None), ("none", None)])
+            )
+        ),
+        middle = stage(
+            "middle",
+            "never",
+            &tube(
+                "middle-tube",
+                &[("chain", Some("never")), ("none", Some("never"))]
+            )
+        ),
+        bottom = stage(
+            "bottom",
+            "apogee",
+            &tube("bottom-tube", &[("chain", None), ("none", Some("never"))])
+        ),
+    );
+    let read_design =
+        |xml: &str| design(&read(xml.as_bytes()).expect("a readable design").value).value;
+    let design = read_design(&xml);
+    let flown = design
+        .motors
+        .configurations
+        .iter()
+        .find(|c| c.id == "chain")
+        .expect("chain");
+    assert_eq!(flown.left_out, None);
+    assert_eq!(flown.staging, None);
+    let lit: Vec<_> = design.rocket.configurations[0]
+        .motors
+        .iter()
+        .map(|m| (m.mount.as_str(), m.ignition.clone()))
+        .collect();
+    let never = hpr_design::Ignition::Never;
+    assert_eq!(
+        lit,
+        [
+            ("top-tube", never.clone()),
+            ("middle-tube", never),
+            ("bottom-tube", hpr_design::Ignition::Launch)
+        ]
+    );
+    let assembly = design.rocket.assemble("chain").expect("assembles");
+    let fails: Vec<_> = assembly
+        .motors
+        .iter()
+        .map(|m| (m.mount.as_str(), m.fails))
+        .collect();
+    assert_eq!(
+        fails,
+        [
+            ("top-tube", true),
+            ("middle-tube", true),
+            ("bottom-tube", false)
+        ]
+    );
+    let out = |design: &Design, id: &str| {
+        design
+            .motors
+            .configurations
+            .iter()
+            .find(|c| c.id == id)
+            .and_then(|c| c.left_out.clone())
+            .expect(id)
+    };
+    let none = out(&design, "none");
+    assert_eq!(none.why, NotFlown::IgnitionNotFlown);
+    assert!(
+        none.message.contains("no motor of it ever lights"),
+        "{}",
+        none.message
+    );
+
+    let pad = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Two-stage</name><motorconfiguration configid="pad"/>
+    <subcomponents>{top}{bottom}</subcomponents></rocket>
+</openrocket>"#,
+        top = stage(
+            "top",
+            "never",
+            &format!("{nose}{}", tube("top-tube", &[("pad", Some("launch"))]))
+        ),
+        bottom = stage(
+            "bottom",
+            "upperignition",
+            &tube("bottom-tube", &[("pad", Some("never"))])
+        ),
+    );
+    let pad = out(&read_design(&pad), "pad");
+    assert_eq!(pad.why, NotFlown::SeparationNotFlown);
+    assert!(
+        pad.message.contains("separates at launch"),
+        "{}",
+        pad.message
     );
 }
 

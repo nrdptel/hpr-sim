@@ -1,0 +1,496 @@
+{
+ "example": "datafiles/examples/Two stage high power rocket.ork",
+ "generated": "2026-09-28",
+ "inputs_sha256": {
+  "events.py": "313b72db4daae061e476be01cd429db7c2f34432ae45d314f1bbb1586e1f585d",
+  "unlit_motors.py": "87f9083916f69469f717320aa3703a78e796b001669de43b9409b7b807ae7b1d"
+ },
+ "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
+ "openrocket": "24.12",
+ "probes": {
+  "as-written": {
+   "apogee_mass_kg": 1.3412411418268746,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": 14.0,
+    "ignition_event": "AUTOMATIC",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "UPPER_IGNITION",
+   "branches": 2,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.038,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.15378986943378437,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 1.515,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 1.515,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 1.515,
+     "type": "STAGE_SEPARATION"
+    },
+    {
+     "time_s": 10.119,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 16.266050781250083,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 162.9160507812528,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 162.9160507812528,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 1382.9765974177149,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "BURNOUT",
+    "launch_mass_kg": 0.487
+   }
+  },
+  "booster-burnout": {
+   "apogee_mass_kg": 2.520501854035005,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": 14.0,
+    "ignition_event": "BURNOUT",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "BURNOUT",
+   "branches": 1,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.066,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.25300000000000006,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 8.604,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 12.937632812500043,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 74.55824074620507,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 74.55824074620507,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 600.5871971830696,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.487
+   }
+  },
+  "booster-ejection-charge": {
+   "apogee_mass_kg": 2.520501854035005,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": 14.0,
+    "ignition_event": "EJECTION_CHARGE",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "EJECTION",
+   "branches": 1,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.066,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.25300000000000006,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 8.604,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 12.937632812500043,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 74.55824074620507,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 74.55824074620507,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 600.5871971830696,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.487
+   }
+  },
+  "booster-never": {
+   "apogee_mass_kg": 2.520501854035005,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": 14.0,
+    "ignition_event": "NEVER",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "NEVER",
+   "branches": 1,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.066,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.25300000000000006,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 8.604,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 12.937632812500043,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 74.55824074620507,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 74.55824074620507,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 600.5871971830696,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.487
+   }
+  },
+  "booster-plugged": {
+   "apogee_mass_kg": 2.6133018540350053,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": null,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "NEVER",
+   "branches": 1,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.038,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.15378986943378437,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 1.515,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 8.801689208984266,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 47.437415307579506,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 47.437415307579506,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 411.6189956433646,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "EJECTION_CHARGE",
+    "launch_mass_kg": 0.487
+   }
+  },
+  "booster-plugged-automatic": {
+   "apogee_mass_kg": 2.6133018540350053,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": null,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "NEVER",
+   "branches": 1,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.038,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.15378986943378437,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 1.515,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 8.801689208984266,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 47.437415307579506,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 47.437415307579506,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 411.6189956433646,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "AUTOMATIC",
+    "launch_mass_kg": 0.487
+   }
+  },
+  "h148r-pair-booster-never": {
+   "apogee_mass_kg": 2.574301854035005,
+   "booster": {
+    "burnout_mass_kg": 0.1612800000000001,
+    "designation": "H148R",
+    "ejection_delay_s": 0.0,
+    "ignition_event": "NEVER",
+    "launch_mass_kg": 0.30912
+   },
+   "booster_separation_event": "NEVER",
+   "branches": 1,
+   "configuration_index": 0,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.067,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.2274447167407118,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 1.535,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 1.535,
+     "type": "EJECTION_CHARGE"
+    },
+    {
+     "time_s": 6.949622101022408,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 28.105830061653645,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 28.105830061653645,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.574301854035005,
+   "max_altitude_m": 216.4849811053546,
+   "sustainer": {
+    "burnout_mass_kg": 0.1612800000000001,
+    "designation": "H148R",
+    "ejection_delay_s": 0.0,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.30912
+   }
+  },
+  "sustainer-at-charge": {
+   "apogee_mass_kg": 2.6133018540350053,
+   "booster": {
+    "burnout_mass_kg": 0.17024,
+    "designation": "I357T",
+    "ejection_delay_s": 14.0,
+    "ignition_event": "LAUNCH",
+    "launch_mass_kg": 0.34944
+   },
+   "booster_separation_event": "NEVER",
+   "branches": 1,
+   "configuration_index": 1,
+   "events": [
+    {
+     "time_s": 0.0,
+     "type": "LAUNCH"
+    },
+    {
+     "time_s": 0.0,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 0.038,
+     "type": "LIFTOFF"
+    },
+    {
+     "time_s": 0.15378986943378437,
+     "type": "LAUNCHROD"
+    },
+    {
+     "time_s": 1.515,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 8.801689208984266,
+     "type": "APOGEE"
+    },
+    {
+     "time_s": 15.515,
+     "type": "EJECTION_CHARGE"
+    },
+    {
+     "time_s": 15.515,
+     "type": "IGNITION"
+    },
+    {
+     "time_s": 23.197758203268737,
+     "type": "GROUND_HIT"
+    },
+    {
+     "time_s": 24.119,
+     "type": "BURNOUT"
+    },
+    {
+     "time_s": 24.119,
+     "type": "SIM_WARN"
+    },
+    {
+     "time_s": 24.119,
+     "type": "SIMULATION_END"
+    }
+   ],
+   "launch_mass_kg": 2.792501854035005,
+   "max_altitude_m": 411.6189956433646,
+   "sustainer": {
+    "burnout_mass_kg": 0.21500000000000008,
+    "designation": "I59WN",
+    "ejection_delay_s": null,
+    "ignition_event": "EJECTION_CHARGE",
+    "launch_mass_kg": 0.487
+   }
+  }
+ },
+ "seed": 1,
+ "source": "validation/oracles/openrocket/unlit_motors.py"
+}

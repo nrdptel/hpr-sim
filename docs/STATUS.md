@@ -4,16 +4,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M2.2e10 (20
-  designs: one more, `C10` #184 or others). **Run:**
-  M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a-e9, M2.3a-b, M2.4, M3.1.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: roll up M2.2b
+  (b1-b5 met; check its bar, then M2.2 closes), then M4.1. **Run:**
+  M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1, M2.2a, M2.2c-e, M2.3a-b, M2.4, M3.1.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-28; M2.2e9 (tube fins as ring wings, ADR-099): 19 of 20.
+- **Last updated:** 2026-09-28; M2.2e10 (never-lit motors, ADR-100): 20 designs, M2.2e met.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** nothing in flight. M2.2e10: one more design with five spreads (#184,
-  #183, pod examples' parts, the unlightable motor). Tube fins' drag likely low (#228, ADR-099);
+- **Next (resume here):** nothing in flight. M2.2b's bar looks met by b1-b5: confirm, check it and
+  M2.2 off. #185 reproduced by `unlit_motors.py` (ADR-100). Tube fins' drag likely low (#228, ADR-099);
   public drag curves: `PUBLIC_DRAG_CURVES`'s doc. Library runs need `drag_curves.py` (ADR-097).
   Probes (ADR-093, ADR-094): `pod_probes.py`, `rod_probes.py`, then `flights.py` (its docstring's
   command) and `motor_database.py ... refs validation/fixtures/ork/{pod,rod}-flights --jar`. #216: a `.ork` part with no `<finish>` gets hpr's 20 µm, OR's 60 µm.
@@ -57,13 +57,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
+- 2026-09-28: M2.2e10 Never-lit motors (ADR-100): 5 OR probes; `C04` flies, +0.88%; 20 designs, M2.2e met.
 - 2026-09-28: M2.2e9 Tube fins as ring wings (ADR-099): Weissinger, Fletcher; the example +6.95%, +0.03% on OR's drag.
 - 2026-09-28: M2.2e8 A tube fin set's `auto` radius (ADR-098): 19 OR probes, radius to 1e-15; e8 split, e9 aero.
 - 2026-09-28: M2.2e7 Fillets, a bore's auto radius (ADR-096, 097): 21 OR probes to 1e-15; `C01`, `C06` fly; 18 designs.
 - 2026-09-27: M2.2e5, e6 Tilted rod, old override flag (ADR-094, 095): 15 OR probes; `C12`, `C05` fly; `C10` not (#184).
 - 2026-09-27: M1.13 Pods (a to c2, ADR-089 to ADR-093): mass and placement to 1e-15; aero to 1e-11 by hand; 6 OR probes within 0.81%.
 - 2026-09-26: M1.11a, b, M1.12 Pieces, tumbling, moving mass (ADR-085 to 088): `v_e` to 0.1%; hand values to 1e-15.
-- 2026-09-26: M2.4 Census gate (ADR-084): 648 rows held to the accepted census; throwaway #199 red on 3 OSes.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 - **M2.3c needs a design with its flight's log** (ADR-083): no `loft-fixtures` design is the rocket
   of a `debrief-fixtures` log. Add one pair (design file as flown, plus log, date, site, motor) to

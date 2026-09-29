@@ -10,6 +10,7 @@
 //! [guide-integration]: https://nrdptel.github.io/hpr-sim/physics/integration.html
 //! [guide-recovery]: https://nrdptel.github.io/hpr-sim/physics/recovery.html
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
+//! [m2-2e10]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e10
 //!
 //! - [`flight`]: a [`Simulation`] of a rocket, its [`Environment`] and its [`Rail`], flown from
 //!   ignition through the pad, rail and free-flight phases to the ground.
@@ -32,9 +33,10 @@
 //! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, a
 //! separation whose bodies each land, and staging: each motor lights at its own time, and a
 //! separation with the nose's body still to burn lets that body fly on as a sustainer while the
-//! booster descends ([`flight`]). A cluster flies one motor in each of its tubes, and a tube can
-//! be set never to light, and a `.ork` file's staging settings and clusters fly too (milestone
-//! [M1.9][roadmap] of the roadmap).
+//! booster descends ([`flight`]). A cluster flies one motor in each of its tubes, a tube or a
+//! motor can be set never to light, and a `.ork` file's staging settings and clusters fly too
+//! (milestone [M1.9][roadmap] of the roadmap, and [M2.2e10][m2-2e10] for a motor that never
+//! lights).
 
 pub mod dynamics;
 pub mod environment;

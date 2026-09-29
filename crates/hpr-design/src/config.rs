@@ -83,6 +83,10 @@ pub enum Ignition {
         /// The delay after the separation, s.
         delay_s: f64,
     },
+    /// Never: the motor stays loaded and gives no thrust all flight, as if every tube of its mount
+    /// were listed in [`MountedMotor::failed_tubes`]. A `.ork` design can set a motor so, or light
+    /// it at an event that never comes, and OpenRocket then flies it unlit.
+    Never,
 }
 
 impl Ignition {
@@ -141,7 +145,8 @@ pub struct PlacedMotor {
     /// Which of the mount's tubes it is in (`0` for a single tube).
     #[serde(default)]
     pub tube: usize,
-    /// Whether it fails to light ([`MountedMotor::failed_tubes`]).
+    /// Whether it never lights: its tube fails ([`MountedMotor::failed_tubes`]), or the motor is
+    /// set never to light ([`Ignition::Never`]).
     #[serde(default)]
     pub fails: bool,
 }
@@ -279,6 +284,8 @@ fn ignition_times_s(
             Ignition::Time { time_s } => Some(*time_s),
             Ignition::Separation { delay_s } => separated_s(motor.stage).map(|t| t + delay_s),
             Ignition::Burnout { .. } => None,
+            // Taken as lit only for the check of a cycle of burnouts, where every motor is.
+            Ignition::Never => (!failures).then_some(0.0),
         })
         .collect();
     // Each pass resolves at least one more link of every chain that can resolve, so as many
@@ -389,6 +396,7 @@ impl Layout {
                         });
                     }
                 }
+                Ignition::Never => {}
             }
             let tubes = mount.contents_copies().map_err(in_mount)?;
             for (k, &tube) in mounted.failed_tubes.iter().enumerate() {
@@ -409,7 +417,8 @@ impl Layout {
                     nozzle_m: DVec3::new(x, y, z),
                     mounted: mounted.clone(),
                     tube,
-                    fails: mounted.failed_tubes.contains(&tube),
+                    fails: mounted.ignition == Ignition::Never
+                        || mounted.failed_tubes.contains(&tube),
                 });
             }
         }
@@ -1240,6 +1249,49 @@ mod tests {
         rocket.configurations[0].motors[0].failed_tubes = vec![1, 0];
         let assembly = rocket.assemble("j760-i175").unwrap();
         assert_eq!(assembly.ignition_times_s(|_| None), [None, None, None]);
+    }
+
+    /// A motor set never to light is carried loaded to the end, as a motor out is, and a motor
+    /// lit by its burnout never lights either; that is not the cycle of burnouts assembly refuses.
+    #[test]
+    fn a_motor_set_never_to_light_stays_loaded() {
+        let assembly = two_stage(Ignition::Never).assemble("j760-i175").unwrap();
+        assert_eq!(
+            assembly.motors.iter().map(|m| m.fails).collect::<Vec<_>>(),
+            [false, true]
+        );
+        assert_eq!(assembly.ignition_times_s(|_| Some(0.0)), [Some(0.0), None]);
+        let loaded = assembly.motors[1].mass_properties(0.0);
+        let structure = assembly.layout.structure;
+        let booster = |t: f64| assembly.motors[0].mass_properties(t);
+        let lit = assembly.ignition_times_s(|_| None);
+        for t in [0.0, 3.0, 100.0] {
+            // Summed motor by motor, in order, as the assembly sums them.
+            let expected = MassProperties::combine([
+                &MassProperties::combine([&structure, &booster(t)]),
+                &loaded,
+            ]);
+            assert_eq!(assembly.mass_properties_lit(t, &lit), expected);
+            assert_eq!(assembly.mass_properties(t), expected);
+        }
+        let dry = MassProperties::combine([&structure, &assembly.motors[0].dry_mass_properties()]);
+        assert_eq!(
+            assembly.dry_mass_properties(),
+            MassProperties::combine([&dry, &loaded])
+        );
+        let mut rocket = two_stage(Ignition::Burnout {
+            mount: "booster-motor-mount".to_owned(),
+            delay_s: 0.0,
+        });
+        rocket.configurations[0].motors[0].ignition = Ignition::Never;
+        let assembly = rocket.assemble("j760-i175").unwrap();
+        assert_eq!(assembly.ignition_times_s(|_| Some(0.0)), [None, None]);
+        let json = serde_json::to_string(&two_stage(Ignition::Never)).unwrap();
+        assert!(json.contains(r#""ignition":"never""#), "{json}");
+        assert_eq!(
+            serde_json::from_str::<Rocket>(&json).unwrap(),
+            two_stage(Ignition::Never)
+        );
     }
 
     #[test]

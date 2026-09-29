@@ -392,9 +392,10 @@ pub enum NotFlown {
     NoCurve,
     /// A motor has no case diameter or length.
     NoSize,
-    /// A motor lights when hpr can't light it: never, at a word hpr does not know, at the
-    /// ejection charge of a plugged motor, or at an event of a stage below that holds no motor, or
-    /// motors in more than one mount ([`staging`]).
+    /// A motor lights when hpr can't light it: at a word hpr does not know, after a negative
+    /// delay, at the ejection charge of a motor below that states no delay, or at an event of a
+    /// stage below that holds no motor, or motors in more than one mount; or no motor of the
+    /// configuration lights at all ([`staging`]). A motor that never lights beside one that does is flown unlit.
     IgnitionNotFlown,
     /// The airframe or a motor mount was not read exactly as written: reading it raised a
     /// warning. A part was left out (a pod set hpr cannot lay out, a parallel stage, a part hpr
@@ -405,8 +406,8 @@ pub enum NotFlown {
     AirframeNotAsWritten,
     /// Its stages come apart in a way hpr doesn't fly: more than one separation; one that can
     /// come before apogee with no motor ahead of it still burning or yet to light when it fires,
-    /// or with a motor behind it not yet spent; a negative delay; or an event hpr has no trigger
-    /// for ([`staging`]).
+    /// or with a motor behind it not yet spent; one at launch, or at the ignition of a motor that
+    /// never lights; a negative delay; or an event hpr has no trigger for ([`staging`]).
     SeparationNotFlown,
 }
 
@@ -1128,6 +1129,12 @@ fn flyable(
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
+    // A motor lit by one that never lights never lights either: say so, so every reader of the
+    // ignitions agrees. A configuration with no motor that lights would not leave the pad.
+    let lit = staging::never_when_waiting_on_never(motors, lit).map_err(|why| LeftOut {
+        why: NotFlown::IgnitionNotFlown,
+        message: why,
+    })?;
     // Part of the airframe left out: no configuration of the rocket flies, whatever its motors.
     if let Some(what) = airframe.incomplete {
         return Err(LeftOut {

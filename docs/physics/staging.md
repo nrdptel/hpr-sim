@@ -4,7 +4,7 @@
 
 - **What it models:** motors that light at their own times, and a rocket that drops its booster
   under power. A motor can light at launch, at a time, a delay after another motor burns out, or
-  a delay after its stage is freed. When the stack comes apart
+  a delay after its stage is freed, or never. When the stack comes apart
   ([separation](../glossary.md#separation)) with the forward part still to burn, that part (the
   [sustainer](../glossary.md#sustainer)) flies on with its own shape and mass, and the aft part
   (the [booster](../glossary.md#booster)) falls back to its own landing.
@@ -58,14 +58,15 @@ clock from its ignition, so its thrust curve and its mass are its own curve shif
 | `time` | a time after launch | `"ignition": {"time": {"time_s": 4.0}}` |
 | `burnout` | a delay after the motor in another mount burns out | `"ignition": {"burnout": {"mount": "booster-motor-mount", "delay_s": 1.0}}` |
 | `separation` | a delay after the separation that drops the stages behind this motor's stage | `"ignition": {"separation": {"delay_s": 0.5}}` |
+| `never` | never: it rides loaded, as a motor that fails to light does | `"ignition": "never"` |
 
 **A design that says nothing lights every motor on the pad**, the sustainer's too, and hpr does not
 warn. For a staged flight, give the sustainer's motor its `ignition` and the flight a
 `Separation`.
 
 Before a motor lights it is **loaded**: its full propellant mass sits in the rocket, and it gives
-no thrust. A motor that never lights, because its separation never comes, is carried loaded to the
-ground. Every ignition time known before the flight, and every point of each shifted thrust curve,
+no thrust. A motor that never lights, because it is set `never`, or the burnout or separation it
+waits for never comes, is carried loaded to the ground. Every ignition time known before the flight, and every point of each shifted thrust curve,
 is a [stop time](../glossary.md#stop-time): the integrator ends a step there, so no step starts a
 burn half way through ([Time integration](integration.md)). An ignition that waits on a
 separation becomes a stop time when the separation fires. The design refuses:
@@ -237,7 +238,8 @@ hpr turns them into its own:
 | a motor lit at `launch`, or `automatic` in the bottom stage, plus a delay `d` | lit at `t = d`: an air start when `d` is not 0 |
 | a motor lit at `burnout` of the stage below, plus `d` | lit `d` after that motor burns out |
 | `ejectioncharge`, or `automatic` in a stage above | lit at the stage below's ejection charge: its burnout plus its ejection delay, plus `d` |
-| a stage separating at `launch`, at its motor's `ignition`, `burnout` or `ejection`, or at the `upperignition` of the stage above | a separation at that instant, plus its delay, if at that moment a motor ahead of it is burning or has yet to light |
+| `never`; `burnout` or `ejectioncharge` in the bottom stage; `ejectioncharge` or `automatic` over a plugged motor; or a motor lit by one of these | never lit: carried loaded, with no thrust |
+| a stage separating at `launch` plus a delay, at its motor's `ignition`, `burnout` or `ejection`, or at the `upperignition` of the stage above | a separation at that instant, plus its delay, if at that moment a motor ahead of it is burning or has yet to light (one timed before the rocket leaves the rod fires as it leaves, [#231](https://github.com/nrdptel/hpr-sim/issues/231)) |
 | a stage separating at `apogee`, or at a height on the way down (`altitudedescending`) | no separation: it belongs to the descent, which hpr's flights of a `.ork` don't fly yet, so the configuration flies whole |
 
 hpr flies one such separation, a powered one: at its time a motor ahead of it is burning or has
@@ -258,7 +260,18 @@ written is left out with its reason, never flown some other way:
 - a separation while a motor behind it is still burning or yet to light;
 - a separation at a height on the way up (`altitudeascending`), which hpr has no trigger for;
 - a negative delay on a separation hpr would fly;
-- a motor set never to light, or lit by the charge of a plugged motor, which never fires.
+- a motor lit at a word hpr does not know, by a stage below that holds no motor or holds motors
+  in more than one mount, or by the charge of a motor below that states no delay;
+- a separation at the ignition of a motor that never lights, or at launch, since hpr's flight
+  fires a separation only once the rocket is off the rod;
+- a configuration in which no motor lights.
+
+A motor set `never`, or lit by an event that never comes, flies unlit and loaded, as OpenRocket
+flies it ([M2.2e10](../decisions-and-roadmap.md#m2-2e10), probed by
+`validation/oracles/openrocket/unlit_motors.py`): one in the bottom stage lit at the stage below's
+burnout or charge, or one lit by a plugged motor's charge. A stage that separates at the burnout or
+charge of its own motor that never lights stays on. A stage below with no motor is still refused:
+OpenRocket's reading of it has not been probed.
 
 A cluster flies with a motor in every tube ([Clusters](design.md#clusters)).
 
@@ -328,6 +341,14 @@ In `crates/hpr-sim/src/staging.rs` and `crates/hpr-design/src/config.rs`:
   delay, to 1e-12 s, and the mass steps down by exactly the booster's, to 1e-12 of the mass, and
   holds until the sustainer lights. It also checks a sustainer whose separation never comes: it
   never lights, and it lands loaded.
+- `a_sustainer_set_never_to_light_flies_as_a_motor_out` and
+  `a_motor_set_never_to_light_stays_loaded`: a motor set `never` flies exactly as one whose only
+  tube fails, carried loaded to the end, and a motor lit by that motor's burnout never lights
+  either. `a_sustainer_keeps_a_motor_set_never_to_light_through_the_separation`: a sustainer cut at
+  a powered separation keeps it unlit.
+- In `crates/hpr-io/src/ork/tests.rs`, `openrocket_flies_a_motor_whose_ignition_never_comes_unlit`
+  holds OpenRocket's probe record, and `a_motor_waiting_on_one_that_never_lights_is_never_lit` the
+  reader's chains and refusals.
 - `apogee_separation_fires_in_flight_and_booster_flies_to_landing`
   ([Loft lesson L30](../decisions-and-roadmap.md#l30)): an apogee separation fires at the
   flight's own apogee, and a height separation where the flight crosses the height. Both bodies
