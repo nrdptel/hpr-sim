@@ -15,14 +15,14 @@ A document of the older version 0.1 is migrated when it is read. Rust programs c
 through the `hpr_format` library. Generated TypeScript and Python types come with the format's next
 step, [M3.3c](../decisions-and-roadmap.md#m3-3c).
 
-**How far to trust it.** Converting loses nothing hpr read from the `.ork`. hpr's checks use 75
+**How far to trust it.** Converting keeps everything hpr read from the `.ork` but the reader's warnings. hpr's checks use 75
 `.ork` files and read 73. Each of the 73 goes `.ork` → `.hpr` → `.ork` and comes back as the same
 design, bit for bit, and as the `.ork` hpr writes from the original, byte for byte. That `.ork` is
 close to the original file but not the same: [what the writer changes](ork.md#writing-a-ork-back-out)
-says how. The 109 motor configurations among the designs that fly, in 30 of them, reach the same
+says how. The 109 motor configurations that fly, spread over 30 of the designs, reach the same
 apogee from the `.ork`, from the document, and from the `.ork` written from the document, bit for
 bit. These counts come from a run on the developers' machine that includes other people's private
-designs; the automatic checks repeat them on the 17 public ones
+designs; the automatic checks repeat the checks, not the counts, on the 17 public ones
 ([checked on real designs](#checked-on-real-designs)).
 
 **Keep your `.ork` too.** The format is version 0.2, a draft until hpr's first release. A document
@@ -106,7 +106,7 @@ The document therefore records the reason, as `provenance.source.airframe_not_as
 `hpr sim` reads it from there.
 
 **What the document doesn't keep: the `.ork` reader's warnings.** `hpr convert` prints them once,
-when it reads the `.ork`; `hpr sim` prints them for a `.ork` but not for a `.hpr`.
+when it reads the `.ork`; `hpr sim` prints them for a `.ork` but not for a `.hpr` or `.hprz`.
 
 ## The container (`.hprz`)
 
@@ -121,17 +121,19 @@ an attachment, kept byte for byte, under its name, in its order.
   any mix of capitals.
 - **Names that would unpack as one file are refused**: two names the same but for capitals, a name
   that is also another's folder (`logs` beside `logs/a.csv`), and, for Windows, a part ending in `.`
-  or a space, or named as a device (`CON`, `NUL`, `COM1` and the like). Two spellings of one accented
+  or a space, or named as a device (`CON`, `NUL`, `COM1` and the like, with or without an
+  extension). No part of a name is longer than 255 bytes, the most common file systems' limit. Two spellings of one accented
   letter, which macOS can merge, are not caught.
 - **At most 256 MiB, unpacked.** The design and its attachments together hold no more: hpr refuses
   to write a bigger container, and to read one, so a small, hostile archive can't fill memory.
 - **The same design and files give the same bytes.** Every entry is compressed with deflate, zip's
-  usual method, and dated 1 January 1980, zip's zero date, never the clock. (A build of hpr with
-  another deflate library could compress them to other bytes, which read back the same.)
+  usual method, and dated 1 January 1980, zip's zero date, never the clock. (This holds for one
+  build of hpr; another deflate library could give other bytes that read back the same.)
 - **Reading is held to the same rules**, so a container made by another program is refused with the
   reason rather than half read. The reader checks every name before it unpacks anything. It takes
   the design wherever the archive holds it, and passes over a folder's own entry, which some zip
-  tools write. It refuses a symbolic link, a name not stored as UTF-8, and two entries of one name,
+  tools write, as long as it is empty. It refuses a symbolic link, a name beyond plain ASCII that
+  isn't marked as UTF-8 (the mark zip has for it), and two entries of one name,
   which the zip library hpr uses would otherwise read as one, dropping the other without a word.
 
 A `.hpr` has no place for attachments, and a `.ork` keeps only the source file's own. So
@@ -162,8 +164,10 @@ examples):
 | `container::write`, `container::read` | write and read a `.hprz` |
 
 **Editing a document by hand.** hpr flies what the document says, and the `.ork` written from it
-carries the edit. One exception: an embedded thrust curve is held twice
-([what is not there yet](#what-is-not-there-yet)). Any program that checks JSON against a JSON
+carries an edit to the airframe, the recovery or the simulations. The motors are the exception:
+they are held twice ([what is not there yet](#what-is-not-there-yet)). `hpr sim` flies the motors
+under `rocket.configurations`, and the `.ork` writer writes those under `motors.configurations`, so
+change a motor in both places, or convert the `.ork` again. Any program that checks JSON against a JSON
 Schema can check an edited document before hpr reads it ([the schema](#the-schema)). No other
 design program reads `.hpr` or `.hprz` yet.
 
@@ -203,8 +207,11 @@ airframe gives the reason, and one that flies, or is left out only for its separ
 airframe was read as written. When every configuration was left out for an earlier reason, such as
 a missing thrust curve, or there is none, nothing shows it: the migration marks it unknown, and
 `hpr sim` refuses to fly another motor in the rocket, saying so. On the 73 designs of hpr's checks,
-the migration recovers 5 of the 8 reasons, marks the other 3 unknown, and marks 28 of the 65
-designs read as written unknown too; it gives no wrong answer. Converting the `.ork` again gives a
+the migration:
+
+- recovers 5 of the 8 reasons, and marks the other 3 unknown;
+- marks 28 of the 65 designs read as written unknown too, so 31 of 73 in all are unknown;
+- gives no wrong answer. Converting the `.ork` again gives a
 0.2 document that knows.
 
 The reasons are in [ADR-111](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-111-m33-the-hpr-design-format-its-extensions-versions-and-crate-2026-09-29), which set the extensions and the first version policy, and
@@ -264,7 +271,7 @@ format's first step, [M3.3a](../decisions-and-roadmap.md#m3-3a), asked for 1 par
 
 These 109 fly because the check supplies OpenRocket's own motor database for the curves the files
 name but don't carry. With only the files' own curves and hpr's bundled motors, 4 fly
-([motors in the reference library](ork.md#motors-in-the-reference-library)). The other 61 have no
+([the reference library's survey of motors](ork.md#motors-in-the-reference-library)). The other 61 have no
 flight to compare: the `.ork` reader leaves them out of the rocket all three ways, by the first reason it finds: 24 for want of a
 thrust curve, 19 for stages hpr can't separate as written, and 18 for other reasons
 ([which configurations fly](ork.md#which-configurations-the-rocket-flies)).
@@ -285,10 +292,15 @@ The tests also cover the rest of this page:
   [`embedded-curve-0.1.hpr`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-format/fixtures/embedded-curve-0.1.hpr).
   0.1's schema takes it and 0.2's doesn't. It reads as 0.2, key for key the old document with
   `attachments` renamed. It is the document the current reader makes from the same `.ork`, flies
-  on the curve it embeds, and writes that `.ork` back.
+  on the curve it embeds, and writes that `.ork` back. Other tests migrate edited 0.1 documents:
+  each way the airframe can be recovered, found read as written, or marked unknown, and old
+  documents that already hold a 0.2 key, which are refused. A last one migrates every public design
+  from its 0.1 shape and holds the answer to the `.ork` reader's: never wrong, though with no motor
+  catalog in the tests only the design with an embedded curve shows it, and the rest are unknown.
 - **The container**: a design with four attachments (a text file, an image, an empty file and a
   name in accents) reads back the same and writes the same bytes again. Each name rule above, two
-  entries of one name, a symbolic link, a name not in UTF-8, a missing or damaged design, and a
+  entries of one name, a symbolic link, a name not marked as UTF-8, a folder's entry that holds
+  bytes, a missing or damaged design, and a
   container past 256 MiB, written or read, are each refused with the reason.
 - **The command line**: `hpr convert` takes a public design `.ork` → `.hpr` → `.hprz` → `.ork`, each
   file the library's own, byte for byte. `hpr sim` flies a public design from its `.hpr` and its
@@ -307,7 +319,7 @@ lists the reference library's `.rkt` and `.CDX1` files it leaves out).
 | published description | a prose page, no schema | in the help of SMARTSim, Apogee's companion program | none: "not documented", its author says | none beyond the code | a JSON Schema, generated and tested |
 | version in the file | yes, `major.minor` | yes | yes | RocketPy's version | yes, `major.minor`, with migrations |
 | units | mostly SI, not stated in the file | fixed default units, not stated | the program's English units (inches), not stated | SI by RocketPy's convention, not stated | SI, the unit in every key's name |
-| motor configurations, stages, recovery | all three | stages, motors and parachutes | a sustainer and up to two boosters; recovery at apogee and at a set altitude | one motor object per rocket (a ring cluster counts as one), parachutes, no staging | all three, as `.ork` has them |
+| motor configurations, stages, recovery | all three | stages, motors and parachutes | a sustainer and up to two boosters; recovery at apogee and at a set altitude | one motor object per rocket (a ring cluster, several motors in a ring, is modelled as one), parachutes, no staging | all three, as `.ork` has them |
 | thrust curves and other files | embedded curves, images | motors by name | motors by name | curves as data, no other files | embedded curves and images; any file in a `.hprz` |
 | another program's data | a simulation's extension settings | none found | none found | none | `extensions`, one namespace per program |
 | what it is | a design | a design | a design, as its outer shape for aerodynamics | a saved `Flight`: the rocket, its environment and the results | a design |
@@ -343,6 +355,10 @@ version hpr's checks pin, where `.rpy` came with version 1.10.0
 
 - **Generated TypeScript and Python types**: [M3.3c](../decisions-and-roadmap.md#m3-3c).
 - **Reading `.rkt`, `.CDX1` or `.rpy`**: no milestone yet.
+- **The motors are held twice**: under `motors.configurations`, every configuration in the file as
+  the `.ork` holds it, and under `rocket.configurations`, the ones that fly, each motor ready to
+  fly. `hpr sim` uses the second and the `.ork` writer the first. Editing one doesn't change the
+  other, and nothing checks that they agree yet.
 - **An embedded curve is held twice**: as the file's text under `source_files`, and as the motor
   built from it in the configuration. A flight uses the motor; a `.ork` written from the document
   uses the text. Editing one doesn't change the other, and nothing checks that they agree yet.

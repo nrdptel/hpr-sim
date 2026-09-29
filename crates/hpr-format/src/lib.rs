@@ -399,7 +399,9 @@ pub struct Source {
     /// Why the file's airframe or a motor mount was not read exactly as written, if it wasn't: a
     /// part left out, a value dropped or simplified, or something assumed
     /// ([`hpr_io::ork::airframe_not_as_written`]). No configuration of such a rocket flies, and
-    /// `hpr sim` flies no other motor in it. Absent when the rocket was read as written.
+    /// `hpr sim` flies no other motor in it. Absent when the rocket was read as written. A document
+    /// migrated from 0.1 that doesn't show which holds exactly [`migrate::UNKNOWN`], a fixed text a
+    /// program can compare against.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub airframe_not_as_written: Option<String>,
 }

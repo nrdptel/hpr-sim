@@ -31,6 +31,7 @@
 
 use std::collections::BTreeSet;
 use std::io::{Cursor, Read, Write};
+use std::ops::Bound;
 
 use crate::{DesignFile, FormatError, Opened, read_json, shortened, to_json};
 
@@ -43,6 +44,10 @@ pub const DESIGN_ENTRY: &str = "design.hpr";
 /// A deflate stream can expand by about a thousand to one, so a small archive could otherwise ask
 /// for more memory than a machine has. Use [`read_within`] to read with another limit.
 pub const MAX_UNPACKED_BYTES: u64 = 256 * 1024 * 1024;
+
+/// The longest part of an attachment's name, between `/`s, in bytes: what common file systems
+/// take for one file's or folder's name.
+pub const MAX_PART_BYTES: usize = 255;
 
 /// A design and its attachments.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -88,7 +93,8 @@ impl Entry {
 ///
 /// A name is a relative path: folders and a file name joined by `/`, none of them empty, `.` or
 /// `..`. It holds no `\`, no `:` and no control character, since each can reach outside the
-/// folder a container is unpacked into on some system. No part ends in `.` or a space, and none is
+/// folder a container is unpacked into on some system. No part is longer than [`MAX_PART_BYTES`],
+/// none ends in `.` or a space, and none is
 /// a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, with or
 /// without an extension), which Windows would drop or open as a device. And it is not
 /// [`DESIGN_ENTRY`] in any case.
@@ -130,6 +136,13 @@ pub fn check_name(name: &str) -> Result<(), FormatError> {
             "the attachment {quoted:?} has a part ending in `.` or a space, which Windows drops"
         ));
     }
+    if let Some(part) = name.split('/').find(|part| part.len() > MAX_PART_BYTES) {
+        return refused(format!(
+            "the attachment {quoted:?} has a part {:?} longer than {MAX_PART_BYTES} bytes, which \
+             file systems refuse",
+            shortened(part)
+        ));
+    }
     if let Some(part) = name.split('/').find(|part| is_device(part)) {
         return refused(format!(
             "the attachment {quoted:?} has a part named {:?}, a Windows device's name",
@@ -139,47 +152,62 @@ pub fn check_name(name: &str) -> Result<(), FormatError> {
     Ok(())
 }
 
-/// Whether `part` of a path names a Windows device, with or without an extension.
+/// Whether `part` of a path names a Windows device, with or without an extension, and with or
+/// without spaces before it, which Windows drops (Microsoft's "Naming files, paths, and
+/// namespaces").
 fn is_device(part: &str) -> bool {
-    let stem = part.split('.').next().unwrap_or(part).to_ascii_uppercase();
-    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
-        || matches!(
-            stem.as_bytes(),
-            [b'C', b'O', b'M', b'1'..=b'9'] | [b'L', b'P', b'T', b'1'..=b'9']
-        )
+    let stem = part.split('.').next().unwrap_or(part).trim_end_matches(' ');
+    let stem = stem.to_ascii_uppercase();
+    let numbered = |prefix: &str| {
+        stem.strip_prefix(prefix).is_some_and(|rest| {
+            let mut chars = rest.chars();
+            matches!(chars.next(), Some('0'..='9' | '¹' | '²' | '³')) && chars.next().is_none()
+        })
+    };
+    matches!(
+        stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) || numbered("COM")
+        || numbered("LPT")
 }
 
 /// The names of a container's attachments checked, each by [`check_name`]; no two the same,
 /// ignoring case, and none also a folder of another, since a file system that ignores case, or any
 /// file system, would unpack such a pair as one.
+///
+/// Its memory is the names' once over: each name is looked up among the others as a folder, by
+/// the first name at or after it and a `/`, rather than by listing every name's folders, which a
+/// name of many short folders would multiply.
 fn check_names<'a>(names: impl Iterator<Item = &'a str> + Clone) -> Result<(), FormatError> {
     let mut seen = BTreeSet::new();
-    let mut folders = BTreeSet::new();
     for name in names.clone() {
         check_name(name)?;
-        let folded = name.to_lowercase();
-        if !seen.insert(folded.clone()) {
+        if !seen.insert(folded(name)) {
             return Err(FormatError::Container(format!(
                 "two attachments are named {:?}, ignoring case",
                 shortened(name)
             )));
         }
-        folders.extend(
-            folded
-                .match_indices('/')
-                .map(|(at, _)| folded[..at].to_owned()),
-        );
     }
-    match names
-        .into_iter()
-        .find(|name| folders.contains(&name.to_lowercase()))
-    {
-        Some(name) => Err(FormatError::Container(format!(
-            "the attachment {:?} is also the folder of another",
-            shortened(name)
-        ))),
-        None => Ok(()),
+    for name in names {
+        let folder = format!("{}/", folded(name));
+        let next = seen
+            .range::<str, _>((Bound::Included(folder.as_str()), Bound::Unbounded))
+            .next();
+        if next.is_some_and(|other| other.starts_with(&folder)) {
+            return Err(FormatError::Container(format!(
+                "the attachment {:?} is also the folder of another",
+                shortened(name)
+            )));
+        }
     }
+    Ok(())
+}
+
+/// `name` with its case folded as a file system that ignores case compares it: upper case then
+/// lower, so that the two lower-case sigmas (`σ`, `ς`) and the Kelvin sign fold as one letter.
+fn folded(name: &str) -> String {
+    name.to_uppercase().to_lowercase()
 }
 
 /// The container's bytes: the design as [`DESIGN_ENTRY`], then each attachment, in order.
@@ -271,7 +299,7 @@ pub fn read(bytes: &[u8]) -> Result<Opened<Hprz>, FormatError> {
 ///
 /// [`FormatError::Container`] when the bytes are not a zip archive, an entry can't be read, the
 /// central directory holds more entries than the zip reader keeps (two of one name), an entry is a
-/// symbolic link or its name isn't stored as UTF-8, an attachment's name is refused, the archive
+/// symbolic link or its name isn't marked as UTF-8, an attachment's name is refused, the archive
 /// would decompress to more than `max_unpacked_bytes`, or it holds no [`DESIGN_ENTRY`] or the
 /// design isn't UTF-8; and what [`read_json`] refuses in the design.
 pub fn read_within(bytes: &[u8], max_unpacked_bytes: u64) -> Result<Opened<Hprz>, FormatError> {
@@ -301,13 +329,22 @@ pub fn read_within(bytes: &[u8], max_unpacked_bytes: u64) -> Result<Opened<Hprz>
         let entry = archive.by_index_raw(index).map_err(|error| {
             FormatError::Container(format!("entry {index} can't be opened: {error}"))
         })?;
+        let name = entry.name();
         if entry.is_dir() {
+            // A folder's entry holds nothing: one that holds bytes, or that the zip reader takes
+            // for a folder by a `\` at its end, would be lost.
+            if entry.size() > 0 || name.ends_with('\\') {
+                return Err(FormatError::Container(format!(
+                    "{:?} is a folder's entry that is not an empty folder",
+                    shortened(name)
+                )));
+            }
             continue;
         }
-        let name = entry.name();
         if entry.name_raw() != name.as_bytes() {
             return Err(FormatError::Container(format!(
-                "the name of {:?} isn't stored as UTF-8",
+                "the name of {:?} isn't marked as UTF-8, as a name beyond plain ASCII must be \
+                 (some zip tools leave the mark off)",
                 shortened(name)
             )));
         }

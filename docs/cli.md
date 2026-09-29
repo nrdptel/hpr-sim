@@ -505,12 +505,18 @@ wrote  demo.hpr: "Loft Demo 38mm — motor comparison", 2 motor configurations, 
 
 The document holds everything hpr read from the `.ork`, including what hpr doesn't model, so
 `hpr convert demo.hpr demo.ork` writes the `.ork` hpr would write from the original, byte for byte.
-`hpr sim demo.hpr` flies it to the same flight as the `.ork`. A document of an older version of the
-format is migrated as it is read, and the output says from which version.
+`hpr sim demo.hpr` flies it to the same flight as the `.ork`, but without the `.ork` reader's
+warnings, which only `hpr convert` prints. A document of an older version of the format is migrated
+as it is read, and the output says from which version. `hpr sim` may refuse `--motor` for a
+version 0.1 document, which didn't record whether the rocket was read exactly as written; converting
+the `.ork` again fixes that ([versions](format/hpr.md#versions)).
 
 `--attach` adds a file to a `.hprz`, once for each file: a flight log, a photograph, anything, up
-to 256 MiB for the whole container. Each goes at the top of the container, under its file name.
-Converting a `.hprz` to a `.hpr` or a `.ork` leaves its attachments out, and a warning names each.
+to 256 MiB for the whole container. Each goes at the top of the container, under its file name,
+and a name the container can't hold, such as `CON.txt`, is refused
+([the container's name rules](format/hpr.md#the-container-hprz)). Converting a `.hprz` to a `.hprz`
+keeps its attachments, and adds any `--attach` names. Converting one to a `.hpr` or a `.ork` leaves
+its attachments out, and a warning names each.
 With `--json`, the output
 ([`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json))
 gives:

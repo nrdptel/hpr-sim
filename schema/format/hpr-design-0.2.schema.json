@@ -3468,7 +3468,7 @@
       "description": "The file a design was read from: its format and its SHA-256, which name it without its path,\nand whether its rocket was read exactly as written.",
       "properties": {
         "airframe_not_as_written": {
-          "description": "Why the file's airframe or a motor mount was not read exactly as written, if it wasn't: a\npart left out, a value dropped or simplified, or something assumed\n([`hpr_io::ork::airframe_not_as_written`]). No configuration of such a rocket flies, and\n`hpr sim` flies no other motor in it. Absent when the rocket was read as written.",
+          "description": "Why the file's airframe or a motor mount was not read exactly as written, if it wasn't: a\npart left out, a value dropped or simplified, or something assumed\n([`hpr_io::ork::airframe_not_as_written`]). No configuration of such a rocket flies, and\n`hpr sim` flies no other motor in it. Absent when the rocket was read as written. A document\nmigrated from 0.1 that doesn't show which holds exactly [`migrate::UNKNOWN`], a fixed text a\nprogram can compare against.",
           "type": [
             "string",
             "null"

@@ -925,6 +925,11 @@ fn an_attachment_name_that_leaves_its_folder_is_refused() {
         ("con.txt", "a Windows device's name"),
         ("logs/COM1.csv", "a Windows device's name"),
         ("Lpt9", "a Windows device's name"),
+        ("COM0", "a Windows device's name"),
+        ("lpt\u{b9}.txt", "a Windows device's name"),
+        ("NUL .txt", "a Windows device's name"),
+        ("logs/CONIN$", "a Windows device's name"),
+        (&format!("{}.txt", "x".repeat(252)), "longer than 255 bytes"),
     ] {
         let written = container::write(&hprz_of(vec![container::Entry::new(name, vec![1])]));
         let Err(FormatError::Container(message)) = written else {
@@ -1012,7 +1017,7 @@ fn an_attachment_name_that_leaves_its_folder_is_refused() {
         message.contains("\"logs/link\" is a symbolic link"),
         "{message}"
     );
-    // A name not stored as UTF-8 (a byte of the old DOS code page, which the zip reader turns into
+    // A name not marked as UTF-8 (a byte of the old DOS code page, which the zip reader turns into
     // another character) is refused rather than renamed.
     let mut dos = zip_of(&[("design.hpr", design.as_bytes()), ("x.csv", b"1")]);
     let at: Vec<usize> = (0..dos.len() - 5)
@@ -1023,7 +1028,75 @@ fn an_attachment_name_that_leaves_its_folder_is_refused() {
         dos[i] = 0x82;
     }
     let message = container::read(&dos).unwrap_err().to_string();
-    assert!(message.contains("isn't stored as UTF-8"), "{message}");
+    assert!(message.contains("isn't marked as UTF-8"), "{message}");
+    // A folder's entry that holds bytes would be lost, so it is refused.
+    let mut full = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    full.start_file("design.hpr", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    std::io::Write::write_all(&mut full, design.as_bytes()).unwrap();
+    full.start_file("notes/", zip::write::SimpleFileOptions::DEFAULT)
+        .unwrap();
+    std::io::Write::write_all(&mut full, b"lost").unwrap();
+    let zip = full.finish().unwrap().into_inner();
+    let message = container::read(&zip).unwrap_err().to_string();
+    assert!(
+        message.contains("\"notes/\" is a folder's entry that is not an empty folder"),
+        "{message}"
+    );
+    // Names that differ only by a letter's case, where Rust's lower case alone keeps them apart:
+    // the Greek final sigma, and the Kelvin sign.
+    for (a, b) in [
+        ("\u{3b1}\u{3c3}.txt", "\u{391}\u{3a3}.txt"),
+        ("\u{3b1}\u{3c2}.txt", "\u{3b1}\u{3c3}.txt"),
+        ("\u{212a}.txt", "k.txt"),
+    ] {
+        let hprz = hprz_of(vec![
+            container::Entry::new(a, vec![1]),
+            container::Entry::new(b, vec![2]),
+        ]);
+        let message = container::write(&hprz).unwrap_err().to_string();
+        assert!(
+            message.contains("two attachments are named"),
+            "{a} {b}: {message}"
+        );
+    }
+    // A name of 255 bytes is taken.
+    let longest = format!("{}.txt", "x".repeat(251));
+    let hprz = hprz_of(vec![container::Entry::new(longest.as_str(), vec![1])]);
+    assert_eq!(
+        container::read(&container::write(&hprz).unwrap())
+            .unwrap()
+            .value,
+        hprz
+    );
+    // A name of 30,000 folders is checked in memory of its own size, not one copy per folder (which
+    // was about a gigabyte), whether it stands alone or beside its own first folder.
+    let deep = format!("{}x", "a/".repeat(30_000));
+    let hprz = hprz_of(vec![container::Entry::new(deep.as_str(), vec![1])]);
+    assert_eq!(
+        container::read(&container::write(&hprz).unwrap())
+            .unwrap()
+            .value,
+        hprz
+    );
+    let hprz = hprz_of(vec![
+        container::Entry::new(deep.as_str(), vec![1]),
+        container::Entry::new("A", vec![2]),
+    ]);
+    let message = container::write(&hprz).unwrap_err().to_string();
+    assert!(
+        message.contains("\"A\" is also the folder of another"),
+        "{message}"
+    );
+    // A name that sorts between a folder and its files is not taken for one of them.
+    let names = ["logs", "logs-old/a.csv", "logs.csv"];
+    let hprz = hprz_of(
+        names
+            .iter()
+            .map(|name| container::Entry::new(*name, vec![1]))
+            .collect(),
+    );
+    assert!(container::write(&hprz).is_ok());
     // A folder's own entry holds nothing and is passed over.
     let mut folders = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     folders
@@ -1259,4 +1332,43 @@ fn the_migration_recovers_the_airframes_reason_from_the_configurations() {
         "not a valid hpr design 0.2: as a 0.1 document, its source has an \
          \"airframe_not_as_written\", which 0.1 doesn't define"
     );
+}
+
+/// On every public design, the migration from 0.1 works out whether the airframe was read as
+/// written as the `.ork` reader says, or marks it unknown, and is never wrong: as `cargo xtask ork`
+/// holds the private designs to. The reduced design adds one whose airframe wasn't, and the
+/// archive with an embedded curve one whose configuration flies.
+#[test]
+fn the_migration_is_never_wrong_about_a_public_designs_airframe() {
+    // Found the same, marked unknown though read as written, marked unknown though not.
+    let mut counts = [0usize; 3];
+    let reduced = with_a_parallel_stage();
+    let (embedded, _, _) = with_attachments();
+    let designs = PUBLIC.iter().map(|(name, bytes)| (*name, *bytes)).chain([
+        ("reduced", reduced.as_slice()),
+        ("embedded", embedded.as_slice()),
+    ]);
+    for (name, bytes) in designs {
+        let document = document(bytes);
+        let truth = ork::airframe_not_as_written(&ork::read(bytes).unwrap().value);
+        let mut value = serde_json::to_value(&document).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("version".to_owned(), serde_json::json!("0.1"));
+        let files = object.remove("source_files").unwrap();
+        object.insert("attachments".to_owned(), files);
+        object["provenance"]["source"]
+            .as_object_mut()
+            .unwrap()
+            .remove("airframe_not_as_written");
+        let migrated = from_json(&value.to_string()).unwrap();
+        let reason = migrated.provenance.source.unwrap().airframe_not_as_written;
+        match (truth.as_deref(), reason.as_deref()) {
+            (truth, reason) if truth == reason => counts[0] += 1,
+            (_, Some(migrate::UNKNOWN)) => counts[usize::from(truth.is_some()) + 1] += 1,
+            (truth, reason) => panic!("{name}: {truth:?}, migrated as {reason:?}"),
+        }
+    }
+    // With no motor catalog here, a public design's configurations are all left out for want of a
+    // curve, before the airframe is asked after, so only the embedded curve's design shows it.
+    assert_eq!(counts, [1, PUBLIC.len() - 1, 2]);
 }

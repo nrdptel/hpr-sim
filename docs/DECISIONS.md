@@ -9442,11 +9442,14 @@ used `attachments` for the source `.ork`'s other entries, which the brief's cont
    exactly as a `.hpr` file, so unzipping one gives a `.hpr`; every other entry is an attachment,
    kept byte for byte in order. Entries are deflated and dated 1980-01-01, so with one build the
    bytes depend only on the contents. An attachment's name is a relative path with `/` between
-   folders: none of its parts empty, `.` or `..`, none ending in `.` or a space or naming a Windows
-   device, no `\`, `:` or control character, not `design.hpr` in any case; no two names the same
-   ignoring case, and none also another's folder. A container holds at most 256 MiB unpacked, which
+   folders: none of its parts empty, `.` or `..`, longer than 255 bytes, ending in `.` or a space,
+   or naming a Windows device with or without an extension (`CON`, `CONIN$`, `COM0` to `COM9`,
+   `LPT¹` and the like), no `\`, `:` or control character, not `design.hpr` in any case; no two
+   names the same ignoring case (compared upper-cased then lower-cased, so `ς`, `σ` and `Σ` meet),
+   and none also another's folder, found by a sorted lookup that copies no name per folder. A container holds at most 256 MiB unpacked, which
    the writer and the reader both hold to. The reader checks every name before it decompresses,
-   passes over a folder's own entry, refuses a symbolic link and a name not stored as UTF-8, and
+   passes over a folder's own entry if it is empty, refuses a symbolic link and a name beyond ASCII
+   not marked as UTF-8, and
    refuses an archive whose central directory has more records than the zip reader keeps, which it
    does when two share a name (it keeps one and drops the other without a word). Unicode
    normalization (two spellings of one accented letter) is not checked.
@@ -9470,8 +9473,8 @@ with another motor where its `.ork` is not.
 
 **Not chosen: reading a 0.1 document with no sign of its airframe as read as written.** The first
 draft of the migration did; review showed a rocket with a part left out flying another motor from
-its 0.1 document. Marking it unknown refuses 28 corpus designs another motor that could fly one,
-until their `.ork` is converted again, which is the cheaper mistake.
+its 0.1 document. Marking it unknown means 28 corpus designs that could fly another motor refuse
+one until their `.ork` is converted again; that is the cheaper mistake.
 
 **Not chosen: the source's files as container entries.** A `.hprz` could store `source_files` as
 entries rather than inside the document. Keeping the document whole means the container's design
