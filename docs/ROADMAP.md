@@ -769,9 +769,8 @@
     the tests.
   - [x] **M4.3b RocketPy's example.** *Done when:* a flight takes a drag table (`C_D0` by Mach,
     power on and off); a notebook-style example flies RocketPy's Calisto from Python within M2.1's
-    3% on every scored metric, run in CI. *Result:* met (ADR-115): `DragTable` in Rust and Python;
-    `examples/calisto.py` is within 3% on all 14 metrics (largest: landing drift, +1.25%), run by
-    `test_calisto.py` in CI's `python` job.
+    3% on every scored metric, run in CI. *Result:* met (ADR-115): `DragTable`; `calisto.py`, run by
+    pytest in CI, is within 3% on all 14 metrics (largest: landing drift, +1.25%).
   - [ ] **M4.3c Python models.** *Done when:* a drag and a wind written as Python functions fly,
     their exceptions reach Python, and a flight with Python's constant drag equals a table's.
 
