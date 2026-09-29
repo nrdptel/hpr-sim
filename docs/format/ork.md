@@ -6,8 +6,10 @@ the format hobby designs are most often shared in, so reading it is how a design
 without being typed again.
 
 **What works today:** hpr reads the three `.ork` container forms and turns the XML into a design tree.
-It preserves unread content for a future round trip, but normalizes layout and drops comments, processing
-instructions and XML namespaces.
+It keeps what it doesn't model, and writes a design back out as a `.ork` that reads back as the
+same design ([writing a `.ork` back out](#writing-a-ork-back-out)). Whether OpenRocket flies the
+written file the same is not checked yet. Layout is normalized; comments, processing instructions
+and XML namespaces are dropped.
 
 It currently builds supported stages, body components, tubes, rings, fins, lugs, rail buttons,
 recovery gear, motor configurations, recovery settings and stored simulations. Staged, clustered
@@ -2816,8 +2818,7 @@ assert_eq!(back, design.extensions);
 for a tag by name and uses the first copy, so the second's own value is taken as read, though its
 attributes and anything unread inside it are kept. 13 fin tabs in the library carry a second
 `<tabposition>` this way. That text, and everything else, is still in the document itself, which
-hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
-([M3.2](../decisions-and-roadmap.md#m3-2)) starts from both.
+hpr keeps whole when it opens a file ([ADR-051][adr-051]).
 
 ### Kept in the reference library
 
@@ -2842,18 +2843,98 @@ How this was decided is in [ADR-058][adr-058].
 [adr-075]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-075-a-cluster-is-one-tube-repeated-and-a-motor-in-it-one-motor-per-tube-2026-09-25
 [adr-076]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-076-a-ork-files-ignitions-and-one-powered-separation-flown-against-openrocket-2026-09-25
 
+## Writing a `.ork` back out
+
+**In short.** `hpr_io::ork::export` writes a design as a `.ork` file that OpenRocket 24.12 can
+open: schema 1.10, zipped with the design as `rocket.ork`, as OpenRocket packs one. It writes
+from hpr's design alone, not from a copy of the file it came from, so a design built or changed
+in hpr is written the same way. Read back, the written file gives the same design, bit for bit,
+for every design in the reference library. **Not checked yet:** that OpenRocket flies the written
+file as it flies the original, to 0.5% of the apogee. That is
+[M3.2b](../decisions-and-roadmap.md#m3-2b)'s check.
+
+**How it is written.** Each part of the design is written as the tags hpr reads it from. What hpr
+keeps but doesn't model goes back where it was
+([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)): a parallel stage in its place
+among the parts, a part's colour in the part, a simulation's plug-in in the simulation. A value
+hpr read and dropped goes back as the file wrote it. A rail button keeps its screw height, even
+though hpr doesn't model the screw. Two functions do the work:
+
+- `export::document(&design)` gives the document, with a warning for anything kept that has no
+  place any more.
+- `export::write(&design, &attachments)` gives the file's bytes. The attachments are the
+  original's other zip entries (`OrkFile::attachments`), such as a preview image.
+
+The API reference has a worked example
+([`hpr_io::ork::export`](https://nrdptel.github.io/hpr-sim/api/hpr_io/ork/export/index.html)).
+
+**Three lessons from Loft's exporter** are tests here ([L67](../decisions-and-roadmap.md#l67),
+[L68](../decisions-and-roadmap.md#l68)):
+
+| Loft wrote | hpr writes |
+|---|---|
+| a plugged delay as 0 s | `none`, which reads back as plugged |
+| ignition only for the whole mount | each configuration's own ignition event and delay |
+| no launch conditions | every condition of every stored simulation |
+| masses it had worked out, as overrides | only the overrides the design has, with their flags |
+| a freeform fin as a trapezoid of the same area | every point of the outline |
+| a cluster without its scale and rotation | the cluster's pattern, scale and rotation |
+| each number to six decimals | the shortest number that reads back to the same bits |
+
+**Numbers to the last bit.** A length of 0.1 + 0.2 metres is written `0.30000000000000004`,
+because `0.3` would read back as a different number. Angles are stored in radians and written in
+degrees. The writer picks the shortest number of degrees that converts back to exactly the stored
+radians: a fin set at 45° is written `45`.
+
+**What OpenRocket insists on.** These were found by opening written files in OpenRocket 24.12:
+
+- An id that isn't a UUID (a 36-character code such as `0f0e0d0c-0b0a-4900-8800-070605040302`)
+  makes OpenRocket refuse the whole file. So such an id is left out, and OpenRocket gives the part
+  one of its own. A part the file gave no id reads back with the same id hpr made up for it.
+- OpenRocket reads an inner tube's roll angle, and a parachute's or a mass's, only under the older
+  tag `radialdirection`. So they are written under that tag.
+
+**What is still lost.** None of these happens in the reference library:
+
+- A tag the file leaves out, where hpr assumes a value (a radius with nothing to take, a missing
+  wall or density). The written file states the assumption, so reading it again no longer warns.
+- A second motor in one mount for one configuration.
+- A configuration with no id, or one declared twice.
+- Simulation rows and events hpr left out on reading.
+- The text of a second copy of a tag ([above](#what-hpr-keeps-for-writing-the-file-back)).
+
+After an edit to the design, a kept tag's text still wins over the edit. Change a rail button in
+hpr and its original screw height is written as it was.
+
+**Checked on the reference library.** `cargo xtask ork` writes every design out, reads it back,
+compares the two, and writes the design read back once more. It fails on any difference. On
+2026-09-29:
+
+| quantity | count |
+|---|---|
+| designs written | 73 |
+| read back as the same design | 73 |
+| written again the same, byte for byte | 73 |
+| export warnings | 0 |
+
+```bash
+cargo xtask ork                             # counts, and fails if a design comes back different
+cargo xtask ork --export corpus-out/written  # also saves each written file, by the original's path
+```
+
+How this was decided is in [ADR-109][adr-109].
+
+[adr-109]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-109-m32-split-and-a-ork-written-from-the-design-2026-09-29
+
 ## What is not read yet
 
 Parallel stages are kept, not modelled ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
 Pods are read and flown ([Pods](#pods)).
-Writing a `.ork` back out as a design — rather than
-as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 
 What keeping the whole document buys you is this: when hpr meets a part it does not model, it can
 say so and carry the part's own XML along untouched in `x-openrocket`, rather than dropping it
-silently the way Loft did with pods and parallel stages. The document itself is kept whole too, so
-a writer ([M3.2](../decisions-and-roadmap.md#m3-2)) will have what it needs; what it chooses to do
-with a part hpr does not understand is its decision, taken in the open. [ADR-064][adr-064]
+silently the way Loft did with pods and parallel stages. The writer puts that XML back where it
+was ([writing a `.ork` back out](#writing-a-ork-back-out)). [ADR-064][adr-064]
 confirms that the reduced flag and this preserved content are the current rule for b4, not a hidden
 mass estimate.
 

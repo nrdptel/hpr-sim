@@ -708,16 +708,12 @@
   - Loft lessons: L95.
   *Done when:* the examples run in CI; rustdoc has zero warnings; a "custom aero model" example
   overrides a built-in model through the trait. Split into a and b (ADR-103).
-  - [x] **M4.1a The builder.** `Environment`, `Motor`, `Rocket` (parts from the nose back, one
-    motor tube, parachutes) and `Flight`, over the crates' own types.
+  - [x] **M4.1a The builder.** `Environment`, `Motor`, `Rocket` and `Flight` over the crates' types.
     - Loft lessons: L95.
-    *Done when:* the builder's rocket is `own_rocket.rs`'s, flown bit for bit the same; L95's test
-    passes, each refusal pinned; two builder examples run in CI; a guide page explains it.
-    *Result:* met (ADR-103): equal `FlightResult`s; 8 spoiled designs, 7 refused by part, 1 finite.
-  - [x] **M4.1b Custom models and the rustdoc guide.** A drag-model trait the flight calls in
-    place of hpr's own, the custom aero example, two more examples, and a rustdoc guide. *Done
-    when:* the three bullets above are met with at least 4 builder examples. *Result:* met
-    (ADR-104): `custom_drag` flies `DragModel`s; 5 builder examples; `hpr::guide`.
+    *Done when:* the builder's rocket is `own_rocket.rs`'s, flown bit for bit; L95's test passes,
+    each refusal pinned; two builder examples run in CI; a guide page. *Result:* met (ADR-103).
+  - [x] **M4.1b Custom models and the rustdoc guide.** *Done when:* the three bullets above are
+    met with at least 4 builder examples. *Result:* met (ADR-104): `custom_drag`; 5 examples.
 
 - [x] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|analyze|diagnose` (stubs
   are fine for commands whose milestone hasn't come yet), `--json` everywhere, and shell
@@ -729,30 +725,31 @@
   *Done when:* `assert_cmd` tests cover every implemented command and the JSON output validates
   against the published schemas, and `hpr analyze` is tested on a log with no design file
   present. Split into a to d (ADR-105).
-  - [x] **M4.2a The command surface and `hpr motors`.** Every command registered, the rest refusing
-    with their milestone (exit 3); `--json`, schemas generated from the output types, exit codes,
-    completions, and the README's command table generated from the registry. *Done when:*
-    `assert_cmd` tests cover `motors`, `completions` and every refusal, each JSON output validating
-    against its committed schema; a test fails when the table, a schema or a page's example is
-    stale, or when the table lists a command clap doesn't register. *Result:* met (ADR-105).
-  - [x] **M4.2b `hpr sim`.** A `.ork` or hpr design flown with a catalog motor or a motor file, its
-    summary printed and its recording exported. *Done when:* a public `.ork` flown by `hpr sim`
-    gives the library's flight bit for bit, and its JSON validates. *Result:* met (ADR-106): the
-    pod probe with `--motor H54`, every summary field, event and CSV byte the library's; #240.
+  - [x] **M4.2a The command surface and `hpr motors`.** *Done when:* `assert_cmd` covers
+    `motors`, `completions` and every refusal, each JSON output valid against its committed
+    schema; a stale table, schema or page example, or a table command clap lacks, fails a test.
+    *Result:* met (ADR-105).
+  - [x] **M4.2b `hpr sim`.** *Done when:* a public `.ork` flown by `hpr sim` gives the library's
+    flight bit for bit, its JSON valid. *Result:* met (ADR-106): the pod probe with `--motor H54`.
   - [x] **M4.2c `hpr validate` and `hpr convert`.** *Done when:* `hpr validate` fails where `cargo
-    xtask validate --check` does, and `hpr convert` round-trips `.eng` and `.rse` motor files.
-    *Result:* met (ADR-107): one check for both, failing a spoiled copy three ways; 29 `.eng` and 3
-    `.rse` bundled curves round-trip, 4 differences warned or read the same.
-  - [x] **M4.2d `hpr analyze`.** `hpr-flightdata`'s first log reader and its readings. *Done when:*
-    `hpr analyze` is tested on a log with no design file present, its JSON validating. *Result:*
-    met (ADR-108): PerfectFlite `.pf2`; an invented log read alone in a folder; the public Pnut
-    log, where fetched, 1,010 ft against its stated 1,009 ft. M4.2 closed with it.
+    xtask validate --check` does; `hpr convert` round-trips `.eng` and `.rse`. *Result:* met
+    (ADR-107): a spoiled copy fails three ways; 32 bundled curves round-trip.
+  - [x] **M4.2d `hpr analyze`.** *Done when:* tested on a log with no design file present, its JSON
+    valid. *Result:* met (ADR-108): `.pf2`; the public Pnut log reads 1,010 ft against 1,009 ft.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
   - Loft lessons: L67, L68.
   *Done when:*
   - `.ork` → hpr → `.ork` → OR 24.12 (oracle) loads every corpus design.
   - OR re-simulation of the exported file matches the original's within 0.5% apogee.
+  Split into a and b (ADR-109).
+  - [x] **M3.2a The writer.** `hpr_io::ork::export` writes a design from itself and what it keeps
+    in `x-openrocket`, a value the reader drops included.
+    - Loft lessons: L67, L68.
+    *Done when:* `cargo xtask ork` reads every corpus design back from its export the same, and
+    writes it again byte for byte; L67's and L68's tests pass; a hand-derived document matches.
+    *Result:* met (ADR-109): 73 of 73 the same, 73 byte for byte.
+  - [ ] **M3.2b OpenRocket flies the export.** *Done when:* the two bullets above, by the oracle.
 
 - [ ] **M3.3 The hpr open design format v0.1.** See the brief in `ARCHITECTURE.md`.
   - Spec in `docs/format/`; JSON Schema generated by `schemars` under `schema/`.
