@@ -409,9 +409,9 @@ fn a_secant_lambert_cone_is_refused() {
 
 #[test]
 fn other_templates_are_refused_by_name() {
-    // JPEG 2000, template 5.40.
+    // PNG, template 5.41.
     let mut repr = packing(6, 0.0, 0, 0, 8);
-    repr[10] = 40;
+    repr[10] = 41;
     let bytes = message(&[
         identification(),
         latlon_grid(3, 2, 0, 0, 0x40, 0x30),
@@ -425,7 +425,7 @@ fn other_templates_are_refused_by_name() {
         Err(Grib2Error::Unsupported {
             message: 0,
             what: "data representation template",
-            value: 40
+            value: 41
         })
     );
     // A Gaussian grid, template 3.40.
@@ -1341,5 +1341,213 @@ fn the_damaged_files_start_from_every_template() {
     }
     for f in &fields {
         f.values().unwrap();
+    }
+}
+
+/// The RAP fixture's first message (grid 200, 500 hPa temperature, 6 bits, no bitmap), and where
+/// its sections 5 and 7 start.
+fn rap_jpeg2000() -> (Vec<u8>, usize, usize) {
+    let file = include_bytes!("../../tests/fixtures/rap-jpeg2000.grib2");
+    let length = usize::try_from(u64::from_be_bytes(file[8..16].try_into().unwrap())).unwrap();
+    let bytes = file[..length].to_vec();
+    let (mut at, mut starts) = (16, [0; 8]);
+    while at + 5 <= length && &bytes[at..at + 4] != b"7777" {
+        let n = usize::try_from(be_u32(&bytes[at..at + 4])).unwrap();
+        starts[usize::from(bytes[at + 4])] = at;
+        at += n;
+    }
+    (bytes, starts[5], starts[7])
+}
+
+#[test]
+fn jpeg2000_reads_its_template_and_refuses_what_it_cannot_decode() {
+    let (good, s5, s7) = rap_jpeg2000();
+    let fields = parse(&good).unwrap();
+    let Packing::Jpeg2000(p) = fields[0].packing else {
+        panic!("{:?}", fields[0].packing)
+    };
+    assert_eq!(
+        (p.bits, p.binary_scale, p.decimal_scale, p.count),
+        (6, -4, 0, 10_152)
+    );
+    assert_eq!(fields[0].packing.template(), 40);
+    // More bits than the decoder's `f32` wavelet keeps exact.
+    let mut bytes = good.clone();
+    bytes[s5 + 19] = MAX_JPEG2000_BITS + 1;
+    assert_eq!(
+        parse(&bytes),
+        Err(Grib2Error::Unsupported {
+            message: 0,
+            what: "bits per value in JPEG 2000",
+            value: 22
+        })
+    );
+    // Lossy coding.
+    let mut bytes = good.clone();
+    bytes[s5 + 21] = 1;
+    assert_eq!(
+        parse(&bytes),
+        Err(Grib2Error::Unsupported {
+            message: 0,
+            what: "type of JPEG 2000 compression",
+            value: 1
+        })
+    );
+    // Section 5's bits not the image's.
+    let mut bytes = good.clone();
+    bytes[s5 + 19] = 7;
+    assert!(
+        matches!(parse(&bytes), Err(Grib2Error::Malformed { reason, .. }) if reason.contains("6 bits per sample but section 5 gives 7"))
+    );
+    // Not a codestream.
+    let mut bytes = good.clone();
+    bytes[s7 + 5] = 0;
+    assert!(
+        matches!(parse(&bytes), Err(Grib2Error::Malformed { reason, .. }) if reason.contains("the JPEG 2000 codestream"))
+    );
+    // A codestream cut short, at every length: refused when parsed or when read, never decoded
+    // (the decoder's lenient mode would fill a cut image with its DC offset).
+    let n = usize::try_from(be_u32(&good[s7..s7 + 4])).unwrap();
+    for cut in 5..n {
+        let mut bytes = good.clone();
+        bytes.drain(s7 + cut..s7 + n);
+        let short = u32::try_from(cut).unwrap().to_be_bytes();
+        bytes[s7..s7 + 4].copy_from_slice(&short);
+        let total = u64::try_from(bytes.len()).unwrap().to_be_bytes();
+        bytes[8..16].copy_from_slice(&total);
+        match parse(&bytes) {
+            Err(Grib2Error::Malformed { .. } | Grib2Error::Unsupported { .. }) => {}
+            Ok(fields) => assert!(
+                matches!(fields[0].values(), Err(Grib2Error::Malformed { reason, .. }) if reason.contains("JPEG 2000")),
+                "a codestream cut to {cut} of {n} bytes decoded"
+            ),
+            Err(e) => panic!("{e}"),
+        }
+    }
+}
+
+/// The RAP fixture's first message with its codestream's main header edited at `at`.
+fn with_header_byte(at: usize, value: u8) -> Vec<u8> {
+    let (mut bytes, _, s7) = rap_jpeg2000();
+    bytes[s7 + 5 + at] = value;
+    bytes
+}
+
+#[test]
+fn jpeg2000_refuses_every_other_coding_by_name() {
+    let refused = |bytes: &[u8]| match parse(bytes) {
+        Err(Grib2Error::Unsupported { what, value, .. }) => (what, value),
+        other => panic!("{other:?}"),
+    };
+    // SIZ: Csiz at 40 and 41, Ssiz at 42, XRsiz and YRsiz at 43 and 44.
+    assert_eq!(
+        refused(&with_header_byte(41, 3)),
+        ("JPEG 2000 components", 3)
+    );
+    assert_eq!(
+        refused(&with_header_byte(42, 0x85)),
+        ("JPEG 2000 signed samples", 0x85)
+    );
+    assert_eq!(
+        refused(&with_header_byte(43, 2)),
+        ("JPEG 2000 subsampling", 0x201)
+    );
+    // A side past the decoder's 60,000 (Xsiz, bytes 8 to 11: 60,001).
+    let mut bytes = with_header_byte(9, 0);
+    let (_, _, s7) = rap_jpeg2000();
+    bytes[s7 + 5 + 10..s7 + 5 + 12].copy_from_slice(&[0xEA, 0x61]);
+    assert_eq!(refused(&bytes), ("JPEG 2000 image side", 60_001));
+    // An image offset (XOsiz, bytes 16 to 19).
+    assert_eq!(
+        refused(&with_header_byte(19, 1)),
+        ("JPEG 2000 image or tile offset", 1)
+    );
+    // Tiles smaller than the image (XTsiz, bytes 24 to 27: 108 wide, tiles of 16).
+    let mut bytes = with_header_byte(26, 0);
+    let (_, _, s7) = rap_jpeg2000();
+    bytes[s7 + 5 + 27] = 16;
+    let (what, _) = refused(&bytes);
+    assert_eq!(what, "JPEG 2000 tiles");
+    // COD's transform (the 9/7) and QCD's quantization, where the fixture writes them.
+    let (good, _, s7) = rap_jpeg2000();
+    let codestream = &good[s7 + 5..];
+    let find = |marker: [u8; 2]| codestream.windows(2).position(|w| w == marker).unwrap();
+    let cod = find([0xFF, 0x52]);
+    assert_eq!(
+        refused(&with_header_byte(cod + 13, 0)),
+        ("JPEG 2000 wavelet transform", 0)
+    );
+    assert_eq!(
+        refused(&with_header_byte(cod + 4, 1)),
+        ("JPEG 2000 precinct sizes", 1)
+    );
+    let qcd = find([0xFF, 0x5C]);
+    assert_eq!(
+        refused(&with_header_byte(qcd + 4, 0x42)),
+        ("JPEG 2000 quantization", 2)
+    );
+    // A segment hidden inside a longer SIZ, COD or SOT (their lengths at 4 and 5, COD's and SOT's
+    // two bytes after their markers).
+    let malformed = |bytes: &[u8]| match parse(bytes) {
+        Err(Grib2Error::Malformed { reason, .. }) => reason,
+        other => panic!("{other:?}"),
+    };
+    assert!(malformed(&with_header_byte(5, 58)).contains("0xFF51 is 58 bytes long, not 41"));
+    assert!(malformed(&with_header_byte(cod + 3, 20)).contains("0xFF52 is 20 bytes long, not 12"));
+    let sot = find([0xFF, 0x90]);
+    assert!(malformed(&with_header_byte(sot + 3, 11)).contains("0xFF90 is 11 bytes long, not 10"));
+    // A marker the reader does not take (RGN in place of QCD).
+    assert_eq!(
+        refused(&with_header_byte(qcd + 1, 0x5E)),
+        ("JPEG 2000 main-header marker", 0xFF5E)
+    );
+    // A tile-part's QCC, which the encoder writes for 15-bit fields, is held to the same rule.
+    let file = include_bytes!("../../tests/fixtures/rap-jpeg2000.grib2");
+    let first = usize::try_from(u64::from_be_bytes(file[8..16].try_into().unwrap())).unwrap();
+    let second = &file[first..];
+    let qcc = second
+        .windows(4)
+        .position(|w| w == [0xFF, 0x90, 0, 10])
+        .unwrap()
+        + 12;
+    assert_eq!(&second[qcc..qcc + 2], &[0xFF, 0x5D]);
+    let mut bytes = second.to_vec();
+    bytes[qcc + 5] |= 0x02;
+    assert_eq!(refused(&bytes), ("JPEG 2000 quantization", 2));
+}
+
+#[test]
+fn jpeg2000_of_0_bits_is_its_reference_everywhere() {
+    // The same message with 0 bits: no codestream is read, every value is `R / 10^D`.
+    let (mut bytes, s5, _) = rap_jpeg2000();
+    bytes[s5 + 19] = 0;
+    let fields = parse(&bytes).unwrap();
+    let Packing::Jpeg2000(p) = fields[0].packing else {
+        panic!("{:?}", fields[0].packing)
+    };
+    let r = f64::from(p.reference);
+    assert!(fields[0].values().unwrap().iter().all(|v| *v == Some(r)));
+    assert_eq!(fields[0].value(10_151).unwrap(), Some(r));
+}
+
+proptest::proptest! {
+    /// A damaged JPEG 2000 codestream is refused, when parsed or when read, and never panics.
+    #[test]
+    fn damaged_jpeg2000_never_panics(
+        edits in proptest::collection::vec((0_usize..2_300, 0_u8..=255), 1..6),
+    ) {
+        let (mut bytes, _, s7) = rap_jpeg2000();
+        let n = bytes.len();
+        for (at, byte) in edits {
+            // Within section 7's codestream, before the end marker `7777`.
+            let data = s7 + 5;
+            bytes[data + at % (n - 4 - data)] = byte;
+        }
+        if let Ok(fields) = parse(&bytes)
+            && let Ok(values) = fields[0].values()
+        {
+            proptest::prop_assert_eq!(values.len() as u64, fields[0].points());
+            proptest::prop_assert!(values.iter().all(|v| v.is_some_and(f64::is_finite)));
+        }
     }
 }

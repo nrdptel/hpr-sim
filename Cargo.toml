@@ -47,6 +47,9 @@ glam = { version = "0.33.7", default-features = false, features = ["f64", "serde
 # `.ork` designs are gzip streams, and the entries inside their zip container are deflated. The
 # pure-Rust backend (miniz_oxide) keeps `hpr-io` building for wasm32 and links no C.
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
+# GRIB2 fields packed in JPEG 2000 (template 5.40). Pure Rust, no unsafe without `simd`; no
+# default features, so no image or colour-management crates and nothing that stops wasm32.
+hayro-jpeg2000 = { version = "0.4.0", default-features = false, features = ["std"] }
 insta = { version = "1.48.0", default-features = false, features = ["json"] }
 # Tests only: checks exported GeoJSON against the published GeoJSON schema. No default features:
 # they fetch remote `$ref`s over HTTP and read files.

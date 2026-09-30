@@ -125,6 +125,12 @@ adds a source.
   States (17 U.S.C. § 105). `gfs-messages-eccodes.json` beside it is ecCodes 2.49.0's reading of
   them, written by `validation/oracles/grib2/whole_file.py`
   ([ADR-123](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30)).
+- **NOAA RAP messages in JPEG 2000** (<https://nomads.ncep.noaa.gov>):
+  `crates/hpr-io/tests/fixtures/rap-jpeg2000.grib2` is four messages cut unchanged, by byte
+  range, from `rap.t00z.awp200f00.grib2` and `rap.t00z.awp130pgrbf00.grib2` of 2026-09-30, a
+  work of the United States government (17 U.S.C. § 105). `rap-jpeg2000-eccodes.json` beside it
+  is ecCodes 2.49.0's reading of them, written by `validation/oracles/grib2/whole_file.py cut-rap`
+  ([ADR-124](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30)).
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).
@@ -202,6 +208,7 @@ adds a source.
 | `clap_complete` | MIT OR Apache-2.0 | `hpr-cli` | `hpr completions`: shell completion scripts from the same argument types |
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `flate2` | MIT OR Apache-2.0 | `hpr-io` | gzip and deflate, with the pure-Rust `miniz_oxide` backend so that `hpr-io` still builds for wasm32 and links no C: one of the three containers a `.ork` design arrives in, and the compression inside the other |
+| `hayro-jpeg2000` | Apache-2.0 OR MIT | `hpr-io` | decodes GRIB2 fields packed as JPEG 2000 images (template 5.40); pure Rust with no default features, so no other crate and nothing that stops wasm32 (ADR-124) |
 | `jsonschema` | MIT | `hpr-sim`, `hpr-cli` (tests only) | checks exported GeoJSON against the published GeoJSON schema, and each `hpr --json` output against its schema in `schema/cli/`; no default features, so it fetches and reads nothing (ADR-079) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `parquet` | Apache-2.0 | `hpr-sim` (tests only, as `parquet-reader`) | Apache's own Parquet implementation, the independent reader of the Parquet files `hpr-sim` writes by hand; no default features, so no Arrow and no compression codecs (ADR-080) |

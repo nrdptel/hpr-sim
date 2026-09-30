@@ -769,11 +769,11 @@
     *Done when:* a loopback server replaying a recorded fixture fills the cache; `cargo deny` passes.
     *Result:* met (ADR-118): `tests/http.rs` on 127.0.0.1; limit on unpacked bytes; paths by hand.
 
-- [ ] **M5.2 Weather.** Split a to d (ADR-119): Open-Meteo forecast and historical-forecast with
+- [x] **M5.2 Weather.** Split a to d (ADR-119): Open-Meteo forecast and historical-forecast with
   pressure-level winds, turned into an atmosphere/wind profile; GFS/RAP GRIB2 (pure Rust); U.
-  Wyoming soundings; offline import of ERA5/GFS files the user provides.
-  *Done when:* recorded-fixture tests pass; a profile built from a recorded Open-Meteo response
-  reproduces the pressure, temperature and wind values at the pressure levels.
+  Wyoming soundings; offline import of ERA5/GFS files the user provides. *Done when:*
+  recorded-fixture tests pass; a profile built from a recorded Open-Meteo response reproduces the
+  pressure, temperature and wind values at the pressure levels.
   - [x] **M5.2a Open-Meteo.** Forecast and historical-forecast pressure levels as a sounding,
     through the cache. *Done when:* the parent's two clauses hold for Open-Meteo. *Result:* met
     (ADR-119): 2 recordings, ground and 14 levels to rounding; heights geopotential (hypsometric).
@@ -783,19 +783,19 @@
   - [x] **M5.2c GFS/RAP GRIB2, pure Rust.** *Done when:* a recorded GRIB2 cut decodes to the values
     an outside decoder (ecCodes, run-only) prints, and its levels become a profile. *Result:* met
     (ADR-121): 6,123 values to 2.2e-16 of ecCodes; 22 GFS, 31 RAP levels; RAP winds turned by θ.
-  - [ ] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline
+  - [x] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline
     (whole files: packing 5.2, 5.3, 5.40). *Done when:* `hpr weather` writes a site's profile from
-    each source, offline from a fixture. Split d1 to d3 (ADR-122).
+    each source, offline from a fixture. Split d1 to d3 (ADR-122). *Result:* met by d1 to d3.
     - [x] **M5.2d1 `hpr weather`.** *Done when:* the parent's, for the files read today. *Result:*
       met (ADR-122): 4 sources, 6 recordings, 2 ERA5 files; the library's profile, to the bit.
     - [x] **M5.2d2 Complex packing** (5.2, 5.3). *Done when:* a whole GFS file's fields decode to
       ecCodes' values, and `hpr weather gfs --from` writes its profile. *Result:* met (ADR-123):
       743 messages, 746,770,303 values to 4.4e-16; its profile is its cut's to 1.04e-7.
-    - [ ] **M5.2d3 JPEG 2000** (5.40). *Done when:* a 5.40 file decodes to ecCodes' values.
+    - [x] **M5.2d3 JPEG 2000** (5.40). *Done when:* a 5.40 file decodes to ecCodes' values.
+      *Result:* met (ADR-124): 4 public RAP messages, 182,443 points; exact sums, every 13th value.
 
 - [ ] **M5.3 Site data.** Elevation (Open-Meteo API with cache; optional user GeoTIFF/DEM file),
   geodetic helpers, magnetic declination (WMM2025).
-
   *Done when:*
   - WMM matches NOAA test values.
   - Elevation lookups are cached and work offline after the first fetch.

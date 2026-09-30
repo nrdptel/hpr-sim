@@ -11,8 +11,8 @@
 //! [M5.5][roadmap]. An ERA5 pressure-level file gives the atmosphere over a launch site
 //! ([`era5`], [ERA5 weather files][guide-era5]), read by the netCDF classic reader
 //! ([`netcdf`]). [`grib2`] decodes the GRIB2 fields NOAA's NOMADS cuts from its GFS and RAP
-//! forecasts ([M5.2c][roadmap]) and whole GFS files' complex packing ([M5.2d2][roadmap]); JPEG
-//! 2000 is for [M5.2d3][roadmap].
+//! forecasts ([M5.2c][roadmap]) and whole GFS files' complex packing ([M5.2d2][roadmap]) and
+//! JPEG 2000 ([M5.2d3][roadmap]).
 //!
 //! [guide-era5]: https://nrdptel.github.io/hpr-sim/format/era5.html
 
