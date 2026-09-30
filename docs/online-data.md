@@ -9,7 +9,8 @@ of Wyoming** ([Weather-balloon soundings](soundings.md)) **and NOAA's GFS and RA
 ([NOAA forecasts: GFS and RAP](nomads.md)). Its tests replay a small hand-written
 sample response and answers recorded from each, from a folder and from a test web server on the
 machine running the tests, never the live network. Those tests speak plain HTTP only: encrypted
-HTTPS was checked once by hand against Open-Meteo, not in CI.
+HTTPS was checked by hand, against Open-Meteo and then through the command line's
+[`hpr weather`](cli.md#hpr-weather) against all four sources, not in CI.
 
 ## What it promises
 

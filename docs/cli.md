@@ -3,7 +3,7 @@
 `hpr` is hpr-sim's command-line tool. This page is for anyone who wants to use it from a terminal
 or a script. It says what each command does, shows its output, and lists the exit codes.
 
-Today `hpr` does six things:
+Today `hpr` does seven things:
 
 - It flies a design, read from an OpenRocket file or an hpr
   [design file](glossary.md#design-file), and prints how the flight went.
@@ -14,6 +14,8 @@ Today `hpr` does six things:
   published ones.
 - It reads a flight log from an altimeter and prints what it says about the flight, with no
   design file and no simulation.
+- It fetches a launch day's weather, or reads a weather file, and writes the air and wind over
+  the site as a profile.
 - It writes shell completion scripts.
 
 Its other commands are registered but not available yet: each refuses and names the
@@ -45,6 +47,8 @@ Its other commands are registered but not available yet: each refuses and names 
 >   same code. It re-flies the 20 cases compared with RocketPy; the OpenRocket comparisons and the
 >   real flights it only checks against the [census](glossary.md#accuracy-census), the accepted
 >   list of published accuracy numbers ([what it checks](#hpr-validate)).
+> - `hpr weather` runs the library's readers and writes the profiles they build, to the last bit
+>   ([how far to trust it](#hpr-weather)). Its online fetch is not tested automatically.
 > - The tests in
 >   [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
 >   run every command as a user would, and check each `--json` document against its
@@ -81,7 +85,7 @@ only the files each command really reads. "Not yet" commands exit with
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
-| `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2d](decisions-and-roadmap.md#m5-2d) |
+| `hpr weather` | Fetch a launch day's weather, or read a weather file, as a profile of air and wind | Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved, an ERA5 `.nc` | text, JSON, a profile as `.json` | available ([how to use it](cli.md#hpr-weather)) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](decisions-and-roadmap.md#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](decisions-and-roadmap.md#m7-3) |
@@ -289,8 +293,9 @@ after apogee and where it ends are not predictions.
 - **Separation.** A design's stages fly as one [stack](glossary.md#stage). A `.ork` configuration
   whose [booster](glossary.md#booster) drops away under power is refused; the library flies it,
   as [Staging](physics/staging.md#using-it-today) shows.
-- **Real weather.** One wind at every height, in the standard atmosphere. A launch day's weather
-  comes with `hpr weather`, in [M5.2d](decisions-and-roadmap.md#m5-2d).
+- **Real weather.** One wind at every height, in the standard atmosphere. [`hpr weather`](#hpr-weather)
+  writes a launch day's profile, but `hpr sim` doesn't fly it yet (issue
+  [#265](https://github.com/nrdptel/hpr-sim/issues/265)).
 
 ## `hpr motors`
 
@@ -634,6 +639,164 @@ charge that fired a second after it. The readings are taken from the altitude af
 [running median](glossary.md#running-median), which sets that pulse aside.
 [Reading a flight log](reading-a-flight-log.md) explains each reading, and how far to trust it.
 
+## `hpr weather`
+
+`hpr weather` writes down the air and the wind over a launch site, level by level from the ground
+up: at each height, the pressure, the temperature, the humidity, and the wind's speed and the
+[direction it blows from](glossary.md#wind-direction). That list of levels is a *profile* (a
+[sounding](glossary.md#sounding), when a weather balloon measured it). It comes from one of five
+sources:
+
+| source | what it is | command |
+|---|---|---|
+| Open-Meteo | a free weather service's forecast, or its archive of past forecasts ([Launch-day weather](weather.md)) | `hpr weather open-meteo --latitude 32.99 --longitude -106.97 --time 2026-10-02T18:00Z` |
+| University of Wyoming | a weather balloon's measurements, from the station's latest launch before yours ([Weather-balloon soundings](soundings.md)) | `hpr weather wyoming --station 72364 --time 2025-06-21T15:30Z` |
+| GFS | NOAA's global forecast model, on a 0.25° grid ([NOAA forecasts: GFS and RAP](nomads.md)) | `hpr weather gfs --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T00Z --hour 18` |
+| RAP | NOAA's 13 km forecast model over the contiguous U.S. and nearby Canada and Mexico ([NOAA forecasts: GFS and RAP](nomads.md)) | `hpr weather rap --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T12Z --hour 6` |
+| ERA5 | a [netCDF](glossary.md#netcdf) file you download from Europe's climate data service: the past weather, reconstructed ([ERA5 weather files](format/era5.md)) | `hpr weather era5 era5.nc --latitude 47.21 --longitude 9.00 --time 2020-02-22T13:00Z` |
+
+`hpr sim` doesn't fly a profile yet (issue
+[#265](https://github.com/nrdptel/hpr-sim/issues/265)). A Rust program can: each source's page
+flies Calisto, RocketPy's example rocket, through the weather it fetched.
+
+> **How far to trust it.** `hpr weather` runs each source's reader from the library and adds no
+> physics of its own. Each reader is checked against the recorded answers on its source's page.
+> The tests in
+> [`crates/hpr-cli/tests/weather.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/weather.rs)
+> run the four online sources through `hpr weather` offline, both from a saved answer and from
+> the cache, and ERA5 from its file. Each run writes the profile the library builds from the same
+> bytes, to the last bit, and lists the same levels left out. Fetching online is not tested
+> automatically: it was run once by hand, on 30 September 2026, for all four online sources. On a
+> network that inspects encrypted traffic, every fetch fails
+> ([Fetching over HTTP](online-data.md#fetching-over-http)). How good a forecast is at your launch
+> is not measured.
+
+### Asking for the weather
+
+- **Times are UTC**, written `2025-06-21T15:30Z`: the date, a `T`, the hour and minutes, and a
+  `Z` for UTC. Seconds are optional, and so are the minutes: `2026-09-30T00Z` is midnight. A
+  time without its `Z` is refused, so local time can't be mistaken for UTC.
+- **Open-Meteo** reads the forecast at `--time`, between the two hours around it. Add
+  `--historical` for a launch already gone: that asks Open-Meteo's archive of past forecasts.
+  `--model` names one of Open-Meteo's weather models, by the name its documentation gives; by
+  default it picks one ([What hpr asks for](weather.md#what-hpr-asks-for)).
+- **Wyoming** takes the [station](glossary.md#station)'s number, such as 72364 for Santa Teresa,
+  New Mexico ([finding a station](soundings.md#what-hpr-asks-for)), and your launch `--time`. It
+  fetches that station's latest sounding before the launch. Soundings are named for 00 and 12 UTC,
+  and the balloon goes up about an hour before: the example's 12 UTC sounding left at 11:02.
+  `--bufr` asks for the detailed version, a row every second or two of the climb.
+- **GFS and RAP** take the [forecast run](glossary.md#forecast-run-cycle) and the hour: `--cycle` is
+  when the run started, and `--hour` is how many hours after it the forecast is for. GFS runs
+  every 6 hours and RAP every hour. [What hpr asks for](nomads.md#what-hpr-asks-for) lists the
+  hours each run covers, and how long NOAA keeps them.
+- **ERA5** reads a file you downloaded, at your site and time
+  ([Getting a file](format/era5.md#getting-a-file)).
+
+### Online, offline, and saved answers
+
+The first time you ask, `hpr weather` fetches the answer over HTTPS and keeps a copy in hpr's cache
+folder ([Where the cache lives](online-data.md#where-the-cache-lives); `HPR_CACHE_DIR` moves it).
+Ask again and it reads the copy while that is fresh
+([How long a copy stays fresh](online-data.md#how-long-a-copy-stays-fresh)). If the network fails,
+it falls back to an older copy, and the output says so.
+
+- `--offline` never goes online. It answers from the cache, fresh or not. With no copy it fails,
+  with exit status 1, and names what it would have fetched.
+- `--from FILE` reads an answer saved earlier and touches neither the network nor the cache:
+  Open-Meteo's JSON, the Wyoming archive's CSV, or a [GRIB2](glossary.md#grib2) file for GFS and
+  RAP. The file says where and when it is for, so the options that choose what to fetch are
+  refused beside it: Open-Meteo's `--latitude`, `--longitude`, `--historical` and `--model`, and
+  Wyoming's `--station`, `--time` and `--bufr`. Open-Meteo's `--time` stays, and must fall within
+  the file's hours. A GRIB2 file is checked as a fetched one is: it must be on its model's grid,
+  and when you give `--cycle` and `--hour`, it must be that run and hour. Check the first line of
+  the output, which says where and when the profile is for.
+- `--output FILE` (or `-o`) writes the profile as JSON, described below.
+
+hpr reads the small GRIB2 files that NOAA's download server, NOMADS, cuts out around a site. NOAA's
+whole GFS and RAP files are compressed in ways hpr can't read yet: complex packing
+([M5.2d2](decisions-and-roadmap.md#m5-2d2)) and JPEG 2000
+([M5.2d3](decisions-and-roadmap.md#m5-2d3)). `hpr weather` refuses them and names the
+compression.
+
+### An example
+
+This reads a recorded answer from Open-Meteo's archive, for Spaceport America in New Mexico at
+15:30 UTC on 21 June 2025, and writes the profile to `profile.json`. (`hpr` names the folder it
+wrote to in full; here that folder is shown as `<the scratch folder>`.)
+
+<!-- cli: example `hpr weather open-meteo --time 2025-06-21T15:30Z --from crates/hpr-net/tests/fixtures/replay/open-meteo-historical.json --output profile.json`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr weather open-meteo --time 2025-06-21T15:30Z --from crates/hpr-net/tests/fixtures/replay/open-meteo-historical.json --output profile.json
+Open-Meteo at 32.9965° N, 106.9695° W, for 2025-06-21T15:30:00Z
+Read from open-meteo-historical.json
+Weather data by Open-Meteo.com (CC BY 4.0)
+
+   height  pressure    temp  humidity    wind   from
+    m MSL       hPa      °C         %     m/s      °
+   1400.0     859.5    29.6        18     3.3    162
+   1482.0     850.0    28.2        16     2.9    189
+   2014.4     800.0    23.4        16     2.8    225
+   3160.6     700.0    14.5        28     6.8    236
+   4439.1     600.0     3.3        60     9.8    219
+   5894.6     500.0    -7.0        70     9.9    200
+   7604.0     400.0   -17.1        34     8.3    218
+   9712.0     300.0   -31.5         8     4.4    261
+  10981.7     250.0   -41.2         9    10.6    261
+  12465.1     200.0   -52.2        13     9.8    253
+  14276.4     150.0   -64.8        18     9.9    263
+  16716.8     100.0   -70.8        12     6.3    253
+  18863.9      70.0   -66.2         4     7.8    164
+  20940.5      50.0   -60.0         0     5.4    108
+  24212.5      30.0   -54.0         0     8.6     83
+
+Left out: 5 levels
+  below the ground, 5 levels: 1000 hPa, 975 hPa, 950 hPa, 925 hPa, 900 hPa
+
+Profile written to <the scratch folder>/profile.json
+```
+
+<!-- cli: end -->
+
+The first line says where and when the profile is for: for Open-Meteo, its model's
+[grid point](glossary.md#grid-point) nearest the site; for GFS and RAP, the site itself, blended
+from the four grid points around it; for Wyoming, where the balloon was released. The ground comes
+first: its height above sea level ([MSL](glossary.md#height-above-sea-level-msl)), its pressure in
+hectopascals (hPa; 1013 hPa is sea level's standard), its temperature and humidity, and the wind
+10 m above it. Each pressure level above the ground follows. The levels the model gives below the
+ground are listed as left out: here the ground is at about 1,400 m, and 1000 to 900 hPa lie beneath
+it. Where each value comes from, and why levels are left out, is on the source's page.
+
+### The profile file
+
+`--output` writes the profile in SI units, the way the library holds it. Its `levels` run from the
+lowest up, each with:
+
+| field | unit |
+|---|---|
+| `height_msl_m` | metres above sea level |
+| `temperature_k` | kelvin |
+| `pressure_pa` | pascals (100 Pa = 1 hPa) |
+| `relative_humidity` | a fraction: 0.18 is 18%; `null` for ERA5, which hpr reads as dry air |
+| `wind_speed_m_s` | metres per second |
+| `wind_direction_from_rad` | radians clockwise from true north, where the wind comes from |
+
+Beside them, `latitude_rad` is the latitude the profile was measured or forecast at, in radians,
+and `wind_interpolation` says how the wind is blended between levels (`speed_direction`). The Rust library reads the file
+back as a [`SoundingProfile`](api/hpr_atmos/profile/struct.SoundingProfile.html), with the same
+checks. The text output and `--json` give the same levels with the direction in degrees.
+
+### What the profile leaves out
+
+- **Time between forecast hours**, for GFS and RAP: pick the run and hour nearest your launch.
+  Open-Meteo and ERA5 blend the two hours around it.
+- **The site's real ground.** A forecast's ground is its model's smoothed terrain, not your pad's
+  height, and an ERA5 file has no ground at all: its levels start at 1000 hPa, which can lie
+  below a high site.
+- **Humidity in ERA5.** hpr doesn't read it yet, so ERA5's profile is dry air.
+- **Above the top level**, the library carries the air on as the standard atmosphere and holds
+  the top wind; each source's page gives its top.
+
 ## JSON output
 
 With `--json`, a command prints exactly one [JSON](https://www.json.org) document on standard
@@ -650,13 +813,15 @@ a published [JSON Schema](https://json-schema.org), which describes its fields a
 | `hpr convert` | [`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json) |
 | `hpr validate` | [`validate.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/validate.schema.json) |
 | `hpr analyze` | [`analyze.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/analyze.schema.json) |
+| `hpr weather` | [`weather.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/weather.schema.json) |
 | `hpr completions` | [`completions.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/completions.schema.json) |
 | any failure | [`error.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/error.schema.json) |
 
 Units are SI, and each field's name says its unit: `total_impulse_ns` is in newton-seconds and
 `diameter_m` in metres. The exceptions say so in their names too: `hpr sim` gives angles in
-degrees (`latitude_deg`) and margins in calibres (`margin_cal`), and `hpr motors list` keeps the
-catalog's millimetres (`diameter_mm`). Numbers are not rounded, so a converted value can end in
+degrees (`latitude_deg`) and margins in calibres (`margin_cal`), `hpr weather` gives the wind's
+direction in degrees (`wind_from_deg`) and humidity as a fraction (`relative_humidity`, 0 to 1),
+and `hpr motors list` keeps the catalog's millimetres (`diameter_mm`). Numbers are not rounded, so a converted value can end in
 digits such as `0.0036000000000000003`; a motor's figures carry no more precision than its curve
 file.
 
@@ -777,6 +942,8 @@ you press Tab. Save it where your shell looks for completions:
   not part of the tool. It re-flies only the RocketPy comparisons.
 - **RockSim is unchecked.** OpenRocket opens the files `hpr convert` writes; whether RockSim
   does is not checked.
+- **`hpr sim` doesn't fly the weather.** [`hpr weather`](#hpr-weather) writes a profile that only
+  a program reads so far (issue [#265](https://github.com/nrdptel/hpr-sim/issues/265)).
 - **Only 32 motors are built in.** Any other motor needs its `.eng` or `.rse` file. `hpr` never
   goes online to fetch one.
 - **No ready-built program.** `hpr` is built from source with Rust; downloads for macOS, Windows

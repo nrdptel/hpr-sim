@@ -285,8 +285,9 @@ Linux and Windows.
 
 - **Whole NCEP files.** The grib filter's small cuts use GRIB2's *simple packing*, which is what
   hpr decodes. NOAA's whole files, which you would download yourself, use *complex packing* or
-  JPEG 2000 compression, and hpr refuses them by name. Reading them is planned with files you
-  provide, in [M5.2d: weather files you download, and `hpr weather`](decisions-and-roadmap.md#m5-2d).
+  JPEG 2000 compression, and hpr refuses them by name. Reading them is planned in
+  [M5.2d2, complex packing](decisions-and-roadmap.md#m5-2d2) and
+  [M5.2d3, JPEG 2000](decisions-and-roadmap.md#m5-2d3).
 - **Forecast accuracy.** Nothing here checks a forecast against the weather that came.
 - **Time.** One forecast hour per request, with no interpolation between hours: you pick the run
   and the hour closest to your launch.
@@ -305,5 +306,6 @@ Linux and Windows.
   moves the density by under 0.1%.
 - **The live connection** to NOMADS is not tested in CI, and nothing tells you which runs NOMADS
   still holds before you ask.
-- The command line's `hpr weather` (planned in [M5.2d](decisions-and-roadmap.md#m5-2d)) and the
-  Python package don't fetch NOAA's forecasts yet.
+- The command line fetches them with [`hpr weather gfs` and `rap`](cli.md#hpr-weather), but
+  `hpr sim` doesn't fly them yet (issue [#265](https://github.com/nrdptel/hpr-sim/issues/265)), and
+  the Python package doesn't fetch NOAA's forecasts.

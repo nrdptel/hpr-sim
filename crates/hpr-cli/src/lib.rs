@@ -34,6 +34,7 @@ pub mod output;
 pub mod registry;
 pub mod sim;
 pub mod validate;
+pub mod weather;
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -113,8 +114,9 @@ pub enum Command {
     /// Look up motors in the bundled catalog, or read a .eng or .rse motor file
     #[command(subcommand)]
     Motors(motors::MotorsCommand),
-    /// Fetch a launch day's weather as atmosphere and wind profiles (not available yet)
-    Weather(Planned),
+    /// Fetch a launch day's weather, or read a weather file, as a profile of air and wind
+    #[command(subcommand)]
+    Weather(weather::WeatherCommand),
     /// Fly a design many times, each with randomly scattered inputs (not available yet)
     Mc(Planned),
     /// Search a design's parameters for a goal (not available yet)
@@ -254,15 +256,14 @@ where
             Command::Validate(args) => validate::run(&args, &mut to),
             Command::Convert(args) => convert::run(&args, &mut to),
             Command::Analyze(args) => analyze::run(&args, &mut to),
+            Command::Weather(weather) => weather::run(&weather, &mut to),
             Command::Completions(args) => completions(args.shell, &mut to),
-            Command::Weather(_)
-            | Command::Mc(_)
-            | Command::Optimize(_)
-            | Command::Compare(_)
-            | Command::Diagnose(_) => Err(Failure::Input(format!(
-                "hpr {command} is marked available in the command registry, but this build \
+            Command::Mc(_) | Command::Optimize(_) | Command::Compare(_) | Command::Diagnose(_) => {
+                Err(Failure::Input(format!(
+                    "hpr {command} is marked available in the command registry, but this build \
                  has no code for it"
-            ))),
+                )))
+            }
         },
         None => Err(Failure::Input(format!(
             "hpr {command} has no entry in the command registry"

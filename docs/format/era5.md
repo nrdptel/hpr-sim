@@ -80,7 +80,8 @@ Rocket Team flew Bella Lui at Kaltbrunn on 22 February 2020, from a pad 407 m ab
 and the file covers the pad at 13:00 UTC. The program prints the levels, then the air at the pad
 and 500 m above it next to the standard atmosphere. Last, it flies the rocket in both, without its
 parachute. Run it from a copy of the repository with `cargo run --example era5_weather -p hpr`.
-It prints:
+On the command line, [`hpr weather era5`](../cli.md#hpr-weather) writes the same levels as a
+profile file. The program prints:
 
 <!-- quote: crates/hpr/examples/era5_weather.output.txt -->
 ```text

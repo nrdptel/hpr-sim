@@ -418,5 +418,6 @@ network.
 - Its terms of use are not stated; only soundings from U.S. stations, which are U.S. government
   works, are committed as test data
   ([ADR-120](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30)).
-- The command line's `hpr weather` (planned in [M5.2d](decisions-and-roadmap.md#m5-2d)) and the
-  Python package don't fetch soundings yet.
+- The command line fetches them with [`hpr weather wyoming`](cli.md#hpr-weather), but `hpr sim`
+  doesn't fly them yet (issue [#265](https://github.com/nrdptel/hpr-sim/issues/265)), and the
+  Python package doesn't fetch soundings.
