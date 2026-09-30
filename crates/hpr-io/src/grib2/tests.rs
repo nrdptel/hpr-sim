@@ -817,7 +817,7 @@ struct Bits {
 impl Bits {
     fn push(&mut self, value: u64, bits: u32) {
         for k in (0..bits).rev() {
-            if self.used % 8 == 0 {
+            if self.used.is_multiple_of(8) {
                 self.bytes.push(0);
             }
             if value >> k & 1 == 1 {

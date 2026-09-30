@@ -19,8 +19,6 @@ use hpr_io::grib2;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-const DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/");
-
 /// ecCodes computes `(R + X · 2^E) · 10^−D` with `10^−D` rounded, so its values and ours may
 /// differ by a rounding or two: 4.4e-16 relative at most over the whole file's 746,770,303 values.
 const ONE_ROUNDING: f64 = 4.5e-16;
@@ -57,10 +55,10 @@ struct Message {
     samples: Vec<Option<f64>>,
 }
 
-fn read() -> (Vec<u8>, Reading) {
-    let bytes = std::fs::read(format!("{DIR}gfs-messages.grib2")).unwrap();
-    let json = std::fs::read_to_string(format!("{DIR}gfs-messages-eccodes.json")).unwrap();
-    (bytes, serde_json::from_str(&json).unwrap())
+fn read() -> (&'static [u8], Reading) {
+    let bytes = include_bytes!("fixtures/gfs-messages.grib2");
+    let json = include_str!("fixtures/gfs-messages-eccodes.json");
+    (bytes, serde_json::from_str(json).unwrap())
 }
 
 /// A sum with Neumaier's compensation, and the sum of the terms' sizes, which bounds how far a
@@ -88,14 +86,14 @@ fn close(ours: f64, theirs: f64, bound: f64) -> bool {
 fn whole_gfs_messages_decode_to_eccodes_values() {
     let (bytes, reading) = read();
     assert_eq!(
-        Sha256::digest(&bytes)
+        Sha256::digest(bytes)
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect::<String>(),
         reading.sha256,
         "the fixture is the one ecCodes read"
     );
-    let fields = grib2::parse(&bytes).unwrap();
+    let fields = grib2::parse(bytes).unwrap();
     assert_eq!(fields.len(), reading.messages.len());
     for (field, m) in fields.iter().zip(&reading.messages) {
         let at = format!("message {} ({})", m.message_in_file, m.kind);
@@ -175,7 +173,7 @@ fn whole_gfs_messages_decode_to_eccodes_values() {
 #[test]
 fn points_read_alone_or_together_match_the_whole_field() {
     let (bytes, reading) = read();
-    let fields = grib2::parse(&bytes).unwrap();
+    let fields = grib2::parse(bytes).unwrap();
     // The fields with points without a value (a bitmap, or missing values), and the first.
     for (n, (field, m)) in fields.iter().zip(&reading.messages).enumerate() {
         if n > 0 && m.missing == 0 {
