@@ -26,7 +26,15 @@
 //! standard pressure levels and the significant levels between them, about 200 rows; and the
 //! BUFR file (WMO's binary format, as the archive decodes it), a row a second, about 6,000.
 //!
-//! [`WyomingSounding::parse`] keeps:
+//! [`WyomingSounding::parse`] first checks each row against the one before it: a row with a
+//! pressure, height and temperature **fits** when its height above that row is the layer's
+//! thickness by the hypsometric equation (from the two pressures and virtual temperatures, WMO-No.
+//! 8 eqs. 12.17 and 12.18), within 5% ([`THICKNESS_SHARE`]) plus what rounding the pressures can
+//! move it plus 30 m ([`THICKNESS_SLACK_M`]). The rows that fit form a chain from the ground, each
+//! checked against the last row of the chain; a row missing only its wind or humidity still
+//! joins it, so a gap in the wind doesn't widen the layer checked. A row that doesn't fit is left
+//! out ([`DropReason::Thickness`]); in the recordings every row fits, to within 1 m beyond
+//! rounding. Then it keeps:
 //!
 //! - **The ground**, the first row: the pressure, temperature, humidity and wind at the station
 //!   when the balloon was released.
@@ -34,21 +42,21 @@
 //!   to 0.1 hPa, and high up the balloon climbs tens of metres while the pressure falls that much,
 //!   so runs of rows share a pressure; the rounded value is the pressure at about the middle of
 //!   its run.
-//! - **Each such row above the last row kept**, higher and at a lower pressure, **that fits it**:
-//!   its height above that row is the layer's thickness by the hypsometric equation (from the two
-//!   pressures and virtual temperatures), within 5% plus the pressures' rounding plus 10 m
-//!   ([`THICKNESS_SHARE`]). In the recordings every row fits with no share at all.
+//! - **Each such row that fits and lies above the last row kept**, higher and at a lower pressure.
 //!
 //! A row missing a value (the last row often has no wind) is dropped, and so is one with a value
 //! no air on Earth has ([`DropReason::OutOfRange`] lists the bounds). [`WyomingSounding::dropped`]
 //! lists each row left out, with its reason.
 //!
-//! So a row with a bad value, a pressure missing a digit, say, is left out, not kept to hide the
-//! good rows after it, and rows that fall or float, a balloon coming down, are left out however
-//! many. More than [`MAX_MISFITS`] rows after a row kept that miss its thickness (after the
-//! ground, which nothing checks, or lie below it) refuse the answer. Not caught: a bad height
-//! smaller than the allowance, a row whose pressure and height are both wrong yet fit each other,
-//! or a bad ground with 10 rows or fewer after it.
+//! So a row with a bad pressure or height, a pressure missing a digit, say, is left out, not kept
+//! to hide the good rows after it; rows that fall or float, a balloon coming down, fit and are
+//! left out however many. More than [`MAX_MISFITS`] rows in a row that don't fit refuse the
+//! answer: the row they follow, or all of them, are wrong (a ground with a digit lost, a block of
+//! heights 1 km off). Not caught: a height error within the allowance, a row whose pressure and
+//! height are both wrong yet fit each other, a wrong temperature that keeps the thickness within
+//! it, a wrong wind or humidity (the check barely uses humidity and not wind at all), a bad ground
+//! with 10 rows or fewer after it, and a thick layer of rows with no temperature, which the two
+//! ends' mean temperature gives less well.
 //!
 //! Heights are geopotential metres (the column says so), converted to geometric heights at the
 //! first row's latitude with WMO-No. 8 (2023) eqs. 12.15 and 12.16
@@ -116,20 +124,21 @@ pub const YOUNG_TTL_S: u64 = 3_600;
 /// How long an answer fetched after its sounding settled stays fresh, s: 30 days.
 pub const SETTLED_TTL_S: u64 = 30 * 86_400;
 
-/// The most rows after a row kept that may miss its thickness (after the ground, which nothing
-/// before it checks, or lie below it) before one fits it. More means that row is likely bad, or the
-/// rows between it and the next are missing over a layer too thick for its two temperatures to
-/// give its thickness; the answer is refused rather than cut short.
+/// The most rows in a row that may miss the thickness from the last row that fit. More means that
+/// row, or all of them, are wrong (a ground with a digit lost, a block of heights 1 km off), and
+/// the answer is refused.
 pub const MAX_MISFITS: usize = 10;
 
-/// The share of a layer's hypsometric thickness a row's height may miss it by, beyond rounding:
-/// 5%. In the recordings every row kept fits with no share at all, and a row fits the row kept 30
-/// rows before it within 1.7%, so a few rows left out in between don't cost the next its place.
+/// The share of a layer's hypsometric thickness a row's height may miss it by, beyond rounding
+/// and [`THICKNESS_SLACK_M`]: 5%, for a layer whose inner rows have no temperature. In the
+/// recordings no row needs any share.
 pub const THICKNESS_SHARE: f64 = 0.05;
 
 /// The metres a row's height may miss its layer's thickness by, beyond the share and the pressures'
-/// rounding: 10 m, as a coded message's heights above 500 hPa are coded to 10 m.
-pub const THICKNESS_SLACK_M: f64 = 10.0;
+/// rounding: 30 m. A coded message's heights from 500 hPa up are coded to 10 m; an error under
+/// 30 m moves a level's pressure by under 0.4% (the air's scale height is about 8 km), so the
+/// check is for gross errors, not for these.
+pub const THICKNESS_SLACK_M: f64 = 30.0;
 
 /// The most rows an answer may have. The archive's BUFR files have about 6,000.
 pub const MAX_ROWS: usize = 100_000;
@@ -332,8 +341,8 @@ pub enum DropReason {
     SamePressure,
     /// Its height is not above the last row kept, or its pressure not below it.
     NotAbove,
-    /// It lies above the last row kept, but its height above it is not the thickness its
-    /// pressures and temperatures give (see [`THICKNESS_SHARE`]): one of its values is wrong.
+    /// Its height above the last row that fit is not the thickness the two rows' pressures and
+    /// temperatures give (see [`THICKNESS_SHARE`]): its pressure, height or temperature is wrong.
     Thickness,
 }
 
@@ -375,8 +384,8 @@ impl WyomingSounding {
     ///   a number (or, in the first row, the time is not a date).
     /// - [`WyomingError::NoGround`] when there is no row, or the first is missing a value or has
     ///   one out of range.
-    /// - [`WyomingError::Misfit`] when more than [`MAX_MISFITS`] rows after a row kept miss its
-    ///   thickness (after the ground, or lie below it) before one fits it.
+    /// - [`WyomingError::Misfit`] when more than [`MAX_MISFITS`] rows in a row don't fit the last
+    ///   row that did.
     pub fn parse(body: &[u8]) -> Result<Self, WyomingError> {
         let text = std::str::from_utf8(body).map_err(|_| WyomingError::Missing {
             field: "header".to_owned(),
@@ -420,8 +429,9 @@ impl WyomingSounding {
         })?;
         let latitude_rad = latitude_deg.to_radians();
 
-        // Every row read: its level, or why it has none.
-        let mut read: Vec<(usize, Result<WyomingLevel, DropReason>)> = Vec::new();
+        // Every row read: its line, its pressure, height and temperature when it has them, and
+        // its level, or why it has none.
+        let mut read: Vec<(usize, Option<Thermo>, Result<WyomingLevel, DropReason>)> = Vec::new();
         for (i, line) in rows {
             let line_no = i + 1;
             if read.len() == MAX_ROWS {
@@ -449,89 +459,90 @@ impl WyomingSounding {
             if read.is_empty() && level.is_err() {
                 return Err(WyomingError::NoGround { line: line_no });
             }
-            read.push((line_no, level));
+            let thermo = match values {
+                (Some(p), Some(z), Some(t), rh, _, _) => thermo(p, z, t, rh),
+                _ => None,
+            };
+            read.push((line_no, thermo, level));
         }
-        let Some((_, Ok(ground))) = read.first() else {
+        let Some(&(ground_line, Some(ground_thermo), Ok(ground))) = read.first() else {
             return Err(WyomingError::NoGround { line: first + 1 });
         };
-        let ground = *ground;
+        // An answer whose pressures of 100 hPa or more are all whole numbers is a coded message's,
+        // rounded there to 1 hPa; the rest are to 0.1 hPa.
+        let coarse = read.iter().all(|(_, thermo, _)| {
+            thermo
+                .is_none_or(|t| t.pressure_pa < 10_000.0 || (t.pressure_pa / 100.0).fract() == 0.0)
+        });
 
-        // Pick the middle row of each run of complete rows with the same pressure; a run at the
-        // ground's pressure keeps none.
-        let mut choice: Vec<(usize, Result<WyomingLevel, DropReason>)> =
-            Vec::with_capacity(read.len());
-        let mut run: Vec<(usize, WyomingLevel)> = Vec::new();
-        let close =
-            |run: &mut Vec<(usize, WyomingLevel)>,
-             choice: &mut Vec<(usize, Result<WyomingLevel, DropReason>)>| {
-                let middle = run.len().saturating_sub(1) / 2;
-                let at_ground = run
-                    .first()
-                    .is_some_and(|r| r.1.pressure_pa == ground.pressure_pa);
-                for (k, (line, level)) in run.drain(..).enumerate() {
-                    let kept = k == middle && !at_ground;
-                    choice.push((
-                        line,
-                        if kept {
-                            Ok(level)
-                        } else {
-                            Err(DropReason::SamePressure)
-                        },
-                    ));
-                }
+        // Of each run of complete rows with the same pressure, all but the middle one; a run at
+        // the ground's pressure, all of it.
+        let mut same_pressure = vec![false; read.len()];
+        let mut start = 1;
+        while start < read.len() {
+            let Ok(first) = read[start].2 else {
+                start += 1;
+                continue;
             };
-        for &(line, level) in &read[1..] {
-            match level {
-                Ok(level) => {
-                    if run
-                        .last()
-                        .is_some_and(|r| r.1.pressure_pa != level.pressure_pa)
-                    {
-                        close(&mut run, &mut choice);
-                    }
-                    run.push((line, level));
+            // The run's rows, skipping rows with no level between them.
+            let mut members = vec![start];
+            let mut next = start + 1;
+            while next < read.len() {
+                match read[next].2 {
+                    Ok(level) if level.pressure_pa == first.pressure_pa => members.push(next),
+                    Ok(_) => break,
+                    Err(_) => {}
                 }
-                Err(reason) => choice.push((line, Err(reason))),
+                next += 1;
             }
+            let middle = (members.len() - 1) / 2;
+            let at_ground = first.pressure_pa == ground.pressure_pa;
+            for (k, &i) in members.iter().enumerate() {
+                same_pressure[i] = k != middle || at_ground;
+            }
+            start = members[members.len() - 1] + 1;
         }
-        close(&mut run, &mut choice);
-        choice.sort_by_key(|c| c.0);
 
         let mut levels = vec![ground];
         let mut dropped = Vec::new();
-        // The last row kept's line, and the rows since that miss its thickness (after the ground,
-        // which nothing before it checks, those below it too): the first's line and how many.
-        let mut last_kept = read[0].0;
+        // The last row of the chain of rows that fit, from the ground; and the rows since it that
+        // don't fit it: the first's line and how many.
+        let mut chain = (ground_line, ground_thermo);
         let mut misfits: Option<(usize, usize)> = None;
-        for (line, level) in choice {
+        for (i, &(line, thermo, level)) in read.iter().enumerate().skip(1) {
+            if let Some(thermo) = thermo {
+                if fits(&chain.1, &thermo, coarse) {
+                    chain = (line, thermo);
+                    misfits = None;
+                } else {
+                    let (first, count) = misfits.get_or_insert((line, 0));
+                    *count += 1;
+                    if *count > MAX_MISFITS {
+                        return Err(WyomingError::Misfit {
+                            after: chain.0,
+                            line: *first,
+                        });
+                    }
+                    dropped.push(DroppedLevel {
+                        line,
+                        reason: DropReason::Thickness,
+                    });
+                    continue;
+                }
+            }
             let reason = match level {
+                Err(reason) => reason,
+                Ok(_) if same_pressure[i] => DropReason::SamePressure,
                 Ok(level) => {
                     let under = levels[levels.len() - 1];
-                    let reason = if !(level.height_msl_m > under.height_msl_m
-                        && level.pressure_pa < under.pressure_pa)
+                    if level.height_msl_m > under.height_msl_m
+                        && level.pressure_pa < under.pressure_pa
                     {
-                        DropReason::NotAbove
-                    } else if !fits(&under, &level) {
-                        DropReason::Thickness
-                    } else {
                         levels.push(level);
-                        last_kept = line;
-                        misfits = None;
                         continue;
-                    };
-                    if reason == DropReason::Thickness || levels.len() == 1 {
-                        let (first, count) = misfits.get_or_insert((line, 0));
-                        *count += 1;
-                        if *count > MAX_MISFITS {
-                            return Err(WyomingError::Misfit {
-                                after: last_kept,
-                                line: *first,
-                            });
-                        }
                     }
-                    reason
+                    DropReason::NotAbove
                 }
-                Err(reason) => reason,
             };
             dropped.push(DroppedLevel { line, reason });
         }
@@ -649,59 +660,89 @@ pub enum WyomingError {
         /// The line of the first row, counting the header as line 1.
         line: usize,
     },
-    /// More than [`MAX_MISFITS`] rows after a row kept miss its thickness (after the ground,
-    /// or lie below it) before one fits it: that row is likely bad.
+    /// More than [`MAX_MISFITS`] rows in a row don't fit the last row that did: that row, or
+    /// all of them, are wrong.
     #[error(
-        "the Wyoming answer's line {after} doesn't fit the rows after it: more than \
-         {MAX_MISFITS} from line {line} on miss its thickness or lie below it"
+        "the Wyoming answer's line {after} and the more than {MAX_MISFITS} rows from line {line} \
+         on don't fit each other: the hypsometric thickness between them is wrong"
     )]
     Misfit {
-        /// The row kept, counting the header as line 1.
+        /// The last row that fit, counting the header as line 1.
         after: usize,
         /// The first row after it that doesn't fit it.
         line: usize,
     },
 }
 
-/// Whether `upper`'s geopotential height above `lower` is the thickness the hypsometric equation
-/// gives the layer between their pressures, within [`THICKNESS_SHARE`] of it, plus what rounding
-/// each pressure to its step (0.1 hPa, or 1 hPa when it is a whole number) can move it, plus
-/// [`THICKNESS_SLACK_M`]. With the layer's mean virtual temperature `T̄_v` (WMO-No. 8 (2023),
-/// Vol. I, eqs. 12.17 and 12.18; `T_v` from the humidity, as `hpr_atmos::moist` has it):
+/// A row's pressure, geopotential height and virtual temperature: what the thickness check needs.
+#[derive(Clone, Copy)]
+struct Thermo {
+    pressure_pa: f64,
+    geopotential_height_m: f64,
+    virtual_temperature_k: f64,
+}
+
+/// A row's [`Thermo`], when its pressure, height and temperature are within the bounds; with no
+/// humidity, or one below zero, the air is taken as dry.
+fn thermo(
+    pressure_hpa: f64,
+    geopotential_height_m: f64,
+    temperature_c: f64,
+    humidity_pct: Option<f64>,
+) -> Option<Thermo> {
+    if !(MIN_PRESSURE_HPA..=MAX_PRESSURE_HPA).contains(&pressure_hpa)
+        || !(MIN_HEIGHT_M..=MAX_HEIGHT_M).contains(&geopotential_height_m)
+        || !(MIN_TEMPERATURE_C..=MAX_TEMPERATURE_C).contains(&temperature_c)
+    {
+        return None;
+    }
+    let pressure_pa = pressure_hpa * 100.0;
+    let humidity = humidity_pct.filter(|h| *h >= 0.0).unwrap_or(0.0) / 100.0;
+    Some(Thermo {
+        pressure_pa,
+        geopotential_height_m,
+        virtual_temperature_k: virtual_temperature_k(temperature_c + 273.15, humidity, pressure_pa),
+    })
+}
+
+/// Whether `upper`'s geopotential height above `lower` (below it, if negative) is the thickness
+/// the hypsometric equation gives the layer between their pressures, with the layer's mean virtual
+/// temperature `T̄_v` (WMO-No. 8 (2023), Vol. I, eqs. 12.17 and 12.18):
 ///
 /// ```text
 /// ΔZ = (R_d T̄_v / g₀) ln(p_lower / p_upper)
 /// ```
-fn fits(lower: &WyomingLevel, upper: &WyomingLevel) -> bool {
+///
+/// It may miss by [`THICKNESS_SHARE`] of `|ΔZ|`, plus what rounding each pressure can move it
+/// (half its step, over the pressure, times `R_d T̄_v / g₀`), plus [`THICKNESS_SLACK_M`]. The
+/// step is 1 hPa for a pressure of 100 hPa or more in a `coarse` answer (a coded message's), else
+/// 0.1 hPa.
+fn fits(lower: &Thermo, upper: &Thermo, coarse: bool) -> bool {
     let scale_height_m = DRY_AIR_GAS_CONSTANT_J_PER_KG_K
         * 0.5
-        * (virtual_temperature_k(lower) + virtual_temperature_k(upper))
+        * (lower.virtual_temperature_k + upper.virtual_temperature_k)
         / STANDARD_GRAVITY_MPS2;
     let thickness_m = scale_height_m * (lower.pressure_pa / upper.pressure_pa).ln();
+    let half_step_pa = |p: f64| {
+        if coarse && p >= 10_000.0 { 50.0 } else { 5.0 }
+    };
     let rounding_m = scale_height_m
         * (half_step_pa(lower.pressure_pa) / lower.pressure_pa
             + half_step_pa(upper.pressure_pa) / upper.pressure_pa);
     let miss_m = upper.geopotential_height_m - lower.geopotential_height_m - thickness_m;
-    miss_m.abs() <= THICKNESS_SHARE * thickness_m + rounding_m + THICKNESS_SLACK_M
+    miss_m.is_finite()
+        && miss_m.abs() <= THICKNESS_SHARE * thickness_m.abs() + rounding_m + THICKNESS_SLACK_M
 }
 
-/// A level's virtual temperature, K: `T_v = T / (1 − (e/p)(1 − M_v/M₀))`, with the vapour
-/// pressure `e` from its relative humidity (taken as at most 100%) over liquid water.
-fn virtual_temperature_k(level: &WyomingLevel) -> f64 {
-    let vapour_pa =
-        level.relative_humidity.min(1.0) * saturation_vapour_pressure_pa(level.temperature_k);
+/// The virtual temperature, K, of air at `temperature_k` with relative humidity `humidity` (a
+/// fraction over liquid water, taken as at most 1) and pressure `pressure_pa`, as
+/// `hpr_atmos::moist` has it: `T_v = T / (1 − x_v (1 − M_v/M₀))`, with the vapour's share of the
+/// pressure `x_v = e/p` at most 1.
+fn virtual_temperature_k(temperature_k: f64, humidity: f64, pressure_pa: f64) -> f64 {
+    let vapour_pa = humidity.min(1.0) * saturation_vapour_pressure_pa(temperature_k);
+    let share = (vapour_pa / pressure_pa).min(1.0);
     let ratio = WATER_VAPOUR_MOLECULAR_WEIGHT_KG_PER_KMOL / SEA_LEVEL_MOLECULAR_WEIGHT_KG_PER_KMOL;
-    level.temperature_k / (1.0 - vapour_pa / level.pressure_pa * (1.0 - ratio))
-}
-
-/// Half the step a pressure was rounded to, Pa: 0.5 hPa for a whole number of hPa (the coded
-/// message's significant levels), else 0.05 hPa.
-fn half_step_pa(pressure_pa: f64) -> f64 {
-    if (pressure_pa / 100.0).fract() == 0.0 {
-        50.0
-    } else {
-        5.0
-    }
+    temperature_k / (1.0 - share * (1.0 - ratio))
 }
 
 /// A column the parser reads, as an index into the parser's table of column positions.
@@ -868,6 +909,68 @@ fn wrap_direction(angle_rad: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A row at `pressure_hpa`, `height_m` and `virtual_k`.
+    fn at(pressure_hpa: f64, height_m: f64, virtual_k: f64) -> Thermo {
+        Thermo {
+            pressure_pa: pressure_hpa * 100.0,
+            geopotential_height_m: height_m,
+            virtual_temperature_k: virtual_k,
+        }
+    }
+
+    /// Dry air at 288.15 K from 1000 to 900 hPa: `R_d T / g₀ = 8,434.5 m` and the thickness
+    /// 888.665 m. Rounded to 1 hPa the pressures can move it 8.903 m, so the allowance is
+    /// 44.433 + 8.903 + 30 = 83.336 m; rounded to 0.1 hPa (1000.5 to 900.5 hPa, thickness
+    /// 888.197 m), 75.300 m. Worked out by hand from the equation, not by the code.
+    #[test]
+    fn a_layer_fits_within_its_allowance() {
+        let lower = at(1_000.0, 0.0, 288.15);
+        for (thickness, allowance, coarse) in [(888.665, 83.336, true), (888.197, 75.300, false)] {
+            let (lower, upper_hpa) = if coarse {
+                (lower, 900.0)
+            } else {
+                (at(1_000.5, 0.0, 288.15), 900.5)
+            };
+            for sign in [1.0, -1.0] {
+                let height = |miss: f64| thickness + sign * miss;
+                let inside = at(upper_hpa, height(allowance - 0.01), 288.15);
+                let outside = at(upper_hpa, height(allowance + 0.01), 288.15);
+                assert!(fits(&lower, &inside, coarse), "{coarse} {sign}");
+                assert!(!fits(&lower, &outside, coarse), "{coarse} {sign}");
+            }
+        }
+        // A coarse answer's step is 1 hPa only at 100 hPa or more: at 50 to 45 hPa, 0.1 hPa.
+        let high = at(50.0, 20_000.0, 288.15);
+        let thickness = 8_434.49 * (50.0_f64 / 45.0).ln();
+        let allowance = 0.05 * thickness + 8_434.49 * (5.0 / 5_000.0 + 5.0 / 4_500.0) + 30.0;
+        let upper = at(45.0, 20_000.0 + thickness + allowance + 0.1, 288.15);
+        assert!(!fits(&high, &upper, true));
+        // The layer's mean: 288.15 K below and 278.15 K above give 8,288.16 m and 873.245 m, with
+        // an allowance of 82.411 m.
+        let cooler = |height: f64| at(900.0, height, 278.15);
+        assert!(fits(&lower, &cooler(873.245 + 82.40), true));
+        assert!(!fits(&lower, &cooler(873.245 + 82.42), true));
+        // Downward, as a falling balloon's rows are: the same layer, the other way.
+        assert!(fits(&at(900.0, 888.665, 288.15), &lower, true));
+    }
+
+    /// Saturated air at 30 °C: `T_v` is 308.081 K at 1000 hPa and 308.638 K at 900 hPa (WMO-No. 8
+    /// eq. 12.18 with eq. 4.B.1's 4,233.8 Pa), by hand. A humidity above 100% is taken as 100%;
+    /// vapour at more than the air's pressure counts as all of it, so `T_v` stays finite.
+    #[test]
+    fn virtual_temperature_follows_the_humidity() {
+        for (pressure_pa, expected) in [(100_000.0, 308.081), (90_000.0, 308.638)] {
+            let t_v = virtual_temperature_k(303.15, 1.0, pressure_pa);
+            assert!((t_v - expected).abs() < 1e-3, "{t_v}");
+            assert_eq!(virtual_temperature_k(303.15, 1.03, pressure_pa), t_v);
+        }
+        assert_eq!(virtual_temperature_k(288.15, 0.0, 100_000.0), 288.15);
+        let ratio =
+            WATER_VAPOUR_MOLECULAR_WEIGHT_KG_PER_KMOL / SEA_LEVEL_MOLECULAR_WEIGHT_KG_PER_KMOL;
+        let all_vapour = virtual_temperature_k(333.15, 1.0, 1_000.0);
+        assert!((all_vapour - 333.15 / ratio).abs() < 1e-9, "{all_vapour}");
+    }
 
     #[test]
     fn values_at_the_bounds_are_kept_and_past_them_dropped() {

@@ -73,29 +73,32 @@ fn field(row: &[String], i: usize) -> Option<f64> {
 /// m/s, direction °, mixing ratio g/kg).
 type Recorded = (usize, f64, f64, f64, f64, f64, f64, f64);
 
-/// How far `upper`'s height above `lower` misses the hypsometric thickness, beyond what rounding
-/// each pressure to its step can move it plus 10 m, as a share of the thickness (zero when within
-/// that). Here the virtual temperature comes from the file's mixing ratio `w`,
+/// A row's pressure (hPa), geopotential height (m) and virtual temperature (K), when it has them.
+/// Here the virtual temperature comes from the file's mixing ratio `w` (g/kg),
 /// `T_v = T (1 + w/ε) / (1 + w)`, not from the humidity as in the parser.
-fn thickness_miss(lower: &Recorded, upper: &Recorded) -> f64 {
+fn thermo(row: &[String]) -> Option<(f64, f64, f64)> {
     const EPSILON: f64 = 18.015_28 / 28.964_4;
-    let virtual_k = |r: &Recorded| {
-        let w = r.7 / 1000.0;
-        (r.3 + 273.15) * (1.0 + w / EPSILON) / (1.0 + w)
-    };
-    let scale_m = 287.053 * 0.5 * (virtual_k(lower) + virtual_k(upper)) / 9.806_65;
-    let thickness_m = scale_m * (lower.1 / upper.1).ln();
-    let half_step = |p: f64| if p.fract() == 0.0 { 0.5 } else { 0.05 };
-    let rounding_m = scale_m * (half_step(lower.1) / lower.1 + half_step(upper.1) / upper.1);
-    let miss_m = (upper.2 - lower.2 - thickness_m).abs();
-    (miss_m - rounding_m - 10.0).max(0.0) / thickness_m
+    let (p, z, t) = (field(row, 3)?, field(row, 4)?, field(row, 5)?);
+    let w = field(row, 10).unwrap_or(0.0) / 1000.0;
+    Some((p, z, (t + 273.15) * (1.0 + w / EPSILON) / (1.0 + w)))
+}
+
+/// How far, in metres, `upper`'s height above `lower` misses the hypsometric thickness beyond what
+/// rounding each pressure to its step can move it (never below zero). A coded message's
+/// pressures of 100 hPa or more are rounded to 1 hPa (`coarse`), the rest to 0.1 hPa.
+fn thickness_miss_m(lower: (f64, f64, f64), upper: (f64, f64, f64), coarse: bool) -> f64 {
+    let scale_m = 287.053 * 0.5 * (lower.2 + upper.2) / 9.806_65;
+    let thickness_m = scale_m * (lower.0 / upper.0).ln();
+    let half_step = |p: f64| if coarse && p >= 100.0 { 0.5 } else { 0.05 };
+    let rounding_m = scale_m * (half_step(lower.0) / lower.0 + half_step(upper.0) / upper.0);
+    ((upper.1 - lower.1 - thickness_m).abs() - rounding_m).max(0.0)
 }
 
 /// The rule, applied here on its own: the first row is the ground; of each run of complete rows
 /// with the same pressure the middle one (the lower of two) is a candidate; a candidate is kept
-/// when it is higher than, and at a lower pressure than, the last row kept, and its height above
-/// it misses the layer's thickness by no more than 5% beyond rounding. Returns the rows kept, the
-/// lines missing a value, and the lines of the other rows of each run.
+/// when it is higher than, and at a lower pressure than, the last row kept (every row in the
+/// recordings fits: see `recorded_rows_fit_their_layers`). Returns the rows kept, the lines
+/// missing a value, and the lines of the other rows of each run.
 fn apply_rule(name: &str) -> (Vec<Recorded>, Vec<usize>, Vec<usize>) {
     let mut complete: Vec<Recorded> = Vec::new();
     let mut missing = Vec::new();
@@ -130,7 +133,6 @@ fn apply_rule(name: &str) -> (Vec<Recorded>, Vec<usize>, Vec<usize>) {
         for (i, row) in complete.iter().enumerate().take(end).skip(start) {
             let below = kept.last().unwrap();
             if i == middle && row.2 > below.2 && row.1 < below.1 {
-                assert!(thickness_miss(below, row) <= 0.05, "{name}: line {}", row.0);
                 kept.push(*row);
             } else {
                 repeats.push(row.0);
@@ -209,23 +211,21 @@ fn the_profile_reproduces_every_level_it_keeps() {
     }
 }
 
-/// Every row kept fits the one kept before it with no share of the thickness at all: its height
-/// misses the hypsometric thickness by no more than its pressures' rounding and 10 m, even the row
-/// kept 10 before it. Across a thicker layer, whose inner temperatures are left out, the two ends'
-/// mean temperature serves less well: a row fits the row kept 30 before it within 1.7%, a third of
-/// the 5% the parser allows, and 60 before it within 4.7% (the coded message).
+/// Every row with a pressure, height and temperature fits the one before it: its height misses
+/// the hypsometric thickness by at most 1 m beyond what rounding the two pressures can move it (0
+/// in the coded messages, 0.97 m in the BUFR file), against the parser's 30 m, and with none of its
+/// 5%. The thickness is worked out here on its own, from the file's mixing ratio.
 #[test]
 fn recorded_rows_fit_their_layers() {
     for name in [FM35, WINTER, BUFR] {
-        let (kept, _, _) = apply_rule(name);
-        let worst = |skip: usize| {
-            kept.windows(skip + 1)
-                .map(|w| thickness_miss(&w[0], &w[skip]))
-                .fold(0.0, f64::max)
-        };
-        assert_eq!((worst(1), worst(10)), (0.0, 0.0), "{name}");
-        assert!(worst(30) < 0.017, "{name}: {}", worst(30));
-        assert!(worst(60) < 0.047, "{name}: {}", worst(60));
+        let rows: Vec<_> = rows(name).iter().filter_map(|(_, r)| thermo(r)).collect();
+        let coarse = rows.iter().all(|r| r.0 < 100.0 || r.0.fract() == 0.0);
+        assert_eq!(coarse, name != BUFR);
+        let worst = rows
+            .windows(2)
+            .map(|w| thickness_miss_m(w[0], w[1], coarse))
+            .fold(0.0, f64::max);
+        assert!(worst < 1.0, "{name}: {worst} m");
     }
 }
 
@@ -580,14 +580,19 @@ fn a_rows_faults_drop_it_or_are_clamped() {
     ] {
         assert_eq!(one(from, to), [(38, DropReason::OutOfRange), top], "{to}");
     }
-    // 557 hPa at 4,000 m lies below the 570 hPa row before it; at 580 hPa, below it too.
-    assert_eq!(one(" 5035,", " 4000,"), [(38, DropReason::NotAbove), top]);
-    assert_eq!(one(" 557.0,", " 580.0,"), [(38, DropReason::NotAbove), top]);
+    // 557 hPa at 4,000 m doesn't fit the 570 hPa row at 4,852 m. At 580 hPa and 4,712 m it fits
+    // (it lies between rows 36 and 37), but below the row kept.
+    assert_eq!(one(" 5035,", " 4000,"), [(38, DropReason::Thickness), top]);
+    let at_580 = " 580.0, 4712,";
+    assert_eq!(
+        one(" 557.0, 5035,", at_580),
+        [(38, DropReason::NotAbove), top]
+    );
     // The rule is against the last row kept, not the row before: after 580 hPa is dropped, a row
     // at 575 hPa is below the 570 hPa row kept, though above the dropped one.
     let both = edited(&[
-        (ROW_557, &ROW_557.replace(" 557.0,", " 580.0,")),
-        (ROW_549, &ROW_549.replace(" 549.0,", " 575.0,")),
+        (ROW_557, &ROW_557.replace(" 557.0, 5035,", at_580)),
+        (ROW_549, &ROW_549.replace(" 549.0, 5151,", " 575.0, 4781,")),
     ]);
     assert_eq!(
         reasons(both),
@@ -596,7 +601,7 @@ fn a_rows_faults_drop_it_or_are_clamped() {
     // The rows left out are listed in line order: row 38 at row 37's pressure is the rest of a
     // run, which closes after row 39, missing its temperature, is dropped.
     let run = edited(&[
-        (ROW_557, &ROW_557.replace(" 557.0,", " 570.0,")),
+        (ROW_557, &ROW_557.replace(" 557.0, 5035,", " 570.0, 4860,")),
         (ROW_549, &ROW_549.replace(" -2.5,", "     ,")),
     ]);
     assert_eq!(
@@ -733,9 +738,95 @@ fn a_bad_ground_is_refused() {
     let next = text.lines().nth(12).unwrap();
     assert!(refused(&format!("{first}{next}\n")));
 
-    let short = GROUND.replace(" 1252,", "  125,");
-    let text = String::from_utf8(edited(&[(GROUND, &short)])).unwrap();
-    assert!(refused(&text));
+    // A height with a digit lost, and values at the bounds, which no air above them fits.
+    for (from, to) in [
+        (" 1252,", "  125,"),
+        (" 872.0,", "1200.0,"),
+        (" 1252,", "-1000,"),
+        (" 28.4,", "-150.0,"),
+    ] {
+        let text = String::from_utf8(edited(&[(GROUND, &GROUND.replace(from, to))])).unwrap();
+        assert!(refused(&text), "{to}");
+    }
+    // A ground at 80 °C still fits the first layer, 186 m thick, and is kept.
+    let hot = GROUND.replace(" 28.4,", " 80.0,");
+    let sounding = WyomingSounding::parse(&edited(&[(GROUND, &hot)])).unwrap();
+    assert_eq!(sounding.levels.len(), 227);
+}
+
+/// The coded-message recording with field `field` of each line set by `edit(line, value)`.
+fn with_field(field: usize, edit: impl Fn(usize, &str) -> String) -> Vec<u8> {
+    let text = String::from_utf8(fixture(FM35)).unwrap();
+    let mut out = String::new();
+    for (i, line) in text.lines().enumerate() {
+        let mut fields: Vec<String> = line.split(',').map(str::to_owned).collect();
+        if i > 0 {
+            fields[field] = edit(i + 1, &fields[field]);
+        }
+        out.push_str(&fields.join(","));
+        out.push('\n');
+    }
+    out.into_bytes()
+}
+
+/// Rows missing a wind still carry the chain: with no wind from line 60 to 140 (415 to 90.4 hPa),
+/// every row after them fits and is kept. Two blocks of six raised rows, a good row between them,
+/// are left out without refusing. A row whose vapour would outweigh its air (16 hPa at 30 °C,
+/// saturated) is left out, not taken to fit anything. A row at the bounds that fits (0.1 hPa at
+/// −150 °C, 55.6 km) is kept and makes a profile.
+#[test]
+fn gaps_blocks_and_extremes() {
+    let dropped = |body: &[u8]| {
+        let sounding = WyomingSounding::parse(body).unwrap();
+        sounding
+            .sounding(WindInterpolation::SpeedDirection)
+            .unwrap();
+        let lines: Vec<_> = sounding
+            .dropped
+            .iter()
+            .map(|d| (d.line, d.reason))
+            .collect();
+        (sounding.levels.len(), lines)
+    };
+    let gap = with_field(12, |line, speed| {
+        if (60..=140).contains(&line) {
+            String::new()
+        } else {
+            speed.to_owned()
+        }
+    });
+    let no_data: Vec<_> = (60..=140)
+        .chain([229])
+        .map(|l| (l, DropReason::NoData))
+        .collect();
+    assert_eq!(dropped(&gap), (227 - 81, no_data));
+
+    let blocks = with_field(4, |line, height| {
+        let z: f64 = height.trim().parse().unwrap();
+        let raised = (39..=44).contains(&line) || (46..=51).contains(&line);
+        format!("{}", if raised { z + 1_000.0 } else { z })
+    });
+    let (levels, lines) = dropped(&blocks);
+    assert_eq!(levels, 227 - 12);
+    let thickness: Vec<_> = (39..=44)
+        .chain(46..=51)
+        .map(|l| (l, DropReason::Thickness))
+        .collect();
+    assert_eq!(lines, [thickness, vec![(229, DropReason::NoData)]].concat());
+
+    let vapour = " 16.0, 5100, 30.0, -4.9, -4.3, 99.97301034739507, 80, 4.79,210, 9.3";
+    let (levels, lines) = dropped(&edited(&[(ROW_549, vapour)]));
+    assert_eq!(levels, 226);
+    assert_eq!(
+        lines,
+        [(39, DropReason::Thickness), (229, DropReason::NoData)]
+    );
+
+    let text = after_the_top(&[0.1], -150.0);
+    let (levels, lines) = dropped(text.as_bytes());
+    assert_eq!((levels, lines), (228, vec![]));
+    let top = text.lines().last().unwrap().to_owned();
+    assert!(top.contains(" 0.10, 556"), "{top}");
 }
 
 /// A block of rows whose heights are all 1 km high misses the row kept below it: ten are left
@@ -770,45 +861,36 @@ fn a_block_that_does_not_fit_is_refused() {
     }
 }
 
-/// Rows below the last row kept that fall (a balloon after it bursts) or float are left out,
-/// however many: at the end of an answer, even when the float ends a little higher than it began,
-/// and when a row after them is kept.
-#[test]
-fn a_falling_tail_is_left_out() {
-    let mut text = String::from_utf8(fixture(FM35)).unwrap();
-    for k in 0..20 {
-        let (p, z) = (8.5 + f64::from(k), 32_000 - 500 * k);
-        text.push_str(&format!(
-            "2025-06-21 11:02:00,-106.7000,31.8600, {p:.1}, {z}, -45.0, -75.0, -70.0,  2,  3, \
-             0.3, 90, 12.0\n"
-        ));
-    }
-    let sounding = WyomingSounding::parse(text.as_bytes()).unwrap();
-    assert_eq!(sounding.levels.len(), 227);
-    let tail: Vec<_> = sounding
-        .dropped
-        .iter()
-        .filter(|d| d.reason == DropReason::NotAbove)
-        .map(|d| d.line)
-        .collect();
-    assert_eq!(tail, (230..250).collect::<Vec<_>>());
+/// The height a row at `to_hpa` and `to_c` has above one at `from_hpa`, `from_m` and `from_c`, by
+/// the hypsometric equation for dry air: rows that fit the rows before them.
+fn fitting_height_m(from_hpa: f64, from_m: f64, from_c: f64, to_hpa: f64, to_c: f64) -> f64 {
+    let mean_k = 0.5 * (from_c + to_c) + 273.15;
+    from_m + 287.053 * mean_k / 9.806_65 * (from_hpa / to_hpa).ln()
+}
 
-    // Thirteen rows floating between 8.4 and 8.6 hPa, ending higher than they began, below the
-    // 8.0 hPa row (line 228) and the 8.1 hPa row before it.
+/// The coded-message recording without its last row (7.9 hPa, no wind), then rows at `pressures`
+/// and `temperature_c`, each at the height that fits the row before it.
+fn after_the_top(pressures: &[f64], temperature_c: f64) -> String {
     let recorded = String::from_utf8(fixture(FM35)).unwrap();
     let (body, _) = recorded.trim_end().rsplit_once('\n').unwrap();
-    let mut float = format!("{body}\n");
-    for k in 0..13 {
-        let (p, z) = match k {
-            0 => (8.5, 32_600),
-            _ if k % 2 == 1 => (8.6, 32_550),
-            _ => (8.4, 32_650),
-        };
-        float.push_str(&format!(
-            "2025-06-21 11:02:00,-106.7000,31.8600, {p:.1}, {z}, -41.0, -70.0, -65.5,  3,  5, \
-             0.4, 90, 17.0\n"
+    let mut text = format!("{body}\n");
+    let (mut p0, mut z0, mut t0) = (8.0, 32_801.0, -40.6);
+    for &p in pressures {
+        let z = fitting_height_m(p0, z0, t0, p, temperature_c);
+        text.push_str(&format!(
+            "2025-06-21 11:02:00,-106.7000,31.8600, {p:.2}, {z:.0}, {temperature_c:.1}, -70.0, \
+             -65.5,  3,  5, 0.4, 90, 17.0\n"
         ));
+        (p0, z0, t0) = (p, z.round(), temperature_c);
     }
+    text
+}
+
+/// Rows below the last row kept that fall (a balloon after it bursts) or float are left out,
+/// however many: at the end of an answer, even when the float ends a little higher than it began,
+/// or crosses the last row kept, and when a row after them is kept.
+#[test]
+fn a_falling_tail_is_left_out() {
     let not_above = |text: &str| {
         let sounding = WyomingSounding::parse(text.as_bytes()).unwrap();
         let lines: Vec<_> = sounding
@@ -817,14 +899,45 @@ fn a_falling_tail_is_left_out() {
             .filter(|d| d.reason == DropReason::NotAbove)
             .map(|d| d.line)
             .collect();
+        assert_eq!(
+            sounding.dropped.len(),
+            lines.len(),
+            "{:?}",
+            sounding.dropped
+        );
         (sounding.levels.len(), lines)
     };
-    assert_eq!(not_above(&float), (227, (229..242).collect::<Vec<_>>()));
+    // Twenty rows falling from 8.5 to 27.5 hPa.
+    let fall: Vec<f64> = (0..20).map(|k| 8.5 + f64::from(k)).collect();
+    let text = after_the_top(&fall, -45.0);
+    assert_eq!(not_above(&text), (227, (229..249).collect::<Vec<_>>()));
+
+    // Thirteen rows floating between 8.4 and 8.6 hPa, ending higher than they began, below the
+    // 8.0 hPa row (line 228) and the 8.1 hPa row before it.
+    let float: Vec<f64> = (0..13)
+        .map(|k| match k {
+            0 => 8.5,
+            _ if k % 2 == 1 => 8.6,
+            _ => 8.4,
+        })
+        .collect();
+    let mut text = after_the_top(&float, -41.0);
+    assert_eq!(not_above(&text), (227, (229..242).collect::<Vec<_>>()));
     // The recorded last row after them, with a wind, is kept.
-    float.push_str(
+    text.push_str(
         "2025-06-21 11:02:00,-106.7000,31.8600,   7.9,32886,-40.5,-69.5,-64.9,  3,  5, 0.43, 90,17.0\n",
     );
-    assert_eq!(not_above(&float), (228, (229..242).collect::<Vec<_>>()));
+    assert_eq!(not_above(&text), (228, (229..242).collect::<Vec<_>>()));
+
+    // Thirteen rows floating across the last row kept, between 8.05 and 7.95 hPa: the first above
+    // it is kept, and the rest are left out.
+    let across: Vec<f64> = (0..13)
+        .map(|k| if k % 2 == 0 { 8.05 } else { 7.95 })
+        .collect();
+    let text = after_the_top(&across, -40.6);
+    let mut left_out: Vec<usize> = (229..242).collect();
+    left_out.remove(1);
+    assert_eq!(not_above(&text), (228, left_out));
 }
 
 /// An answer of more than [`MAX_ROWS`] rows is refused as it is read, so a flood of empty rows
