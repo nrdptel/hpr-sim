@@ -18,7 +18,7 @@ repository root:
     refs/venv/bin/python validation/oracles/grib2/whole_file.py compare \\
         refs/gfs/gfs.t00z.pgrb2.0p25.f018
 
-`cut FILE` writes the messages named in `CUT` (by their place in the file, from 0), unchanged,
+`cut FILE` writes the messages named in `KINDS` (by their place in the file, from 0), unchanged,
 to `crates/hpr-io/tests/fixtures/gfs-messages.grib2`, and ecCodes' reading of them to
 `gfs-messages-eccodes.json` beside it: per message, the keys that say what it is (and, for
 template 4.8, its statistic, the interval's length and unit, and its end), its point and
@@ -63,7 +63,6 @@ STRIDE = 997
 # 3-byte descriptors and template 4.8, the smallest over 2,000 bytes, for a message of some size;
 # the smallest with a bitmap, with missing values in the data, and of template 4.8; and the one
 # simple-packed field. `KINDS` names each.
-CUT = [126, 204, 233, 278, 524, 604, 605, 730]
 KINDS = {
     126: "5.3, 1-byte descriptors",
     204: "5.0, 0 bits",

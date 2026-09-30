@@ -4,19 +4,35 @@
 //! The field's integers `X` are a greyscale image, one sample per packed value, coded as a JPEG
 //! 2000 codestream (ISO/IEC 15444-1) in section 7; each unpacks as simple packing's do,
 //! `Y = (R + X · 2^E) / 10^D`. The codestream is decoded by `hayro-jpeg2000` (MIT or Apache-2.0),
-//! which holds samples as `f32`: its reversible 5/3 wavelet takes exact floors, so every integer
-//! below `2^24` comes back exact, and fields of more than 24 bits are refused by name. Lossy
-//! coding (code table 5.40's 1) is refused too: its samples are rounded by the decoder's own
-//! arithmetic, and none was checked against ecCodes.
+//! in strict mode, so a damaged or cut-short codestream is refused rather than filled in.
+//!
+//! The decoder runs the reversible 5/3 wavelet (ISO/IEC 15444-1, Annex F) in `f32`, whose whole
+//! numbers are exact only below `2^24`. The inverse transform adds two neighbouring high-pass
+//! coefficients before each floor, and for `B`-bit samples those sums reach nearly `16 · 2^(B−1)`
+//! (the cascaded 5/3 analysis filters bound a coefficient by about `8.2 · 2^(B−1)`), so every step
+//! stays exact only for `B ≤ 21`: fields of more bits are refused by name. Probes at 23 and 24
+//! bits came back off by one in a hundred or so of 10,152 values, whole and in range, which no
+//! later check could catch.
+//!
+//! Only the codestream NCEP and ecCodes write is read, checked from its main header before any
+//! decoding (ISO/IEC 15444-1, Annex A): one unsigned component, no subsampling or offsets, one
+//! tile, the reversible 5/3 transform without quantization, default precincts, and no marker that
+//! overrides these per component or per tile. Anything else is refused by name, so a hostile
+//! header cannot make the decoder size its buffers past the grid. Lossy coding (code table 5.40's
+//! 1) is refused too.
 
 use hayro_jpeg2000::{DecodeSettings, DecoderContext, Image};
 use serde::{Deserialize, Serialize};
 
 use super::{Grib2Error, be_i16, be_u32, malformed, need, unpack};
 
-/// The most bits per value read: `hayro-jpeg2000`'s `f32` samples hold every integer below
-/// `2^24` exactly.
-pub const MAX_BITS: u8 = 24;
+/// The most bits per value read: the 5/3 wavelet's sums in `hayro-jpeg2000`'s `f32` stay below
+/// `2^24`, and so exact, for samples of at most 21 bits (see the module's documentation).
+pub const MAX_BITS: u8 = 21;
+
+/// `hayro-jpeg2000` refuses an image wider or taller than this. NCEP codes a field with a bitmap
+/// as one row of its packed values, so such a field of more values is refused by name.
+pub const MAX_SIDE: u32 = 60_000;
 
 /// JPEG 2000 packing's parameters: data representation template 5.40.
 #[non_exhaustive]
@@ -29,7 +45,8 @@ pub struct Jpeg2000Packing {
     /// The decimal scale factor `D`.
     pub decimal_scale: i16,
     /// The image's bits per sample, 0 to [`MAX_BITS`]. A field of 0 bits has no codestream: it is
-    /// `R / 10^D` at every point with a value.
+    /// `R / 10^D` at every point with a value, by the regulation (not checked against ecCodes,
+    /// which gave `R` for a field of 0 bits with `D = 2`).
     pub bits: u8,
     /// How many values are packed: the grid points the bitmap marks, or all of them.
     pub count: u32,
@@ -85,42 +102,242 @@ fn settings() -> DecodeSettings {
     DecodeSettings {
         // A GRIB2 codestream is raw (no JP2 boxes), so there is no palette to resolve.
         resolve_palette_indices: false,
+        // Refuse what the lenient mode fills in: a cut-short codestream decodes there to the DC
+        // offset at every point, whole numbers in range.
+        strict: true,
         ..DecodeSettings::default()
     }
 }
 
-/// Reads the codestream's header and checks it holds one sample per packed value, at the bits
-/// section 5 gives: `parse` calls it, so a field whose image cannot hold its values is refused
-/// before any is read, and the decoder never sizes an image past the grid.
+/// Reads the codestream's main header and checks it holds one sample per packed value, at the
+/// bits section 5 gives, coded as NCEP and ecCodes code it: `parse` calls it, so a field whose
+/// image cannot hold its values, or that the decoder could size past the grid, is refused before
+/// any is read.
 pub(super) fn check(p: &Jpeg2000Packing, data: &[u8], message: usize) -> Result<(), Grib2Error> {
     if p.bits == 0 {
         return Ok(());
     }
-    let image = Image::new(data, &settings())
-        .map_err(|e| malformed(message, format!("the JPEG 2000 codestream: {e}")))?;
-    let samples = u64::from(image.width()) * u64::from(image.height());
+    let header = Header::read(data, message)?;
+    let samples = u64::from(header.width) * u64::from(header.height);
     if samples != u64::from(p.count) {
         return Err(malformed(
             message,
             format!(
                 "the JPEG 2000 image has {samples} samples ({} by {}) but section 5 packs {} values",
-                image.width(),
-                image.height(),
-                p.count
+                header.width, header.height, p.count
             ),
         ));
     }
-    if image.original_bit_depth() != p.bits {
+    if header.bits != p.bits {
         return Err(malformed(
             message,
             format!(
                 "the JPEG 2000 image has {} bits per sample but section 5 gives {}",
-                image.original_bit_depth(),
-                p.bits
+                header.bits, p.bits
             ),
         ));
     }
     Ok(())
+}
+
+/// What a coding marker sets.
+enum Coding {
+    /// COD, the default coding style.
+    Style,
+    /// QCD, the default quantization.
+    Quantization,
+    /// COC, QCC or COM.
+    Other,
+}
+
+/// What `check` needs from a codestream's main header (ISO/IEC 15444-1, Annex A).
+struct Header {
+    width: u32,
+    height: u32,
+    bits: u8,
+}
+
+impl Header {
+    /// Walks the main header and the tile-part headers, refusing by name anything but the one
+    /// coding NCEP and ecCodes use.
+    fn read(data: &[u8], message: usize) -> Result<Self, Grib2Error> {
+        let bad = |reason: &str| malformed(message, format!("the JPEG 2000 codestream: {reason}"));
+        let unsupported = |what, value: u64| Grib2Error::Unsupported {
+            message,
+            what,
+            value,
+        };
+        let u16_at = |at: usize| -> Result<u16, Grib2Error> {
+            data.get(at..at.saturating_add(2))
+                .map(|b| u16::from_be_bytes([b[0], b[1]]))
+                .ok_or_else(|| bad("its header is cut short"))
+        };
+        let u32_at = |at: usize| -> Result<u32, Grib2Error> {
+            data.get(at..at.saturating_add(4))
+                .map(be_u32)
+                .ok_or_else(|| bad("its header is cut short"))
+        };
+        let byte = |at: usize| -> Result<u8, Grib2Error> {
+            data.get(at)
+                .copied()
+                .ok_or_else(|| bad("its header is cut short"))
+        };
+        if u16_at(0)? != 0xFF4F || u16_at(2)? != 0xFF51 {
+            return Err(bad("it does not start with SOC and SIZ"));
+        }
+        // SIZ, from byte 2: Lsiz, Rsiz, Xsiz, Ysiz, XOsiz, YOsiz, XTsiz, YTsiz, XTOsiz, YTOsiz,
+        // Csiz, then Ssiz, XRsiz, YRsiz per component.
+        let (x, y) = (u32_at(8)?, u32_at(12)?);
+        if x > MAX_SIDE || y > MAX_SIDE {
+            return Err(unsupported("JPEG 2000 image side", x.max(y).into()));
+        }
+        let (x0, y0) = (u32_at(16)?, u32_at(20)?);
+        let (xt, yt) = (u32_at(24)?, u32_at(28)?);
+        let (xt0, yt0) = (u32_at(32)?, u32_at(36)?);
+        let components = u16_at(40)?;
+        if components != 1 {
+            return Err(unsupported("JPEG 2000 components", components.into()));
+        }
+        let ssiz = byte(42)?;
+        if ssiz & 0x80 != 0 {
+            return Err(unsupported("JPEG 2000 signed samples", ssiz.into()));
+        }
+        let (xr, yr) = (byte(43)?, byte(44)?);
+        if (xr, yr) != (1, 1) {
+            return Err(unsupported(
+                "JPEG 2000 subsampling",
+                u64::from(xr) << 8 | u64::from(yr),
+            ));
+        }
+        if x0 != 0 || y0 != 0 || xt0 != 0 || yt0 != 0 {
+            return Err(unsupported(
+                "JPEG 2000 image or tile offset",
+                u64::from(x0.max(y0).max(xt0).max(yt0)),
+            ));
+        }
+        if xt < x || yt < y {
+            return Err(unsupported(
+                "JPEG 2000 tiles",
+                u64::from(x.div_ceil(xt.max(1))) * u64::from(y.div_ceil(yt.max(1))),
+            ));
+        }
+        // The first marker after SIZ: SIZ's marker at byte 2, then its length.
+        // The markers that set the coding, in the main header or a tile-part's, held to the one
+        // coding read: `None` for any other marker.
+        let coding = |marker: u16, at: usize| -> Result<Option<Coding>, Grib2Error> {
+            // COD's and COC's style byte: bit 0 set when precinct sizes are given.
+            let precincts = |scod: u8| {
+                if scod & 1 == 0 {
+                    Ok(())
+                } else {
+                    Err(unsupported("JPEG 2000 precinct sizes", scod.into()))
+                }
+            };
+            let transform = |t: u8| {
+                if t == 1 {
+                    Ok(())
+                } else {
+                    Err(unsupported("JPEG 2000 wavelet transform", t.into()))
+                }
+            };
+            // Sqcd's and Sqcc's low five bits: the quantization style, 0 for none.
+            let quantization = |sq: u8| {
+                if sq & 0x1F == 0 {
+                    Ok(())
+                } else {
+                    Err(unsupported("JPEG 2000 quantization", (sq & 0x1F).into()))
+                }
+            };
+            Ok(Some(match marker {
+                // COD: Scod, SGcod (progression, layers, colour transform), SPcod (levels,
+                // code-block width and height, style, transform).
+                0xFF52 => {
+                    precincts(byte(at + 4)?)?;
+                    transform(byte(at + 13)?)?;
+                    Coding::Style
+                }
+                // COC: Ccoc (one byte, with fewer than 257 components), Scoc, SPcoc.
+                0xFF53 => {
+                    precincts(byte(at + 5)?)?;
+                    transform(byte(at + 10)?)?;
+                    Coding::Other
+                }
+                // QCD: Sqcd.
+                0xFF5C => {
+                    quantization(byte(at + 4)?)?;
+                    Coding::Quantization
+                }
+                // QCC: Cqcc (one byte), Sqcc.
+                0xFF5D => {
+                    quantization(byte(at + 5)?)?;
+                    Coding::Other
+                }
+                // COM.
+                0xFF64 => Coding::Other,
+                _ => return Ok(None),
+            }))
+        };
+        // The first marker after SIZ: SIZ's marker at byte 2, then its length.
+        let mut at = 4 + usize::from(u16_at(4)?);
+        let (mut cod, mut qcd) = (false, false);
+        loop {
+            let marker = u16_at(at)?;
+            // SOT: the first tile-part starts.
+            if marker == 0xFF90 {
+                break;
+            }
+            let length = usize::from(u16_at(at.saturating_add(2))?);
+            if length < 2 {
+                return Err(bad("a marker segment is shorter than its length field"));
+            }
+            match coding(marker, at)? {
+                Some(Coding::Style) => cod = true,
+                Some(Coding::Quantization) => qcd = true,
+                Some(Coding::Other) => {}
+                // TLM and PLM carry no coding.
+                None if matches!(marker, 0xFF55 | 0xFF57) => {}
+                None => return Err(unsupported("JPEG 2000 main-header marker", marker.into())),
+            }
+            at = at.saturating_add(2 + length);
+        }
+        if !(cod && qcd) {
+            return Err(bad("its main header has no COD or no QCD"));
+        }
+        // Each tile-part: SOT (Lsot, Isot, Psot, TPsot, TNsot), then markers up to SOD.
+        while u16_at(at)? == 0xFF90 {
+            let psot = usize::try_from(u32_at(at.saturating_add(6))?).unwrap_or(usize::MAX);
+            let mut marker_at = at.saturating_add(2 + usize::from(u16_at(at.saturating_add(2))?));
+            loop {
+                let marker = u16_at(marker_at)?;
+                if marker == 0xFF93 {
+                    break;
+                }
+                // PLT carries no coding.
+                if coding(marker, marker_at)?.is_none() && marker != 0xFF58 {
+                    return Err(unsupported("JPEG 2000 tile-part marker", marker.into()));
+                }
+                marker_at =
+                    marker_at.saturating_add(2 + usize::from(u16_at(marker_at.saturating_add(2))?));
+            }
+            // Psot 0: the tile-part runs to the end of the codestream.
+            if psot == 0 {
+                break;
+            }
+            if psot < 14 {
+                return Err(bad("a tile-part is shorter than its header"));
+            }
+            at = at.saturating_add(psot);
+            if at.saturating_add(2) > data.len() || u16_at(at)? == 0xFFD9 {
+                break;
+            }
+        }
+        let bits = (ssiz & 0x7F) + 1;
+        Ok(Self {
+            width: x,
+            height: y,
+            bits,
+        })
+    }
 }
 
 /// Every packed integer, in order. `check` has passed on the same bytes.
@@ -134,6 +351,15 @@ pub(super) fn decode(
     if p.bits == 0 {
         return Ok(vec![0; count]);
     }
+    // `read` caps `bits`; a caller who edited the public packing past it is refused here.
+    if p.bits > MAX_BITS {
+        return Err(Grib2Error::Unsupported {
+            message,
+            what: "bits per value in JPEG 2000",
+            value: p.bits.into(),
+        });
+    }
+    check(p, data, message)?;
     let codestream = |e| malformed(message, format!("the JPEG 2000 codestream: {e}"));
     let image = Image::new(data, &settings()).map_err(codestream)?;
     let mut context = DecoderContext::default();

@@ -129,7 +129,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-121 | M5.2c: GFS and RAP from NOMADS' grib filter as a sounding, bilinear at the site, RAP's winds turned from its grid; an in-house GRIB2 decoder (3.0, 3.30 tangent, 4.0, 5.0) in `hpr-io` in place of the `grib` crate, checked value for value against ecCodes | accepted |
 | ADR-122 | M5.2d split d1 to d3; M5.2d1: `hpr weather`, one subcommand per source, fetched through `hpr_net`'s cache, `--offline` from the cache alone, `--from` a saved answer held to a fetch's checks; the profile written as `SoundingProfile`'s JSON | accepted |
 | ADR-123 | M5.2d2: complex packing (5.2, 5.3) and product template 4.8 in `hpr_io::grib2`; a whole GFS file's 746,770,303 values against ecCodes by hand, eight of its messages committed with ecCodes' sums and samples, the cut repacked by ecCodes for CI; NOMADS parsing keys layers by both surfaces, skips statistics and wraps a global grid | accepted |
-| ADR-124 | M5.2d3: JPEG 2000 (5.40) in `hpr_io::grib2` through `hayro-jpeg2000`, lossless and to 24 bits, the rest refused by name; four public RAP messages against ecCodes in CI | accepted |
+| ADR-124 | M5.2d3: JPEG 2000 (5.40) in `hpr_io::grib2` through `hayro-jpeg2000` in strict mode, lossless, to 21 bits, NCEP's coding only, the rest refused by name; four public RAP messages against ecCodes in CI | accepted |
 
 ---
 
@@ -10217,19 +10217,31 @@ far more code than the packings before it.
    in no other crate. Writing a decoder in house was judged a milestone of its own for no gain in
    what is checked, since the check is against ecCodes either way. The C OpenJPEG (through
    `jpeg2k`) was ruled out: it links C and does not build for wasm32.
-2. **Lossless, to 24 bits, the rest refused by name.** The crate holds samples as `f32`; its
-   reversible 5/3 wavelet takes floors of whole numbers, so every integer below `2^24` comes back
-   exact. More bits (`bits per value in JPEG 2000`) and lossy coding (code table 5.40's 1,
-   `type of JPEG 2000 compression`) are refused: lossy samples would be rounded by the crate's own
-   `f32` arithmetic, which nothing here checks. Every decoded sample must be a whole number from 0
-   to `2^bits − 1`, and the image must hold one sample per packed value at section 5's bits
-   (checked from the codestream's header when the file is parsed), or the field is refused as
-   malformed. A field of 0 bits has no codestream and is its reference value everywhere, as in
-   ecCodes.
-3. **Decoded whole, on each read.** A JPEG 2000 image is decoded whole, so `Field::value` decodes it
+2. **Lossless, to 21 bits, the rest refused by name.** The crate runs the reversible 5/3 wavelet
+   in `f32`. Its inverse adds two neighbouring high-pass coefficients before each floor, and for
+   `B`-bit samples those sums reach nearly `16 · 2^(B−1)` (the cascaded analysis filters bound a
+   coefficient by about `8.2 · 2^(B−1)`), so every step is exact only while that stays below
+   `2^24`: `B ≤ 21`. The first draft took 24; review probes (fields ecCodes encoded on the
+   fixture's grids) came back off by one in about 130 of 10,152 values at 23 and 24 bits, every
+   one whole and in range, and exact at 21 and 22. More bits (`bits per value in JPEG 2000`) and
+   lossy coding (code table 5.40's 1) are refused. Every decoded sample must also be a whole
+   number from 0 to `2^bits − 1`.
+3. **NCEP's coding only, checked before decoding; strict mode.** The main header and each
+   tile-part header are read by hand (ISO/IEC 15444-1, Annex A) when the file is parsed: one
+   unsigned component, no subsampling, no image or tile offset, one tile, a side of at most
+   60,000 (the crate's limit), the 5/3 transform in COD and COC, no quantization in QCD and QCC,
+   default precincts, and no marker but these, COM, TLM, PLM and PLT. Anything else is refused by
+   name, and the image must hold one sample per packed value at section 5's bits. Review found
+   that without these a 272-byte message with subsampled 1×1 tiles made the crate multiply past
+   `u32` (a panic in debug builds, an eager allocation of about 1.3e9 tiles in release). The crate
+   decodes in strict mode: its lenient mode filled a cut-short codestream with its DC offset,
+   whole numbers in range, which review reproduced; a test cuts the fixture's codestream at every
+   length. A field of 0 bits has no codestream and is `R / 10^D` everywhere, by the regulation;
+   ecCodes gave `R` for one with `D = 2` (review's probe), so that case is not checked against it.
+4. **Decoded whole, on each read.** A JPEG 2000 image is decoded whole, so `Field::value` decodes it
    for one point; `values` and `values_at` read it once. Nothing is cached in `Field`, which
    borrows the file and stays `Clone` and cheap.
-4. **Checked against ecCodes in CI, on public data.** Four whole messages cut by byte range from
+5. **Checked against ecCodes in CI, on public data.** Four whole messages cut by byte range from
    RAP's 00 UTC run of 2026-09-30 (a U.S. government work): 500 hPa temperature on grids 200
    (6 bits) and 130 (9 bits, 151,987 points), and cloud base and top heights on grid 200 with
    bitmaps (15 and 16 bits; the top marks 434 of 10,152 points). `whole_file.py cut-rap` writes
@@ -10238,7 +10250,8 @@ far more code than the packings before it.
    the GFS messages. A damage test edits the codestream at random and asks for a refusal, never a
    panic (5,000 cases run once by hand; CI runs proptest's default 256).
 
-**Consequences.** M5.2d3 is met, and with it M5.2d and M5.2. RAP's whole pressure-level files are
-decoded; whether `hpr weather rap --from` reads a whole RAP file as it reads a whole GFS one was not
-tried (no whole RAP file was fetched). A new dependency, `hayro-jpeg2000`, sits in `hpr-io`.
-Lossy JPEG 2000 and fields over 24 bits stay refused; none were seen in the survey.
+**Consequences.** M5.2d3 is met, and with it M5.2d and M5.2. No whole RAP file was read: `hpr
+weather rap --from` on one is untried. NCEP codes a field with a bitmap as one row of its packed
+values, so such a field of more than 60,000 values is refused by name (`JPEG 2000 image side`); a
+whole grid-130 file may hold some. A new dependency, `hayro-jpeg2000`, sits in `hpr-io`. Lossy
+JPEG 2000 and fields over 21 bits stay refused; the four fixture fields have 6 to 16 bits.

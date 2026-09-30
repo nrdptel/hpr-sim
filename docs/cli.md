@@ -715,8 +715,9 @@ it falls back to an older copy, and the output says so.
 
 hpr reads the small GRIB2 files that NOAA's download server, NOMADS, cuts out around a site, and
 whole GFS files you download yourself, which are packed more tightly
-([A whole GFS file](nomads.md#a-whole-gfs-file)), including fields compressed as JPEG 2000 images,
-as RAP's whole files are ([Files in JPEG 2000](nomads.md#files-in-jpeg-2000)).
+([A whole GFS file](nomads.md#a-whole-gfs-file)). The decoder also reads fields compressed as JPEG
+2000 images, which RAP's whole files use, but no whole RAP file has been run through `hpr weather`
+yet ([Files in JPEG 2000](nomads.md#files-in-jpeg-2000)).
 
 ### An example
 

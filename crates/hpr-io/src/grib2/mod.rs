@@ -16,7 +16,7 @@
 //! |---|---|
 //! | 3, grid | 3.0 latitude/longitude; 3.30 Lambert conformal, on a sphere, tangent cone, north pole on the plane |
 //! | 4, product | 4.0, a field at a level at one time; 4.8, the same over a time interval (one time range) |
-//! | 5, packing | 5.0, simple packing; 5.2, complex packing; 5.3, complex packing with spatial differencing; 5.40, JPEG 2000, lossless, to 24 bits |
+//! | 5, packing | 5.0, simple packing; 5.2, complex packing; 5.3, complex packing with spatial differencing; 5.40, JPEG 2000, lossless, to 21 bits, as NCEP codes it |
 //! | 6, bitmap | none, one given, or the one before it in the message |
 //!
 //! Anything else is refused with [`Grib2Error::Unsupported`], naming the template, never read
@@ -57,7 +57,8 @@
 //! (`crates/hpr-net/tests/nomads.rs`): every value, and every grid point's latitude and longitude;
 //! on eight whole messages of a whole GFS file (`crates/hpr-io/tests/grib2_gfs.rs`); and, by a
 //! script run outside CI, on every value of that file, all 746,770,303 within 4.4e-16 of
-//! ecCodes' (`validation/oracles/grib2/gfs-whole-file.json`).
+//! ecCodes' (`validation/oracles/grib2/gfs-whole-file.json`); and on four RAP messages in JPEG
+//! 2000 (`rap_messages_in_jpeg2000_decode_to_eccodes_values`).
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 
@@ -71,7 +72,7 @@ mod jpeg2000;
 mod tests;
 
 pub use complex::{ComplexPacking, SpatialDifferencing};
-pub use jpeg2000::{Jpeg2000Packing, MAX_BITS as MAX_JPEG2000_BITS};
+pub use jpeg2000::{Jpeg2000Packing, MAX_BITS as MAX_JPEG2000_BITS, MAX_SIDE as MAX_JPEG2000_SIDE};
 
 /// The most grid points a field may have: 2²⁴, about 16.8 million. The largest common grids are
 /// well inside it (GFS at 0.25°, about 1.04 million; ECMWF at 0.1°, about 6.5 million). A field of
@@ -511,7 +512,8 @@ impl Field<'_> {
     }
 
     /// Every grid point's value, in grid order; `None` where the field has none. It allocates 16
-    /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file.
+    /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file;
+    /// decoding a JPEG 2000 image takes more while it runs.
     ///
     /// # Errors
     /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow or a JPEG

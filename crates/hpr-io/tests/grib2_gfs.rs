@@ -4,7 +4,7 @@
 //! the 00 UTC run of 2026-09-30 at hour 18 (`gfs.t00z.pgrb2.0p25.f018`, 743 messages, 550 MB):
 //! a small one of each kind the file holds (complex packing with spatial differencing and 1, 2
 //! or 3 bytes per descriptor, a bitmap, missing values, template 4.8, and its one simple-packed
-//! field; `whole_file.py`'s `CUT` says how each was picked). `gfs-messages-eccodes.json` is ecCodes 2.49.0's reading of them, written by
+//! field; `whole_file.py`'s `KINDS` says how each was picked). `gfs-messages-eccodes.json` is ecCodes 2.49.0's reading of them, written by
 //! `validation/oracles/grib2/whole_file.py cut`: each message's identity, its missing points, two
 //! correctly rounded sums over every value, every 997th value, and template 4.8's interval. The
 //! same script's `compare` checks every value of the whole file, which is not committed; its

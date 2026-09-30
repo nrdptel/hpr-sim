@@ -35,16 +35,21 @@ measurement ([Weather-balloon soundings](soundings.md)).
 - The pad sits on the model's ground, which is smoothed: at Spaceport America it is 1,476 m in
   GFS and 1,429 m in RAP, where Open-Meteo gives 1,400 m
   ([Launch-day weather's example](weather.md#an-example)).
+- Fields packed as JPEG 2000 images, as in RAP's whole files, read too: four public RAP fields,
+  182,443 points, match ecCodes in CI ([Files in JPEG 2000](#files-in-jpeg-2000)). No whole RAP
+  file has been tried.
 - The tests replay two recorded answers; the live connection to NOMADS is not tested in CI.
 
 Code: `hpr_net::nomads` ([API reference](api/hpr_net/nomads/index.html)), with the decoder in
 `hpr_io::grib2` ([API reference](api/hpr_io/grib2/index.html)), written for the third weather
 increment, [M5.2c](decisions-and-roadmap.md#m5-2c), and extended to whole GFS files in
-[M5.2d2](decisions-and-roadmap.md#m5-2d2). It needs the `net` feature of the `hpr` crate. The
+[M5.2d2](decisions-and-roadmap.md#m5-2d2) and to JPEG 2000 in
+[M5.2d3](decisions-and-roadmap.md#m5-2d3). It needs the `net` feature of the `hpr` crate. The
 choices are in
 [ADR-121: GFS and RAP from NOMADS' grib filter, read by an in-house GRIB2 decoder](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30)
 and
-[ADR-123: Complex packing, and a whole GFS file](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30).
+[ADR-123: Complex packing, and a whole GFS file](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30),
+and [ADR-124: JPEG 2000 packing](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30).
 
 ## What hpr asks for
 
@@ -284,14 +289,20 @@ pressure-level files are packed this way. hpr decodes them with
 [`hayro-jpeg2000`](https://crates.io/crates/hayro-jpeg2000), a JPEG 2000 decoder written in Rust,
 then turns each whole number into a value as it does for the other packings.
 
-It reads the lossless kind with up to 24 bits a value, which is every RAP field sampled so far. A lossy
-image, or one with more bits, is refused, naming what it is: the decoder works in 32-bit floats,
-which hold every whole number up to 16,777,215 (24 bits) exactly, and nothing here checks what a
-lossy image decodes to. A picture has to be decoded whole, so reading one point decodes the whole
-field; read all the values you need in one go (`Field::values_at`).
+A *lossless* image gives back exactly the numbers packed into it; a *lossy* one gives back
+approximations. hpr reads lossless images of up to 21 bits a value, coded the way NCEP codes
+them; the four RAP fields below have 6 to 16 bits. Anything else is refused, naming what it is: a
+lossy image, one with more bits, or one coded some other way. The limit of 21 bits comes from the
+decoder's arithmetic: it works in 32-bit floats, which keep whole numbers exact only up to
+16,777,216, and its intermediate sums run about 8 times larger than the values. A field with a
+bitmap is stored as one row of its values, and the decoder takes at most 60,000 in a row, so such a
+field of more values is refused too.
 
+A picture has to be decoded whole, so reading one point decodes the whole field; read all the
+values you need in one go
+([`Field::values_at`](api/hpr_io/grib2/struct.Field.html#method.values_at)), as `hpr weather` does.
 A whole RAP file through `hpr weather rap --from` has not been tried: no whole RAP file was
-downloaded, only four of its fields (below).
+downloaded, only four of its fields ([How it is checked](#how-it-is-checked)).
 
 ## How it is checked
 
@@ -367,14 +378,17 @@ Linux and Windows.
   and its profile matches at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8,
   relatively (bound 7e-8).
 - **JPEG 2000 in CI.** Four fields cut unchanged from RAP's run of 00 UTC, 30 September 2026:
-  500 hPa temperature on two grids (10,152 and 151,987 points), and the heights of cloud base and
-  cloud top, which have a value only where there is cloud (6,824 and 434 points of 10,152). Their
-  182,443 points match ecCodes' reading: which points have no value, two sums over every value,
-  and every 13th value alone (`rap_messages_in_jpeg2000_decode_to_eccodes_values` in
-  `crates/hpr-io/tests/grib2_gfs.rs`; ecCodes' reading is written by `whole_file.py cut-rap`,
+  500 hPa temperature on RAP's 13 km grid (151,987 points) and on a coarser one (10,152), and the
+  heights of cloud base and cloud top, which have a value only where there is cloud (6,824 and 434
+  points of 10,152). Their 182,443 points match ecCodes' reading: which points have no value, the
+  plain sum of every value and a sum weighted by each point's position (which catches a value in
+  the wrong place), and every 13th value alone
+  (`rap_messages_in_jpeg2000_decode_to_eccodes_values` in `crates/hpr-io/tests/grib2_gfs.rs`;
+  ecCodes' reading is written by `validation/oracles/grib2/whole_file.py cut-rap`,
   [ADR-124](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30)).
-  A damaged image is refused, never a crash: a test changes bytes of one at random, 256 times in
-  CI.
+  A damaged image is refused, never a crash: `damaged_jpeg2000_never_panics` in
+  `crates/hpr-io/src/grib2/tests.rs` changes bytes of one at random, 256 times in CI, and another
+  test cuts it short at every length.
 - **Refusals.** A site outside the file's grid, text that isn't GRIB2, a cycle the model doesn't
   run and a forecast hour its run doesn't have are refused. The decoder's own tests build small
   files by hand to pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid,
@@ -383,8 +397,9 @@ Linux and Windows.
 
 ## What it leaves out
 
-- **Lossy JPEG 2000.** A field compressed as a lossy JPEG 2000 image, or one of more than 24 bits
-  a value, is refused by name ([Files in JPEG 2000](#files-in-jpeg-2000)). None has been seen.
+- **Other JPEG 2000.** A lossy image, one of more than 21 bits a value, one coded otherwise than
+  NCEP codes, or a bitmap field of more than 60,000 values is refused by name
+  ([Files in JPEG 2000](#files-in-jpeg-2000)).
 - **Whole RAP files.** Their packing is read, but a whole file has not been run through
   `hpr weather`.
 - **Coarser GFS files.** GFS's 0.5° and 1° files are refused: hpr checks for the 0.25° grid.
