@@ -24,6 +24,10 @@ measurement ([Weather-balloon soundings](soundings.md)).
   centre's reference decoder, gives: all 6,123 values within 2.2e-16 of each other, relatively
   (one rounding in the last binary digit). The profile gives back those values, interpolated to
   the site, at every level it keeps. That is checked below.
+- A whole GFS file you download yourself reads too ([A whole GFS file](#a-whole-gfs-file)): every
+  one of the 746,770,303 values in one such file is within 4.4e-16 of ecCodes', relatively, and
+  its profile at Spaceport America is the recorded cut's to 1.04e-7. That check was run by hand;
+  CI checks eight of the file's messages.
 - How good a forecast is depends on the model, and nothing here measures that: no forecast has
   been compared with a weather balloon or a flight log.
 - The pad sits on the model's ground, which is smoothed: at Spaceport America it is 1,476 m in
@@ -225,6 +229,37 @@ is Earth's rotation: a climbing rocket is pushed west (the Coriolis effect), as 
 [Launch-day weather](weather.md#an-example) page. Which model is nearer the air Calisto would have
 met is not measured.
 
+## A whole GFS file
+
+Instead of asking NOMADS for a cut, you can download a whole GFS file and read it offline, for
+example before driving out to a launch with no signal. NOMADS keeps the most recent runs, and
+NOAA's open data bucket on Amazon's cloud older ones. A file holds one run's forecast
+for one hour over the whole Earth, about 550 MB at 0.25°:
+
+```text
+https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.20260930/00/atmos/gfs.t00z.pgrb2.0p25.f018
+https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20260930/00/atmos/gfs.t00z.pgrb2.0p25.f018
+```
+
+Here `20260930/00` and `t00z` are the run (00 UTC on 30 September 2026) and `f018` the forecast
+hour. The [command line](cli.md#hpr-weather) reads it as it reads a saved cut:
+`hpr weather gfs --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T00Z --hour 18 --from
+gfs.t00z.pgrb2.0p25.f018 --output profile.json`. It takes about a third of a second.
+
+NCEP packs whole files more tightly than the grib filter's cuts, with GRIB2's *complex packing*:
+the values are split into groups, each with its own smallest value and number of bits, and most
+fields store the differences between neighbouring values rather than the values (*spatial
+differencing*). hpr's decoder reads both (templates 5.2 and 5.3). A whole file also holds 743
+fields rather than 147: rain and other totals over a time span, which the profile leaves out,
+layers between two surfaces, which aren't levels, and every pressure level up to 0.01 hPa, so the
+profile goes on above 10 hPa, where a cut stops, to about 79 km. The grid runs all the way round
+the Earth, so a site near 0° longitude reads too.
+
+For that run and hour at Spaceport America, the whole file's profile has the cut's 22 levels,
+within 1.04e-7 of each value, relatively, and 13 more above them. They differ at all because the
+grib filter packs its cuts again in fewer bits: by ecCodes alone, the two files' values differ by
+up to 2.4e-6 at the cut's grid points.
+
 ## How it is checked
 
 The tests in [`crates/hpr-net/tests/nomads.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/nomads.rs)
@@ -276,18 +311,32 @@ Linux and Windows.
 - **Missing and hostile data.** A level whose field has no value at one of the four points around
   the site is left out as missing data; a cut of more than 1,000 fields is refused before it is
   read (a real one has 147 or 192).
+- **A whole GFS file** (the 00 UTC run of 30 September 2026 at hour 18, 550 MB, not committed).
+  [`validation/oracles/grib2/whole_file.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/whole_file.py)
+  compares every value hpr decodes with ecCodes': all 746,770,303 agree within 4.4e-16,
+  relatively, and the 24,642,017 grid points without a value are the same points. It was run by
+  hand. CI reads eight whole messages cut from the file, the smallest of each kind it holds, and
+  checks each against ecCodes' reading: which field it is, its points without a value, two sums
+  over all its values (to 1.35e-15 of the terms' sizes, where one packing step is at least 2.4e4
+  times more), and every 997th value (bound 4.5e-16). A test that runs where the file is at hand
+  checks `hpr weather` writes the cut's profile from it, within 2.4e-6 (measured 1.04e-7).
+- **Complex packing in CI.** The recorded GFS cut, packed again by ecCodes with complex packing
+  and both orders of differencing
+  ([`repack.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/repack.py)),
+  goes through every check above: its 1,323 values against ecCodes' within 2.5e-16, and its
+  profile at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8
+  (bound 1e-6).
 - **Refusals.** A site outside the file's grid, text that isn't GRIB2, a cycle the model doesn't
   run and a forecast hour its run doesn't have are refused. The decoder's own tests build small
-  files by hand to pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid, and
-  refusals of every other kind of file by name.
+  files by hand to pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid,
+  complex packing's groups, missing values and both orders of differencing, and refusals of every
+  other kind of file by name.
 
 ## What it leaves out
 
-- **Whole NCEP files.** The grib filter's small cuts use GRIB2's *simple packing*, which is what
-  hpr decodes. NOAA's whole files, which you would download yourself, use *complex packing* or
-  JPEG 2000 compression, and hpr refuses them by name. Reading them is planned in
-  [M5.2d2, complex packing](decisions-and-roadmap.md#m5-2d2) and
-  [M5.2d3, JPEG 2000](decisions-and-roadmap.md#m5-2d3).
+- **JPEG 2000.** Some GRIB2 files are compressed with JPEG 2000 (template 5.40), which hpr refuses
+  by name for now; reading it is planned in [M5.2d3, JPEG 2000](decisions-and-roadmap.md#m5-2d3).
+  Whole GFS files use complex packing, which hpr reads. RAP's whole files have not been tried.
 - **Forecast accuracy.** Nothing here checks a forecast against the weather that came.
 - **Time.** One forecast hour per request, with no interpolation between hours: you pick the run
   and the hour closest to your launch.

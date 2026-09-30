@@ -44,8 +44,15 @@ fn fixtures() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
 
+/// A recording, or a file beside the recordings (the repacked cut).
 fn fixture(name: &str) -> Vec<u8> {
-    std::fs::read(fixtures().join("replay").join(name)).unwrap()
+    let recorded = fixtures().join("replay").join(name);
+    std::fs::read(if recorded.exists() {
+        recorded
+    } else {
+        fixtures().join(name)
+    })
+    .unwrap()
 }
 
 fn eccodes() -> Value {
@@ -82,6 +89,17 @@ fn recordings() -> [(&'static str, NomadsRequest); 2] {
     ]
 }
 
+/// The GFS cut as ecCodes repacks it: templates 5.2, 5.3 with first-order and 5.3 with
+/// second-order differences in turn (`validation/oracles/grib2/repack.py`).
+const COMPLEX: &str = "nomads-gfs-complex.grib2";
+
+/// The recordings, and the repacked GFS cut, which reads as the same request.
+fn every_file() -> Vec<(&'static str, NomadsRequest)> {
+    let mut files = recordings().to_vec();
+    files.push((COMPLEX, recordings()[0].1.clone()));
+    files
+}
+
 fn num(v: &Value) -> f64 {
     v.as_f64().unwrap()
 }
@@ -100,7 +118,8 @@ fn every_field_decodes_to_what_eccodes_prints() {
     let mut worst_value: f64 = 0.0;
     let mut worst_point: f64 = 0.0;
     let mut values = 0;
-    for (name, _) in recordings() {
+    let mut templates = Vec::new();
+    for (name, _) in every_file() {
         let bytes = fixture(name);
         let fields = grib2::parse(&bytes).unwrap();
         let file = &reference["files"][name];
@@ -142,7 +161,8 @@ fn every_field_decodes_to_what_eccodes_prints() {
                 "{at}"
             );
             let expected = m["values"].as_array().unwrap();
-            let decoded = field.values();
+            templates.push(field.packing.template());
+            let decoded = field.values().unwrap();
             assert_eq!(decoded.len(), expected.len(), "{at}");
             for (k, (d, e)) in decoded.iter().zip(expected).enumerate() {
                 let (d, e) = (d.unwrap(), num(e));
@@ -159,7 +179,9 @@ fn every_field_decodes_to_what_eccodes_prints() {
                 .max((lon - num(&point[1])).abs());
         }
     }
-    assert_eq!(values, 147 * 9 + 192 * 25);
+    assert_eq!(values, 147 * 9 + 192 * 25 + 147 * 9);
+    let count = |t| templates.iter().filter(|&&x| x == t).count();
+    assert_eq!((count(0), count(2), count(3)), (147 + 192, 49, 98));
     // Measured: 2.2e-16, one rounding (ecCodes multiplies by an inexact 10^−D, the decoder
     // divides by an exact 10^D), in IEEE arithmetic alone, so the same everywhere; 5.7e-14° on
     // macOS (GFS's points exact, RAP's to the two projections' rounding), bounded at 1e-12° since
@@ -202,7 +224,7 @@ fn is(m: &Value, category: i64, number: i64, surface: i64, value: i64) -> bool {
 #[test]
 fn the_four_grid_points_surround_the_site() {
     let reference = eccodes();
-    for (name, request) in recordings() {
+    for (name, request) in every_file() {
         let profile = NomadsProfile::parse(&fixture(name), LATITUDE_DEG, LONGITUDE_DEG).unwrap();
         let points = reference["files"][name]["points"].as_array().unwrap();
         let (mut lat, mut lon, mut total) = (0.0, 0.0, 0.0);
@@ -279,7 +301,7 @@ fn rap_winds_are_turned_by_the_grids_bearing() {
 fn the_profile_reproduces_every_level_above_the_ground() {
     let reference = eccodes();
     let lat_rad = LATITUDE_DEG.to_radians();
-    for (name, request) in recordings() {
+    for (name, request) in every_file() {
         let file = &reference["files"][name];
         let profile = NomadsProfile::parse(&fixture(name), LATITUDE_DEG, LONGITUDE_DEG).unwrap();
         let air = profile.sounding(WindInterpolation::SpeedDirection).unwrap();
@@ -608,6 +630,23 @@ fn parse_refuses_what_it_cannot_read() {
             surface: 100
         })
     ));
+    // The same field on a layer (a second surface, as a whole GFS file's sigma layers share a
+    // first one) is another field, and the profile doesn't use it.
+    let mut layer = gfs.clone();
+    layer.extend_from_slice(&patched(&messages[t500], 4, 28, &[104, 2, 0, 0, 0, 44]));
+    let with_layer = NomadsProfile::parse(&layer, LATITUDE_DEG, LONGITUDE_DEG).unwrap();
+    assert_eq!(
+        with_layer,
+        NomadsProfile::parse(&gfs, LATITUDE_DEG, LONGITUDE_DEG).unwrap()
+    );
+    // A statistic over an interval (template 4.8) of the same field, as a whole GFS file holds
+    // for rain and fluxes, is left out rather than read as a second 500 hPa temperature.
+    let mut statistic = gfs.clone();
+    statistic.extend_from_slice(&as_statistic(&messages[t500]));
+    assert_eq!(
+        NomadsProfile::parse(&statistic, LATITUDE_DEG, LONGITUDE_DEG).unwrap(),
+        with_layer
+    );
     // A RAP message among GFS's: another grid.
     let rap = fixture("nomads-rap.grib2");
     let mut mixed = gfs.clone();
@@ -832,6 +871,61 @@ fn a_cut_of_too_many_fields_is_refused() {
         Err(NomadsError::TooManyFields { count: 1_047 })
     ));
     assert_eq!(nomads::MAX_FIELDS, 1_000);
+}
+
+/// A message with its section 4 made template 4.8: an average over the 6 hours to the forecast
+/// time, one time range.
+fn as_statistic(m: &[u8]) -> Vec<u8> {
+    let mut at = 16;
+    while m[at + 4] != 4 {
+        at += usize::try_from(u32::from_be_bytes(m[at..at + 4].try_into().unwrap())).unwrap();
+    }
+    let len = usize::try_from(u32::from_be_bytes(m[at..at + 4].try_into().unwrap())).unwrap();
+    let mut s = m[at..at + len].to_vec();
+    s[7..9].copy_from_slice(&8_u16.to_be_bytes());
+    s.extend_from_slice(&2026_u16.to_be_bytes());
+    s.extend_from_slice(&[
+        9, 30, 18, 0, 0, 1, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 6, 1, 0, 0, 0, 0,
+    ]);
+    let section_len = u32::try_from(s.len()).unwrap();
+    s[..4].copy_from_slice(&section_len.to_be_bytes());
+    let mut out = [&m[..at], &s[..], &m[at + len..]].concat();
+    let total = out.len() as u64;
+    out[8..16].copy_from_slice(&total.to_be_bytes());
+    out
+}
+
+/// A grid all the way round the Earth joins its last column to its first. The cut's 3 columns
+/// made 120° apart from 12.75° E (so at 12.75°, 132.75° and 252.75°) circle the Earth, and the
+/// site, at 253.03° E, is past the last: its cell runs from the last column to the first.
+#[test]
+fn a_grid_round_the_earth_wraps_its_columns() {
+    let gfs = fixture("nomads-gfs.grib2");
+    let round = patched(
+        &patched(&gfs, 3, 50, &12_750_000_u32.to_be_bytes()),
+        3,
+        63,
+        &120_000_000_u32.to_be_bytes(),
+    );
+    let profile = NomadsProfile::parse(&round, LATITUDE_DEG, LONGITUDE_DEG).unwrap();
+    assert!(profile.grid.circles_the_earth());
+    let columns: Vec<u64> = profile.grid_points.iter().map(|g| g.index % 3).collect();
+    assert_eq!(columns, [2, 0, 2, 0]);
+    let across = (LONGITUDE_DEG.rem_euclid(360.0) - 252.75) / 120.0;
+    assert!(
+        (profile.grid_points[1].weight
+            / (profile.grid_points[0].weight + profile.grid_points[1].weight)
+            - across)
+            .abs()
+            < 1e-12
+    );
+    // Not round the Earth (the recorded cut), the same place is outside.
+    let mut short = patched(&gfs, 3, 50, &12_750_000_u32.to_be_bytes());
+    short = patched(&short, 3, 63, &119_000_000_u32.to_be_bytes());
+    assert!(matches!(
+        NomadsProfile::parse(&short, LATITUDE_DEG, LONGITUDE_DEG),
+        Err(NomadsError::Outside { .. })
+    ));
 }
 
 /// Every message of `bytes` with `new` written at byte `offset` of its section `number`.

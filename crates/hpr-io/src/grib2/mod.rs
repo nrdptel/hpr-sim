@@ -9,18 +9,18 @@
 //! point, [`Field::values`] all of them. The layout is the WMO's *Manual on Codes*, WMO-No. 306,
 //! Volume I.2, FM 92 GRIB edition 2, and its code and flag tables.
 //!
-//! What is read, which covers what the grib filter serves from GFS and RAP:
+//! What is read, which covers what the grib filter serves from GFS and RAP, and NCEP's whole GFS
+//! files:
 //!
 //! | section | templates read |
 //! |---|---|
 //! | 3, grid | 3.0 latitude/longitude; 3.30 Lambert conformal, on a sphere, tangent cone, north pole on the plane |
-//! | 4, product | 4.0, a field at a level at one time |
-//! | 5, packing | 5.0, simple packing |
+//! | 4, product | 4.0, a field at a level at one time; 4.8, the same over a time interval (one time range) |
+//! | 5, packing | 5.0, simple packing; 5.2, complex packing; 5.3, complex packing with spatial differencing |
 //! | 6, bitmap | none, one given, or the one before it in the message |
 //!
 //! Anything else is refused with [`Grib2Error::Unsupported`], naming the template, never read
-//! wrongly. Complex packing (5.2, 5.3) and JPEG 2000 (5.40), which NCEP's whole files use, are for
-//! [M5.2d][roadmap].
+//! wrongly. JPEG 2000 (5.40), which some of NCEP's files use, is for [M5.2d3][roadmap].
 //!
 //! **Values.** Simple packing stores each value as an integer `X` of a fixed number of bits, with
 //! a reference value `R` (a 32-bit float), a binary scale factor `E` and a decimal scale factor
@@ -31,6 +31,12 @@
 //! evaluated in `f64` with exact powers of two and ten. A field of 0 bits is `R / 10^D` at every
 //! point with a value. Signed integers in GRIB2 are sign and magnitude (the first bit is the sign),
 //! not two's complement (Regulation 92.1.5).
+//!
+//! **Complex packing** (5.2, 5.3) splits the values into groups, each with its own reference and
+//! width, and may pack differences between neighbouring values instead of the values; the
+//! integers it rebuilds unpack by the same regulation. [`ComplexPacking`] has the details. Its
+//! values can only be read in order, so [`Field::value`] reads the field up to the point asked
+//! for; [`Field::values_at`] reads several points in one pass.
 //!
 //! **Grids.** [`Grid::point_deg`] gives a grid point's latitude and longitude, and
 //! [`Grid::index_at`] the (fractional) grid indices of a place. On a Lambert conformal grid both
@@ -43,7 +49,8 @@
 //! north, `θ = n (λ − λ₀)`.
 //!
 //! **Checked against:** ecCodes 2.49.0, run as an outside decoder, on recorded GFS and RAP cuts
-//! (`crates/hpr-net/tests/nomads.rs`): every value, and every grid point's latitude and longitude.
+//! (`crates/hpr-net/tests/nomads.rs`): every value, and every grid point's latitude and longitude;
+//! and on whole messages of a whole GFS file (`crates/hpr-io/tests/grib2_gfs.rs`).
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 
@@ -51,8 +58,11 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+mod complex;
 #[cfg(test)]
 mod tests;
+
+pub use complex::{ComplexPacking, SpatialDifferencing};
 
 /// The most grid points a field may have: 2²⁴, about 16.8 million. The largest common grids are
 /// well inside it (GFS at 0.25°, about 1.04 million; ECMWF at 0.1°, about 6.5 million). A field of
@@ -234,6 +244,8 @@ pub struct Surface {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Product {
+    /// The product definition template: 0, or 8 for a value over a time interval.
+    pub template: u16,
     /// Parameter category (code table 4.1), such as 0 temperature or 2 momentum.
     pub category: u8,
     /// Parameter number within the category (code table 4.2).
@@ -249,6 +261,24 @@ pub struct Product {
     pub surface: Surface,
     /// The second fixed surface (kind 255 when there is none).
     pub second_surface: Surface,
+    /// Template 4.8's time interval: the field is a statistic (such as an accumulation or an
+    /// average) from the forecast time to [`Statistics::end`]. `None` for template 4.0, a value at
+    /// one time.
+    pub statistics: Option<Statistics>,
+}
+
+/// A statistic over a time interval: product definition template 4.8, with one time range.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Statistics {
+    /// The end of the interval, UTC.
+    pub end: ReferenceTime,
+    /// The statistic (code table 4.10): 0 average, 1 accumulation, 2 maximum, 3 minimum, and so on.
+    pub process: u8,
+    /// The unit of [`Statistics::length`] (code table 4.4).
+    pub time_unit: u8,
+    /// The interval's length in that unit.
+    pub length: i64,
 }
 
 impl Product {
@@ -290,15 +320,55 @@ impl SimplePacking {
     /// `Y = (R + X · 2^E) / 10^D` for a packed integer `X`.
     #[must_use]
     pub fn unpack(&self, x: u32) -> f64 {
-        let scaled =
-            f64::from(self.reference) + f64::from(x) * 2_f64.powi(self.binary_scale.into());
-        // Powers of ten to 10^22 are exact in f64, so dividing (or multiplying for D < 0) is one
-        // rounding, whichever sign D has.
-        let d = i32::from(self.decimal_scale);
-        if d >= 0 {
-            scaled / 10_f64.powi(d)
-        } else {
-            scaled * 10_f64.powi(-d)
+        unpack(
+            self.reference,
+            self.binary_scale,
+            self.decimal_scale,
+            f64::from(x),
+        )
+    }
+}
+
+/// `Y = (R + X · 2^E) / 10^D`, WMO-No. 306 Regulation 92.9.4.
+fn unpack(reference: f32, binary_scale: i16, decimal_scale: i16, x: f64) -> f64 {
+    let scaled = f64::from(reference) + x * 2_f64.powi(binary_scale.into());
+    // Powers of ten to 10^22 are exact in f64, so dividing (or multiplying for D < 0) is one
+    // rounding, whichever sign D has.
+    let d = i32::from(decimal_scale);
+    if d >= 0 {
+        scaled / 10_f64.powi(d)
+    } else {
+        scaled * 10_f64.powi(-d)
+    }
+}
+
+/// How a field's values are packed: data representation template 5.0, 5.2 or 5.3.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum Packing {
+    /// Template 5.0.
+    Simple(SimplePacking),
+    /// Templates 5.2 and 5.3.
+    Complex(ComplexPacking),
+}
+
+impl Packing {
+    /// How many values are packed: the grid points the bitmap marks, or all of them.
+    #[must_use]
+    pub fn count(&self) -> u32 {
+        match self {
+            Self::Simple(p) => p.count,
+            Self::Complex(p) => p.count,
+        }
+    }
+
+    /// The data representation template: 0, 2 or 3.
+    #[must_use]
+    pub fn template(&self) -> u16 {
+        match self {
+            Self::Simple(_) => 0,
+            Self::Complex(p) if p.spatial_differencing.is_some() => 3,
+            Self::Complex(_) => 2,
         }
     }
 }
@@ -324,12 +394,15 @@ pub struct Field<'a> {
     /// What the field is.
     pub product: Product,
     /// How it is packed.
-    pub packing: SimplePacking,
+    pub packing: Packing,
     /// One bit per grid point, first point in the first byte's high bit: 1 when the point has a
     /// value. `None` when every point has one.
     bitmap: Option<Bitmap<'a>>,
-    /// The packed values, `packing.bits` each, from the first byte's high bit.
+    /// Section 7's data after its header: for simple packing the packed values, `bits` each,
+    /// from the first byte's high bit.
     data: &'a [u8],
+    /// Where complex packing's parts start in `data`, checked by `parse`.
+    layout: Option<complex::Layout>,
 }
 
 impl Field<'_> {
@@ -339,72 +412,99 @@ impl Field<'_> {
         u64::from(self.grid.ni) * u64::from(self.grid.nj)
     }
 
-    /// The value at grid point `index` (numbered as on [`Grid`]), or `None` where the bitmap marks
-    /// the point as having none.
+    /// The value at grid point `index` (numbered as on [`Grid`]), or `None` where the field has
+    /// none there. A complex-packed field is read from its start up to the point.
     ///
     /// # Errors
-    /// [`Grib2Error::PointOutside`] when `index` is not below [`Field::points`].
+    /// [`Grib2Error::PointOutside`] when `index` is not below [`Field::points`], and
+    /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow.
     pub fn value(&self, index: u64) -> Result<Option<f64>, Grib2Error> {
-        let points = self.points();
-        if index >= points {
-            return Err(Grib2Error::PointOutside { index, points });
-        }
-        let packed = match &self.bitmap {
-            Some(bitmap) => {
-                if !bitmap.get(index) {
-                    return Ok(None);
-                }
-                bitmap.ones_before(index)
-            }
-            None => index,
-        };
-        Ok(Some(self.packing.unpack(self.packed(packed))))
+        Ok(self.values_at(&[index])?.first().copied().flatten())
     }
 
-    /// Every grid point's value, in grid order; `None` where the bitmap marks none. It allocates 16
+    /// The values at several grid points, in the order asked, reading a complex-packed field once
+    /// up to the last of them.
+    ///
+    /// # Errors
+    /// As [`Field::value`].
+    pub fn values_at(&self, indices: &[u64]) -> Result<Vec<Option<f64>>, Grib2Error> {
+        let points = self.points();
+        // Each point's place among the packed values, or `None` where the bitmap marks none.
+        let mut wanted = Vec::with_capacity(indices.len());
+        for &index in indices {
+            if index >= points {
+                return Err(Grib2Error::PointOutside { index, points });
+            }
+            wanted.push(match &self.bitmap {
+                Some(bitmap) => bitmap.get(index).then(|| bitmap.ones_before(index)),
+                None => Some(index),
+            });
+        }
+        match (&self.packing, &self.layout) {
+            (Packing::Complex(p), Some(layout)) => {
+                let mut order: Vec<(u64, usize)> = wanted
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(k, w)| w.map(|w| (w, k)))
+                    .collect();
+                order.sort_unstable();
+                let end = order.last().map_or(0, |&(w, _)| w + 1);
+                let mut out = vec![None; indices.len()];
+                let mut next = 0;
+                complex::decode(p, layout, self.data, end, self.message, |position, h| {
+                    while let Some(&(w, k)) = order.get(next) {
+                        if w != position {
+                            break;
+                        }
+                        out[k] = h.map(|h| p.unpack(h));
+                        next += 1;
+                    }
+                })?;
+                Ok(out)
+            }
+            (Packing::Simple(p), _) => Ok(wanted
+                .into_iter()
+                .map(|w| w.map(|k| p.unpack(self.packed(p, k))))
+                .collect()),
+            (Packing::Complex(_), None) => Err(malformed(self.message, "no layout")),
+        }
+    }
+
+    /// Every grid point's value, in grid order; `None` where the field has none. It allocates 16
     /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file;
     /// [`Field::value`] reads one point without allocating.
-    #[must_use]
-    pub fn values(&self) -> Vec<Option<f64>> {
+    ///
+    /// # Errors
+    /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow.
+    pub fn values(&self) -> Result<Vec<Option<f64>>, Grib2Error> {
         let points = self.points();
         // `parse` bounds `points` by `MAX_POINTS`, so this fits a `usize` on every target.
+        let mut packed = Vec::with_capacity(usize::try_from(self.packing.count()).unwrap_or(0));
+        match (&self.packing, &self.layout) {
+            (Packing::Complex(p), Some(layout)) => {
+                complex::decode(p, layout, self.data, u64::MAX, self.message, |_, h| {
+                    packed.push(h.map(|h| p.unpack(h)));
+                })?;
+            }
+            (Packing::Simple(p), _) => {
+                packed.extend((0..u64::from(p.count)).map(|k| Some(p.unpack(self.packed(p, k)))));
+            }
+            (Packing::Complex(_), None) => return Err(malformed(self.message, "no layout")),
+        }
         let mut out = Vec::with_capacity(usize::try_from(points).unwrap_or(0));
-        let mut packed = 0;
+        let mut next = packed.into_iter();
         for index in 0..points {
             let present = self.bitmap.as_ref().is_none_or(|bitmap| bitmap.get(index));
-            out.push(present.then(|| {
-                let x = self.packed(packed);
-                packed += 1;
-                self.packing.unpack(x)
-            }));
+            out.push(if present { next.next().flatten() } else { None });
         }
-        out
+        Ok(out)
     }
 
-    /// The `k`-th packed integer. `parse` checked that the data holds `count · bits` bits, and
-    /// callers pass `k < count`.
-    fn packed(&self, k: u64) -> u32 {
-        let bits = u64::from(self.packing.bits);
-        if bits == 0 {
-            return 0;
-        }
-        let start = k * bits;
-        let mut acc: u64 = 0;
-        let first_byte = start / 8;
-        let last_byte = (start + bits - 1) / 8;
-        for byte in first_byte..=last_byte {
-            let b = usize::try_from(byte)
-                .ok()
-                .and_then(|i| self.data.get(i))
-                .copied()
-                .unwrap_or(0);
-            acc = (acc << 8) | u64::from(b);
-        }
-        let used = (last_byte - first_byte + 1) * 8;
-        let shift = used - (start % 8) - bits;
-        let mask = (1_u64 << bits) - 1;
-        // `bits` is at most 32, so the masked value fits.
-        u32::try_from((acc >> shift) & mask).unwrap_or(u32::MAX)
+    /// The `k`-th packed integer of a simple-packed field. `parse` checked that the data holds
+    /// `count · bits` bits, and callers pass `k < count`.
+    fn packed(&self, p: &SimplePacking, k: u64) -> u32 {
+        // At most 32 bits.
+        u32::try_from(complex::bits(self.data, k * u64::from(p.bits), p.bits)).unwrap_or(u32::MAX)
     }
 }
 
@@ -500,6 +600,18 @@ impl Grid {
                 let (lat, lon) = lambert.inverse(x0 + i * dx_m, y0 + j_sign * j * dy_m);
                 Some((lat, lon.rem_euclid(360.0)))
             }
+        }
+    }
+
+    /// Whether a latitude/longitude grid's rows go all the way round the Earth: `ni` steps of
+    /// `di` make 360°, so the point after the last in a row is the row's first.
+    #[must_use]
+    pub fn circles_the_earth(&self) -> bool {
+        match self.projection {
+            Projection::LatLon { di_deg, .. } => {
+                (f64::from(self.ni) * di_deg - 360.0).abs() < 1e-9 * 360.0
+            }
+            Projection::LambertConformal { .. } => false,
         }
     }
 
@@ -698,7 +810,7 @@ fn read_message<'a>(
     let mut identification: Option<(u16, ReferenceTime)> = None;
     let mut grid: Option<Grid> = None;
     let mut product: Option<Product> = None;
-    let mut packing: Option<SimplePacking> = None;
+    let mut packing: Option<Packing> = None;
     // `Some(None)`: section 6 said there is no bitmap.
     let mut bitmap: Option<Option<Bitmap<'a>>> = None;
     let mut last_bitmap: Option<Bitmap<'a>> = None;
@@ -765,7 +877,7 @@ fn read_message<'a>(
                         "section 7 comes before sections 1 and 3 to 6 are all given",
                     ));
                 };
-                let field = Field {
+                let mut field = Field {
                     message,
                     discipline,
                     centre,
@@ -775,8 +887,9 @@ fn read_message<'a>(
                     packing,
                     bitmap,
                     data: &s[5..],
+                    layout: None,
                 };
-                check_field(&field)?;
+                check_field(&mut field)?;
                 fields.push(field);
             }
             other => {
@@ -794,11 +907,12 @@ fn read_message<'a>(
     Ok(())
 }
 
-/// Checks a field's bitmap and packed values are as long as its grid and packing say.
-fn check_field(field: &Field<'_>) -> Result<(), Grib2Error> {
+/// Checks a field's bitmap and packed values are as long as its grid and packing say, and finds
+/// where a complex-packed field's parts start.
+fn check_field(field: &mut Field<'_>) -> Result<(), Grib2Error> {
     let message = field.message;
     let points = field.points();
-    let count = u64::from(field.packing.count);
+    let count = u64::from(field.packing.count());
     match &field.bitmap {
         Some(bitmap) => {
             let have = bitmap.bits.len() as u64 * 8;
@@ -826,27 +940,50 @@ fn check_field(field: &Field<'_>) -> Result<(), Grib2Error> {
         }
         None => {}
     }
-    // `Y` rises with `X` (`2^E > 0`), so the ends bound every value.
-    let packing = &field.packing;
-    let largest = u32::try_from((1_u64 << packing.bits) - 1).unwrap_or(u32::MAX);
-    if !(packing.unpack(0).is_finite() && packing.unpack(largest).is_finite()) {
+    // `Y` rises with `X` (`2^E > 0`), so the ends bound every value: for simple packing `0` and
+    // `2^bits − 1`; for complex packing, whose rebuilt integers the headers don't bound, the ends
+    // of `i64`.
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "the ends of i64 only need to be near, to bound the scale"
+    )]
+    let (low, high, e, d) = match &field.packing {
+        Packing::Simple(p) => {
+            let largest = u32::try_from((1_u64 << p.bits) - 1).unwrap_or(u32::MAX);
+            (
+                p.unpack(0),
+                p.unpack(largest),
+                p.binary_scale,
+                p.decimal_scale,
+            )
+        }
+        Packing::Complex(p) => (
+            p.unpack(i64::MIN),
+            p.unpack(i64::MAX),
+            p.binary_scale,
+            p.decimal_scale,
+        ),
+    };
+    if !(low.is_finite() && high.is_finite()) {
         return Err(malformed(
             message,
-            format!(
-                "the scale factors (binary {}, decimal {}) make values that are not finite",
-                packing.binary_scale, packing.decimal_scale
-            ),
+            format!("the scale factors (binary {e}, decimal {d}) make values that are not finite"),
         ));
     }
-    let bits = count * u64::from(field.packing.bits);
-    let have = field.data.len() as u64 * 8;
-    if have < bits {
-        return Err(truncated(
-            message,
-            "the packed values",
-            bits.div_ceil(8),
-            field.data.len(),
-        ));
+    match &field.packing {
+        Packing::Simple(p) => {
+            let bits = count * u64::from(p.bits);
+            let have = field.data.len() as u64 * 8;
+            if have < bits {
+                return Err(truncated(
+                    message,
+                    "the packed values",
+                    bits.div_ceil(8),
+                    field.data.len(),
+                ));
+            }
+        }
+        Packing::Complex(p) => field.layout = Some(complex::layout(p, field.data, message)?),
     }
     Ok(())
 }
@@ -1148,19 +1285,49 @@ fn read_surface(s: &[u8]) -> Surface {
     Surface { kind, value }
 }
 
-/// Section 4: product definition template 4.0.
+/// Section 4: product definition template 4.0, or 4.8 with one time range.
 fn read_product(s: &[u8], message: usize) -> Result<Product, Grib2Error> {
     let s = need(s, 9, "section 4", message)?;
     let template = be_u16(&s[7..9]);
-    if template != 0 {
-        return Err(Grib2Error::Unsupported {
-            message,
-            what: "product definition template",
-            value: template.into(),
-        });
-    }
+    let statistics = match template {
+        0 => None,
+        8 => {
+            // Octets 35 to 58: the interval's end, the number of time ranges and the first
+            // range's statistic, units and length.
+            let s = need(s, 58, "product template 4.8", message)?;
+            if s[41] != 1 {
+                return Err(Grib2Error::Unsupported {
+                    message,
+                    what: "number of time ranges",
+                    value: s[41].into(),
+                });
+            }
+            Some(Statistics {
+                end: ReferenceTime {
+                    significance: 2,
+                    year: be_u16(&s[34..36]),
+                    month: s[36],
+                    day: s[37],
+                    hour: s[38],
+                    minute: s[39],
+                    second: s[40],
+                },
+                process: s[46],
+                time_unit: s[48],
+                length: be_u32(&s[49..53]).into(),
+            })
+        }
+        _ => {
+            return Err(Grib2Error::Unsupported {
+                message,
+                what: "product definition template",
+                value: template.into(),
+            });
+        }
+    };
     let s = need(s, 34, "product template 4.0", message)?;
     Ok(Product {
+        template,
         category: s[9],
         number: s[10],
         process: s[11],
@@ -1168,19 +1335,24 @@ fn read_product(s: &[u8], message: usize) -> Result<Product, Grib2Error> {
         forecast_time: be_i32(&s[18..22]),
         surface: read_surface(&s[22..28]),
         second_surface: read_surface(&s[28..34]),
+        statistics,
     })
 }
 
-/// Section 5: data representation template 5.0.
-fn read_packing(s: &[u8], message: usize) -> Result<SimplePacking, Grib2Error> {
+/// Section 5: data representation template 5.0, 5.2 or 5.3.
+fn read_packing(s: &[u8], message: usize) -> Result<Packing, Grib2Error> {
     let s = need(s, 11, "section 5", message)?;
     let template = be_u16(&s[9..11]);
-    if template != 0 {
-        return Err(Grib2Error::Unsupported {
-            message,
-            what: "data representation template",
-            value: template.into(),
-        });
+    match template {
+        0 => {}
+        2 | 3 => return complex::read(s, template, message).map(Packing::Complex),
+        _ => {
+            return Err(Grib2Error::Unsupported {
+                message,
+                what: "data representation template",
+                value: template.into(),
+            });
+        }
     }
     let s = need(s, 21, "data template 5.0", message)?;
     let bits = s[19];
@@ -1203,11 +1375,11 @@ fn read_packing(s: &[u8], message: usize) -> Result<SimplePacking, Grib2Error> {
     if !reference.is_finite() {
         return Err(malformed(message, "the reference value is not finite"));
     }
-    Ok(SimplePacking {
+    Ok(Packing::Simple(SimplePacking {
         reference,
         binary_scale: be_i16(&s[15..17]),
         decimal_scale: be_i16(&s[17..19]),
         bits,
         count: be_u32(&s[5..9]),
-    })
+    }))
 }

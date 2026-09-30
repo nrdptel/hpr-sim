@@ -712,11 +712,10 @@ it falls back to an older copy, and the output says so.
   the output, which says where and when the profile is for.
 - `--output FILE` (or `-o`) writes the profile as JSON, described below.
 
-hpr reads the small GRIB2 files that NOAA's download server, NOMADS, cuts out around a site. NOAA's
-whole GFS and RAP files are compressed in ways hpr can't read yet: complex packing
-([M5.2d2](decisions-and-roadmap.md#m5-2d2)) and JPEG 2000
-([M5.2d3](decisions-and-roadmap.md#m5-2d3)). `hpr weather` refuses them and names the
-compression.
+hpr reads the small GRIB2 files that NOAA's download server, NOMADS, cuts out around a site, and
+whole GFS files you download yourself, which are packed more tightly
+([A whole GFS file](nomads.md#a-whole-gfs-file)). A file compressed with JPEG 2000 is refused,
+naming the compression, until [M5.2d3](decisions-and-roadmap.md#m5-2d3).
 
 ### An example
 

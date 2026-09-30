@@ -162,7 +162,7 @@ fn simple_packing_unpacks_by_the_regulation() {
         .iter()
         .map(|&x| Some((250.0 + f64::from(x) / 4.0) / 10.0))
         .collect();
-    assert_eq!(f.values(), expect);
+    assert_eq!(f.values().unwrap(), expect);
     for (i, e) in expect.iter().enumerate() {
         assert_eq!(f.value(i as u64).unwrap(), *e);
     }
@@ -189,8 +189,11 @@ fn every_bit_width_to_32_unpacks() {
         let xs = [top, 0, top / 3, 1, top, top / 2];
         let bytes = temperature(&xs, bits);
         let f = &parse(&bytes).unwrap()[0];
+        let Packing::Simple(p) = f.packing else {
+            panic!("simple packing was written");
+        };
         for (i, &x) in xs.iter().enumerate() {
-            assert_eq!(f.packed(i as u64), x, "{bits} bits, value {i}");
+            assert_eq!(f.packed(&p, i as u64), x, "{bits} bits, value {i}");
         }
     }
 }
@@ -199,7 +202,7 @@ fn every_bit_width_to_32_unpacks() {
 fn a_zero_bit_field_is_its_reference_everywhere() {
     let bytes = temperature(&[], 0);
     let f = &parse(&bytes).unwrap()[0];
-    assert_eq!(f.values(), vec![Some(25.0); 6]);
+    assert_eq!(f.values().unwrap(), vec![Some(25.0); 6]);
 }
 
 #[test]
@@ -231,7 +234,7 @@ fn a_bitmap_skips_the_points_it_marks_missing() {
     ]);
     let f = &parse(&bytes).unwrap()[0];
     let expect = [Some(10.0), None, Some(20.0), Some(30.0), None, Some(40.0)];
-    assert_eq!(f.values(), expect);
+    assert_eq!(f.values().unwrap(), expect);
     for (i, e) in expect.iter().enumerate() {
         assert_eq!(f.value(i as u64).unwrap(), *e);
     }
@@ -272,7 +275,7 @@ fn repeated_fields_in_one_message_reuse_the_grid_and_the_bitmap() {
     assert_eq!(fields.len(), 2);
     assert_eq!(fields[1].product.surface.value, Some(70_000.0));
     assert_eq!(
-        fields[1].values(),
+        fields[1].values().unwrap(),
         [Some(2.0), None, Some(3.0), Some(4.0), None, Some(5.0)]
     );
     assert_eq!(fields[0].message, 0);
@@ -406,9 +409,9 @@ fn a_secant_lambert_cone_is_refused() {
 
 #[test]
 fn other_templates_are_refused_by_name() {
-    // Complex packing with spatial differencing, template 5.3.
+    // JPEG 2000, template 5.40.
     let mut repr = packing(6, 0.0, 0, 0, 8);
-    repr[10] = 3;
+    repr[10] = 40;
     let bytes = message(&[
         identification(),
         latlon_grid(3, 2, 0, 0, 0x40, 0x30),
@@ -422,7 +425,7 @@ fn other_templates_are_refused_by_name() {
         Err(Grib2Error::Unsupported {
             message: 0,
             what: "data representation template",
-            value: 3
+            value: 40
         })
     );
     // A Gaussian grid, template 3.40.
@@ -593,7 +596,12 @@ proptest::proptest! {
         bytes.truncate(n - cut % n);
         if let Ok(fields) = parse(&bytes) {
             for f in &fields {
-                let values = f.values();
+                // A complex-packed field whose differences overflow is refused when read.
+                let Ok(values) = f.values() else {
+                    let every: Vec<u64> = (0..f.points()).collect();
+                    proptest::prop_assert!(f.values_at(&every).is_err());
+                    continue;
+                };
                 proptest::prop_assert_eq!(values.len() as u64, f.points());
                 for (i, v) in values.iter().enumerate() {
                     proptest::prop_assert_eq!(f.value(i as u64).unwrap(), *v);
@@ -676,8 +684,8 @@ fn each_refusal_names_its_cause() {
     );
     // Section 4: another product template.
     let mut sections = temperature_sections(plain(), none());
-    sections[1][8] = 8;
-    assert_eq!(refusal(sections), "product definition template 8");
+    sections[1][8] = 15;
+    assert_eq!(refusal(sections), "product definition template 15");
     // Section 7 before section 4.
     let sections = vec![latlon_grid(3, 2, 0, 0, 0x40, 0x30), section(7, &[0; 6])];
     assert!(refusal(sections).contains("before sections"));
@@ -797,4 +805,335 @@ fn running_counts_rank_every_point() {
         plain += u64::from(set);
     }
     assert_eq!(bitmap.ones_before(bits.len() as u64 * 8), plain);
+}
+
+/// Bits written first bit high, as GRIB2 packs them.
+#[derive(Default)]
+struct Bits {
+    bytes: Vec<u8>,
+    used: u32,
+}
+
+impl Bits {
+    fn push(&mut self, value: u64, bits: u32) {
+        for k in (0..bits).rev() {
+            if self.used % 8 == 0 {
+                self.bytes.push(0);
+            }
+            if value >> k & 1 == 1 {
+                *self.bytes.last_mut().unwrap() |= 0x80 >> (self.used % 8);
+            }
+            self.used += 1;
+        }
+    }
+
+    /// Pads to a whole byte, as each list in section 7 is.
+    fn pad(&mut self) {
+        self.used = self.used.div_ceil(8) * 8;
+    }
+}
+
+/// Complex packing's groups: reference, width and length of each, then each value's `X2`.
+struct Groups<'a> {
+    groups: &'a [(u64, u32, u64)],
+    x2: &'a [u64],
+}
+
+/// Section 5, template 5.2 (`sd` `None`) or 5.3 (`sd` the order and bytes per descriptor),
+/// with 8-bit references, 2-bit widths above 0, and lengths scaled from 1 by 1 in 2 bits; and
+/// section 7 with its descriptors (`first`, `minimum`), lists and values.
+fn complex(
+    count: u32,
+    missing: u8,
+    g: &Groups<'_>,
+    sd: Option<(u8, u8, [i64; 2], i64)>,
+) -> (Vec<u8>, Vec<u8>) {
+    let n = g.groups.len();
+    let mut b = count.to_be_bytes().to_vec();
+    b.extend_from_slice(&(if sd.is_some() { 3_u16 } else { 2 }).to_be_bytes());
+    b.extend_from_slice(&1.5_f32.to_bits().to_be_bytes());
+    b.extend_from_slice(&sm16(-1));
+    b.extend_from_slice(&sm16(1));
+    b.extend_from_slice(&[8, 0, 1, missing]); // reference bits, type, splitting, missing values
+    b.extend_from_slice(&[0xFF; 8]); // missing value substitutes, unused
+    b.extend_from_slice(&u32::try_from(n).unwrap().to_be_bytes());
+    b.extend_from_slice(&[0, 2]); // width reference and bits
+    b.extend_from_slice(&1_u32.to_be_bytes()); // length reference
+    b.push(1); // length increment
+    b.extend_from_slice(&u32::try_from(g.groups[n - 1].2).unwrap().to_be_bytes());
+    b.push(2); // length bits
+    let mut d = Bits::default();
+    if let Some((order, octets, first, minimum)) = sd {
+        b.extend_from_slice(&[order, octets]);
+        let width = 8 * u32::from(octets);
+        let signed = |v: i64| v.unsigned_abs() | if v < 0 { 1 << (width - 1) } else { 0 };
+        for &f in first.iter().take(usize::from(order)) {
+            d.push(signed(f), width);
+        }
+        d.push(signed(minimum), width);
+    }
+    for &(reference, _, _) in g.groups {
+        d.push(reference, 8);
+    }
+    d.pad();
+    for &(_, width, _) in g.groups {
+        d.push(width.into(), 2);
+    }
+    d.pad();
+    for &(_, _, length) in g.groups {
+        d.push(length - 1, 2);
+    }
+    d.pad();
+    let mut x2 = g.x2.iter();
+    for &(_, width, length) in g.groups {
+        for _ in 0..(if width > 0 { length } else { 0 }) {
+            d.push(*x2.next().unwrap(), width);
+        }
+    }
+    (section(5, &b), section(7, &d.bytes))
+}
+
+/// A 3 by 2 temperature field over complex packing, with `bitmap` as section 6.
+fn complex_field(repr: (Vec<u8>, Vec<u8>), bitmap: Vec<u8>) -> Vec<u8> {
+    message(&[
+        identification(),
+        latlon_grid(3, 2, 0, 0, 0x40, 0x30),
+        product(0, 0, 100, 50_000),
+        repr.0,
+        bitmap,
+        repr.1,
+    ])
+}
+
+/// `Y = (1.5 + X / 2) / 10`, the builder's scaling.
+fn y(x: f64) -> f64 {
+    (1.5 + x * 0.5) / 10.0
+}
+
+#[test]
+fn complex_packing_adds_each_groups_reference() {
+    // A constant group of 3 at 10; 2 values of 3 bits above 5; the last, 1 of 2 bits above 100.
+    let g = Groups {
+        groups: &[(10, 0, 3), (5, 3, 2), (100, 2, 1)],
+        x2: &[0, 7, 3],
+    };
+    let bytes = complex_field(complex(6, 0, &g, None), section(6, &[255]));
+    let f = &parse(&bytes).unwrap()[0];
+    assert_eq!(f.packing.template(), 2);
+    let expect: Vec<_> = [10.0, 10.0, 10.0, 5.0, 12.0, 103.0]
+        .map(|x| Some(y(x)))
+        .into();
+    assert_eq!(f.values().unwrap(), expect);
+    // Points read alone, and several out of order in one pass, give the same values.
+    for (k, v) in expect.iter().enumerate() {
+        assert_eq!(f.value(k as u64).unwrap(), *v);
+    }
+    assert_eq!(
+        f.values_at(&[5, 0, 4, 4]).unwrap(),
+        [expect[5], expect[0], expect[4], expect[4]]
+    );
+    assert!(matches!(
+        f.values_at(&[1, 6]),
+        Err(Grib2Error::PointOutside { index: 6, .. })
+    ));
+}
+
+#[test]
+fn complex_packing_marks_primary_and_secondary_missing_values() {
+    // Reference all ones (primary) and all ones but the last bit (secondary) in groups of width 0;
+    // X2 = 3 (primary) and 2 (secondary) in a group of width 2.
+    let g = Groups {
+        groups: &[(255, 0, 2), (254, 0, 1), (7, 2, 3)],
+        x2: &[3, 2, 1],
+    };
+    let bytes = complex_field(complex(6, 2, &g, None), section(6, &[255]));
+    let values = parse(&bytes).unwrap()[0].values().unwrap();
+    assert_eq!(values, [None, None, None, None, None, Some(y(8.0))]);
+    // With primary missing values only, the secondary codes are values.
+    let bytes = complex_field(complex(6, 1, &g, None), section(6, &[255]));
+    let values = parse(&bytes).unwrap()[0].values().unwrap();
+    assert_eq!(
+        values,
+        [None, None, Some(y(254.0)), None, Some(y(9.0)), Some(y(8.0))]
+    );
+}
+
+#[test]
+fn first_order_differences_rebuild_the_values() {
+    // h = 20, 22, 21, 25, 25, 30: differences 2, −1, 4, 0, 5; minimum −1; packed 3, 0, 5, 1, 6
+    // after an unused first place.
+    let g = Groups {
+        groups: &[(0, 3, 6)],
+        x2: &[0, 3, 0, 5, 1, 6],
+    };
+    let bytes = complex_field(
+        complex(6, 0, &g, Some((1, 2, [20, 0], -1))),
+        section(6, &[255]),
+    );
+    let f = &parse(&bytes).unwrap()[0];
+    assert_eq!(f.packing.template(), 3);
+    let expect: Vec<_> = [20.0, 22.0, 21.0, 25.0, 25.0, 30.0]
+        .map(|x| Some(y(x)))
+        .into();
+    assert_eq!(f.values().unwrap(), expect);
+}
+
+#[test]
+fn second_order_differences_skip_missing_values_and_the_bitmap() {
+    // The bitmap leaves out point 2; the packed value in place 3 is missing (X2 = 7). The values
+    // present, h = 100, 103, 108, 110, have second differences 2 and −3; minimum −3, packed 5
+    // and 0 after two unused places.
+    let g = Groups {
+        groups: &[(0, 3, 5)],
+        x2: &[0, 0, 5, 7, 0],
+    };
+    let bytes = complex_field(
+        complex(5, 1, &g, Some((2, 1, [100, 103], -3))),
+        section(6, &[0, 0b1101_1100]),
+    );
+    let f = &parse(&bytes).unwrap()[0];
+    let expect = [
+        Some(y(100.0)),
+        Some(y(103.0)),
+        None,
+        Some(y(108.0)),
+        None,
+        Some(y(110.0)),
+    ];
+    assert_eq!(f.values().unwrap(), expect);
+    assert_eq!(
+        f.values_at(&[5, 3, 2]).unwrap(),
+        [expect[5], expect[3], None]
+    );
+}
+
+#[test]
+fn broken_complex_packing_is_refused() {
+    let bitmap = || section(6, &[255]);
+    let one = |count, groups: &[(u64, u32, u64)], x2: &[u64]| {
+        complex_field(complex(count, 0, &Groups { groups, x2 }, None), bitmap())
+    };
+    let refused = |bytes: Vec<u8>| match parse(&bytes) {
+        Err(Grib2Error::Unsupported { what, value, .. }) => format!("{what} {value}"),
+        Err(Grib2Error::Malformed { reason, .. }) => reason,
+        Err(Grib2Error::Truncated { what, .. }) => what.to_owned(),
+        other => panic!("{other:?}"),
+    };
+    // Groups holding 5 values for a count of 6.
+    let bytes = one(6, &[(0, 1, 2), (0, 1, 3)], &[0; 5]);
+    assert_eq!(
+        refused(bytes),
+        "the groups hold 5 values but section 5 packs 6"
+    );
+    // More groups than values.
+    let mut repr = complex(
+        6,
+        0,
+        &Groups {
+            groups: &[(0, 0, 6)],
+            x2: &[],
+        },
+        None,
+    );
+    repr.0[31..35].copy_from_slice(&7_u32.to_be_bytes());
+    assert_eq!(
+        refused(complex_field(repr, bitmap())),
+        "7 groups for 6 packed values"
+    );
+    // A group of 33 bits: a width reference of 31 plus 2.
+    let mut repr = complex(
+        6,
+        0,
+        &Groups {
+            groups: &[(0, 2, 6)],
+            x2: &[0; 6],
+        },
+        None,
+    );
+    repr.0[35] = 31;
+    assert_eq!(
+        refused(complex_field(repr, bitmap())),
+        "group width, bits 33"
+    );
+    // Packed values cut short.
+    let mut repr = complex(
+        6,
+        0,
+        &Groups {
+            groups: &[(0, 3, 6)],
+            x2: &[1; 6],
+        },
+        None,
+    );
+    repr.1.truncate(repr.1.len() - 1);
+    let len = u32::try_from(repr.1.len()).unwrap();
+    repr.1[..4].copy_from_slice(&len.to_be_bytes());
+    assert_eq!(refused(complex_field(repr, bitmap())), "the packed values");
+    // A third order, no descriptor bytes, 33-bit references, and missing values with 0-bit
+    // references.
+    let g = Groups {
+        groups: &[(0, 0, 6)],
+        x2: &[],
+    };
+    for (at, byte, cause) in [
+        (47, 3, "order of spatial differencing 3"),
+        (48, 0, "bytes per extra descriptor 0"),
+        (19, 33, "bits per group reference 33"),
+        (22, 3, "missing value management 3"),
+    ] {
+        let mut repr = complex(6, 0, &g, Some((1, 1, [0, 0], 0)));
+        repr.0[at] = byte;
+        assert_eq!(refused(complex_field(repr, bitmap())), cause);
+    }
+    let mut repr = complex(6, 1, &g, None);
+    repr.0[19] = 0;
+    assert_eq!(
+        refused(complex_field(repr, bitmap())),
+        "missing values with 0-bit group references, management 1"
+    );
+    // Second differences past 2^63 parse, but are refused when read.
+    let bytes = complex_field(
+        complex(
+            6,
+            0,
+            &Groups {
+                groups: &[(0, 0, 6)],
+                x2: &[],
+            },
+            Some((2, 8, [0, 1 << 62], 0)),
+        ),
+        bitmap(),
+    );
+    let f = &parse(&bytes).unwrap()[0];
+    assert_eq!(f.value(1).unwrap(), Some(y(2_f64.powi(62))));
+    for read in [f.values().map(|_| ()), f.value(2).map(|_| ())] {
+        assert!(
+            matches!(read, Err(Grib2Error::Malformed { reason, .. }) if reason.contains("overflow"))
+        );
+    }
+}
+
+#[test]
+fn template_4_8_reads_its_interval() {
+    let mut sections = temperature_sections(packing(6, 0.0, 0, 0, 8), section(6, &[255]));
+    // Template 4.8: 4.0's octets, then the interval's end (2026-09-30 18:00), one time range, no
+    // missing values, and an accumulation (1) over 6 hours.
+    let mut body = sections[1][5..].to_vec();
+    body[3] = 8;
+    body.extend_from_slice(&2026_u16.to_be_bytes());
+    body.extend_from_slice(&[9, 30, 18, 0, 0, 1, 0, 0, 0, 0, 1, 2, 1]);
+    body.extend_from_slice(&6_u32.to_be_bytes());
+    body.extend_from_slice(&[1, 0, 0, 0, 0]);
+    sections[1] = section(4, &body);
+    let p = with(sections.clone()).unwrap()[0].product;
+    assert_eq!(p.template, 8);
+    let s = p.statistics.unwrap();
+    assert_eq!((s.process, s.time_unit, s.length), (1, 1, 6));
+    assert_eq!(
+        (s.end.year, s.end.month, s.end.day, s.end.hour),
+        (2026, 9, 30, 18)
+    );
+    // Two time ranges are refused.
+    sections[1][41] = 2;
+    assert_eq!(refusal(sections), "number of time ranges 2");
 }

@@ -182,8 +182,8 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
 - Nothing checks a forecast against the weather that came. Weather-balloon soundings, the
   measured air, can be fetched too ([Weather-balloon soundings](soundings.md)), but no forecast has
   been compared with one. NOAA's Global Forecast System and Rapid Refresh (GFS and RAP) can be
-  fetched by name ([NOAA forecasts: GFS and RAP](nomads.md)); files you download yourself come
-  next ([M5.2d2, NOAA's whole files](decisions-and-roadmap.md#m5-2d2)).
+  fetched by name, or read from a whole GFS file you download ([NOAA forecasts: GFS and
+  RAP](nomads.md)).
 - The 2 m temperature and humidity and the 10 m wind are placed at the ground itself, so the
   whole launch rail sees the 10 m wind. A real wind is weaker close to the ground; how much that
   changes a rocket's turn into the wind off the rail is not measured.

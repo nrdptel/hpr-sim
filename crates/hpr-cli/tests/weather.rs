@@ -114,6 +114,20 @@ struct Library {
     dropped: Vec<(String, Option<f64>, Option<usize>)>,
 }
 
+/// What the library reads from a GFS or RAP file at the site.
+fn nomads_library(bytes: &[u8]) -> Library {
+    let read = NomadsProfile::parse(bytes, 32.99, -106.97).unwrap();
+    Library {
+        profile: read.sounding(WindInterpolation::SpeedDirection).unwrap(),
+        position: (read.latitude_deg, read.longitude_deg),
+        dropped: read
+            .dropped
+            .iter()
+            .map(|level| (reason_name(&level.reason), Some(level.pressure_pa), None))
+            .collect(),
+    }
+}
+
 fn bytes(name: &str) -> Vec<u8> {
     std::fs::read(recording(name)).unwrap()
 }
@@ -160,18 +174,7 @@ fn cases() -> Vec<Case> {
                 .collect(),
         }
     };
-    let nomads = |name| {
-        let read = NomadsProfile::parse(&bytes(name), 32.99, -106.97).unwrap();
-        Library {
-            profile: read.sounding(WindInterpolation::SpeedDirection).unwrap(),
-            position: (read.latitude_deg, read.longitude_deg),
-            dropped: read
-                .dropped
-                .iter()
-                .map(|level| (reason_name(&level.reason), Some(level.pressure_pa), None))
-                .collect(),
-        }
-    };
+    let nomads = |name| nomads_library(&bytes(name));
     let site = ["--latitude", LATITUDE, "--longitude", LONGITUDE];
     let with = |command: &[&'static str], rest: &[&'static str]| {
         let mut args = vec!["weather"];
@@ -651,4 +654,107 @@ fn a_time_outside_the_answer_is_named_in_utc() {
         ),
         "{message}"
     );
+}
+
+/// Runs `hpr weather gfs --from` a GFS file of the 00 UTC run at hour 18, and checks it writes the
+/// profile the library reads from the same bytes.
+fn gfs_from(path: &Path, name: &'static str) -> Library {
+    let scratch = tempfile::tempdir().unwrap();
+    let written = scratch.path().join("profile.json");
+    let from = path.to_str().unwrap();
+    let args = [
+        "weather",
+        "gfs",
+        "--latitude",
+        LATITUDE,
+        "--longitude",
+        LONGITUDE,
+        "--cycle",
+        GFS_CYCLE,
+        "--hour",
+        "18",
+        "--from",
+        from,
+        "--output",
+        written.to_str().unwrap(),
+    ];
+    let document = json(
+        &args,
+        &scratch.path().join("cache"),
+        0,
+        "weather.schema.json",
+    );
+    let case = Case {
+        name,
+        args: Vec::new(),
+        from_args: Vec::new(),
+        recording: "",
+        source: "gfs",
+        time: "2026-09-30T18:00:00Z",
+        run: Some("2026-09-30T00:00:00Z"),
+        library: nomads_library(&std::fs::read(path).unwrap()),
+    };
+    check_written(&case, &document, &written);
+    case.library
+}
+
+/// The largest difference between two profiles' levels, relative to the second's, over every
+/// quantity of every level they share.
+fn largest_difference(a: &SoundingProfile, b: &SoundingProfile) -> f64 {
+    let mut worst: f64 = 0.0;
+    for (a, b) in a.levels().iter().zip(b.levels()) {
+        for (x, y) in [
+            (Some(a.height_msl_m), Some(b.height_msl_m)),
+            (Some(a.temperature_k), Some(b.temperature_k)),
+            (a.pressure_pa, b.pressure_pa),
+            (a.relative_humidity, b.relative_humidity),
+            (a.wind_speed_m_s, b.wind_speed_m_s),
+            (a.wind_direction_from_rad, b.wind_direction_from_rad),
+        ] {
+            let (x, y) = (x.unwrap(), y.unwrap());
+            if x != y {
+                worst = worst.max((x - y).abs() / y.abs());
+            }
+        }
+    }
+    worst
+}
+
+/// A complex-packed GFS file (the recorded cut as ecCodes repacks it, in templates 5.2 and 5.3,
+/// as NCEP packs its whole files) writes its profile, which is the cut's to the repacking: ecCodes
+/// keeps each value within half the step it was packed with.
+#[test]
+fn a_complex_packed_gfs_file_writes_its_profile() {
+    let path = root().join("crates/hpr-net/tests/fixtures/nomads-gfs-complex.grib2");
+    let complex = gfs_from(&path, "GFS, complex packing");
+    let cut = nomads_library(&bytes("nomads-gfs.grib2"));
+    assert_eq!(complex.dropped, cut.dropped);
+    assert_eq!(complex.profile.levels().len(), cut.profile.levels().len());
+    let worst = largest_difference(&complex.profile, &cut.profile);
+    assert!(worst < 1e-6, "{worst:e}");
+    eprintln!("complex packing against the cut: {worst:e}");
+}
+
+/// A whole GFS file (`gfs.t00z.pgrb2.0p25.f018`, 550 MB, 743 messages; not committed) writes its
+/// profile where `refs/gfs/` has it. It is the run the recorded cut was taken from, so its levels
+/// are the cut's, and 13 more above 10 hPa, where the cut stops. NOMADS' filter repacks the cut in
+/// fewer bits: ecCodes' values in the two files differ by up to 2.4e-6 of the value at the cut's
+/// grid points, and the profiles by up to 1.1e-7 (ADR-123).
+#[test]
+fn a_whole_gfs_file_writes_the_profile_of_its_cut() {
+    let path = root().join("refs/gfs/gfs.t00z.pgrb2.0p25.f018");
+    if !path.exists() {
+        eprintln!("skipped: {} is not there", path.display());
+        return;
+    }
+    let whole = gfs_from(&path, "whole GFS file");
+    let cut = nomads_library(&bytes("nomads-gfs.grib2"));
+    assert_eq!(whole.dropped, cut.dropped);
+    assert_eq!(
+        whole.profile.levels().len(),
+        cut.profile.levels().len() + 13
+    );
+    let worst = largest_difference(&whole.profile, &cut.profile);
+    assert!(worst < 2.4e-6, "{worst:e}");
+    eprintln!("the whole file against its cut: {worst:e}");
 }

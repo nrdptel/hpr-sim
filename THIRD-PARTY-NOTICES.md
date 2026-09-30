@@ -114,8 +114,17 @@ adds a source.
   `validation/oracles/grib2/eccodes_dump.py`; ecCodes is run as an outside decoder and none of its
   code is used or ported
   ([ADR-121](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30)).
+  `crates/hpr-net/tests/fixtures/nomads-gfs-complex.grib2` is the GFS cut as ecCodes packs it
+  again (`validation/oracles/grib2/repack.py`), ecCodes run as an outside encoder.
   `hpr_net::nomads` also fetches such cuts at run time, when a program asks, and caches them on
   the user's disk; each carries a credit to NOAA/NCEP for the program to show.
+- **NOAA GFS whole-file messages** (<https://registry.opendata.aws/noaa-gfs-bdp-pds/>):
+  `crates/hpr-io/tests/fixtures/gfs-messages.grib2` is eight messages cut unchanged from
+  `gfs.t00z.pgrb2.0p25.f018` of 2026-09-30, fetched from NOAA's open data bucket on AWS. NCEP's
+  output is a work of the United States government, not subject to copyright in the United
+  States (17 U.S.C. § 105). `gfs-messages-eccodes.json` beside it is ecCodes 2.49.0's reading of
+  them, written by `validation/oracles/grib2/whole_file.py`
+  ([ADR-123](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30)).
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).
