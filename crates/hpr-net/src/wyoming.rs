@@ -37,14 +37,15 @@
 //! - **Each such row above the last row kept**, higher and at a lower pressure.
 //!
 //! A row missing a value (the last row often has no wind) is dropped, and so is one with a value
-//! out of range: a pressure at or below zero, a wind speed below zero, a temperature at or below
-//! absolute zero, a relative humidity below zero, a direction outside 0° to 360°, or a height
-//! with no geometric height. [`WyomingSounding::dropped`] lists each row left out, with its
-//! reason. More than [`MAX_NOT_ABOVE`] rows in a row below the last row kept, with rows above it
-//! again after them, refuse the answer: a grossly bad row was kept (a pressure missing a digit,
-//! say), and good rows after it are being dropped. Such rows at the end (a balloon falling or
-//! floating) are only left out. A bad row that still lies between its neighbours is not caught:
-//! nothing checks the layers' thickness against their temperature.
+//! no air on Earth has ([`DropReason::OutOfRange`] lists the bounds). [`WyomingSounding::dropped`]
+//! lists each row left out, with its reason.
+//!
+//! More than [`MAX_NOT_ABOVE`] rows below the last row kept since it (a run of one pressure
+//! counting once) refuse the answer when a row after them lies above it, or when, at the end of
+//! the answer, they climb among themselves: a grossly bad row was kept (a pressure missing a
+//! digit, say), and good rows after it are being dropped. Rows at the end that fall or float, a
+//! balloon coming down, are only left out. A bad row that still lies between its neighbours is not
+//! caught: nothing checks a layer's thickness against its temperature.
 //!
 //! Heights are geopotential metres (the column says so), converted to geometric heights at the
 //! first row's latitude with WMO-No. 8 (2023) eqs. 12.15 and 12.16
@@ -109,13 +110,23 @@ pub const YOUNG_TTL_S: u64 = 3_600;
 /// How long an answer fetched after its sounding settled stays fresh, s: 30 days.
 pub const SETTLED_TTL_S: u64 = 30 * 86_400;
 
-/// The most rows in a row below the last row kept, before a row above it again, that an answer may
-/// have. More means a bad row was kept and good rows after it are being dropped, so the answer is
-/// refused.
+/// The most rows below the last row kept since it that an answer may have, when a row after them
+/// lies above it or they climb among themselves. More means a bad row was kept and good rows after
+/// it are being dropped, so the answer is refused.
 pub const MAX_NOT_ABOVE: usize = 10;
 
 /// The most rows an answer may have. The archive's BUFR files have about 6,000.
 pub const MAX_ROWS: usize = 100_000;
+
+/// Bounds outside which a value is impossible on Earth, and its row is dropped as out of range:
+/// pressure (the highest sea-level pressure recorded is about 1,084 hPa), temperature, geopotential
+/// height (the Dead Sea's shore is at about −430 m) and wind speed.
+const MAX_PRESSURE_HPA: f64 = 1_200.0;
+const MIN_TEMPERATURE_C: f64 = -150.0;
+const MAX_TEMPERATURE_C: f64 = 80.0;
+const MIN_HEIGHT_M: f64 = -1_000.0;
+const MAX_HEIGHT_M: f64 = 60_000.0;
+const MAX_WIND_M_S: f64 = 300.0;
 
 /// The most columns a header may have. The archive's has 13.
 const MAX_COLUMNS: usize = 64;
@@ -294,8 +305,9 @@ pub enum DropReason {
     /// A value is missing: the pressure, height, temperature, humidity, or either half of the
     /// wind.
     NoData,
-    /// A value is out of range: a pressure at or below zero (or too large to hold in Pa), a wind
-    /// speed below zero, a temperature at or below absolute zero, a relative humidity below zero, a direction outside 0° to 360°, or a height
+    /// A value is out of range: a pressure at or below zero or above 1,200 hPa, a temperature
+    /// outside −150 to 80 °C, a height outside −1 to 60 km, a wind speed below zero or above
+    /// 300 m/s, a relative humidity below zero, a direction outside 0° to 360°, or a height
     /// with no geometric height.
     OutOfRange,
     /// Another row of its run with the same pressure (or the ground's pressure) was kept.
@@ -342,8 +354,8 @@ impl WyomingSounding {
     ///   a number (or, in the first row, the time is not a date).
     /// - [`WyomingError::NoGround`] when there is no row, or the first is missing a value or has
     ///   one out of range.
-    /// - [`WyomingError::NotRising`] when more than [`MAX_NOT_ABOVE`] rows in a row lie below the
-    ///   last row kept, and a row after them lies above it.
+    /// - [`WyomingError::NotRising`] when more than [`MAX_NOT_ABOVE`] rows lie below the last row
+    ///   kept since it, and a row after them lies above it or, at the end, they climb.
     pub fn parse(body: &[u8]) -> Result<Self, WyomingError> {
         let text = std::str::from_utf8(body).map_err(|_| WyomingError::Missing {
             field: "header".to_owned(),
@@ -468,7 +480,8 @@ impl WyomingSounding {
         let mut dropped = Vec::new();
         // The last row kept's line, and the first line and count of the rows below it since.
         let mut last_kept = read[0].0;
-        let mut below: Option<(usize, usize)> = None;
+        // The rows below it since: the first's line and level, the last's level, and how many.
+        let mut below: Option<(usize, WyomingLevel, WyomingLevel, usize)> = None;
         for (line, level) in choice {
             let reason = match level {
                 Ok(level) => {
@@ -476,7 +489,7 @@ impl WyomingSounding {
                     if level.height_msl_m > under.height_msl_m
                         && level.pressure_pa < under.pressure_pa
                     {
-                        if let Some((first, count)) = below.take()
+                        if let Some((first, _, _, count)) = below.take()
                             && count > MAX_NOT_ABOVE
                         {
                             return Err(WyomingError::NotRising {
@@ -489,12 +502,30 @@ impl WyomingSounding {
                         last_kept = line;
                         continue;
                     }
-                    below = Some(below.map_or((line, 1), |(first, count)| (first, count + 1)));
+                    below = Some(
+                        below.map_or((line, level, level, 1), |(first, low, _, count)| {
+                            (first, low, level, count + 1)
+                        }),
+                    );
                     DropReason::NotAbove
                 }
                 Err(reason) => reason,
             };
             dropped.push(DroppedLevel { line, reason });
+        }
+        // Rows below the last row kept at the end are a balloon falling or floating, unless they
+        // climb among themselves: then the row kept before them was bad, and the balloon burst
+        // before it got back above it.
+        if let Some((first, low, high, count)) = below
+            && count > MAX_NOT_ABOVE
+            && high.height_msl_m > low.height_msl_m
+            && high.pressure_pa < low.pressure_pa
+        {
+            return Err(WyomingError::NotRising {
+                after: last_kept,
+                line: first,
+                count,
+            });
         }
         Ok(Self {
             latitude_deg,
@@ -509,8 +540,9 @@ impl WyomingSounding {
     /// temperature, relative humidity (above 100% taken as 100%) and wind.
     ///
     /// # Errors
-    /// What [`SoundingProfile::new`] refuses; the levels [`WyomingSounding::parse`] keeps pass
-    /// its checks, so this fails only for a sounding built or edited some other way.
+    /// What [`SoundingProfile::new`] refuses. [`WyomingSounding::parse`] keeps only levels within
+    /// physical bounds, and [`fetch`] checks the profile too, so an answer that fails here is
+    /// never cached.
     pub fn sounding(
         &self,
         wind_interpolation: WindInterpolation,
@@ -609,18 +641,18 @@ pub enum WyomingError {
         /// The line of the first row, counting the header as line 1.
         line: usize,
     },
-    /// Too many rows in a row lie below the last row kept, and a row after them lies above it: that
-    /// row was likely bad.
+    /// Too many rows lie below the last row kept since it, and a row after them lies above it or,
+    /// at the end, they climb: that row was likely bad.
     #[error(
-        "the Wyoming answer stops rising after line {after}: {count} rows from line {line} lie \
-         below it, and rows after them above it"
+        "the Wyoming answer stops rising after line {after}: {count} rows from line {line} on lie \
+         below it, and rise again"
     )]
     NotRising {
         /// The last row kept before them, likely the bad one, counting the header as line 1.
         after: usize,
         /// The first row below it.
         line: usize,
-        /// How many rows in a row lie below it.
+        /// How many rows below it there are since it.
         count: usize,
     },
 }
@@ -650,11 +682,11 @@ fn level(
     latitude_rad: f64,
 ) -> Result<WyomingLevel, DropReason> {
     let temperature_k = temperature_c + 273.15;
-    if pressure_hpa <= 0.0
-        || !(pressure_hpa * 100.0).is_finite()
-        || temperature_k <= 0.0
+    if !(pressure_hpa > 0.0 && pressure_hpa <= MAX_PRESSURE_HPA)
+        || !(MIN_TEMPERATURE_C..=MAX_TEMPERATURE_C).contains(&temperature_c)
+        || !(MIN_HEIGHT_M..=MAX_HEIGHT_M).contains(&geopotential_height_m)
         || humidity_pct < 0.0
-        || wind_speed_m_s < 0.0
+        || !(0.0..=MAX_WIND_M_S).contains(&wind_speed_m_s)
         || !(0.0..=360.0).contains(&direction_deg)
     {
         return Err(DropReason::OutOfRange);

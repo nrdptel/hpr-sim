@@ -527,6 +527,11 @@ fn a_rows_faults_drop_it_or_are_clamped() {
     for (from, to) in [
         (" 79,", " -1,"),
         (" -1.7,", "-999.,"),
+        (" -1.7,", "-150.1,"),
+        (" -1.7,", " 80.1,"),
+        (" 5035,", " 60001,"),
+        (" 9.8", " 300.1"),
+        (" 557.0,", " 1200.1,"),
         (" 9.8", "-9.8"),
         (",200,", ",361,"),
         (" 557.0,", "  -1.0,"),
@@ -560,6 +565,18 @@ fn a_rows_faults_drop_it_or_are_clamped() {
             top
         ]
     );
+    // Values at the bounds are kept, and make a profile (`reasons` builds it).
+    for (from, to) in [
+        (" -1.7,", "-150.0,"),
+        (" -1.7,", " 80.0,"),
+        (" 9.8", " 300.0"),
+    ] {
+        assert_eq!(one(from, to), [top], "{to}");
+    }
+    for ground in [" 28.4,", "-150.0,", " 80.0,"] {
+        let edit = GROUND.replace(" 28.4,", ground);
+        assert_eq!(reasons(edited(&[(GROUND, &edit)])), [top], "{ground}");
+    }
     // A run at the ground's pressure keeps none of it.
     let at_ground = edited(&[(ROW_854, GROUND_VALUES)]);
     assert_eq!(reasons(at_ground), [(3, DropReason::SamePressure), top]);
@@ -607,6 +624,14 @@ fn an_answer_that_stops_rising_is_refused() {
     assert_eq!(below.len(), MAX_NOT_ABOVE);
     let higher = edited(&[(ROW_557, &ROW_557.replace(" 5035,", " 6048,"))]);
     assert_eq!(refused(higher), (38, 39, 11));
+
+    // A balloon that burst below 57 hPa never gets back above the bad row, but the rows after it
+    // climb among themselves, so the answer is refused all the same.
+    let bad =
+        String::from_utf8(edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))])).unwrap();
+    let burst: String = bad.lines().take(150).map(|l| format!("{l}\n")).collect();
+    let (after, line, count) = refused(burst.into_bytes());
+    assert_eq!((after, line, count), (38, 39, 112));
 }
 
 /// Rows below the last row kept at the end of an answer (a balloon falling after it bursts) are

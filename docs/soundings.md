@@ -88,13 +88,14 @@ radiosonde archive" wherever you show the sounding. Every answer carries it.
   middle of its run. In the example, 1,931 of the BUFR file's 5,851 rows are the other rows of
   such runs. The coded message has none.
 - **A row is kept when it lies above the last row kept**, higher and at a lower pressure. If more
-  than 10 rows in a row lie below the last row kept, and a later row lies above it again, the
-  answer is refused: that row was probably bad (a pressure missing a digit, say), and every good
-  row after it would be dropped. Such rows at the end, from a balloon falling or floating, are
-  only left out.
+  than 10 rows lie below the last row kept since it, and a later row lies above it again (or, at
+  the end of the answer, those rows climb among themselves), the answer is refused: that row was
+  probably bad (a pressure missing a digit, say), and every good row after it would be dropped.
+  Rows at the end that fall or float, a balloon coming down, are only left out.
 - **A row with a value missing or impossible is left out**: the last row often has no wind, and
-  a pressure at or below zero, a wind speed or humidity below zero, a temperature at or below
-  absolute zero or a direction beyond 360° is dropped the same way. The profile lists every row it left
+  a pressure at or below zero or above 1,200 hPa, a temperature outside −150 to 80 °C, a height
+  outside −1 to 60 km, a wind speed below zero or above 300 m/s, a humidity below zero or a
+  direction beyond 360° is dropped the same way. The profile lists every row it left
   out, and why.
 - **Humidity above 100%**, which radiosondes can report in cloud, is kept in the level as
   recorded and taken as 100% in the profile.
@@ -226,9 +227,11 @@ network.
   at a higher pressure than the last row kept (and not merely the row before); and a row at the
   ground's pressure. The rows left out are listed in line order. A humidity of 103% is kept and
   taken as 100%, and a wind from 360° reads as from north.
-- A pressure missing a digit (57 hPa at 5 km) refuses the answer, naming that row. A row raised
-  so that exactly 10 rows after it lie below it is kept and those rows left out; 11 refuse the
+- A pressure missing a digit (57 hPa at 5 km) refuses the answer, naming that row, and so does
+  the same answer cut short at 18.7 km, before the balloon got back above 57 hPa. A row raised so
+  that exactly 10 rows after it lie below it is kept and those rows left out; 11 refuse the
   answer. Twenty rows falling back down at the end are only left out.
+- Values just past the bounds above are left out; values at them are kept and make a profile.
 - The request's address is the one recorded, so a replayed answer fills the cache. A second
   request is answered from the cache, and offline mode answers without the network. A copy saved
   while the sounding was young is fetched again once it has settled.
