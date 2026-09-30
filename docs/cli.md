@@ -777,7 +777,7 @@ lowest up, each with:
 | `height_msl_m` | metres above sea level |
 | `temperature_k` | kelvin |
 | `pressure_pa` | pascals (100 Pa = 1 hPa) |
-| `relative_humidity` | a fraction: 0.18 is 18%; absent for ERA5, which hpr reads as dry air |
+| `relative_humidity` | a fraction: 0.18 is 18%; `null` for ERA5, which hpr reads as dry air |
 | `wind_speed_m_s` | metres per second |
 | `wind_direction_from_rad` | radians clockwise from true north, where the wind comes from |
 
