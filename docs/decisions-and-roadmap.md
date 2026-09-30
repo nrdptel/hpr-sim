@@ -344,7 +344,7 @@ missing or its status disagrees.
 | <a id="m5-2a"></a>[M5.2a][phase-2] | A launch site's weather from Open-Meteo, forecast or archived, as a sounding: the ground and the pressure levels above it ([ADR-119][adr-119], [Launch-day weather](weather.md)) | done |
 | <a id="m5-2b"></a>[M5.2b][phase-2] | Weather-balloon soundings from the University of Wyoming's archive, as a sounding: the ground and every level above it ([ADR-120][adr-120], [Weather-balloon soundings](soundings.md)) | done |
 | <a id="m5-2c"></a>[M5.2c][phase-2] | NOAA's GFS and RAP forecasts from NOMADS, as a sounding: a small GRIB2 cut around the site, read by hpr's own decoder and checked value for value against ecCodes ([ADR-121][adr-121], [NOAA forecasts: GFS and RAP](nomads.md)) | done |
-| <a id="m5-2d"></a>[M5.2d][phase-2] | Weather files you download, and the `hpr weather` command: the command done in M5.2d1; NOAA's whole files in M5.2d2 and M5.2d3 | not yet done |
+| <a id="m5-2d"></a>[M5.2d][phase-2] | Weather files you download, and the `hpr weather` command: the command done in [M5.2d1](#m5-2d1); NOAA's whole files in [M5.2d2, complex packing](#m5-2d2) and [M5.2d3, JPEG 2000](#m5-2d3) | not yet done |
 | <a id="m5-2d1"></a>[M5.2d1][phase-2] | `hpr weather`: a launch site's profile from Open-Meteo, a Wyoming sounding, GFS, RAP or an ERA5 file, fetched, from the cache, or from a saved answer ([ADR-122][adr-122], [The command line](cli.md#hpr-weather)) | done |
 | <a id="m5-2d2"></a>[M5.2d2][phase-2] | NOAA's whole GRIB2 files: complex packing | not yet done |
 | <a id="m5-2d3"></a>[M5.2d3][phase-2] | NOAA's whole GRIB2 files: JPEG 2000 | not yet done |
