@@ -39,8 +39,9 @@ impl Default for HttpConfig {
 /// needs no OpenSSL and ignores the operating system's certificate store. It follows up to ten
 /// redirects and sends `Accept-Encoding: gzip`, unpacking gzip bodies. Any status but 2xx is an
 /// error, as are a timeout and a body that unpacks to more than the limit. An HTTP or HTTPS proxy
-/// from the environment is used; a SOCKS one is refused with an error rather than bypassed, since
-/// this build cannot speak SOCKS.
+/// from the environment is used. A SOCKS one is refused with an error rather than bypassed, since
+/// this build cannot speak SOCKS; hosts `NO_PROXY` exempts are fetched directly, with no redirect
+/// followed, since the next address might not be exempt.
 ///
 /// Cloning is cheap and the clones share one pool of connections.
 ///
@@ -100,9 +101,13 @@ impl Http {
         let socks = proxy
             .clone()
             .filter(|p| !matches!(p.protocol(), ProxyProtocol::Http | ProxyProtocol::Https));
+        // Under a SOCKS proxy a redirect is refused, not followed: `NO_PROXY` could exempt the
+        // first address and not the next, which ureq would then reach directly.
+        let redirects = if socks.is_some() { 0 } else { 10 };
         let agent = ureq::Agent::config_builder()
             .timeout_global(Some(config.timeout.min(Self::MAX_TIMEOUT)))
             .user_agent(Self::USER_AGENT)
+            .max_redirects(redirects)
             .proxy(proxy)
             .build()
             .new_agent();
@@ -114,6 +119,27 @@ impl Http {
     }
 }
 
+impl Http {
+    /// Why `url` is refused, when the environment's proxy is SOCKS and `NO_PROXY` doesn't exempt
+    /// it. Without ureq's SOCKS support, ureq would warn and connect directly, around the proxy.
+    fn socks_refusal(&self, url: &str) -> Option<String> {
+        let socks = self.socks.as_ref()?;
+        let uri = url.parse::<ureq::http::Uri>().ok()?;
+        if socks.is_no_proxy(&uri) {
+            return None;
+        }
+        // Host and port only: the proxy's address may carry a user name and password.
+        Some(format!(
+            "the environment's proxy ({:?} at {}:{}) is SOCKS, which hpr-net cannot use; unset the \
+             variable naming it (ALL_PROXY, HTTPS_PROXY or HTTP_PROXY), add the host to NO_PROXY, \
+             or turn off HttpConfig::proxy_from_env",
+            socks.protocol(),
+            socks.host(),
+            socks.port()
+        ))
+    }
+}
+
 impl Default for Http {
     fn default() -> Self {
         Self::new()
@@ -122,18 +148,8 @@ impl Default for Http {
 
 impl Transport for Http {
     fn get(&self, url: &str) -> Result<Vec<u8>, String> {
-        if let Some(socks) = &self.socks {
-            // Without ureq's SOCKS support it would warn and connect directly, around the proxy.
-            let covered = url
-                .parse::<ureq::http::Uri>()
-                .is_ok_and(|uri| !socks.is_no_proxy(&uri));
-            if covered {
-                return Err(format!(
-                    "the environment's proxy {} is SOCKS, which hpr-net cannot use; name an HTTP \
-                     proxy in HTTPS_PROXY, or add the host to NO_PROXY",
-                    socks.uri()
-                ));
-            }
+        if let Some(refusal) = self.socks_refusal(url) {
+            return Err(refusal);
         }
         let mut response = self.agent.get(url).call().map_err(|e| e.to_string())?;
         // ureq errors on 4xx and 5xx only; a 304 or an unfollowed 3xx would read as an empty body.
@@ -164,20 +180,56 @@ impl Transport for Http {
 mod tests {
     use super::*;
 
+    fn under(proxy: Proxy) -> Http {
+        Http::with_proxy(&HttpConfig::default(), Some(proxy))
+    }
+
     #[test]
     fn a_socks_proxy_is_refused_not_bypassed() {
-        let socks = Proxy::new("socks5://127.0.0.1:9").unwrap();
-        let http = Http::with_proxy(&HttpConfig::default(), Some(socks));
+        let http = under(Proxy::new("socks5://127.0.0.1:9").unwrap());
         let reason = http.get("http://127.0.0.1:1/x").unwrap_err();
         assert!(reason.contains("is SOCKS"), "{reason}");
     }
 
     #[test]
+    fn the_refusal_does_not_repeat_the_proxys_password() {
+        let http = under(Proxy::new("socks5://alice:s3cret@proxy.example:1080").unwrap());
+        let reason = http.socks_refusal("https://example.test/x").unwrap();
+        assert!(reason.contains("proxy.example:1080"), "{reason}");
+        assert!(
+            !reason.contains("s3cret") && !reason.contains("alice"),
+            "{reason}"
+        );
+    }
+
+    #[test]
+    fn no_proxy_exempts_a_host_from_the_refusal() {
+        let proxy = Proxy::builder(ProxyProtocol::Socks5)
+            .host("proxy.example")
+            .no_proxy("near.example")
+            .build()
+            .unwrap();
+        let http = under(proxy);
+        assert_eq!(http.socks_refusal("https://near.example/x"), None);
+        assert!(http.socks_refusal("https://far.example/x").is_some());
+    }
+
+    #[test]
+    fn under_a_socks_proxy_redirects_are_not_followed() {
+        // A request can't be made here: ureq panics on a SOCKS proxy not read from the
+        // environment, and only the environment makes one. With no redirects followed, a 3xx
+        // comes back as the response and fails as any status but 2xx does (`tests/http.rs`, 304).
+        let socks = under(Proxy::new("socks5://127.0.0.1:9").unwrap());
+        assert_eq!(socks.agent.config().max_redirects(), 0);
+        let http = under(Proxy::new("http://127.0.0.1:9").unwrap());
+        assert_eq!(http.agent.config().max_redirects(), 10);
+    }
+
+    #[test]
     fn an_http_proxy_is_used_not_refused() {
         for url in ["http://127.0.0.1:9", "https://127.0.0.1:9"] {
-            let proxy = Proxy::new(url).unwrap();
-            let http = Http::with_proxy(&HttpConfig::default(), Some(proxy));
-            assert!(http.socks.is_none(), "{url}");
+            let http = under(Proxy::new(url).unwrap());
+            assert_eq!(http.socks_refusal("https://example.test/x"), None, "{url}");
         }
     }
 }

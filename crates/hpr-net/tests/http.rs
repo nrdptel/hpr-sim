@@ -324,7 +324,7 @@ fn a_server_that_never_answers_times_out() {
 }
 
 #[test]
-fn a_timeout_of_duration_max_means_none_and_does_not_overflow() {
+fn a_timeout_of_duration_max_is_capped_and_does_not_overflow() {
     let server = Server::start();
     let dir = tempfile::tempdir().unwrap();
     let mut config = local();

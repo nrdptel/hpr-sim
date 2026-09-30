@@ -61,18 +61,21 @@ a C compiler, since the encryption library compiles some C and assembly.
 | behaviour | what it does | checked by |
 |---|---|---|
 | encryption (TLS) | rustls, a TLS library written in Rust, with Mozilla's list of trusted certificate authorities built in: no OpenSSL, and the computer's own certificate store is not read | one manual fetch; not in CI |
-| time allowed | 60 s for the whole request: finding the host, connecting, redirects and reading | a test, at 0.3 s |
-| largest answer | 64 MiB, counted after any unpacking; one byte more is refused | a test, at and one byte past the limit |
+| time allowed | 60 s for the whole request: finding the host, connecting, redirects and reading; at most 30 days | a test, at 0.3 s |
+| largest answer | 64 MiB, counted after any unpacking; one byte more is refused | a test, at and one byte past a limit set to the sample's size |
 | compression | asks for gzip and unpacks it | a test |
 | error status | anything but a 2xx success, such as 404 or 304, is a failed fetch | a test each for 404 and 304 |
 | redirects | followed, up to ten; the cache files the answer under the address you asked for | a test with one redirect; the cap of ten is `ureq`'s default, not tested |
-| proxy | the first set of `ALL_PROXY`, `HTTPS_PROXY` and `HTTP_PROXY` (either case), for both `http` and `https` addresses; hosts listed in `NO_PROXY` connect directly; an unreadable value is ignored. A SOCKS proxy is refused with an error, not bypassed | a test that a SOCKS proxy is refused; the rest is `ureq`'s, not tested |
+| proxy | the first set of `ALL_PROXY`, `HTTPS_PROXY` and `HTTP_PROXY` (either case), for both `http` and `https` addresses; hosts listed in `NO_PROXY` connect directly; an unreadable value is ignored. A SOCKS proxy is refused with an error, not bypassed, and under one no redirect is followed | tests that a SOCKS proxy is refused, that `NO_PROXY` exempts a host, and that the error doesn't show the proxy's password; the rest is `ureq`'s, not tested |
 | identification | sends `User-Agent: hpr-sim/<version> (+https://github.com/nrdptel/hpr-sim)`, so a data provider can see who is asking | a test |
 
 A failed fetch (an error status, a timeout, a refused or dropped connection, a too-long answer)
-is handled as above: online, the client falls back to an old copy marked stale. The time and size
-limits, and whether to use the environment's proxy, are fields of
-[`HttpConfig`](api/hpr_net/struct.HttpConfig.html).
+is handled as above: online, the client falls back to an old copy marked stale.
+
+The time and size limits, and whether to use the environment's proxy, are fields of
+[`HttpConfig`](api/hpr_net/struct.HttpConfig.html). Start from `HttpConfig::default()`, change a
+field (for example `config.timeout = Duration::from_secs(300)`), and pass it to
+`Http::with_config(config)`.
 
 Because the computer's certificate store is not read, a network that inspects encrypted traffic
 with its own certificate (common on company and school networks) makes every HTTPS fetch fail, and
@@ -92,8 +95,9 @@ gives the usual place for caches on each system, and the folder is created on th
 Setting the environment variable `HPR_CACHE_DIR` puts the cache in that folder instead, on every
 system; a relative path there is taken from the current folder. The folders come from environment
 variables alone: on Windows `LOCALAPPDATA` is read rather than asking the system, which gives the
-same folder unless the variable was changed. If `HOME` (macOS, Linux) or `LOCALAPPDATA` (Windows)
-is unset, `Cache::platform_dir` returns nothing and you must name a folder.
+same folder unless the variable was changed. If `HPR_CACHE_DIR` is not set and `HOME` (macOS,
+Linux) or `LOCALAPPDATA` (Windows) is unset or empty, `Cache::platform_dir` returns nothing and you
+must name a folder.
 
 ## How it is checked
 
@@ -124,13 +128,15 @@ environment names. They check that:
 - an answer one byte over the limit is refused and one at the limit passes, and a megabyte of
   zeros that compresses to under 64 KiB is refused at a 64 KiB limit;
 - a server that never answers is cut off at a 0.3 s limit (the test requires under 5 s; the
-  server stalls for 10 s), and the longest possible timeout, which means none, does not crash;
+  server stalls for 10 s), and a timeout of `Duration::MAX` (the usual way to say "no limit"),
+  which hpr treats as 30 days, does not crash;
 - when the server hangs up without answering, an old copy comes back marked stale, with the
   reason.
 
 ## What it leaves out
 
-- No retries: a failed fetch is tried once. Plain `http://` addresses are accepted. The 60 s
+- No retries: a failed fetch is tried once. Plain, unencrypted `http://` addresses are accepted;
+  nothing forces HTTPS. The 60 s
   time limit covers the whole transfer, so a large answer on a slow connection can time out; raise
   it in `HttpConfig`.
 - No test makes an encrypted (HTTPS) connection: the test server speaks plain HTTP, since a local
