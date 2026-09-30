@@ -100,6 +100,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
+    // The versions differ most near the ground: each one's second row.
+    println!();
+    println!("second row       above the ground (m)   wind (m/s)   from (°)");
+    for (name, sounding) in [("coded message", &coded), ("BUFR file", &bufr)] {
+        let (ground, second) = (sounding.levels[0], sounding.levels[1]);
+        println!(
+            "{name:<16} {:>20.0} {:>12.1} {:>10.0}",
+            second.height_msl_m - ground.height_msl_m,
+            second.wind_speed_m_s,
+            second.wind_direction_from_rad.to_degrees(),
+        );
+    }
+
     // 3. The atmosphere as a flight uses it: hydrostatic between levels, with humidity, and the
     //    wind's speed and direction interpolated in height.
     let sounding = coded.sounding(WindInterpolation::SpeedDirection)?;

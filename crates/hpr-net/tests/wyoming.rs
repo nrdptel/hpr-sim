@@ -22,7 +22,7 @@ use hpr_atmos::profile::geometric_from_wmo_geopotential_m;
 use hpr_atmos::wind::velocity_from_speed_direction;
 use hpr_atmos::{Wind, WindInterpolation};
 use hpr_net::wyoming::{
-    self, ATTRIBUTION, DropReason, MAX_NOT_ABOVE, SETTLE_S, WyomingError, WyomingRequest,
+    self, ATTRIBUTION, DropReason, MAX_NOT_ABOVE, MAX_ROWS, SETTLE_S, WyomingError, WyomingRequest,
     WyomingSounding, WyomingVersion,
 };
 use hpr_net::{Cache, Client, Freshness, Mode, NetError, Replay, Transport};
@@ -190,10 +190,10 @@ fn the_profile_reproduces_every_level_it_keeps() {
 }
 
 /// Every BUFR row, kept or not, is close to the profile: at each one's height the profile's
-/// pressure is within one rounding step, 0.1 hPa, of the row's (at worst 0.071 hPa). A kept row's
-/// own pressure is rounded by up to 0.05 hPa, and a run's end rows lie up to half a step from its
-/// middle. Keeping the first row of each run instead put 10 hPa 26 m low (the physics review of
-/// M5.2b).
+/// pressure is within 0.08 hPa of the row's (at worst 0.071 hPa). A kept row's own pressure is
+/// rounded by up to 0.05 hPa, and a run's end rows lie up to half a step from its middle. Keeping
+/// the first row of each run instead put 10 hPa 26 m low and misses by 0.093 hPa, which this
+/// bound refuses (the physics review of M5.2b).
 #[test]
 fn repeated_bufr_rows_lie_on_the_profile() {
     let rows = rows(BUFR);
@@ -209,7 +209,7 @@ fn repeated_bufr_rows_lie_on_the_profile() {
         let sample = air.sample(height_m).unwrap();
         worst_hpa = worst_hpa.max((sample.air.pressure_pa / 100.0 - p).abs());
     }
-    assert!(worst_hpa < 0.1, "{worst_hpa} hPa");
+    assert!(worst_hpa < 0.08, "{worst_hpa} hPa");
 }
 
 /// The ground and the release: the first row, as recorded; the wind there, independently of the
@@ -250,7 +250,7 @@ fn the_first_row_is_the_ground() {
 /// the standard levels from 850 to 10 hPa, the recorded thickness matches the hypsometric
 /// thickness from the rows' virtual temperatures (with the file's own mixing ratios) to 0.01% to
 /// 0.03% on average; single layers scatter by 0.05% to 0.13% on average either way. Read as
-/// geometric heights, the recorded layers would be 0.51% to 0.61% thinner on average than the
+/// geometric heights, the recorded layers would be 0.51% to 0.60% thinner on average than the
 /// geometric thickness. The asserts hold the mean under 0.1% as geopotential and beyond −0.4% as
 /// geometric.
 #[test]
@@ -546,6 +546,20 @@ fn a_rows_faults_drop_it_or_are_clamped() {
         reasons(both),
         [(38, DropReason::NotAbove), (39, DropReason::NotAbove), top]
     );
+    // The rows left out are listed in line order: row 38 at row 37's pressure is the rest of a
+    // run, which closes after row 39, missing its temperature, is dropped.
+    let run = edited(&[
+        (ROW_557, &ROW_557.replace(" 557.0,", " 570.0,")),
+        (ROW_549, &ROW_549.replace(" -2.5,", "     ,")),
+    ]);
+    assert_eq!(
+        reasons(run),
+        [
+            (38, DropReason::SamePressure),
+            (39, DropReason::NoData),
+            top
+        ]
+    );
     // A run at the ground's pressure keeps none of it.
     let at_ground = edited(&[(ROW_854, GROUND_VALUES)]);
     assert_eq!(reasons(at_ground), [(3, DropReason::SamePressure), top]);
@@ -568,14 +582,71 @@ fn a_rows_faults_drop_it_or_are_clamped() {
 }
 
 /// One bad row kept (557 hPa with a digit lost, 57 hPa at 5 km) would drop every good row after
-/// it; the answer is refused instead.
+/// it up to 57 hPa; the answer is refused instead, naming that row. Raised to 5,890 m, the row has
+/// the ten rows after it below it, which are left out; raised to 6,048 m, eleven, which refuse.
 #[test]
 fn an_answer_that_stops_rising_is_refused() {
-    let body = edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))]);
-    match WyomingSounding::parse(&body) {
-        Err(WyomingError::NotRising { line, count }) => {
-            assert_eq!(line, 39);
-            assert!(count > MAX_NOT_ABOVE, "{count}");
+    let refused = |body: Vec<u8>| match WyomingSounding::parse(&body) {
+        Err(WyomingError::NotRising { after, line, count }) => (after, line, count),
+        other => panic!("{other:?}"),
+    };
+    let (after, line, count) =
+        refused(edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))]));
+    assert_eq!((after, line), (38, 39));
+    assert!(count > MAX_NOT_ABOVE, "{count}");
+
+    let raised = edited(&[(ROW_557, &ROW_557.replace(" 5035,", " 5890,"))]);
+    let sounding = WyomingSounding::parse(&raised).unwrap();
+    let below: Vec<_> = sounding
+        .dropped
+        .iter()
+        .filter(|d| d.reason == DropReason::NotAbove)
+        .map(|d| d.line)
+        .collect();
+    assert_eq!(below, (39..=48).collect::<Vec<_>>());
+    assert_eq!(below.len(), MAX_NOT_ABOVE);
+    let higher = edited(&[(ROW_557, &ROW_557.replace(" 5035,", " 6048,"))]);
+    assert_eq!(refused(higher), (38, 39, 11));
+}
+
+/// Rows below the last row kept at the end of an answer (a balloon falling after it bursts) are
+/// left out, however many.
+#[test]
+fn a_falling_tail_is_left_out() {
+    let mut text = String::from_utf8(fixture(FM35)).unwrap();
+    for k in 0..20 {
+        let (p, z) = (8.5 + f64::from(k), 32_000 - 500 * k);
+        text.push_str(&format!(
+            "2025-06-21 11:02:00,-106.7000,31.8600, {p:.1}, {z}, -45.0, -75.0, -70.0,  2,  3, \
+             0.3, 90, 12.0\n"
+        ));
+    }
+    let sounding = WyomingSounding::parse(text.as_bytes()).unwrap();
+    assert_eq!(sounding.levels.len(), 227);
+    let tail: Vec<_> = sounding
+        .dropped
+        .iter()
+        .filter(|d| d.reason == DropReason::NotAbove)
+        .map(|d| d.line)
+        .collect();
+    assert_eq!(tail, (230..250).collect::<Vec<_>>());
+}
+
+/// An answer of more than [`MAX_ROWS`] rows is refused as it is read, so a flood of empty rows
+/// costs no more than a large real one.
+#[test]
+fn too_many_rows_are_refused() {
+    let header = String::from_utf8(fixture(FM35)).unwrap();
+    let header = header.lines().next().unwrap().to_owned();
+    let body = |rows: usize| format!("{header}\n{GROUND}\n{}", ",,,,,,,,,,,,\n".repeat(rows));
+    let sounding = WyomingSounding::parse(body(MAX_ROWS - 1).as_bytes()).unwrap();
+    assert_eq!(sounding.dropped.len(), MAX_ROWS - 1);
+    match WyomingSounding::parse(body(MAX_ROWS).as_bytes()) {
+        Err(WyomingError::Row { line, reason }) => {
+            assert_eq!(
+                (line, reason.as_str()),
+                (MAX_ROWS + 2, "more than 100000 rows")
+            );
         }
         other => panic!("{other:?}"),
     }

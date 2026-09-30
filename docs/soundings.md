@@ -20,7 +20,7 @@ instead of a forecast ([Launch-day weather](weather.md)) or the
   America), and the balloon goes up hours before or after the flight. Nothing here measures how
   much that changes a flight.
 - The archive serves two versions of most soundings, and they can disagree near the ground. In
-  the example below, Calisto ends 402 m from the pad in one and 563 m in the other.
+  the example below, Calisto is 402 m from the pad at apogee in one and 563 m in the other.
 - The tests replay recorded answers; the live connection to the archive is not tested in CI.
 
 Code: `hpr_net::wyoming` ([API reference](api/hpr_net/wyoming/index.html)), written for the
@@ -54,15 +54,23 @@ versions of most soundings:
 
 | version | what it is | rows |
 |---|---|---|
-| Coded message, the default | the message stations have sent for decades (WMO's TEMP code, FM 35): the standard pressure levels (850, 700, 500 hPa and so on) and the *significant* levels between them, where the temperature or wind changes its trend | about 200 |
+| Coded message, the default | the message stations have sent for decades (WMO's TEMP code, FM 35) | about 200 |
 | BUFR file | the station's newer digital file (WMO's Binary Universal Form for the Representation of meteorological data), a row every second of the climb | about 6,000 |
+
+The coded message holds the standard pressure levels (850, 700, 500 hPa and so on) and the
+*significant* levels between them, where the temperature or wind changes its trend.
 
 The answer goes through `hpr-net`'s cache ([Online data and the cache](online-data.md)), and
 `wyoming::fetch(&client, &request, now)` takes the time now, in Unix seconds, to judge how fresh a
 saved copy is. For a day after its hour the archive's copy of a sounding can still fill in, as a
-station's later messages arrive, so a saved copy stays fresh for an hour. After that day, only a
-copy fetched after it stays fresh, for 30 days; an earlier one is fetched again. Offline mode
-answers from the disk only. An answer hpr can't read is never saved, so it can't replace a good
+station's later messages arrive:
+
+| the sounding's age | a saved copy stays fresh for |
+|---|---|
+| under a day | an hour |
+| over a day | 30 days, if it was saved after the sounding's first day; an earlier copy is fetched again |
+
+Offline mode answers from the disk only, however old the copy. An answer hpr can't read is never saved, so it can't replace a good
 copy. A sounding the archive doesn't have comes back as an HTTP error (404, or 400 for a BUFR file
 the station doesn't send), which the request reports; no test covers that.
 
@@ -79,33 +87,38 @@ radiosonde archive" wherever you show the sounding. Every answer carries it.
   that much, so runs of rows share one pressure. The rounded value is the pressure at about the
   middle of its run. In the example, 1,931 of the BUFR file's 5,851 rows are the other rows of
   such runs. The coded message has none.
-- **A row is kept when it lies above the last row kept**, higher and at a lower pressure. More
-  than 10 rows below the row kept before them refuse the answer: one bad row kept (a pressure
-  missing a digit, say) would otherwise drop every good row after it.
+- **A row is kept when it lies above the last row kept**, higher and at a lower pressure. If more
+  than 10 rows in a row lie below the last row kept, and a later row lies above it again, the
+  answer is refused: that row was probably bad (a pressure missing a digit, say), and every good
+  row after it would be dropped. Such rows at the end, from a balloon falling or floating, are
+  only left out.
 - **A row with a value missing or impossible is left out**: the last row often has no wind, and
-  a pressure or wind speed below zero, a temperature at or below absolute zero, a humidity below
-  zero or a direction beyond 360° is dropped the same way. The profile lists every row it left
+  a pressure at or below zero, a wind speed or humidity below zero, a temperature at or below
+  absolute zero or a direction beyond 360° is dropped the same way. The profile lists every row it left
   out, and why.
 - **Humidity above 100%**, which radiosondes can report in cloud, is kept in the level as
   recorded and taken as 100% in the profile.
 - **Between levels** the sounding works as for any other: the temperature and humidity are
-  linear, the pressure is hydrostatic (as the [atmosphere page](physics/atmosphere.md) explains),
-  and the wind is interpolated by its speed and direction, or by its east and north parts, as
-  [RocketPy](glossary.md#rocketpy) does, if you pass `WindInterpolation::Components`. Above the
-  top level the standard atmosphere continues, and the air is marked as extrapolated.
+  linear, and the pressure is hydrostatic (as the [atmosphere page](physics/atmosphere.md)
+  explains). The wind is interpolated by its speed and direction; pass
+  `WindInterpolation::Components` to interpolate its east and north parts instead, as
+  [RocketPy](glossary.md#rocketpy) does. Above the top level the standard atmosphere continues,
+  and the air is marked as extrapolated.
 
 **Heights.** The file gives geopotential metres, which hpr converts to heights above sea level
 at the first row's latitude with the World Meteorological Organization's formula (WMO-No. 8
 eqs. 12.15 and 12.16, as the [atmosphere page](physics/atmosphere.md) explains). The balloon
 drifts as it climbs. Converting at the latitude it reached instead would move a height by about
-0.8 m per degree of drift at 10 km, and 2.5 m at 30 km; the example's balloon drifted 0.07°.
+0.8 m per degree of drift at 10 km, and 2.5 m at 30 km; the example's balloon drifted 0.06°.
 
 **Why geopotential.** Air pressure falls with height at a rate set by the air's temperature and
 humidity (the *hypsometric equation*), which fixes how thick each layer between two pressures
-must be, in geopotential metres. Across the 13 layers between the standard levels from 850 to
-10 hPa, the recorded thicknesses match that to 0.01% to 0.03% on average, with single layers
-0.05% to 0.13% off either way. Read as metres above sea level instead, the layers would be 0.51%
-to 0.61% too thin on average. So they are geopotential metres, as the column says.
+must be, in geopotential metres. In the three recorded soundings, across the 13 layers between
+the standard levels from 850 to 10 hPa, the recorded thicknesses match that to 0.01% to 0.03% on
+average; single layers are off by 0.05% to 0.13% on average, either way.
+Read as metres above sea level instead, the layers would be 0.51% to 0.60% too thin on average.
+So they are geopotential metres, as the column says. The test holds the average under 0.1% as
+geopotential metres, and beyond −0.4% as metres above sea level.
 
 ## An example
 
@@ -125,12 +138,12 @@ station without its parachutes. It makes these calls:
    `profile.wind()` its wind.
 4. `hpr_sim::Environment::new(earth, profile, wind)` puts both in a flight's environment.
 
-It prints the ground and five standard levels, with heights in metres above sea level (the
-ground's 1,252 geopotential metres are 1,254 m). Then it prints the air at the pad and above it
-next to the standard atmosphere, and where Calisto is at apogee: east and north of the pad,
-negative for west and south. Each flight starts on its own sounding's ground. The third flight
-uses the BUFR file with its rows below 1,438 geopotential metres left out, so it starts its climb
-from the same second row as the coded message. Run it from a copy of the repository with
+It prints the ground and five standard levels, with heights in metres above sea level, and each
+version's second row. Then it prints the air at the pad and above it next to the standard
+atmosphere, and where Calisto is at apogee: east and north of the pad, negative for west and
+south. Each flight starts on its own sounding's ground. The third flight keeps the BUFR file's
+ground row and its rows from 1,438 geopotential metres up (the height of the coded message's
+second row), dropping those between. Run it from a copy of the repository with
 `cargo run --example wyoming_sounding -p hpr --features net`. It prints:
 
 <!-- quote: crates/hpr/examples/wyoming_sounding.output.txt -->
@@ -150,6 +163,10 @@ level (hPa)   height (m)   temperature (°C)   humidity (%)   wind (m/s)   from 
         250        11002              -40.1              7         13.9        260
         100        16724              -73.1             13         13.9        255
 
+second row       above the ground (m)   wind (m/s)   from (°)
+coded message                     186         10.7        269
+BUFR file                           8         11.1        264
+
 height above the pad (m)   pressure (hPa)   temperature (°C)   density (kg/m³)
      0 sounding                     872.0               28.4            1.0022
      0 standard                     871.4                6.9            1.0842
@@ -168,7 +185,7 @@ standard, calm                             2811.0                  -5.1         
 `freshness: Fetched` means the answer came from the transport, not the cache. That early
 morning (6 a.m. local) was 21.5 °C warmer at the station than the standard atmosphere, and the
 air was 7.6% less dense at the ground and 3.9% less dense 3 km up. Calisto climbs 1.3% higher in
-it than in the standard atmosphere.
+it than in the standard atmosphere with no wind; the thinner air and the wind both play a part.
 
 At apogee Calisto is about 400 m **west** of the pad, upwind: the wind blows from the west, and a
 rocket just off the rail, still slow, turns into the wind
@@ -178,10 +195,11 @@ is Earth's rotation: a climbing rocket is pushed west (the Coriolis effect), as 
 
 The two versions put Calisto's apogee 26 m apart, and the BUFR flight 160 m further west. Most of
 that is the first 186 m of the climb. Both start from the station's wind at the ground, 5.7 m/s.
-The coded message's next row, 186 m up, is 10.7 m/s from the west, so its wind grows steadily
+The coded message's second row, 186 m up, is 10.7 m/s from the west, so its wind grows steadily
 over that climb. In the BUFR file the wind is already 11.1 m/s 8 m above the ground, where the
-rocket is slowest and turns into the wind the most. Without those rows the BUFR flight ends
-419 m west and peaks at 2,846 m, within 18 m and 2 m of the coded message's. Which of the two is
+rocket is slowest and turns into the wind the most. Without its rows below 1,438 geopotential
+metres the BUFR flight is 419 m west at apogee and peaks at 2,846 m, within 18 m and 2 m of the
+coded message's. Which of the two is
 nearer the wind a rocket meets is not measured: a balloon's first seconds of drift are not a
 steady wind either.
 
@@ -199,15 +217,18 @@ network.
 - The rows left out are exactly those the rules leave out: the last row of each coded message (no
   wind), and 1,931 rows of the BUFR file (the other rows of a run). The coded messages keep 227
   and 241 rows, the BUFR file 3,920.
-- Every BUFR row, kept or not, lies within one rounding step (0.1 hPa) of the profile's pressure
-  at its height; the worst is 0.071 hPa.
+- Every BUFR row, kept or not, lies within 0.08 hPa of the profile's pressure at its height; the
+  worst is 0.071 hPa. Keeping the first row of each run instead would miss by 0.093 hPa.
 - The ground's wind, 5.7 m/s from 265°, is checked against its east and north parts worked out by
   hand: 5.678 m/s east and 0.497 m/s north.
 - An edited file drops a row with a missing temperature; one with a humidity below zero, a
   temperature of −999 °C, a negative wind speed or pressure, or a direction of 361°; one below or
   at a higher pressure than the last row kept (and not merely the row before); and a row at the
-  ground's pressure. A humidity of 103% is kept and taken as 100%, and a wind from 360° reads as
-  from north. A pressure missing a digit (57 hPa at 5 km) refuses the answer.
+  ground's pressure. The rows left out are listed in line order. A humidity of 103% is kept and
+  taken as 100%, and a wind from 360° reads as from north.
+- A pressure missing a digit (57 hPa at 5 km) refuses the answer, naming that row. A row raised
+  so that exactly 10 rows after it lie below it is kept and those rows left out; 11 refuse the
+  answer. Twenty rows falling back down at the end are only left out.
 - The request's address is the one recorded, so a replayed answer fills the cache. A second
   request is answered from the cache, and offline mode answers without the network. A copy saved
   while the sounding was young is fetched again once it has settled.
@@ -215,8 +236,8 @@ network.
   copy the request fails, and with one, the earlier copy comes back, marked stale.
 - Text with no header, a missing or doubled column, a unit other than the one required, a row
   with too few or too many fields, a field that isn't a number, a first row with no date, and a
-  first row with a value missing are refused. A header or a row of a million commas is refused
-  without being split up.
+  first row with a value missing are refused. A header or a row of a million commas, and more
+  than 100,000 rows, are refused without being read further.
 - The heights are geopotential, by the hypsometric check above: the test holds each average
   under 0.1% as geopotential metres, and beyond −0.4% as metres above sea level.
 
@@ -226,6 +247,8 @@ network.
   or in time. A rocket flown hours from the balloon, 100 km away, flies other air.
 - Which version is nearer the truth near the ground, where they differ most, is not known.
 - A level with any value missing is left out whole, even when its other values are good.
+- A wrong value that still lies between its neighbours is kept: nothing checks a layer's
+  thickness against its temperature.
 - Only the archive's comma-separated text is read, not its other formats, and there is no list
   of stations to search by place.
 - Its terms of use are not stated; only soundings from U.S. stations, which are U.S. government
