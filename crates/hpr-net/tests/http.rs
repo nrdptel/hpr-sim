@@ -355,3 +355,40 @@ fn when_the_server_hangs_up_a_stale_copy_comes_back_with_the_reason() {
     let other = tempfile::tempdir().unwrap();
     failure(online(other.path()).fetch(&source(), &url, 1_000));
 }
+
+/// Open-Meteo's weather over HTTP (M5.2a): a request pointed at the loopback server as a
+/// self-hosted endpoint gets the recorded response, and the profile reads from the cache offline.
+#[test]
+fn open_meteo_over_loopback_fills_the_cache() {
+    use hpr_net::open_meteo::{self, OpenMeteoApi, OpenMeteoRequest};
+
+    let server = Server::start();
+    let dir = tempfile::tempdir().unwrap();
+    let mut request = OpenMeteoRequest::new(
+        32.99,
+        -106.97,
+        1_750_519_800,
+        OpenMeteoApi::HistoricalForecast,
+    );
+    request.endpoint = Some(server.url("/v1/forecast"));
+
+    let (profile, fetched) = open_meteo::fetch(&online(dir.path()), &request, 1_000).unwrap();
+    assert_eq!(fetched.freshness, Freshness::Fetched);
+    assert_eq!(
+        fetched.body,
+        std::fs::read(fixtures().join("open-meteo-historical.json")).unwrap()
+    );
+    assert_eq!((profile.levels.len(), server.request_count()), (14, 1));
+
+    let offline = Client::new(
+        Http::with_config(local()),
+        Cache::new(dir.path()),
+        Mode::Offline,
+    );
+    let (again, fetched) = open_meteo::fetch(&offline, &request, 2_000).unwrap();
+    assert_eq!(
+        (fetched.freshness, server.request_count()),
+        (Freshness::Cached, 1)
+    );
+    assert_eq!(again, profile);
+}

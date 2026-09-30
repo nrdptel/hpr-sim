@@ -18,6 +18,8 @@
 
 [Online data and the cache](online-data.md)
 
+[Launch-day weather](weather.md)
+
 [Reading a flight log](reading-a-flight-log.md)
 
 [Your own rocket](your-own-rocket.md)

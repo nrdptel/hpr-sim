@@ -23,7 +23,7 @@ Planned:
   atmospheres and winds, and recovery with drift.
 - Designing rockets from a parts catalog; import and export of OpenRocket, RockSim, RASAero and
   RocketPy files; a new open design format.
-- Online weather, terrain and live motor stock from [motor.fusionspace.co](https://motor.fusionspace.co),
+- Online weather (Open-Meteo's forecasts, in the library today), terrain and live motor stock from [motor.fusionspace.co](https://motor.fusionspace.co),
   all optional. Everything works offline on macOS, Windows and Linux.
 - Monte Carlo dispersion, sensitivity analysis, and optimization for competition challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.
@@ -54,7 +54,7 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)) |
-| `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-2) |
+| `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2d](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-2d) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m7-3) |

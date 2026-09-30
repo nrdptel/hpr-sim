@@ -2,13 +2,12 @@
 
 This page covers `hpr-net`, the one crate that uses the network, and the cache that makes its
 answers work offline. It is for anyone who will pull weather, elevation or motor data into a
-flight once those sources exist. **Today the crate holds the cache, the offline rule and an HTTP
-client** ([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **but no data sources yet**
-(planned from [M5.2, weather](decisions-and-roadmap.md#m5-2)). Its tests replay a small
-hand-written sample response, from a folder and from a test web server on the machine running the
-tests, never the live network. Those tests speak plain HTTP only: encrypted HTTPS was checked once
-by hand against a real weather service (Open-Meteo), not in CI. Real recorded responses arrive
-with each data source.
+flight. **Today the crate holds the cache, the offline rule and an HTTP client**
+([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **and one data source: Open-Meteo's
+weather** ([Launch-day weather](weather.md)). Its tests replay a small hand-written sample
+response and two answers recorded from Open-Meteo, from a folder and from a test web server on the
+machine running the tests, never the live network. Those tests speak plain HTTP only: encrypted
+HTTPS was checked once by hand against Open-Meteo, not in CI.
 
 ## What it promises
 
@@ -26,6 +25,12 @@ one of two modes:
 
 Each answer says how fresh it is (`Fetched`, `Cached` or `Stale`), when it was fetched, and the
 data source's attribution, the credit line that its terms ask you to show with the data.
+
+A data source can also give the client a check, its own parser (`Client::fetch_checked`). Then an
+answer the parser refuses, such as an error page sent as a success or a forecast whose hours are
+still empty, is never saved, so it can't take a good copy's place. Online, a good copy that has
+gone stale comes back instead, with the reason; with no copy, the fetch fails. A saved copy the
+check refuses counts as missing online, and is the error offline.
 
 ## How long a copy stays fresh
 
@@ -107,6 +112,9 @@ replay a hand-written sample from a folder instead of using the network:
 - The offline test gives the client a transport that fails the test if it is ever called, then
   asks for a URL before and after it is cached, fresh and thirty days stale.
 - Offline, a corrupt entry is an error; online, it is fetched again and overwritten.
+- The checked fetch is tested through Open-Meteo's source
+  ([Launch-day weather](weather.md#how-it-is-checked)): an answer with an hour's values missing
+  is not saved, and an earlier good copy comes back and stays saved.
 
 The cache's own tests check that a saved body reads back, and that another URL's entry in the same
 file reads as a miss. They also check that the hash that names each file (FNV-1a, a standard 64-bit

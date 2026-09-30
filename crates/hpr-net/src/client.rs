@@ -47,7 +47,7 @@ pub enum Freshness {
     Fetched,
     /// From the cache, younger than the source's TTL.
     Cached,
-    /// From the cache, older than the TTL: offline, or the fetch failed.
+    /// From the cache, older than the TTL: offline, or the fetch failed or its answer was refused.
     Stale,
 }
 
@@ -62,7 +62,8 @@ pub struct Fetched {
     pub freshness: Freshness,
     /// The source's attribution, to show with the data.
     pub attribution: String,
-    /// Online, why the fetch failed when a stale copy was returned in its place.
+    /// Online, why the fetch failed, or why its answer was refused, when a stale copy was returned
+    /// in its place.
     pub stale_reason: Option<String>,
 }
 
@@ -103,11 +104,41 @@ impl<T: Transport> Client<T> {
     /// [`NetError::NotCached`] offline with no copy; [`NetError::Transport`] online when the fetch
     /// fails with no copy; cache errors as [`Cache::get`] and [`Cache::put`] give them.
     pub fn fetch(&self, source: &Source, url: &str, now_s: u64) -> Result<Fetched, NetError> {
+        self.fetch_checked(source, url, now_s, |_| Ok(()))
+    }
+
+    /// As [`Client::fetch`], but only a body that `check` accepts is cached or returned: a data
+    /// source passes its parser, so an answer it can't read (an error page served as 200, a
+    /// forecast with its hours still empty) is never kept in place of a good copy.
+    ///
+    /// Online, a fetched body the check refuses is not cached; a stale copy is returned in its
+    /// place, with the reason, when there is one. A cached copy the check refuses counts as
+    /// missing online, and is the error offline.
+    ///
+    /// # Errors
+    /// As [`Client::fetch`], and [`NetError::Refused`] when the check refuses the only body there
+    /// is.
+    pub fn fetch_checked(
+        &self,
+        source: &Source,
+        url: &str,
+        now_s: u64,
+        check: impl Fn(&[u8]) -> Result<(), String>,
+    ) -> Result<Fetched, NetError> {
+        let refused = |reason: String| NetError::Refused {
+            url: url.to_owned(),
+            reason,
+        };
         // Online, an unreadable entry is a miss: the fetch below overwrites it. Offline it is the
-        // error, since there is nothing else to answer with.
+        // error, since there is nothing else to answer with. The same goes for a copy the check
+        // refuses.
         let cached = match (self.cache.get(url), self.mode) {
-            (Ok(cached), _) => cached,
-            (Err(_), Mode::Online) => None,
+            (Ok(Some(entry)), mode) => match (check(&entry.body), mode) {
+                (Ok(()), _) => Some(entry),
+                (Err(_), Mode::Online) => None,
+                (Err(reason), Mode::Offline) => return Err(refused(reason)),
+            },
+            (Ok(None), _) | (Err(_), Mode::Online) => None,
             (Err(e), Mode::Offline) => return Err(e),
         };
         let answer =
@@ -133,8 +164,13 @@ impl<T: Transport> Client<T> {
             if self.mode == Mode::Offline {
                 return Ok(answer(entry, false, None));
             }
-            return match self.transport.get(url) {
-                Ok(body) => self.store(source, url, body, now_s),
+            return match self.transport.get(url).map(|body| (check(&body), body)) {
+                Ok((Ok(()), body)) => self.store(source, url, body, now_s),
+                Ok((Err(reason), _)) => Ok(answer(
+                    entry,
+                    false,
+                    Some(format!("the answer was refused: {reason}")),
+                )),
                 Err(reason) => Ok(answer(entry, false, Some(reason))),
             };
         }
@@ -150,6 +186,7 @@ impl<T: Transport> Client<T> {
                 url: url.to_owned(),
                 reason,
             })?;
+        check(&body).map_err(refused)?;
         self.store(source, url, body, now_s)
     }
 
