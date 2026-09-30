@@ -810,8 +810,8 @@ fn a_bad_ground_is_refused() {
     }
     let ten = WyomingSounding::parse(&moved(FM35, 3..=12, 1000.0)).unwrap();
     assert_eq!(ten.levels.len(), 217);
-    // Two BUFR rows 20 m high fit the ground and are kept, leaving out the good rows now below
-    // them; 35 m high, they fit nothing and are passed by.
+    // Two BUFR rows 20 m high fit the ground and are kept, leaving out the good rows no higher
+    // than them; 35 m high, they fit nothing but each other and are passed by.
     let reasons = |by: f64, reason: DropReason| {
         let sounding = WyomingSounding::parse(&moved(BUFR, 3..=4, by)).unwrap();
         sounding
@@ -823,6 +823,8 @@ fn a_bad_ground_is_refused() {
     };
     assert_eq!(reasons(20.0, DropReason::Thickness), Vec::<usize>::new());
     assert_eq!(reasons(20.0, DropReason::NotAbove), [5, 6, 7]);
+    let kept = WyomingSounding::parse(&moved(BUFR, 3..=4, 20.0)).unwrap();
+    assert_eq!(kept.levels.len(), 3917);
     assert_eq!(reasons(35.0, DropReason::Thickness), [3, 4]);
     // A chain without the ground may start at any of the 11 rows after it, and no later: rows
     // off by 1, 2, 3, ... km fit nothing, so after ten of them a bad ground (87.2 hPa) is refused

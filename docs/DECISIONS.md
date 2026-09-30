@@ -9895,9 +9895,10 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    height and temperature within the bounds that beats every chain from it (longer, or as long with
    a smaller sum) refuses the answer (`GroundMisfit`). Bad rows right after a good ground that miss
    it but fit the rows above can win the same way, in narrow bands of error just past the ground's
-   allowance, and refuse the answer: two BUFR rows 31 m high (not 20 m, which fit the ground, nor 35
-   m, which fit nothing), three rows of the winter coded message 45 m high, or 11 rows 1 km off that
-   fit each other; the data can't tell them from a bad ground, and a refusal is the safe failure.
+   allowance, and refuse the answer: two BUFR rows 31 m high (not 20 m, which fit the ground, nor
+   35 m, which fit nothing but each other), or three rows of the winter coded message 45 m high.
+   So do 11 bad rows that fit each other, however far off. The data can't tell these from a
+   bad ground, and a refusal is the safe failure.
    Rows grossly off fit nothing above and are passed by, up to 10. A ground with one row after it
    goes unchecked. Of each run of complete rows in the chain with the same pressure the middle one
    is a candidate (`SamePressure` for the rest; none at the ground's pressure): BUFR's pressures, to
