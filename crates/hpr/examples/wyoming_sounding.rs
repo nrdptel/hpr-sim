@@ -28,11 +28,10 @@ use std::error::Error;
 
 use hpr_atmos::wind::WindInterpolation;
 use hpr_atmos::{Atmosphere, ConstantWind, Ussa76};
-use hpr_core::DVec3;
 use hpr_core::earth::Earth;
 use hpr_core::geodesy::Geodetic;
 use hpr_design::Rocket;
-use hpr_net::wyoming::{self, WyomingRequest, WyomingSource};
+use hpr_net::wyoming::{self, WyomingRequest, WyomingVersion};
 use hpr_net::{Cache, Client, Mode, Transport};
 use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation};
 
@@ -62,7 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let launch_s = 1_750_519_800;
     let request = WyomingRequest::latest_before("72364", launch_s);
     let mut detailed = request.clone();
-    detailed.source = WyomingSource::Bufr;
+    detailed.version = WyomingVersion::Bufr;
     let now_s = 1_790_000_000;
     let (coded, fetched) = wyoming::fetch(&client, &request, now_s)?;
     let (bufr, _) = wyoming::fetch(&client, &detailed, now_s)?;
@@ -126,8 +125,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let rocket: Rocket = serde_json::from_str(include_str!(
         "../../../validation/designs/rocketpy-calisto-getting-started-motor-at-minus-1.255.json"
     ))?;
-    // Heights above sea level are taken as heights above the ellipsoid (geoid undulation 0).
-    let site = Geodetic::from_degrees(coded.latitude_deg, coded.longitude_deg, pad_msl_m)?;
     // The BUFR file again, without its rows between the ground and the coded message's second row
     // (1,438 m of geopotential height): the two versions differ most there.
     let second_row_m = coded.levels[1].geopotential_height_m;
@@ -143,11 +140,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     ] {
         let air = balloon.sounding(WindInterpolation::SpeedDirection)?;
         let wind = air.wind().ok_or("the sounding has no wind")?.clone();
+        // Each flight starts on its own sounding's ground. Heights above sea level are taken as
+        // heights above the ellipsoid (geoid undulation 0).
+        let ground = balloon.levels[0];
+        let site =
+            Geodetic::from_degrees(coded.latitude_deg, coded.longitude_deg, ground.height_msl_m)?;
         environments.push((name, Environment::new(Earth::wgs84(site)?, air, wind)));
     }
+    let site = Geodetic::from_degrees(coded.latitude_deg, coded.longitude_deg, pad_msl_m)?;
     let calm = Environment::new(Earth::wgs84(site)?, standard, ConstantWind::calm());
     println!();
-    println!("Calisto to apogee      apogee (m above the pad)   drift at apogee (m)");
+    println!("Calisto to apogee      apogee (m above the pad)   east of the pad (m)   north (m)");
     for (name, environment) in environments {
         fly(&rocket, name, environment)?;
     }
@@ -155,7 +158,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// Flies `rocket` to apogee in `environment` and prints the apogee and the drift.
+/// Flies `rocket` to apogee in `environment` and prints the apogee and where it is: east and north
+/// of the pad, negative for west and south.
 fn fly(rocket: &Rocket, name: &str, environment: Environment) -> Result<(), Box<dyn Error>> {
     let simulation = Simulation::new(
         rocket,
@@ -169,10 +173,17 @@ fn fly(rocket: &Rocket, name: &str, environment: Environment) -> Result<(), Box<
         .event(EventKind::Apogee)
         .ok_or("the flight has no apogee")?
         .sample;
-    let drift = DVec3::new(apogee.cg_enu_m.x, apogee.cg_enu_m.y, 0.0).length();
     println!(
-        "{name:<22} {:>26.1} {:>21.1}",
-        apogee.height_above_ground_m, drift
+        "{name:<22} {:>26.1} {:>21.1} {:>11.1}",
+        apogee.height_above_ground_m,
+        tidy(apogee.cg_enu_m.x),
+        tidy(apogee.cg_enu_m.y)
     );
     Ok(())
+}
+
+/// `x` rounded to 0.1, with a rounded `-0.0` printed as `0.0`.
+fn tidy(x: f64) -> f64 {
+    let rounded = (x * 10.0).round() / 10.0;
+    if rounded == 0.0 { 0.0 } else { rounded }
 }

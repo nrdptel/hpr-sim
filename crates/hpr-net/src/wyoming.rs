@@ -2,10 +2,10 @@
 //! [`SoundingProfile`].
 //!
 //! A radiosonde is an instrument package carried up by a weather balloon, usually at 00 and
-//! 12 UTC, from about 800 stations worldwide. It measures pressure, temperature and humidity, and
-//! its drift gives the wind. The [University of Wyoming][uwyo] serves the archive of these
+//! 12 UTC, from hundreds of stations worldwide. It measures pressure, temperature and humidity,
+//! and its drift gives the wind. The [University of Wyoming][uwyo] serves the archive of these
 //! soundings. It is a measurement, not a forecast, but only at the station and the time of the
-//! flight, often a hundred kilometres and some hours from a launch.
+//! flight, which can be a hundred kilometres and some hours from a launch.
 //!
 //! A [`WyomingRequest`] names a station (its WMO number, such as `72364` for Santa Teresa, New
 //! Mexico) and the sounding's nominal hour, and asks for the comma-separated text, one row per
@@ -14,7 +14,7 @@
 //! | column | unit | read as |
 //! |---|---|---|
 //! | `time` | `YYYY-MM-DD HH:MM:SS` UTC | the release time, from the first row |
-//! | `latitude`, `longitude` | degrees | the station, from the first row |
+//! | `latitude`, `longitude` | degrees | the release point, from the first row |
 //! | `pressure_hPa` | hPa | pressure |
 //! | `geopotential height_m` | geopotential m | height above sea level |
 //! | `temperature_C` | °C | temperature |
@@ -22,26 +22,35 @@
 //! | `wind direction_degree`, `wind speed_m/s` | °, m/s | the wind, the direction it blows from |
 //!
 //! A column in any other unit is refused, not converted. Two versions of most soundings are
-//! served ([`WyomingSource`]): the coded message stations send (FM 35, "TEMP"), with the
+//! served ([`WyomingVersion`]): the coded message stations send (WMO FM 35, "TEMP"), with the
 //! standard pressure levels and the significant levels between them, about 200 rows; and the
-//! BUFR file, a row a second, about 6,000.
+//! BUFR file (WMO's binary format, as the archive decodes it), a row a second, about 6,000.
 //!
 //! [`WyomingSounding::parse`] keeps:
 //!
-//! - **The ground**, the first row: the station's pressure, temperature, humidity and wind.
-//! - **Each row above it** with every value given, whose height is above the last row kept and
-//!   whose pressure is below it. BUFR's pressures are rounded to 0.1 hPa, so near the top many
-//!   rows repeat the pressure below them; they are dropped. A row missing a value (the last row
-//!   often has no wind) is dropped too, and so is one whose relative humidity is below zero.
-//!   [`WyomingSounding::dropped`] lists each, with its reason.
+//! - **The ground**, the first row: the pressure, temperature, humidity and wind at the station
+//!   when the balloon was released.
+//! - **One row of each run with the same pressure**, the middle one. BUFR's pressures are rounded
+//!   to 0.1 hPa, and high up the balloon climbs tens of metres while the pressure falls that much,
+//!   so runs of rows share a pressure; the rounded value is the pressure at about the middle of
+//!   its run.
+//! - **Each such row above the last row kept**, higher and at a lower pressure.
+//!
+//! A row missing a value (the last row often has no wind) is dropped, and so is one with a value
+//! out of range: a pressure or wind speed below zero, a temperature at or below absolute zero, a
+//! relative humidity below zero, a direction outside 0° to 360°, or a height with no geometric
+//! height. [`WyomingSounding::dropped`] lists each row left out, with its reason. More than
+//! [`MAX_NOT_ABOVE`] rows below the row kept before them refuses the answer: one bad row kept (a
+//! pressure missing a digit, say) would otherwise drop every good row after it.
 //!
 //! Heights are geopotential metres (the column says so), converted to geometric heights at the
-//! station's latitude with WMO-No. 8 eq. 12.16
+//! first row's latitude with WMO-No. 8 (2023) eqs. 12.15 and 12.16
 //! ([`hpr_atmos::profile::geometric_from_wmo_geopotential_m`]); the [atmosphere page][atmos]
-//! explains why. The balloon drifts, but converting at the station's latitude is the same
-//! latitude the profile uses for its hydrostatics. A relative humidity above 100%, which
-//! radiosondes report in cloud, is kept as recorded and taken as 100% in
-//! [`WyomingSounding::sounding`], as the [atmosphere's decision record][adr-004] asks.
+//! explains why. That is the latitude the profile uses for its hydrostatics. The balloon drifts;
+//! converting at the latitude it reached instead would move a height by about 0.8 m per degree
+//! of drift at 10 km, 2.5 m at 30 km. A relative humidity above 100%, which radiosondes report in
+//! cloud, is kept as recorded and taken as 100% in [`WyomingSounding::sounding`], as the
+//! [atmosphere's decision record][adr-004] asks.
 //!
 //! [`fetch`] asks a [`Client`] for the URL, so the answer comes from the cache when it can, and
 //! offline from the cache only; an answer that doesn't parse is never cached. Show
@@ -69,7 +78,7 @@
 //! [uwyo]: https://weather.uwyo.edu/upperair/sounding.shtml
 //! [adr-004]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-004-atmosphere-wind-turbulence-and-the-seeded-generator-2026-09-17
 //! [atmos]: https://nrdptel.github.io/hpr-sim/physics/atmosphere.html
-//! [guide]: https://nrdptel.github.io/hpr-sim/weather.html
+//! [guide]: https://nrdptel.github.io/hpr-sim/soundings.html
 
 use std::f64::consts::TAU;
 
@@ -87,9 +96,22 @@ pub const ENDPOINT: &str = "https://weather.uwyo.edu/wsgi/sounding";
 /// are the stations' observations, which weather services exchange freely (WMO Resolution 40).
 pub const ATTRIBUTION: &str = "Sounding from the University of Wyoming's radiosonde archive";
 
-/// How long an answer stays fresh: a day. A sounding doesn't change once flown, but the archive's
-/// copy can fill in for some hours after it, as a station's later messages arrive.
-pub const TTL_S: u64 = 86_400;
+/// How long after its nominal hour a sounding may still be filling in, s: a day. The archive's
+/// copy can grow for some hours after the flight, as a station's later messages arrive.
+pub const SETTLE_S: u64 = 86_400;
+
+/// How long an answer stays fresh while its sounding may still be filling in, s: an hour.
+pub const YOUNG_TTL_S: u64 = 3_600;
+
+/// How long an answer fetched after its sounding settled stays fresh, s: 30 days.
+pub const SETTLED_TTL_S: u64 = 30 * 86_400;
+
+/// The most rows below the row kept before them that an answer may have. More means a bad row was
+/// kept and good rows after it are being dropped, so the answer is refused.
+pub const MAX_NOT_ABOVE: usize = 10;
+
+/// The most columns a header may have. The archive's has 13.
+const MAX_COLUMNS: usize = 64;
 
 /// The columns read, with the units the parser requires.
 const COLUMNS: [(Column, &str, &str); 9] = [
@@ -114,7 +136,7 @@ const QUOTE_CHARS: usize = 40;
 /// Which version of a sounding to ask for.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum WyomingSource {
+pub enum WyomingVersion {
     /// The coded message the station sends (WMO FM 35, "TEMP"): the standard pressure levels and
     /// the significant levels between them, about 200 rows, pressures to 1 hPa (0.1 hPa above
     /// 100 hPa).
@@ -124,7 +146,7 @@ pub enum WyomingSource {
     Bufr,
 }
 
-impl WyomingSource {
+impl WyomingVersion {
     /// The URL's name for it.
     fn query(self) -> &'static str {
         match self {
@@ -144,8 +166,9 @@ pub struct WyomingRequest {
     /// epoch. The balloon is released about an hour before.
     pub time_unix_s: i64,
     /// Which version to ask for.
-    pub source: WyomingSource,
-    /// Another server with the same interface, instead of [`ENDPOINT`].
+    pub version: WyomingVersion,
+    /// Another server with the same interface, instead of [`ENDPOINT`]: an address with no query
+    /// (`?`) or fragment (`#`), to which the request's own query is added.
     pub endpoint: Option<String>,
 }
 
@@ -156,57 +179,82 @@ impl WyomingRequest {
         Self {
             station: station.into(),
             time_unix_s,
-            source: WyomingSource::Fm35,
+            version: WyomingVersion::Fm35,
             endpoint: None,
         }
     }
 
-    /// A request for the latest 00 or 12 UTC sounding at or before `launch_unix_s`: the one a
-    /// launch at that time would have had.
+    /// A request for the latest 00 or 12 UTC sounding at or before `launch_unix_s` (seconds since
+    /// the Unix epoch): the one a launch at that time would have had. Near its nominal hour a
+    /// sounding may still be filling in; [`WyomingRequest::source`] keeps such an answer fresh
+    /// for an hour only.
     #[must_use]
     pub fn latest_before(station: impl Into<String>, launch_unix_s: i64) -> Self {
         let half_day_s = 12 * HOUR_S;
-        Self::new(station, launch_unix_s.div_euclid(half_day_s) * half_day_s)
+        let time_unix_s = launch_unix_s
+            .div_euclid(half_day_s)
+            .saturating_mul(half_day_s);
+        Self::new(station, time_unix_s)
     }
 
-    /// The URL: `…?datetime=YYYY-MM-DD%20HH:00:00&id=<station>&type=TEXT:CSV&src=<source>`.
+    /// The URL: `…?datetime=YYYY-MM-DD%20HH:00:00&id=<station>&type=TEXT:CSV&src=<version>`.
     ///
     /// # Errors
     /// [`WyomingError::Request`] when the station is empty, longer than 16 characters or not
-    /// letters and digits, or the time is not a whole hour from 1970 to 9999.
+    /// letters and digits, the time is not a whole hour from 1970 to 9999, or the endpoint is
+    /// empty or has a `?` or `#`.
     pub fn url(&self) -> Result<String, WyomingError> {
+        let refuse = |what, value: &str| WyomingError::Request {
+            what,
+            value: cut(value),
+        };
         let station = &self.station;
         if station.is_empty()
             || station.len() > 16
             || !station.bytes().all(|b| b.is_ascii_alphanumeric())
         {
-            return Err(WyomingError::Request {
-                what: "station",
-                value: cut(station),
-            });
+            return Err(refuse("station", station));
         }
         if !(0..YEAR_10000_S).contains(&self.time_unix_s) || self.time_unix_s % HOUR_S != 0 {
-            return Err(WyomingError::Request {
-                what: "time",
-                value: self.time_unix_s.to_string(),
-            });
+            return Err(refuse("time (s since 1970)", &self.time_unix_s.to_string()));
         }
+        let endpoint = match &self.endpoint {
+            Some(endpoint) if endpoint.is_empty() || endpoint.contains(['?', '#']) => {
+                return Err(refuse("endpoint", endpoint));
+            }
+            Some(endpoint) => endpoint.as_str(),
+            None => ENDPOINT,
+        };
         let (year, month, day, hour) = date_hour(self.time_unix_s);
-        let endpoint = self.endpoint.as_deref().unwrap_or(ENDPOINT);
         Ok(format!(
             "{endpoint}?datetime={year:04}-{month:02}-{day:02}%20{hour:02}:00:00&id={station}\
              &type=TEXT:CSV&src={}",
-            self.source.query()
+            self.version.query()
         ))
     }
 
-    /// The cache's view of the source: the archive's name, [`ATTRIBUTION`] and [`TTL_S`].
+    /// The cache's view of the source at `now_s` (seconds since the Unix epoch): the archive's
+    /// name, [`ATTRIBUTION`], and how long a cached answer stays fresh.
+    ///
+    /// Until [`SETTLE_S`] after the nominal hour the sounding may still be filling in, so an
+    /// answer stays fresh for [`YOUNG_TTL_S`]. After that, only an answer fetched after the
+    /// sounding settled is fresh, for up to [`SETTLED_TTL_S`]: a copy fetched while it was young
+    /// is fetched again online (and still served offline, marked stale).
     #[must_use]
-    pub fn source(&self) -> Source {
+    pub fn source(&self, now_s: u64) -> Source {
+        let settled_s = u64::try_from(self.time_unix_s)
+            .unwrap_or(0)
+            .saturating_add(SETTLE_S);
+        let ttl_s = if now_s < settled_s {
+            YOUNG_TTL_S
+        } else {
+            // Fresh when `now − fetched < now − settled`, that is, fetched after it settled.
+            (now_s - settled_s).min(SETTLED_TTL_S)
+        };
         Source {
             name: "University of Wyoming soundings".to_owned(),
             attribution: ATTRIBUTION.to_owned(),
-            ttl_s: TTL_S,
+            ttl_s,
         }
     }
 }
@@ -219,7 +267,8 @@ pub struct WyomingLevel {
     pub pressure_pa: f64,
     /// Geopotential height above sea level as recorded, geopotential m.
     pub geopotential_height_m: f64,
-    /// Geometric height above sea level, m (WMO-No. 8 eq. 12.16 at the station's latitude).
+    /// Geometric height above sea level, m (WMO-No. 8 eqs. 12.15 and 12.16 at the first row's
+    /// latitude).
     pub height_msl_m: f64,
     /// Temperature, K.
     pub temperature_k: f64,
@@ -238,10 +287,14 @@ pub enum DropReason {
     /// A value is missing: the pressure, height, temperature, humidity, or either half of the
     /// wind.
     NoData,
+    /// A value is out of range: a pressure or wind speed below zero, a temperature at or below
+    /// absolute zero, a relative humidity below zero, a direction outside 0° to 360°, or a height
+    /// with no geometric height.
+    OutOfRange,
+    /// Another row of its run with the same pressure (or the ground's pressure) was kept.
+    SamePressure,
     /// Its height is not above the last row kept, or its pressure not below it.
     NotAbove,
-    /// Its relative humidity is below zero.
-    Humidity,
 }
 
 /// A row left out of the profile, and why.
@@ -258,9 +311,10 @@ pub struct DroppedLevel {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WyomingSounding {
-    /// The station's latitude, degrees north, from the first row.
+    /// Where the balloon was released, degrees north, from the first row: the station, or the
+    /// sonde's own position at release in a BUFR file.
     pub latitude_deg: f64,
-    /// The station's longitude, degrees east, from the first row.
+    /// Where the balloon was released, degrees east, from the first row.
     pub longitude_deg: f64,
     /// When the balloon was released, seconds since the Unix epoch (UTC), from the first row.
     pub release_unix_s: i64,
@@ -276,11 +330,13 @@ impl WyomingSounding {
     /// # Errors
     /// - [`WyomingError::Missing`] when a column is absent (an answer that is not the archive's
     ///   text has no header to find), and [`WyomingError::Units`] when one is in another unit.
-    /// - [`WyomingError::Row`] when a row has the wrong number of fields, or a field is not a
-    ///   number (or, in the first row, the time is not a date).
+    /// - [`WyomingError::Row`] when the header has more than 64 columns or a column twice, a row
+    ///   has the wrong number of fields, or a field is not a number (or, in the first row, the
+    ///   time is not a date).
     /// - [`WyomingError::NoGround`] when there is no row, or the first is missing a value or has
-    ///   a relative humidity below zero.
-    /// - [`WyomingError::Atmos`] when a geopotential height has no geometric height.
+    ///   one out of range.
+    /// - [`WyomingError::NotRising`] when more than [`MAX_NOT_ABOVE`] rows lie below the row
+    ///   kept before them.
     pub fn parse(body: &[u8]) -> Result<Self, WyomingError> {
         let text = std::str::from_utf8(body).map_err(|_| WyomingError::Missing {
             field: "header".to_owned(),
@@ -292,10 +348,16 @@ impl WyomingSounding {
             .ok_or_else(|| WyomingError::Missing {
                 field: "header".to_owned(),
             })?;
-        let names: Vec<&str> = header.split(',').map(str::trim).collect();
+        let names: Vec<&str> = header.splitn(MAX_COLUMNS + 1, ',').map(str::trim).collect();
+        if names.len() > MAX_COLUMNS {
+            return Err(WyomingError::Row {
+                line: 1,
+                reason: format!("more than {MAX_COLUMNS} columns"),
+            });
+        }
         let mut index = [0_usize; COLUMNS.len()];
-        for (slot, &(_, name, unit)) in index.iter_mut().zip(&COLUMNS) {
-            *slot = find_column(&names, name, unit)?;
+        for &(column, name, unit) in &COLUMNS {
+            index[column as usize] = find_column(&names, name, unit)?;
         }
         let col = |column: Column| index[column as usize];
 
@@ -304,22 +366,22 @@ impl WyomingSounding {
             return Err(WyomingError::NoGround { line: 2 });
         };
         let fields = split_row(first_line, names.len(), first + 1)?;
-        let latitude_deg = number(&fields, col(Column::Latitude), first + 1, "latitude")?
-            .ok_or(WyomingError::NoGround { line: first + 1 })?;
-        let longitude_deg = number(&fields, col(Column::Longitude), first + 1, "longitude")?
-            .ok_or(WyomingError::NoGround { line: first + 1 })?;
-        let release_unix_s =
-            parse_time(fields[col(Column::Time)]).ok_or_else(|| WyomingError::Row {
-                line: first + 1,
-                reason: format!(
-                    "the time {:?} is not a date",
-                    cut(fields[col(Column::Time)])
-                ),
-            })?;
+        let position = |column, what| number(&fields, col(column), first + 1, what);
+        let (Some(latitude_deg), Some(longitude_deg)) = (
+            position(Column::Latitude, "latitude")?,
+            position(Column::Longitude, "longitude")?,
+        ) else {
+            return Err(WyomingError::NoGround { line: first + 1 });
+        };
+        let time = fields[col(Column::Time)];
+        let release_unix_s = parse_time(time).ok_or_else(|| WyomingError::Row {
+            line: first + 1,
+            reason: format!("the time {:?} is not a date", cut(time)),
+        })?;
         let latitude_rad = latitude_deg.to_radians();
 
-        let mut levels: Vec<WyomingLevel> = Vec::new();
-        let mut dropped = Vec::new();
+        // Every row read: its level, or why it has none.
+        let mut read: Vec<(usize, Result<WyomingLevel, DropReason>)> = Vec::new();
         for (i, line) in rows {
             let line_no = i + 1;
             let fields = split_row(line, names.len(), line_no)?;
@@ -332,50 +394,87 @@ impl WyomingSounding {
                 value(Column::Speed, "wind speed")?,
                 value(Column::Direction, "wind direction")?,
             );
-            let ground = levels.is_empty();
-            let drop = |reason| {
-                if ground {
-                    Err(WyomingError::NoGround { line: line_no })
-                } else {
-                    Ok(DroppedLevel {
-                        line: line_no,
-                        reason,
-                    })
+            let level = match values {
+                (Some(p), Some(z), Some(t), Some(rh), Some(speed), Some(direction)) => {
+                    level(p, z, t, rh, speed, direction, latitude_rad)
+                }
+                _ => Err(DropReason::NoData),
+            };
+            if read.is_empty() && level.is_err() {
+                return Err(WyomingError::NoGround { line: line_no });
+            }
+            read.push((line_no, level));
+        }
+        let Some((_, Ok(ground))) = read.first() else {
+            return Err(WyomingError::NoGround { line: first + 1 });
+        };
+        let ground = *ground;
+
+        // Pick the middle row of each run of complete rows with the same pressure; a run at the
+        // ground's pressure keeps none.
+        let mut choice: Vec<(usize, Result<WyomingLevel, DropReason>)> =
+            Vec::with_capacity(read.len());
+        let mut run: Vec<(usize, WyomingLevel)> = Vec::new();
+        let close =
+            |run: &mut Vec<(usize, WyomingLevel)>,
+             choice: &mut Vec<(usize, Result<WyomingLevel, DropReason>)>| {
+                let middle = run.len().saturating_sub(1) / 2;
+                let at_ground = run
+                    .first()
+                    .is_some_and(|r| r.1.pressure_pa == ground.pressure_pa);
+                for (k, (line, level)) in run.drain(..).enumerate() {
+                    let kept = k == middle && !at_ground;
+                    choice.push((
+                        line,
+                        if kept {
+                            Ok(level)
+                        } else {
+                            Err(DropReason::SamePressure)
+                        },
+                    ));
                 }
             };
-            let (
-                Some(pressure_hpa),
-                Some(geopotential_height_m),
-                Some(temperature_c),
-                Some(humidity_pct),
-                Some(wind_speed_m_s),
-                Some(direction_deg),
-            ) = values
-            else {
-                dropped.push(drop(DropReason::NoData)?);
-                continue;
+        for &(line, level) in &read[1..] {
+            match level {
+                Ok(level) => {
+                    if run
+                        .last()
+                        .is_some_and(|r| r.1.pressure_pa != level.pressure_pa)
+                    {
+                        close(&mut run, &mut choice);
+                    }
+                    run.push((line, level));
+                }
+                Err(reason) => choice.push((line, Err(reason))),
+            }
+        }
+        close(&mut run, &mut choice);
+        choice.sort_by_key(|c| c.0);
+
+        let mut levels = vec![ground];
+        let mut dropped = Vec::new();
+        let mut not_above = Vec::new();
+        for (line, level) in choice {
+            let reason = match level {
+                Ok(level) => {
+                    let below = levels[levels.len() - 1];
+                    if level.height_msl_m > below.height_msl_m
+                        && level.pressure_pa < below.pressure_pa
+                    {
+                        levels.push(level);
+                        continue;
+                    }
+                    not_above.push(line);
+                    DropReason::NotAbove
+                }
+                Err(reason) => reason,
             };
-            let height_msl_m =
-                geometric_from_wmo_geopotential_m(geopotential_height_m, latitude_rad)?;
-            let pressure_pa = pressure_hpa * 100.0;
-            if let Some(below) = levels.last()
-                && (height_msl_m <= below.height_msl_m || pressure_pa >= below.pressure_pa)
-            {
-                dropped.push(drop(DropReason::NotAbove)?);
-                continue;
-            }
-            if humidity_pct < 0.0 {
-                dropped.push(drop(DropReason::Humidity)?);
-                continue;
-            }
-            levels.push(WyomingLevel {
-                pressure_pa,
-                geopotential_height_m,
-                height_msl_m,
-                temperature_k: temperature_c + 273.15,
-                relative_humidity: humidity_pct / 100.0,
-                wind_speed_m_s,
-                wind_direction_from_rad: wrap_direction(direction_deg.to_radians()),
+            dropped.push(DroppedLevel { line, reason });
+        }
+        if not_above.len() > MAX_NOT_ABOVE {
+            return Err(WyomingError::NotRising {
+                line: not_above[0],
+                count: not_above.len(),
             });
         }
         Ok(Self {
@@ -391,8 +490,8 @@ impl WyomingSounding {
     /// temperature, relative humidity (above 100% taken as 100%) and wind.
     ///
     /// # Errors
-    /// What [`SoundingProfile::new`] refuses, such as a temperature at or below 0 K or a
-    /// negative wind speed.
+    /// What [`SoundingProfile::new`] refuses; the levels [`WyomingSounding::parse`] keeps pass
+    /// its checks, so this fails only for a sounding built or edited some other way.
     pub fn sounding(
         &self,
         wind_interpolation: WindInterpolation,
@@ -415,11 +514,13 @@ impl WyomingSounding {
 
 /// Fetches `request` through `client` and reads it.
 ///
-/// The answer comes from the client's cache while fresh ([`TTL_S`]); offline, from the cache
-/// only. The [`Fetched`] says which, carries [`ATTRIBUTION`] and holds the body. Only an answer
-/// that parses and makes a sounding is cached ([`Client::fetch_checked`]): one that doesn't never
-/// takes a good copy's place, and online a stale good copy is returned instead, with the reason.
-/// A sounding the archive doesn't have is an HTTP 404, which the transport reports.
+/// The answer comes from the client's cache while fresh ([`WyomingRequest::source`] at `now_s`,
+/// seconds since the Unix epoch); offline, from the cache only. The [`Fetched`] says which,
+/// carries [`ATTRIBUTION`] and holds the body. Only an answer that parses and makes a sounding is
+/// cached ([`Client::fetch_checked`]): one that doesn't never takes a good copy's place, and
+/// online a stale good copy is returned instead, with the reason. A sounding the archive doesn't
+/// have is an HTTP error (404; 400 for a BUFR file a station doesn't send), which the transport
+/// reports.
 ///
 /// # Errors
 /// [`WyomingError::Request`] for a bad request; [`WyomingError::Net`] when the fetch fails, or
@@ -439,7 +540,7 @@ pub fn fetch<T: Transport>(
             .map(drop)
             .map_err(|e| e.to_string())
     };
-    let fetched = client.fetch_checked(&request.source(), &url, now_s, check)?;
+    let fetched = client.fetch_checked(&request.source(now_s), &url, now_s, check)?;
     let sounding = WyomingSounding::parse(&fetched.body)?;
     Ok((sounding, fetched))
 }
@@ -453,7 +554,7 @@ pub enum WyomingError {
     Request {
         /// The field.
         what: &'static str,
-        /// Its value.
+        /// Its value, cut to 40 characters.
         value: String,
     },
     /// The fetch failed.
@@ -470,12 +571,12 @@ pub enum WyomingError {
     Units {
         /// The column.
         field: &'static str,
-        /// The unit it came in.
+        /// The unit it came in, cut to 40 characters.
         found: String,
         /// The unit required.
         expected: &'static str,
     },
-    /// A row can't be read.
+    /// A line can't be read.
     #[error("line {line} of the Wyoming answer: {reason}")]
     Row {
         /// The line, counting the header as line 1.
@@ -483,18 +584,26 @@ pub enum WyomingError {
         /// What is wrong with it.
         reason: String,
     },
-    /// There is no ground: no row, or a first row missing a value or with a negative humidity.
+    /// There is no ground: no row, or a first row missing a value or with one out of range.
     #[error("the Wyoming answer has no usable ground level (line {line})")]
     NoGround {
         /// The line of the first row, counting the header as line 1.
         line: usize,
     },
-    /// A height or level was refused by the atmosphere.
-    #[error(transparent)]
-    Atmos(#[from] AtmosError),
+    /// Too many rows lie below the row kept before them: a bad row was likely kept.
+    #[error(
+        "the Wyoming answer stops rising at line {line}: {count} rows lie below the row kept \
+         before them"
+    )]
+    NotRising {
+        /// The first such row's line, counting the header as line 1.
+        line: usize,
+        /// How many there are.
+        count: usize,
+    },
 }
 
-/// A column the parser reads, as an index into [`COLUMNS`].
+/// A column the parser reads, as an index into the parser's table of column positions.
 #[derive(Clone, Copy)]
 enum Column {
     Time,
@@ -508,37 +617,85 @@ enum Column {
     Speed,
 }
 
-/// The index of the column `name` (a header is `name_unit`, or `name` alone), checking its unit.
-fn find_column(
-    names: &[&str],
-    name: &'static str,
-    unit: &'static str,
-) -> Result<usize, WyomingError> {
-    for (i, header) in names.iter().enumerate() {
-        let (found_name, found_unit) = header.rsplit_once('_').unwrap_or((header, ""));
-        if found_name == name {
-            if found_unit != unit {
-                return Err(WyomingError::Units {
-                    field: name,
-                    found: cut(found_unit),
-                    expected: unit,
-                });
-            }
-            return Ok(i);
-        }
+/// A row's values as a level, or why they make none.
+fn level(
+    pressure_hpa: f64,
+    geopotential_height_m: f64,
+    temperature_c: f64,
+    humidity_pct: f64,
+    wind_speed_m_s: f64,
+    direction_deg: f64,
+    latitude_rad: f64,
+) -> Result<WyomingLevel, DropReason> {
+    let temperature_k = temperature_c + 273.15;
+    if pressure_hpa <= 0.0
+        || temperature_k <= 0.0
+        || humidity_pct < 0.0
+        || wind_speed_m_s < 0.0
+        || !(0.0..=360.0).contains(&direction_deg)
+    {
+        return Err(DropReason::OutOfRange);
     }
-    Err(WyomingError::Missing {
-        field: name.to_owned(),
+    let height_msl_m = geometric_from_wmo_geopotential_m(geopotential_height_m, latitude_rad)
+        .map_err(|_| DropReason::OutOfRange)?;
+    Ok(WyomingLevel {
+        pressure_pa: pressure_hpa * 100.0,
+        geopotential_height_m,
+        height_msl_m,
+        temperature_k,
+        relative_humidity: humidity_pct / 100.0,
+        wind_speed_m_s,
+        wind_direction_from_rad: wrap_direction(direction_deg.to_radians()),
     })
 }
 
-/// A row's fields, which must number as many as the header's.
+/// The index of the column `name` (a header is `name_unit`, or `name` alone), checking its unit
+/// and that it appears once.
+fn find_column<'a>(
+    names: &[&'a str],
+    name: &'static str,
+    unit: &'static str,
+) -> Result<usize, WyomingError> {
+    let split = |header: &'a str| header.rsplit_once('_').unwrap_or((header, ""));
+    let mut found = names
+        .iter()
+        .enumerate()
+        .filter(|(_, header)| split(header).0 == name);
+    let Some((i, header)) = found.next() else {
+        return Err(WyomingError::Missing {
+            field: name.to_owned(),
+        });
+    };
+    if found.next().is_some() {
+        return Err(WyomingError::Row {
+            line: 1,
+            reason: format!("two {name} columns"),
+        });
+    }
+    let found_unit = split(header).1;
+    if found_unit != unit {
+        return Err(WyomingError::Units {
+            field: name,
+            found: cut(found_unit),
+            expected: unit,
+        });
+    }
+    Ok(i)
+}
+
+/// A row's fields, which must number as many as the header's. At most one more than that is
+/// split off, so a hostile row costs no more than a good one.
 fn split_row(line: &str, columns: usize, line_no: usize) -> Result<Vec<&str>, WyomingError> {
-    let fields: Vec<&str> = line.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = line.splitn(columns + 1, ',').map(str::trim).collect();
     if fields.len() != columns {
+        let found = if fields.len() > columns {
+            format!("more than {columns}")
+        } else {
+            fields.len().to_string()
+        };
         return Err(WyomingError::Row {
             line: line_no,
-            reason: format!("{} fields, not {columns}", fields.len()),
+            reason: format!("{found} fields, not {columns}"),
         });
     }
     Ok(fields)
@@ -611,14 +768,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn url_names_the_hour_station_and_source() -> Result<(), WyomingError> {
+    fn url_names_the_hour_station_and_version() -> Result<(), WyomingError> {
         let mut request = WyomingRequest::new("72364", 1_750_507_200);
         assert_eq!(
             request.url()?,
             "https://weather.uwyo.edu/wsgi/sounding?datetime=2025-06-21%2012:00:00&id=72364\
              &type=TEXT:CSV&src=FM35"
         );
-        request.source = WyomingSource::Bufr;
+        request.version = WyomingVersion::Bufr;
         request.endpoint = Some("http://127.0.0.1:8080/s".to_owned());
         assert_eq!(
             request.url()?,
@@ -640,8 +797,20 @@ mod tests {
         for station in ["", "72 364", "72364&x=1", "Ω", "12345678901234567"] {
             bad(WyomingRequest::new(station, at), "station");
         }
-        for time in [at + 1, at + 1_800, -HOUR_S, YEAR_10000_S, i64::MAX] {
-            bad(WyomingRequest::new("72364", time), "time");
+        for time in [
+            at + 1,
+            at + 1_800,
+            -HOUR_S,
+            YEAR_10000_S,
+            i64::MAX,
+            i64::MIN,
+        ] {
+            bad(WyomingRequest::new("72364", time), "time (s since 1970)");
+        }
+        for endpoint in ["", "https://proxy/s?key=abc", "https://proxy/s#top"] {
+            let mut request = WyomingRequest::new("72364", at);
+            request.endpoint = Some(endpoint.to_owned());
+            bad(request, "endpoint");
         }
         assert!(WyomingRequest::new("1234567890123456", at).url().is_ok());
         assert!(
@@ -665,6 +834,11 @@ mod tests {
                 WyomingRequest::latest_before("72364", launch).time_unix_s,
                 expected
             );
+        }
+        // The extremes saturate rather than overflow, and the URL refuses them.
+        for launch in [i64::MIN, i64::MAX] {
+            let request = WyomingRequest::latest_before("72364", launch);
+            assert!(request.url().is_err(), "{request:?}");
         }
     }
 
@@ -699,13 +873,26 @@ mod tests {
         assert!(long.ends_with('…'));
     }
 
+    /// Young, an answer is fresh for an hour; settled, only one fetched after it settled, for up
+    /// to 30 days.
     #[test]
-    fn source_keeps_a_sounding_a_day() {
-        let source = WyomingRequest::new("72364", 0).source();
+    fn freshness_follows_the_soundings_age() {
+        let noon = 1_750_507_200_u64;
+        let request = WyomingRequest::new("72364", 1_750_507_200);
+        let source = request.source(noon + 3_600);
         assert_eq!(
             (source.ttl_s, source.attribution.as_str()),
-            (TTL_S, ATTRIBUTION)
+            (YOUNG_TTL_S, ATTRIBUTION)
         );
-        assert_eq!(TTL_S, 86_400);
+        let settled = noon + SETTLE_S;
+        assert_eq!(request.source(settled - 1).ttl_s, YOUNG_TTL_S);
+        assert_eq!(request.source(settled).ttl_s, 0);
+        assert_eq!(request.source(settled + 7_200).ttl_s, 7_200);
+        assert_eq!(request.source(settled + 365 * 86_400).ttl_s, SETTLED_TTL_S);
+        // A request before 1970, which `url` refuses, still has a source.
+        assert_eq!(
+            WyomingRequest::new("72364", -1).source(0).ttl_s,
+            YOUNG_TTL_S
+        );
     }
 }

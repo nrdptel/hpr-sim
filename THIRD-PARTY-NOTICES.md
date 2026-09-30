@@ -97,8 +97,10 @@ adds a source.
   2025, 12 UTC. The archive states no terms of use (checked 2026-09-30). The soundings are
   observations by the U.S. National Weather Service, a work of the United States government,
   which is not subject to copyright in the United States (17 U.S.C. § 105), and weather services
-  exchange them freely under WMO Resolution 40. Only soundings from U.S. stations are committed
-  (ADR-120). The example `crates/hpr/examples/wyoming_sounding.rs` reads the Santa Teresa pair.
+  exchange them freely under WMO Resolution 40; Unidata's `siphon` (BSD-3-Clause) likewise
+  commits recorded answers from this archive as test fixtures. Only soundings from U.S. stations
+  are committed
+  ([ADR-120](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30)). The example `crates/hpr/examples/wyoming_sounding.rs` reads the Santa Teresa pair.
   `hpr_net::wyoming` also fetches soundings at run time, when a program asks, and caches them on
   the user's disk; each carries a credit to the archive for the program to show.
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
