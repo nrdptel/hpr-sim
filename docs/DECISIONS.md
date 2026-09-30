@@ -9885,16 +9885,18 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    and 12.18; `T_v` from the humidity, dry without one, the vapour's share of the pressure capped
    at 1 so hostile input can't make it infinite), within 5% of it plus what rounding the two
    pressures can move it (half of 1 hPa for a pressure of 100 hPa or more in an answer whose
-   pressures there are all whole, a coded message's; else half of 0.1 hPa) plus 30 m. The rows
-   that fit are the longest chain from the ground in which each row fits the one before it,
-   skipping at most 10 rows at a time; of chains equally long, the one whose misses, as shares of
+   pressures there are all whole, a coded message's; else half of 0.1 hPa) plus 30 m. Rows are
+   kept from the longest chain from the ground in which each row fits the one before it,
+   skipping at most 10 rows with a temperature at a time; of chains equally long, the one whose misses, as shares of
    their allowances, sum least. It is found by dynamic programming over the 11 rows before each,
    so it is linear in the rows. A row missing only its wind or humidity can be in the chain, so a
    gap in the wind keeps the checked layers thin. A row not in the chain is dropped
    (`Thickness`). Nothing before the ground checks it, so a chain starting at one of the 11 rows
-   after it that beats every chain from it (longer, or as long with a smaller sum) refuses the
-   answer (`GroundMisfit`); bad rows after a good ground that agree with each other are passed by,
-   and a ground with one row after it goes unchecked. Of each run of complete rows in the chain
+   with a temperature after it that beats every chain from it (longer, or as long with a smaller
+   sum) refuses the answer (`GroundMisfit`). In the tests, up to three bad rows after a good
+   ground, or up to 10 grossly off, are passed by; four or more that fit the rows above them, or 11 that fit each
+   other, outnumber it and refuse the answer too, since counting can't tell them from a bad
+   ground. A ground with one row after it goes unchecked. Of each run of complete rows in the chain
    with the same pressure the middle one is a candidate
    (`SamePressure` for the rest; none at the ground's pressure): BUFR's pressures, to 0.1 hPa,
    repeat on 1,931 of 5,851 rows, and the rounded value is the pressure at about the middle of its
@@ -9906,7 +9908,8 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    ratio), so the 30 m and 5% are margin: 30 m for heights rounded to 10 m (the coded message's,
    from 500 hPa up), and because a height 30 m off misplaces a level by as much as a 0.33% to 0.55%
    pressure error; 5%, a judgment rather than a measurement, for layers whose inner rows lack a
-   temperature. A bad row (57 hPa for 557, 18.6 km off, or a height 850 m off) is dropped instead of
+   temperature. A bad row (57 hPa for 557, which would have to be 18.6 km above the row before it, or a height
+   850 m off) is dropped instead of
    kept to hide the good rows after it, and rows that fall or stay at one height fit and are dropped
    as `NotAbove`, however many. More than 10 rows after the chain's end refuse the answer
    (`Misfit`): the chain's end or all of them are wrong, or a long run of rows with no temperature
@@ -9925,13 +9928,13 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    BUFR run of ten good rows for two bad ones (the physics and code reviews). The longest chain
    replaces them all. Moving one row, or a block of two or three, of the coded messages by 20 to
    100 m refuses nothing and loses at most 2 other levels; in the BUFR file, sampled every 150th
-   row plus the worst rows a sweep of every row found, at most 8 other rows for one row and 10
-   for three. Not caught: a wrong wind, humidity or temperature (the check doesn't use the wind,
+   row (for the test's run time) plus the worst rows a sweep of every row found, at most 8 other
+   rows for one row and 10 for a block. Not caught: a wrong wind, humidity or temperature (the check doesn't use the wind,
    humidity moves it a few percent, and on layers under about 100 m any temperature within the
    bounds fits), a height error within the allowance (50 m on the coded message's 557 to 549 hPa
    layer), a pressure and height both wrong yet fitting, a ground within its first layer's
-   allowance, and bad rows within the allowance of their neighbours, which can be kept while a good
-   row is passed by (683 and 673 hPa raised 50 m leave out 664 hPa). `hpr-net` now
+   allowance, and bad rows within the allowance of their neighbours, which can be kept while up to
+   one fewer good rows are passed by (683 and 673 hPa raised 50 m leave out 664 hPa). `hpr-net` now
    depends on `hpr-core` for standard gravity: it is pure, `hpr-atmos` already uses it, and no
    third-party crate is added. More than 100,000 rows are refused as they are read, which bounds the
    memory a hostile answer costs. A relative humidity above 100% is kept as recorded and clamped to

@@ -19,7 +19,7 @@ instead of a forecast ([Launch-day weather](weather.md)) or the
   100 km or more from a launch site (Santa Teresa, below, is about 130 km from Spaceport
   America), and the balloon goes up hours before or after the flight. Nothing here measures how
   much that changes a flight.
-- Each row's height is checked against the layer below it, which catches a gross error in a
+- Each row's height is checked against the row before it, which catches a gross error in a
   pressure or height (57 hPa recorded for 557). More than 10 bad rows in a row refuse the answer,
   and so does a ground that the rows after it agree is wrong. A wrong wind, humidity or
   temperature is not caught: on layers under about 100 m thick the check allows any temperature
@@ -123,7 +123,7 @@ elsewhere. For example, from the coded message's row at 557 hPa to the next at 5
 | recorded | 5,151 m − 5,035 m = 116 m, a miss of 0.9 m |
 | allowance | 5.8 m (5%) + 14.4 m (rounding each pressure by 0.5 hPa) + 30 m = 50.1 m |
 
-**The rows kept form a chain.** hpr looks for the longest *chain* of rows from the ground in
+**Rows are kept from a chain.** hpr looks for the longest *chain* of rows from the ground in
 which each row fits the one before it in the chain. The chain may pass by up to 10 rows at a
 time, and the rows it passes by are left out. Of two chains equally long, it takes the one whose
 layers fit more closely: the smaller total of each layer's miss as a share of its allowance (a
@@ -136,7 +136,8 @@ above the row before it, at 570 hPa, not 183 m, so it doesn't fit: the chain pas
 570 hPa to 549 hPa, and it is left out. Two or three bad rows that fit each other are passed by
 the same way, since a chain through them would have to pass by more good rows. A row with no wind
 or humidity is left out of the profile but can still be in the chain, so the next row is checked
-across a thin layer, not a thick one.
+across a thin layer, not a thick one. A row with no temperature can't be checked: the chain steps
+over it without counting it, and it is left out as missing a value.
 
 In the three recordings every row fits the one before it, missing by at most 1 m beyond rounding. So the 30 m and
 the 5% are margin, and the check is for gross errors, not small ones:
@@ -176,8 +177,10 @@ The profile lists every row it left out, and why. Two things refuse the answer:
 - **A ground the rows after it disagree with.** No row before the ground checks it, so hpr also
   looks for chains that start after it, at one of the next 11 rows with a temperature. If one of
   them beats every chain from the ground (it is longer, or as long and fits more closely), the
-  ground is taken as wrong. When the rows right after a good ground are bad and agree with each
-  other, the chain from the ground still wins: it passes them by.
+  ground is taken as wrong. In the tests, bad rows right after a good ground are passed by when
+  there are at most 3, or at most 10 that are grossly off. Four or more that miss the ground but fit the rows
+  above them, within the allowance, outnumber it; so do 11 or more that fit each other, however
+  far off. hpr can't tell those from a bad ground, and refuses the answer.
 - **More than 10 rows after the chain's end.** The chain can pass by only 10 rows at a time, so
   11 bad rows in a row end it. hpr takes that to mean the chain's end is wrong, or all of them are
   (a block of heights 1 km off). A long run of rows with no temperature can also refuse the
@@ -318,19 +321,21 @@ network.
   - A bad row after which the balloon bursts and falls back.
   - A row whose vapour pressure would exceed the air's pressure (16 hPa at 30 °C, saturated).
   - A row that only just fits the row before it, alone: 854 hPa 50 m low, 101 hPa 95 m high, and
-    a BUFR row at 112.8 hPa 35 m high. The next row misses it, and a chain through it is no longer
-    and fits less closely. The rows before and after it are kept.
+    a BUFR row at 112.8 hPa 35 m high. The next row misses it, and a chain through it is not
+    longer and fits less closely. The rows before and after it are kept.
   - A row that misses the good row before it but only just fits the one below that, alone:
-    808 hPa raised 50 m, and a BUFR row at 244.2 hPa raised 35 m.
+    808 hPa raised 50 m, and a BUFR row at 244.2 hPa raised 35 m. A chain could skip the good
+    row to reach it, but the chain through the good row is longer.
   - A BUFR row at 150.6 hPa raised 50 m, whose pressure is rounded to 0.1 hPa. In the coded
     message, 549 hPa raised 45 m fits within its pressures' 1 hPa rounding and is kept.
-  - Blocks of bad rows that fit each other, and not the good rows beside them: 820 and 808 hPa
-    raised 50 m; 101, 100 and 99 hPa raised 100 m; BUFR rows at 112.8 and 112.7 hPa raised 50 m;
-    and two BUFR rows lowered 50 m at 13.9 hPa, and 60 m at 10.1 hPa, in runs of one pressure.
+  - Blocks of bad rows that fit each other but not the good rows beside them, which are kept:
+    820 and 808 hPa raised 50 m; 101, 100 and 99 hPa raised 100 m; BUFR rows at 112.8 and
+    112.7 hPa raised 50 m; and two BUFR rows at 13.9 hPa lowered 50 m, and two at 10.1 hPa
+    lowered 60 m, each inside a run sharing one pressure.
   - The two or three rows after the ground raised 850 m; the ground and the rest are kept.
   - A row inserted at 870 hPa recorded 65 m above the ground, where the air's thickness puts it
-    about 20 m up. It misses the ground, but the next row fits the ground, so the row is left out
-    and the answer is not refused.
+    about 20 m up. It misses the ground, but the next row fits the ground, and a chain starting
+    at the inserted row fits less closely: the row is left out and the answer is not refused.
 - Rows kept or left out as they fit:
   - With no wind, or no humidity, from 250 to 55 hPa (73 rows), every row after the gap fits and
     is kept. Checked across the gap instead, the next row would not fit.
@@ -348,12 +353,17 @@ network.
     or at 80 °C, fits the first layer (186 m thick) and is kept with every row. With only one row
     after a bad ground, the ground is kept and the row left out. A row with no temperature right
     after a bad ground isn't counted: the refusal names the row after it.
+  - Four rows after a good ground lowered 35 m in the BUFR file, or raised 50 m in the coded
+    message, and 11 rows raised 1 km: they outnumber the ground. Ten rows raised 1 km are passed
+    by. A chain without the ground may start only at the 11 rows after it: after 11 rows that fit
+    nothing, the answer is refused for the gap.
 - A row raised within its allowance is kept, and leaves out the good rows just above it, which
-  now lie below it. Moving one row, or a block of two or three, of the coded messages up or down
-  by 20 to 100 m refuses no answer and loses at most 2 other levels. In the BUFR file, sampled at
-  every 150th row and at the rows where a sweep of every row (run once, not in the tests) found
-  the worst, it loses at most 8 other rows for one row raised 35 m, and 10, about 50 m of the
-  climb, for three. Lowering one row, or changing its pressure by 3%, loses no other.
+  now lie below it. Raising one row, or a block of two or three, by 20, 35, 50 or 100 m, or
+  lowering it by 50 or 100 m, refuses no answer. It loses at most 2 other levels of a coded
+  message. In the BUFR file, sampled at every 150th row (to keep the test under a minute) and at
+  the rows where a sweep of every row (run once, not in the tests) found the worst, it loses at
+  most 8 other rows for one row and 10, about 50 m of the climb, for a block. Lowering one row, or
+  changing its pressure by 3%, loses no other.
 - Values just past the bounds above are left out. Unit tests keep values at each bound; at the top
   row, temperatures of −150 and 80 °C and a wind of 300 m/s are kept and make a profile.
 - The request's address is the one recorded, so a replayed answer fills the cache. A second
@@ -383,12 +393,16 @@ network.
   - A row whose pressure and height are both wrong yet fit each other.
   - A wrong ground that fits the row after it (in the coded message, 40 m high, or 80 °C
     instead of 28.4 °C), or has only one row after it.
-  - Bad rows that fit their neighbours: a block of them can be kept while a good row between
-    them and the rest is passed by. In the coded message, 683 and 673 hPa both raised 50 m are
+  - Bad rows that fit their neighbours: a block of them can be kept, and up to one fewer good rows
+    beside them passed by instead. In the coded message, 683 and 673 hPa both raised 50 m are
     kept, and 664 hPa is left out. High in a BUFR file, where rounding the pressure to 0.1 hPa
-    widens the allowance, a block lowered 50 m can be kept the same way.
-- A row kept a little too high leaves out the good rows just above it: in the tests, at most 2
-  other levels of a coded message and 10 other rows of a BUFR file.
+    widens the allowance, four rows at 13.9 hPa lowered 50 m are kept, and the two good rows at
+    14.0 hPa before them are left out.
+- A good ground followed by four or more bad rows that fit the rows above them is refused, as if
+  the ground were wrong.
+- A row, or a short block, kept a little too high leaves out the good rows just above it: in the
+  tests, at most 2 other levels of a coded message and 10 other rows of a BUFR file (8 for one
+  row).
 - Only the archive's comma-separated text is read, not its other formats, and there is no list
   of stations to search by place.
 - Its terms of use are not stated; only soundings from U.S. stations, which are U.S. government
