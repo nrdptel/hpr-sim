@@ -9732,9 +9732,16 @@ and `cargo deny` passes. The architecture names `ureq` or `reqwest` with rustls 
    ring provider and Mozilla's roots compiled in (`webpki-roots`, CDLA-Permissive-2.0, already
    allowed by ADR-001's list), so no OpenSSL and no platform certificate store; ring compiles its
    own C and assembly with the platform's C compiler, which CI's three runners have. `ureq`'s defaults
-   stay: ten redirects, the proxy from `ALL_PROXY`/`HTTPS_PROXY`/`HTTP_PROXY` and `NO_PROXY`, a
-   non-2xx status as an error. A 60 s timeout covers the whole request. The `User-Agent` names
-   hpr-sim, its version and the repository, so providers can tell who calls.
+   stay for redirects (ten) and the proxy (the first of `ALL_PROXY`, `HTTPS_PROXY`, `HTTP_PROXY`,
+   for every URL, bar `NO_PROXY`). Three are tightened, each pinned by a test: any status but 2xx
+   fails (`ureq` fails only 4xx and 5xx, so a 304 read as an empty body that the cache would keep
+   for a TTL); a SOCKS proxy from the environment is refused, where `ureq` without its
+   `socks-proxy` feature warns and connects directly; and the timeout is capped at 30 days, since
+   `Duration::MAX`, the usual "no limit", overflowed `Instant` and panicked on the first request.
+   A 60 s timeout covers the whole request. The `User-Agent` names hpr-sim, its version and the
+   repository, so providers can tell who calls. Settings live in a `#[non_exhaustive]`
+   `HttpConfig` (timeout, body limit, whether to read the proxy from the environment), so later
+   knobs add fields, not constructors; the tests turn the environment's proxy off.
 2. The body limit (64 MiB by default) counts **unpacked** bytes and is inclusive. `ureq`'s own
    limit sits inside its gzip decoder, so it counts bytes on the wire, and a kilobyte of gzip can
    unpack to gigabytes; it also refuses a body of exactly the limit. `Http` reads the unpacked
@@ -9748,7 +9755,11 @@ and `cargo deny` passes. The architecture names `ureq` or `reqwest` with rustls 
    XDG Base Directory Specification) or `$HOME/.cache/hpr-sim` elsewhere. `HPR_CACHE_DIR`
    overrides all three. `None` when nothing is set; the caller then names a folder.
 4. The loopback test serves `tests/fixtures/replay`'s recording at its path and query, from a
-   thread on `127.0.0.1` in the test itself: no fixture server dependency, no network.
+   thread on `127.0.0.1` in the test itself: no fixture server dependency, no network. A dropped
+   connection is a route that hangs up, not a port freed and reused, which another test could take.
+5. `Transport::get` keeps its `String` error. Telling a 404 (don't retry) from a 503 or a timeout
+   (retry later) matters once a source retries, and nothing retries yet; the trait can change then,
+   before any release.
 
 **Consequences.** The first network dependency: `ureq` brings 26 crates on macOS, all permissive;
 `cargo deny` passes, with a second `base64` (0.23 beside our 0.22) as a duplicate warning only.

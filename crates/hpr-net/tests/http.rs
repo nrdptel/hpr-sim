@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use hpr_net::{Cache, Client, Freshness, Http, Mode, NetError, Source};
+use hpr_net::{Cache, Client, Freshness, Http, HttpConfig, Mode, NetError, Source};
 
 /// The path and query the fixture was recorded at, on whatever host serves it.
 const RECORDED: &str = "/forecast?lat=32.99&lon=-106.97";
@@ -46,8 +46,9 @@ fn recorded_body() -> Vec<u8> {
 /// A one-thread HTTP/1.1 server on 127.0.0.1 that answers from the recorded fixture's index.
 ///
 /// Each recorded URL is served at its path and query. `/moved` redirects to the recording,
-/// `/gzip` serves it gzip-compressed, `/zeros` serves a megabyte of zeros gzipped, `/stall` never
-/// answers, and anything else is a 404. Every request's head is kept, so a test can count requests
+/// `/gzip` serves it gzip-compressed, `/zeros` serves a megabyte of zeros gzipped, `/not-modified`
+/// answers 304 with no body, `/hangup` closes the connection unanswered, `/stall` holds it
+/// unanswered, and anything else is a 404. Every request's head is kept, so a test can count requests
 /// and read their headers.
 struct Server {
     addr: SocketAddr,
@@ -120,6 +121,8 @@ fn answer(mut stream: TcpStream, routes: &BTreeMap<String, Vec<u8>>, seen: &Mute
             "Content-Encoding: gzip\r\n".to_owned(),
             zeros_gzipped(),
         ),
+        "/not-modified" => ("304 Not Modified", String::new(), Vec::new()),
+        "/hangup" => return,
         "/stall" => {
             // Hold the connection open without answering, past any timeout a test sets.
             std::thread::sleep(Duration::from_secs(10));
@@ -147,8 +150,28 @@ fn zeros_gzipped() -> Vec<u8> {
     gz.finish().unwrap()
 }
 
+/// The default configuration with the proxy turned off: the server is on this machine, and a
+/// proxy the environment names must not stand between them.
+fn local() -> HttpConfig {
+    let mut config = HttpConfig::default();
+    config.proxy_from_env = false;
+    config
+}
+
+fn client(config: HttpConfig, dir: &Path) -> Client<Http> {
+    Client::new(Http::with_config(config), Cache::new(dir), Mode::Online)
+}
+
 fn online(dir: &Path) -> Client<Http> {
-    Client::new(Http::new(), Cache::new(dir), Mode::Online)
+    client(local(), dir)
+}
+
+/// The transport's reason for a failed fetch.
+fn failure(result: Result<hpr_net::Fetched, NetError>) -> String {
+    match result {
+        Err(NetError::Transport { reason, .. }) => reason,
+        other => panic!("expected a transport error, got {other:?}"),
+    }
 }
 
 #[test]
@@ -176,7 +199,11 @@ fn a_loopback_fetch_fills_the_cache_and_offline_reads_it_back() {
 
     // Offline, with a real HTTP transport and the server still up: thirty days on the copy comes
     // back stale, an uncached URL is refused, and neither reaches the server.
-    let offline = Client::new(Http::new(), Cache::new(dir.path()), Mode::Offline);
+    let offline = Client::new(
+        Http::with_config(local()),
+        Cache::new(dir.path()),
+        Mode::Offline,
+    );
     let stale = offline.fetch(&source(), &url, 1_000 + 30 * DAY_S).unwrap();
     assert_eq!(
         (stale.freshness, stale.body, stale.fetched_at_s),
@@ -200,10 +227,7 @@ fn requests_name_hpr_sim_and_accept_gzip() {
     // The body arrives unpacked, and is cached unpacked.
     assert_eq!(fetched.body, recorded_body());
     let head = server.requests.lock().unwrap()[0].to_ascii_lowercase();
-    let user_agent = format!(
-        "user-agent: {}\r\n",
-        Http::user_agent().to_ascii_lowercase()
-    );
+    let user_agent = format!("user-agent: {}\r\n", Http::USER_AGENT.to_ascii_lowercase());
     assert!(head.contains(&user_agent), "{head}");
     assert!(head.contains("accept-encoding: gzip"), "{head}");
 }
@@ -239,32 +263,31 @@ fn an_error_status_is_a_transport_error_and_caches_nothing() {
 }
 
 #[test]
+fn a_304_is_a_failed_fetch_not_an_empty_body() {
+    let server = Server::start();
+    let dir = tempfile::tempdir().unwrap();
+    let url = server.url("/not-modified");
+    let reason = failure(online(dir.path()).fetch(&source(), &url, 1_000));
+    assert!(reason.contains("304"), "{reason}");
+    assert_eq!(Cache::new(dir.path()).get(&url).unwrap(), None);
+}
+
+#[test]
 fn a_body_past_the_limit_is_refused_and_caches_nothing() {
     let server = Server::start();
     let dir = tempfile::tempdir().unwrap();
     let url = server.url(RECORDED);
-    let limit = recorded_body().len() as u64 - 1;
-    let client = Client::new(
-        Http::with_limits(Http::DEFAULT_TIMEOUT, limit),
-        Cache::new(dir.path()),
-        Mode::Online,
-    );
-    assert!(matches!(
-        client.fetch(&source(), &url, 1_000),
-        Err(NetError::Transport { .. })
-    ));
+    let mut config = local();
+    config.max_body_bytes = recorded_body().len() as u64 - 1;
+    let reason = failure(client(config.clone(), dir.path()).fetch(&source(), &url, 1_000));
+    let refusal = format!("longer than the {} bytes allowed", config.max_body_bytes);
+    assert!(reason.contains(&refusal), "{reason}");
     assert_eq!(Cache::new(dir.path()).get(&url).unwrap(), None);
 
     // One byte more and the same body fits.
-    let client = Client::new(
-        Http::with_limits(Http::DEFAULT_TIMEOUT, limit + 1),
-        Cache::new(dir.path()),
-        Mode::Online,
-    );
-    assert_eq!(
-        client.fetch(&source(), &url, 1_000).unwrap().body,
-        recorded_body()
-    );
+    config.max_body_bytes += 1;
+    let fetched = client(config, dir.path()).fetch(&source(), &url, 1_000);
+    assert_eq!(fetched.unwrap().body, recorded_body());
 }
 
 #[test]
@@ -273,15 +296,13 @@ fn the_limit_is_on_the_unpacked_body() {
     let dir = tempfile::tempdir().unwrap();
     // The megabyte of zeros is under 64 KiB on the wire, but not once unpacked.
     assert!(zeros_gzipped().len() < 64 * 1024);
-    let client = Client::new(
-        Http::with_limits(Http::DEFAULT_TIMEOUT, 64 * 1024),
-        Cache::new(dir.path()),
-        Mode::Online,
+    let mut config = local();
+    config.max_body_bytes = 64 * 1024;
+    let reason = failure(client(config, dir.path()).fetch(&source(), &server.url("/zeros"), 1_000));
+    assert!(
+        reason.contains("longer than the 65536 bytes allowed"),
+        "{reason}"
     );
-    match client.fetch(&source(), &server.url("/zeros"), 1_000) {
-        Err(NetError::Transport { reason, .. }) => assert!(reason.contains("65536"), "{reason}"),
-        other => panic!("expected the limit to refuse the body, got {other:?}"),
-    }
     let whole = online(dir.path())
         .fetch(&source(), &server.url("/zeros"), 1_000)
         .unwrap();
@@ -292,33 +313,31 @@ fn the_limit_is_on_the_unpacked_body() {
 fn a_server_that_never_answers_times_out() {
     let server = Server::start();
     let dir = tempfile::tempdir().unwrap();
-    let client = Client::new(
-        Http::with_limits(Duration::from_millis(300), Http::DEFAULT_MAX_BODY_BYTES),
-        Cache::new(dir.path()),
-        Mode::Online,
-    );
+    let mut config = local();
+    config.timeout = Duration::from_millis(300);
     let started = std::time::Instant::now();
-    assert!(matches!(
-        client.fetch(&source(), &server.url("/stall"), 1_000),
-        Err(NetError::Transport { .. })
-    ));
+    let reason = failure(client(config, dir.path()).fetch(&source(), &server.url("/stall"), 1_000));
+    assert!(reason.contains("timeout"), "{reason}");
     // Well short of the server's ten-second stall: the timeout, not the server, ended it.
-    assert!(
-        started.elapsed() < Duration::from_secs(5),
-        "{:?}",
-        started.elapsed()
-    );
+    let elapsed = started.elapsed();
+    assert!(elapsed < Duration::from_secs(5), "{elapsed:?}");
 }
 
 #[test]
-fn with_the_server_gone_a_stale_copy_comes_back_with_the_reason() {
-    // A port that was just free: bind, note it, close it.
-    let addr = TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap();
+fn a_timeout_of_duration_max_means_none_and_does_not_overflow() {
+    let server = Server::start();
     let dir = tempfile::tempdir().unwrap();
-    let url = format!("http://{addr}{RECORDED}");
+    let mut config = local();
+    config.timeout = Duration::MAX;
+    let fetched = client(config, dir.path()).fetch(&source(), &server.url(RECORDED), 1_000);
+    assert_eq!(fetched.unwrap().body, recorded_body());
+}
+
+#[test]
+fn when_the_server_hangs_up_a_stale_copy_comes_back_with_the_reason() {
+    let server = Server::start();
+    let dir = tempfile::tempdir().unwrap();
+    let url = server.url("/hangup");
     Cache::new(dir.path())
         .put(&url, &recorded_body(), 1_000)
         .unwrap();
@@ -332,9 +351,7 @@ fn with_the_server_gone_a_stale_copy_comes_back_with_the_reason() {
     );
     assert!(stale.stale_reason.is_some());
 
-    let uncached = format!("http://{addr}/forecast?lat=0&lon=0");
-    assert!(matches!(
-        online(dir.path()).fetch(&source(), &uncached, 1_000),
-        Err(NetError::Transport { .. })
-    ));
+    // With no copy to fall back on, the failure itself comes through.
+    let other = tempfile::tempdir().unwrap();
+    failure(online(other.path()).fetch(&source(), &url, 1_000));
 }

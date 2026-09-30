@@ -56,7 +56,7 @@ mod http;
 pub use cache::{Cache, CacheEntry};
 pub use client::{Client, Fetched, Freshness, Mode, Replay, Source, Transport};
 #[cfg(feature = "http")]
-pub use http::Http;
+pub use http::{Http, HttpConfig};
 
 /// Why a fetch failed.
 #[non_exhaustive]

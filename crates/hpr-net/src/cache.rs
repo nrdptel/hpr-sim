@@ -48,7 +48,8 @@ impl Cache {
     /// The standard place for hpr's cache on this platform, or `None` if the environment names no
     /// home folder.
     ///
-    /// `HPR_CACHE_DIR`, when set and not empty, wins on every platform. Otherwise:
+    /// `HPR_CACHE_DIR`, when set and not empty, wins on every platform; it is used as given, so a
+    /// relative path is taken from the current directory. Otherwise:
     ///
     /// | platform | folder |
     /// |---|---|
