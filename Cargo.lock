@@ -840,6 +840,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "hpr-atmos",
+ "hpr-core",
  "hpr-motor",
  "serde",
  "serde_json",

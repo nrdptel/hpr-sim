@@ -63,7 +63,8 @@
 //! or mass shifts, build those with the crates, which this one re-exports by name.
 //!
 //! The `net` feature adds `hpr-net` (as `hpr::hpr_net`): the cache, the offline mode, the HTTP
-//! transport and a launch site's weather from Open-Meteo (`hpr_net::open_meteo`). The `parquet`
+//! transport, a launch site's weather from Open-Meteo (`hpr_net::open_meteo`) and weather-balloon
+//! soundings from the University of Wyoming's archive (`hpr_net::wyoming`). The `parquet`
 //! feature turns on `hpr-sim`'s Parquet export (`hpr_sim::export::parquet`). [`ork`] flies the
 //! stage separation an OpenRocket `.ork` file describes.
 

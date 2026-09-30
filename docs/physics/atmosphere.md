@@ -206,6 +206,8 @@ catches hPa entered as Pa.
   from the day's reanalysis; see [ERA5 weather files](../format/era5.md).
 - **From Open-Meteo:** `hpr_net::open_meteo` builds it from a forecast, or an archived one, on
   pressure levels; see [Launch-day weather](../weather.md).
+- **From a weather balloon:** `hpr_net::wyoming` builds it from a radiosonde's sounding in the
+  University of Wyoming's archive; see [Weather-balloon soundings](../soundings.md).
 - **[Loft lesson L5](../decisions-and-roadmap.md#l5):** "today's conditions" kept the standard lapse from the field up,
   ignored humidity and never used sounding temperatures.
 

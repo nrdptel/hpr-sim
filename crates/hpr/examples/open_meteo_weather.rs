@@ -29,7 +29,6 @@ use std::error::Error;
 
 use hpr_atmos::wind::WindInterpolation;
 use hpr_atmos::{Atmosphere, ConstantWind, Ussa76};
-use hpr_core::DVec3;
 use hpr_core::earth::Earth;
 use hpr_core::geodesy::Geodetic;
 use hpr_design::Rocket;
@@ -137,7 +136,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let forecast = Environment::new(Earth::wgs84(site)?, sounding.clone(), wind);
     let calm = Environment::new(Earth::wgs84(site)?, standard, ConstantWind::calm());
     println!();
-    println!("Calisto to apogee      apogee (m above the pad)   drift at apogee (m)");
+    println!("Calisto to apogee      apogee (m above the pad)   east of the pad (m)   north (m)");
     for (name, environment) in [("Open-Meteo", forecast), ("standard, calm", calm)] {
         let simulation = Simulation::new(
             &rocket,
@@ -151,11 +150,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             .event(EventKind::Apogee)
             .ok_or("the flight has no apogee")?
             .sample;
-        let drift = DVec3::new(apogee.cg_enu_m.x, apogee.cg_enu_m.y, 0.0).length();
+        // Where it is at apogee: east and north of the pad, negative for west and south.
         println!(
-            "{name:<22} {:>26.1} {:>21.1}",
-            apogee.height_above_ground_m, drift
+            "{name:<22} {:>26.1} {:>21.1} {:>11.1}",
+            apogee.height_above_ground_m,
+            tidy(apogee.cg_enu_m.x),
+            tidy(apogee.cg_enu_m.y)
         );
     }
     Ok(())
+}
+
+/// `x` rounded to 0.1, with a rounded `-0.0` printed as `0.0`.
+fn tidy(x: f64) -> f64 {
+    let rounded = (x * 10.0).round() / 10.0;
+    if rounded == 0.0 { 0.0 } else { rounded }
 }

@@ -1,0 +1,32 @@
+Santa Teresa, New Mexico (72364), 2025-06-21 12 UTC
+Sounding from the University of Wyoming's radiosonde archive
+freshness: Fetched
+released 58 minutes before 12 UTC
+coded message: 227 levels kept, 1 left out
+BUFR file: 3920 levels kept, 1931 left out
+
+level (hPa)   height (m)   temperature (°C)   humidity (%)   wind (m/s)   from (°)
+        872         1254               28.4             31          5.7        265   the ground
+        850         1482               26.6             32         11.8        270
+        700         3165               14.6             36          2.6        215
+        500         5903               -5.3             63          8.2        180
+        250        11002              -40.1              7         13.9        260
+        100        16724              -73.1             13         13.9        255
+
+second row       above the ground (m)   wind (m/s)   from (°)
+coded message                     186         10.7        269
+BUFR file                           8         11.1        264
+
+height above the pad (m)   pressure (hPa)   temperature (°C)   density (kg/m³)
+     0 sounding                     872.0               28.4            1.0022
+     0 standard                     871.4                6.9            1.0842
+  1000 sounding                     778.5               22.3            0.9151
+  1000 standard                     770.3                0.4            0.9811
+  3000 sounding                     613.5                4.9            0.7664
+  3000 standard                     596.5              -12.6            0.7977
+
+Calisto to apogee      apogee (m above the pad)   east of the pad (m)   north (m)
+coded message                              2848.1                -401.4       -23.4
+BUFR file                                  2822.5                -561.3       -48.0
+BUFR above 1,438 m                         2845.9                -419.1       -19.1
+standard, calm                             2811.0                  -5.1         0.0

@@ -421,7 +421,7 @@ This section covers the [M1.7b streamer-and-tumble milestone](decisions-and-road
 | Open-Meteo | Data CC BY 4.0 (attribution required). Free non-commercial tier: <10k calls/day. Pressure-level winds (for example `wind_speed_850hPa`) come from the forecast and `historical-forecast` APIs; the ERA5 archive API has **no** pressure levels. There's an elevation API. The server can be self-hosted |
 | NOAA GFS / RAP | open data; AWS `noaa-gfs-bdp-pds`, NOMADS grib filter, UCAR THREDDS (RocketPy uses these) |
 | ERA5 pressure levels | CC-BY; needs a CDS account (a "Needs Neer" item if we want live access); reading user-provided `.nc` files offline is the priority |
-| U. Wyoming soundings | `https://weather.uwyo.edu/wsgi/sounding?datetime=YYYY-MM-DD%20HH:00:00&id=<stn>&type=TEXT:LIST`; terms unverified; the legacy interface is retired |
+| U. Wyoming soundings | `https://weather.uwyo.edu/wsgi/sounding?datetime=YYYY-MM-DD%20HH:00:00&id=<stn>&type=TEXT:CSV&src=FM35` (or `src=BUFR`); read by `hpr_net::wyoming` ([ADR-120, how soundings are read](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30)). The site states no terms (checked 2026-09-30); only U.S. stations' soundings, U.S. government works, are committed as fixtures. The legacy interface is retired |
 | WMM2025 | public domain; valid to the end of 2029 (magnetic declination for headings) |
 | Copernicus DEM GLO-30/90, NASADEM | free; COG on S3; for terrain and landing elevation |
 | Gravity | Somigliana/WGS84 formula (what RocketPy uses); EGM2008 is optional later |

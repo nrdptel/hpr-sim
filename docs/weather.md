@@ -17,7 +17,8 @@ encrypted (HTTPS) connection to Open-Meteo was checked once by hand, not in CI.
 Code: `hpr_net::open_meteo` ([API reference](api/hpr_net/open_meteo/index.html)), written for
 the first weather increment, [M5.2a](decisions-and-roadmap.md#m5-2a). It needs the `net` feature
 of the `hpr` crate. Weather from a file you download is on
-[ERA5 weather files](format/era5.md). The choices are in
+[ERA5 weather files](format/era5.md), and the air a weather balloon measured is on
+[Weather-balloon soundings](soundings.md). The choices are in
 [ADR-119: Open-Meteo's pressure levels as a sounding](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-119-m52-split-open-meteos-pressure-levels-as-a-sounding-2026-09-30).
 
 ## What hpr asks for
@@ -128,18 +129,21 @@ height above the pad (m)   pressure (hPa)   temperature (°C)   density (kg/m³)
   3000 Open-Meteo                   602.9                3.6            0.7565
   3000 standard                     585.2              -13.6            0.7854
 
-Calisto to apogee      apogee (m above the pad)   drift at apogee (m)
-Open-Meteo                                 2880.9                 156.4
-standard, calm                             2821.3                   5.1
+Calisto to apogee      apogee (m above the pad)   east of the pad (m)   north (m)
+Open-Meteo                                 2880.9                  15.7      -155.6
+standard, calm                             2821.3                  -5.1         0.0
 ```
 
 `freshness: Fetched` means the answer came from the transport, not the cache; a second call within
 the hour would say `Cached`. The ground is at 1,400 m, so the five levels from 1000 to 900 hPa are
 left out. That June morning was 24 °C warmer at the pad than the standard atmosphere, and the air
-was 8% less dense there and 4% less dense 3 km up. Calisto climbs 2.1% higher in it. It drifts
-156 m with the wind, which turns from the south-southeast at the ground to the southwest by 600 m
-above the pad (2,014 m above sea level). The calm flight's 5.1 m is Earth's rotation: a climbing
-rocket is pushed west (the Coriolis effect), and with the rotation turned off it drifts 0.006 m.
+was 8% less dense there and 4% less dense 3 km up. Calisto climbs 2.1% higher in it. At apogee
+it is 156 m south of the pad (and 16 m east), upwind: the wind blows from the south-southeast at
+the ground, turning to the southwest by 600 m above the pad (2,014 m above sea level), and a
+rocket just off the rail, still slow, turns into the wind
+([weathercocking](glossary.md#weathercocking)) and flies that way. The calm flight's 5.1 m west
+is Earth's rotation: a climbing rocket is pushed west (the Coriolis effect), and with the rotation
+turned off it drifts 0.006 m.
 
 ## How it is checked
 
@@ -174,8 +178,9 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
 
 ## What it leaves out
 
-- Nothing checks a forecast against the weather that came. Weather-balloon soundings from the
-  University of Wyoming are planned next ([M5.2b](decisions-and-roadmap.md#m5-2b)), then the model
+- Nothing checks a forecast against the weather that came. Weather-balloon soundings, the
+  measured air, can be fetched too ([Weather-balloon soundings](soundings.md)), but no forecast has
+  been compared with one. Next come the model
   files of NOAA's Global Forecast System and Rapid Refresh (GFS and RAP,
   [M5.2c](decisions-and-roadmap.md#m5-2c)) and files you download yourself
   ([M5.2d](decisions-and-roadmap.md#m5-2d)).

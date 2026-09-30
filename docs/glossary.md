@@ -542,6 +542,16 @@ geoid model, so a flight takes `N` at the site as an input. See
 [Frames](physics/frames.md#earth-centred-earth-fixed-ecef).
 
 
+## Hypsometric equation
+
+How thick a layer of air is between two pressures: the [geopotential](#geopotential-height)
+thickness is `(R_d T̄_v / g₀) ln(p_bottom / p_top)`, with `p_bottom` and `p_top` the pressures
+at its bottom and top, `R_d` dry air's gas constant (287.05 J/(kg·K)), `g₀` standard gravity and
+`T̄_v` the layer's mean [virtual temperature](#virtual-temperature) (WMO-No. 8, the *Guide to
+Instruments and Methods of Observation*, eqs. 12.17 and 12.18). Warm air makes a thicker layer.
+hpr checks each row of a weather-balloon sounding against it; see
+[Weather-balloon soundings](soundings.md#how-the-answer-becomes-a-sounding).
+
 ## Impulse class
 
 The letter that ranks a motor by its [total impulse](#total-impulse), also called its motor class.
@@ -813,6 +823,13 @@ crosswind, the larger the [angle of attack](#angle-of-attack) just after it, whe
 least trustworthy. See [Rigid-body flight](physics/flight.md#phases).
 
 
+## Radiosonde
+
+The instrument package a weather balloon carries: it measures pressure, temperature and humidity
+on the way up, and its drift, tracked by GPS, gives the wind. About 800 stations release one at
+00 and 12 UTC each day. What it records is a [sounding](#sounding). See
+[Weather-balloon soundings](soundings.md).
+
 ## RASAero II
 
 A rocket aerodynamics and flight program. Several of RocketPy's [example rockets](#example-rockets)
@@ -951,7 +968,7 @@ body lifting more past Mach 3. See
 ## Sounding
 
 A measured or forecast profile of the air against height: pressure, temperature and wind, and
-sometimes humidity, as from a weather balloon or a forecast service. hpr can fly one in place of
+sometimes humidity, as from a weather balloon (a [radiosonde](#radiosonde)) or a forecast service. hpr can fly one in place of
 the [standard atmosphere](#standard-atmosphere), which carries on above its top level. Flights
 above a few kilometres need one, because an offset to the standard for field conditions holds all
 the way up. See [Atmosphere](physics/atmosphere.md#sounding-and-forecast-profiles).
@@ -1169,6 +1186,15 @@ source* (printed tables and worked examples), *another code*
 ([code-to-code comparison](#code-to-code-comparison)), and *real flights*. See
 [Accuracy](accuracy.md).
 
+
+## Virtual temperature
+
+The temperature dry air would need to have the density of a humid parcel at the same pressure:
+`T_v = T / (1 − (e/p)(1 − M_v/M₀))`, with `e` the water vapour's pressure and `M_v/M₀ ≈ 0.622`
+the ratio of the molar masses of water and dry air (WMO-No. 8, eq. 12.18). Water vapour is
+lighter than air, so `T_v` is a little above `T`: about 1.6% at 30 °C, saturation and sea-level
+pressure. See
+[Atmosphere](physics/atmosphere.md).
 
 ## Wave drag
 

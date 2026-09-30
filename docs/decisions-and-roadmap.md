@@ -136,6 +136,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-117: M5.1 split; the cache and offline mode][adr-117] | The online layer ships in two parts: first the cache and the offline rule over a transport you plug in, then HTTP. Offline never calls the transport; online, a copy younger than the source's time to live is served without fetching, and a failed fetch falls back to an old copy marked stale | [Online data and the cache](online-data.md) |
 | [ADR-118: M5.1b, HTTP over the cache][adr-118] | The HTTP client is `ureq` with rustls, behind a cargo feature, so no OpenSSL. Its size limit counts the unpacked answer, since a small compressed one can unpack to gigabytes. The platform's cache folder is found by hand, because the usual crate for it pulls in a weak-copyleft (MPL-2.0) dependency | [Online data and the cache](online-data.md) |
 | [ADR-119: M5.2 split; Open-Meteo's pressure levels as a sounding][adr-119] | The weather milestone ships in four parts: Open-Meteo first, then weather-balloon soundings, then NOAA's model files, then files you download and the `hpr weather` command. Open-Meteo's answer becomes a sounding whose lowest level is the ground, with the 10 m wind as the wind on the rail. Levels the models report below the ground are left out, and the heights are read as geopotential, which a check on the recorded answers bears out | [Launch-day weather](weather.md) |
+| [ADR-120: University of Wyoming soundings][adr-120] | A weather balloon's sounding from the University of Wyoming's archive is read from its comma-separated text, whose column names carry the units. Rows are kept from the longest chain from the ground in which each row fits the thickness the hypsometric equation gives the layer from the row before it; of each run of rows with the same rounded pressure the middle one is kept; a row kept must lie above the last one kept. The first row is the ground; the answer is refused when a chain without the ground beats every chain with it. A saved copy is fetched again once the sounding has settled. Only soundings from U.S. stations, U.S. government works, are committed as test data | [Weather-balloon soundings](soundings.md) |
 
 ## The roadmap
 
@@ -339,7 +340,7 @@ missing or its status disagrees.
 | <a id="m5-1b"></a>[M5.1b][phase-2] | The HTTP transport, with rustls, behind a cargo feature, and the platform's cache folder, tested against a server on the loopback address ([ADR-118][adr-118], [Online data and the cache](online-data.md)) | done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
 | <a id="m5-2a"></a>[M5.2a][phase-2] | A launch site's weather from Open-Meteo, forecast or archived, as a sounding: the ground and the pressure levels above it ([ADR-119][adr-119], [Launch-day weather](weather.md)) | done |
-| <a id="m5-2b"></a>[M5.2b][phase-2] | Weather-balloon soundings from the University of Wyoming | not yet done |
+| <a id="m5-2b"></a>[M5.2b][phase-2] | Weather-balloon soundings from the University of Wyoming's archive, as a sounding: the ground and every level above it ([ADR-120][adr-120], [Weather-balloon soundings](soundings.md)) | done |
 | <a id="m5-2c"></a>[M5.2c][phase-2] | NOAA's GFS and RAP weather-model files (GRIB2), read without outside libraries | not yet done |
 | <a id="m5-2d"></a>[M5.2d][phase-2] | Weather files you download, and the `hpr weather` command | not yet done |
 | <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
@@ -580,6 +581,7 @@ is the milestone that added or will add that test.
 [adr-117]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-117-m51-split-the-cache-and-offline-mode-2026-09-29
 [adr-118]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-118-m51b-http-over-the-cache-2026-09-30
 [adr-119]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-119-m52-split-open-meteos-pressure-levels-as-a-sounding-2026-09-30
+[adr-120]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
