@@ -750,7 +750,8 @@ pub struct Weather {
     pub time: String,
     /// The start of the forecast run, for GFS and RAP.
     pub run: Option<String>,
-    /// The profile's levels, the ground first.
+    /// The profile's levels, lowest first: the ground, then the levels above it; ERA5's levels
+    /// are pressure levels only, from 1000 hPa up, some of them below the ground where it is high.
     pub levels: Vec<ProfileLevel>,
     /// The levels the source gave but the profile leaves out, and why.
     pub dropped: Vec<DroppedLevel>,

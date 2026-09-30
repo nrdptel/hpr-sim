@@ -92,39 +92,85 @@ fn json(args: &[&str], cache: &Path, code: i32, schema: &str) -> Value {
     document
 }
 
-/// One source: its arguments before `--from`/`--offline`, the recording, and the profile the
-/// library builds from the recording's bytes.
+/// One source: its arguments to fetch (before `--offline`), its arguments with `--from`, the
+/// recording, and what the library reads from the recording's bytes.
 struct Case {
     name: &'static str,
     args: Vec<&'static str>,
+    from_args: Vec<&'static str>,
     recording: &'static str,
-    profile: SoundingProfile,
     source: &'static str,
     time: &'static str,
+    run: Option<&'static str>,
+    library: Library,
+}
+
+/// What the library reads from a recording.
+struct Library {
+    profile: SoundingProfile,
+    /// Where the profile is, degrees north and east.
+    position: (f64, f64),
+    /// The levels left out: the reason as the output names it, the pressure (Pa) or the line.
+    dropped: Vec<(String, Option<f64>, Option<usize>)>,
 }
 
 fn bytes(name: &str) -> Vec<u8> {
     std::fs::read(recording(name)).unwrap()
 }
 
+/// A library reason's name as the output writes it: `BelowGround` as `below_ground`. Open-Meteo's
+/// `Humidity`, a humidity outside 0 to 100%, is the output's `out_of_range`.
+fn reason_name(reason: &impl std::fmt::Debug) -> String {
+    let debug = format!("{reason:?}");
+    if debug == "Humidity" {
+        return "out_of_range".to_owned();
+    }
+    let mut name = String::new();
+    for (i, c) in debug.chars().enumerate() {
+        if c.is_ascii_uppercase() && i > 0 {
+            name.push('_');
+        }
+        name.push(c.to_ascii_lowercase());
+    }
+    name
+}
+
 fn cases() -> Vec<Case> {
     let open_meteo = |name, time_s| {
-        OpenMeteoProfile::parse(&bytes(name), time_s)
-            .unwrap()
-            .sounding(WindInterpolation::SpeedDirection)
-            .unwrap()
+        let read = OpenMeteoProfile::parse(&bytes(name), time_s).unwrap();
+        Library {
+            profile: read.sounding(WindInterpolation::SpeedDirection).unwrap(),
+            position: (read.latitude_deg, read.longitude_deg),
+            dropped: read
+                .dropped
+                .iter()
+                .map(|level| (reason_name(&level.reason), Some(level.pressure_pa), None))
+                .collect(),
+        }
     };
     let wyoming = |name| {
-        WyomingSounding::parse(&bytes(name))
-            .unwrap()
-            .sounding(WindInterpolation::SpeedDirection)
-            .unwrap()
+        let read = WyomingSounding::parse(&bytes(name)).unwrap();
+        Library {
+            profile: read.sounding(WindInterpolation::SpeedDirection).unwrap(),
+            position: (read.latitude_deg, read.longitude_deg),
+            dropped: read
+                .dropped
+                .iter()
+                .map(|row| (reason_name(&row.reason), None, Some(row.line)))
+                .collect(),
+        }
     };
     let nomads = |name| {
-        NomadsProfile::parse(&bytes(name), 32.99, -106.97)
-            .unwrap()
-            .sounding(WindInterpolation::SpeedDirection)
-            .unwrap()
+        let read = NomadsProfile::parse(&bytes(name), 32.99, -106.97).unwrap();
+        Library {
+            profile: read.sounding(WindInterpolation::SpeedDirection).unwrap(),
+            position: (read.latitude_deg, read.longitude_deg),
+            dropped: read
+                .dropped
+                .iter()
+                .map(|level| (reason_name(&level.reason), Some(level.pressure_pa), None))
+                .collect(),
+        }
     };
     let site = ["--latitude", LATITUDE, "--longitude", LONGITUDE];
     let with = |command: &[&'static str], rest: &[&'static str]| {
@@ -141,18 +187,22 @@ fn cases() -> Vec<Case> {
                 &["open-meteo"],
                 &["--time", OPEN_METEO_TIME, "--historical"],
             ),
+            from_args: vec!["weather", "open-meteo", "--time", OPEN_METEO_TIME],
             recording: "open-meteo-historical.json",
-            profile: open_meteo("open-meteo-historical.json", OPEN_METEO_S),
             source: "open_meteo",
             time: "2025-06-21T15:30:00Z",
+            run: None,
+            library: open_meteo("open-meteo-historical.json", OPEN_METEO_S),
         },
         Case {
             name: "Open-Meteo forecast",
             args: with(&["open-meteo"], &["--time", FORECAST_TIME]),
+            from_args: vec!["weather", "open-meteo", "--time", FORECAST_TIME],
             recording: "open-meteo-forecast.json",
-            profile: open_meteo("open-meteo-forecast.json", FORECAST_S),
             source: "open_meteo",
             time: "2026-10-02T18:00:00Z",
+            run: None,
+            library: open_meteo("open-meteo-forecast.json", FORECAST_S),
         },
         Case {
             name: "Wyoming FM 35",
@@ -164,10 +214,12 @@ fn cases() -> Vec<Case> {
                 "--time",
                 LAUNCH_TIME,
             ],
+            from_args: vec!["weather", "wyoming"],
             recording: "wyoming-72364-fm35.csv",
-            profile: wyoming("wyoming-72364-fm35.csv"),
             source: "wyoming",
             time: "2025-06-21T11:02:00Z",
+            run: None,
+            library: wyoming("wyoming-72364-fm35.csv"),
         },
         Case {
             name: "Wyoming BUFR",
@@ -180,26 +232,32 @@ fn cases() -> Vec<Case> {
                 LAUNCH_TIME,
                 "--bufr",
             ],
+            from_args: vec!["weather", "wyoming"],
             recording: "wyoming-72364-bufr.csv",
-            profile: wyoming("wyoming-72364-bufr.csv"),
             source: "wyoming",
             time: "2025-06-21T11:02:18Z",
+            run: None,
+            library: wyoming("wyoming-72364-bufr.csv"),
         },
         Case {
             name: "GFS",
             args: with(&["gfs"], &["--cycle", GFS_CYCLE, "--hour", "18"]),
+            from_args: with(&["gfs"], &[]),
             recording: "nomads-gfs.grib2",
-            profile: nomads("nomads-gfs.grib2"),
             source: "gfs",
             time: "2026-09-30T18:00:00Z",
+            run: Some("2026-09-30T00:00:00Z"),
+            library: nomads("nomads-gfs.grib2"),
         },
         Case {
             name: "RAP",
             args: with(&["rap"], &["--cycle", RAP_CYCLE, "--hour", "6"]),
+            from_args: with(&["rap"], &[]),
             recording: "nomads-rap.grib2",
-            profile: nomads("nomads-rap.grib2"),
             source: "rap",
             time: "2026-09-30T18:00:00Z",
+            run: Some("2026-09-30T12:00:00Z"),
+            library: nomads("nomads-rap.grib2"),
         },
     ]
 }
@@ -243,12 +301,38 @@ fn check_written(case: &Case, document: &Value, written: &Path) {
     let name = case.name;
     assert_eq!(document["source"]["name"], case.source, "{name}");
     assert_eq!(document["time"], case.time, "{name}");
+    assert_eq!(document["run"].as_str(), case.run, "{name}");
+    let library = &case.library;
+    let position = &document["position"];
+    assert_eq!(
+        (
+            position["latitude_deg"].as_f64(),
+            position["longitude_deg"].as_f64()
+        ),
+        (Some(library.position.0), Some(library.position.1)),
+        "{name}"
+    );
+    let dropped: Vec<(String, Option<f64>, Option<usize>)> = document["dropped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|level| {
+            (
+                level["reason"].as_str().unwrap().to_owned(),
+                level["pressure_pa"].as_f64(),
+                level["line"]
+                    .as_u64()
+                    .map(|line| usize::try_from(line).unwrap()),
+            )
+        })
+        .collect();
+    assert_eq!(dropped, library.dropped, "{name}: the levels left out");
     let profile: SoundingProfile =
         serde_json::from_str(&std::fs::read_to_string(written).unwrap()).unwrap();
-    assert_eq!(profile, case.profile, "{name}: the written profile");
+    assert_eq!(profile, library.profile, "{name}: the written profile");
     let levels = document["levels"].as_array().unwrap();
-    assert_eq!(levels.len(), case.profile.levels().len(), "{name}");
-    for (row, level) in levels.iter().zip(case.profile.levels()) {
+    assert_eq!(levels.len(), library.profile.levels().len(), "{name}");
+    for (row, level) in levels.iter().zip(library.profile.levels()) {
         assert_eq!(
             row["height_msl_m"].as_f64(),
             Some(level.height_msl_m),
@@ -287,7 +371,7 @@ fn every_source_writes_its_profile_from_a_saved_answer() {
     for case in cases() {
         let from = recording(case.recording);
         let written = scratch.path().join("profile.json");
-        let mut args = case.args.clone();
+        let mut args = case.from_args.clone();
         args.extend(["--from", &from, "--output", written.to_str().unwrap()]);
         let document = json(&args, &cache, 0, "weather.schema.json");
         assert_eq!(document["read_from"]["kind"], "file", "{}", case.name);
@@ -398,10 +482,16 @@ fn an_era5_file_writes_its_profile() {
         let case = Case {
             name: file,
             args: Vec::new(),
+            from_args: Vec::new(),
             recording: file,
-            profile,
             source: "era5",
             time: written_time,
+            run: None,
+            library: Library {
+                profile,
+                position: (latitude, longitude),
+                dropped: Vec::new(),
+            },
         };
         assert_eq!(document["read_from"]["kind"], "file");
         assert_eq!(document["read_from"]["path"], path.as_str());
@@ -494,4 +584,71 @@ fn a_time_without_its_zone_is_refused() {
     );
     let message = document["error"]["message"].as_str().unwrap();
     assert!(message.contains("write a time in UTC"), "{message}");
+}
+
+/// With `--from`, the options that choose which answer to fetch are refused rather than ignored:
+/// the saved answer says where and when it is for, and nothing could check it against them.
+#[test]
+fn options_a_saved_answer_cant_honour_are_refused() {
+    let scratch = tempfile::tempdir().unwrap();
+    let om = recording("open-meteo-historical.json");
+    let wy = recording("wyoming-72364-fm35.csv");
+    let open_meteo = [
+        "weather",
+        "open-meteo",
+        "--time",
+        OPEN_METEO_TIME,
+        "--from",
+        &om,
+    ];
+    let wyoming = ["weather", "wyoming", "--from", &wy];
+    for (base, extra) in [
+        (&open_meteo[..], &["--latitude", LATITUDE][..]),
+        (&open_meteo[..], &["--longitude", LONGITUDE][..]),
+        (&open_meteo[..], &["--historical"][..]),
+        (&open_meteo[..], &["--model", "gfs_seamless"][..]),
+        (&wyoming[..], &["--station", "72364"][..]),
+        (&wyoming[..], &["--time", LAUNCH_TIME][..]),
+        (&wyoming[..], &["--bufr"][..]),
+    ] {
+        let mut args = base.to_vec();
+        args.extend_from_slice(extra);
+        let document = json(&args, scratch.path(), 2, "error.schema.json");
+        let message = document["error"]["message"].as_str().unwrap();
+        // Clap names the two in either order.
+        assert!(
+            message.contains("cannot be used with")
+                && message.contains("'--from <FILE>'")
+                && message.contains(&format!("'{}", extra[0])),
+            "{extra:?}: {message}"
+        );
+    }
+}
+
+/// A time outside the saved answer's hours is refused, written in UTC as it was asked.
+#[test]
+fn a_time_outside_the_answer_is_named_in_utc() {
+    let scratch = tempfile::tempdir().unwrap();
+    let om = recording("open-meteo-historical.json");
+    let document = json(
+        &[
+            "weather",
+            "open-meteo",
+            "--time",
+            "2025-06-22T15:30Z",
+            "--from",
+            &om,
+        ],
+        scratch.path(),
+        1,
+        "error.schema.json",
+    );
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains(
+            "2025-06-22T15:30:00Z is outside the answer's hours, 2025-06-21T15:00:00Z to \
+             2025-06-21T16:00:00Z"
+        ),
+        "{message}"
+    );
 }

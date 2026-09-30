@@ -10082,7 +10082,11 @@ with the command, that is more than a session.
    the cache alone and fails with nothing there. `--from FILE` reads a saved answer and touches
    neither the network nor the cache, since a file is not known to be the answer to any URL. It is held
    to the checks `fetch` makes: the parser, the sounding, and for GFS and RAP the model's grid
-   and, when `--cycle` and `--hour` are given, the run and hour. `hpr-cli` gets the facade's `net`
+   and, when `--cycle` and `--hour` are given, the run and hour. The options that choose what to
+   fetch and that a saved answer can't be checked against (Open-Meteo's site, `--historical` and
+   `--model`; Wyoming's station, time and `--bufr`) are refused beside `--from` rather than
+   ignored, so a wrong file can't pass as the place asked for. A time outside the answer's hours
+   is named in UTC, as it was asked. `hpr-cli` gets the facade's `net`
    feature; no crate is added to the workspace.
 4. **What is written.** `--output` writes `hpr_atmos::SoundingProfile`'s JSON, which the library
    reads back with `SoundingProfile::new`'s checks. Winds between levels are interpolated by speed and
@@ -10097,10 +10101,12 @@ with the command, that is more than a session.
    `crates/hpr-net/tests/fixtures/replay/` (two Open-Meteo, two Wyoming, GFS, RAP) through
    `--from`, and through `--offline` from a cache filled by the library's `fetch` over `Replay`,
    and two ERA5 files, each write the profile the library builds from the same bytes, equal to the
-   bit, with the document's levels equal to it and checked against the schema. Offline with no copy,
+   bit, with the document's levels, position, run and levels left out equal to the library's and
+   checked against the schema. Offline with no copy,
    all six are refused; a RAP cut read as GFS, and a cut of another hour, are refused. The live
-   fetch was run by hand on 2026-09-30 for Open-Meteo, GFS and Wyoming over HTTPS, then again from
-   the cache; CI never goes online.
+   fetch was run by hand on 2026-09-30 for all four online sources over HTTPS, then again from the
+   cache; CI never goes online. A saved answer is read whole with no size limit, since M5.2d2 reads
+   whole GFS files, about 500 MB, through `--from`.
 
 **Consequences.** M5.2d1 is met. A user can fetch, cache and save a launch day's weather from the
 command line, but must fly it from a program until #265. NOAA's whole files stay refused until

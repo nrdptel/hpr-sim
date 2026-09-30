@@ -14,7 +14,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hpr::hpr_atmos::{AtmosError, SoundingProfile, WindInterpolation};
-use hpr::hpr_io::era5::{Era5Profile, Era5Request, UtcTime};
+use hpr::hpr_io::era5::{Era5Error, Era5Profile, Era5Request, UtcTime};
 use hpr::hpr_io::netcdf::NetCdf;
 use hpr::hpr_net::nomads::{self, NomadsModel, NomadsProfile, NomadsRequest};
 use hpr::hpr_net::open_meteo::{self, OpenMeteoApi, OpenMeteoProfile, OpenMeteoRequest};
@@ -40,7 +40,8 @@ pub enum WeatherCommand {
     Wyoming(WyomingArgs),
     /// NOAA's GFS forecast (0.25°, the whole Earth) at a site, from NOMADS
     Gfs(NomadsArgs),
-    /// NOAA's RAP forecast (13 km, North America) at a site, from NOMADS
+    /// NOAA's RAP forecast (13 km, the contiguous U.S. and nearby Canada and Mexico) at a site,
+    /// from NOMADS
     Rap(NomadsArgs),
     /// An ERA5 pressure-level file (netCDF) read at a site and time
     Era5(Era5Args),
@@ -63,30 +64,33 @@ pub struct Fetching {
 /// `hpr weather open-meteo`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct OpenMeteoArgs {
-    /// The site's latitude, degrees north (south is negative)
+    /// The site's latitude, degrees north (south is negative); not with --from, whose answer is
+    /// for the place it was asked for
     #[arg(
         long,
         value_name = "DEG",
         allow_negative_numbers = true,
-        required_unless_present = "from"
+        required_unless_present = "from",
+        conflicts_with = "from"
     )]
     pub latitude: Option<f64>,
-    /// The site's longitude, degrees east (west is negative)
+    /// The site's longitude, degrees east (west is negative); not with --from
     #[arg(
         long,
         value_name = "DEG",
         allow_negative_numbers = true,
-        required_unless_present = "from"
+        required_unless_present = "from",
+        conflicts_with = "from"
     )]
     pub longitude: Option<f64>,
-    /// The launch time in UTC, such as 2025-06-21T15:30Z
+    /// The launch time in UTC, such as 2025-06-21T15:30Z; it must be within the answer's hours
     #[arg(long, value_name = "TIME")]
     pub time: String,
     /// Ask the archive of past forecasts, for a launch already gone
-    #[arg(long)]
+    #[arg(long, conflicts_with = "from")]
     pub historical: bool,
     /// The weather model, by Open-Meteo's name, such as gfs_seamless; its best match by default
-    #[arg(long)]
+    #[arg(long, conflicts_with = "from")]
     pub model: Option<String>,
     /// The answer's source and the profile's file.
     #[command(flatten)]
@@ -96,15 +100,21 @@ pub struct OpenMeteoArgs {
 /// `hpr weather wyoming`'s arguments.
 #[derive(Debug, clap::Args)]
 pub struct WyomingArgs {
-    /// The station's WMO number, such as 72364
-    #[arg(long, required_unless_present = "from")]
+    /// The station's WMO number, such as 72364; not with --from, whose sounding names its own
+    /// place and time
+    #[arg(long, required_unless_present = "from", conflicts_with = "from")]
     pub station: Option<String>,
     /// The launch time in UTC; the sounding is the station's latest, at 00 or 12 UTC, before it
-    #[arg(long, value_name = "TIME", required_unless_present = "from")]
+    #[arg(
+        long,
+        value_name = "TIME",
+        required_unless_present = "from",
+        conflicts_with = "from"
+    )]
     pub time: Option<String>,
     /// Ask for the sounding decoded from BUFR, a row every second or two of the ascent, instead
     /// of the coded (FM 35) one
-    #[arg(long)]
+    #[arg(long, conflicts_with = "from")]
     pub bufr: bool,
     /// The answer's source and the profile's file.
     #[command(flatten)]
@@ -171,8 +181,14 @@ pub(crate) fn run(command: &WeatherCommand, to: &mut Out<'_>) -> Result<(), Fail
     let (read, output) = match command {
         WeatherCommand::OpenMeteo(args) => (open_meteo(args)?, &args.fetching.output),
         WeatherCommand::Wyoming(args) => (wyoming(args)?, &args.fetching.output),
-        WeatherCommand::Gfs(args) => (nomads(NomadsModel::Gfs, args)?, &args.fetching.output),
-        WeatherCommand::Rap(args) => (nomads(NomadsModel::Rap, args)?, &args.fetching.output),
+        WeatherCommand::Gfs(args) => (
+            nomads((NomadsModel::Gfs, "GFS", WeatherSourceName::Gfs), args)?,
+            &args.fetching.output,
+        ),
+        WeatherCommand::Rap(args) => (
+            nomads((NomadsModel::Rap, "RAP", WeatherSourceName::Rap), args)?,
+            &args.fetching.output,
+        ),
         WeatherCommand::Era5(args) => (era5(args)?, &args.output),
     };
     if let Some(path) = output {
@@ -230,6 +246,7 @@ fn read_from(fetched: &Fetched) -> ReadFrom {
         Freshness::Cached => ReadFrom::Cache {
             fetched_at_unix_s: fetched.fetched_at_s,
         },
+        // `Stale`, and any state a later `hpr_net` adds: none of them is known to be fresh.
         _ => ReadFrom::StaleCache {
             fetched_at_unix_s: fetched.fetched_at_s,
             reason: fetched.stale_reason.clone(),
@@ -255,12 +272,11 @@ fn open_meteo(args: &OpenMeteoArgs) -> Result<Read, Failure> {
     } else {
         OpenMeteoApi::Forecast
     };
-    let refused =
-        |error: open_meteo::OpenMeteoError| Failure::Input(format!("Open-Meteo: {error}"));
+    let refused = |error| Failure::Input(format!("Open-Meteo: {}", open_meteo_reason(error)));
     let (profile, read_from) = match &args.fetching.from {
         Some(path) => (
             OpenMeteoProfile::parse(&read_file(path)?, time)
-                .map_err(|error| Failure::Input(format!("{path}: {error}")))?,
+                .map_err(|error| Failure::Input(format!("{path}: {}", open_meteo_reason(error))))?,
             ReadFrom::File { path: path.clone() },
         ),
         None => {
@@ -304,6 +320,24 @@ fn open_meteo(args: &OpenMeteoArgs) -> Result<Read, Failure> {
         sounding,
         dropped,
     })
+}
+
+/// An Open-Meteo refusal, with a time outside the answer's hours written in UTC, as it was asked.
+fn open_meteo_reason(error: open_meteo::OpenMeteoError) -> String {
+    match error {
+        open_meteo::OpenMeteoError::TimeOutside {
+            time_unix_s,
+            first_s,
+            last_s,
+            ..
+        } => format!(
+            "{} is outside the answer's hours, {} to {}",
+            format_utc(time_unix_s),
+            format_utc(first_s),
+            format_utc(last_s)
+        ),
+        other => other.to_string(),
+    }
 }
 
 fn wyoming(args: &WyomingArgs) -> Result<Read, Failure> {
@@ -366,11 +400,10 @@ fn wyoming(args: &WyomingArgs) -> Result<Read, Failure> {
     })
 }
 
-fn nomads(model: NomadsModel, args: &NomadsArgs) -> Result<Read, Failure> {
-    let name = match model {
-        NomadsModel::Rap => "RAP",
-        _ => "GFS",
-    };
+fn nomads(
+    (model, name, source): (NomadsModel, &str, WeatherSourceName),
+    args: &NomadsArgs,
+) -> Result<Read, Failure> {
     let run = match (&args.cycle, args.hour) {
         (Some(cycle), Some(hour)) => Some((parse_utc(cycle)?, hour)),
         _ => None,
@@ -430,10 +463,7 @@ fn nomads(model: NomadsModel, args: &NomadsArgs) -> Result<Read, Failure> {
         .collect();
     Ok(Read {
         source: WeatherSource {
-            name: match model {
-                NomadsModel::Rap => WeatherSourceName::Rap,
-                _ => WeatherSourceName::Gfs,
-            },
+            name: source,
             attribution: nomads::ATTRIBUTION.to_owned(),
         },
         read_from,
@@ -459,7 +489,16 @@ fn era5(args: &Era5Args) -> Result<Read, Failure> {
         // Whole seconds, exact in an f64 for any year `parse_utc` accepts.
         time: UtcTime::from_unix_seconds(time_unix_s as f64).map_err(|error| refused(&error))?,
     };
-    let profile = Era5Profile::read(&file, request).map_err(|error| refused(&error))?;
+    let profile = Era5Profile::read(&file, request).map_err(|error| match error {
+        // Written in UTC, as the time was asked; the file's times are whole seconds.
+        Era5Error::OutsideTimes { first, last, .. } => Failure::Input(format!(
+            "{path}: {} is outside the file's times, {} to {}",
+            format_utc(time_unix_s),
+            format_utc(first.floor() as i64),
+            format_utc(last.floor() as i64)
+        )),
+        other => refused(&other),
+    })?;
     let sounding = profile
         .sounding(WindInterpolation::SpeedDirection)
         .map_err(|error| sounding_failure("ERA5", &error))?;
