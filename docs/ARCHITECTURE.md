@@ -38,7 +38,7 @@ or a public trait gets an entry in `DECISIONS.md` first.
 | `hpr-io` | foreign formats: `.ork`, `.rkt`, `.CDX1`, RocketPy export, `.orc` parts DB; netCDF classic and ERA5 weather (ADR-081); GRIB2 (ADR-121) | design, motor (ADR-055), atmos (ADR-081) |
 | `hpr-net` | optional online sources plus the on-disk cache: Open-Meteo, NOAA GFS/RAP, soundings, elevation, ThrustCurve, motor.fusionspace.co | atmos, motor, core (standard gravity, ADR-120), io (GRIB2, ADR-121) |
 | `hpr` (facade) | re-exports plus a RocketPy-like builder API (`Environment`, `Motor`, `Rocket`, `Flight`) | the crates above |
-| `hpr-cli` | `hpr` binary: `sim`, `validate`, `convert`, `motors`, `weather`, `mc`, `optimize`, `compare`, `analyze`, `diagnose`, `completions` (ADR-105) | facade, validate (ADR-107) |
+| `hpr-cli` | `hpr` binary: `sim`, `validate`, `convert`, `motors`, `weather`, `mc`, `optimize`, `compare`, `analyze`, `diagnose`, `completions` (ADR-105) | facade with `net` (ADR-122), validate (ADR-107) |
 | `hpr-py` | PyO3/maturin bindings (abi3 wheels), with numpy outputs | facade |
 | `hpr-ffi` | stable C ABI plus a cbindgen header | facade |
 | `hpr-wasm` | wasm-bindgen package with generated TS types (`tsify`) | facade (no net) |

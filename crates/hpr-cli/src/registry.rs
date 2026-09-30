@@ -85,6 +85,18 @@ pub fn availability(name: &str) -> Option<Availability> {
             reads: vec!["a PerfectFlite `.pf2` flight log".to_owned()],
             writes: text_or_json(),
         }),
+        "weather" => Some(Availability::Available {
+            reads: vec![
+                "Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved"
+                    .to_owned(),
+                "an ERA5 `.nc`".to_owned(),
+            ],
+            writes: vec![
+                "text".to_owned(),
+                "JSON".to_owned(),
+                "a profile as `.json`".to_owned(),
+            ],
+        }),
         "completions" => Some(Availability::Available {
             reads: Vec::new(),
             writes: vec![format!("a {} script", shells()), "JSON".to_owned()],
@@ -97,8 +109,7 @@ pub fn availability(name: &str) -> Option<Availability> {
 }
 
 /// The commands registered before their milestone, each with the milestone that brings it.
-pub const PLANNED: [(&str, &str); 5] = [
-    ("weather", "M5.2d"),
+pub const PLANNED: [(&str, &str); 4] = [
     ("mc", "M6.1"),
     ("optimize", "M6.2"),
     ("compare", "M7.3"),

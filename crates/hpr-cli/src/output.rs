@@ -735,6 +735,156 @@ pub struct CensusHeld {
     pub stale: Vec<String>,
 }
 
+/// `hpr weather`: a site's air and wind, level by level, from one source.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Weather {
+    /// The source, and the credit its terms ask for wherever the data is shown.
+    pub source: WeatherSource,
+    /// Where the source's answer was read from.
+    pub read_from: ReadFrom,
+    /// Where the profile is: Open-Meteo's grid point, the balloon's release, or the site the
+    /// forecast or file was read at.
+    pub position: WeatherPosition,
+    /// The time the profile is for, UTC, `YYYY-MM-DDTHH:MM:SSZ`: the launch time asked for, the
+    /// balloon's release, or the time a forecast run is for.
+    pub time: String,
+    /// The start of the forecast run, for GFS and RAP.
+    pub run: Option<String>,
+    /// The profile's levels, the ground first.
+    pub levels: Vec<ProfileLevel>,
+    /// The levels the source gave but the profile leaves out, and why.
+    pub dropped: Vec<DroppedLevel>,
+    /// The file the profile was written to, as given.
+    pub profile: Option<String>,
+}
+
+/// A weather source and its credit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct WeatherSource {
+    /// Which source.
+    pub name: WeatherSourceName,
+    /// The credit to show with its data.
+    pub attribution: String,
+}
+
+/// The weather sources.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WeatherSourceName {
+    /// Open-Meteo's forecast or historical-forecast API.
+    OpenMeteo,
+    /// The University of Wyoming's radiosonde archive.
+    Wyoming,
+    /// NOAA's GFS forecast, from NOMADS.
+    Gfs,
+    /// NOAA's RAP forecast, from NOMADS.
+    Rap,
+    /// An ECMWF ERA5 pressure-level file.
+    Era5,
+}
+
+/// Where a source's answer was read from.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ReadFrom {
+    /// A file given on the command line: `--from`, or an ERA5 file.
+    File {
+        /// The path as given.
+        path: String,
+    },
+    /// Fetched now, and saved in the cache.
+    Network {
+        /// When, in seconds since the Unix epoch.
+        fetched_at_unix_s: u64,
+    },
+    /// The cache, still fresh.
+    Cache {
+        /// When the copy was fetched, in seconds since the Unix epoch.
+        fetched_at_unix_s: u64,
+    },
+    /// The cache, older than the source keeps a copy fresh: offline, or the fetch failed.
+    StaleCache {
+        /// When the copy was fetched, in seconds since the Unix epoch.
+        fetched_at_unix_s: u64,
+        /// Online, why the fetch failed or its answer was refused.
+        reason: Option<String>,
+    },
+}
+
+/// Where a weather profile is.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct WeatherPosition {
+    /// Degrees north.
+    pub latitude_deg: f64,
+    /// Degrees east.
+    pub longitude_deg: f64,
+}
+
+/// One level of a weather profile.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct ProfileLevel {
+    /// Geometric height above mean sea level, m.
+    pub height_msl_m: f64,
+    /// Pressure, Pa.
+    pub pressure_pa: Option<f64>,
+    /// Temperature, K.
+    pub temperature_k: f64,
+    /// Relative humidity over liquid water, a fraction; absent where the source gives none
+    /// (ERA5 as read, dry air).
+    pub relative_humidity: Option<f64>,
+    /// Wind speed, m/s.
+    pub wind_speed_m_s: Option<f64>,
+    /// The direction the wind blows from, degrees clockwise from true north.
+    pub wind_from_deg: Option<f64>,
+}
+
+/// A level a weather source gave that the profile leaves out.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct DroppedLevel {
+    /// Its pressure, Pa, for a forecast's pressure level.
+    pub pressure_pa: Option<f64>,
+    /// Its line in the answer, for a sounding's row (the header is line 1).
+    pub line: Option<usize>,
+    /// Why it was left out.
+    pub reason: DropReason,
+}
+
+/// Why a weather level was left out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DropReason {
+    /// Its pressure is not below the ground's, or its height not above it: the model's values
+    /// under high ground.
+    BelowGround,
+    /// A value is missing.
+    NoData,
+    /// A value is out of range.
+    OutOfRange,
+    /// A sounding's row with the same pressure as its neighbours, not the middle one.
+    SamePressure,
+    /// A sounding's row not above the last one kept.
+    NotAbove,
+    /// A sounding's row whose height doesn't fit the thickness its pressure and temperature give.
+    Thickness,
+    /// A reason this build of `hpr` doesn't name.
+    Other,
+}
+
+impl DropReason {
+    /// A few words for the text output.
+    pub fn describe(self) -> &'static str {
+        match self {
+            Self::BelowGround => "below the ground",
+            Self::NoData => "a value is missing",
+            Self::OutOfRange => "a value is out of range",
+            Self::SamePressure => "a repeat of its pressure",
+            Self::NotAbove => "not above the row before",
+            Self::Thickness => "its height doesn't fit the layer's thickness",
+            Self::Other => "another reason",
+        }
+    }
+}
+
 /// `hpr analyze`: a flight log's readings, taken from the log alone, with no design file and no
 /// simulation. Heights are metres above the logger's own zero, which a PerfectFlite takes on the
 /// pad; times are seconds on the log's clock.
@@ -1034,6 +1184,7 @@ pub fn schemas() -> Vec<(&'static str, String)> {
         ("convert.schema.json", schema::<Convert>()),
         ("validate.schema.json", schema::<Validate>()),
         ("analyze.schema.json", schema::<Analyze>()),
+        ("weather.schema.json", schema::<Weather>()),
         ("error.schema.json", schema::<ErrorDocument>()),
     ];
     schemas.sort_by_key(|(name, _)| *name);

@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Weather",
+  "description": "`hpr weather`: a site's air and wind, level by level, from one source.",
+  "type": "object",
+  "properties": {
+    "dropped": {
+      "description": "The levels the source gave but the profile leaves out, and why.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DroppedLevel"
+      }
+    },
+    "levels": {
+      "description": "The profile's levels, the ground first.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ProfileLevel"
+      }
+    },
+    "position": {
+      "description": "Where the profile is: Open-Meteo's grid point, the balloon's release, or the site the\nforecast or file was read at.",
+      "$ref": "#/$defs/WeatherPosition"
+    },
+    "profile": {
+      "description": "The file the profile was written to, as given.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "read_from": {
+      "description": "Where the source's answer was read from.",
+      "$ref": "#/$defs/ReadFrom"
+    },
+    "run": {
+      "description": "The start of the forecast run, for GFS and RAP.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source": {
+      "description": "The source, and the credit its terms ask for wherever the data is shown.",
+      "$ref": "#/$defs/WeatherSource"
+    },
+    "time": {
+      "description": "The time the profile is for, UTC, `YYYY-MM-DDTHH:MM:SSZ`: the launch time asked for, the\nballoon's release, or the time a forecast run is for.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "read_from",
+    "position",
+    "time",
+    "levels",
+    "dropped"
+  ],
+  "$defs": {
+    "DropReason": {
+      "description": "Why a weather level was left out.",
+      "oneOf": [
+        {
+          "description": "Its pressure is not below the ground's, or its height not above it: the model's values\nunder high ground.",
+          "type": "string",
+          "const": "below_ground"
+        },
+        {
+          "description": "A value is missing.",
+          "type": "string",
+          "const": "no_data"
+        },
+        {
+          "description": "A value is out of range.",
+          "type": "string",
+          "const": "out_of_range"
+        },
+        {
+          "description": "A sounding's row with the same pressure as its neighbours, not the middle one.",
+          "type": "string",
+          "const": "same_pressure"
+        },
+        {
+          "description": "A sounding's row not above the last one kept.",
+          "type": "string",
+          "const": "not_above"
+        },
+        {
+          "description": "A sounding's row whose height doesn't fit the thickness its pressure and temperature give.",
+          "type": "string",
+          "const": "thickness"
+        },
+        {
+          "description": "A reason this build of `hpr` doesn't name.",
+          "type": "string",
+          "const": "other"
+        }
+      ]
+    },
+    "DroppedLevel": {
+      "description": "A level a weather source gave that the profile leaves out.",
+      "type": "object",
+      "properties": {
+        "line": {
+          "description": "Its line in the answer, for a sounding's row (the header is line 1).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "pressure_pa": {
+          "description": "Its pressure, Pa, for a forecast's pressure level.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "reason": {
+          "description": "Why it was left out.",
+          "$ref": "#/$defs/DropReason"
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    },
+    "ProfileLevel": {
+      "description": "One level of a weather profile.",
+      "type": "object",
+      "properties": {
+        "height_msl_m": {
+          "description": "Geometric height above mean sea level, m.",
+          "type": "number",
+          "format": "double"
+        },
+        "pressure_pa": {
+          "description": "Pressure, Pa.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "relative_humidity": {
+          "description": "Relative humidity over liquid water, a fraction; absent where the source gives none\n(ERA5 as read, dry air).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "temperature_k": {
+          "description": "Temperature, K.",
+          "type": "number",
+          "format": "double"
+        },
+        "wind_from_deg": {
+          "description": "The direction the wind blows from, degrees clockwise from true north.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "wind_speed_m_s": {
+          "description": "Wind speed, m/s.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      },
+      "required": [
+        "height_msl_m",
+        "temperature_k"
+      ]
+    },
+    "ReadFrom": {
+      "description": "Where a source's answer was read from.",
+      "oneOf": [
+        {
+          "description": "A file given on the command line: `--from`, or an ERA5 file.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "file"
+            },
+            "path": {
+              "description": "The path as given.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "path"
+          ]
+        },
+        {
+          "description": "Fetched now, and saved in the cache.",
+          "type": "object",
+          "properties": {
+            "fetched_at_unix_s": {
+              "description": "When, in seconds since the Unix epoch.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "network"
+            }
+          },
+          "required": [
+            "kind",
+            "fetched_at_unix_s"
+          ]
+        },
+        {
+          "description": "The cache, still fresh.",
+          "type": "object",
+          "properties": {
+            "fetched_at_unix_s": {
+              "description": "When the copy was fetched, in seconds since the Unix epoch.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "cache"
+            }
+          },
+          "required": [
+            "kind",
+            "fetched_at_unix_s"
+          ]
+        },
+        {
+          "description": "The cache, older than the source keeps a copy fresh: offline, or the fetch failed.",
+          "type": "object",
+          "properties": {
+            "fetched_at_unix_s": {
+              "description": "When the copy was fetched, in seconds since the Unix epoch.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "stale_cache"
+            },
+            "reason": {
+              "description": "Online, why the fetch failed or its answer was refused.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "fetched_at_unix_s"
+          ]
+        }
+      ]
+    },
+    "WeatherPosition": {
+      "description": "Where a weather profile is.",
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "description": "Degrees north.",
+          "type": "number",
+          "format": "double"
+        },
+        "longitude_deg": {
+          "description": "Degrees east.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
+    "WeatherSource": {
+      "description": "A weather source and its credit.",
+      "type": "object",
+      "properties": {
+        "attribution": {
+          "description": "The credit to show with its data.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Which source.",
+          "$ref": "#/$defs/WeatherSourceName"
+        }
+      },
+      "required": [
+        "name",
+        "attribution"
+      ]
+    },
+    "WeatherSourceName": {
+      "description": "The weather sources.",
+      "oneOf": [
+        {
+          "description": "Open-Meteo's forecast or historical-forecast API.",
+          "type": "string",
+          "const": "open_meteo"
+        },
+        {
+          "description": "The University of Wyoming's radiosonde archive.",
+          "type": "string",
+          "const": "wyoming"
+        },
+        {
+          "description": "NOAA's GFS forecast, from NOMADS.",
+          "type": "string",
+          "const": "gfs"
+        },
+        {
+          "description": "NOAA's RAP forecast, from NOMADS.",
+          "type": "string",
+          "const": "rap"
+        },
+        {
+          "description": "An ECMWF ERA5 pressure-level file.",
+          "type": "string",
+          "const": "era5"
+        }
+      ]
+    }
+  }
+}

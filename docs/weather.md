@@ -183,7 +183,7 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
   measured air, can be fetched too ([Weather-balloon soundings](soundings.md)), but no forecast has
   been compared with one. NOAA's Global Forecast System and Rapid Refresh (GFS and RAP) can be
   fetched by name ([NOAA forecasts: GFS and RAP](nomads.md)); files you download yourself come
-  next ([M5.2d, weather files you download](decisions-and-roadmap.md#m5-2d)).
+  next ([M5.2d2, NOAA's whole files](decisions-and-roadmap.md#m5-2d2)).
 - The 2 m temperature and humidity and the 10 m wind are placed at the ground itself, so the
   whole launch rail sees the 10 m wind. A real wind is weaker close to the ground; how much that
   changes a rocket's turn into the wind off the rail is not measured.
@@ -192,5 +192,6 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
   status but not Open-Meteo's reason, because the HTTP transport drops the body of a failed answer.
 - Only one place and one launch time per request, and Open-Meteo's own choice of weather model
   unless you name one.
-- The command line's `hpr weather` (planned in [M5.2d](decisions-and-roadmap.md#m5-2d)) and the
-  Python package don't fetch weather yet.
+- The command line fetches it with [`hpr weather open-meteo`](cli.md#hpr-weather), but `hpr sim`
+  doesn't fly it yet (issue [#265](https://github.com/nrdptel/hpr-sim/issues/265)), and the Python
+  package doesn't fetch weather.
