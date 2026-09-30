@@ -778,20 +778,20 @@
   - U. Wyoming soundings.
   - Offline import of ERA5/GFS files the user provides.
 
-  *Done when:*
-  - Recorded-fixture tests pass.
-  - A profile built from a recorded Open-Meteo response reproduces the pressure, temperature and
-    wind values at the pressure levels.
+  *Done when:* recorded-fixture tests pass; a profile built from a recorded Open-Meteo response
+  reproduces the pressure, temperature and wind values at the pressure levels.
   - [x] **M5.2a Open-Meteo.** Forecast and historical-forecast pressure levels as a sounding,
-    through the cache. *Done when:* both bullets above hold for Open-Meteo. *Result:* met
+    through the cache. *Done when:* the parent's two clauses hold for Open-Meteo. *Result:* met
     (ADR-119): 2 recordings, ground and 14 levels to rounding; heights geopotential (hypsometric).
   - [x] **M5.2b U. Wyoming soundings.** *Done when:* a recorded sounding's profile reproduces its
     pressure, temperature and wind at every level, from recorded-fixture tests. *Result:* met
     (ADR-120): 3 recordings (FM 35, BUFR), every kept row to rounding; 1,931 repeated BUFR rows.
-  - [ ] **M5.2c GFS/RAP GRIB2, pure Rust.** *Done when:* a recorded GRIB2 cut decodes to the values
-    an outside decoder (ecCodes, run-only) prints, and its levels become a profile.
-  - [ ] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline.
-    *Done when:* `hpr weather` writes a site's profile from each source, offline from a fixture.
+  - [x] **M5.2c GFS/RAP GRIB2, pure Rust.** *Done when:* a recorded GRIB2 cut decodes to the values
+    an outside decoder (ecCodes, run-only) prints, and its levels become a profile. *Result:* met
+    (ADR-121): 6,123 values to 2.2e-16 of ecCodes; 22 GFS, 31 RAP levels; RAP winds turned by θ.
+  - [ ] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline
+    (whole files: packing 5.2, 5.3, 5.40). *Done when:* `hpr weather` writes a site's profile from
+    each source, offline from a fixture.
 
 - [ ] **M5.3 Site data.** Elevation (Open-Meteo API with cache; optional user GeoTIFF/DEM file),
   geodetic helpers, magnetic declination (WMM2025).

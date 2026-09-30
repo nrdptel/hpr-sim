@@ -3,10 +3,11 @@
 This page covers `hpr-net`, the one crate that uses the network, and the cache that makes its
 answers work offline. It is for anyone who will pull weather, elevation or motor data into a
 flight. **Today the crate holds the cache, the offline rule and an HTTP client**
-([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **and two data sources: Open-Meteo's
-weather** ([Launch-day weather](weather.md)) **and weather-balloon soundings from the University
-of Wyoming** ([Weather-balloon soundings](soundings.md)). Its tests replay a small hand-written
-sample response and answers recorded from both, from a folder and from a test web server on the
+([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **and three data sources: Open-Meteo's
+weather** ([Launch-day weather](weather.md)), **weather-balloon soundings from the University
+of Wyoming** ([Weather-balloon soundings](soundings.md)) **and NOAA's GFS and RAP forecasts**
+([NOAA forecasts: GFS and RAP](nomads.md)). Its tests replay a small hand-written
+sample response and answers recorded from each, from a folder and from a test web server on the
 machine running the tests, never the live network. Those tests speak plain HTTP only: encrypted
 HTTPS was checked once by hand against Open-Meteo, not in CI.
 
@@ -116,7 +117,9 @@ replay a hand-written sample from a folder instead of using the network:
 - The checked fetch is tested through Open-Meteo's source
   ([Launch-day weather](weather.md#how-it-is-checked)): an answer with an hour's values missing
   is not saved, and an earlier good copy comes back and stays saved. The soundings' source is
-  tested the same way ([Weather-balloon soundings](soundings.md#how-it-is-checked)).
+  tested the same way ([Weather-balloon soundings](soundings.md#how-it-is-checked)), and NOAA's
+  forecasts refuse, and don't save, a file for another run or hour than the one asked for
+  ([NOAA forecasts: GFS and RAP](nomads.md#how-it-is-checked)).
 
 The cache's own tests check that a saved body reads back, and that another URL's entry in the same
 file reads as a miss. They also check that the hash that names each file (FNV-1a, a standard 64-bit

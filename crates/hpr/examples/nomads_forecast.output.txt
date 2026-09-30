@@ -1,0 +1,26 @@
+Spaceport America, 2026-09-30 18 UTC
+Forecast data from NOAA/NCEP (GFS, RAP), via NOMADS
+freshness: Fetched
+GFS: run of 00 UTC, hour 18: 22 levels kept, 6 left out
+RAP: run of 12 UTC, hour 6: 31 levels kept, 6 left out
+RAP's winds turned by -5.06° to east and north
+
+GFS   level (hPa)   height (m)   temperature (°C)   humidity (%)   wind (m/s)   from (°)
+              848         1476               19.3             42          5.5        242   the ground
+              700         3077                2.8             90          7.3        262
+              500         5720              -12.9             55         17.0        246
+              250        10822              -32.7              1         45.8        230
+              100        16741              -70.6             17         17.7        209
+
+RAP   level (hPa)   height (m)   temperature (°C)   humidity (%)   wind (m/s)   from (°)
+              854         1429               16.9             70          3.7        246   the ground
+              850         1463               16.1             67          4.4        249
+              700         3076                2.6             77          8.1        272
+              500         5722              -12.0             39         20.5        242
+              250        10822              -32.6              1         42.9        231
+              100        16739              -70.8             10         13.0        211
+
+Calisto to apogee      apogee (m above the pad)   east of the pad (m)   north (m)
+GFS                                        2842.8                -253.0      -131.7
+RAP                                        2841.3                -204.3       -83.9
+standard, calm                             2826.9                  -5.1         0.0

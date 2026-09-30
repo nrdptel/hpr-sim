@@ -7,7 +7,8 @@ the air on the way up, from the ground to 30 km or more. What it records is a
 [sounding](glossary.md#sounding): temperature, pressure, humidity and wind at a column of heights.
 Hundreds of stations release one at 00 and 12 UTC (universal time, the time at Greenwich) every
 day. This page is for anyone who wants a flight in the air that was measured near a launch,
-instead of a forecast ([Launch-day weather](weather.md)) or the
+instead of a forecast ([Launch-day weather](weather.md),
+[NOAA forecasts: GFS and RAP](nomads.md)) or the
 [standard atmosphere](glossary.md#standard-atmosphere).
 
 **How far to trust it.**
