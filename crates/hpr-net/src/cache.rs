@@ -1,5 +1,6 @@
 //! The on-disk cache: one body file and one metadata file per URL.
 
+use std::ffi::OsString;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -42,6 +43,23 @@ impl Cache {
     /// The directory the cache lives in.
     pub fn dir(&self) -> &Path {
         &self.dir
+    }
+
+    /// The standard place for hpr's cache on this platform, or `None` if the environment names no
+    /// home folder.
+    ///
+    /// `HPR_CACHE_DIR`, when set and not empty, wins on every platform. Otherwise:
+    ///
+    /// | platform | folder |
+    /// |---|---|
+    /// | macOS | `$HOME/Library/Caches/hpr-sim` |
+    /// | Windows | `%LOCALAPPDATA%\hpr-sim\cache` |
+    /// | Linux and other Unix | `$XDG_CACHE_HOME/hpr-sim`, or `$HOME/.cache/hpr-sim` |
+    ///
+    /// `XDG_CACHE_HOME` counts only when it is an absolute path, as the XDG Base Directory
+    /// Specification says. The folder is not created until the first write.
+    pub fn platform_dir() -> Option<PathBuf> {
+        platform_dir_from(std::env::consts::OS, |name| std::env::var_os(name))
     }
 
     fn paths(&self, url: &str) -> (PathBuf, PathBuf) {
@@ -99,6 +117,27 @@ impl Cache {
         })?;
         write_atomic(&body_path, body)?;
         write_atomic(&meta_path, &meta)
+    }
+}
+
+/// [`Cache::platform_dir`] for operating system `os` (as [`std::env::consts::OS`] names it), with
+/// `var` reading the environment.
+fn platform_dir_from(os: &str, var: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    let set = |name: &str| {
+        var(name)
+            .filter(|value| !value.is_empty())
+            .map(PathBuf::from)
+    };
+    if let Some(dir) = set("HPR_CACHE_DIR") {
+        return Some(dir);
+    }
+    match os {
+        "macos" => set("HOME").map(|home| home.join("Library").join("Caches").join("hpr-sim")),
+        "windows" => set("LOCALAPPDATA").map(|local| local.join("hpr-sim").join("cache")),
+        _ => set("XDG_CACHE_HOME")
+            .filter(|dir| dir.is_absolute())
+            .or_else(|| set("HOME").map(|home| home.join(".cache")))
+            .map(|cache| cache.join("hpr-sim")),
     }
 }
 
@@ -168,6 +207,75 @@ mod tests {
         fs::rename(meta_a, meta_b).unwrap();
         fs::rename(body_a, body_b).unwrap();
         assert_eq!(cache.get("https://example.test/b").unwrap(), None);
+    }
+
+    /// `platform_dir_from` with the environment given as pairs.
+    fn dir_with(os: &str, vars: &[(&str, &str)]) -> Option<PathBuf> {
+        platform_dir_from(os, |name| {
+            vars.iter()
+                .find(|(key, _)| *key == name)
+                .map(|(_, value)| OsString::from(value))
+        })
+    }
+
+    #[test]
+    fn platform_dirs_follow_each_systems_convention() {
+        let home = [("HOME", "/home/u")];
+        assert_eq!(
+            dir_with("macos", &[("HOME", "/Users/u")]),
+            Some(PathBuf::from("/Users/u/Library/Caches/hpr-sim"))
+        );
+        assert_eq!(
+            dir_with("windows", &[("LOCALAPPDATA", "C:/Users/u/AppData/Local")]),
+            Some(PathBuf::from("C:/Users/u/AppData/Local/hpr-sim/cache"))
+        );
+        assert_eq!(
+            dir_with("linux", &home),
+            Some(PathBuf::from("/home/u/.cache/hpr-sim"))
+        );
+        // Whether a path is absolute is the host's rule, and `/var/cache/u` has no drive letter
+        // for Windows; the XDG branch only ever runs on Unix hosts.
+        #[cfg(unix)]
+        assert_eq!(
+            dir_with(
+                "freebsd",
+                &[("HOME", "/home/u"), ("XDG_CACHE_HOME", "/var/cache/u")]
+            ),
+            Some(PathBuf::from("/var/cache/u/hpr-sim"))
+        );
+    }
+
+    #[test]
+    fn platform_dir_skips_what_the_conventions_skip() {
+        // A relative or empty XDG_CACHE_HOME is ignored, per the XDG Base Directory Specification.
+        for xdg in ["relative/cache", ""] {
+            assert_eq!(
+                dir_with("linux", &[("HOME", "/home/u"), ("XDG_CACHE_HOME", xdg)]),
+                Some(PathBuf::from("/home/u/.cache/hpr-sim"))
+            );
+        }
+        // Windows reads LOCALAPPDATA, never HOME; nothing named, no folder.
+        assert_eq!(dir_with("windows", &[("HOME", "/home/u")]), None);
+        assert_eq!(dir_with("macos", &[("HOME", "")]), None);
+        assert_eq!(dir_with("linux", &[]), None);
+    }
+
+    #[test]
+    fn hpr_cache_dir_overrides_every_platform() {
+        for os in ["macos", "windows", "linux"] {
+            let vars = [
+                ("HPR_CACHE_DIR", "/tmp/hpr"),
+                ("HOME", "/home/u"),
+                ("LOCALAPPDATA", "C:/L"),
+                ("XDG_CACHE_HOME", "/x"),
+            ];
+            assert_eq!(dir_with(os, &vars), Some(PathBuf::from("/tmp/hpr")));
+        }
+        // An empty override is no override.
+        assert_eq!(
+            dir_with("linux", &[("HPR_CACHE_DIR", ""), ("HOME", "/home/u")]),
+            Some(PathBuf::from("/home/u/.cache/hpr-sim"))
+        );
     }
 
     #[test]

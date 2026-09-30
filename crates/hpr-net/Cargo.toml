@@ -17,6 +17,17 @@ hpr-motor.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+ureq = { workspace = true, optional = true }
+
+[features]
+# The HTTP transport. Off by default: the cache, the offline mode and `Replay` need no network code.
+http = ["dep:ureq"]
 
 [dev-dependencies]
+# The loopback server in `tests/http.rs` gzips a response.
+flate2 = { workspace = true, features = ["rust_backend"] }
 tempfile.workspace = true
+
+[[test]]
+name = "http"
+required-features = ["http"]

@@ -4,14 +4,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M5.1b (HTTP over
-  `hpr-net`'s cache). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1-3, M4.1-3, M5.1a.
+- **Current milestone:** M1.8e is held at M1.8e16 (on #108), M2.3c on Neer; next: M5.2 (weather:
+  Open-Meteo first). **Run:** M0.1-4, M1.1-7, M1.8a-e19 bar e16, M1.9-13, M2.1-4 bar M2.3c, M3.1-3, M4.1-3, M5.1.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
-- **Last updated:** 2026-09-29; M5.1a: the cache and offline mode (ADR-117).
+- **Last updated:** 2026-09-30; M5.1b: HTTP over the cache (ADR-118).
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** if PR `m5.1a-cache-offline` is still open, its gate passed and its review findings are fixed: run `scripts/ci-wait.sh`, mark it ready, squash-merge. Then M5.1b (ROADMAP, ADR-117): a `ureq`+rustls `Transport` behind feature `http` in `hpr-net`, a loopback test server replaying `tests/fixtures/replay`, the platform cache dir; M5.1a's `Client`/`Cache`/`Replay` are in. Python (ADR-114 to
+- **Next (resume here):** M5.2 (ROADMAP): Open-Meteo first, split it if big. `hpr_net::Http` (feature `http`; the facade's `net` turns it on) and `Cache::platform_dir` are in (ADR-118); record real responses under `crates/hpr-net/tests/fixtures/` with the source's licence in `THIRD-PARTY-NOTICES.md`, serve them with `tests/http.rs`'s loopback server, and never fetch live in tests. HTTPS was checked once by hand, not in CI. Python (ADR-114 to
   116): `crates/hpr-py` wraps the builder; `models.rs` holds Python drag and wind (a call re-attaches the GIL; a raised
   exception is kept in `Raised` and `Flight` raises it). `gate.sh python` builds the wheel and runs pytest, `docs/python.md`'s
   blocks and `examples/calisto.py` (its table is in the page) included. Format (ADR-111 to 113): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change
@@ -63,7 +63,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   oracles run from the repo root with `refs/venv/bin/python` (Java 17 for the OpenRocket ones);
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
-- 2026-09-29: M5.1a `hpr-net` cache (ADR-117): TTLs, offline never calls the transport (a panicking one), stale fallback.
+- 2026-09-29/30: M5.1 `hpr-net` (ADR-117, 118): TTL cache, offline never calls the transport; `ureq`+rustls behind `http`, loopback-tested.
 - 2026-09-29: M4.3 Python (ADR-114 to 116): pytest on 3.10, 3.13, three OSes; `DragTable`; Calisto within 3% on 14 metrics; drag, wind as functions.
 - 2026-09-29: M3.3 `.hpr`, `.hprz`, types (ADR-111 to 113): 73 of 73 round-trip, 109 flown to the same apogee; TS, Python readers
   agree with the schema on 4,892 mutations; `hpr convert`/`sim` take all three. M3.2 `.ork` writer (ADR-109, 110): OR flies 151 of 151 within 0.5%.
@@ -87,7 +87,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
-- ADR-103 to 117 (M4.1 to M4.3, M3.2, M3.3, M5.1a): cache time passed in, stale beats none; Python drag `f(mach, thrusting)`, its exception raised as raised; Calisto's RocketPy metrics measured in the example, not the library; Python wraps the builder, unit-named, abi3-py310; TS and Python types by xtask, not a third-party generator; 0.2 renames `source_files`, records the airframe's reason; breaking changes migrate; `.hpr`/`.hprz`, unknown keys refused, `hpr-format` over `hpr-io`; OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
+- ADR-103 to 118 (M4.1 to M4.3, M3.2, M3.3, M5.1): `ureq` not `reqwest`, the body limit on unpacked bytes, cache paths by hand (MPL-2.0 in `directories`); cache time passed in, stale beats none; Python drag `f(mach, thrusting)`, its exception raised as raised; Calisto's RocketPy metrics measured in the example, not the library; Python wraps the builder, unit-named, abi3-py310; TS and Python types by xtask, not a third-party generator; 0.2 renames `source_files`, records the airframe's reason; breaking changes migrate; `.hpr`/`.hprz`, unknown keys refused, `hpr-format` over `hpr-io`; OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`; `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
 - ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings, 8 at most; L19 left unmet.
 - ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real flights
   a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; pieces fixed before flight; tumble

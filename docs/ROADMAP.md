@@ -768,7 +768,7 @@
     their exceptions reach Python, and a flight with Python's constant drag equals a table's.
     *Result:* met (ADR-116): `drag=f(mach, thrusting)`, `wind=f(height_m)`; `test_models.py`.
 
-- [ ] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
+- [x] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
   recorded fixtures (no live network in CI); offline mode never touches the network (asserted by
   test). Split into a and b.
@@ -776,8 +776,9 @@
     over a transport trait. *Done when:* recorded-fixture tests pass; an offline fetch never calls
     the transport (the test's transport fails if called), and serves a stale entry marked stale.
     *Result:* met (ADR-117): `tests/offline.rs` replays a recording; a panicking transport, 30 days.
-  - [ ] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
+  - [x] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
     *Done when:* a loopback server replaying a recorded fixture fills the cache; `cargo deny` passes.
+    *Result:* met (ADR-118): `tests/http.rs` on 127.0.0.1; limit on unpacked bytes; paths by hand.
 
 - [ ] **M5.2 Weather.**
   - Open-Meteo forecast and historical-forecast with pressure-level winds, turned into an

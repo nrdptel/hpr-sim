@@ -33,8 +33,8 @@ thiserror.workspace = true
 
 [features]
 default = []
-# Online data sources with an on-disk cache (does I/O, so not for wasm32).
-net = ["dep:hpr-net"]
+# Online data sources with an on-disk cache and the HTTP transport (does I/O, so not for wasm32).
+net = ["dep:hpr-net", "hpr-net/http"]
 # `hpr_sim::export::parquet`: a recording as an Apache Parquet file.
 parquet = ["hpr-sim/parquet"]
 

@@ -62,7 +62,8 @@
 //! [`hpr_sim::Simulation`]. For what the builder doesn't offer, such as staging, clusters, pods
 //! or mass shifts, build those with the crates, which this one re-exports by name.
 //!
-//! The `net` feature adds the online data sources from `hpr-net`, and the `parquet` feature
+//! The `net` feature adds the online data sources from `hpr-net`, its HTTP transport included,
+//! and the `parquet` feature
 //! turns on `hpr-sim`'s Parquet export (`hpr_sim::export::parquet`). [`ork`] flies the stage
 //! separation an OpenRocket `.ork` file describes.
 
