@@ -11,7 +11,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-- **Next (resume here):** M5.2b (ROADMAP, ADR-119): Wyoming soundings (terms unverified, VALIDATION's table), mirroring `hpr_net::open_meteo`: a request building the URL, a pure parser into `SoundingProfile`, `fetch` over a `Client`; record answers under `crates/hpr-net/tests/fixtures/replay/` (index keyed by the exact URL), licence in `THIRD-PARTY-NOTICES.md`, never fetch live in tests. `Http` drops a failed answer's body (so no Open-Meteo reason). HTTPS was checked once by hand, not in CI. Python (ADR-114 to
+- **Next (resume here):** M5.2b (ROADMAP, ADR-119): Wyoming soundings (terms unverified, VALIDATION's table), mirroring `hpr_net::open_meteo`: a request building the URL, a pure parser into `SoundingProfile`, `fetch` over a `Client`; record answers under `crates/hpr-net/tests/fixtures/replay/` (index keyed by the exact URL), licence in `THIRD-PARTY-NOTICES.md`, never fetch live in tests. pass the parser to `Client::fetch_checked` so an unreadable answer is never cached; `Http` drops a failed answer's body. HTTPS was checked once by hand, not in CI. Python (ADR-114 to
   116): `crates/hpr-py` wraps the builder; `models.rs` holds Python drag and wind (a call re-attaches the GIL; a raised
   exception is kept in `Raised` and `Flight` raises it). `gate.sh python` builds the wheel and runs pytest, `docs/python.md`'s
   blocks and `examples/calisto.py` (its table is in the page) included. Format (ADR-111 to 113): `hpr_format::DesignFile` over `hpr_io::ork::Design`; a type change

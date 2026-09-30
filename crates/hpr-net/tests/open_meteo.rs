@@ -582,3 +582,44 @@ fn an_answer_that_does_not_parse_is_not_cached() {
     let kept = Cache::new(dir.path()).get(&url).unwrap().unwrap();
     assert_eq!(kept.body, fixture("open-meteo-historical.json"));
 }
+
+/// A cached copy the check refuses is no copy: 15:00 and 15:30 share one answer, which on the hour
+/// reads without its 16:00 values. Cached at 15:00 with 16:00 missing, it is refused at 15:30:
+/// offline as the error, online by fetching again, which replaces it.
+#[test]
+fn a_cached_copy_that_does_not_parse_is_fetched_again() {
+    let dir = tempfile::tempdir().unwrap();
+    let on_the_hour = OpenMeteoRequest::new(
+        LATITUDE_DEG,
+        LONGITUDE_DEG,
+        HISTORICAL_S,
+        OpenMeteoApi::HistoricalForecast,
+    );
+    let mut half_past = on_the_hour.clone();
+    half_past.time_unix_s = HISTORICAL_S + 1_800;
+    assert_eq!(on_the_hour.url().unwrap(), half_past.url().unwrap());
+
+    let late_hour = edited_json(|json| json["hourly"]["temperature_2m"][1] = Value::Null);
+    let partial = Client::new(Canned(late_hour), Cache::new(dir.path()), Mode::Online);
+    let (_, fetched) = open_meteo::fetch(&partial, &on_the_hour, 1_000).unwrap();
+    assert_eq!(fetched.freshness, Freshness::Fetched);
+
+    let offline = Client::new(Forbidden, Cache::new(dir.path()), Mode::Offline);
+    match open_meteo::fetch(&offline, &half_past, 1_060) {
+        Err(OpenMeteoError::Net(NetError::Refused { reason, .. })) => {
+            assert!(reason.contains("temperature_2m"), "{reason}");
+        }
+        other => panic!("{other:?}"),
+    }
+
+    let transport = replay();
+    let online = Client::new(&transport, Cache::new(dir.path()), Mode::Online);
+    let (_, fetched) = open_meteo::fetch(&online, &half_past, 1_060).unwrap();
+    assert_eq!(
+        (fetched.freshness, transport.calls()),
+        (Freshness::Fetched, 1)
+    );
+    let url = half_past.url().unwrap();
+    let kept = Cache::new(dir.path()).get(&url).unwrap().unwrap();
+    assert_eq!(kept.body, fixture("open-meteo-historical.json"));
+}

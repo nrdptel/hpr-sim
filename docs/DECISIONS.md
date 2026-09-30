@@ -9819,13 +9819,15 @@ wind at the pressure levels. A GRIB2 decoder alone is a session's work.
    recorded speed and direction pass through unchanged. Directions are folded into `[0, 2π)`.
    Hours outside 1970 to 9999 are refused, which keeps the time arithmetic from overflowing.
 7. **Relative humidity is read as over liquid water**, which `SoundingLevel` means. Whether each
-   model reports it over ice at cold levels is not known; the density effect is under 0.1%.
+   model reports it over ice at cold levels is not known; the density effect, `0.378 (e_w − e_i)/p`
+   with `e_w − e_i` at most 27 Pa near −12 °C, is under 0.03% at 400 hPa; higher up the air is
+   colder and the gap smaller (about 6 Pa at −40 °C, 0.08% even at 30 hPa).
 8. **Fixtures** are two answers recorded unchanged on 2026-09-30 (historical forecast for 21 June
    2025, forecast for 2 October 2026, both at 32.99° N, 106.97° W), CC BY 4.0 with attribution in
    `THIRD-PARTY-NOTICES.md`. `Replay` serves them keyed by the exact URL `OpenMeteoRequest` builds,
    which pins the URL; the loopback server serves them over HTTP.
 9. **Only an answer that parses is cached.** `Client::fetch_checked` takes the source's check (here
-   `OpenMeteoProfile::parse` at the launch time): a refused body is not stored, and online a stale
+   `OpenMeteoProfile::parse` at the launch time, then `sounding`): a refused body is not stored, and online a stale
    good copy comes back in its place with the reason, else `NetError::Refused`; a cached copy the
    check refuses is a miss online and the error offline. Without it, a 200 with empty hours (the
    historical API before its data lands) would be kept for 30 days and could overwrite a good

@@ -42,7 +42,8 @@
 //! blows from, clockwise from north. Relative humidity is taken as over liquid water, which is
 //! what [`SoundingLevel`] means by it. A model that reports it over ice at cold levels shifts the
 //! air's density there by `0.378 (e_w − e_i)/p`: at most 27 Pa of vapour pressure (near −12 °C),
-//! so under 0.03% at 400 hPa.
+//! so under 0.03% at 400 hPa. Higher up the air is colder and the gap smaller: about 6 Pa at
+//! −40 °C, 0.08% even at 30 hPa.
 //!
 //! [`fetch`] asks a [`Client`] for the URL, so the answer comes from the cache when it can, and
 //! offline from the cache only; an answer that doesn't parse is never cached. The data is licensed
@@ -339,7 +340,8 @@ impl OpenMeteoProfile {
     /// - [`OpenMeteoError::Missing`] when a field or a variable asked for is absent, and
     ///   [`OpenMeteoError::Units`] when a variable is in a unit other than the one asked for.
     /// - [`OpenMeteoError::TimeOutside`] when the time is outside the response's hours.
-    /// - [`OpenMeteoError::NoSurface`] when a surface value is missing at either hour.
+    /// - [`OpenMeteoError::NoSurface`] when a surface value is missing at either hour, and
+    ///   [`OpenMeteoError::OutOfRange`] when the surface humidity is outside 0 to 100%.
     /// - [`OpenMeteoError::Atmos`] when a geopotential height has no geometric height.
     pub fn parse(body: &[u8], time_unix_s: i64) -> Result<Self, OpenMeteoError> {
         let root: Value =
@@ -493,8 +495,8 @@ impl OpenMeteoProfile {
 ///
 /// # Errors
 /// [`OpenMeteoError::Request`] for a bad request; [`OpenMeteoError::Net`] when the fetch fails,
-/// or with [`NetError::Refused`] naming what [`OpenMeteoProfile::parse`] refused when the only
-/// answer there is doesn't parse.
+/// or with [`NetError::Refused`] naming what [`OpenMeteoProfile::parse`] or
+/// [`OpenMeteoProfile::sounding`] refused when the only answer there is doesn't pass them.
 pub fn fetch<T: Transport>(
     client: &Client<T>,
     request: &OpenMeteoRequest,
@@ -503,7 +505,10 @@ pub fn fetch<T: Transport>(
     let url = request.url()?;
     let time_s = request.time_unix_s;
     let check = |body: &[u8]| {
-        OpenMeteoProfile::parse(body, time_s)
+        // A profile the sounding would refuse is refused here too, so it is never cached.
+        let profile = OpenMeteoProfile::parse(body, time_s).map_err(|e| e.to_string())?;
+        profile
+            .sounding(WindInterpolation::SpeedDirection)
             .map(drop)
             .map_err(|e| e.to_string())
     };
@@ -530,9 +535,10 @@ pub enum OpenMeteoError {
     /// The body is not JSON.
     #[error("the Open-Meteo response is not JSON: {0}")]
     Json(String),
-    /// The body is Open-Meteo's error answer. Open-Meteo sends it with an HTTP error status, which
-    /// `Http` reports as [`NetError::Transport`] without the body, so this comes only from a
-    /// transport that passes the body on.
+    /// The body is Open-Meteo's error answer, from [`OpenMeteoProfile::parse`]. Open-Meteo sends
+    /// it with an HTTP error status, which `Http` reports as [`NetError::Transport`] without the
+    /// body; [`fetch`] reports any answer that doesn't parse as [`NetError::Refused`], with this
+    /// error's message.
     #[error("Open-Meteo refused the request: {reason}")]
     Server {
         /// Its reason.

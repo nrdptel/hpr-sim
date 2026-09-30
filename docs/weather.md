@@ -59,8 +59,8 @@ in for Open-Meteo's own: set the request's `endpoint`.
 - **Levels below the ground are left out.** The weather models report all 19 levels everywhere,
   inventing values beneath high ground. A level is kept only when its pressure is below the ground
   pressure and its height is above the ground. A level with a missing value at either hour is left
-  out too, and so is one whose relative humidity is above 100%. The profile lists every level it
-  left out, and why.
+  out too, and so is one whose relative humidity is outside 0 to 100%. The profile lists every
+  level it left out, and why.
 - **Heights.** The models give a level's height in geopotential metres, which hpr converts to
   heights above sea level at the site's latitude with the World Meteorological Organization's
   formula (WMO-No. 8 eq. 12.16, as the [atmosphere page](physics/atmosphere.md) explains).
@@ -78,7 +78,8 @@ in for Open-Meteo's own: set the request's `endpoint`.
   atmosphere continues, and the air is marked as extrapolated.
 - **Humidity** is taken as relative to liquid water. A model that reports it relative to ice at
   cold levels changes the density there by very little: the two differ by at most 27 Pa of water
-  vapour (near −12 °C), which moves the density by under 0.03% at 400 hPa.
+  vapour (near −12 °C), which moves the density by under 0.03% at 400 hPa. Higher up the air is
+  colder and the gap smaller: about 6 Pa at −40 °C, 0.08% even at 30 hPa.
 
 ## An example
 
@@ -163,7 +164,9 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
   [`tests/http.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/http.rs)
   does the same over HTTP, from a test server on the machine's own address.
 - An answer with an hour's values missing is not saved: with no earlier copy the request fails,
-  and with one, the earlier copy comes back, marked stale, and stays saved.
+  and with one, the earlier copy comes back, marked stale, and stays saved. A saved answer that
+  can't be read at a later launch time in the same hour is fetched again online, and is the error
+  offline.
 - Text that is not JSON, Open-Meteo's error answer, a unit other than the one asked for, a missing
   field, hours outside 1970 to 9999, and a time outside the answer's hours are refused.
 - The heights are geopotential, by the hypsometric check above; the test holds each average to

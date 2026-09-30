@@ -47,7 +47,7 @@ pub enum Freshness {
     Fetched,
     /// From the cache, younger than the source's TTL.
     Cached,
-    /// From the cache, older than the TTL: offline, or the fetch failed.
+    /// From the cache, older than the TTL: offline, or the fetch failed or its answer was refused.
     Stale,
 }
 
@@ -62,7 +62,8 @@ pub struct Fetched {
     pub freshness: Freshness,
     /// The source's attribution, to show with the data.
     pub attribution: String,
-    /// Online, why the fetch failed when a stale copy was returned in its place.
+    /// Online, why the fetch failed, or why its answer was refused, when a stale copy was returned
+    /// in its place.
     pub stale_reason: Option<String>,
 }
 
