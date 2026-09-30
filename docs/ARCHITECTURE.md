@@ -83,10 +83,10 @@ Check each one on crates.io before adding it, and record any change in an ADR.
 - **Errors, logging, CLI:** `thiserror`, `anyhow` (binaries only), `tracing`, `clap`.
 - **Parallelism and bindings:** `rayon`; `pyo3` + `maturin` + `numpy`; `wasm-bindgen` + `tsify`;
   `cbindgen`; later `uniffi` for native mobile bindings.
-- **Networking:** `ureq` or `reqwest` (blocking is fine in `hpr-net`; `rustls` only), `grib` (pure
-  Rust GRIB2).
-- **Cache and platform:** `rusqlite` (bundled) or plain files for the cache, `directories` for
-  platform paths.
+- **Networking:** `ureq` 3 with `rustls` only, behind `hpr-net`'s `http` feature (ADR-118), `grib`
+  (pure Rust GRIB2).
+- **Cache and platform:** plain files for the cache (ADR-117); platform paths written by hand,
+  since `directories` pulls in MPL-2.0 (ADR-118).
 - **Testing:** `proptest`, `insta`, `criterion`, `approx`, `cargo-nextest`, `cargo-deny`.
 - **Optimization:** `argmin`, `egobox` (Bayesian/EGO). Implement CMA-ES and NSGA-II in-house if
   the crates are stale; the `cmaes` crate has low activity.

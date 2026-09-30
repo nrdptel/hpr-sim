@@ -2,12 +2,13 @@
 
 This page covers `hpr-net`, the one crate that uses the network, and the cache that makes its
 answers work offline. It is for anyone who will pull weather, elevation or motor data into a
-flight once those sources exist. **Today the crate holds only the cache and the offline rule**
-([M5.1a](decisions-and-roadmap.md#m5-1a)). It has no HTTP client yet (planned for
-[M5.1b, the HTTP transport](decisions-and-roadmap.md#m5-1b)) and no data sources yet (planned from
-[M5.2, weather](decisions-and-roadmap.md#m5-2)). It is tested with a stand-in transport that
-replays a small hand-written sample from a folder, never the live network. It has not been used
-against a real service yet; real recorded responses arrive with each source.
+flight once those sources exist. **Today the crate holds the cache, the offline rule and an HTTP
+client** ([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **but no data sources yet**
+(planned from [M5.2, weather](decisions-and-roadmap.md#m5-2)). Its tests replay a small
+hand-written sample response, from a folder and from a test web server on the machine running the
+tests, never the live network. Those tests speak plain HTTP only: encrypted HTTPS was checked once
+by hand against a real weather service (Open-Meteo), not in CI. Real recorded responses arrive
+with each data source.
 
 ## What it promises
 
@@ -48,24 +49,101 @@ an empty cache and fills it at 1,000 s:
 | C, online, network down | 8,200 | copy from 1,000 | `Stale`, from 1,000, with the reason | one failed |
 | C, online, network down | 1,000 | nothing, for another URL | error: the fetch's | one failed |
 
+## Fetching over HTTP
+
+The HTTP client is [`Http`](api/hpr_net/struct.Http.html). It is behind `hpr-net`'s `http` cargo
+feature, so a program that depends on `hpr-net` alone and needs only the cache and saved responses
+builds no network code. The `hpr` library's `net` feature turns HTTP on: with
+`hpr = { ..., features = ["net"] }` in `Cargo.toml` it is `hpr::hpr_net::Http`. Its API page has
+an example, compiled in CI, that fetches into the platform's cache folder. Building with HTTP needs
+a C compiler, since the encryption library compiles some C and assembly.
+
+| behaviour | what it does | checked by |
+|---|---|---|
+| encryption (TLS) | rustls, a TLS library written in Rust, with Mozilla's list of trusted certificate authorities built in: no OpenSSL, and the computer's own certificate store is not read | one manual fetch; not in CI |
+| time allowed | 60 s for the whole request: finding the host, connecting, redirects and reading; at most 30 days | a test, at 0.3 s |
+| largest answer | 64 MiB, counted after any unpacking; one byte more is refused | a test, at and one byte past a limit set to the sample's size |
+| compression | asks for gzip and unpacks it | a test |
+| error status | anything but a 2xx success, such as 404 or 304, is a failed fetch | a test each for 404 and 304 |
+| redirects | followed, up to ten; the cache files the answer under the address you asked for | a test with one redirect; the cap of ten is `ureq`'s default, not tested |
+| proxy | the first set of `ALL_PROXY`, `HTTPS_PROXY` and `HTTP_PROXY` (either case), for both `http` and `https` addresses; hosts listed in `NO_PROXY` connect directly; an unreadable value is ignored. A SOCKS proxy is refused with an error, not bypassed, and under one no redirect is followed | tests that a SOCKS proxy is refused, that `NO_PROXY` exempts a host, and that the error doesn't show the proxy's password; the rest is `ureq`'s, not tested |
+| identification | sends `User-Agent: hpr-sim/<version> (+https://github.com/nrdptel/hpr-sim)`, so a data provider can see who is asking | a test |
+
+A failed fetch (an error status, a timeout, a refused or dropped connection, a too-long answer)
+is handled as above: online, the client falls back to an old copy marked stale.
+
+The time and size limits, and whether to use the environment's proxy, are fields of
+[`HttpConfig`](api/hpr_net/struct.HttpConfig.html). Start from `HttpConfig::default()`, change a
+field (for example `config.timeout = Duration::from_secs(300)`), and pass it to
+`Http::with_config(config)`.
+
+Because the computer's certificate store is not read, a network that inspects encrypted traffic
+with its own certificate (common on company and school networks) makes every HTTPS fetch fail, and
+there is no setting yet to add a certificate.
+
+## Where the cache lives
+
+The cache folder is whatever you pass. [`Cache::platform_dir`](api/hpr_net/struct.Cache.html#method.platform_dir)
+gives the usual place for caches on each system, and the folder is created on the first save:
+
+| system | folder |
+|---|---|
+| macOS | `$HOME/Library/Caches/hpr-sim` |
+| Windows | `%LOCALAPPDATA%\hpr-sim\cache` |
+| Linux and other Unix | `$XDG_CACHE_HOME/hpr-sim` if that variable holds a full path, otherwise `$HOME/.cache/hpr-sim` |
+
+Setting the environment variable `HPR_CACHE_DIR` puts the cache in that folder instead, on every
+system; a relative path there is taken from the current folder. The folders come from environment
+variables alone: on Windows `LOCALAPPDATA` is read rather than asking the system, which gives the
+same folder unless the variable was changed. If `HPR_CACHE_DIR` is not set and `HOME` (macOS,
+Linux) or `LOCALAPPDATA` (Windows) is unset or empty, `Cache::platform_dir` returns nothing and you
+must name a folder.
+
 ## How it is checked
 
 The tests in [`crates/hpr-net/tests/offline.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/offline.rs)
-replay a hand-written sample from a folder instead of using the network. The offline test gives the
-client a transport that fails the test if it is ever called, then asks for a URL before and after
-it is cached, fresh and thirty days stale. The cache's own tests check that a saved body reads
-back, and that another URL's entry in the same file reads as a miss. They also check that the
-hash that names each file (FNV-1a, a standard 64-bit hash, so names stay the same on every
-platform) matches its published test values. Offline, a corrupt entry is an error; online, it is
-fetched again and overwritten. The API reference for [`hpr_net`](api/hpr_net/index.html) has a
-runnable example.
+replay a hand-written sample from a folder instead of using the network:
+
+- The offline test gives the client a transport that fails the test if it is ever called, then
+  asks for a URL before and after it is cached, fresh and thirty days stale.
+- Offline, a corrupt entry is an error; online, it is fetched again and overwritten.
+
+The cache's own tests check that a saved body reads back, and that another URL's entry in the same
+file reads as a miss. They also check that the hash that names each file (FNV-1a, a standard 64-bit
+hash, so names stay the same on every platform) matches its published test values. The cache
+folder rules are checked for each system with a made-up environment, `HPR_CACHE_DIR` included; the
+`XDG_CACHE_HOME` case runs only on Unix test machines. The API reference for
+[`hpr_net`](api/hpr_net/index.html) has a runnable example.
+
+The HTTP tests in [`crates/hpr-net/tests/http.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/http.rs)
+start a small web server inside the test, on the computer's own loopback address (`127.0.0.1`),
+which serves the same sample. Nothing leaves the machine, and the tests turn off any proxy the
+environment names. They check that:
+
+- a fetch saves the sample in the cache, a second fetch inside the time to live sends no request,
+  and offline mode answers from the cache without a request while the server is still running;
+- a compressed answer arrives unpacked, and the request names hpr-sim and asks for gzip;
+- a redirect is followed and saved under the address asked for;
+- a 404 and a 304 are failed fetches and save nothing;
+- an answer one byte over the limit is refused and one at the limit passes, and a megabyte of
+  zeros that compresses to under 64 KiB is refused at a 64 KiB limit;
+- a server that never answers is cut off at a 0.3 s limit (the test requires under 5 s; the
+  server stalls for 10 s), and a timeout of `Duration::MAX` (the usual way to say "no limit"),
+  which hpr treats as 30 days, does not crash;
+- when the server hangs up without answering, an old copy comes back marked stale, with the
+  reason.
 
 ## What it leaves out
 
-- No HTTP yet: the only transports are [`Replay`](api/hpr_net/struct.Replay.html), which reads
-  saved responses from a folder, and your own.
-- The cache folder is whatever you pass; the platform's standard cache folder comes with
-  [M5.1b, the HTTP transport](decisions-and-roadmap.md#m5-1b).
+- No retries: a failed fetch is tried once. Plain, unencrypted `http://` addresses are accepted;
+  nothing forces HTTPS. The 60 s
+  time limit covers the whole transfer, so a large answer on a slow connection can time out; raise
+  it in `HttpConfig`.
+- No test makes an encrypted (HTTPS) connection: the test server speaks plain HTTP, since a local
+  encrypted server would need certificates made for the test. One manual run on a Mac fetched a
+  real Open-Meteo forecast over HTTPS and refused a site with an expired certificate
+  ([ADR-118: M5.1b, HTTP over the cache](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-118-m51b-http-over-the-cache-2026-09-30)), but that is not repeated in
+  CI.
 - Freshness comes only from the source's TTL: a server's cache headers are ignored, and the cache
   key is the URL alone.
 - If saving a fetched body fails (a full disk, a read-only folder), the fetch fails too.

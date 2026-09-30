@@ -17,9 +17,8 @@ pub enum Mode {
     Offline,
 }
 
-/// Something that fetches a URL's bytes: HTTP from
-/// [M5.1b, the HTTP transport](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-1b),
-/// recorded fixtures in tests.
+/// Something that fetches a URL's bytes: `Http` with the `http` feature, [`Replay`]'s recorded
+/// responses in tests.
 pub trait Transport {
     /// The body at `url`.
     ///

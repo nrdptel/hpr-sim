@@ -80,6 +80,9 @@ sha2 = "0.11.0"
 tempfile = "3.27.0"
 thiserror = "2.0.20"
 toml = "1.1.6"
+# `hpr-net`'s HTTP transport, behind its `http` feature: blocking HTTP/1.1 over rustls with the
+# ring provider and Mozilla's roots (webpki-roots), so no OpenSSL or platform TLS library.
+ureq = { version = "3.4.2", default-features = false, features = ["rustls", "gzip"] }
 # `.ork` designs are zip archives. Read-only, no encryption and no compression method but deflate,
 # which is all OpenRocket writes; the default features pull bzip2, lzma, zstd and AES.
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
