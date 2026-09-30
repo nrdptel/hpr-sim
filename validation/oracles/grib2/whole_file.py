@@ -31,6 +31,7 @@ times its point's index plus one, and every value at the points whose index is a
 """
 
 import collections
+import glob
 import hashlib
 import json
 import math
@@ -46,14 +47,14 @@ MISSING = 9.87654321e300
 OUT = "crates/hpr-io/tests/fixtures/"
 STRIDE = 997
 # Messages of each kind in GFS's 00 UTC run of 2026-09-30, hour 18 (`pgrb2.0p25`): for 1-, 2- and
-# 3-byte descriptors and template 4.8, the smallest over 2 kB (smaller ones hold a handful of
-# distinct values); the smallest with a bitmap, with missing values in the data, and of template
-# 4.8; and the one simple-packed field. `KINDS` names each.
-CUT = [26, 204, 246, 278, 524, 604, 605, 730]
+# 3-byte descriptors and template 4.8, the smallest over 2,000 bytes, for a message of some size;
+# the smallest with a bitmap, with missing values in the data, and of template 4.8; and the one
+# simple-packed field. `KINDS` names each.
+CUT = [126, 204, 233, 278, 524, 604, 605, 730]
 KINDS = {
-    26: "5.3, 1-byte descriptors",
+    126: "5.3, 1-byte descriptors",
     204: "5.0, 0 bits",
-    246: "5.3, 2-byte descriptors",
+    233: "5.3, 2-byte descriptors",
     278: "5.3, 3-byte descriptors",
     524: "5.3 with a bitmap",
     604: "5.3, 1-byte descriptors, template 4.8",
@@ -195,8 +196,13 @@ def compare(path):
         sys.exit("hpr decoded more fields than ecCodes")
     if hpr.wait() != 0:
         sys.exit("cargo xtask grib2-values failed")
+    # What decoded it: the SHA-256 of the decoder's sources, in name order.
+    sources = sorted(glob.glob("crates/hpr-io/src/grib2/*.rs"))
+    digest = hashlib.sha256(b"".join(open(p, "rb").read() for p in sources)).hexdigest()
     report = {
         "eccodes": VERSION,
+        "decoder_sources": [p.rsplit("/", 1)[-1] for p in sources],
+        "decoder_sha256": digest,
         "file": path.rsplit("/", 1)[-1],
         "bytes": os.path.getsize(path),
         "sha256": sha256(path),

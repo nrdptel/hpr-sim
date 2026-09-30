@@ -705,8 +705,8 @@ it falls back to an older copy, and the output says so.
 - `--from FILE` reads an answer saved earlier and touches neither the network nor the cache:
   Open-Meteo's JSON, the Wyoming archive's CSV, or a [GRIB2](glossary.md#grib2) file for GFS and
   RAP. For GFS and RAP, still give `--latitude` and `--longitude`: the file covers an area, and
-  the site picks the point in it. Otherwise the file says where and when it is for, so the
-  options that choose what to fetch are refused beside it: Open-Meteo's `--latitude`, `--longitude`, `--historical` and `--model`, and
+  the site picks the point in it. For Open-Meteo and Wyoming, the file says where and when it is
+  for, so the options that choose what to fetch are refused beside it: Open-Meteo's `--latitude`, `--longitude`, `--historical` and `--model`, and
   Wyoming's `--station`, `--time` and `--bufr`. Open-Meteo's `--time` stays, and must fall within
   the file's hours. A GRIB2 file is checked as a fetched one is: it must be on its model's grid,
   and when you give `--cycle` and `--hour`, it must be that run and hour. Check the first line of

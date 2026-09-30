@@ -1311,7 +1311,21 @@ fn ambiguous_or_unread_complex_packing_is_refused_by_name() {
     let mut repr = complex(6, 0, &two, None);
     repr.0[37..41].copy_from_slice(&u32::MAX.to_be_bytes());
     repr.0[41] = 255;
-    assert!(refused(repr).contains("but section 5 packs 6"));
+    // 2^32 − 1 + 3 · 255, and the second group not added.
+    assert_eq!(
+        refused(repr),
+        "the groups hold 4294968060 values but section 5 packs 6"
+    );
+    // No groups and no values (a bitmap marking no point) read as a field with no values.
+    let lists = Lists {
+        width_bits: 0,
+        length_bits: 0,
+        ..LISTS
+    };
+    let mut repr = complex_with(0, 0, &g, None, lists);
+    repr.0[31..35].copy_from_slice(&0_u32.to_be_bytes());
+    let bytes = complex_field(repr, section(6, &[0, 0]));
+    assert_eq!(parse(&bytes).unwrap()[0].values().unwrap(), [None; 6]);
 }
 
 #[test]

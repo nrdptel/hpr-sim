@@ -28,8 +28,8 @@ measurement ([Weather-balloon soundings](soundings.md)).
   the site, at every level it keeps. That is checked below.
 - A whole GFS file you download yourself reads too ([A whole GFS file](#a-whole-gfs-file)): every
   one of the 746,770,303 values in one such file is within 4.4e-16 of ecCodes', relatively, and
-  its profile at Spaceport America is the recorded cut's to 1.04e-7. That check was run by hand;
-  CI checks eight of the file's messages.
+  its profile at Spaceport America is the recorded cut's to 1.04e-7. That check was a script run
+  once outside CI; CI checks eight of the file's messages.
 - How good a forecast is depends on the model, and nothing here measures that: no forecast has
   been compared with a weather balloon or a flight log.
 - The pad sits on the model's ground, which is smoothed: at Spaceport America it is 1,476 m in
@@ -264,7 +264,7 @@ A whole file also holds 743 [messages](glossary.md#grib2) where a cut holds 147:
 - values for a layer between two heights, such as the humidity from the ground to mid-air, which
   hpr skips because they don't belong to one level;
 - every pressure level up to 0.01 hPa, so the profile goes on above 10 hPa, where a cut stops.
-  In this file the 0.01 hPa level is 79.2 km up. The highest levels are near the top of the
+  In the profile hpr writes from this file, the 0.01 hPa level is 79.2 km above sea level. The highest levels are near the top of the
   model, and nothing here checks how good its forecast is there.
 
 The grid runs all the way round the Earth, so hpr joins its last column to its first: a site
@@ -346,8 +346,8 @@ Linux and Windows.
 - **Complex packing in CI.** The recorded GFS cut, packed again by ecCodes with complex packing
   and both orders of differencing
   ([`repack.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/repack.py)),
-  goes through every check above: its 1,323 values equal ecCodes' (bound 2.5e-16), and its profile
-  matches at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8,
+  goes through every check above: its 1,323 values match ecCodes' to one rounding (bound 2.5e-16),
+  and its profile matches at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8,
   relatively (bound 7e-8).
 - **Refusals.** A site outside the file's grid, text that isn't GRIB2, a cycle the model doesn't
   run and a forecast hour its run doesn't have are refused. The decoder's own tests build small

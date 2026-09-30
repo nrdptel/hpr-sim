@@ -1,5 +1,11 @@
 {
  "eccodes": "2.49.0",
+ "decoder_sources": [
+  "complex.rs",
+  "mod.rs",
+  "tests.rs"
+ ],
+ "decoder_sha256": "a2bb637d577b52e6f48d13a48f319fe7a0d202a8c04d2a631d526cfc099fc8b2",
  "file": "gfs.t00z.pgrb2.0p25.f018",
  "bytes": 550166372,
  "sha256": "648fcc36e8335c84081e8076496071b4c8c20e5e1426262b86e9dc63adc1c62a",

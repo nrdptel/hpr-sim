@@ -7,8 +7,8 @@
 //! one or two values and the overall minimum of the differences, each a fixed number of bytes,
 //! [`SpatialDifferencing::octets`], the minimum signed); every group's reference, then every
 //! group's width above the reference width, then every group's length as a scaled number `l`,
-//! each list padded to a whole byte; then the groups' values, one after another. A group's length
-//! is `L = L_ref + l · increment`, except the last's, which is given as it is (WMO-No. 306, Volume I.2, templates 5.2, 5.3, 7.2, 7.3 and Regulation 92.9.4).
+//! each list padded to a whole byte; then the groups' values, one after another. A group's
+//! length is `L = L_ref + l · increment`, except the last's, which is given as it is (WMO-No. 306, Volume I.2, templates 5.2, 5.3, 7.2, 7.3 and Regulation 92.9.4).
 //!
 //! **Missing values** (code table 5.5): with primary missing values, a group of width `W > 0`
 //! marks a missing value by `X2 = 2^W − 1`, and a group of width 0 is missing throughout when its
@@ -279,8 +279,10 @@ pub(super) fn layout(
             return Err(wide(width));
         }
         // Below 2^64 (`groups`, `length_reference` and `last_length` are 32 bits); `bits` only
-        // counts when the lengths add up.
-        total = (groups - 1) * u64::from(p.length_reference) + u64::from(p.last_length);
+        // counts when the lengths add up. No groups hold no values (the count is then 0 too).
+        total = groups.checked_sub(1).map_or(0, |g| {
+            g * u64::from(p.length_reference) + u64::from(p.last_length)
+        });
         bits = if total <= count { total * width } else { 0 };
     } else {
         for k in 0..groups {

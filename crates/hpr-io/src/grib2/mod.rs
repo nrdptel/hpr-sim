@@ -633,13 +633,13 @@ impl Grid {
     /// Whether a latitude/longitude grid's rows go all the way round the Earth: `ni` steps of
     /// `di` make 360°, so the point after the last in a row is the row's first. A step is written
     /// in millionths of a degree, so a 1/12° grid's 4,320 steps of 0.083333° make 359.9986°: the
-    /// test allows half a millionth of a degree a step.
+    /// test allows a millionth of a degree a step, for an encoder that truncates.
     #[must_use]
     pub fn circles_the_earth(&self) -> bool {
         match self.projection {
             Projection::LatLon { di_deg, .. } => {
                 let ni = f64::from(self.ni);
-                (ni * di_deg - 360.0).abs() <= ni * 0.5e-6
+                (ni * di_deg - 360.0).abs() <= ni * 1e-6
             }
             Projection::LambertConformal { .. } => false,
         }

@@ -10168,16 +10168,17 @@ interval, such as accumulated rain). No 5.2 or first-order 5.3.
    points without a value are the same points. The file is not committed (550 MB); it decoded in
    5 s in a release build on a Mac.
 6. **Checked in CI.** Eight whole messages cut unchanged from the file (`crates/hpr-io/tests/
-   fixtures/gfs-messages.grib2`, 429,101 bytes): for 1-, 2- and 3-byte descriptors and template
-   4.8, the smallest over 2 kB (smaller ones hold a handful of distinct values); the smallest with a
-   bitmap, with missing values in the data, and of template 4.8; and the one 5.0 field. The
+   fixtures/gfs-messages.grib2`, 404,731 bytes): for 1-, 2- and 3-byte descriptors and template
+   4.8, the smallest over 2,000 bytes, for a message of some size; the smallest with a bitmap, with
+   missing values in the data, and of template 4.8; and the one 5.0 field. The
    committed reading (`whole_file.py cut`) is, per message, its identity, template 4.8's interval,
    its missing points, `math.fsum` of its values and of each value times its index plus one, and
    every 997th value: 8.3 million values can't be committed. The sums hold the decoder
    to 1.35e-15 of the terms' sizes; in every committed message one packing step (`2^E / 10^D`) is
    at least 2.3e4 times that, so a single value off by a step fails the plain sum; the weighted one
-   also depends on where each value sits. A mutated second-order start and a mutated
-   missing-value code were each tried by hand, and both failed it. Besides, the recorded GFS cut repacked by ecCodes
+   also depends on where each value sits. Two mutations were tried by hand, on the decoder before
+   the review's rework of `layout`: a second-order start off by one failed the plain sum, and a
+   missing-value code off by one failed the count of points without a value. Besides, the recorded GFS cut repacked by ecCodes
    (`repack.py`: 5.2, first- and second-order 5.3 in turn, 24 bits, 1 to 4 bytes per descriptor)
    joins the NOMADS tests (every value against ecCodes, the profile at every level) and gives
    `hpr weather gfs --from` a complex-packed file; its profile is the cut's within 6.9e-8 (bound
