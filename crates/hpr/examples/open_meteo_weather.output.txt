@@ -1,5 +1,6 @@
-Open-Meteo over 32.99° N, -106.97° E at 2025-06-21 15:30 UTC
-Weather data by Open-Meteo.com (CC BY 4.0) (Fetched)
+Open-Meteo over 32.99° N, 106.97° W at 2025-06-21 15:30 UTC
+Weather data by Open-Meteo.com (CC BY 4.0)
+freshness: Fetched
 
 level (hPa)   height (m)   temperature (°C)   humidity (%)   wind (m/s)   from (°)
       859.5         1400               29.6             18          3.3        162   the ground

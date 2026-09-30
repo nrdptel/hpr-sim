@@ -33,7 +33,7 @@ use hpr_core::DVec3;
 use hpr_core::earth::Earth;
 use hpr_core::geodesy::Geodetic;
 use hpr_design::Rocket;
-use hpr_net::open_meteo::{self, OpenMeteoApi, OpenMeteoRequest};
+use hpr_net::open_meteo::{self, DropReason, OpenMeteoApi, OpenMeteoRequest};
 use hpr_net::{Cache, Client, Mode, Transport};
 use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation};
 
@@ -68,8 +68,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (profile, fetched) = open_meteo::fetch(&client, &request, now_s)?;
     std::fs::remove_dir_all(&folder).ok();
 
-    println!("Open-Meteo over {latitude_deg}° N, {longitude_deg}° E at 2025-06-21 15:30 UTC");
-    println!("{} ({:?})", fetched.attribution, fetched.freshness);
+    println!(
+        "Open-Meteo over {latitude_deg}° N, {}° W at 2025-06-21 15:30 UTC",
+        -longitude_deg
+    );
+    println!("{}", fetched.attribution);
+    // `Fetched`: from the transport, not the cache. A second call within the hour says `Cached`.
+    println!("freshness: {:?}", fetched.freshness);
     println!();
     let s = &profile.surface;
     println!("level (hPa)   height (m)   temperature (°C)   humidity (%)   wind (m/s)   from (°)");
@@ -96,6 +101,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let underground: Vec<String> = profile
         .dropped
         .iter()
+        .filter(|d| d.reason == DropReason::BelowGround)
         .map(|d| format!("{:.0}", d.pressure_pa / 100.0))
         .collect();
     println!("Below the ground, left out: {} hPa", underground.join(", "));

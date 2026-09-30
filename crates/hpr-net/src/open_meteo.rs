@@ -30,17 +30,27 @@
 //! - **Each pressure level above the ground.** The models report every level, including those
 //!   below the ground at a high site, where the values are extrapolated. A level is dropped when
 //!   its pressure is not below the surface pressure or its height is not above the elevation.
-//!   A level with no data at either hour is dropped too. [`OpenMeteoProfile::dropped`] lists both.
+//!   A level with no data at either hour is dropped too, and so is one whose relative humidity is
+//!   outside 0 to 100%. [`OpenMeteoProfile::dropped`] lists each, with its reason.
 //!
-//! Heights are geopotential metres, converted to geometric heights at the response's latitude with
-//! WMO-No. 8 eq. 12.16 ([`hpr_atmos::profile::geometric_from_wmo_geopotential_m`]), as the
-//! [atmosphere page][atmos] explains. Relative humidity is taken as over liquid water, which is
+//! Heights are read as geopotential metres, as the weather models define them, and converted to
+//! geometric heights at the response's latitude with WMO-No. 8 eq. 12.16
+//! ([`hpr_atmos::profile::geometric_from_wmo_geopotential_m`]), as the [atmosphere page][atmos]
+//! explains. Open-Meteo's documentation calls the variable an altitude above sea level; the
+//! recorded answers' layer thicknesses bear out geopotential metres (the hypsometric check in
+//! `tests/open_meteo.rs`). Directions are the meteorological convention, the direction the wind
+//! blows from, clockwise from north. Relative humidity is taken as over liquid water, which is
 //! what [`SoundingLevel`] means by it. A model that reports it over ice at cold levels shifts the
-//! air's density there by well under 0.1%, because the vapour pressure is small.
+//! air's density there by `0.378 (e_w − e_i)/p`: at most 27 Pa of vapour pressure (near −12 °C),
+//! so under 0.03% at 400 hPa.
 //!
 //! [`fetch`] asks a [`Client`] for the URL, so the answer comes from the cache when it can, and
-//! offline from the cache only. The data is licensed CC BY 4.0: show [`ATTRIBUTION`] (it is on
-//! every [`Fetched`]) wherever the weather is shown.
+//! offline from the cache only; an answer that doesn't parse is never cached. The data is licensed
+//! CC BY 4.0: show [`ATTRIBUTION`] (it is on every [`Fetched`]) wherever the weather is shown.
+//!
+//! **How far to trust it:** the profile gives back every level it keeps as recorded (the tests);
+//! how good the forecast is depends on the weather model, and nothing here measures that. The
+//! [guide page][guide] says more.
 //!
 //! ```
 //! use hpr_atmos::WindInterpolation;
@@ -59,6 +69,7 @@
 //!
 //! [l6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l6
 //! [atmos]: https://nrdptel.github.io/hpr-sim/physics/atmosphere.html
+//! [guide]: https://nrdptel.github.io/hpr-sim/weather.html
 
 use std::f64::consts::TAU;
 
@@ -103,6 +114,7 @@ const HOUR_S: i64 = 3_600;
 const YEAR_10000_S: i64 = 253_402_300_800;
 
 /// Which Open-Meteo API to ask.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OpenMeteoApi {
     /// The forecast API: about 16 days ahead and 3 months back. A copy stays fresh for an hour.
@@ -135,6 +147,7 @@ impl OpenMeteoApi {
 }
 
 /// What to ask Open-Meteo for: a place, a time and an API.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpenMeteoRequest {
     /// Latitude, degrees north, in `[-90, 90]`.
@@ -149,7 +162,7 @@ pub struct OpenMeteoRequest {
     /// the best for the place. Letters, digits and `_` only.
     pub model: Option<String>,
     /// Another server's endpoint in place of [`OpenMeteoApi::endpoint`], for a self-hosted
-    /// Open-Meteo; `None` for Open-Meteo's own. It must hold no `?`.
+    /// Open-Meteo; `None` for Open-Meteo's own. It must hold no `?` or `#`.
     pub endpoint: Option<String>,
 }
 
@@ -185,7 +198,7 @@ impl OpenMeteoRequest {
             return Err(refuse("time (s since 1970)", self.time_unix_s.to_string()));
         }
         let endpoint = match &self.endpoint {
-            Some(endpoint) if endpoint.is_empty() || endpoint.contains('?') => {
+            Some(endpoint) if endpoint.is_empty() || endpoint.contains(['?', '#']) => {
                 return Err(refuse("endpoint", endpoint.clone()));
             }
             Some(endpoint) => endpoint.as_str(),
@@ -236,6 +249,7 @@ impl OpenMeteoRequest {
 }
 
 /// The ground under the forecast, at the launch time.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct OpenMeteoSurface {
     /// The response's `elevation`: the ground's height above mean sea level, m.
@@ -253,6 +267,7 @@ pub struct OpenMeteoSurface {
 }
 
 /// One pressure level above the ground, at the launch time.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct OpenMeteoLevel {
     /// The level's pressure, Pa.
@@ -279,9 +294,12 @@ pub enum DropReason {
     BelowGround,
     /// A value is missing (`null`) at one of the two hours.
     NoData,
+    /// Its relative humidity is outside 0 to 100%, which a sounding refuses.
+    Humidity,
 }
 
 /// A pressure level left out of the profile, and why.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct DroppedLevel {
     /// The level's pressure, Pa.
@@ -291,6 +309,7 @@ pub struct DroppedLevel {
 }
 
 /// An Open-Meteo response read at one time: the surface and the pressure levels above it.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpenMeteoProfile {
     /// The model grid point's latitude, degrees north (near the one asked for).
@@ -370,6 +389,12 @@ impl OpenMeteoProfile {
             wind_speed_m_s,
             wind_direction_from_rad,
         };
+        if !(0.0..=1.0).contains(&surface.relative_humidity) {
+            return Err(OpenMeteoError::OutOfRange {
+                field: "relative_humidity_2m".to_owned(),
+                value: surface.relative_humidity * 100.0,
+            });
+        }
 
         let mut levels = Vec::new();
         let mut dropped = Vec::new();
@@ -395,6 +420,13 @@ impl OpenMeteoProfile {
                 dropped.push(DroppedLevel {
                     pressure_pa,
                     reason: DropReason::BelowGround,
+                });
+                continue;
+            }
+            if !(0.0..=100.0).contains(&humidity) {
+                dropped.push(DroppedLevel {
+                    pressure_pa,
+                    reason: DropReason::Humidity,
                 });
                 continue;
             }
@@ -456,18 +488,27 @@ impl OpenMeteoProfile {
 ///
 /// The answer comes from the client's cache while fresh (see [`OpenMeteoRequest::source`]); offline,
 /// from the cache only. The [`Fetched`] says which, carries [`ATTRIBUTION`] and holds the body.
+/// Only an answer that parses is cached ([`Client::fetch_checked`]): one that doesn't never takes
+/// a good copy's place, and online a stale good copy is returned instead, with the reason.
 ///
 /// # Errors
-/// [`OpenMeteoError::Request`] for a bad request, [`OpenMeteoError::Net`] when the fetch fails,
-/// and what [`OpenMeteoProfile::parse`] refuses.
+/// [`OpenMeteoError::Request`] for a bad request; [`OpenMeteoError::Net`] when the fetch fails,
+/// or with [`NetError::Refused`] naming what [`OpenMeteoProfile::parse`] refused when the only
+/// answer there is doesn't parse.
 pub fn fetch<T: Transport>(
     client: &Client<T>,
     request: &OpenMeteoRequest,
     now_s: u64,
 ) -> Result<(OpenMeteoProfile, Fetched), OpenMeteoError> {
     let url = request.url()?;
-    let fetched = client.fetch(&request.source(), &url, now_s)?;
-    let profile = OpenMeteoProfile::parse(&fetched.body, request.time_unix_s)?;
+    let time_s = request.time_unix_s;
+    let check = |body: &[u8]| {
+        OpenMeteoProfile::parse(body, time_s)
+            .map(drop)
+            .map_err(|e| e.to_string())
+    };
+    let fetched = client.fetch_checked(&request.source(), &url, now_s, check)?;
+    let profile = OpenMeteoProfile::parse(&fetched.body, time_s)?;
     Ok((profile, fetched))
 }
 
@@ -489,7 +530,9 @@ pub enum OpenMeteoError {
     /// The body is not JSON.
     #[error("the Open-Meteo response is not JSON: {0}")]
     Json(String),
-    /// Open-Meteo answered with an error.
+    /// The body is Open-Meteo's error answer. Open-Meteo sends it with an HTTP error status, which
+    /// `Http` reports as [`NetError::Transport`] without the body, so this comes only from a
+    /// transport that passes the body on.
     #[error("Open-Meteo refused the request: {reason}")]
     Server {
         /// Its reason.
@@ -521,6 +564,14 @@ pub enum OpenMeteoError {
         /// The last hour in the response.
         last_s: i64,
     },
+    /// A surface value is outside its range at the launch time.
+    #[error("the Open-Meteo response's {field} is out of range at the launch time: {value}")]
+    OutOfRange {
+        /// The variable.
+        field: String,
+        /// Its value, in the response's unit.
+        value: f64,
+    },
     /// A surface value is missing at the launch time.
     #[error("the Open-Meteo response has no {field} at the launch time")]
     NoSurface {
@@ -536,8 +587,8 @@ pub enum OpenMeteoError {
 struct Series<'a> {
     hourly: &'a Value,
     units: &'a Value,
-    /// The hour at or before the time, its weight's complement, and the hour after with its
-    /// weight; `after` is `None` when the time is on an hour.
+    /// The index and time of the hour at or before the time, and of the hour after with its
+    /// weight (the before hour's is one minus it); `after` is `None` when the time is on an hour.
     before: (usize, i64),
     after: Option<(usize, i64, f64)>,
 }
@@ -559,6 +610,10 @@ impl<'a> Series<'a> {
             .iter()
             .map(|t| t.as_i64().ok_or_else(|| missing("hourly.time")))
             .collect::<Result<Vec<_>, _>>()?;
+        // Times from 1970 to the year 9999 keep every difference below far from overflow.
+        if times.iter().any(|t| !(0..=YEAR_10000_S).contains(t)) {
+            return Err(missing("hourly.time from 1970 to 9999"));
+        }
         if times.windows(2).any(|w| w[1] <= w[0]) {
             return Err(missing("hourly.time in increasing order"));
         }
@@ -636,7 +691,8 @@ impl<'a> Series<'a> {
     fn value(&self, name: &str, unit: &'static str) -> Result<Option<f64>, OpenMeteoError> {
         Ok(self.raw(name, unit)?.map(|(a, b)| match self.after {
             None => a,
-            Some((_, _, w)) => (1.0 - w) * a + w * b,
+            // Exact when a == b, and never outside [a, b]: 100% humidity stays 100%.
+            Some((_, _, w)) => a + w * (b - a),
         }))
     }
 
@@ -648,7 +704,7 @@ impl<'a> Series<'a> {
             return Ok(None);
         };
         Ok(Some(match self.after {
-            None => (s.0, d.0.to_radians().rem_euclid(TAU)),
+            None => (s.0, wrap_direction(d.0.to_radians())),
             Some((_, _, w)) => {
                 let (d0, d1) = (d.0.to_radians(), d.1.to_radians());
                 // The components of the velocity the wind blows toward, east and north.
@@ -656,7 +712,7 @@ impl<'a> Series<'a> {
                 let north = (1.0 - w) * -s.0 * d0.cos() + w * -s.1 * d1.cos();
                 let speed = east.hypot(north);
                 let from = if speed > 0.0 {
-                    (-east).atan2(-north).rem_euclid(TAU)
+                    wrap_direction((-east).atan2(-north))
                 } else {
                     0.0
                 };
@@ -676,6 +732,13 @@ fn number(root: &Value, field: &str) -> Result<f64, OpenMeteoError> {
     root.get(field)
         .and_then(Value::as_f64)
         .ok_or_else(|| missing(field))
+}
+
+/// An angle in `[0, 2π)`. `rem_euclid` alone returns 2π for a tiny negative angle, such as the
+/// `−2.4e-16` that `atan2` gives for a wind from 360°.
+fn wrap_direction(angle_rad: f64) -> f64 {
+    let wrapped = angle_rad.rem_euclid(TAU);
+    if wrapped >= TAU { 0.0 } else { wrapped }
 }
 
 fn celsius_to_kelvin(celsius: f64) -> f64 {
@@ -749,7 +812,7 @@ mod tests {
     #[test]
     fn url_refuses_each_bad_field() {
         let good = OpenMeteoRequest::new(32.99, -106.97, 0, OpenMeteoApi::Forecast);
-        let cases: [(&str, OpenMeteoRequest); 8] = [
+        let cases: [(&str, OpenMeteoRequest); 9] = [
             (
                 "latitude (deg)",
                 OpenMeteoRequest {
@@ -789,6 +852,13 @@ mod tests {
                 "model",
                 OpenMeteoRequest {
                     model: Some("gfs&x=1".into()),
+                    ..good.clone()
+                },
+            ),
+            (
+                "endpoint",
+                OpenMeteoRequest {
+                    endpoint: Some("http://h/v1#x".into()),
                     ..good.clone()
                 },
             ),

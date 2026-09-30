@@ -9,8 +9,8 @@
 //!
 //! Status: pre-alpha, with one data source: [`open_meteo`], a launch site's weather as a sounding
 //! ([M5.2a][roadmap], the first weather increment; the [weather page][weather] explains it). This
-//! crate does network and file I/O, so it is never a dependency of the pure core. Milestone [M5.1][roadmap] adds the cache, the offline mode
-//! and HTTP: a [`Client`] asks a [`Transport`] for a URL's bytes only when it is [`Mode::Online`]
+//! crate does network and file I/O, so it is never a dependency of the pure core. Milestone
+//! [M5.1][roadmap] added the cache, the offline mode and HTTP: a [`Client`] asks a [`Transport`] for a URL's bytes only when it is [`Mode::Online`]
 //! and its [`Cache`] holds no fresh copy. In [`Mode::Offline`] it never calls the transport; it
 //! answers from the cache, stale or not, and says which. The `http` feature adds `Http`, the
 //! transport over HTTP and HTTPS (rustls, no OpenSSL), and [`Cache::platform_dir`] names the
@@ -77,6 +77,15 @@ pub enum NetError {
         /// The URL asked for.
         url: String,
         /// What the transport said.
+        reason: String,
+    },
+    /// A body was fetched or cached, but the data source's check refused it
+    /// ([`Client::fetch_checked`]); nothing was cached.
+    #[error("the answer for {url} was refused: {reason}")]
+    Refused {
+        /// The URL asked for.
+        url: String,
+        /// Why the check refused it.
         reason: String,
     },
     /// Reading or writing the cache failed.

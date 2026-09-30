@@ -81,7 +81,7 @@ only the files each command really reads. "Not yet" commands exit with
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
-| `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2](decisions-and-roadmap.md#m5-2) |
+| `hpr weather` | Fetch a launch day's weather as atmosphere and wind profiles | - | - | not yet: [M5.2d](decisions-and-roadmap.md#m5-2d) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](decisions-and-roadmap.md#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](decisions-and-roadmap.md#m7-3) |
@@ -290,7 +290,7 @@ after apogee and where it ends are not predictions.
   whose [booster](glossary.md#booster) drops away under power is refused; the library flies it,
   as [Staging](physics/staging.md#using-it-today) shows.
 - **Real weather.** One wind at every height, in the standard atmosphere. A launch day's weather
-  comes with `hpr weather`, in [M5.2](decisions-and-roadmap.md#m5-2).
+  comes with `hpr weather`, in [M5.2d](decisions-and-roadmap.md#m5-2d).
 
 ## `hpr motors`
 

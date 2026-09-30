@@ -98,7 +98,7 @@ pub fn availability(name: &str) -> Option<Availability> {
 
 /// The commands registered before their milestone, each with the milestone that brings it.
 pub const PLANNED: [(&str, &str); 5] = [
-    ("weather", "M5.2"),
+    ("weather", "M5.2d"),
     ("mc", "M6.1"),
     ("optimize", "M6.2"),
     ("compare", "M7.3"),

@@ -26,6 +26,12 @@ one of two modes:
 Each answer says how fresh it is (`Fetched`, `Cached` or `Stale`), when it was fetched, and the
 data source's attribution, the credit line that its terms ask you to show with the data.
 
+A data source can also give the client a check, its own parser (`Client::fetch_checked`). Then an
+answer the parser refuses, such as an error page sent as a success or a forecast whose hours are
+still empty, is never saved, so it can't take a good copy's place. Online, a good copy that has
+gone stale comes back instead, with the reason; with no copy, the fetch fails. A saved copy the
+check refuses counts as missing online, and is the error offline.
+
 ## How long a copy stays fresh
 
 Each source has a *time to live* (TTL): how many seconds a saved copy counts as fresh. A copy
@@ -106,6 +112,9 @@ replay a hand-written sample from a folder instead of using the network:
 - The offline test gives the client a transport that fails the test if it is ever called, then
   asks for a URL before and after it is cached, fresh and thirty days stale.
 - Offline, a corrupt entry is an error; online, it is fetched again and overwritten.
+- The checked fetch is tested through Open-Meteo's source
+  ([Launch-day weather](weather.md#how-it-is-checked)): an answer with an hour's values missing
+  is not saved, and an earlier good copy comes back and stays saved.
 
 The cache's own tests check that a saved body reads back, and that another URL's entry in the same
 file reads as a miss. They also check that the hash that names each file (FNV-1a, a standard 64-bit

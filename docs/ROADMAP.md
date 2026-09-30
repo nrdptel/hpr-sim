@@ -210,7 +210,7 @@
     - [x] **M2.1c1 The CI job and the regeneration workflow.** *Done when:* CI is green on three
       OSes; regeneration runs only when a human triggers it, a diff to review, not a commit.
       *Result (ADR-022):* met. `validate --check` writes nothing, fails on a miss or an unreproduced
-      report; *Regenerate references* is `workflow_dispatch` only and reproduced every byte.
+      report; *Regenerate references* is dispatch only; run locally, it reproduced every byte.
     - [x] **M2.1c2 Predicted mode.** *Done when:* every case's predicted results are reported, each
       gap explained, `M ≥ 1` cases as gaps until M1.8. *Result (ADR-023):* met. Six `predicted-*`
       cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee; misses pinned.

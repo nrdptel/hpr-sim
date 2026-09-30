@@ -9804,20 +9804,34 @@ wind at the pressure levels. A GRIB2 decoder alone is a session's work.
 4. **Levels below the ground are dropped**: a level is kept only if its pressure is below the
    surface pressure and its height above the elevation. The models extrapolate beneath high
    ground; at Spaceport America's 1,400 m, 1000 to 900 hPa. A level with a `null` at either hour is
-   dropped too; a `null` at the surface refuses the answer. Both kinds are listed in `dropped`.
+   dropped too, and one whose relative humidity is outside 0 to 100% (which `SoundingProfile`
+   refuses), rather than refusing a whole forecast over one level; a `null` or an out-of-range
+   humidity at the surface refuses the answer. Each is listed in `dropped` with its reason.
 5. **Heights are geopotential metres**, converted with WMO-No. 8 eq. 12.16 at the answer's
-   latitude, as `docs/physics/atmosphere.md` already said. Checked on the two recordings: from 500
-   to 30 hPa, the recorded heights' differences match the hypsometric thickness from the levels'
-   virtual temperatures to −0.03% to −0.13% on average; read as geometric heights they fall 0.58%
-   to 0.68% short (`recorded_heights_are_geopotential`).
-6. **Between the hours**, values are linear in time and the wind is interpolated by components,
-   as `hpr_io::era5` does. On the hour, the recorded speed and direction pass through unchanged.
+   latitude, as `docs/physics/atmosphere.md` already said. Open-Meteo's documentation calls the
+   variable an altitude above sea level, so the recordings are checked: from 500 to 30 hPa, the
+   recorded layers match the hypsometric thickness from the levels' virtual temperatures to within
+   0.03% to 0.13% on average; read as geometric heights they would be 0.58% to 0.68% too thin
+   (`recorded_heights_are_geopotential` holds each mean to those ranges).
+6. **Between the hours**, values are linear in time, as `a + w (b − a)`, which is exact when the
+   hours agree (so 100% humidity stays 100%; `(1 − w) a + w b` rounded it above 1 at some
+   seconds), and the wind is interpolated by components, as `hpr_io::era5` does. On the hour, the
+   recorded speed and direction pass through unchanged. Directions are folded into `[0, 2π)`.
+   Hours outside 1970 to 9999 are refused, which keeps the time arithmetic from overflowing.
 7. **Relative humidity is read as over liquid water**, which `SoundingLevel` means. Whether each
    model reports it over ice at cold levels is not known; the density effect is under 0.1%.
 8. **Fixtures** are two answers recorded unchanged on 2026-09-30 (historical forecast for 21 June
    2025, forecast for 2 October 2026, both at 32.99° N, 106.97° W), CC BY 4.0 with attribution in
    `THIRD-PARTY-NOTICES.md`. `Replay` serves them keyed by the exact URL `OpenMeteoRequest` builds,
    which pins the URL; the loopback server serves them over HTTP.
+9. **Only an answer that parses is cached.** `Client::fetch_checked` takes the source's check (here
+   `OpenMeteoProfile::parse` at the launch time): a refused body is not stored, and online a stale
+   good copy comes back in its place with the reason, else `NetError::Refused`; a cached copy the
+   check refuses is a miss online and the error offline. Without it, a 200 with empty hours (the
+   historical API before its data lands) would be kept for 30 days and could overwrite a good
+   copy. `Client::fetch` is the check that accepts everything.
+10. The request and the answer's types are `#[non_exhaustive]`, so an API key (Open-Meteo's
+    commercial servers) or another field can come without a breaking change.
 
 **Consequences.** M5.2a meets the parent's two bullets for Open-Meteo. The forecast's own accuracy
 is unmeasured: no flight in Open-Meteo weather is compared with a log, and no forecast with a
