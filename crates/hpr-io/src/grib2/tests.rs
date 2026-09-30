@@ -1486,6 +1486,16 @@ fn jpeg2000_refuses_every_other_coding_by_name() {
         refused(&with_header_byte(qcd + 4, 0x42)),
         ("JPEG 2000 quantization", 2)
     );
+    // A segment hidden inside a longer SIZ, COD or SOT (their lengths at 4 and 5, COD's and SOT's
+    // two bytes after their markers).
+    let malformed = |bytes: &[u8]| match parse(bytes) {
+        Err(Grib2Error::Malformed { reason, .. }) => reason,
+        other => panic!("{other:?}"),
+    };
+    assert!(malformed(&with_header_byte(5, 58)).contains("0xFF51 is 58 bytes long, not 41"));
+    assert!(malformed(&with_header_byte(cod + 3, 20)).contains("0xFF52 is 20 bytes long, not 12"));
+    let sot = find([0xFF, 0x90]);
+    assert!(malformed(&with_header_byte(sot + 3, 11)).contains("0xFF90 is 11 bytes long, not 10"));
     // A marker the reader does not take (RGN in place of QCD).
     assert_eq!(
         refused(&with_header_byte(qcd + 1, 0x5E)),

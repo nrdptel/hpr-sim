@@ -10,9 +10,9 @@
 //! numbers are exact only below `2^24`. The inverse transform adds two neighbouring high-pass
 //! coefficients before each floor, and for `B`-bit samples those sums reach nearly `16 · 2^(B−1)`
 //! (the cascaded 5/3 analysis filters bound a coefficient by about `8.2 · 2^(B−1)`), so every step
-//! stays exact only for `B ≤ 21`: fields of more bits are refused by name. Probes at 23 and 24
-//! bits came back off by one in a hundred or so of 10,152 values, whole and in range, which no
-//! later check could catch.
+//! stays exact only for `B ≤ 21`: fields of more bits are refused by name. Probes at 24 bits came
+//! back off by one in 121 and 136 of 10,152 values, and one of six at 23 bits in one value, whole
+//! and in range, which no later check could catch.
 //!
 //! Only the codestream NCEP and ecCodes write is read, checked from its main header before any
 //! decoding (ISO/IEC 15444-1, Annex A): one unsigned component, no subsampling or offsets, one
@@ -222,6 +222,22 @@ impl Header {
             ));
         }
         // The first marker after SIZ: SIZ's marker at byte 2, then its length.
+        // SIZ, COD, COC and SOT are read field by field by the decoder, not skipped by their
+        // length, so a longer length would hide a segment from this walk that the decoder reads.
+        let fixed = |at: usize, length: u16| -> Result<(), Grib2Error> {
+            let marker = u16_at(at)?;
+            let have = u16_at(at.saturating_add(2))?;
+            if have == length {
+                Ok(())
+            } else {
+                Err(malformed(
+                    message,
+                    format!(
+                        "the JPEG 2000 codestream: marker {marker:#06X} is {have} bytes long, not {length}"
+                    ),
+                ))
+            }
+        };
         // The markers that set the coding, in the main header or a tile-part's, held to the one
         // coding read: `None` for any other marker.
         let coding = |marker: u16, at: usize| -> Result<Option<Coding>, Grib2Error> {
@@ -252,12 +268,14 @@ impl Header {
                 // COD: Scod, SGcod (progression, layers, colour transform), SPcod (levels,
                 // code-block width and height, style, transform).
                 0xFF52 => {
+                    fixed(at, 12)?;
                     precincts(byte(at + 4)?)?;
                     transform(byte(at + 13)?)?;
                     Coding::Style
                 }
                 // COC: Ccoc (one byte, with fewer than 257 components), Scoc, SPcoc.
                 0xFF53 => {
+                    fixed(at, 9)?;
                     precincts(byte(at + 5)?)?;
                     transform(byte(at + 10)?)?;
                     Coding::Other
@@ -277,7 +295,9 @@ impl Header {
                 _ => return Ok(None),
             }))
         };
-        // The first marker after SIZ: SIZ's marker at byte 2, then its length.
+        // The first marker after SIZ: SIZ's marker at byte 2, then its length, which for one
+        // component is 41.
+        fixed(2, 41)?;
         let mut at = 4 + usize::from(u16_at(4)?);
         let (mut cod, mut qcd) = (false, false);
         loop {
@@ -305,6 +325,7 @@ impl Header {
         }
         // Each tile-part: SOT (Lsot, Isot, Psot, TPsot, TNsot), then markers up to SOD.
         while u16_at(at)? == 0xFF90 {
+            fixed(at, 10)?;
             let psot = usize::try_from(u32_at(at.saturating_add(6))?).unwrap_or(usize::MAX);
             let mut marker_at = at.saturating_add(2 + usize::from(u16_at(at.saturating_add(2))?));
             loop {
@@ -316,8 +337,11 @@ impl Header {
                 if coding(marker, marker_at)?.is_none() && marker != 0xFF58 {
                     return Err(unsupported("JPEG 2000 tile-part marker", marker.into()));
                 }
-                marker_at =
-                    marker_at.saturating_add(2 + usize::from(u16_at(marker_at.saturating_add(2))?));
+                let length = usize::from(u16_at(marker_at.saturating_add(2))?);
+                if length < 2 {
+                    return Err(bad("a marker segment is shorter than its length field"));
+                }
+                marker_at = marker_at.saturating_add(2 + length);
             }
             // Psot 0: the tile-part runs to the end of the codestream.
             if psot == 0 {

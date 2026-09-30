@@ -10222,15 +10222,18 @@ far more code than the packings before it.
    `B`-bit samples those sums reach nearly `16 · 2^(B−1)` (the cascaded analysis filters bound a
    coefficient by about `8.2 · 2^(B−1)`), so every step is exact only while that stays below
    `2^24`: `B ≤ 21`. The first draft took 24; review probes (fields ecCodes encoded on the
-   fixture's grids) came back off by one in about 130 of 10,152 values at 23 and 24 bits, every
-   one whole and in range, and exact at 21 and 22. More bits (`bits per value in JPEG 2000`) and
+   fixture's grid) came back off by one in 121 and 136 of 10,152 values at 24 bits, and in one
+   value in one of six probes at 23, every one whole and in range; ten probes at 21 and 22 were
+   exact. More bits (`bits per value in JPEG 2000`) and
    lossy coding (code table 5.40's 1) are refused. Every decoded sample must also be a whole
    number from 0 to `2^bits − 1`.
 3. **NCEP's coding only, checked before decoding; strict mode.** The main header and each
    tile-part header are read by hand (ISO/IEC 15444-1, Annex A) when the file is parsed: one
    unsigned component, no subsampling, no image or tile offset, one tile, a side of at most
    60,000 (the crate's limit), the 5/3 transform in COD and COC, no quantization in QCD and QCC,
-   default precincts, and no marker but these, COM, TLM, PLM and PLT. Anything else is refused by
+   default precincts, and no marker but these, COM, TLM, PLM and PLT. SIZ, COD, COC and SOT must
+   be exactly as long as their fields (the crate reads them field by field, so a longer length
+   would hide a segment from the check that the crate still reads). Anything else is refused by
    name, and the image must hold one sample per packed value at section 5's bits. Review found
    that without these a 272-byte message with subsampled 1×1 tiles made the crate multiply past
    `u32` (a panic in debug builds, an eager allocation of about 1.3e9 tiles in release). The crate
