@@ -9879,69 +9879,69 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    (`OutOfRange`: pressure outside 0.1 to 1,200 hPa, temperature outside −150 to 80 °C, geopotential
    height outside −1 to 60 km, wind speed outside 0 to 300 m/s, humidity below zero, direction
    outside 0° to 360°), rather than refusing the whole sounding; the bounds keep every level `parse`
-   returns within what `SoundingProfile` accepts. A row with a pressure, height and temperature
-   fits the row before it when its geopotential height above (or below) it is the layer's
-   hypsometric thickness, `(R_d T̄_v/g₀) ln(p_bottom/p_top)` (WMO-No. 8 (2023) Vol. I eqs. 12.17
-   and 12.18; `T_v` from the humidity, dry without one, the vapour's share of the pressure capped
-   at 1 so hostile input can't make it infinite), within 5% of it plus what rounding the two
-   pressures can move it (half of 1 hPa for a pressure of 100 hPa or more in an answer whose
-   pressures there are all whole, a coded message's; else half of 0.1 hPa) plus 30 m. Rows are
-   kept from the longest chain from the ground in which each row fits the one before it,
-   skipping at most 10 rows with a temperature at a time; of chains equally long, the one whose misses, as shares of
-   their allowances, sum least. It is found by dynamic programming over the 11 rows before each,
-   so it is linear in the rows. A row missing only its wind or humidity can be in the chain, so a
-   gap in the wind keeps the checked layers thin. A row not in the chain is dropped
-   (`Thickness`). Nothing before the ground checks it, so a chain starting at one of the 11 rows
-   with a temperature after it that beats every chain from it (longer, or as long with a smaller
-   sum) refuses the answer (`GroundMisfit`). Bad rows right after a good ground that miss it but
-   fit the rows above can win the same way, and refuse the answer: two BUFR rows 31 m high, three
-   coded-message rows 45 m high, or 11 rows 1 km off that fit each other; the data can't tell
-   them from a bad ground, and a refusal is the safe failure. Rows grossly off fit nothing above
-   and are passed by, up to 10. A ground with one row after it goes unchecked. Of each run of
-   complete rows in the chain with the same pressure the middle one is a candidate (`SamePressure`
-   for the rest; none at the ground's pressure): BUFR's pressures, to 0.1 hPa,
-   repeat on 1,931 of 5,851 rows, and the rounded value is the pressure at about the middle of its
-   run. Keeping the first row of each run put 10 hPa 26 m low (the physics review) and misses a row
-   by up to 0.093 hPa; with the middle, every BUFR row lies within 0.071 hPa of the profile. A
+   returns within what `SoundingProfile` accepts. A row with a pressure, height and temperature fits
+   the row before it when its geopotential height above (or below) it is the layer's hypsometric
+   thickness, `(R_d T̄_v/g₀) ln(p_bottom/p_top)` (WMO-No. 8 (2023) Vol. I eqs. 12.17 and 12.18;
+   `T_v` from the humidity, dry without one, the vapour's share of the pressure capped at 1 so
+   hostile input can't make it infinite), within 5% of it plus what rounding the two pressures can
+   move it (half of 1 hPa for a pressure of 100 hPa or more in an answer whose pressures there are
+   all whole, a coded message's; else half of 0.1 hPa) plus 30 m. Rows are kept from the longest
+   chain from the ground in which each row fits the one before it, skipping at most 10 rows with a
+   temperature at a time; of chains equally long, the one whose misses, as shares of their
+   allowances, sum least. It is found by dynamic programming over the 11 rows before each, so it is
+   linear in the rows. A row missing only its wind or humidity can be in the chain, so a gap in the
+   wind keeps the checked layers thin. A row not in the chain is dropped (`Thickness`). Nothing
+   before the ground checks it, so a chain starting at one of the 11 rows after it with a pressure,
+   height and temperature within the bounds that beats every chain from it (longer, or as long with
+   a smaller sum) refuses the answer (`GroundMisfit`). Bad rows right after a good ground that miss
+   it but fit the rows above can win the same way, in narrow bands of error just past the ground's
+   allowance, and refuse the answer: two BUFR rows 31 m high (not 20 m, which fit the ground, nor 35
+   m, which fit nothing), three rows of the winter coded message 45 m high, or 11 rows 1 km off that
+   fit each other; the data can't tell them from a bad ground, and a refusal is the safe failure.
+   Rows grossly off fit nothing above and are passed by, up to 10. A ground with one row after it
+   goes unchecked. Of each run of complete rows in the chain with the same pressure the middle one
+   is a candidate (`SamePressure` for the rest; none at the ground's pressure): BUFR's pressures, to
+   0.1 hPa, repeat on 1,931 of 5,851 rows, and the rounded value is the pressure at about the middle
+   of its run. Keeping the first row of each run put 10 hPa 26 m low (the physics review) and misses
+   a row by up to 0.093 hPa; with the middle, every BUFR row lies within 0.071 hPa of the profile. A
    candidate higher than, and at a lower pressure than, the last row kept is kept (`NotAbove`
    otherwise). In the three recordings every row fits the one before it within 1 m beyond rounding
    (0 in the coded messages, 0.97 m in BUFR; the test derives the thickness from the file's mixing
    ratio), so the 30 m and 5% are margin: 30 m for heights rounded to 10 m (the coded message's,
    from 500 hPa up), and because a height 30 m off misplaces a level by as much as a 0.33% to 0.55%
    pressure error; 5%, a judgment rather than a measurement, for layers whose inner rows lack a
-   temperature. A bad row (57 hPa for 557, which would have to be 18.6 km above the row before it, or a height
-   850 m off) is dropped instead of
-   kept to hide the good rows after it, and rows that fall or stay at one height fit and are dropped
-   as `NotAbove`, however many. More than 10 rows after the chain's end refuse the answer
-   (`Misfit`): the chain's end or all of them are wrong, or a long run of rows with no temperature
-   leaves a layer too thick for its ends' mean to give. Ten rows are about 50 m of a BUFR climb and
-   can be kilometres of a coded message. A ground at 1,200 hPa, −1,000 m or −150 °C, which the
-   bounds allow, now refuses. Counting rows hidden below a kept row, tried first, failed each way
-   the code review probed it: a tail's first and last rows let a burst then a fall through and
-   refused a float ending higher; a climbing chain stopped at a second bad row; rows above the row
-   kept before failed on two bad rows in a row. The first thickness check, against the last row kept
-   with 10 m of slack and 0.5 hPa for every whole pressure, refused a BUFR answer for a 20 m glitch
-   and, across a long gap in the wind, for its ends' mean temperature; the chain without the look
-   ahead let a row, or a ground, that only just fit drop the good rows after it; refusing when one
-   row missed the ground and the next fitted that row refused a good ground before two bad rows;
-   and local rules on top (the next row deciding an odd one out, a backtrack to an earlier chain
-   row, three rows refusing the ground) kept a ground just outside its allowance and could drop a
-   BUFR run of ten good rows for two bad ones (the physics and code reviews). The longest chain
-   replaces them all. Raising one row, or a block of two or three, by 20, 35, 50 or 100 m, or
-   lowering it by 50 or 100 m, refuses nothing and loses at most 2 other levels of the coded
-   messages; in the BUFR file, sampled every 150th row (for the test's run time) plus the worst
-   rows a sweep of every row found, at most 8 other rows for one row and 10 for a block. Not
-   caught: a wrong wind, humidity or temperature (the check doesn't use the wind, humidity moves
-   it a few percent, and on layers under about 100 m any temperature within the bounds fits), a
-   height error within the allowance (50 m on the coded message's 557 to 549 hPa layer), a
-   pressure and height both wrong yet fitting, a ground within its first layer's allowance, and
-   bad rows within the allowance of their neighbours, which can be kept while good rows are
-   passed by, no more than the bad and fewer unless the bad fit more closely (683 and 673 hPa
-   raised 50 m leave out 664 hPa). `hpr-net` now
-   depends on `hpr-core` for standard gravity: it is pure, `hpr-atmos` already uses it, and no
-   third-party crate is added. More than 100,000 rows are refused as they are read, which bounds the
-   memory a hostile answer costs. A relative humidity above 100% is kept as recorded and clamped to
-   100% in `sounding()`, as ADR-004 asked of radiosonde imports.
+   temperature. A bad row (57 hPa for 557, which would have to be 18.6 km above the row before it,
+   or a height 850 m off) is dropped instead of kept to hide the good rows after it, and rows that
+   fall or stay at one height fit and are dropped as `NotAbove`, however many. More than 10 rows
+   after the chain's end refuse the answer (`Misfit`): the chain's end or all of them are wrong, or
+   a long run of rows with no temperature leaves a layer too thick for its ends' mean to give. Ten
+   rows are about 50 m of a BUFR climb and can be kilometres of a coded message. A ground at 1,200
+   hPa, −1,000 m or −150 °C, which the bounds allow, now refuses. Counting rows hidden below a kept
+   row, tried first, failed each way the code review probed it: a tail's first and last rows let a
+   burst then a fall through and refused a float ending higher; a climbing chain stopped at a second
+   bad row; rows above the row kept before failed on two bad rows in a row. The first thickness
+   check, against the last row kept with 10 m of slack and 0.5 hPa for every whole pressure, refused
+   a BUFR answer for a 20 m glitch and, across a long gap in the wind, for its ends' mean
+   temperature; the chain without the look ahead let a row, or a ground, that only just fit drop the
+   good rows after it; refusing when one row missed the ground and the next fitted that row refused
+   a good ground before two bad rows; and local rules on top (the next row deciding an odd one out,
+   a backtrack to an earlier chain row, three rows refusing the ground) kept a ground just outside
+   its allowance and could drop a BUFR run of ten good rows for two bad ones (the physics and code
+   reviews). The longest chain replaces them all. Raising one row, or a block of two or three, by
+   20, 35, 50 or 100 m, or lowering it by 50 or 100 m, refuses nothing and loses at most 2 other
+   levels of the coded messages; in the BUFR file, sampled every 150th row (for the test's run time)
+   plus the worst rows a sweep of every row found, at most 8 other rows for one row and 10 for a
+   block. Not caught: a wrong wind, humidity or temperature (the check doesn't use the wind,
+   humidity moves it a few percent, and on layers under about 100 m any temperature within the
+   bounds fits), a height error within the allowance (50 m on the coded message's 557 to 549 hPa
+   layer), a pressure and height both wrong yet fitting, a ground within its first layer's
+   allowance, and bad rows within the allowance of their neighbours, which can be kept while good
+   rows are passed by, no more than the bad and fewer unless the bad fit more closely (683 and 673
+   hPa raised 50 m leave out 664 hPa). `hpr-net` now depends on `hpr-core` for standard gravity: it
+   is pure, `hpr-atmos` already uses it, and no third-party crate is added. More than 100,000 rows
+   are refused as they are read, which bounds the memory a hostile answer costs. A relative humidity
+   above 100% is kept as recorded and clamped to 100% in `sounding()`, as ADR-004 asked of
+   radiosonde imports.
 6. **Heights are geopotential**, converted with WMO-No. 8 (2023) eqs. 12.15 and 12.16 at the first
    row's latitude, the latitude `SoundingProfile` then uses; the balloon's drift would move a height
    about 0.8 m per degree at 10 km, 2.5 m at 30 km. Checked as in ADR-119: across the 13 layers

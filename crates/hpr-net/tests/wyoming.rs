@@ -767,7 +767,7 @@ fn a_bad_ground_is_refused() {
     }
     // Bad rows right after a good ground that miss it but fit the rows above them beat it when
     // the chain through them is longer, or as long and closer, and the answer is refused as for a
-    // bad ground: two BUFR rows 31 m high, but not 20 m; three winter rows 45 m high; four rows
+    // bad ground: two BUFR rows 31 m high, not 20 or 35 m; three winter rows 45 m high; four rows
     // 35 or 50 m off; 11 rows 1 km high that fit each other. Rows grossly off are passed by: two or
     // three raised 850 m, ten raised 1 km. With the next row missing its temperature, the refusal
     // names the row after it.
@@ -810,8 +810,20 @@ fn a_bad_ground_is_refused() {
     }
     let ten = WyomingSounding::parse(&moved(FM35, 3..=12, 1000.0)).unwrap();
     assert_eq!(ten.levels.len(), 217);
-    let two = WyomingSounding::parse(&moved(BUFR, 3..=4, 20.0)).unwrap();
-    assert_eq!(two.levels.len(), 3917);
+    // Two BUFR rows 20 m high fit the ground and are kept, leaving out the good rows now below
+    // them; 35 m high, they fit nothing and are passed by.
+    let reasons = |by: f64, reason: DropReason| {
+        let sounding = WyomingSounding::parse(&moved(BUFR, 3..=4, by)).unwrap();
+        sounding
+            .dropped
+            .iter()
+            .filter(|d| d.reason == reason)
+            .map(|d| d.line)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(reasons(20.0, DropReason::Thickness), Vec::<usize>::new());
+    assert_eq!(reasons(20.0, DropReason::NotAbove), [5, 6, 7]);
+    assert_eq!(reasons(35.0, DropReason::Thickness), [3, 4]);
     // A chain without the ground may start at any of the 11 rows after it, and no later: rows
     // off by 1, 2, 3, ... km fit nothing, so after ten of them a bad ground (87.2 hPa) is refused
     // for the good row after them; after eleven, the answer is refused for the gap, even with a
@@ -965,11 +977,12 @@ fn a_row_that_only_just_fits_is_left_out() {
 }
 
 /// A row raised within its allowance is kept, and the good rows just above it, now below it, are
-/// left out; nothing is refused. Raising or lowering one row, or a block of two or three, of the
-/// coded messages by 20, 35, 50 or 100 m loses at most 2 other levels. The BUFR file is sampled:
-/// every 150th row, and the rows where a sweep of every row (run once, not in the tests) found
-/// the worst, 1976, 2391 and 2434: at most 10 other rows, about 50 m of the climb, for three rows
-/// raised 35 m, and 8 for one. Lowering one row, or changing its pressure by 3%, loses no other.
+/// left out; nothing is refused. Raising one row, or a block of two or three, of the coded messages
+/// by 20, 35, 50 or 100 m, or lowering it by 50 or 100 m, loses at most 2 other levels. The BUFR
+/// file is sampled: every 150th row, and the rows where a sweep of every row (run once, not in the
+/// tests) found the worst, 1976, 2391 and 2434: at most 10 other rows, about 50 m of the climb, for
+/// three rows raised 35 m, and 8 for one. Lowering one row, or changing its pressure by 3%, loses
+/// no other.
 #[test]
 fn one_bad_row_costs_few_others() {
     let kept = |body: &[u8]| {

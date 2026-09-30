@@ -43,7 +43,7 @@
 //!   when the balloon was released. Nothing before it checks it, so a chain without it that beats
 //!   every chain with it, starting among the rows it could reach, refuses the answer
 //!   ([`WyomingError::GroundMisfit`]). Bad rows right after a good ground that fit the rows above
-//!   them can beat it the same way, and refuse the answer: two BUFR rows 31 m high are enough.
+//!   them can beat it the same way, and refuse the answer: two BUFR rows 31 m high do it.
 //! - **One row of each run of rows in the chain with the same pressure**, the middle one. BUFR's
 //!   pressures are rounded to 0.1 hPa, and high up the balloon climbs tens of metres while the
 //!   pressure falls that much, so runs of rows share a pressure; the rounded value is the pressure
@@ -55,16 +55,16 @@
 //! lists each row left out, with its reason.
 //!
 //! So a row with a bad pressure or height, a pressure missing a digit, say, is left out, not kept
-//! to hide the good rows after it; rows that fall or stay at one height, a balloon coming down,
-//! fit and are left out however many. More than [`MAX_MISFITS`] rows after the chain's end refuse
-//! the answer ([`WyomingError::Misfit`]): the end, or all of them, are wrong (a block of heights
-//! 1 km off), or a long run of rows with no temperature leaves a layer too thick for its two
-//! ends' temperatures to give. Not caught: a wrong wind, humidity or temperature (the check
-//! doesn't use the wind, humidity moves it by a few percent, and on layers under about 100 m any
-//! temperature within the bounds fits), a height error within the allowance, a row whose pressure
-//! and height are both wrong yet fit each other, and a bad ground that fits the row after it or
-//! has only one row after it. A block of bad rows that fit their neighbours can be kept, and good
-//! rows beside them left out instead, no more than the block holds. A row, or a short block, kept a little too
+//! to hide the good rows after it; rows that fall or stay at one height, a balloon coming down, fit
+//! and are left out however many. More than [`MAX_MISFITS`] rows after the chain's end refuse the
+//! answer ([`WyomingError::Misfit`]): the end, or all of them, are wrong (a block of heights 1 km
+//! off), or a long run of rows with no temperature leaves a layer too thick for its two ends'
+//! temperatures to give. Not caught: a wrong wind, humidity or temperature (the check doesn't use
+//! the wind, humidity moves it by a few percent, and on layers under about 100 m any temperature
+//! within the bounds fits), a height error within the allowance, a row whose pressure and height
+//! are both wrong yet fit each other, and a bad ground that fits the row after it or has only one
+//! row after it. A block of bad rows that fit their neighbours can be kept, and good rows beside
+//! them left out instead, no more than the block holds. A row, or a short block, kept a little too
 //! high leaves out the good rows just above it, which now lie below it: in the tests, at most 2
 //! other levels of a coded message and 10 other rows of a BUFR file (8 for one row).
 //!
@@ -135,9 +135,10 @@ pub const YOUNG_TTL_S: u64 = 3_600;
 pub const SETTLED_TTL_S: u64 = 30 * 86_400;
 
 /// The most rows with a pressure, height and temperature within the bounds the chain of rows that
-/// fit may skip at a time, and the most that may follow its end. More after its end means the end, or all of them, are wrong (a block of heights 1 km
-/// off), and the answer is refused. In a BUFR file 10 rows are about 10 s of the balloon's climb,
-/// some 50 m; in a coded message they can span kilometres.
+/// fit may skip at a time, and the most that may follow its end. More after its end means the end,
+/// or all of them, are wrong (a block of heights 1 km off), and the answer is refused. In a BUFR
+/// file 10 rows are about 10 s of the balloon's climb, some 50 m; in a coded message they can span
+/// kilometres.
 pub const MAX_MISFITS: usize = 10;
 
 /// The share of a layer's hypsometric thickness a row's height may miss it by, beyond rounding

@@ -140,8 +140,8 @@ or humidity is left out of the profile but can still be in the chain, so the nex
 across a thin layer, not a thick one. A row with no temperature can't be checked: the chain steps
 over it without counting it, and it is left out as missing a value.
 
-In the three recordings every row fits the one before it, missing by at most 1 m beyond rounding. So the 30 m and
-the 5% are margin, and the check is for gross errors, not small ones:
+In the three recordings every row fits the one before it, missing by at most 1 m beyond rounding. So
+the 30 m and the 5% are margin, and the check is for gross errors, not small ones:
 
 - The 30 m leaves room for the coded message's heights from 500 hPa up, which are rounded to
   10 m. A height 30 m off misplaces its level by about as much as a 0.33% to 0.55% pressure error
@@ -176,13 +176,16 @@ It leaves out:
 The profile lists every row it left out, and why. Two things refuse the answer:
 
 - **A ground the rows after it disagree with.** No row before the ground checks it, so hpr also
-  looks for chains that start after it, at one of the next 11 rows with a temperature. If one of
+  looks for chains that start after it, at one of the next 11 rows with a pressure, height and
+  temperature within the bounds. If one of
   them beats every chain from the ground (it is longer, or as long and fits more closely), the
   ground is taken as wrong. Bad rows right after a good ground can do the same: rows that miss
   the ground but fit the rows above them, within the allowance, beat it when the chain through
   them is longer (it passes by fewer good rows than it holds bad ones, less one) or as long and
-  closer. In the BUFR file, whose first layers are about 8 m thick, two rows 31 m high are enough;
-  in the coded message, three rows 45 m high. So are 11 bad rows that fit each other, however far
+  closer. That happens in narrow bands of error, just past the ground's allowance: in the BUFR
+  file, whose first layers are about 8 m thick, two rows 31 m high refuse the answer, but not 20 m
+  high (they fit the ground and are kept) or 35 m (they fit nothing, and are passed by); in the
+  winter coded message, three rows 45 m high. So do 11 bad rows that fit each other, however far
   off. hpr can't tell these from a bad ground, and refuses the answer. Rows grossly off (850 m,
   say) fit nothing above them and are passed by, up to 10.
 - **More than 10 rows after the chain's end.** The chain can pass by only 10 rows at a time, so
@@ -359,9 +362,10 @@ network.
     after a bad ground isn't counted: the refusal names the row after it.
   - Rows after a good ground that beat it: two raised 31 m and four lowered 35 m in the BUFR
     file; three raised 45 m in the winter coded message and four raised 50 m in the other; and
-    11 rows raised 1 km. Two raised 20 m in the BUFR file, three raised 50 m in the coded message,
-    and 10 raised 1 km are passed by. A chain without the ground may start only at the 11 rows after it: after 11 rows that fit
-    nothing, the answer is refused for the gap.
+    11 rows raised 1 km. Two BUFR rows raised 20 m fit the ground and are kept, leaving out the
+    three good rows now below them. Two BUFR rows raised 35 m, and 10 coded-message rows raised
+    1 km, are passed by. A chain without the ground may start only at the 11 rows after it: after
+    11 rows that fit nothing, the answer is refused for the gap.
 - A row raised within its allowance is kept, and leaves out the good rows just above it, which
   now lie below it. Raising one row, or a block of two or three, by 20, 35, 50 or 100 m, or
   lowering it by 50 or 100 m, refuses no answer. It loses at most 2 other levels of a coded
@@ -405,7 +409,7 @@ network.
     widens the allowance, four rows at 13.9 hPa lowered 50 m are kept, and the two good rows at
     14.0 hPa before them are left out.
 - A good ground followed by bad rows that fit the rows above them is refused, as if the ground
-  were wrong, when the chain through them wins: two BUFR rows 31 m high are enough.
+  were wrong, when the chain through them wins: two BUFR rows 31 m high do it.
 - A row, or a short block, kept a little too high leaves out the good rows just above it: in the
   tests, at most 2 other levels of a coded message and 10 other rows of a BUFR file (8 for one
   row).
