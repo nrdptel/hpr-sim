@@ -9893,12 +9893,13 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    gap in the wind keeps the checked layers thin. A row not in the chain is dropped
    (`Thickness`). Nothing before the ground checks it, so a chain starting at one of the 11 rows
    with a temperature after it that beats every chain from it (longer, or as long with a smaller
-   sum) refuses the answer (`GroundMisfit`). In the tests, up to three bad rows after a good
-   ground, or up to 10 grossly off, are passed by; four or more that fit the rows above them, or 11 that fit each
-   other, outnumber it and refuse the answer too, since counting can't tell them from a bad
-   ground. A ground with one row after it goes unchecked. Of each run of complete rows in the chain
-   with the same pressure the middle one is a candidate
-   (`SamePressure` for the rest; none at the ground's pressure): BUFR's pressures, to 0.1 hPa,
+   sum) refuses the answer (`GroundMisfit`). Bad rows right after a good ground that miss it but
+   fit the rows above can win the same way, and refuse the answer: two BUFR rows 31 m high, three
+   coded-message rows 45 m high, or 11 rows 1 km off that fit each other; the data can't tell
+   them from a bad ground, and a refusal is the safe failure. Rows grossly off fit nothing above
+   and are passed by, up to 10. A ground with one row after it goes unchecked. Of each run of
+   complete rows in the chain with the same pressure the middle one is a candidate (`SamePressure`
+   for the rest; none at the ground's pressure): BUFR's pressures, to 0.1 hPa,
    repeat on 1,931 of 5,851 rows, and the rounded value is the pressure at about the middle of its
    run. Keeping the first row of each run put 10 hPa 26 m low (the physics review) and misses a row
    by up to 0.093 hPa; with the middle, every BUFR row lies within 0.071 hPa of the profile. A
@@ -9926,15 +9927,17 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    and local rules on top (the next row deciding an odd one out, a backtrack to an earlier chain
    row, three rows refusing the ground) kept a ground just outside its allowance and could drop a
    BUFR run of ten good rows for two bad ones (the physics and code reviews). The longest chain
-   replaces them all. Moving one row, or a block of two or three, of the coded messages by 20 to
-   100 m refuses nothing and loses at most 2 other levels; in the BUFR file, sampled every 150th
-   row (for the test's run time) plus the worst rows a sweep of every row found, at most 8 other
-   rows for one row and 10 for a block. Not caught: a wrong wind, humidity or temperature (the check doesn't use the wind,
-   humidity moves it a few percent, and on layers under about 100 m any temperature within the
-   bounds fits), a height error within the allowance (50 m on the coded message's 557 to 549 hPa
-   layer), a pressure and height both wrong yet fitting, a ground within its first layer's
-   allowance, and bad rows within the allowance of their neighbours, which can be kept while up to
-   one fewer good rows are passed by (683 and 673 hPa raised 50 m leave out 664 hPa). `hpr-net` now
+   replaces them all. Raising one row, or a block of two or three, by 20, 35, 50 or 100 m, or
+   lowering it by 50 or 100 m, refuses nothing and loses at most 2 other levels of the coded
+   messages; in the BUFR file, sampled every 150th row (for the test's run time) plus the worst
+   rows a sweep of every row found, at most 8 other rows for one row and 10 for a block. Not
+   caught: a wrong wind, humidity or temperature (the check doesn't use the wind, humidity moves
+   it a few percent, and on layers under about 100 m any temperature within the bounds fits), a
+   height error within the allowance (50 m on the coded message's 557 to 549 hPa layer), a
+   pressure and height both wrong yet fitting, a ground within its first layer's allowance, and
+   bad rows within the allowance of their neighbours, which can be kept while good rows are
+   passed by, no more than the bad and fewer unless the bad fit more closely (683 and 673 hPa
+   raised 50 m leave out 664 hPa). `hpr-net` now
    depends on `hpr-core` for standard gravity: it is pure, `hpr-atmos` already uses it, and no
    third-party crate is added. More than 100,000 rows are refused as they are read, which bounds the
    memory a hostile answer costs. A relative humidity above 100% is kept as recorded and clamped to

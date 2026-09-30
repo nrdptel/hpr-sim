@@ -765,9 +765,11 @@ fn a_bad_ground_is_refused() {
         Err(WyomingError::GroundMisfit { line, first }) => assert_eq!((line, first), (2, 3)),
         other => panic!("{other:?}"),
     }
-    // Two or three bad rows right after a good ground are left out. Four that fit the rows above
-    // them outnumber the ground, and the answer is refused as for a bad ground; so do 11 that
-    // fit each other, however far off. With the next row missing its temperature, the refusal
+    // Bad rows right after a good ground that miss it but fit the rows above them beat it when
+    // the chain through them is longer, or as long and closer, and the answer is refused as for a
+    // bad ground: two BUFR rows 31 m high, but not 20 m; three winter rows 45 m high; four rows
+    // 35 or 50 m off; 11 rows 1 km high that fit each other. Rows grossly off are passed by: two or
+    // three raised 850 m, ten raised 1 km. With the next row missing its temperature, the refusal
     // names the row after it.
     let raised = |rows: std::ops::RangeInclusive<usize>| {
         WyomingSounding::parse(&with_field(4, |line, height| {
@@ -792,6 +794,8 @@ fn a_bad_ground_is_refused() {
         .collect();
     assert_eq!(thickness, [3, 4, 5]);
     for (name, lines, by) in [
+        (BUFR, 3..=4, 31.0),
+        (WINTER, 3..=5, 45.0),
         (BUFR, 3..=6, -35.0),
         (FM35, 3..=6, 50.0),
         (FM35, 3..=13, 1000.0),
@@ -806,6 +810,8 @@ fn a_bad_ground_is_refused() {
     }
     let ten = WyomingSounding::parse(&moved(FM35, 3..=12, 1000.0)).unwrap();
     assert_eq!(ten.levels.len(), 217);
+    let two = WyomingSounding::parse(&moved(BUFR, 3..=4, 20.0)).unwrap();
+    assert_eq!(two.levels.len(), 3917);
     // A chain without the ground may start at any of the 11 rows after it, and no later: rows
     // off by 1, 2, 3, ... km fit nothing, so after ten of them a bad ground (87.2 hPa) is refused
     // for the good row after them; after eleven, the answer is refused for the gap, even with a
