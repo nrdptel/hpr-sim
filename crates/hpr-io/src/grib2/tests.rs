@@ -557,8 +557,47 @@ fn a_huge_grid_claimed_by_a_tiny_file_is_refused() {
     );
 }
 
-/// A message with a bitmap, then one on a Lambert grid, back to back: every section kind the
-/// reader takes.
+/// [`two_messages`], then a field of second-order differences with missing values and a bitmap,
+/// one of complex packing whose lists have no bits, and one of template 4.8: every section and
+/// template the reader takes.
+fn seed() -> Vec<u8> {
+    let mut bytes = two_messages();
+    let g = Groups {
+        groups: &[(0, 3, 5)],
+        x2: &[0, 0, 5, 7, 0],
+    };
+    let repr = complex(5, 1, &g, Some((2, 1, [100, 103], -3)));
+    bytes.extend(complex_field(repr, section(6, &[0, 0b1101_1100])));
+    let lists = Lists {
+        width_bits: 0,
+        width_reference: 2,
+        length_bits: 0,
+        length_reference: 2,
+        ..LISTS
+    };
+    let g = Groups {
+        groups: &[(1, 2, 2), (5, 2, 2), (9, 2, 2)],
+        x2: &[0, 3, 1, 2, 0, 1],
+    };
+    bytes.extend(complex_field(
+        complex_with(6, 0, &g, None, lists),
+        section(6, &[255]),
+    ));
+    let mut sections = temperature_sections(packing(6, 0.0, 0, 0, 8), section(6, &[255]));
+    let mut body = sections[1][5..].to_vec();
+    body[3] = 8;
+    body.extend_from_slice(&2026_u16.to_be_bytes());
+    body.extend_from_slice(&[
+        9, 30, 18, 0, 0, 1, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 6, 1, 0, 0, 0, 0,
+    ]);
+    sections[1] = section(4, &body);
+    let mut all = vec![identification()];
+    all.extend(sections);
+    bytes.extend(message(&all));
+    bytes
+}
+
+/// A message with a bitmap, then one on a Lambert grid, back to back.
 fn two_messages() -> Vec<u8> {
     let mut bytes = message(&[
         identification(),
@@ -584,10 +623,10 @@ proptest::proptest! {
     /// reads gives every value, each one finite, by `value` as by `values`.
     #[test]
     fn damaged_files_never_panic(
-        edits in proptest::collection::vec((0_usize..400, 0_u8..=255), 0..6),
-        cut in 0_usize..400,
+        edits in proptest::collection::vec((0_usize..700, 0_u8..=255), 0..6),
+        cut in 0_usize..700,
     ) {
-        let mut bytes = two_messages();
+        let mut bytes = seed();
         for (at, byte) in edits {
             let n = bytes.len();
             bytes[at % n] = byte;
@@ -839,14 +878,46 @@ struct Groups<'a> {
     x2: &'a [u64],
 }
 
+/// The lists' layout: bits per reference, width and length, the width and length references,
+/// and the length increment.
+#[derive(Clone, Copy)]
+struct Lists {
+    reference_bits: u32,
+    width_bits: u32,
+    width_reference: u8,
+    length_bits: u32,
+    length_reference: u64,
+    increment: u64,
+}
+
+/// 8-bit references, 2-bit widths above 0, and lengths scaled from 1 by 1 in 2 bits.
+const LISTS: Lists = Lists {
+    reference_bits: 8,
+    width_bits: 2,
+    width_reference: 0,
+    length_bits: 2,
+    length_reference: 1,
+    increment: 1,
+};
+
 /// Section 5, template 5.2 (`sd` `None`) or 5.3 (`sd` the order and bytes per descriptor),
-/// with 8-bit references, 2-bit widths above 0, and lengths scaled from 1 by 1 in 2 bits; and
-/// section 7 with its descriptors (`first`, `minimum`), lists and values.
+/// with [`LISTS`]; and section 7 with its descriptors (`first`, `minimum`), lists and values.
 fn complex(
     count: u32,
     missing: u8,
     g: &Groups<'_>,
     sd: Option<(u8, u8, [i64; 2], i64)>,
+) -> (Vec<u8>, Vec<u8>) {
+    complex_with(count, missing, g, sd, LISTS)
+}
+
+/// [`complex`] with other lists.
+fn complex_with(
+    count: u32,
+    missing: u8,
+    g: &Groups<'_>,
+    sd: Option<(u8, u8, [i64; 2], i64)>,
+    l: Lists,
 ) -> (Vec<u8>, Vec<u8>) {
     let n = g.groups.len();
     let mut b = count.to_be_bytes().to_vec();
@@ -854,14 +925,15 @@ fn complex(
     b.extend_from_slice(&1.5_f32.to_bits().to_be_bytes());
     b.extend_from_slice(&sm16(-1));
     b.extend_from_slice(&sm16(1));
-    b.extend_from_slice(&[8, 0, 1, missing]); // reference bits, type, splitting, missing values
+    // Reference bits, type, splitting, missing values.
+    b.extend_from_slice(&[u8::try_from(l.reference_bits).unwrap(), 0, 1, missing]);
     b.extend_from_slice(&[0xFF; 8]); // missing value substitutes, unused
     b.extend_from_slice(&u32::try_from(n).unwrap().to_be_bytes());
-    b.extend_from_slice(&[0, 2]); // width reference and bits
-    b.extend_from_slice(&1_u32.to_be_bytes()); // length reference
-    b.push(1); // length increment
+    b.extend_from_slice(&[l.width_reference, u8::try_from(l.width_bits).unwrap()]);
+    b.extend_from_slice(&u32::try_from(l.length_reference).unwrap().to_be_bytes());
+    b.push(u8::try_from(l.increment).unwrap());
     b.extend_from_slice(&u32::try_from(g.groups[n - 1].2).unwrap().to_be_bytes());
-    b.push(2); // length bits
+    b.push(u8::try_from(l.length_bits).unwrap());
     let mut d = Bits::default();
     if let Some((order, octets, first, minimum)) = sd {
         b.extend_from_slice(&[order, octets]);
@@ -873,15 +945,24 @@ fn complex(
         d.push(signed(minimum), width);
     }
     for &(reference, _, _) in g.groups {
-        d.push(reference, 8);
+        d.push(reference, l.reference_bits);
     }
     d.pad();
     for &(_, width, _) in g.groups {
-        d.push(width.into(), 2);
+        d.push(
+            u64::from(width - u32::from(l.width_reference)),
+            l.width_bits,
+        );
     }
     d.pad();
-    for &(_, _, length) in g.groups {
-        d.push(length - 1, 2);
+    for (k, &(_, _, length)) in g.groups.iter().enumerate() {
+        // The last group's length is in section 5; its place in the list is unused.
+        let scaled = if k + 1 == n {
+            0
+        } else {
+            (length - l.length_reference) / l.increment
+        };
+        d.push(scaled, l.length_bits);
     }
     d.pad();
     let mut x2 = g.x2.iter();
@@ -1085,12 +1166,6 @@ fn broken_complex_packing_is_refused() {
         repr.0[at] = byte;
         assert_eq!(refused(complex_field(repr, bitmap())), cause);
     }
-    let mut repr = complex(6, 1, &g, None);
-    repr.0[19] = 0;
-    assert_eq!(
-        refused(complex_field(repr, bitmap())),
-        "missing values with 0-bit group references, management 1"
-    );
     // Second differences past 2^63 parse, but are refused when read.
     let bytes = complex_field(
         complex(
@@ -1116,24 +1191,141 @@ fn broken_complex_packing_is_refused() {
 #[test]
 fn template_4_8_reads_its_interval() {
     let mut sections = temperature_sections(packing(6, 0.0, 0, 0, 8), section(6, &[255]));
-    // Template 4.8: 4.0's octets, then the interval's end (2026-09-30 18:00), one time range, no
-    // missing values, and an accumulation (1) over 6 hours.
+    // Template 4.8: 4.0's octets, then the interval's end (2026-09-30 18:07:09), one time range,
+    // no missing values, and a minimum (3) over 6 units of 6 hours (11).
     let mut body = sections[1][5..].to_vec();
     body[3] = 8;
     body.extend_from_slice(&2026_u16.to_be_bytes());
-    body.extend_from_slice(&[9, 30, 18, 0, 0, 1, 0, 0, 0, 0, 1, 2, 1]);
+    body.extend_from_slice(&[9, 30, 18, 7, 9, 1, 0, 0, 0, 0, 3, 2, 11]);
     body.extend_from_slice(&6_u32.to_be_bytes());
     body.extend_from_slice(&[1, 0, 0, 0, 0]);
     sections[1] = section(4, &body);
     let p = with(sections.clone()).unwrap()[0].product;
     assert_eq!(p.template, 8);
     let s = p.statistics.unwrap();
-    assert_eq!((s.process, s.time_unit, s.length), (1, 1, 6));
+    assert_eq!((s.process, s.time_unit, s.length), (3, 11, 6));
+    let e = s.end;
     assert_eq!(
-        (s.end.year, s.end.month, s.end.day, s.end.hour),
-        (2026, 9, 30, 18)
+        (e.year, e.month, e.day, e.hour, e.minute, e.second),
+        (2026, 9, 30, 18, 7, 9)
     );
     // Two time ranges are refused.
     sections[1][41] = 2;
     assert_eq!(refusal(sections), "number of time ranges 2");
+}
+
+#[test]
+fn group_lengths_scale_by_their_increment() {
+    // Lengths 1 + 1 · 3 = 4, then the last's 2, from a length reference of 1 and increment 3.
+    let g = Groups {
+        groups: &[(10, 0, 4), (100, 2, 2)],
+        x2: &[3, 1],
+    };
+    let lists = Lists {
+        increment: 3,
+        ..LISTS
+    };
+    let bytes = complex_field(complex_with(6, 0, &g, None, lists), section(6, &[255]));
+    let expect: Vec<_> = [10.0, 10.0, 10.0, 10.0, 103.0, 101.0]
+        .map(|x| Some(y(x)))
+        .into();
+    assert_eq!(parse(&bytes).unwrap()[0].values().unwrap(), expect);
+}
+
+#[test]
+fn lists_of_no_bits_make_every_group_alike() {
+    // No width or length list: every group is 2 wide and 2 long (the last's length given as 2).
+    let g = Groups {
+        groups: &[(1, 2, 2), (5, 2, 2), (9, 2, 2)],
+        x2: &[0, 3, 1, 2, 0, 1],
+    };
+    let lists = Lists {
+        width_bits: 0,
+        width_reference: 2,
+        length_bits: 0,
+        length_reference: 2,
+        ..LISTS
+    };
+    let bytes = complex_field(complex_with(6, 0, &g, None, lists), section(6, &[255]));
+    let expect: Vec<_> = [1.0, 4.0, 6.0, 7.0, 9.0, 10.0].map(|x| Some(y(x))).into();
+    assert_eq!(parse(&bytes).unwrap()[0].values().unwrap(), expect);
+    // Groups that don't add up to the count are refused without reading a list.
+    let bytes = complex_field(complex_with(5, 0, &g, None, lists), section(6, &[255]));
+    assert!(parse(&bytes).is_err());
+}
+
+#[test]
+fn missing_values_with_references_of_no_bits_mark_every_constant_group() {
+    // With 0-bit references every reference is all ones: a group of width 0 is missing, and one
+    // of width 2 has its values above 0, 3 marking a missing one.
+    let g = Groups {
+        groups: &[(0, 0, 2), (0, 2, 4)],
+        x2: &[1, 3, 2, 0],
+    };
+    let lists = Lists {
+        reference_bits: 0,
+        ..LISTS
+    };
+    let bytes = complex_field(complex_with(6, 1, &g, None, lists), section(6, &[255]));
+    assert_eq!(
+        parse(&bytes).unwrap()[0].values().unwrap(),
+        [None, None, Some(y(1.0)), None, Some(y(2.0)), Some(y(0.0))]
+    );
+}
+
+#[test]
+fn ambiguous_or_unread_complex_packing_is_refused_by_name() {
+    let refused = |repr: (Vec<u8>, Vec<u8>)| match parse(&complex_field(repr, section(6, &[255]))) {
+        Err(Grib2Error::Unsupported { what, value, .. }) => format!("{what} {value}"),
+        Err(Grib2Error::Malformed { reason, .. }) => reason,
+        other => panic!("{other:?}"),
+    };
+    let g = Groups {
+        groups: &[(0, 1, 6)],
+        x2: &[0; 6],
+    };
+    // Row-by-row group splitting.
+    let mut repr = complex(6, 0, &g, None);
+    repr.0[21] = 0;
+    assert_eq!(refused(repr), "group splitting method 0");
+    // Secondary missing values with 0-bit references.
+    let lists = Lists {
+        reference_bits: 0,
+        ..LISTS
+    };
+    assert_eq!(
+        refused(complex_with(6, 2, &g, None, lists)),
+        "secondary missing values with 0-bit group references, management 2"
+    );
+    // No groups for 6 values.
+    let mut repr = complex(6, 0, &g, None);
+    repr.0[31..35].copy_from_slice(&0_u32.to_be_bytes());
+    assert_eq!(refused(repr), "complex packing with no groups, values 6");
+    // A first value with its top bit set: 200 in one byte.
+    assert!(refused(complex(6, 0, &g, Some((1, 1, [200, 0], 0)))).contains("top bit"));
+    // A first group far longer than the count ends the sum at once.
+    let two = Groups {
+        groups: &[(0, 1, 4), (0, 1, 2)],
+        x2: &[0; 6],
+    };
+    let mut repr = complex(6, 0, &two, None);
+    repr.0[37..41].copy_from_slice(&u32::MAX.to_be_bytes());
+    repr.0[41] = 255;
+    assert!(refused(repr).contains("but section 5 packs 6"));
+}
+
+#[test]
+fn the_damaged_files_start_from_every_template() {
+    let bytes = seed();
+    let fields = parse(&bytes).unwrap();
+    let templates: Vec<(u16, u16)> = fields
+        .iter()
+        .map(|f| (f.product.template, f.packing.template()))
+        .collect();
+    for want in [(0, 0), (0, 2), (0, 3), (8, 0)] {
+        assert!(templates.contains(&want), "{want:?} in {templates:?}");
+    }
+    for f in &fields {
+        f.values().unwrap();
+    }
 }

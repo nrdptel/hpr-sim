@@ -722,7 +722,7 @@ fn largest_difference(a: &SoundingProfile, b: &SoundingProfile) -> f64 {
 
 /// A complex-packed GFS file (the recorded cut as ecCodes repacks it, in templates 5.2 and 5.3,
 /// as NCEP packs its whole files) writes its profile, which is the cut's to the repacking: ecCodes
-/// keeps each value within half the step it was packed with.
+/// keeps each value within half the step it was first packed with.
 #[test]
 fn a_complex_packed_gfs_file_writes_its_profile() {
     let path = root().join("crates/hpr-net/tests/fixtures/nomads-gfs-complex.grib2");
@@ -730,8 +730,9 @@ fn a_complex_packed_gfs_file_writes_its_profile() {
     let cut = nomads_library(&bytes("nomads-gfs.grib2"));
     assert_eq!(complex.dropped, cut.dropped);
     assert_eq!(complex.profile.levels().len(), cut.profile.levels().len());
+    // Measured 6.89e-8.
     let worst = largest_difference(&complex.profile, &cut.profile);
-    assert!(worst < 1e-6, "{worst:e}");
+    assert!(worst < 7e-8, "{worst:e}");
     eprintln!("complex packing against the cut: {worst:e}");
 }
 
@@ -739,7 +740,8 @@ fn a_complex_packed_gfs_file_writes_its_profile() {
 /// profile where `refs/gfs/` has it. It is the run the recorded cut was taken from, so its levels
 /// are the cut's, and 13 more above 10 hPa, where the cut stops. NOMADS' filter repacks the cut in
 /// fewer bits: ecCodes' values in the two files differ by up to 2.4e-6 of the value at the cut's
-/// grid points, and the profiles by up to 1.1e-7 (ADR-123).
+/// grid points (`validation/oracles/grib2/gfs-whole-file.json`), and the profiles by 1.04e-7
+/// (ADR-123).
 #[test]
 fn a_whole_gfs_file_writes_the_profile_of_its_cut() {
     let path = root().join("refs/gfs/gfs.t00z.pgrb2.0p25.f018");
@@ -754,7 +756,8 @@ fn a_whole_gfs_file_writes_the_profile_of_its_cut() {
         whole.profile.levels().len(),
         cut.profile.levels().len() + 13
     );
+    // Measured 1.044e-7.
     let worst = largest_difference(&whole.profile, &cut.profile);
-    assert!(worst < 2.4e-6, "{worst:e}");
+    assert!(worst < 1.1e-7, "{worst:e}");
     eprintln!("the whole file against its cut: {worst:e}");
 }

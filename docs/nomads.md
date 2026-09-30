@@ -14,6 +14,8 @@ for a small piece of one forecast around the site. The piece arrives as a [GRIB2
 file, the World Meteorological Organization's binary format for weather on a grid, and hpr reads
 it with its own decoder. The result is a [sounding](glossary.md#sounding): temperature, pressure,
 humidity and wind at a column of heights, from the ground up to about 31 km (GFS) or 16 km (RAP).
+You can also download a whole GFS file and read it offline, which goes up to about 79 km
+([A whole GFS file](#a-whole-gfs-file)).
 This page is for anyone who wants a flight in a named NOAA model's forecast, rather than
 Open-Meteo's choice of model ([Launch-day weather](weather.md)) or a weather balloon's
 measurement ([Weather-balloon soundings](soundings.md)).
@@ -37,9 +39,12 @@ measurement ([Weather-balloon soundings](soundings.md)).
 
 Code: `hpr_net::nomads` ([API reference](api/hpr_net/nomads/index.html)), with the decoder in
 `hpr_io::grib2` ([API reference](api/hpr_io/grib2/index.html)), written for the third weather
-increment, [M5.2c](decisions-and-roadmap.md#m5-2c). It needs the `net` feature of the `hpr`
-crate. The choices are in
-[ADR-121: GFS and RAP from NOMADS' grib filter, read by an in-house GRIB2 decoder](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30).
+increment, [M5.2c](decisions-and-roadmap.md#m5-2c), and extended to whole GFS files in
+[M5.2d2](decisions-and-roadmap.md#m5-2d2). It needs the `net` feature of the `hpr` crate. The
+choices are in
+[ADR-121: GFS and RAP from NOMADS' grib filter, read by an in-house GRIB2 decoder](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30)
+and
+[ADR-123: Complex packing, and a whole GFS file](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30).
 
 ## What hpr asks for
 
@@ -233,8 +238,8 @@ met is not measured.
 
 Instead of asking NOMADS for a cut, you can download a whole GFS file and read it offline, for
 example before driving out to a launch with no signal. NOMADS keeps the most recent runs, and
-NOAA's open data bucket on Amazon's cloud older ones. A file holds one run's forecast
-for one hour over the whole Earth, about 550 MB at 0.25°:
+NOAA's open data bucket on Amazon's cloud older ones. A file holds one run's forecast for one hour
+over the whole Earth, about 550 MB:
 
 ```text
 https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.20260930/00/atmos/gfs.t00z.pgrb2.0p25.f018
@@ -242,23 +247,34 @@ https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20260930/00/atmos/gfs.t00z.pgrb2.0
 ```
 
 Here `20260930/00` and `t00z` are the run (00 UTC on 30 September 2026) and `f018` the forecast
-hour. The [command line](cli.md#hpr-weather) reads it as it reads a saved cut:
+hour. Only the 0.25° files (`pgrb2.0p25`) read: the smaller 0.5° and 1° files are refused, since
+hpr checks the file is on GFS's 0.25° grid. The [command line](cli.md#hpr-weather) reads the file
+as it reads a saved cut, with the site you want:
 `hpr weather gfs --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T00Z --hour 18 --from
-gfs.t00z.pgrb2.0p25.f018 --output profile.json`. It takes about a third of a second.
+gfs.t00z.pgrb2.0p25.f018 --output profile.json`. It took about a third of a second on a Mac.
 
 NCEP packs whole files more tightly than the grib filter's cuts, with GRIB2's *complex packing*:
 the values are split into groups, each with its own smallest value and number of bits, and most
 fields store the differences between neighbouring values rather than the values (*spatial
-differencing*). hpr's decoder reads both (templates 5.2 and 5.3). A whole file also holds 743
-fields rather than 147: rain and other totals over a time span, which the profile leaves out,
-layers between two surfaces, which aren't levels, and every pressure level up to 0.01 hPa, so the
-profile goes on above 10 hPa, where a cut stops, to about 79 km. The grid runs all the way round
-the Earth, so a site near 0° longitude reads too.
+differencing*). GRIB2 numbers these packings as templates 5.2 and 5.3; hpr's decoder reads both.
+A whole file also holds 743 [messages](glossary.md#grib2) where a cut holds 147:
+
+- totals and averages over a time span, such as the rain that fell in the last six hours, which
+  hpr reads but the profile doesn't use;
+- values for a layer between two heights, such as the humidity from the ground to mid-air, which
+  hpr skips because they don't belong to one level;
+- every pressure level up to 0.01 hPa, so the profile goes on above 10 hPa, where a cut stops.
+  In this file the 0.01 hPa level is 79.2 km up. The highest levels are near the top of the
+  model, and nothing here checks how good its forecast is there.
+
+The grid runs all the way round the Earth, so hpr joins its last column to its first: a site
+between 359.75° and 0° of longitude still has four grid points around it (checked by
+`a_grid_round_the_earth_wraps_its_columns` in `crates/hpr-net/tests/nomads.rs`).
 
 For that run and hour at Spaceport America, the whole file's profile has the cut's 22 levels,
-within 1.04e-7 of each value, relatively, and 13 more above them. They differ at all because the
-grib filter packs its cuts again in fewer bits: by ecCodes alone, the two files' values differ by
-up to 2.4e-6 at the cut's grid points.
+within 1.04e-7 of each value, relatively, and 13 more above them. Why they differ at all: NOMADS
+packs its cuts again in fewer bits. Read with ecCodes, without hpr, the two files already differ
+by up to 2.4e-6, relatively, at the cut's grid points.
 
 ## How it is checked
 
@@ -311,21 +327,28 @@ Linux and Windows.
 - **Missing and hostile data.** A level whose field has no value at one of the four points around
   the site is left out as missing data; a cut of more than 1,000 fields is refused before it is
   read (a real one has 147 or 192).
-- **A whole GFS file** (the 00 UTC run of 30 September 2026 at hour 18, 550 MB, not committed).
-  [`validation/oracles/grib2/whole_file.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/whole_file.py)
-  compares every value hpr decodes with ecCodes': all 746,770,303 agree within 4.4e-16,
-  relatively, and the 24,642,017 grid points without a value are the same points. It was run by
-  hand. CI reads eight whole messages cut from the file, the smallest of each kind it holds, and
-  checks each against ecCodes' reading: which field it is, its points without a value, two sums
-  over all its values (to 1.35e-15 of the terms' sizes, where one packing step is at least 2.4e4
-  times more), and every 997th value (bound 4.5e-16). A test that runs where the file is at hand
-  checks `hpr weather` writes the cut's profile from it, within 2.4e-6 (measured 1.04e-7).
+- **A whole GFS file** (the 00 UTC run of 30 September 2026 at hour 18, 550 MB, not committed):
+
+  | check | where it runs | measured | bound |
+  |---|---|---|---|
+  | every one of its 746,770,303 values against ecCodes', relatively | a script, run once outside CI | 4.4e-16 | none |
+  | its 24,642,017 grid points without a value are ecCodes' | the same script | all the same | all |
+  | eight whole messages cut from it, one of each kind: which field each is, its points without a value, and every 997th value | CI | 4.4e-16 or less | 4.5e-16 |
+  | the same eight messages: two sums over all their values | CI | within the bound | 1.35e-15 of the terms' sizes |
+  | `hpr weather` writes the cut's profile from it, relatively | a test skipped in CI, which doesn't have the file | 1.04e-7 | 1.1e-7 |
+
+  The script is
+  [`validation/oracles/grib2/whole_file.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/whole_file.py);
+  its record, with ecCodes' survey of the file, is
+  [`gfs-whole-file.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/gfs-whole-file.json).
+  The sums catch a value decoded wrong anywhere in a message: off by a single packing step, a
+  value would move a sum at least 23,000 times more than the bound allows.
 - **Complex packing in CI.** The recorded GFS cut, packed again by ecCodes with complex packing
   and both orders of differencing
   ([`repack.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/grib2/repack.py)),
-  goes through every check above: its 1,323 values against ecCodes' within 2.5e-16, and its
-  profile at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8
-  (bound 1e-6).
+  goes through every check above: its 1,323 values equal ecCodes' (bound 2.5e-16), and its profile
+  matches at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8,
+  relatively (bound 7e-8).
 - **Refusals.** A site outside the file's grid, text that isn't GRIB2, a cycle the model doesn't
   run and a forecast hour its run doesn't have are refused. The decoder's own tests build small
   files by hand to pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid,
@@ -337,11 +360,13 @@ Linux and Windows.
 - **JPEG 2000.** Some GRIB2 files are compressed with JPEG 2000 (template 5.40), which hpr refuses
   by name for now; reading it is planned in [M5.2d3, JPEG 2000](decisions-and-roadmap.md#m5-2d3).
   Whole GFS files use complex packing, which hpr reads. RAP's whole files have not been tried.
+- **Coarser GFS files.** GFS's 0.5° and 1° files are refused: hpr checks for the 0.25° grid.
 - **Forecast accuracy.** Nothing here checks a forecast against the weather that came.
 - **Time.** One forecast hour per request, with no interpolation between hours: you pick the run
   and the hour closest to your launch.
 - **Above the top level.** RAP stops at 100 hPa, about 16 km, and GFS as asked for here at
-  10 hPa, about 31 km. Above that the sounding continues as the
+  10 hPa, about 31 km (a whole GFS file goes on to 0.01 hPa, about 79 km, and the layer
+  thickness check above stops at 10 hPa). Above that the sounding continues as the
   [standard atmosphere](glossary.md#standard-atmosphere), shifted to pass through the top level's
   temperature and pressure, with the top level's share of water vapour (capped where the air
   saturates). The wind holds the top level's wind. Both are marked as extrapolated. A flight above

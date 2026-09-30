@@ -87,7 +87,7 @@ pub fn availability(name: &str) -> Option<Availability> {
         }),
         "weather" => Some(Availability::Available {
             reads: vec![
-                "Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved"
+                "Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved, a whole GFS file"
                     .to_owned(),
                 "an ERA5 `.nc`".to_owned(),
             ],

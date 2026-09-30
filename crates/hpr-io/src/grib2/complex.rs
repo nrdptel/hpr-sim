@@ -4,11 +4,11 @@
 //! The values are split into groups. Each group has a reference `X1`, a width `W` in bits and a
 //! length `L`; its values are `X1 + X2` with `X2` an integer of `W` bits (none when `W = 0`, so the
 //! group is `X1` throughout). Section 7 holds, in order: for 5.3, the extra descriptors (the first
-//! one or two values and the overall minimum of the differences, each `octets` bytes, sign and
-//! magnitude); every group's reference, then every group's width above the reference width, then
-//! every group's length (scaled), each list padded to a whole byte; then the groups' values, one
-//! after another. A group's length is `L = L_ref + l · increment`, except the last's, which is
-//! given as it is (WMO-No. 306, Volume I.2, templates 5.2, 5.3, 7.2, 7.3 and Regulation 92.9.4).
+//! one or two values and the overall minimum of the differences, each a fixed number of bytes,
+//! [`SpatialDifferencing::octets`], the minimum signed); every group's reference, then every
+//! group's width above the reference width, then every group's length as a scaled number `l`,
+//! each list padded to a whole byte; then the groups' values, one after another. A group's length
+//! is `L = L_ref + l · increment`, except the last's, which is given as it is (WMO-No. 306, Volume I.2, templates 5.2, 5.3, 7.2, 7.3 and Regulation 92.9.4).
 //!
 //! **Missing values** (code table 5.5): with primary missing values, a group of width `W > 0`
 //! marks a missing value by `X2 = 2^W − 1`, and a group of width 0 is missing throughout when its
@@ -106,6 +106,15 @@ pub(super) fn read(s: &[u8], template: u16, message: usize) -> Result<ComplexPac
     if !reference.is_finite() {
         return Err(malformed(message, "the reference value is not finite"));
     }
+    // Code table 5.4: 1 is general group splitting. With 0, row by row, the group lengths
+    // have no meaning (note 1 to template 5.2).
+    if s[21] != 1 {
+        return Err(Grib2Error::Unsupported {
+            message,
+            what: "group splitting method",
+            value: s[21].into(),
+        });
+    }
     let missing_values = s[22];
     if missing_values > 2 {
         return Err(Grib2Error::Unsupported {
@@ -164,12 +173,12 @@ pub(super) fn read(s: &[u8], template: u16, message: usize) -> Result<ComplexPac
             });
         }
     }
-    if missing_values > 0 && packing.group_reference_bits == 0 {
-        // A 0-bit reference is all ones and all zeros at once: every group of width 0 would be
-        // missing, which no encoder means.
+    if missing_values == 2 && packing.group_reference_bits == 0 {
+        // A 0-bit reference is all ones, so every group of width 0 is missing (ecCodes writes a
+        // field with no values that way); all ones less one, the secondary code, has no bits.
         return Err(Grib2Error::Unsupported {
             message,
-            what: "missing values with 0-bit group references, management",
+            what: "secondary missing values with 0-bit group references, management",
             value: missing_values.into(),
         });
     }
@@ -177,9 +186,11 @@ pub(super) fn read(s: &[u8], template: u16, message: usize) -> Result<ComplexPac
 }
 
 /// Where each part of section 7 starts, in bits from the start of its data, found by
-/// [`layout`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// [`layout`], with the packing it was checked against: the field's public copy may be changed,
+/// this one not.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct Layout {
+    packing: ComplexPacking,
     /// The first one or two values, and the overall minimum of the differences.
     first: [i64; 2],
     minimum: i64,
@@ -193,7 +204,9 @@ pub(super) struct Layout {
 /// and gives where its parts start.
 ///
 /// The groups' lengths must add up to the packed count and their values fit the data; a group
-/// wider than 32 bits is refused.
+/// wider than 32 bits is refused. The work is bounded by the file's size: the lists of widths and
+/// lengths hold a group each, and when both are 0 bits wide every group is alike and is counted
+/// at once.
 pub(super) fn layout(
     p: &ComplexPacking,
     data: &[u8],
@@ -202,7 +215,16 @@ pub(super) fn layout(
     let have = data.len() as u64 * 8;
     let groups = u64::from(p.groups);
     let count = u64::from(p.count);
-    if groups > count || (groups == 0 && count > 0) {
+    if groups == 0 && count > 0 {
+        // ecCodes reads this as the reference everywhere (its issue ECC-2095); the regulation
+        // doesn't say.
+        return Err(Grib2Error::Unsupported {
+            message,
+            what: "complex packing with no groups, values",
+            value: count,
+        });
+    }
+    if groups > count {
         return Err(malformed(
             message,
             format!("{groups} groups for {count} packed values"),
@@ -215,11 +237,20 @@ pub(super) fn layout(
         if data.len() < len {
             return Err(truncated(message, "the extra descriptors", len, data.len()));
         }
-        let signed = |k: usize| sign_magnitude(&data[k * octets..(k + 1) * octets]);
+        let field = |k: usize| &data[k * octets..(k + 1) * octets];
         for (k, slot) in first.iter_mut().take(usize::from(d.order)).enumerate() {
-            *slot = signed(k);
+            // The first values are scaled values less the reference, so not negative. ecCodes
+            // reads them unsigned and NCEP's g2clib as sign and magnitude, so a top bit set
+            // would be read two ways.
+            if field(k)[0] & 0x80 != 0 {
+                return Err(malformed(
+                    message,
+                    "a first value has its top bit set, which decoders read two ways",
+                ));
+            }
+            *slot = sign_magnitude(field(k));
         }
-        minimum = signed(usize::from(d.order));
+        minimum = sign_magnitude(field(usize::from(d.order)));
         at = len as u64 * 8;
     }
     let list = |at: u64, bits: u8| at + (groups * u64::from(bits)).div_ceil(8) * 8;
@@ -235,18 +266,36 @@ pub(super) fn layout(
             data.len(),
         ));
     }
+    let wide = |width: u64| Grib2Error::Unsupported {
+        message,
+        what: "group width, bits",
+        value: width,
+    };
     let (mut total, mut bits) = (0_u64, 0_u64);
-    for k in 0..groups {
-        let (width, length) = group(p, data, widths, lengths, k);
+    if p.width_bits == 0 && p.length_bits == 0 {
+        // Every group but the last is `length_reference` long, and all `width_reference` wide.
+        let width = u64::from(p.width_reference);
         if width > 32 {
-            return Err(Grib2Error::Unsupported {
-                message,
-                what: "group width, bits",
-                value: width,
-            });
+            return Err(wide(width));
         }
-        total += length;
-        bits += length * width;
+        // Below 2^64 (`groups`, `length_reference` and `last_length` are 32 bits); `bits` only
+        // counts when the lengths add up.
+        total = (groups - 1) * u64::from(p.length_reference) + u64::from(p.last_length);
+        bits = if total <= count { total * width } else { 0 };
+    } else {
+        for k in 0..groups {
+            let (width, length) = group(p, data, widths, lengths, k);
+            if width > 32 {
+                return Err(wide(width));
+            }
+            total += length;
+            // A group is at most 2^40 long and 32 bits wide, and `total ≤ count ≤ 2^32` before
+            // it, so neither sum can overflow.
+            bits += length * width;
+            if total > count {
+                break;
+            }
+        }
     }
     if total != count {
         return Err(malformed(
@@ -263,6 +312,7 @@ pub(super) fn layout(
         ));
     }
     Ok(Layout {
+        packing: *p,
         first,
         minimum,
         references,
@@ -318,19 +368,19 @@ fn sign_magnitude(b: &[u8]) -> i64 {
 }
 
 /// Decodes the packed values in order, up to (not including) position `end`, calling `sink`
-/// with each position and its reconstructed integer, or `None` for a missing value.
+/// with each position and its value, or `None` for a missing value.
 ///
 /// # Errors
 /// [`Grib2Error::Malformed`] when reconstructing the differences overflows 64 bits, which only a
 /// broken file does.
 pub(super) fn decode(
-    p: &ComplexPacking,
     layout: &Layout,
     data: &[u8],
     end: u64,
     message: usize,
-    mut sink: impl FnMut(u64, Option<i64>),
+    mut sink: impl FnMut(u64, Option<f64>),
 ) -> Result<(), Grib2Error> {
+    let p = &layout.packing;
     let order = p.spatial_differencing.map_or(0, |d| d.order);
     let rb = p.group_reference_bits;
     let all_ones = |bits: u64| (1_u64 << bits) - 1;
@@ -389,7 +439,7 @@ pub(super) fn decode(
             before = previous;
             previous = h;
             present += 1;
-            sink(position, Some(h));
+            sink(position, Some(p.unpack(h)));
             position += 1;
         }
     }

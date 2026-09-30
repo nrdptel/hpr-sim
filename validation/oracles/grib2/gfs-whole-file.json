@@ -1,0 +1,28 @@
+{
+ "eccodes": "2.49.0",
+ "file": "gfs.t00z.pgrb2.0p25.f018",
+ "bytes": 550166372,
+ "sha256": "648fcc36e8335c84081e8076496071b4c8c20e5e1426262b86e9dc63adc1c62a",
+ "messages": 743,
+ "survey": {
+  "1-byte descriptors": 28,
+  "2-byte descriptors": 549,
+  "3-byte descriptors": 165,
+  "a bitmap": 34,
+  "data representation 5.0": 1,
+  "data representation 5.3": 742,
+  "missing values in the data": 21,
+  "order 2": 742,
+  "product definition 4.0": 701,
+  "product definition 4.8": 42
+ },
+ "values_compared": 746770303,
+ "points_without_a_value": 24642017,
+ "largest_relative_difference": 4.440880713942093e-16,
+ "at_message": 256,
+ "cut_against_file": {
+  "fields": 147,
+  "values": 1323,
+  "largest_relative_difference": 2.4200418183754452e-06
+ }
+}

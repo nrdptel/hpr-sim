@@ -2,12 +2,13 @@
 //!
 //! `tests/fixtures/gfs-messages.grib2` is eight messages cut unchanged from GFS's 0.25° file of
 //! the 00 UTC run of 2026-09-30 at hour 18 (`gfs.t00z.pgrb2.0p25.f018`, 743 messages, 550 MB):
-//! the smallest of each kind the file holds (complex packing with spatial differencing and 1, 2
+//! a small one of each kind the file holds (complex packing with spatial differencing and 1, 2
 //! or 3 bytes per descriptor, a bitmap, missing values, template 4.8, and its one simple-packed
-//! field). `gfs-messages-eccodes.json` is ecCodes 2.49.0's reading of them, written by
+//! field; `whole_file.py`'s `CUT` says how each was picked). `gfs-messages-eccodes.json` is ecCodes 2.49.0's reading of them, written by
 //! `validation/oracles/grib2/whole_file.py cut`: each message's identity, its missing points, two
-//! correctly rounded sums over every value, and every 997th value. The same script's `compare`
-//! checks every value of the whole file, which is not committed (ADR-123).
+//! correctly rounded sums over every value, every 997th value, and template 4.8's interval. The
+//! same script's `compare` checks every value of the whole file, which is not committed; its
+//! record is `validation/oracles/grib2/gfs-whole-file.json` (ADR-123).
 
 #![allow(
     clippy::unwrap_used,
@@ -20,8 +21,9 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 /// ecCodes computes `(R + X · 2^E) · 10^−D` with `10^−D` rounded, so its values and ours may
-/// differ by a rounding or two: 4.4e-16 relative at most over the whole file's 746,770,303 values.
-const ONE_ROUNDING: f64 = 4.5e-16;
+/// differ by a rounding or two: 4.44e-16 relative at most over the whole file's 746,770,303 values
+/// (`gfs-whole-file.json`), rounded up.
+const ECCODES_DIFFERENCE: f64 = 4.5e-16;
 
 #[derive(Deserialize)]
 struct Reading {
@@ -53,6 +55,22 @@ struct Message {
     #[serde(rename = "index_weighted_sum")]
     index_weighted_sum: f64,
     samples: Vec<Option<f64>>,
+    statistics: Option<EcStatistics>,
+}
+
+/// Template 4.8's interval, by ecCodes' keys.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EcStatistics {
+    type_of_statistical_processing: u8,
+    indicator_of_unit_for_time_range: u8,
+    length_of_time_range: i64,
+    year_of_end_of_overall_time_interval: u16,
+    month_of_end_of_overall_time_interval: u8,
+    day_of_end_of_overall_time_interval: u8,
+    hour_of_end_of_overall_time_interval: u8,
+    minute_of_end_of_overall_time_interval: u8,
+    second_of_end_of_overall_time_interval: u8,
 }
 
 fn read() -> (&'static [u8], Reading) {
@@ -123,7 +141,32 @@ fn whole_gfs_messages_decode_to_eccodes_values() {
             ),
             "{at}"
         );
-        assert_eq!(p.statistics.is_some(), p.template == 8, "{at}");
+        assert_eq!(p.statistics.is_some(), m.statistics.is_some(), "{at}");
+        if let (Some(ours), Some(theirs)) = (p.statistics, &m.statistics) {
+            let e = ours.end;
+            assert_eq!(
+                (
+                    ours.process,
+                    ours.time_unit,
+                    ours.length,
+                    (e.year, e.month, e.day, e.hour, e.minute, e.second),
+                ),
+                (
+                    theirs.type_of_statistical_processing,
+                    theirs.indicator_of_unit_for_time_range,
+                    theirs.length_of_time_range,
+                    (
+                        theirs.year_of_end_of_overall_time_interval,
+                        theirs.month_of_end_of_overall_time_interval,
+                        theirs.day_of_end_of_overall_time_interval,
+                        theirs.hour_of_end_of_overall_time_interval,
+                        theirs.minute_of_end_of_overall_time_interval,
+                        theirs.second_of_end_of_overall_time_interval,
+                    ),
+                ),
+                "{at}"
+            );
+        }
         let values = field.values().unwrap();
         assert_eq!(values.len() as u64, m.points, "{at}");
         let missing = values.iter().filter(|v| v.is_none()).count() as u64;
@@ -138,7 +181,11 @@ fn whole_gfs_messages_decode_to_eccodes_values() {
         };
         let (s, size) = sum(present().map(|(_, v)| v));
         assert!(
-            close(s, m.sum, 3.0 * ONE_ROUNDING * size + f64::MIN_POSITIVE),
+            close(
+                s,
+                m.sum,
+                3.0 * ECCODES_DIFFERENCE * size + f64::MIN_POSITIVE
+            ),
             "{at}: sum {s}, ecCodes {}",
             m.sum
         );
@@ -147,7 +194,7 @@ fn whole_gfs_messages_decode_to_eccodes_values() {
             close(
                 s,
                 m.index_weighted_sum,
-                3.0 * ONE_ROUNDING * size + f64::MIN_POSITIVE
+                3.0 * ECCODES_DIFFERENCE * size + f64::MIN_POSITIVE
             ),
             "{at}: weighted sum {s}, ecCodes {}",
             m.index_weighted_sum
@@ -157,7 +204,7 @@ fn whole_gfs_messages_decode_to_eccodes_values() {
             match (got, want) {
                 (None, None) => {}
                 (Some(g), Some(w)) => assert!(
-                    close(g, *w, ONE_ROUNDING * w.abs()),
+                    close(g, *w, ECCODES_DIFFERENCE * w.abs()),
                     "{at}, point {}: {g}, ecCodes {w}",
                     n * reading.stride
                 ),

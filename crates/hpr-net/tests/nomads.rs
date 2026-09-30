@@ -161,7 +161,10 @@ fn every_field_decodes_to_what_eccodes_prints() {
                 "{at}"
             );
             let expected = m["values"].as_array().unwrap();
-            templates.push(field.packing.template());
+            templates.push(match field.packing {
+                grib2::Packing::Complex(p) => (3, p.spatial_differencing.map_or(0, |d| d.order)),
+                other => (other.template(), 0),
+            });
             let decoded = field.values().unwrap();
             assert_eq!(decoded.len(), expected.len(), "{at}");
             for (k, (d, e)) in decoded.iter().zip(expected).enumerate() {
@@ -180,8 +183,12 @@ fn every_field_decodes_to_what_eccodes_prints() {
         }
     }
     assert_eq!(values, 147 * 9 + 192 * 25 + 147 * 9);
+    // Simple packing; complex packing with no differencing (5.2), first and second order (5.3).
     let count = |t| templates.iter().filter(|&&x| x == t).count();
-    assert_eq!((count(0), count(2), count(3)), (147 + 192, 49, 98));
+    assert_eq!(
+        (count((0, 0)), count((3, 0)), count((3, 1)), count((3, 2))),
+        (147 + 192, 49, 49, 49)
+    );
     // Measured: 2.2e-16, one rounding (ecCodes multiplies by an inexact 10^−D, the decoder
     // divides by an exact 10^D), in IEEE arithmetic alone, so the same everywhere; 5.7e-14° on
     // macOS (GFS's points exact, RAP's to the two projections' rounding), bounded at 1e-12° since

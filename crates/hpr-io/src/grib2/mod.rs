@@ -1,5 +1,5 @@
 //! GRIB edition 2, the World Meteorological Organization's binary format for gridded weather:
-//! the fields NOAA's NOMADS grib filter cuts from GFS and RAP.
+//! the fields NOAA's NOMADS grib filter cuts from GFS and RAP, and whole GFS files.
 //!
 //! A GRIB2 file is a run of messages. Each holds one or more fields: a grid (section 3), what the
 //! values are and at which level and time (section 4), how they are packed (section 5), which grid
@@ -50,7 +50,9 @@
 //!
 //! **Checked against:** ecCodes 2.49.0, run as an outside decoder, on recorded GFS and RAP cuts
 //! (`crates/hpr-net/tests/nomads.rs`): every value, and every grid point's latitude and longitude;
-//! and on whole messages of a whole GFS file (`crates/hpr-io/tests/grib2_gfs.rs`).
+//! on eight whole messages of a whole GFS file (`crates/hpr-io/tests/grib2_gfs.rs`); and, by a
+//! script run outside CI, on every value of that file, all 746,770,303 within 4.4e-16 of
+//! ecCodes' (`validation/oracles/grib2/gfs-whole-file.json`).
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 
@@ -68,7 +70,7 @@ pub use complex::{ComplexPacking, SpatialDifferencing};
 /// well inside it (GFS at 0.25°, about 1.04 million; ECMWF at 0.1°, about 6.5 million). A field of
 /// 0 bits has no packed data to bound its grid, so this bounds what [`Field::values`] allocates:
 /// 16 bytes a point, up to 256 MiB for one field, whatever the file's size. [`Field::value`] reads
-/// one point and allocates nothing.
+/// one point of a simple-packed field and allocates nothing.
 pub const MAX_POINTS: u64 = 1 << 24;
 
 /// Why a GRIB2 file was refused.
@@ -333,7 +335,8 @@ impl SimplePacking {
 fn unpack(reference: f32, binary_scale: i16, decimal_scale: i16, x: f64) -> f64 {
     let scaled = f64::from(reference) + x * 2_f64.powi(binary_scale.into());
     // Powers of ten to 10^22 are exact in f64, so dividing (or multiplying for D < 0) is one
-    // rounding, whichever sign D has.
+    // rounding, whichever sign D has; past 10^22 (a whole GFS file has D = 27 and 28), `powi`
+    // rounds too.
     let d = i32::from(decimal_scale);
     if d >= 0 {
         scaled / 10_f64.powi(d)
@@ -401,7 +404,8 @@ pub struct Field<'a> {
     /// Section 7's data after its header: for simple packing the packed values, `bits` each,
     /// from the first byte's high bit.
     data: &'a [u8],
-    /// Where complex packing's parts start in `data`, checked by `parse`.
+    /// Where complex packing's parts start in `data`, with the packing `parse` checked them
+    /// against.
     layout: Option<complex::Layout>,
 }
 
@@ -413,12 +417,26 @@ impl Field<'_> {
     }
 
     /// The value at grid point `index` (numbered as on [`Grid`]), or `None` where the field has
-    /// none there. A complex-packed field is read from its start up to the point.
+    /// none there. A complex-packed field's values can only be read in order, so this reads it
+    /// from its start up to the point: for more than a few points, use [`Field::values_at`] or
+    /// [`Field::values`], which read it once.
     ///
     /// # Errors
     /// [`Grib2Error::PointOutside`] when `index` is not below [`Field::points`], and
     /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow.
     pub fn value(&self, index: u64) -> Result<Option<f64>, Grib2Error> {
+        if let (Packing::Simple(p), None) = (&self.packing, &self.layout) {
+            let points = self.points();
+            if index >= points {
+                return Err(Grib2Error::PointOutside { index, points });
+            }
+            let k = match &self.bitmap {
+                Some(bitmap) if !bitmap.get(index) => return Ok(None),
+                Some(bitmap) => bitmap.ones_before(index),
+                None => index,
+            };
+            return Ok(Some(p.unpack(self.packed(p, k))));
+        }
         Ok(self.values_at(&[index])?.first().copied().flatten())
     }
 
@@ -441,7 +459,7 @@ impl Field<'_> {
             });
         }
         match (&self.packing, &self.layout) {
-            (Packing::Complex(p), Some(layout)) => {
+            (_, Some(layout)) => {
                 let mut order: Vec<(u64, usize)> = wanted
                     .iter()
                     .enumerate()
@@ -451,18 +469,18 @@ impl Field<'_> {
                 let end = order.last().map_or(0, |&(w, _)| w + 1);
                 let mut out = vec![None; indices.len()];
                 let mut next = 0;
-                complex::decode(p, layout, self.data, end, self.message, |position, h| {
+                complex::decode(layout, self.data, end, self.message, |position, value| {
                     while let Some(&(w, k)) = order.get(next) {
                         if w != position {
                             break;
                         }
-                        out[k] = h.map(|h| p.unpack(h));
+                        out[k] = value;
                         next += 1;
                     }
                 })?;
                 Ok(out)
             }
-            (Packing::Simple(p), _) => Ok(wanted
+            (Packing::Simple(p), None) => Ok(wanted
                 .into_iter()
                 .map(|w| w.map(|k| p.unpack(self.packed(p, k))))
                 .collect()),
@@ -471,31 +489,40 @@ impl Field<'_> {
     }
 
     /// Every grid point's value, in grid order; `None` where the field has none. It allocates 16
-    /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file;
-    /// [`Field::value`] reads one point without allocating.
+    /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file.
     ///
     /// # Errors
     /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow.
     pub fn values(&self) -> Result<Vec<Option<f64>>, Grib2Error> {
         let points = self.points();
         // `parse` bounds `points` by `MAX_POINTS`, so this fits a `usize` on every target.
-        let mut packed = Vec::with_capacity(usize::try_from(self.packing.count()).unwrap_or(0));
+        let mut out = Vec::with_capacity(usize::try_from(points).unwrap_or(0));
+        let marked = |index: u64| self.bitmap.as_ref().is_none_or(|bitmap| bitmap.get(index));
         match (&self.packing, &self.layout) {
-            (Packing::Complex(p), Some(layout)) => {
-                complex::decode(p, layout, self.data, u64::MAX, self.message, |_, h| {
-                    packed.push(h.map(|h| p.unpack(h)));
+            (_, Some(layout)) => {
+                // Each packed value goes to the next point the bitmap marks.
+                let mut index = 0;
+                complex::decode(layout, self.data, u64::MAX, self.message, |_, value| {
+                    while index < points && !marked(index) {
+                        out.push(None);
+                        index += 1;
+                    }
+                    out.push(value);
+                    index += 1;
                 })?;
+                out.resize(usize::try_from(points).unwrap_or(0), None);
             }
-            (Packing::Simple(p), _) => {
-                packed.extend((0..u64::from(p.count)).map(|k| Some(p.unpack(self.packed(p, k)))));
+            (Packing::Simple(p), None) => {
+                let mut k = 0;
+                for index in 0..points {
+                    out.push(marked(index).then(|| {
+                        let x = self.packed(p, k);
+                        k += 1;
+                        p.unpack(x)
+                    }));
+                }
             }
             (Packing::Complex(_), None) => return Err(malformed(self.message, "no layout")),
-        }
-        let mut out = Vec::with_capacity(usize::try_from(points).unwrap_or(0));
-        let mut next = packed.into_iter();
-        for index in 0..points {
-            let present = self.bitmap.as_ref().is_none_or(|bitmap| bitmap.get(index));
-            out.push(if present { next.next().flatten() } else { None });
         }
         Ok(out)
     }
@@ -604,12 +631,15 @@ impl Grid {
     }
 
     /// Whether a latitude/longitude grid's rows go all the way round the Earth: `ni` steps of
-    /// `di` make 360°, so the point after the last in a row is the row's first.
+    /// `di` make 360°, so the point after the last in a row is the row's first. A step is written
+    /// in millionths of a degree, so a 1/12° grid's 4,320 steps of 0.083333° make 359.9986°: the
+    /// test allows half a millionth of a degree a step.
     #[must_use]
     pub fn circles_the_earth(&self) -> bool {
         match self.projection {
             Projection::LatLon { di_deg, .. } => {
-                (f64::from(self.ni) * di_deg - 360.0).abs() < 1e-9 * 360.0
+                let ni = f64::from(self.ni);
+                (ni * di_deg - 360.0).abs() <= ni * 0.5e-6
             }
             Projection::LambertConformal { .. } => false,
         }
