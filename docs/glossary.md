@@ -545,10 +545,11 @@ geoid model, so a flight takes `N` at the site as an input. See
 ## Hypsometric equation
 
 How thick a layer of air is between two pressures: the [geopotential](#geopotential-height)
-thickness is `(R_d T̄_v / g₀) ln(p_lower / p_upper)`, where `R_d` is dry air's gas constant
-(287.05 J/(kg·K)), `g₀` standard gravity and `T̄_v` the layer's mean
-[virtual temperature](#virtual-temperature) (WMO-No. 8, eqs. 12.17 and 12.18). Warm air makes a
-thicker layer. hpr checks each row of a weather-balloon sounding against it; see
+thickness is `(R_d T̄_v / g₀) ln(p_bottom / p_top)`, with `p_bottom` and `p_top` the pressures
+at its bottom and top, `R_d` dry air's gas constant (287.05 J/(kg·K)), `g₀` standard gravity and
+`T̄_v` the layer's mean [virtual temperature](#virtual-temperature) (WMO-No. 8, the *Guide to
+Instruments and Methods of Observation*, eqs. 12.17 and 12.18). Warm air makes a thicker layer.
+hpr checks each row of a weather-balloon sounding against it; see
 [Weather-balloon soundings](soundings.md#how-the-answer-becomes-a-sounding).
 
 ## Impulse class
@@ -1191,7 +1192,8 @@ source* (printed tables and worked examples), *another code*
 The temperature dry air would need to have the density of a humid parcel at the same pressure:
 `T_v = T / (1 − (e/p)(1 − M_v/M₀))`, with `e` the water vapour's pressure and `M_v/M₀ ≈ 0.622`
 the ratio of the molar masses of water and dry air (WMO-No. 8, eq. 12.18). Water vapour is
-lighter than air, so `T_v` is a little above `T`: about 1.6% at 30 °C and saturation. See
+lighter than air, so `T_v` is a little above `T`: about 1.6% at 30 °C, saturation and sea-level
+pressure. See
 [Atmosphere](physics/atmosphere.md).
 
 ## Wave drag

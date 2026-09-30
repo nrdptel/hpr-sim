@@ -9879,42 +9879,51 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    (`OutOfRange`: pressure outside 0.1 to 1,200 hPa, temperature outside −150 to 80 °C, geopotential
    height outside −1 to 60 km, wind speed outside 0 to 300 m/s, humidity below zero, direction
    outside 0° to 360°), rather than refusing the whole sounding; the bounds keep every level `parse`
-   returns within what `SoundingProfile` accepts. Of each run of complete rows with the same
-   pressure the middle one is kept (`SamePressure` for the rest; none at the ground's pressure):
-   BUFR's pressures, to 0.1 hPa, repeat on 1,931 of 5,851 rows, and the rounded value is the
-   pressure at about the middle of its run. Keeping the first row of each run put 10 hPa 26 m low
-   (the physics review) and misses a row by up to 0.093 hPa; with the middle, every BUFR row lies
-   within 0.071 hPa of the profile. Each row with a pressure, height and temperature is checked
-   against the last row that fit, from the ground: it fits when its geopotential height above (or
-   below) it is the layer's hypsometric thickness, `(R_d T̄_v/g₀) ln(p_lower/p_upper)` (WMO-No. 8
-   (2023) Vol. I eqs. 12.17 and 12.18; `T_v` from the humidity, the vapour's share of the pressure
-   capped at 1 so hostile input can't make it infinite), within 5% of it plus what rounding the two
-   pressures can move it (half of 1 hPa for a pressure of 100 hPa or more in an answer whose
-   pressures there are all whole, a coded message's; else half of 0.1 hPa) plus 30 m. A row that
-   fits joins the chain, even one missing only its wind or humidity, so a gap in the wind keeps the
-   checked layers thin; one that doesn't is dropped (`Thickness`). A complete row that fits, is its
-   run's middle and lies higher, at a lower pressure, than the last row kept is kept (`NotAbove`
+   returns within what `SoundingProfile` accepts. Each row with a pressure, height and temperature
+   is checked against the chain's end, the last row that fit (the ground at first): it fits when its
+   geopotential height above (or below) it is the layer's hypsometric thickness, `(R_d T̄_v/g₀)
+   ln(p_bottom/p_top)` (WMO-No. 8 (2023) Vol. I eqs. 12.17 and 12.18; `T_v` from the humidity, dry
+   without one, the vapour's share of the pressure capped at 1 so hostile input can't make it
+   infinite), within 5% of it plus what rounding the two pressures can move it (half of 1 hPa for a
+   pressure of 100 hPa or more in an answer whose pressures there are all whole, a coded message's;
+   else half of 0.1 hPa) plus 30 m. A row that fits joins the chain, even one missing only its wind
+   or humidity, so a gap in the wind keeps the checked layers thin; but a row that fits while the
+   next such row fits the end and not it is the odd one out and doesn't join, so a row that only
+   just fits can't carry the chain away from the good rows after it. A row that doesn't join is
+   dropped (`Thickness`). Nothing checks the ground, so a row that misses it while the next row fits
+   that row refuses the answer (`GroundMisfit`); a ground with one row after it goes unchecked. Of
+   each run of complete rows that fit with the same pressure the middle one is a candidate
+   (`SamePressure` for the rest; none at the ground's pressure): BUFR's pressures, to 0.1 hPa,
+   repeat on 1,931 of 5,851 rows, and the rounded value is the pressure at about the middle of its
+   run. Keeping the first row of each run put 10 hPa 26 m low (the physics review) and misses a row
+   by up to 0.093 hPa; with the middle, every BUFR row lies within 0.071 hPa of the profile. A
+   candidate higher than, and at a lower pressure than, the last row kept is kept (`NotAbove`
    otherwise). In the three recordings every row fits the one before it within 1 m beyond rounding
    (0 in the coded messages, 0.97 m in BUFR; the test derives the thickness from the file's mixing
-   ratio), so the 30 m and 5% are margin: for heights coded to 10 m (the coded message's, from 500
-   hPa up), for layers whose inner rows lack a temperature (across the coded message's rows kept 60
-   apart the ends' mean temperature needs 4.6%), and because an error under 30 m moves a level's
-   pressure under 0.4%. A bad row (57 hPa for 557, 18.6 km off, or a height 850 m off) is dropped
-   instead of kept to hide the good rows after it, and rows that fall or float fit and are dropped
-   as `NotAbove`, however many. More than 10 rows in a row that don't fit refuse the answer
-   (`Misfit`): the row they follow is wrong (a ground with a digit lost; a ground at 1,200 hPa,
-   −1,000 m or −150 °C, which the bounds allow, now refuses) or all of them are. Counting rows
-   hidden below a kept row, tried first, failed each way the code review probed it: a tail's first
-   and last rows let a burst then a fall through and refused a float ending higher; a climbing chain
-   stopped at a second bad row; rows above the row kept before failed on two bad rows in a row. The
-   first thickness check, against the last row kept with 10 m of slack and 0.5 hPa for every whole
-   pressure, refused a BUFR answer for a 20 m glitch and, across a long gap in the wind, for its
-   ends' mean temperature (the physics review). Not caught: a wrong wind or humidity (the check
-   doesn't use the wind), a wrong temperature or a height error within the allowance (about 50 m on
-   the coded message's thin layers), a pressure and height both wrong yet fitting, and a bad ground
-   with 10 rows or fewer after it. More than 100,000 rows are refused as they are read, which bounds
-   the memory a hostile answer costs. A relative humidity above 100% is kept as recorded and clamped
-   to 100% in `sounding()`, as ADR-004 asked of radiosonde imports.
+   ratio), so the 30 m and 5% are margin: 30 m for heights rounded to 10 m (the coded message's,
+   from 500 hPa up), and because a height 30 m off misplaces a level by as much as a 0.35% to 0.55%
+   pressure error; 5%, a judgment rather than a measurement, for layers whose inner rows lack a
+   temperature. A bad row (57 hPa for 557, 18.6 km off, or a height 850 m off) is dropped instead of
+   kept to hide the good rows after it, and rows that fall or stay at one height fit and are dropped
+   as `NotAbove`, however many. More than 10 consecutive rows that don't join refuse the answer
+   (`Misfit`): the chain's end or all of them are wrong, or a long run of rows with no temperature
+   leaves a layer too thick for its ends' mean to give. Ten rows are about 50 m of a BUFR climb and
+   can be kilometres of a coded message. A ground at 1,200 hPa, −1,000 m or −150 °C, which the
+   bounds allow, now refuses. Counting rows hidden below a kept row, tried first, failed each way
+   the code review probed it: a tail's first and last rows let a burst then a fall through and
+   refused a float ending higher; a climbing chain stopped at a second bad row; rows above the row
+   kept before failed on two bad rows in a row. The first thickness check, against the last row kept
+   with 10 m of slack and 0.5 hPa for every whole pressure, refused a BUFR answer for a 20 m glitch
+   and, across a long gap in the wind, for its ends' mean temperature; the chain without the look
+   ahead let a row, or a ground, that only just fit drop the good rows after it (the physics and
+   code reviews). Not caught: a wrong wind, humidity or temperature (the check doesn't use the wind,
+   humidity moves it a few percent, and on thin layers any temperature within the bounds fits), a
+   height error within the allowance (50 m on the coded message's 557 to 549 hPa layer), a pressure
+   and height both wrong yet fitting, and a ground within its first layer's allowance. `hpr-net` now
+   depends on `hpr-core` for standard gravity: it is pure, `hpr-atmos` already uses it, and no
+   third-party crate is added. More than 100,000 rows are refused as they are read, which bounds the
+   memory a hostile answer costs. A relative humidity above 100% is kept as recorded and clamped to
+   100% in `sounding()`, as ADR-004 asked of radiosonde imports.
 6. **Heights are geopotential**, converted with WMO-No. 8 (2023) eqs. 12.15 and 12.16 at the first
    row's latitude, the latitude `SoundingProfile` then uses; the balloon's drift would move a height
    about 0.8 m per degree at 10 km, 2.5 m at 30 km. Checked as in ADR-119: across the 13 layers
