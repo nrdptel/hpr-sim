@@ -2,13 +2,12 @@
 
 This page covers `hpr-net`, the one crate that uses the network, and the cache that makes its
 answers work offline. It is for anyone who will pull weather, elevation or motor data into a
-flight once those sources exist. **Today the crate holds the cache, the offline rule and an HTTP
-client** ([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **but no data sources yet**
-(planned from [M5.2, weather](decisions-and-roadmap.md#m5-2)). Its tests replay a small
-hand-written sample response, from a folder and from a test web server on the machine running the
-tests, never the live network. Those tests speak plain HTTP only: encrypted HTTPS was checked once
-by hand against a real weather service (Open-Meteo), not in CI. Real recorded responses arrive
-with each data source.
+flight. **Today the crate holds the cache, the offline rule and an HTTP client**
+([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **and one data source: Open-Meteo's
+weather** ([Launch-day weather](weather.md)). Its tests replay a small hand-written sample
+response and two answers recorded from Open-Meteo, from a folder and from a test web server on the
+machine running the tests, never the live network. Those tests speak plain HTTP only: encrypted
+HTTPS was checked once by hand against Open-Meteo, not in CI.
 
 ## What it promises
 

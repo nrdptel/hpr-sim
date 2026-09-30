@@ -124,6 +124,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-116 | M4.3c: Python drag `f(mach, thrusting)` and wind `f(height_m)`; a function's exception kept and raised in place of the library's error | accepted |
 | ADR-117 | M5.1 split a and b; M5.1a: the cache, TTL freshness and an offline mode that never calls the transport | accepted |
 | ADR-118 | M5.1b: `ureq` 3 over rustls behind feature `http`, the body limit on unpacked bytes, the platform cache folder by hand | accepted |
+| ADR-119 | M5.2 split a to d; M5.2a: Open-Meteo's pressure levels as a sounding, the ground as its lowest level, levels below it dropped, heights geopotential | accepted |
 
 ---
 
@@ -9773,3 +9774,53 @@ bytes, then `Cached` on the second call) and refused `expired.badssl.com`'s expi
 repeatable checks come with M5.2's recorded responses. Windows reads `LOCALAPPDATA` from the environment rather
 than asking the shell for the known folder; the two agree unless a user unsets the variable.
 
+
+## ADR-119: M5.2 split; Open-Meteo's pressure levels as a sounding (2026-09-30)
+
+**Context.** M5.2 names four sources: Open-Meteo's forecast and historical-forecast APIs with
+pressure-level winds, NOAA's GFS and RAP as GRIB2 read in pure Rust, University of Wyoming
+soundings, and ERA5 or GFS files the user provides. Its *done when*: recorded-fixture tests pass,
+and a profile built from a recorded Open-Meteo response reproduces the pressure, temperature and
+wind at the pressure levels. A GRIB2 decoder alone is a session's work.
+
+**Decision.**
+
+1. **Split a to d**, each with its own *done when*: a, Open-Meteo; b, Wyoming soundings; c, GRIB2;
+   d, the user's files and the `hpr weather` command that the CLI already lists as planned for
+   M5.2 (ADR-105). The parent's two bullets are M5.2a's.
+2. **`hpr_net::open_meteo`**: an `OpenMeteoRequest` (place, time, API, optional model, optional
+   endpoint for a self-hosted server) builds the URL, `OpenMeteoProfile::parse` reads the JSON, and
+   `fetch` goes through a `Client`, so the cache and the offline mode apply. The request asks for
+   the two whole hours around the launch (`start_hour`, `end_hour`, UTC, `timeformat=unixtime`),
+   so one launch time is one cached answer of about 7 KB; the 19 levels Open-Meteo serves, each
+   with temperature, relative humidity, wind speed and direction, and geopotential height; and the
+   surface pressure, 2 m temperature and humidity, and 10 m wind. Units are named in the request
+   (`wind_speed_unit=ms`) and checked in `hourly_units`: any other unit is refused, not converted.
+   A forecast stays fresh for an hour, an archived forecast for 30 days.
+3. **The ground is a level**, at the answer's `elevation`, with the surface pressure, the 2 m
+   temperature and humidity, and the 10 m wind: the wind on the rail comes from the 10 m wind, not
+   a step to the lowest level above (Loft lesson L6). Placing 2 m and 10 m values at 0 m is a
+   stated approximation.
+4. **Levels below the ground are dropped**: a level is kept only if its pressure is below the
+   surface pressure and its height above the elevation. The models extrapolate beneath high
+   ground; at Spaceport America's 1,400 m, 1000 to 900 hPa. A level with a `null` at either hour is
+   dropped too; a `null` at the surface refuses the answer. Both kinds are listed in `dropped`.
+5. **Heights are geopotential metres**, converted with WMO-No. 8 eq. 12.16 at the answer's
+   latitude, as `docs/physics/atmosphere.md` already said. Checked on the two recordings: from 500
+   to 30 hPa, the recorded heights' differences match the hypsometric thickness from the levels'
+   virtual temperatures to −0.03% to −0.13% on average; read as geometric heights they fall 0.58%
+   to 0.68% short (`recorded_heights_are_geopotential`).
+6. **Between the hours**, values are linear in time and the wind is interpolated by components,
+   as `hpr_io::era5` does. On the hour, the recorded speed and direction pass through unchanged.
+7. **Relative humidity is read as over liquid water**, which `SoundingLevel` means. Whether each
+   model reports it over ice at cold levels is not known; the density effect is under 0.1%.
+8. **Fixtures** are two answers recorded unchanged on 2026-09-30 (historical forecast for 21 June
+   2025, forecast for 2 October 2026, both at 32.99° N, 106.97° W), CC BY 4.0 with attribution in
+   `THIRD-PARTY-NOTICES.md`. `Replay` serves them keyed by the exact URL `OpenMeteoRequest` builds,
+   which pins the URL; the loopback server serves them over HTTP.
+
+**Consequences.** M5.2a meets the parent's two bullets for Open-Meteo. The forecast's own accuracy
+is unmeasured: no flight in Open-Meteo weather is compared with a log, and no forecast with a
+balloon. A refused request (HTTP 400) reports its status but not Open-Meteo's reason, since `Http`
+drops a failed answer's body. The example `open_meteo_weather` flies Calisto in the recorded
+weather.

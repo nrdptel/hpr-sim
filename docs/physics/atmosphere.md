@@ -204,6 +204,8 @@ catches hPa entered as Pa.
   standard itself.
 - **From an ERA5 file:** `hpr_io::era5` builds this profile over a launch site at launch time
   from the day's reanalysis; see [ERA5 weather files](../format/era5.md).
+- **From Open-Meteo:** `hpr_net::open_meteo` builds it from a forecast, or an archived one, on
+  pressure levels; see [Launch-day weather](../weather.md).
 - **[Loft lesson L5](../decisions-and-roadmap.md#l5):** "today's conditions" kept the standard lapse from the field up,
   ignored humidity and never used sounding temperatures.
 

@@ -81,6 +81,14 @@ adds a source.
   and so does this notice. Neither the European Commission nor ECMWF is responsible for any use
   that may be made of the Copernicus information or data it contains. The full files stay in
   `refs/`. The example `crates/hpr/examples/era5_weather.rs` reads the Bella Lui extract.
+- **Open-Meteo weather answers** (<https://open-meteo.com>):
+  `crates/hpr-net/tests/fixtures/replay/open-meteo-historical.json` and `open-meteo-forecast.json`
+  are two answers recorded unchanged on 2026-09-30 from Open-Meteo's historical-forecast and
+  forecast APIs, for 32.99° N, 106.97° W and two hours each; the example
+  `crates/hpr/examples/open_meteo_weather.rs` reads the first. Weather data by Open-Meteo.com, licensed CC BY 4.0
+  (<https://creativecommons.org/licenses/by/4.0/>). `hpr_net::open_meteo` also fetches such
+  answers at run time, when a program asks, and caches them on the user's disk; each answer
+  carries this credit for the program to show.
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).
@@ -321,5 +329,4 @@ installed with `--no-deps` from that file (M3.1d2, ADR-059). Nothing in it is co
 |---|---|---|---|
 | `openrocket/motor-database` | GPL-3.0 | run-only reference | not bundled |
 | ThrustCurve.org thrust-curve files | per file: public domain, free, other, or none | fetched and cached (M5) | 32 public-domain curves are bundled (M1.3, above); the rest are fetched and cached, never bundled |
-| Open-Meteo | data CC BY 4.0 | fetched and cached (M5.2) | attribution required |
 | WMM2025 | public domain | may be bundled (M5.3) | |

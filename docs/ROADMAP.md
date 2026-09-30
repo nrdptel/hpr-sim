@@ -193,12 +193,10 @@
   and a separate, manually triggered workflow regenerates the references.
   - [x] **M2.1a The harness.**
     - Loft lessons: L76, L77, L78, L79.
-    *Done when:* `cargo xtask validate` runs every case in the lock against its stored reference
-    and writes `validation/reports/latest.md`; and a case whose metric has no tolerance, a
-    reference value with no provenance, and a run with fewer cases than the lock expects each fail.
-    *Result (ADR-015):* met. Five descent cases, 30 metrics, all within 3% (largest NDRT's northward
-    drift, +2.86%); twelve tests refuse each malformed case, four of them L76–L79. Valetudo's
-    northward drift first read 28x RocketPy's: hpr's gravity had a horizontal part (#27).
+    *Done when:* `cargo xtask validate` runs every locked case against its reference and writes
+    `validation/reports/latest.md`; a metric with no tolerance, a value with no provenance, and
+    fewer cases than the lock expects each fail. *Result (ADR-015):* met. Five descent cases, 30
+    metrics within 3%; twelve tests refuse each malformed case (L76–L79). Gravity's bug: #27.
   - [x] **M2.1b Whole flights against RocketPy, same-drag.** Met in two parts.
     - Loft lessons: L75.
     - [x] **M2.1b1 The whole-flight oracle.** Met: `validation/oracles/rocketpy/flight.py` writes
@@ -206,22 +204,16 @@
     - [x] **M2.1b2 The whole-flight cases.** Met (ADR-021): six cases, five pass every scored
       metric within 3% (largest +1.783%, Bella Lui); drifts unscored until M2.1d3.
       - Loft lessons: L75.
-  - [x] **M2.1c Predicted mode, CI and regeneration:** the same cases flown with hpr's own aero,
-    reported beside the same-drag ones; a CI job that runs `cargo xtask validate` against the
-    stored references, and a separate, manually triggered workflow that regenerates them. *Done
-    when:* its three bullets, which M2.1c2 (the first) and M2.1c1 (the other two) carry.
-    - [x] **M2.1c1 The CI job and the regeneration workflow.** *Done when:* the CI job is green on
-      macOS, Windows and Linux, and the regeneration workflow runs only when a human triggers it,
-      its output a diff to review rather than a commit. *Result (ADR-022):* met. `cargo xtask
-      validate --check` writes nothing and fails on a metric outside tolerance or a committed report
-      this run does not reproduce; CI runs it on three OSes. *Regenerate references* is
-      `workflow_dispatch` only, with a read-only token, and uploads the diff; run locally it
-      reproduced every fixture and the report byte for byte.
-    - [x] **M2.1c2 Predicted mode.** *Done when:* predicted-mode results are in the report for every
-      case, each gap explained in the case file or `docs/VALIDATION.md`, with `M ≥ 1` cases reported
-      as gaps until M1.8. *Result (ADR-023):* met. `flight.py --own-drag` (hashes, never values).
-      Six `predicted-*` cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee;
-      misses pinned.
+  - [x] **M2.1c Predicted mode, CI and regeneration:** the cases with hpr's own aero beside the
+    same-drag ones; a CI job checking the stored references; a manual workflow regenerating them.
+    *Done when:* its three bullets, which M2.1c2 (the first) and M2.1c1 (the other two) carry.
+    - [x] **M2.1c1 The CI job and the regeneration workflow.** *Done when:* CI is green on three
+      OSes; regeneration runs only when a human triggers it, a diff to review, not a commit.
+      *Result (ADR-022):* met. `validate --check` writes nothing, fails on a miss or an unreproduced
+      report; *Regenerate references* is `workflow_dispatch` only and reproduced every byte.
+    - [x] **M2.1c2 Predicted mode.** *Done when:* every case's predicted results are reported, each
+      gap explained, `M ≥ 1` cases as gaps until M1.8. *Result (ADR-023):* met. Six `predicted-*`
+      cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee; misses pinned.
   - [x] **M2.1d The time-series RMS and the path in wind.** Met in three parts.
     - [x] **M2.1d1 The time-series RMS.** Met (ADR-024): RMS at RocketPy's 120 series times, held
       to 3% of apogee and max speed; same-drag all pass; predicted, three outside (the drag).
@@ -780,7 +772,7 @@
     *Done when:* a loopback server replaying a recorded fixture fills the cache; `cargo deny` passes.
     *Result:* met (ADR-118): `tests/http.rs` on 127.0.0.1; limit on unpacked bytes; paths by hand.
 
-- [ ] **M5.2 Weather.**
+- [ ] **M5.2 Weather.** Split a to d (ADR-119).
   - Open-Meteo forecast and historical-forecast with pressure-level winds, turned into an
     atmosphere/wind profile.
   - GFS/RAP GRIB2 (pure Rust).
@@ -791,6 +783,15 @@
   - Recorded-fixture tests pass.
   - A profile built from a recorded Open-Meteo response reproduces the pressure, temperature and
     wind values at the pressure levels.
+  - [x] **M5.2a Open-Meteo.** Forecast and historical-forecast pressure levels as a sounding,
+    through the cache. *Done when:* both bullets above hold for Open-Meteo. *Result:* met
+    (ADR-119): 2 recordings, ground and 14 levels to rounding; heights geopotential (hypsometric).
+  - [ ] **M5.2b U. Wyoming soundings.** *Done when:* a recorded sounding's profile reproduces its
+    pressure, temperature and wind at every level, from recorded-fixture tests.
+  - [ ] **M5.2c GFS/RAP GRIB2, pure Rust.** *Done when:* a recorded GRIB2 cut decodes to the values
+    an outside decoder (ecCodes, run-only) prints, and its levels become a profile.
+  - [ ] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline.
+    *Done when:* `hpr weather` writes a site's profile from each source, offline from a fixture.
 
 - [ ] **M5.3 Site data.** Elevation (Open-Meteo API with cache; optional user GeoTIFF/DEM file),
   geodetic helpers, magnetic declination (WMM2025).

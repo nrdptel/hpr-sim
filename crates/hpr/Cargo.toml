@@ -40,3 +40,7 @@ parquet = ["hpr-sim/parquet"]
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[[example]]
+name = "open_meteo_weather"
+required-features = ["net"]
