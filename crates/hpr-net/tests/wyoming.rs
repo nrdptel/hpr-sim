@@ -22,7 +22,7 @@ use hpr_atmos::profile::geometric_from_wmo_geopotential_m;
 use hpr_atmos::wind::velocity_from_speed_direction;
 use hpr_atmos::{Wind, WindInterpolation};
 use hpr_net::wyoming::{
-    self, ATTRIBUTION, DropReason, MAX_NOT_ABOVE, MAX_ROWS, SETTLE_S, WyomingError, WyomingRequest,
+    self, ATTRIBUTION, DropReason, MAX_MISFITS, MAX_ROWS, SETTLE_S, WyomingError, WyomingRequest,
     WyomingSounding, WyomingVersion,
 };
 use hpr_net::{Cache, Client, Freshness, Mode, NetError, Replay, Transport};
@@ -73,10 +73,29 @@ fn field(row: &[String], i: usize) -> Option<f64> {
 /// m/s, direction °, mixing ratio g/kg).
 type Recorded = (usize, f64, f64, f64, f64, f64, f64, f64);
 
+/// How far `upper`'s height above `lower` misses the hypsometric thickness, beyond what rounding
+/// each pressure to its step can move it plus 10 m, as a share of the thickness (zero when within
+/// that). Here the virtual temperature comes from the file's mixing ratio `w`,
+/// `T_v = T (1 + w/ε) / (1 + w)`, not from the humidity as in the parser.
+fn thickness_miss(lower: &Recorded, upper: &Recorded) -> f64 {
+    const EPSILON: f64 = 18.015_28 / 28.964_4;
+    let virtual_k = |r: &Recorded| {
+        let w = r.7 / 1000.0;
+        (r.3 + 273.15) * (1.0 + w / EPSILON) / (1.0 + w)
+    };
+    let scale_m = 287.053 * 0.5 * (virtual_k(lower) + virtual_k(upper)) / 9.806_65;
+    let thickness_m = scale_m * (lower.1 / upper.1).ln();
+    let half_step = |p: f64| if p.fract() == 0.0 { 0.5 } else { 0.05 };
+    let rounding_m = scale_m * (half_step(lower.1) / lower.1 + half_step(upper.1) / upper.1);
+    let miss_m = (upper.2 - lower.2 - thickness_m).abs();
+    (miss_m - rounding_m - 10.0).max(0.0) / thickness_m
+}
+
 /// The rule, applied here on its own: the first row is the ground; of each run of complete rows
 /// with the same pressure the middle one (the lower of two) is a candidate; a candidate is kept
-/// when it is higher than, and at a lower pressure than, the last row kept. Returns the rows
-/// kept, the lines missing a value, and the lines of the other rows of each run.
+/// when it is higher than, and at a lower pressure than, the last row kept, and its height above
+/// it misses the layer's thickness by no more than 5% beyond rounding. Returns the rows kept, the
+/// lines missing a value, and the lines of the other rows of each run.
 fn apply_rule(name: &str) -> (Vec<Recorded>, Vec<usize>, Vec<usize>) {
     let mut complete: Vec<Recorded> = Vec::new();
     let mut missing = Vec::new();
@@ -111,6 +130,7 @@ fn apply_rule(name: &str) -> (Vec<Recorded>, Vec<usize>, Vec<usize>) {
         for (i, row) in complete.iter().enumerate().take(end).skip(start) {
             let below = kept.last().unwrap();
             if i == middle && row.2 > below.2 && row.1 < below.1 {
+                assert!(thickness_miss(below, row) <= 0.05, "{name}: line {}", row.0);
                 kept.push(*row);
             } else {
                 repeats.push(row.0);
@@ -186,6 +206,26 @@ fn the_profile_reproduces_every_level_it_keeps() {
                 "{at}: wind {flown} against {recorded}"
             );
         }
+    }
+}
+
+/// Every row kept fits the one kept before it with no share of the thickness at all: its height
+/// misses the hypsometric thickness by no more than its pressures' rounding and 10 m, even the row
+/// kept 10 before it. Across a thicker layer, whose inner temperatures are left out, the two ends'
+/// mean temperature serves less well: a row fits the row kept 30 before it within 1.7%, a third of
+/// the 5% the parser allows, and 60 before it within 4.7% (the coded message).
+#[test]
+fn recorded_rows_fit_their_layers() {
+    for name in [FM35, WINTER, BUFR] {
+        let (kept, _, _) = apply_rule(name);
+        let worst = |skip: usize| {
+            kept.windows(skip + 1)
+                .map(|w| thickness_miss(&w[0], &w[skip]))
+                .fold(0.0, f64::max)
+        };
+        assert_eq!((worst(1), worst(10)), (0.0, 0.0), "{name}");
+        assert!(worst(30) < 0.017, "{name}: {}", worst(30));
+        assert!(worst(60) < 0.047, "{name}: {}", worst(60));
     }
 }
 
@@ -567,21 +607,19 @@ fn a_rows_faults_drop_it_or_are_clamped() {
             top
         ]
     );
-    // Values at the bounds are kept, and make a profile (`reasons` builds it).
+    // Values at the bounds are kept, and make a profile (`reasons` builds it), on the last row
+    // kept: its layer's 1 hPa rounding leaves room for any temperature. The unit tests hold each
+    // bound's edges.
+    let last = |from: &str, to: &str| reasons(edited(&[(ROW_TOP, &ROW_TOP.replace(from, to))]));
     for (from, to) in [
-        (" -1.7,", "-150.0,"),
-        (" -1.7,", " 80.0,"),
-        (" 9.8", " 300.0"),
+        ("-40.6,", "-150.0,"),
+        ("-40.6,", " 80.0,"),
+        ("17.0", "300.0"),
     ] {
-        assert_eq!(one(from, to), [top], "{to}");
+        assert_eq!(last(from, to), [top], "{to}");
     }
-    for ground in [" 28.4,", "-150.0,", " 80.0,"] {
-        let edit = GROUND.replace(" 28.4,", ground);
-        assert_eq!(reasons(edited(&[(GROUND, &edit)])), [top], "{ground}");
-    }
-    for (from, to) in [(" 872.0,", "1200.0,"), (" 1252,", "-1000,")] {
-        let edit = GROUND.replace(from, to);
-        assert_eq!(reasons(edited(&[(GROUND, &edit)])), [top], "{to}");
+    for (from, to) in [("32801,", "60001,"), ("   8.0,", "  0.09,")] {
+        assert_eq!(last(from, to), [(228, DropReason::OutOfRange), top], "{to}");
     }
     for (from, to) in [(" 872.0,", "1200.1,"), (" 1252,", "-1001,")] {
         let edit = GROUND.replace(from, to);
@@ -592,14 +630,6 @@ fn a_rows_faults_drop_it_or_are_clamped() {
             ),
             "{to}"
         );
-    }
-    // The last row kept, at the height and pressure bounds and just past them.
-    let last = |from: &str, to: &str| reasons(edited(&[(ROW_TOP, &ROW_TOP.replace(from, to))]));
-    for (from, to) in [("32801,", "60000,"), ("   8.0,", "   0.1,")] {
-        assert_eq!(last(from, to), [top], "{to}");
-    }
-    for (from, to) in [("32801,", "60001,"), ("   8.0,", "  0.09,")] {
-        assert_eq!(last(from, to), [(228, DropReason::OutOfRange), top], "{to}");
     }
     // A run at the ground's pressure keeps none of it.
     let at_ground = edited(&[(ROW_854, GROUND_VALUES)]);
@@ -622,59 +652,122 @@ fn a_rows_faults_drop_it_or_are_clamped() {
     assert_eq!(kept.relative_humidity, Some(1.0));
 }
 
-/// One bad row kept (557 hPa with a digit lost, 57 hPa at 5 km) would drop every good row after
-/// it up to 57 hPa; the answer is refused instead, naming that row. Raised to 5,890 m, the row has
-/// the ten rows after it below it, which are left out; raised to 6,048 m, eleven, which refuse.
+/// A row with a bad value is left out, not kept to hide the good rows after it: 557 hPa with a
+/// digit lost (57 hPa at 5 km) misses its layer's thickness by about 18 km, and 5,035 m raised to
+/// 5,890 m by about 850 m. Two bad rows in a row are left out too, and so is a bad row where the
+/// balloon then bursts and falls. The profile is the recording's without the row.
 #[test]
-fn an_answer_that_stops_rising_is_refused() {
-    let refused = |body: Vec<u8>| match WyomingSounding::parse(&body) {
-        Err(WyomingError::NotRising { after, line, count }) => (after, line, count),
-        other => panic!("{other:?}"),
+fn a_bad_row_is_left_out() {
+    let thickness = |body: Vec<u8>| {
+        let sounding = WyomingSounding::parse(&body).unwrap();
+        let air = sounding
+            .sounding(WindInterpolation::SpeedDirection)
+            .unwrap();
+        let pressure_pa = air.sample(5_000.0).unwrap().air.pressure_pa;
+        let lines: Vec<_> = sounding
+            .dropped
+            .iter()
+            .filter(|d| d.reason != DropReason::NoData)
+            .map(|d| (d.line, d.reason))
+            .collect();
+        (lines, pressure_pa)
     };
-    let (after, line, count) =
-        refused(edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))]));
-    assert_eq!((after, line), (38, 39));
-    assert!(count > MAX_NOT_ABOVE, "{count}");
-
-    let raised = edited(&[(ROW_557, &ROW_557.replace(" 5035,", " 5890,"))]);
-    let sounding = WyomingSounding::parse(&raised).unwrap();
-    let below: Vec<_> = sounding
-        .dropped
-        .iter()
-        .filter(|d| d.reason == DropReason::NotAbove)
-        .map(|d| d.line)
-        .collect();
-    assert_eq!(below, (39..=48).collect::<Vec<_>>());
-    assert_eq!(below.len(), MAX_NOT_ABOVE);
-    let higher = edited(&[(ROW_557, &ROW_557.replace(" 5035,", " 6048,"))]);
-    assert_eq!(refused(higher), (38, 39, 11));
-
-    // A second bad row among those the first hides (549 hPa at 51,510 m) is higher than every row
-    // after it, but they all lie above the 570 hPa row kept before the first, and still refuse.
-    let (after, line, count) = refused(edited(&[
-        (ROW_557, &ROW_557.replace(" 557.0,", "  57.0,")),
-        (ROW_549, &ROW_549.replace(" 5151,", "51510,")),
-    ]));
-    assert_eq!((after, line), (38, 39));
-    assert!(count > MAX_NOT_ABOVE, "{count}");
-
-    // A balloon that burst below 57 hPa never gets back above the bad row, but the rows after it
-    // lie above the row before it, so the answer is refused all the same.
-    let bad =
-        String::from_utf8(edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))])).unwrap();
-    let burst: String = bad.lines().take(150).map(|l| format!("{l}\n")).collect();
-    assert_eq!(refused(burst.clone().into_bytes()), (38, 39, 112));
-    // Nor does it when the balloon then falls, back to where it began: rows 149 down to 39 again.
-    let lines: Vec<&str> = bad.lines().collect();
-    let fall: String = lines[38..149]
-        .iter()
-        .rev()
+    let recorded = String::from_utf8(fixture(FM35)).unwrap();
+    let without: String = recorded
+        .lines()
+        .filter(|l| !l.contains(ROW_557))
         .map(|l| format!("{l}\n"))
         .collect();
-    assert_eq!(
-        refused(format!("{burst}{fall}").into_bytes()),
-        (38, 39, 223)
-    );
+    let (_, without_pa) = thickness(without.into_bytes());
+    let digit_lost = (ROW_557, ROW_557.replace(" 557.0,", "  57.0,"));
+    for edits in [
+        vec![digit_lost.clone()],
+        vec![(ROW_557, ROW_557.replace(" 5035,", " 5890,"))],
+    ] {
+        let edits: Vec<_> = edits.iter().map(|(a, b)| (*a, b.as_str())).collect();
+        let (lines, pressure_pa) = thickness(edited(&edits));
+        assert_eq!(lines, [(38, DropReason::Thickness)], "{edits:?}");
+        assert_eq!(pressure_pa, without_pa);
+    }
+    for second in [
+        ROW_549.replace(" 5151,", "51510,"),
+        ROW_549.replace(" 549.0,", "  49.0,"),
+    ] {
+        let edits = [(ROW_557, digit_lost.1.as_str()), (ROW_549, second.as_str())];
+        let (lines, _) = thickness(edited(&edits));
+        assert_eq!(
+            lines,
+            [(38, DropReason::Thickness), (39, DropReason::Thickness)],
+            "{second}"
+        );
+    }
+
+    // The balloon bursts at line 150 and falls back to where row 39 was.
+    let bad = String::from_utf8(edited(&[(ROW_557, &digit_lost.1)])).unwrap();
+    let lines: Vec<&str> = bad.lines().collect();
+    let mut burst: String = lines[..150].iter().map(|l| format!("{l}\n")).collect();
+    burst.extend(lines[38..149].iter().rev().map(|l| format!("{l}\n")));
+    let (lines, _) = thickness(burst.into_bytes());
+    let fall: Vec<_> = (151..=261).map(|l| (l, DropReason::NotAbove)).collect();
+    assert_eq!(lines, [vec![(38, DropReason::Thickness)], fall].concat());
+}
+
+/// The ground is kept unchecked, so the rows after it check it: more than ten left out, below it or
+/// missing its thickness, before one fits it refuse the answer. At 87.2 hPa (a digit lost) every
+/// row up to 17.6 km lies below it; at 125 m, every row misses its thickness.
+#[test]
+fn a_bad_ground_is_refused() {
+    let low = GROUND.replace(" 872.0,", "  87.2,");
+    let text = String::from_utf8(edited(&[(GROUND, &low)])).unwrap();
+    let refused = |body: &str| {
+        matches!(
+            WyomingSounding::parse(body.as_bytes()),
+            Err(WyomingError::Misfit { after: 2, line: 3 })
+        )
+    };
+    assert!(refused(&text));
+    let first: String = text.lines().take(12).map(|l| format!("{l}\n")).collect();
+    let sounding = WyomingSounding::parse(first.as_bytes()).unwrap();
+    assert_eq!(sounding.levels.len(), 1);
+    assert_eq!(sounding.dropped.len(), MAX_MISFITS);
+    let next = text.lines().nth(12).unwrap();
+    assert!(refused(&format!("{first}{next}\n")));
+
+    let short = GROUND.replace(" 1252,", "  125,");
+    let text = String::from_utf8(edited(&[(GROUND, &short)])).unwrap();
+    assert!(refused(&text));
+}
+
+/// A block of rows whose heights are all 1 km high misses the row kept below it: ten are left
+/// out, and the row after them fits; eleven refuse the answer.
+#[test]
+fn a_block_that_does_not_fit_is_refused() {
+    let raised = |rows: usize| {
+        let text = String::from_utf8(fixture(FM35)).unwrap();
+        let mut out = String::new();
+        for (i, line) in text.lines().enumerate() {
+            let mut fields: Vec<String> = line.split(',').map(str::to_owned).collect();
+            if (38..38 + rows).contains(&i) {
+                let z: f64 = fields[4].trim().parse().unwrap();
+                fields[4] = format!("{}", z + 1000.0);
+            }
+            out.push_str(&fields.join(","));
+            out.push('\n');
+        }
+        WyomingSounding::parse(out.as_bytes())
+    };
+    let sounding = raised(MAX_MISFITS).unwrap();
+    let block: Vec<_> = (39..49).map(|l| (l, DropReason::Thickness)).collect();
+    let dropped: Vec<_> = sounding
+        .dropped
+        .iter()
+        .map(|d| (d.line, d.reason))
+        .collect();
+    assert_eq!(dropped, [block, vec![(229, DropReason::NoData)]].concat());
+    match raised(MAX_MISFITS + 1) {
+        Err(WyomingError::Misfit { after, line }) => assert_eq!((after, line), (38, 39)),
+        other => panic!("{other:?}"),
+    }
 }
 
 /// Rows below the last row kept that fall (a balloon after it bursts) or float are left out,

@@ -87,12 +87,19 @@ radiosonde archive" wherever you show the sounding. Every answer carries it.
   that much, so runs of rows share one pressure. The rounded value is the pressure at about the
   middle of its run. In the example, 1,931 of the BUFR file's 5,851 rows are the other rows of
   such runs. The coded message has none.
-- **A row is kept when it lies above the last row kept**, higher and at a lower pressure. If more
-  than 10 rows below the last row kept since it lie above the row kept before it, the answer is
-  refused: that row was probably bad (a pressure missing a digit, say), and every good row after
-  it would be dropped. Rows that fall or float, a balloon coming down, soon drop below the row
-  before and are only left out, however many. A bad row that hides 10 good rows or fewer, near
-  the top or in a short answer, is not caught.
+- **A row is kept when it lies above the last row kept and fits it**: higher, at a lower
+  pressure, and with its height above that row the layer's thickness by the hypsometric equation
+  (see *Why geopotential* below), within 5% plus what rounding the two pressures can move it
+  plus 10 m. In the three recordings every row kept fits with no share at all. So a row with a
+  bad value, a pressure missing a digit (57 hPa for 557) or a height 850 m off, is left out, not
+  kept to hide the good rows after it; rows that fall or float, a balloon coming down, are left
+  out however many.
+- **More than 10 rows after a row kept that miss its thickness refuse the answer**: that row is
+  probably bad. After the ground, which no row before it checks, rows below it count too, so a
+  ground pressure missing a digit refuses the answer instead of hiding every row up to 17.6 km. A
+  long run of rows left out (missing a value) can do the same: over a thick layer the mean of
+  its two ends' temperatures gives its thickness less well (4.6% over 60 rows of the coded
+  message), and the answer is refused rather than cut short.
 - **A row with a value missing or impossible is left out**: the last row often has no wind, and
   a pressure below 0.1 hPa or above 1,200 hPa, a temperature outside −150 to 80 °C, a height
   outside −1 to 60 km, a wind speed below zero or above 300 m/s, a humidity below zero or a
@@ -228,10 +235,17 @@ network.
   at a higher pressure than the last row kept (and not merely the row before); and a row at the
   ground's pressure. The rows left out are listed in line order. A humidity of 103% is kept and
   taken as 100%, and a wind from 360° reads as from north.
-- A pressure missing a digit (57 hPa at 5 km) refuses the answer, naming that row, and so does
-  the same answer cut short at 18.7 km, before the balloon got back above 57 hPa. A row raised so
-  that exactly 10 rows after it lie below it is kept and those rows left out; 11 refuse the
-  answer. Twenty rows falling back down at the end are only left out.
+- Every row kept in the three recordings fits the row kept before it, and the row kept 10
+  before it, with none of the 5% needed: its height misses the layer's thickness by no more than
+  the pressures' rounding and 10 m. The test works out the thickness on its own, with the file's
+  mixing ratio for the humidity.
+- A pressure missing a digit (57 hPa at 5 km) is left out as not fitting, and the profile is the
+  recording's without that row; so is a height raised 850 m, two bad rows in a row, and a bad
+  row after which the balloon bursts and falls back. A block of 10 rows raised 1 km is left out;
+  11 refuse the answer. A ground at 87.2 hPa or at 125 m refuses the answer. With only 10 rows
+  after the 87.2 hPa ground, all left out, the sounding is the ground alone; an 11th row refuses
+  it. Rows falling or floating at the end are only left out, as is a float followed by a row that
+  fits.
 - Values just past the bounds above are left out; values at them are kept and make a profile.
 - The request's address is the one recorded, so a replayed answer fills the cache. A second
   request is answered from the cache, and offline mode answers without the network. A copy saved
@@ -251,8 +265,9 @@ network.
   or in time. A rocket flown hours from the balloon, 100 km away, flies other air.
 - Which version is nearer the truth near the ground, where they differ most, is not known.
 - A level with any value missing is left out whole, even when its other values are good.
-- A wrong value that still lies between its neighbours is kept: nothing checks a layer's
-  thickness against its temperature.
+- A wrong height smaller than the allowance, a row whose pressure and height are both wrong yet
+  fit each other, a wrong temperature or wind that leaves the thickness within the allowance,
+  and a wrong ground with 10 rows or fewer after it are kept.
 - Only the archive's comma-separated text is read, not its other formats, and there is no list
   of stations to search by place.
 - Its terms of use are not stated; only soundings from U.S. stations, which are U.S. government

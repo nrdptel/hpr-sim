@@ -34,19 +34,21 @@
 //!   to 0.1 hPa, and high up the balloon climbs tens of metres while the pressure falls that much,
 //!   so runs of rows share a pressure; the rounded value is the pressure at about the middle of
 //!   its run.
-//! - **Each such row above the last row kept**, higher and at a lower pressure.
+//! - **Each such row above the last row kept**, higher and at a lower pressure, **that fits it**:
+//!   its height above that row is the layer's thickness by the hypsometric equation (from the two
+//!   pressures and virtual temperatures), within 5% plus the pressures' rounding plus 10 m
+//!   ([`THICKNESS_SHARE`]). In the recordings every row fits with no share at all.
 //!
 //! A row missing a value (the last row often has no wind) is dropped, and so is one with a value
 //! no air on Earth has ([`DropReason::OutOfRange`] lists the bounds). [`WyomingSounding::dropped`]
 //! lists each row left out, with its reason.
 //!
-//! More than [`MAX_NOT_ABOVE`] rows below the last row kept since it (a run of one pressure
-//! counting once) that lie above the row kept before it (every row, when the last is the ground)
-//! refuse the answer: a grossly bad row was kept (a pressure missing a digit, say), and good rows
-//! after it are being dropped. Rows that fall or float, a balloon coming down, soon drop below the
-//! row before and are only left out, however many. Not caught: a bad row that still lies between
-//! its neighbours (nothing checks a layer's thickness against its temperature), or one that hides
-//! 10 good rows or fewer, as it can near the top or in a short or partial answer.
+//! So a row with a bad value, a pressure missing a digit, say, is left out, not kept to hide the
+//! good rows after it, and rows that fall or float, a balloon coming down, are left out however
+//! many. More than [`MAX_MISFITS`] rows after a row kept that miss its thickness (after the
+//! ground, which nothing checks, or lie below it) refuse the answer. Not caught: a bad height
+//! smaller than the allowance, a row whose pressure and height are both wrong yet fit each other,
+//! or a bad ground with 10 rows or fewer after it.
 //!
 //! Heights are geopotential metres (the column says so), converted to geometric heights at the
 //! first row's latitude with WMO-No. 8 (2023) eqs. 12.15 and 12.16
@@ -87,8 +89,11 @@
 
 use std::f64::consts::TAU;
 
+use hpr_atmos::moist::{WATER_VAPOUR_MOLECULAR_WEIGHT_KG_PER_KMOL, saturation_vapour_pressure_pa};
 use hpr_atmos::profile::geometric_from_wmo_geopotential_m;
+use hpr_atmos::ussa76::{DRY_AIR_GAS_CONSTANT_J_PER_KG_K, SEA_LEVEL_MOLECULAR_WEIGHT_KG_PER_KMOL};
 use hpr_atmos::{AtmosError, SoundingLevel, SoundingProfile, WindInterpolation};
+use hpr_core::gravity::STANDARD_GRAVITY_MPS2;
 use serde::{Deserialize, Serialize};
 
 use crate::civil::{date_hour, unix_day_start};
@@ -111,10 +116,20 @@ pub const YOUNG_TTL_S: u64 = 3_600;
 /// How long an answer fetched after its sounding settled stays fresh, s: 30 days.
 pub const SETTLED_TTL_S: u64 = 30 * 86_400;
 
-/// The most rows below the last row kept since it that may lie above the row kept before it
-/// (higher and at a lower pressure; any row, when the last is the ground). More means a bad row
-/// was kept and good rows after it are being dropped, so the answer is refused.
-pub const MAX_NOT_ABOVE: usize = 10;
+/// The most rows after a row kept that may miss its thickness (after the ground, which nothing
+/// before it checks, or lie below it) before one fits it. More means that row is likely bad, or the
+/// rows between it and the next are missing over a layer too thick for its two temperatures to
+/// give its thickness; the answer is refused rather than cut short.
+pub const MAX_MISFITS: usize = 10;
+
+/// The share of a layer's hypsometric thickness a row's height may miss it by, beyond rounding:
+/// 5%. In the recordings every row kept fits with no share at all, and a row fits the row kept 30
+/// rows before it within 1.7%, so a few rows left out in between don't cost the next its place.
+pub const THICKNESS_SHARE: f64 = 0.05;
+
+/// The metres a row's height may miss its layer's thickness by, beyond the share and the pressures'
+/// rounding: 10 m, as a coded message's heights above 500 hPa are coded to 10 m.
+pub const THICKNESS_SLACK_M: f64 = 10.0;
 
 /// The most rows an answer may have. The archive's BUFR files have about 6,000.
 pub const MAX_ROWS: usize = 100_000;
@@ -317,6 +332,9 @@ pub enum DropReason {
     SamePressure,
     /// Its height is not above the last row kept, or its pressure not below it.
     NotAbove,
+    /// It lies above the last row kept, but its height above it is not the thickness its
+    /// pressures and temperatures give (see [`THICKNESS_SHARE`]): one of its values is wrong.
+    Thickness,
 }
 
 /// A row left out of the profile, and why.
@@ -357,8 +375,8 @@ impl WyomingSounding {
     ///   a number (or, in the first row, the time is not a date).
     /// - [`WyomingError::NoGround`] when there is no row, or the first is missing a value or has
     ///   one out of range.
-    /// - [`WyomingError::NotRising`] when more than [`MAX_NOT_ABOVE`] rows below the last row kept
-    ///   since it lie above the row kept before it.
+    /// - [`WyomingError::Misfit`] when more than [`MAX_MISFITS`] rows after a row kept miss its
+    ///   thickness (after the ground, or lie below it) before one fits it.
     pub fn parse(body: &[u8]) -> Result<Self, WyomingError> {
         let text = std::str::from_utf8(body).map_err(|_| WyomingError::Missing {
             field: "header".to_owned(),
@@ -481,45 +499,41 @@ impl WyomingSounding {
 
         let mut levels = vec![ground];
         let mut dropped = Vec::new();
-        // The last row kept's line.
+        // The last row kept's line, and the rows since that miss its thickness (after the ground,
+        // which nothing before it checks, those below it too): the first's line and how many.
         let mut last_kept = read[0].0;
-        // The rows below it since.
-        let mut below: Option<Below> = None;
+        let mut misfits: Option<(usize, usize)> = None;
         for (line, level) in choice {
             let reason = match level {
                 Ok(level) => {
                     let under = levels[levels.len() - 1];
-                    if level.height_msl_m > under.height_msl_m
-                        && level.pressure_pa < under.pressure_pa
+                    let reason = if !(level.height_msl_m > under.height_msl_m
+                        && level.pressure_pa < under.pressure_pa)
                     {
-                        if let Some(below) = below.take() {
-                            below.check(last_kept)?;
-                        }
+                        DropReason::NotAbove
+                    } else if !fits(&under, &level) {
+                        DropReason::Thickness
+                    } else {
                         levels.push(level);
                         last_kept = line;
+                        misfits = None;
                         continue;
+                    };
+                    if reason == DropReason::Thickness || levels.len() == 1 {
+                        let (first, count) = misfits.get_or_insert((line, 0));
+                        *count += 1;
+                        if *count > MAX_MISFITS {
+                            return Err(WyomingError::Misfit {
+                                after: last_kept,
+                                line: *first,
+                            });
+                        }
                     }
-                    // The row kept before the last one, which the good rows a bad last one hides
-                    // lie above; none when the last is the ground.
-                    let before = levels.len().checked_sub(2).map(|i| levels[i]);
-                    below
-                        .get_or_insert(Below {
-                            first: line,
-                            count: 0,
-                            above_before: 0,
-                        })
-                        .add(level, before.as_ref());
-                    DropReason::NotAbove
+                    reason
                 }
                 Err(reason) => reason,
             };
             dropped.push(DroppedLevel { line, reason });
-        }
-        // Rows below the last row kept at the end are a balloon falling or floating, unless they
-        // climb among themselves: then the row kept before them was bad, and the balloon burst
-        // before it got back above it.
-        if let Some(below) = below {
-            below.check(last_kept)?;
         }
         Ok(Self {
             latitude_deg,
@@ -635,55 +649,58 @@ pub enum WyomingError {
         /// The line of the first row, counting the header as line 1.
         line: usize,
     },
-    /// Too many rows below the last row kept since it lie above the row kept before it: that row
-    /// was likely bad.
+    /// More than [`MAX_MISFITS`] rows after a row kept miss its thickness (after the ground,
+    /// or lie below it) before one fits it: that row is likely bad.
     #[error(
-        "the Wyoming answer stops rising after line {after}: {count} rows from line {line} on lie \
-         below it, and rise again"
+        "the Wyoming answer's line {after} doesn't fit the rows after it: more than \
+         {MAX_MISFITS} from line {line} on miss its thickness or lie below it"
     )]
-    NotRising {
-        /// The last row kept before them, likely the bad one, counting the header as line 1.
+    Misfit {
+        /// The row kept, counting the header as line 1.
         after: usize,
-        /// The first row below it.
+        /// The first row after it that doesn't fit it.
         line: usize,
-        /// How many rows below it there are since it.
-        count: usize,
     },
 }
 
-/// The rows below the last row kept since it.
-struct Below {
-    /// The first one's line.
-    first: usize,
-    /// How many there are.
-    count: usize,
-    /// How many lie above the row kept before the last, higher and at a lower pressure (all of
-    /// them when the last row kept is the ground).
-    above_before: usize,
+/// Whether `upper`'s geopotential height above `lower` is the thickness the hypsometric equation
+/// gives the layer between their pressures, within [`THICKNESS_SHARE`] of it, plus what rounding
+/// each pressure to its step (0.1 hPa, or 1 hPa when it is a whole number) can move it, plus
+/// [`THICKNESS_SLACK_M`]. With the layer's mean virtual temperature `T̄_v` (WMO-No. 8 (2023),
+/// Vol. I, eqs. 12.17 and 12.18; `T_v` from the humidity, as `hpr_atmos::moist` has it):
+///
+/// ```text
+/// ΔZ = (R_d T̄_v / g₀) ln(p_lower / p_upper)
+/// ```
+fn fits(lower: &WyomingLevel, upper: &WyomingLevel) -> bool {
+    let scale_height_m = DRY_AIR_GAS_CONSTANT_J_PER_KG_K
+        * 0.5
+        * (virtual_temperature_k(lower) + virtual_temperature_k(upper))
+        / STANDARD_GRAVITY_MPS2;
+    let thickness_m = scale_height_m * (lower.pressure_pa / upper.pressure_pa).ln();
+    let rounding_m = scale_height_m
+        * (half_step_pa(lower.pressure_pa) / lower.pressure_pa
+            + half_step_pa(upper.pressure_pa) / upper.pressure_pa);
+    let miss_m = upper.geopotential_height_m - lower.geopotential_height_m - thickness_m;
+    miss_m.abs() <= THICKNESS_SHARE * thickness_m + rounding_m + THICKNESS_SLACK_M
 }
 
-impl Below {
-    fn add(&mut self, level: WyomingLevel, before: Option<&WyomingLevel>) {
-        self.count += 1;
-        if before.is_none_or(|b| {
-            level.height_msl_m > b.height_msl_m && level.pressure_pa < b.pressure_pa
-        }) {
-            self.above_before += 1;
-        }
-    }
+/// A level's virtual temperature, K: `T_v = T / (1 − (e/p)(1 − M_v/M₀))`, with the vapour
+/// pressure `e` from its relative humidity (taken as at most 100%) over liquid water.
+fn virtual_temperature_k(level: &WyomingLevel) -> f64 {
+    let vapour_pa =
+        level.relative_humidity.min(1.0) * saturation_vapour_pressure_pa(level.temperature_k);
+    let ratio = WATER_VAPOUR_MOLECULAR_WEIGHT_KG_PER_KMOL / SEA_LEVEL_MOLECULAR_WEIGHT_KG_PER_KMOL;
+    level.temperature_k / (1.0 - vapour_pa / level.pressure_pa * (1.0 - ratio))
+}
 
-    /// Refuses the answer when more than [`MAX_NOT_ABOVE`] of the rows lie above the row kept
-    /// before the last: the good rows a bad last row hides all do, whatever other bad rows are
-    /// among them, while a balloon falling or floating soon drops below it.
-    fn check(&self, after: usize) -> Result<(), WyomingError> {
-        if self.above_before > MAX_NOT_ABOVE {
-            return Err(WyomingError::NotRising {
-                after,
-                line: self.first,
-                count: self.count,
-            });
-        }
-        Ok(())
+/// Half the step a pressure was rounded to, Pa: 0.5 hPa for a whole number of hPa (the coded
+/// message's significant levels), else 0.05 hPa.
+fn half_step_pa(pressure_pa: f64) -> f64 {
+    if (pressure_pa / 100.0).fract() == 0.0 {
+        50.0
+    } else {
+        5.0
     }
 }
 
@@ -851,6 +868,39 @@ fn wrap_direction(angle_rad: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn values_at_the_bounds_are_kept_and_past_them_dropped() {
+        let at = |p: f64, z: f64, t: f64, speed: f64| level(p, z, t, 50.0, speed, 180.0, 0.5);
+        for (p, z, t, speed) in [
+            (0.1, 5_000.0, -10.0, 10.0),
+            (1_200.0, 5_000.0, -10.0, 10.0),
+            (500.0, -1_000.0, -10.0, 10.0),
+            (500.0, 60_000.0, -10.0, 10.0),
+            (500.0, 5_000.0, -150.0, 10.0),
+            (500.0, 5_000.0, 80.0, 10.0),
+            (500.0, 5_000.0, -10.0, 0.0),
+            (500.0, 5_000.0, -10.0, 300.0),
+        ] {
+            assert!(at(p, z, t, speed).is_ok(), "{p} {z} {t} {speed}");
+        }
+        for (p, z, t, speed) in [
+            (0.099, 5_000.0, -10.0, 10.0),
+            (1_200.1, 5_000.0, -10.0, 10.0),
+            (500.0, -1_000.1, -10.0, 10.0),
+            (500.0, 60_000.1, -10.0, 10.0),
+            (500.0, 5_000.0, -150.1, 10.0),
+            (500.0, 5_000.0, 80.1, 10.0),
+            (500.0, 5_000.0, -10.0, -0.1),
+            (500.0, 5_000.0, -10.0, 300.1),
+        ] {
+            assert_eq!(
+                at(p, z, t, speed),
+                Err(DropReason::OutOfRange),
+                "{p} {z} {t} {speed}"
+            );
+        }
+    }
 
     #[test]
     fn url_names_the_hour_station_and_version() -> Result<(), WyomingError> {

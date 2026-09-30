@@ -125,7 +125,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-117 | M5.1 split a and b; M5.1a: the cache, TTL freshness and an offline mode that never calls the transport | accepted |
 | ADR-118 | M5.1b: `ureq` 3 over rustls behind feature `http`, the body limit on unpacked bytes, the platform cache folder by hand | accepted |
 | ADR-119 | M5.2 split a to d; M5.2a: Open-Meteo's pressure levels as a sounding, the ground as its lowest level, levels below it dropped, heights geopotential | accepted |
-| ADR-120 | M5.2b: University of Wyoming soundings from its CSV, FM 35 by default or BUFR, the first row as the ground, the middle of each same-pressure run, rows not above the last kept dropped; freshness by age; U.S. stations' soundings committed as fixtures | accepted |
+| ADR-120 | M5.2b: University of Wyoming soundings from its CSV, FM 35 by default or BUFR, the first row as the ground, the middle of each same-pressure run, rows not above the last kept or not fitting its hypsometric thickness dropped; freshness by age; U.S. stations' soundings committed as fixtures | accepted |
 
 ---
 
@@ -9885,19 +9885,24 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    pressure at about the middle of its run. Keeping the first row of each run put 10 hPa 26 m low
    (the physics review) and misses a row by up to 0.093 hPa; with the middle, every BUFR row lies
    within 0.071 hPa of the profile. A candidate is kept when higher than, and at a lower pressure
-   than, the last row kept (`NotAbove` otherwise). More than 10 `NotAbove` rows since the last row
-   kept that lie above the row kept before it (every one, when the last is the ground) refuse the
-   answer (`NotRising`, naming that row), whether a row after them is kept or the balloon burst
-   first, since one bad row kept (57 hPa for 557) would otherwise drop every good row after it.
-   The good rows it hides all lie above the row before it, whatever other bad rows are among them,
-   while rows that fall or float soon drop below it and are only dropped, however many. The code
-   review found the rules tried first failing: comparing a tail's first and last rows let a burst
-   followed by a fall through and refused a float ending higher, and counting a climbing chain
-   stopped at a second bad row. A bad row hiding 10 good rows or fewer (near the top, or a short
-   or partial answer) is not caught. A wrong value that stays between its neighbours is not
-   caught: no layer is checked against the hypsometric equation. More than 100,000 rows are refused
-   as they are read, which bounds the memory a hostile answer costs. A relative humidity above 100%
-   is kept as recorded and clamped to 100% in `sounding()`, as ADR-004 asked of radiosonde imports.
+   than, the last row kept (`NotAbove` otherwise), and when its height above it is the layer's
+   hypsometric thickness (WMO-No. 8 eqs. 12.17 and 12.18, virtual temperature from the humidity, the
+   two ends' mean) within 5% plus what rounding the two pressures (0.05 hPa, or 0.5 hPa for a whole
+   number) can move it plus 10 m (`Thickness` otherwise). Every row kept in the three recordings
+   fits with no share at all, even against the row kept 10 before it; against the row 30 before,
+   within 1.7%, and 60 before, 4.6%, as the ends' mean temperature serves a thick layer less well.
+   So a bad row (57 hPa for 557, or a height 850 m off) is dropped instead of kept to hide the good
+   rows after it, and rows that fall or float are only dropped, however many. More than 10 rows
+   after a row kept that miss its thickness (after the ground, which nothing checks, those below it
+   too) refuse the answer (`Misfit`): that row is likely bad, or a long run of rows left out has
+   made the layer too thick to check, and refusing beats cutting the sounding short. Counting rows
+   hidden below a kept row, tried first, failed each way the code review probed it: a tail's first
+   and last rows let a burst then a fall through and refused a float ending higher; a climbing chain
+   stopped at a second bad row; rows above the row kept before failed on two bad rows in a row. Not
+   caught: a height error within the allowance, a pressure and height both wrong yet fitting, and a
+   bad ground with 10 rows or fewer after it. More than 100,000 rows are refused as they are read,
+   which bounds the memory a hostile answer costs. A relative humidity above 100% is kept as
+   recorded and clamped to 100% in `sounding()`, as ADR-004 asked of radiosonde imports.
 6. **Heights are geopotential**, converted with WMO-No. 8 (2023) eqs. 12.15 and 12.16 at the first
    row's latitude, the latitude `SoundingProfile` then uses; the balloon's drift would move a height
    about 0.8 m per degree at 10 km, 2.5 m at 30 km. Checked as in ADR-119: across the 13 layers
