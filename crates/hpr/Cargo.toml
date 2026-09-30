@@ -42,6 +42,10 @@ parquet = ["hpr-sim/parquet"]
 serde_json.workspace = true
 
 [[example]]
+name = "nomads_forecast"
+required-features = ["net"]
+
+[[example]]
 name = "open_meteo_weather"
 required-features = ["net"]
 

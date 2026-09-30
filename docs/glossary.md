@@ -502,6 +502,13 @@ compared with them on its drag without the base drag. See
 [Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel).
 
 
+## Forecast run (cycle)
+
+One start of a weather model: it begins from the weather observed at one hour, the run's *cycle*,
+and steps forward. Each *forecast hour* is the forecast for that many hours after the cycle. NOAA's
+GFS starts a run every 6 hours and its RAP every hour. See
+[NOAA forecasts: GFS and RAP](nomads.md#what-hpr-asks-for).
+
 ## Gate and target
 
 Two ways a validation result is held to a bound. A **gate** fails the test suite when a number
@@ -531,6 +538,19 @@ into height above sea level with the site's own gravity. See
 [Atmosphere](physics/atmosphere.md#sounding-and-forecast-profiles) and
 [ERA5 weather files](format/era5.md#how-hpr-reads-it).
 
+
+## GRIB2
+
+GRIdded Binary, edition 2: the World Meteorological Organization's binary format for weather on a
+grid (WMO-No. 306, code FM 92). A file is a run of *messages*, each holding one variable on one
+level over the grid, with the values packed as whole numbers and a formula to turn them back. See
+[NOAA forecasts: GFS and RAP](nomads.md).
+
+## Grid point
+
+A place where a weather model gives its values. Between grid points hpr blends the four around a
+site, weighting each more as the site nears it (bilinear interpolation). See
+[NOAA forecasts: GFS and RAP](nomads.md#how-the-answer-becomes-a-sounding).
 
 ## Height above sea level (MSL)
 
@@ -576,6 +596,14 @@ The momentum of the propellant and gas moving inside a burning motor. A thrust c
 ## Jet damping
 
 The damping of a rocket's turning by its own exhaust: gas leaving the nozzle carries away some of the rocket's rotation. hpr includes it through RocketPy's equations of motion, so it acts only while a motor burns. See [Rigid-body flight](physics/flight.md#equations-of-motion).
+
+## Lambert conformal projection
+
+A map made by wrapping a cone around the Earth, touching it along one latitude, and unrolling it
+flat. It keeps shapes true locally, so weather models over the mid-latitudes use it for their
+grids. Its "up" points true north along one line of longitude only, so winds given along the map
+must be turned to east and north. See
+[NOAA forecasts: GFS and RAP](nomads.md#how-the-answer-becomes-a-sounding).
 
 ## Launch frame (ENU)
 

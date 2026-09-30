@@ -103,6 +103,19 @@ adds a source.
   ([ADR-120](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30)). The example `crates/hpr/examples/wyoming_sounding.rs` reads the Santa Teresa pair.
   `hpr_net::wyoming` also fetches soundings at run time, when a program asks, and caches them on
   the user's disk; each carries a credit to the archive for the program to show.
+- **NOAA GFS and RAP forecast cuts** (<https://nomads.ncep.noaa.gov>):
+  `crates/hpr-net/tests/fixtures/replay/nomads-gfs.grib2` and `nomads-rap.grib2` are two GRIB2
+  answers recorded unchanged on 2026-09-30 from NOMADS' grib filter around 32.99° N, 106.97° W:
+  the GFS 0.25° run of 2026-09-30 00 UTC at hour 18 and the RAP 13 km run of 12 UTC at hour 6.
+  They are output of NOAA's National Centers for Environmental Prediction, a work of the United
+  States government, not subject to copyright in the United States (17 U.S.C. § 105).
+  `crates/hpr-net/tests/fixtures/nomads-eccodes.json` is what ECMWF's ecCodes 2.49.0
+  (Apache-2.0, <https://github.com/ecmwf/eccodes>) decodes from them, written by
+  `validation/oracles/grib2/eccodes_dump.py`; ecCodes is run as an outside decoder and none of its
+  code is used or ported
+  ([ADR-121](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30)).
+  `hpr_net::nomads` also fetches such cuts at run time, when a program asks, and caches them on
+  the user's disk; each carries a credit to NOAA/NCEP for the program to show.
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).

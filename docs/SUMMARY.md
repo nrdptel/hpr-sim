@@ -22,6 +22,8 @@
 
 [Weather-balloon soundings](soundings.md)
 
+[NOAA forecasts: GFS and RAP](nomads.md)
+
 [Reading a flight log](reading-a-flight-log.md)
 
 [Your own rocket](your-own-rocket.md)

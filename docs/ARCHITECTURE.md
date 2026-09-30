@@ -35,8 +35,8 @@ or a public trait gets an entry in `DECISIONS.md` first.
 | `hpr-flightdata` | flight-log importers, the canonical flight record, filtering and smoothing, time alignment, and the readings taken from a flight with the provenance of each | core, atmos |
 | `hpr-forensics` | a flight against a simulation of it: residuals, parameter identification, fault diagnosis | flightdata, sim, analysis |
 | `hpr-format` | the new open design format: types, JSON Schema, versioning and migrations, container | design, io (ADR-111) |
-| `hpr-io` | foreign formats: `.ork`, `.rkt`, `.CDX1`, RocketPy export, `.orc` parts DB; netCDF classic and ERA5 weather (ADR-081) | design, motor (ADR-055), atmos (ADR-081) |
-| `hpr-net` | optional online sources plus the on-disk cache: Open-Meteo, NOAA GFS/RAP, soundings, elevation, ThrustCurve, motor.fusionspace.co | atmos, motor, core (standard gravity, ADR-120) |
+| `hpr-io` | foreign formats: `.ork`, `.rkt`, `.CDX1`, RocketPy export, `.orc` parts DB; netCDF classic and ERA5 weather (ADR-081); GRIB2 (ADR-121) | design, motor (ADR-055), atmos (ADR-081) |
+| `hpr-net` | optional online sources plus the on-disk cache: Open-Meteo, NOAA GFS/RAP, soundings, elevation, ThrustCurve, motor.fusionspace.co | atmos, motor, core (standard gravity, ADR-120), io (GRIB2, ADR-121) |
 | `hpr` (facade) | re-exports plus a RocketPy-like builder API (`Environment`, `Motor`, `Rocket`, `Flight`) | the crates above |
 | `hpr-cli` | `hpr` binary: `sim`, `validate`, `convert`, `motors`, `weather`, `mc`, `optimize`, `compare`, `analyze`, `diagnose`, `completions` (ADR-105) | facade, validate (ADR-107) |
 | `hpr-py` | PyO3/maturin bindings (abi3 wheels), with numpy outputs | facade |
@@ -83,8 +83,8 @@ Check each one on crates.io before adding it, and record any change in an ADR.
 - **Errors, logging, CLI:** `thiserror`, `anyhow` (binaries only), `tracing`, `clap`.
 - **Parallelism and bindings:** `rayon`; `pyo3` + `maturin` + `numpy`; `wasm-bindgen` + `tsify`;
   `cbindgen`; later `uniffi` for native mobile bindings.
-- **Networking:** `ureq` 3 with `rustls` only, behind `hpr-net`'s `http` feature (ADR-118), `grib`
-  (pure Rust GRIB2).
+- **Networking:** `ureq` 3 with `rustls` only, behind `hpr-net`'s `http` feature (ADR-118). GRIB2
+  is decoded in-house in `hpr-io` (ADR-121): the `grib` crate decodes to `f32`.
 - **Cache and platform:** plain files for the cache (ADR-117); platform paths written by hand,
   since `directories` pulls in MPL-2.0 (ADR-118).
 - **Testing:** `proptest`, `insta`, `criterion`, `approx`, `cargo-nextest`, `cargo-deny`.

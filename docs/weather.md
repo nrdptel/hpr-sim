@@ -17,8 +17,9 @@ encrypted (HTTPS) connection to Open-Meteo was checked once by hand, not in CI.
 Code: `hpr_net::open_meteo` ([API reference](api/hpr_net/open_meteo/index.html)), written for
 the first weather increment, [M5.2a](decisions-and-roadmap.md#m5-2a). It needs the `net` feature
 of the `hpr` crate. Weather from a file you download is on
-[ERA5 weather files](format/era5.md), and the air a weather balloon measured is on
-[Weather-balloon soundings](soundings.md). The choices are in
+[ERA5 weather files](format/era5.md), the air a weather balloon measured is on
+[Weather-balloon soundings](soundings.md), and NOAA's own GFS and RAP forecasts are on
+[NOAA forecasts: GFS and RAP](nomads.md). The choices are in
 [ADR-119: Open-Meteo's pressure levels as a sounding](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-119-m52-split-open-meteos-pressure-levels-as-a-sounding-2026-09-30).
 
 ## What hpr asks for
@@ -180,10 +181,9 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
 
 - Nothing checks a forecast against the weather that came. Weather-balloon soundings, the
   measured air, can be fetched too ([Weather-balloon soundings](soundings.md)), but no forecast has
-  been compared with one. Next come the model
-  files of NOAA's Global Forecast System and Rapid Refresh (GFS and RAP,
-  [M5.2c](decisions-and-roadmap.md#m5-2c)) and files you download yourself
-  ([M5.2d](decisions-and-roadmap.md#m5-2d)).
+  been compared with one. NOAA's Global Forecast System and Rapid Refresh (GFS and RAP) can be
+  fetched by name ([NOAA forecasts: GFS and RAP](nomads.md)); files you download yourself come
+  next ([M5.2d, weather files you download](decisions-and-roadmap.md#m5-2d)).
 - The 2 m temperature and humidity and the 10 m wind are placed at the ground itself, so the
   whole launch rail sees the 10 m wind. A real wind is weaker close to the ground; how much that
   changes a rocket's turn into the wind off the rail is not measured.
