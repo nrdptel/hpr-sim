@@ -833,3 +833,52 @@ fn a_cut_of_too_many_fields_is_refused() {
     ));
     assert_eq!(nomads::MAX_FIELDS, 1_000);
 }
+
+/// Every message of `bytes` with `new` written at byte `offset` of its section `number`.
+fn patched(bytes: &[u8], number: u8, offset: usize, new: &[u8]) -> Vec<u8> {
+    split(bytes)
+        .into_iter()
+        .flat_map(|mut m| {
+            let mut at = 16;
+            while m[at + 4] != number {
+                at +=
+                    usize::try_from(u32::from_be_bytes(m[at..at + 4].try_into().unwrap())).unwrap();
+            }
+            m[at + offset..at + offset + new.len()].copy_from_slice(new);
+            m
+        })
+        .collect()
+}
+
+/// Each model's grid is its own; a cut on another grid, even a self-consistent one (here GFS's
+/// with its steps made 0.5°, which still holds the site), reads but is not the model's, so `fetch`
+/// refuses it.
+#[test]
+fn each_model_knows_its_grid() {
+    let gfs = fixture("nomads-gfs.grib2");
+    let rap = fixture("nomads-rap.grib2");
+    let grid = |b: &[u8]| {
+        NomadsProfile::parse(b, LATITUDE_DEG, LONGITUDE_DEG)
+            .unwrap()
+            .grid
+    };
+    assert!(NomadsModel::Gfs.has_grid(&grid(&gfs)));
+    assert!(NomadsModel::Rap.has_grid(&grid(&rap)));
+    assert!(!NomadsModel::Rap.has_grid(&grid(&gfs)));
+    assert!(!NomadsModel::Gfs.has_grid(&grid(&rap)));
+    // Template 3.0's Di and Dj, octets 64 to 71 of section 3.
+    let half = [500_000_u32.to_be_bytes(), 500_000_u32.to_be_bytes()].concat();
+    let coarse = patched(&gfs, 3, 63, &half);
+    assert!(!NomadsModel::Gfs.has_grid(&grid(&coarse)));
+}
+
+/// A forecast time in a unit the reader doesn't convert is refused by name.
+#[test]
+fn an_unknown_time_unit_is_refused() {
+    // Template 4.0's unit of time range, octet 18 of section 4.
+    let odd = patched(&fixture("nomads-gfs.grib2"), 4, 17, &[99]);
+    assert!(matches!(
+        NomadsProfile::parse(&odd, LATITUDE_DEG, LONGITUDE_DEG),
+        Err(NomadsError::TimeUnit { code: 99 })
+    ));
+}

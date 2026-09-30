@@ -54,7 +54,7 @@ sea-level pressure is about 1013 hPa). A *pressure level* is a height named by t
 can't fail. The request's `url()`, and so `nomads::fetch`, refuse a cycle the model doesn't run
 or a forecast hour its run doesn't have (`NomadsModel::has_forecast_hour(cycle_hour, hour)` says
 which it has). hpr picks neither for you: to fly at 18 UTC, ask for GFS's 00 UTC run at hour 18,
-say, or RAP's 12 UTC run at hour 6. A site outside the model's grid is refused.
+say, or RAP's 12 UTC run at hour 6. A site outside the model's grid is refused once the answer arrives.
 
 The request's address is NOMADS' *grib filter*, a web form that cuts chosen variables, levels and
 a box of latitude and longitude out of a run's file. hpr asks for a box 0.3° each way around the
@@ -91,8 +91,8 @@ NCEP's forecasts are U.S. government works, free of copyright. Every answer carr
 
 **Between grid points.** A model gives each value only at its grid points. hpr takes the four
 around the site and blends them *bilinearly*: each point's weight grows as the site nears it, in
-the grid's own rows and columns, and the four weights add up to 1. The blend of the four points'
-positions must lie within 1 km of the site, or the cut is refused as not the site's.
+the grid's own rows and columns, and the four weights add up to 1. A cut on a grid other than
+the model's own (GFS's 0.25° steps, RAP's 13,545 m cells about 265° E) is refused and not saved.
 
 **The ground** is at the model's terrain height at the site, with the surface pressure, the 2 m
 temperature and humidity, and the 10 m wind. Putting the 10 m wind at the ground makes it the wind
@@ -110,10 +110,10 @@ its 37. The profile lists every level it left out, and why.
 **Heights.** GRIB2 gives heights in geopotential metres, which hpr converts to heights above sea
 level at the site's latitude with the World Meteorological Organization's formula (WMO-No. 8 eq.
 12.16, as the [atmosphere page](physics/atmosphere.md) explains). The model's terrain height is also given in
-geopotential metres and converted the same way. At this latitude that adds about 1.9 m at
-1,400 m: GFS's 1,474.4 gpm becomes 1,476.4 m. If the model's terrain were really a height above
-sea level, as for [Open-Meteo's elevation](weather.md#how-the-answer-becomes-a-sounding), the
-ground would sit about 1.9 m too high.
+geopotential metres and converted the same way. At this latitude that adds about 2 m: GFS's
+1,474.4 gpm becomes 1,476.4 m. If the model's terrain were really a height above sea level, as for
+[Open-Meteo's elevation](weather.md#how-the-answer-becomes-a-sounding), the ground would sit about
+2 m too high.
 
 **RAP's winds are turned to east and north.** RAP's map is a cone unrolled flat (a
 [Lambert conformal](glossary.md#lambert-conformal-projection) projection), and it gives each wind
@@ -238,12 +238,15 @@ directly, not through the decoder under test.
 
 Each line gives what was measured, then the bound the test holds it to.
 
+All the measurements below were made on macOS; CI runs the same tests with the same bounds on
+Linux and Windows.
+
 - **Every value.** Each of the 147 GFS messages (9 grid points each) and 192 RAP messages (25 grid
   points each) names the same variable, level and times as ecCodes, and all 6,123 values are within
   2.2e-16 of ecCodes', relatively (bound 2.5e-16). That is one rounding: ecCodes multiplies by an
   inexact `10^−D` where hpr divides by an exact `10^D`. It uses only basic arithmetic, which is the
   same on every platform.
-- **Every grid point's position** is within 5.7e-14° of ecCodes' on macOS (bound 1e-12°, since
+- **Every grid point's position** is within 5.7e-14° of ecCodes' (bound 1e-12°, since
   other platforms' maths libraries can differ in the last digits). The four points' weights add
   up to 1, and the blend of their positions is the site, to 1e-5°.
 - **RAP's wind turn** is `sin 25° × (λ − 265°)`, −5.06° at the site. ecCodes' own positions of two
@@ -265,7 +268,8 @@ Each line gives what was measured, then the bound the test holds it to.
   A second request is answered from the cache, and offline mode answers without the network, 40
   days later, [marked stale](online-data.md#what-it-promises).
 - **Wrong answers aren't saved.** A RAP request answered with a GFS cut, and a cut of another run
-  or hour than the one asked for, are refused and not saved.
+  or hour than the one asked for, are refused and not saved. A GFS cut whose steps are changed to
+  0.5° still reads, but is not GFS's grid, so it would be refused too.
 - **Humidity.** A humidity over 100% is kept in the level and taken as 100% in the sounding (a
   unit test).
 - **Missing and hostile data.** A level whose field has no value at one of the four points around

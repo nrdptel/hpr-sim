@@ -681,11 +681,14 @@ fn each_refusal_names_its_cause() {
     // Section 7 before section 4.
     let sections = vec![latlon_grid(3, 2, 0, 0, 0x40, 0x30), section(7, &[0; 6])];
     assert!(refusal(sections).contains("before sections"));
-    // A grid with 0 subdivisions of its basic angle.
-    let mut grid = latlon_grid(3, 2, 0, 0, 0x40, 0x30);
+    // A basic angle of 1 with 0 subdivisions reads as millionths of a degree, as ecCodes reads it.
+    let mut grid = latlon_grid(3, 2, 32_750_000, 0, 0x40, 0x30);
     grid[38..42].copy_from_slice(&1_u32.to_be_bytes());
     grid[42..46].copy_from_slice(&0_u32.to_be_bytes());
-    assert!(refusal(vec![grid]).contains("subdivisions are 0"));
+    let mut sections = temperature_sections(plain(), none());
+    sections[0] = grid;
+    let read = with(sections).unwrap()[0].grid;
+    assert_eq!(read.point_deg(4), Some((33.0, 0.25)));
     // Rows running off the Earth: 2 rows from 90° N northward.
     assert!(refusal(vec![latlon_grid(3, 2, 90_000_000, 0, 0x40, 0x30)]).contains("off the Earth"));
     // Lambert: the south pole on the plane; an oblate Earth; LaD off the tangent latitude; a

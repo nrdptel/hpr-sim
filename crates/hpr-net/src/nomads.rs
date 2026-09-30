@@ -39,9 +39,8 @@
 //! The ground test is made at the site only: a kept level can take weight from a grid point where
 //! it is underground, and so from the model's extrapolation there. In the recorded RAP cut, 850 hPa
 //! takes 13% of its weight from a point whose ground is at 845.8 hPa, about 0.02 K; in steep
-//! terrain it can be more. A cut is refused when the four points' weighted position is not within
-//! 1 km of the site (bilinear weights put it within a metre), which catches a grid whose numbers are
-//! self-consistent but wrong, and when it holds more than [`MAX_FIELDS`] fields.
+//! terrain it can be more. A cut of more than [`MAX_FIELDS`] fields is refused, and [`fetch`]
+//! refuses one whose grid is not the model's ([`NomadsModel::has_grid`]).
 //!
 //! **Winds along the grid.** RAP gives its winds along the Lambert grid's axes, not east and north
 //! (GRIB2 flag table 3.3, bit 5). They are turned to east and north by the angle between the
@@ -55,8 +54,8 @@
 //! ([`hpr_atmos::profile::geometric_from_wmo_geopotential_m`]), as for Open-Meteo. The terrain
 //! height is also given in gpm and converted the same way: at 1,400 m and 33° N the two differ by
 //! 1.9 m, so if a model's terrain is really a geometric height the ground here sits that far high
-//! ([ADR-119][adr-119]'s caveat, from the Open-Meteo
-//! source). **Relative humidity** is
+//! ([ADR-081][adr-081]'s caveat, from the ERA5
+//! reader). **Relative humidity** is
 //! taken as over liquid water, which [`SoundingLevel`] means. Whether NCEP's models report it
 //! over ice at cold levels is not settled here; if they do, the density there shifts by under
 //! 0.1% (the bound on [`crate::open_meteo`]). A humidity above 100% is kept as recorded and
@@ -89,7 +88,7 @@
 //!
 //! [l6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l6
 //! [guide]: https://nrdptel.github.io/hpr-sim/nomads.html
-//! [adr-119]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-119-m52-split-open-meteos-pressure-levels-as-a-sounding-2026-09-30
+//! [adr-081]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-081-era5-weather-read-from-netcdf-classic-in-hpr-io-m23-split-a-to-c-2026-09-26
 //! [adr-004]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-004-atmosphere-wind-turbulence-and-the-seeded-generator-2026-09-17
 
 use std::collections::HashMap;
@@ -129,10 +128,6 @@ const BOX_DEG: f64 = 0.3;
 /// The most fields a cut may hold: a real one has 147 (GFS) or 192 (RAP). It bounds the work a
 /// hostile answer can ask for.
 pub const MAX_FIELDS: usize = 1_000;
-
-/// How far the four grid points' weighted position may be from the site, m: bilinear weights on a
-/// grid place it within a metre; farther means the grid is not what it says.
-const PLACE_TOLERANCE_M: f64 = 1_000.0;
 
 /// A run's file doesn't change once written.
 const TTL_S: u64 = 30 * 86_400;
@@ -186,6 +181,35 @@ impl NomadsModel {
                 forecast_hour <= 120 || (forecast_hour <= 384 && forecast_hour.is_multiple_of(3))
             }
             Self::Rap => forecast_hour <= 21 || (forecast_hour <= 51 && cycle_hour_utc % 6 == 3),
+        }
+    }
+
+    /// Whether `grid` is the model's own: GFS's 0.25° latitude/longitude grid, or RAP's grid 130,
+    /// 13,545 m Lambert conformal cells on a cone tangent at 25° N about 265° E. A cut on another
+    /// grid, even a self-consistent one, is not this model's answer.
+    #[must_use]
+    pub fn has_grid(self, grid: &Grid) -> bool {
+        let near = |a: f64, b: f64| (a - b).abs() < 1e-6;
+        match (self, grid.projection) {
+            (Self::Gfs, Projection::LatLon { di_deg, dj_deg, .. }) => {
+                near(di_deg, 0.25) && near(dj_deg, 0.25)
+            }
+            (
+                Self::Rap,
+                Projection::LambertConformal {
+                    tangent_lat_deg,
+                    orientation_lon_deg,
+                    dx_m,
+                    dy_m,
+                    ..
+                },
+            ) => {
+                near(tangent_lat_deg, 25.0)
+                    && near(orientation_lon_deg, 265.0)
+                    && near(dx_m, 13_545.0)
+                    && near(dy_m, 13_545.0)
+            }
+            _ => false,
         }
     }
 
@@ -553,35 +577,6 @@ impl NomadsProfile {
                 weight,
             }
         });
-        // The points' weighted position must be the site: a grid whose numbers are self-consistent
-        // but wrong (its projection or its steps) would otherwise weight points far away.
-        let unit = |lat: f64, lon: f64| {
-            let (lat, lon) = (lat.to_radians(), lon.to_radians());
-            [lat.cos() * lon.cos(), lat.cos() * lon.sin(), lat.sin()]
-        };
-        let site = unit(latitude_deg, longitude_deg);
-        let mut blend = [0.0; 3];
-        for g in &grid_points {
-            let u = unit(g.latitude_deg, g.longitude_deg);
-            for (b, c) in blend.iter_mut().zip(u) {
-                *b += g.weight * c;
-            }
-        }
-        let chord = blend
-            .iter()
-            .zip(site)
-            .map(|(b, s)| (b - s).powi(2))
-            .sum::<f64>()
-            .sqrt();
-        // The mean radius the WMO height conversion uses; the check needs no better.
-        // A NaN position (a point off the grid's projection) fails too.
-        let near = chord * 6_371_000.0 < PLACE_TOLERANCE_M;
-        if !near {
-            return Err(NomadsError::Outside {
-                latitude_deg,
-                longitude_deg,
-            });
-        }
         let cut = Cut { fields, corners };
         let lat_rad = latitude_deg.to_radians();
         let height = |gpm: f64| {
@@ -772,12 +767,7 @@ pub fn fetch<T: Transport>(
     let model = request.model;
     let check = |body: &[u8]| {
         let profile = NomadsProfile::parse(body, lat, lon).map_err(|e| e.to_string())?;
-        let model_grid = match profile.grid.projection {
-            Projection::LatLon { .. } => Some(NomadsModel::Gfs),
-            Projection::LambertConformal { .. } => Some(NomadsModel::Rap),
-            _ => None,
-        };
-        if model_grid != Some(model) {
+        if !model.has_grid(&profile.grid) {
             return Err(format!("the cut's grid is not {model:?}'s"));
         }
         if profile.cycle_unix_s != cycle || profile.valid_unix_s != valid {

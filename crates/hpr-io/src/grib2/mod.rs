@@ -895,7 +895,7 @@ fn be_u32(b: &[u8]) -> u32 {
 
 /// A latitude, degrees, if it is on the Earth.
 fn on_earth(latitude_deg: f64, message: usize) -> Result<f64, Grib2Error> {
-    if latitude_deg.abs() <= 90.0 {
+    if latitude_deg.abs() <= 90.0 + 1e-6 {
         Ok(latitude_deg)
     } else {
         Err(malformed(message, format!("a latitude of {latitude_deg}°")))
@@ -991,20 +991,18 @@ fn read_grid(s: &[u8], message: usize) -> Result<Grid, Grib2Error> {
             let subdivisions = be_u32(&s[42..46]);
             // Code: 0 or all ones means units of 10⁻⁶ degree.
             // Template 3.0's note 1: angles are in units of `basic / subdivisions` degrees, a basic
-            // angle of 0 or missing meaning 1 and missing subdivisions meaning 10⁶.
+            // angle of 0 or missing meaning 1 and missing subdivisions meaning 10⁶; 0 subdivisions
+            // are read as missing, as ecCodes reads them.
             let basic = if basic == 0 || basic == u32::MAX {
                 1
             } else {
                 basic
             };
-            let subdivisions = if subdivisions == u32::MAX {
+            let subdivisions = if subdivisions == u32::MAX || subdivisions == 0 {
                 1_000_000
             } else {
                 subdivisions
             };
-            if subdivisions == 0 {
-                return Err(malformed(message, "the grid's angle subdivisions are 0"));
-            }
             let degrees = |units: f64| units * f64::from(basic) / f64::from(subdivisions);
             let di = be_u32(&s[63..67]);
             let dj = be_u32(&s[67..71]);
@@ -1132,7 +1130,6 @@ fn read_grid(s: &[u8], message: usize) -> Result<Grid, Grib2Error> {
     })
 }
 
-/// A fixed surface from its type, scale factor and scaled value.
 /// `value / 10^scale`, with one rounding: powers of ten to 10^22 are exact.
 fn scaled(value: u32, scale: i32) -> f64 {
     if scale >= 0 {
@@ -1142,6 +1139,7 @@ fn scaled(value: u32, scale: i32) -> f64 {
     }
 }
 
+/// A fixed surface from its type, scale factor and scaled value.
 fn read_surface(s: &[u8]) -> Surface {
     let kind = s[0];
     let scale = s[1];

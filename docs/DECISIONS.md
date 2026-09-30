@@ -10001,8 +10001,9 @@ on the model's own grid: GFS's 0.25° latitude/longitude (3.0), RAP's 13 km Lamb
    scale factors that make an infinite value are refused; so are latitudes off the Earth and a
    given radius outside 6,000 to 7,000 km. `hpr_net::nomads` keys fields in a hash map, so neither
    the duplicate check nor the lookups are quadratic, refuses a cut of more than 1,000 fields (a real
-   one has 147 or 192), and refuses one whose four grid points' weighted position is more than 1 km
-   from the site, which catches a grid whose numbers are self-consistent but wrong.
+   one has 147 or 192); `fetch` refuses a cut on any grid but the model's own (GFS's 0.25° steps;
+   RAP's 13,545 m cells, tangent at 25° N about 265° E), which a self-consistent but wrong grid
+   would otherwise pass: the bilinear weights and the points' positions come from the same grid.
 3. **Lambert grids** use Snyder's spherical Lambert conformal conic (USGS PP 1395, 1987,
    eqs. 14-1, 14-2, 14-4, 15-1 and 15-2; inverse 14-9 to 14-11 and 15-5) with `n = sin φ₁`, eq.
    15-3's one-parallel case. **Grid-relative winds** are
@@ -10018,7 +10019,7 @@ on the model's own grid: GFS's 0.25° latitude/longitude (3.0), RAP's 13 km Lamb
    cut whose fields differ in grid, run or forecast time or give a variable twice, and interpolates
    bilinearly in grid indices between the four points around the site; `fetch` goes through
    `Client::fetch_checked`, whose check also refuses a cut of another run or hour, so it is never
-   cached, as is one whose grid is not the model's (latitude/longitude for GFS, Lambert for RAP).
+   cached, as is one whose grid is not the model's (point 2).
    GFS runs every 6 hours, hourly to hour 120 and every third hour to 384; RAP every hour, to hour 21,
    and to 51 from its 03, 09, 15 and 21 UTC runs; other cycles and hours are refused. A run's file doesn't change once written, so a copy stays fresh 30 days.
 5. **The ground and the levels** follow ADR-119: the ground at the model's terrain height with the
@@ -10027,7 +10028,7 @@ on the model's own grid: GFS's 0.25° latitude/longitude (3.0), RAP's 13 km Lamb
    at a grid point with weight. Heights are GRIB2's geopotential metres (code table 4.2), converted
    with WMO-No. 8 eq. 12.16 at the site's latitude; the terrain height, also in gpm, is converted the
    same way (1.9 m at 1,400 m and 33° N; if a model's terrain is a geometric height, the ground
-   sits that far high, ADR-119's caveat). Checked as in ADR-119: from 500 hPa up, the recorded layers match
+   sits that far high, ADR-081's caveat). Checked as in ADR-119: from 500 hPa up, the recorded layers match
    the hypsometric thickness to −0.002% (GFS) and −0.08% (RAP) on average; read as geometric heights
    they would be 0.63% and 0.51% too thin. Humidity over 100% is kept and clamped in `sounding()`
    (ADR-004).
@@ -10036,7 +10037,9 @@ on the model's own grid: GFS's 0.25° latitude/longitude (3.0), RAP's 13 km Lamb
 6. **Checked** by `tests/nomads.rs` against ecCodes 2.49.0 (Apache-2.0, run only, not ported), whose
    reading `validation/oracles/grib2/eccodes_dump.py` writes to `tests/fixtures/nomads-eccodes.json`:
    every field's identity, all 6,123 values within 2.2e-16 relative (one rounding: ecCodes multiplies
-   by an inexact `10^−D`) and every grid point within 5.7e-14°. The profile gives back ecCodes' values
+   by an inexact `10^−D`) and every grid point within 5.7e-14° on macOS (the test's bound is
+   1e-12°: RAP's points go through `tan`, `powf` and `atan`, whose last digits vary between maths
+   libraries). The profile gives back ecCodes' values
    interpolated to the site at every level kept: 22 GFS levels and 31 RAP levels, 6 of each
    underground at the 1,400 m site. The ground test is made at the site only, so a kept level can
    take weight from a grid point where it is underground (RAP's 850 hPa here, 13%, about 0.02 K).
