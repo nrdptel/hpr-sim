@@ -456,12 +456,20 @@ pub struct NomadsProfile {
     pub dropped: Vec<DroppedLevel>,
 }
 
-/// What a field is: its parameter (category, number), the surface type it is on, and the
-/// surface's value as bits (so it can key a map).
-type Key = ((u8, u8), u8, Option<u64>);
+/// What a field is: its parameter (category, number), the surface it is on (type, and value as
+/// bits so it can key a map), and the second surface of a layer. A whole GFS file holds layers
+/// that share their first surface, such as humidity over sigma 0.44 to 1 and 0.44 to 0.72.
+type Key = ((u8, u8), (u8, Option<u64>), (u8, Option<u64>));
 
-fn key(parameter: (u8, u8), surface: u8, value: Option<f64>) -> Key {
-    (parameter, surface, value.map(f64::to_bits))
+fn key(parameter: (u8, u8), surface: (u8, Option<f64>), second: (u8, Option<f64>)) -> Key {
+    let bits = |(kind, value): (u8, Option<f64>)| (kind, value.map(f64::to_bits));
+    // Type 255 is no second surface, whatever value is written with it.
+    let second = if second.0 == 255 {
+        (255, None)
+    } else {
+        bits(second)
+    };
+    (parameter, bits(surface), second)
 }
 
 /// The cut's fields by what they are, with the bilinear weights at the site.
@@ -472,17 +480,20 @@ struct Cut<'a> {
 
 impl Cut<'_> {
     fn get(&self, parameter: (u8, u8), surface: u8, value: f64) -> Option<&Field<'_>> {
-        self.fields.get(&key(parameter, surface, Some(value)))
+        self.fields
+            .get(&key(parameter, (surface, Some(value)), (255, None)))
     }
 
-    /// The field's value at the site, or `None` when a grid point with weight has none.
+    /// The field's value at the site, or `None` when a grid point with weight has none. The four
+    /// points are read in one pass, which a complex-packed field (a whole GFS file's) needs.
     fn at(&self, field: &Field<'_>) -> Result<Option<f64>, Grib2Error> {
+        let values = field.values_at(&self.corners.map(|(index, _)| index))?;
         let mut sum = 0.0;
-        for &(index, weight) in &self.corners {
+        for (&(_, weight), value) in self.corners.iter().zip(values) {
             if weight == 0.0 {
                 continue;
             }
-            match field.value(index)? {
+            match value {
                 Some(v) => sum += weight * v,
                 None => return Ok(None),
             }
@@ -516,9 +527,11 @@ impl NomadsProfile {
     ///   the site, and [`NomadsError::Height`] when a height is beyond what the geopotential
     ///   conversion takes.
     pub fn parse(body: &[u8], latitude_deg: f64, longitude_deg: f64) -> Result<Self, NomadsError> {
+        // A whole GFS file also holds statistics over an interval (template 4.8), such as
+        // accumulated rain, which a profile doesn't use.
         let all: Vec<Field<'_>> = grib2::parse(body)?
             .into_iter()
-            .filter(|f| f.discipline == 0)
+            .filter(|f| f.discipline == 0 && f.product.statistics.is_none())
             .collect();
         if all.len() > MAX_FIELDS {
             return Err(NomadsError::TooManyFields { count: all.len() });
@@ -550,7 +563,12 @@ impl NomadsProfile {
                 });
             }
             let p = field.product;
-            let k = key((p.category, p.number), p.surface.kind, p.surface.value);
+            let (first, second) = (p.surface, p.second_surface);
+            let k = key(
+                (p.category, p.number),
+                (first.kind, first.value),
+                (second.kind, second.value),
+            );
             if fields.insert(k, field).is_some() {
                 return Err(NomadsError::Duplicate {
                     category: p.category,
@@ -610,12 +628,13 @@ impl NomadsProfile {
             wind_east_m_s: east,
             wind_north_m_s: north,
         };
-        // Every isobaric level with a temperature, highest pressure first.
+        // Every isobaric level with a temperature, highest pressure first; a layer between two
+        // surfaces is not a level.
         let mut pressures: Vec<f64> = cut
             .fields
             .values()
             .filter(|f| (f.product.category, f.product.number) == TMP)
-            .filter(|f| f.product.surface.kind == ISOBARIC)
+            .filter(|f| f.product.surface.kind == ISOBARIC && f.product.second_surface.kind == 255)
             .filter_map(|f| f.product.surface.value)
             .collect();
         pressures.sort_by(|a, b| b.total_cmp(a));
@@ -731,15 +750,19 @@ fn corners(
     };
     let (fi, fj) = grid.index_at(latitude_deg, longitude_deg);
     let (ni, nj) = (f64::from(grid.ni), f64::from(grid.nj));
+    // A grid all the way round the Earth (a whole GFS file's) joins its last column to its first.
+    let round = grid.circles_the_earth();
+    let i_last = if round { ni } else { ni - 1.0 };
     // The last row or column is a lower corner's `+1`, so a place on it takes the cell before.
-    if !(fi >= 0.0 && fi <= ni - 1.0 && fj >= 0.0 && fj <= nj - 1.0) || ni < 2.0 || nj < 2.0 {
+    if !(fi >= 0.0 && fi <= i_last && fj >= 0.0 && fj <= nj - 1.0) || ni < 2.0 || nj < 2.0 {
         return Err(outside());
     }
-    let i0 = fi.floor().min(ni - 2.0);
+    let i0 = fi.floor().min(i_last - 1.0);
     let j0 = fj.floor().min(nj - 2.0);
     let (wi, wj) = (fi - i0, fj - j0);
-    // In range by the checks above, so the casts are exact.
-    let index = |i: f64, j: f64| (i as u64) + u64::from(grid.ni) * (j as u64);
+    // In range by the checks above, so the casts are exact; `i0 + 1` is column 0 again on a
+    // grid round the Earth.
+    let index = |i: f64, j: f64| (i as u64) % u64::from(grid.ni) + u64::from(grid.ni) * (j as u64);
     Ok([
         (index(i0, j0), (1.0 - wi) * (1.0 - wj)),
         (index(i0 + 1.0, j0), wi * (1.0 - wj)),

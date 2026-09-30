@@ -788,8 +788,9 @@
     each source, offline from a fixture. Split d1 to d3 (ADR-122).
     - [x] **M5.2d1 `hpr weather`.** *Done when:* the parent's, for the files read today. *Result:*
       met (ADR-122): 4 sources, 6 recordings, 2 ERA5 files; the library's profile, to the bit.
-    - [ ] **M5.2d2 Complex packing** (5.2, 5.3). *Done when:* a whole GFS file's fields decode to
-      ecCodes' values, and `hpr weather gfs --from` writes its profile.
+    - [x] **M5.2d2 Complex packing** (5.2, 5.3). *Done when:* a whole GFS file's fields decode to
+      ecCodes' values, and `hpr weather gfs --from` writes its profile. *Result:* met (ADR-123):
+      743 messages, 746,770,303 values to 4.4e-16; its profile is its cut's to 1.04e-7.
     - [ ] **M5.2d3 JPEG 2000** (5.40). *Done when:* a 5.40 file decodes to ecCodes' values.
 
 - [ ] **M5.3 Site data.** Elevation (Open-Meteo API with cache; optional user GeoTIFF/DEM file),

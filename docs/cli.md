@@ -85,7 +85,7 @@ only the files each command really reads. "Not yet" commands exit with
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
 | `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
-| `hpr weather` | Fetch a launch day's weather, or read a weather file, as a profile of air and wind | Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved, an ERA5 `.nc` | text, JSON, a profile as `.json` | available ([how to use it](cli.md#hpr-weather)) |
+| `hpr weather` | Fetch a launch day's weather, or read a weather file, as a profile of air and wind | Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved, a whole GFS file, an ERA5 `.nc` | text, JSON, a profile as `.json` | available ([how to use it](cli.md#hpr-weather)) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](decisions-and-roadmap.md#m6-2) |
 | `hpr compare` | Compare a flight log with its simulation | - | - | not yet: [M7.3](decisions-and-roadmap.md#m7-3) |
@@ -651,7 +651,7 @@ sources:
 |---|---|---|
 | Open-Meteo | a free weather service's forecast, or its archive of past forecasts ([Launch-day weather](weather.md)) | `hpr weather open-meteo --latitude 32.99 --longitude -106.97 --time 2026-10-02T18:00Z` |
 | University of Wyoming | a weather balloon's measurements, from the station's latest launch before yours ([Weather-balloon soundings](soundings.md)) | `hpr weather wyoming --station 72364 --time 2025-06-21T15:30Z` |
-| GFS | NOAA's global forecast model, on a 0.25° grid ([NOAA forecasts: GFS and RAP](nomads.md)) | `hpr weather gfs --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T00Z --hour 18` |
+| GFS | NOAA's global forecast model, on a 0.25° grid, fetched or read from a whole file you download ([NOAA forecasts: GFS and RAP](nomads.md)) | `hpr weather gfs --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T00Z --hour 18` |
 | RAP | NOAA's 13 km forecast model over the contiguous U.S. and nearby Canada and Mexico ([NOAA forecasts: GFS and RAP](nomads.md)) | `hpr weather rap --latitude 32.99 --longitude -106.97 --cycle 2026-09-30T12Z --hour 6` |
 | ERA5 | a [netCDF](glossary.md#netcdf) file you download from Europe's climate data service: the past weather, reconstructed ([ERA5 weather files](format/era5.md)) | `hpr weather era5 era5.nc --latitude 47.21 --longitude 9.00 --time 2020-02-22T13:00Z` |
 
@@ -704,19 +704,20 @@ it falls back to an older copy, and the output says so.
   with exit status 1, and names what it would have fetched.
 - `--from FILE` reads an answer saved earlier and touches neither the network nor the cache:
   Open-Meteo's JSON, the Wyoming archive's CSV, or a [GRIB2](glossary.md#grib2) file for GFS and
-  RAP. The file says where and when it is for, so the options that choose what to fetch are
-  refused beside it: Open-Meteo's `--latitude`, `--longitude`, `--historical` and `--model`, and
+  RAP. For GFS and RAP, still give `--latitude` and `--longitude`: the file covers an area, and
+  the site picks the point in it. For Open-Meteo and Wyoming, the file says where and when it is
+  for, so the options that choose what to fetch are refused beside it: Open-Meteo's `--latitude`, `--longitude`, `--historical` and `--model`, and
   Wyoming's `--station`, `--time` and `--bufr`. Open-Meteo's `--time` stays, and must fall within
   the file's hours. A GRIB2 file is checked as a fetched one is: it must be on its model's grid,
   and when you give `--cycle` and `--hour`, it must be that run and hour. Check the first line of
   the output, which says where and when the profile is for.
 - `--output FILE` (or `-o`) writes the profile as JSON, described below.
 
-hpr reads the small GRIB2 files that NOAA's download server, NOMADS, cuts out around a site. NOAA's
-whole GFS and RAP files are compressed in ways hpr can't read yet: complex packing
-([M5.2d2](decisions-and-roadmap.md#m5-2d2)) and JPEG 2000
-([M5.2d3](decisions-and-roadmap.md#m5-2d3)). `hpr weather` refuses them and names the
-compression.
+hpr reads the small GRIB2 files that NOAA's download server, NOMADS, cuts out around a site, and
+whole GFS files you download yourself, which are packed more tightly
+([A whole GFS file](nomads.md#a-whole-gfs-file)). A file compressed with JPEG 2000 is refused,
+naming the compression, until JPEG 2000 support arrives
+([M5.2d3](decisions-and-roadmap.md#m5-2d3)).
 
 ### An example
 

@@ -33,6 +33,7 @@ mod docs;
 mod examples;
 mod format;
 mod format_types;
+mod grib2;
 mod layering;
 mod ork;
 mod ork_corpus_flights;
@@ -73,6 +74,7 @@ Commands:
 {SITE}
 {EXAMPLES}
 {FORMAT}
+{GRIB2}
 {ORK}
 {ORK_FLIGHTS}
 {ORK_EXPORT_FLIGHTS}
@@ -90,6 +92,7 @@ fn usage() -> String {
         .replace("{SITE}", site::USAGE)
         .replace("{EXAMPLES}", examples::USAGE)
         .replace("{FORMAT}", format::USAGE)
+        .replace("{GRIB2}", grib2::USAGE)
         .replace("{ORK}", ork::USAGE)
         .replace("{ORK_FLIGHTS}", ork_flights::USAGE)
         .replace("{ORK_EXPORT_FLIGHTS}", ork_export_flights::USAGE)
@@ -109,6 +112,7 @@ fn main() -> ExitCode {
         Some("site") => site::run(&args.collect::<Vec<_>>()),
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
         Some("format") => format::run(&args.collect::<Vec<_>>()),
+        Some("grib2-values") => grib2::run(&args.collect::<Vec<_>>()),
         Some("ork") => ork::run(&args.collect::<Vec<_>>()),
         Some("ork-flights") => ork_flights::run(&args.collect::<Vec<_>>()),
         Some("ork-export-flights") => ork_export_flights::run(&args.collect::<Vec<_>>()),

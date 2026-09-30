@@ -1,7 +1,8 @@
 """What ecCodes decodes from the recorded NOMADS cuts, for `hpr_io::grib2` to be checked against.
 
 ecCodes (Apache-2.0, ECMWF) is run as an outside decoder; none of its code is ported. For each
-recorded GRIB2 cut in `crates/hpr-net/tests/fixtures/replay/` this script writes, per message, the
+recorded GRIB2 cut in `crates/hpr-net/tests/fixtures/replay/`, and the GFS cut as ecCodes repacks
+it (`repack.py`, `nomads-gfs-complex.grib2`), this script writes, per message, the
 keys that say what the field is (discipline, parameter category and number, the first fixed
 surface's type, scale factor and scaled value, the reference date and time, the forecast time and
 its unit), whether the winds are along the grid, and every value as ecCodes unpacks it; and, per
@@ -24,8 +25,8 @@ import sys
 import eccodes
 
 VERSION = "2.49.0"
-FILES = ["nomads-gfs.grib2", "nomads-rap.grib2"]
-DIR = "crates/hpr-net/tests/fixtures/replay/"
+FILES = ["replay/nomads-gfs.grib2", "replay/nomads-rap.grib2", "nomads-gfs-complex.grib2"]
+DIR = "crates/hpr-net/tests/fixtures/"
 KEYS = [
     "discipline",
     "parameterCategory",
@@ -73,7 +74,11 @@ def main():
                 eccodes.codes_release(h)
         with open(DIR + name, "rb") as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
-        out["files"][name] = {"sha256": sha256, "points": points, "messages": messages}
+        out["files"][name.removeprefix("replay/")] = {
+            "sha256": sha256,
+            "points": points,
+            "messages": messages,
+        }
     # One message per line, so a change shows as a line in a diff.
     w = sys.stdout.write
     w('{"eccodes": "%s", "files": {\n' % VERSION)
