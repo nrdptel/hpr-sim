@@ -9876,7 +9876,7 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    419 m west). Which is nearer a rocket's wind is not known; the guide says so.
 5. **The first row is the ground**; a first row missing a value or with one out of range refuses the
    answer. A later row with a value missing is dropped (`NoData`), and so is one out of range
-   (`OutOfRange`: pressure outside 0 to 1,200 hPa, temperature outside −150 to 80 °C, geopotential
+   (`OutOfRange`: pressure outside 0.1 to 1,200 hPa, temperature outside −150 to 80 °C, geopotential
    height outside −1 to 60 km, wind speed outside 0 to 300 m/s, humidity below zero, direction
    outside 0° to 360°), rather than refusing the whole sounding; the bounds keep every level `parse`
    returns within what `SoundingProfile` accepts. Of each run of complete rows with the same
@@ -9886,10 +9886,12 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    (the physics review) and misses a row by up to 0.093 hPa; with the middle, every BUFR row lies
    within 0.071 hPa of the profile. A candidate is kept when higher than, and at a lower pressure
    than, the last row kept (`NotAbove` otherwise). More than 10 `NotAbove` rows since the last row
-   kept refuse the answer (`NotRising`, naming that row) when a row after them is kept, or when at
-   the end they climb among themselves (the balloon burst before it got back above the bad row),
-   since one bad row kept (57 hPa for 557) would otherwise drop every good row after it; rows at the
-   end that fall or float are only dropped. A wrong value that stays between its neighbours is not
+   kept that climb among themselves (each higher and at a lower pressure than the highest before
+   it) refuse the answer (`NotRising`, naming that row), whether a row after them is kept or the
+   balloon burst before it got back above the bad row, since one bad row kept (57 hPa for 557)
+   would otherwise drop every good row after it; rows that fall or float are only dropped, however
+   many (comparing only a tail's first and last rows let a burst followed by a fall through, and
+   refused a float that ended a little higher: the code review). A wrong value that stays between its neighbours is not
    caught: no layer is checked against the hypsometric equation. More than 100,000 rows are refused
    as they are read, which bounds the memory a hostile answer costs. A relative humidity above 100%
    is kept as recorded and clamped to 100% in `sounding()`, as ADR-004 asked of radiosonde imports.

@@ -406,13 +406,15 @@ fn edited(edits: &[(&str, &str)]) -> Vec<u8> {
     text.into_bytes()
 }
 
-/// The first row, its values, and the rows at 557 and 549 hPa (lines 38 and 39), as recorded.
+/// The first row, its values, the rows at 557 and 549 hPa (lines 38 and 39), and the last row
+/// kept (line 228), as recorded.
 const GROUND: &str = "2025-06-21 11:02:00,-106.7000,31.8600, 872.0, 1252, 28.4,  9.4,  9.4, 31, \
                       31, 8.52,265, 5.7";
 const GROUND_VALUES: &str = " 872.0, 1252, 28.4,  9.4,  9.4, 31, 31, 8.52,265, 5.7";
 const ROW_557: &str = " 557.0, 5035, -1.7, -4.9, -4.3, 79, 80, 4.79,200, 9.8";
 const ROW_549: &str = " 549.0, 5151, -2.5, -5.2, -4.6, 81, 83, 4.73,210, 9.3";
 const ROW_854: &str = " 854.0, 1438, 26.8,  8.8,  8.8, 32, 32, 8.35,269,10.7";
+const ROW_TOP: &str = "   8.0,32801,-40.6,-69.6,-65.0,  3,  5, 0.42, 90,17.0";
 
 #[test]
 fn parse_refuses_what_it_cannot_read() {
@@ -577,6 +579,28 @@ fn a_rows_faults_drop_it_or_are_clamped() {
         let edit = GROUND.replace(" 28.4,", ground);
         assert_eq!(reasons(edited(&[(GROUND, &edit)])), [top], "{ground}");
     }
+    for (from, to) in [(" 872.0,", "1200.0,"), (" 1252,", "-1000,")] {
+        let edit = GROUND.replace(from, to);
+        assert_eq!(reasons(edited(&[(GROUND, &edit)])), [top], "{to}");
+    }
+    for (from, to) in [(" 872.0,", "1200.1,"), (" 1252,", "-1001,")] {
+        let edit = GROUND.replace(from, to);
+        assert!(
+            matches!(
+                WyomingSounding::parse(&edited(&[(GROUND, &edit)])),
+                Err(WyomingError::NoGround { line: 2 })
+            ),
+            "{to}"
+        );
+    }
+    // The last row kept, at the height and pressure bounds and just past them.
+    let last = |from: &str, to: &str| reasons(edited(&[(ROW_TOP, &ROW_TOP.replace(from, to))]));
+    for (from, to) in [("32801,", "60000,"), ("   8.0,", "   0.1,")] {
+        assert_eq!(last(from, to), [top], "{to}");
+    }
+    for (from, to) in [("32801,", "60001,"), ("   8.0,", "  0.09,")] {
+        assert_eq!(last(from, to), [(228, DropReason::OutOfRange), top], "{to}");
+    }
     // A run at the ground's pressure keeps none of it.
     let at_ground = edited(&[(ROW_854, GROUND_VALUES)]);
     assert_eq!(reasons(at_ground), [(3, DropReason::SamePressure), top]);
@@ -630,12 +654,23 @@ fn an_answer_that_stops_rising_is_refused() {
     let bad =
         String::from_utf8(edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))])).unwrap();
     let burst: String = bad.lines().take(150).map(|l| format!("{l}\n")).collect();
-    let (after, line, count) = refused(burst.into_bytes());
-    assert_eq!((after, line, count), (38, 39, 112));
+    assert_eq!(refused(burst.clone().into_bytes()), (38, 39, 112));
+    // Nor does it when the balloon then falls: rows 149 down to 100 again, in reverse.
+    let lines: Vec<&str> = bad.lines().collect();
+    let fall: String = lines[99..149]
+        .iter()
+        .rev()
+        .map(|l| format!("{l}\n"))
+        .collect();
+    assert_eq!(
+        refused(format!("{burst}{fall}").into_bytes()),
+        (38, 39, 162)
+    );
 }
 
-/// Rows below the last row kept at the end of an answer (a balloon falling after it bursts) are
-/// left out, however many.
+/// Rows below the last row kept that fall (a balloon after it bursts) or float are left out,
+/// however many: at the end of an answer, even when the float ends a little higher than it began,
+/// and when a row after them is kept.
 #[test]
 fn a_falling_tail_is_left_out() {
     let mut text = String::from_utf8(fixture(FM35)).unwrap();
@@ -655,6 +690,39 @@ fn a_falling_tail_is_left_out() {
         .map(|d| d.line)
         .collect();
     assert_eq!(tail, (230..250).collect::<Vec<_>>());
+
+    // Twelve rows floating between 8.4 and 8.6 hPa, below the 8.0 hPa row (line 228); only the
+    // third climbs above the first, and the rows after it only repeat it.
+    let recorded = String::from_utf8(fixture(FM35)).unwrap();
+    let (body, _) = recorded.trim_end().rsplit_once('\n').unwrap();
+    let mut float = format!("{body}\n");
+    for k in 0..12 {
+        let (p, z) = match k {
+            0 => (8.5, 32_600),
+            _ if k % 2 == 1 => (8.6, 32_550),
+            _ => (8.4, 32_650),
+        };
+        float.push_str(&format!(
+            "2025-06-21 11:02:00,-106.7000,31.8600, {p:.1}, {z}, -41.0, -70.0, -65.5,  3,  5, \
+             0.4, 90, 17.0\n"
+        ));
+    }
+    let not_above = |text: &str| {
+        let sounding = WyomingSounding::parse(text.as_bytes()).unwrap();
+        let lines: Vec<_> = sounding
+            .dropped
+            .iter()
+            .filter(|d| d.reason == DropReason::NotAbove)
+            .map(|d| d.line)
+            .collect();
+        (sounding.levels.len(), lines)
+    };
+    assert_eq!(not_above(&float), (227, (229..241).collect::<Vec<_>>()));
+    // The recorded last row after them, with a wind, is kept.
+    float.push_str(
+        "2025-06-21 11:02:00,-106.7000,31.8600,   7.9,32886,-40.5,-69.5,-64.9,  3,  5, 0.43, 90,17.0\n",
+    );
+    assert_eq!(not_above(&float), (228, (229..241).collect::<Vec<_>>()));
 }
 
 /// An answer of more than [`MAX_ROWS`] rows is refused as it is read, so a flood of empty rows
