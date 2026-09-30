@@ -9737,8 +9737,9 @@ and `cargo deny` passes. The architecture names `ureq` or `reqwest` with rustls 
    fails (`ureq` fails only 4xx and 5xx, so a 304 read as an empty body that the cache would keep
    for a TTL); a SOCKS proxy from the environment is refused, where `ureq` without its
    `socks-proxy` feature warns and connects directly (hosts `NO_PROXY` exempts are fetched with no
-   redirect followed, since the next host might not be exempt, and the error names the proxy's
-   host and port, never its password); and the timeout is capped at 30 days, since
+   redirect followed, since the next host might not be exempt, and the error names only the
+   proxy's protocol: its address may carry a password, and a malformed one puts the user name
+   where the host should be); and the timeout is capped at 30 days, since
    `Duration::MAX`, the usual "no limit", overflowed `Instant` and panicked on the first request.
    A 60 s timeout covers the whole request. The `User-Agent` names hpr-sim, its version and the
    repository, so providers can tell who calls. Settings live in a `#[non_exhaustive]`

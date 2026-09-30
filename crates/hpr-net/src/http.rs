@@ -128,14 +128,13 @@ impl Http {
         if socks.is_no_proxy(&uri) {
             return None;
         }
-        // Host and port only: the proxy's address may carry a user name and password.
+        // The protocol alone: the address may carry a user name and password, and one with an
+        // unescaped `/` or `#` in the password ends early, leaving the user name as the "host".
         Some(format!(
-            "the environment's proxy ({:?} at {}:{}) is SOCKS, which hpr-net cannot use; unset the \
+            "the environment's proxy ({:?}) is SOCKS, which hpr-net cannot use; unset the \
              variable naming it (ALL_PROXY, HTTPS_PROXY or HTTP_PROXY), add the host to NO_PROXY, \
              or turn off HttpConfig::proxy_from_env",
             socks.protocol(),
-            socks.host(),
-            socks.port()
         ))
     }
 }
@@ -192,14 +191,20 @@ mod tests {
     }
 
     #[test]
-    fn the_refusal_does_not_repeat_the_proxys_password() {
-        let http = under(Proxy::new("socks5://alice:s3cret@proxy.example:1080").unwrap());
-        let reason = http.socks_refusal("https://example.test/x").unwrap();
-        assert!(reason.contains("proxy.example:1080"), "{reason}");
-        assert!(
-            !reason.contains("s3cret") && !reason.contains("alice"),
-            "{reason}"
-        );
+    fn the_refusal_never_repeats_the_proxys_credentials() {
+        // Well formed, and with an unescaped `/` that ends the address inside the password.
+        for url in [
+            "socks5://alice:s3cret@proxy.example:1080",
+            "socks5://alice:12/cret@proxy.example:1080",
+        ] {
+            let reason = under(Proxy::new(url).unwrap())
+                .socks_refusal("https://example.test/x")
+                .unwrap();
+            assert!(
+                !reason.contains("cret") && !reason.contains("alice"),
+                "{reason}"
+            );
+        }
     }
 
     #[test]
