@@ -88,10 +88,11 @@ radiosonde archive" wherever you show the sounding. Every answer carries it.
   middle of its run. In the example, 1,931 of the BUFR file's 5,851 rows are the other rows of
   such runs. The coded message has none.
 - **A row is kept when it lies above the last row kept**, higher and at a lower pressure. If more
-  than 10 of the rows below the last row kept since it climb among themselves, each higher and at
-  a lower pressure than the highest before it, the answer is refused: that row was probably bad
-  (a pressure missing a digit, say), and every good row after it would be dropped. Rows that fall
-  or float, a balloon coming down, are only left out, however many.
+  than 10 rows below the last row kept since it lie above the row kept before it, the answer is
+  refused: that row was probably bad (a pressure missing a digit, say), and every good row after
+  it would be dropped. Rows that fall or float, a balloon coming down, soon drop below the row
+  before and are only left out, however many. A bad row that hides 10 good rows or fewer, near
+  the top or in a short answer, is not caught.
 - **A row with a value missing or impossible is left out**: the last row often has no wind, and
   a pressure below 0.1 hPa or above 1,200 hPa, a temperature outside −150 to 80 °C, a height
   outside −1 to 60 km, a wind speed below zero or above 300 m/s, a humidity below zero or a

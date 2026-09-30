@@ -40,12 +40,13 @@
 //! no air on Earth has ([`DropReason::OutOfRange`] lists the bounds). [`WyomingSounding::dropped`]
 //! lists each row left out, with its reason.
 //!
-//! Rows below the last row kept since it (a run of one pressure counting once) that climb among
-//! themselves refuse the answer when more than [`MAX_NOT_ABOVE`] of them do, each higher and at a
-//! lower pressure than the highest before it: a grossly bad row was kept (a pressure missing a
-//! digit, say), and good rows after it are being dropped. Rows that fall or float, a balloon coming
-//! down, are only left out, however many. A bad row that still lies between its neighbours is not
-//! caught: nothing checks a layer's thickness against its temperature.
+//! More than [`MAX_NOT_ABOVE`] rows below the last row kept since it (a run of one pressure
+//! counting once) that lie above the row kept before it (every row, when the last is the ground)
+//! refuse the answer: a grossly bad row was kept (a pressure missing a digit, say), and good rows
+//! after it are being dropped. Rows that fall or float, a balloon coming down, soon drop below the
+//! row before and are only left out, however many. Not caught: a bad row that still lies between
+//! its neighbours (nothing checks a layer's thickness against its temperature), or one that hides
+//! 10 good rows or fewer, as it can near the top or in a short or partial answer.
 //!
 //! Heights are geopotential metres (the column says so), converted to geometric heights at the
 //! first row's latitude with WMO-No. 8 (2023) eqs. 12.15 and 12.16
@@ -110,9 +111,9 @@ pub const YOUNG_TTL_S: u64 = 3_600;
 /// How long an answer fetched after its sounding settled stays fresh, s: 30 days.
 pub const SETTLED_TTL_S: u64 = 30 * 86_400;
 
-/// The most rows below the last row kept since it that may climb among themselves, each higher and
-/// at a lower pressure than the highest before it. More means a bad row was kept and good rows
-/// after it are being dropped, so the answer is refused.
+/// The most rows below the last row kept since it that may lie above the row kept before it
+/// (higher and at a lower pressure; any row, when the last is the ground). More means a bad row
+/// was kept and good rows after it are being dropped, so the answer is refused.
 pub const MAX_NOT_ABOVE: usize = 10;
 
 /// The most rows an answer may have. The archive's BUFR files have about 6,000.
@@ -357,7 +358,7 @@ impl WyomingSounding {
     /// - [`WyomingError::NoGround`] when there is no row, or the first is missing a value or has
     ///   one out of range.
     /// - [`WyomingError::NotRising`] when more than [`MAX_NOT_ABOVE`] rows below the last row kept
-    ///   since it climb among themselves.
+    ///   since it lie above the row kept before it.
     pub fn parse(body: &[u8]) -> Result<Self, WyomingError> {
         let text = std::str::from_utf8(body).map_err(|_| WyomingError::Missing {
             field: "header".to_owned(),
@@ -498,17 +499,16 @@ impl WyomingSounding {
                         last_kept = line;
                         continue;
                     }
-                    match &mut below {
-                        Some(below) => below.add(level),
-                        None => {
-                            below = Some(Below {
-                                first: line,
-                                top: level,
-                                climbs: 1,
-                                count: 1,
-                            });
-                        }
-                    }
+                    // The row kept before the last one, which the good rows a bad last one hides
+                    // lie above; none when the last is the ground.
+                    let before = levels.len().checked_sub(2).map(|i| levels[i]);
+                    below
+                        .get_or_insert(Below {
+                            first: line,
+                            count: 0,
+                            above_before: 0,
+                        })
+                        .add(level, before.as_ref());
                     DropReason::NotAbove
                 }
                 Err(reason) => reason,
@@ -635,8 +635,8 @@ pub enum WyomingError {
         /// The line of the first row, counting the header as line 1.
         line: usize,
     },
-    /// Too many rows below the last row kept since it climb among themselves: that row was likely
-    /// bad.
+    /// Too many rows below the last row kept since it lie above the row kept before it: that row
+    /// was likely bad.
     #[error(
         "the Wyoming answer stops rising after line {after}: {count} rows from line {line} on lie \
          below it, and rise again"
@@ -655,28 +655,28 @@ pub enum WyomingError {
 struct Below {
     /// The first one's line.
     first: usize,
-    /// The highest of them so far, by the keep rule: each row higher and at a lower pressure
-    /// than the one before it replaces it.
-    top: WyomingLevel,
-    /// How many rows climbed that way, the first included.
-    climbs: usize,
     /// How many there are.
     count: usize,
+    /// How many lie above the row kept before the last, higher and at a lower pressure (all of
+    /// them when the last row kept is the ground).
+    above_before: usize,
 }
 
 impl Below {
-    fn add(&mut self, level: WyomingLevel) {
+    fn add(&mut self, level: WyomingLevel, before: Option<&WyomingLevel>) {
         self.count += 1;
-        if level.height_msl_m > self.top.height_msl_m && level.pressure_pa < self.top.pressure_pa {
-            self.top = level;
-            self.climbs += 1;
+        if before.is_none_or(|b| {
+            level.height_msl_m > b.height_msl_m && level.pressure_pa < b.pressure_pa
+        }) {
+            self.above_before += 1;
         }
     }
 
-    /// Refuses the answer when more than [`MAX_NOT_ABOVE`] of the rows climb: good rows after a
-    /// bad one keep rising, while a balloon falling or floating gets nowhere.
+    /// Refuses the answer when more than [`MAX_NOT_ABOVE`] of the rows lie above the row kept
+    /// before the last: the good rows a bad last row hides all do, whatever other bad rows are
+    /// among them, while a balloon falling or floating soon drops below it.
     fn check(&self, after: usize) -> Result<(), WyomingError> {
-        if self.climbs > MAX_NOT_ABOVE {
+        if self.above_before > MAX_NOT_ABOVE {
             return Err(WyomingError::NotRising {
                 after,
                 line: self.first,

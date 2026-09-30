@@ -649,22 +649,31 @@ fn an_answer_that_stops_rising_is_refused() {
     let higher = edited(&[(ROW_557, &ROW_557.replace(" 5035,", " 6048,"))]);
     assert_eq!(refused(higher), (38, 39, 11));
 
+    // A second bad row among those the first hides (549 hPa at 51,510 m) is higher than every row
+    // after it, but they all lie above the 570 hPa row kept before the first, and still refuse.
+    let (after, line, count) = refused(edited(&[
+        (ROW_557, &ROW_557.replace(" 557.0,", "  57.0,")),
+        (ROW_549, &ROW_549.replace(" 5151,", "51510,")),
+    ]));
+    assert_eq!((after, line), (38, 39));
+    assert!(count > MAX_NOT_ABOVE, "{count}");
+
     // A balloon that burst below 57 hPa never gets back above the bad row, but the rows after it
-    // climb among themselves, so the answer is refused all the same.
+    // lie above the row before it, so the answer is refused all the same.
     let bad =
         String::from_utf8(edited(&[(ROW_557, &ROW_557.replace(" 557.0,", "  57.0,"))])).unwrap();
     let burst: String = bad.lines().take(150).map(|l| format!("{l}\n")).collect();
     assert_eq!(refused(burst.clone().into_bytes()), (38, 39, 112));
-    // Nor does it when the balloon then falls: rows 149 down to 100 again, in reverse.
+    // Nor does it when the balloon then falls, back to where it began: rows 149 down to 39 again.
     let lines: Vec<&str> = bad.lines().collect();
-    let fall: String = lines[99..149]
+    let fall: String = lines[38..149]
         .iter()
         .rev()
         .map(|l| format!("{l}\n"))
         .collect();
     assert_eq!(
         refused(format!("{burst}{fall}").into_bytes()),
-        (38, 39, 162)
+        (38, 39, 223)
     );
 }
 
@@ -691,12 +700,12 @@ fn a_falling_tail_is_left_out() {
         .collect();
     assert_eq!(tail, (230..250).collect::<Vec<_>>());
 
-    // Twelve rows floating between 8.4 and 8.6 hPa, below the 8.0 hPa row (line 228); only the
-    // third climbs above the first, and the rows after it only repeat it.
+    // Thirteen rows floating between 8.4 and 8.6 hPa, ending higher than they began, below the
+    // 8.0 hPa row (line 228) and the 8.1 hPa row before it.
     let recorded = String::from_utf8(fixture(FM35)).unwrap();
     let (body, _) = recorded.trim_end().rsplit_once('\n').unwrap();
     let mut float = format!("{body}\n");
-    for k in 0..12 {
+    for k in 0..13 {
         let (p, z) = match k {
             0 => (8.5, 32_600),
             _ if k % 2 == 1 => (8.6, 32_550),
@@ -717,12 +726,12 @@ fn a_falling_tail_is_left_out() {
             .collect();
         (sounding.levels.len(), lines)
     };
-    assert_eq!(not_above(&float), (227, (229..241).collect::<Vec<_>>()));
+    assert_eq!(not_above(&float), (227, (229..242).collect::<Vec<_>>()));
     // The recorded last row after them, with a wind, is kept.
     float.push_str(
         "2025-06-21 11:02:00,-106.7000,31.8600,   7.9,32886,-40.5,-69.5,-64.9,  3,  5, 0.43, 90,17.0\n",
     );
-    assert_eq!(not_above(&float), (228, (229..241).collect::<Vec<_>>()));
+    assert_eq!(not_above(&float), (228, (229..242).collect::<Vec<_>>()));
 }
 
 /// An answer of more than [`MAX_ROWS`] rows is refused as it is read, so a flood of empty rows

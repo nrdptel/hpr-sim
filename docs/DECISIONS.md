@@ -9886,12 +9886,15 @@ second); with no `src` it picks one. The site states no terms of use (its pages 
    (the physics review) and misses a row by up to 0.093 hPa; with the middle, every BUFR row lies
    within 0.071 hPa of the profile. A candidate is kept when higher than, and at a lower pressure
    than, the last row kept (`NotAbove` otherwise). More than 10 `NotAbove` rows since the last row
-   kept that climb among themselves (each higher and at a lower pressure than the highest before
-   it) refuse the answer (`NotRising`, naming that row), whether a row after them is kept or the
-   balloon burst before it got back above the bad row, since one bad row kept (57 hPa for 557)
-   would otherwise drop every good row after it; rows that fall or float are only dropped, however
-   many (comparing only a tail's first and last rows let a burst followed by a fall through, and
-   refused a float that ended a little higher: the code review). A wrong value that stays between its neighbours is not
+   kept that lie above the row kept before it (every one, when the last is the ground) refuse the
+   answer (`NotRising`, naming that row), whether a row after them is kept or the balloon burst
+   first, since one bad row kept (57 hPa for 557) would otherwise drop every good row after it.
+   The good rows it hides all lie above the row before it, whatever other bad rows are among them,
+   while rows that fall or float soon drop below it and are only dropped, however many. The code
+   review found the rules tried first failing: comparing a tail's first and last rows let a burst
+   followed by a fall through and refused a float ending higher, and counting a climbing chain
+   stopped at a second bad row. A bad row hiding 10 good rows or fewer (near the top, or a short
+   or partial answer) is not caught. A wrong value that stays between its neighbours is not
    caught: no layer is checked against the hypsometric equation. More than 100,000 rows are refused
    as they are read, which bounds the memory a hostile answer costs. A relative humidity above 100%
    is kept as recorded and clamped to 100% in `sounding()`, as ADR-004 asked of radiosonde imports.
