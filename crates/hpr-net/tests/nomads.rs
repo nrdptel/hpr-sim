@@ -161,10 +161,11 @@ fn every_field_decodes_to_what_eccodes_prints() {
     }
     assert_eq!(values, 147 * 9 + 192 * 25);
     // Measured: 2.2e-16, one rounding (ecCodes multiplies by an inexact 10^−D, the decoder
-    // divides by an exact 10^D); 5.7e-14° (GFS's points exact, RAP's to the two projections'
-    // rounding).
-    assert!(worst_value < 3e-16, "values: {worst_value:e}");
-    assert!(worst_point < 1e-13, "points: {worst_point:e}°");
+    // divides by an exact 10^D), in IEEE arithmetic alone, so the same everywhere; 5.7e-14° on
+    // macOS (GFS's points exact, RAP's to the two projections' rounding), bounded at 1e-12° since
+    // RAP's go through `tan`, `powf` and `atan`, whose last digits vary between maths libraries.
+    assert!(worst_value < 2.5e-16, "values: {worst_value:e}");
+    assert!(worst_point < 1e-12, "points: {worst_point:e}°");
 }
 
 /// The value a field of `file` takes at the site: ecCodes' values at the profile's four grid
@@ -261,7 +262,7 @@ fn rap_winds_are_turned_by_the_grids_bearing() {
     let expected = std::f64::consts::FRAC_PI_2
         + 25_f64.to_radians().sin() * (mid_lon_deg - 265.0).to_radians();
     assert!(
-        (mid - expected).abs() < 1e-5_f64.to_radians(),
+        (mid - expected).abs() < 3e-6_f64.to_radians(),
         "grid +x bears {}°, θ gives {}°",
         mid.to_degrees(),
         expected.to_degrees()
@@ -342,10 +343,10 @@ fn the_profile_reproduces_every_level_above_the_ground() {
             let sample = air.sample(height_m).unwrap();
             assert!(sample.extrapolated.is_none(), "{at}");
             let rel = (sample.air.pressure_pa - pressure_pa).abs() / pressure_pa;
-            assert!(rel < 1e-12, "{at}: pressure {} Pa", sample.air.pressure_pa);
+            assert!(rel < 1e-13, "{at}: pressure {} Pa", sample.air.pressure_pa);
             let dt = (sample.air.temperature_k - temperature_k).abs();
             assert!(
-                dt < 1e-9,
+                dt < 1e-11,
                 "{at}: temperature {} K",
                 sample.air.temperature_k
             );
@@ -356,12 +357,12 @@ fn the_profile_reproduces_every_level_above_the_ground() {
                 .unwrap();
             let humidity = level.relative_humidity.unwrap();
             let recorded = (humidity_pct / 100.0).clamp(0.0, 1.0);
-            assert!((humidity - recorded).abs() < 1e-12, "{at}: {humidity}");
+            assert!((humidity - recorded).abs() < 1e-14, "{at}: {humidity}");
             let flown = wind.wind(height_m).unwrap().velocity_enu_m_s;
             let (speed, from) = (east.hypot(north), (-east).atan2(-north));
             let recorded = velocity_from_speed_direction(speed, from);
             assert!(
-                (flown - recorded).length() < 1e-9,
+                (flown - recorded).length() < 1e-11,
                 "{at}: wind {flown} against ({east}, {north})"
             );
         }
@@ -495,6 +496,23 @@ fn requests_out_of_range_are_refused() {
     let mut r = base.clone();
     r.forecast_hour = 385;
     assert_eq!(refused(&r), "forecast hour");
+    // GFS: every hour to 120, then every third.
+    r.forecast_hour = 121;
+    assert_eq!(refused(&r), "forecast hour");
+    r.forecast_hour = 123;
+    assert!(r.url().is_ok());
+    // RAP: to 21 hours, and to 51 from the 03, 09, 15 and 21 UTC runs.
+    let mut r = NomadsRequest::new(
+        LATITUDE_DEG,
+        LONGITUDE_DEG,
+        NomadsModel::Rap,
+        RAP_CYCLE_S,
+        22,
+    );
+    assert_eq!(refused(&r), "forecast hour");
+    r.cycle_unix_s = RAP_CYCLE_S + 3 * 3_600; // 15 UTC
+    r.forecast_hour = 51;
+    assert!(r.url().is_ok());
     let mut r = base.clone();
     r.latitude_deg = 90.5;
     assert_eq!(refused(&r), "latitude (deg)");
@@ -618,7 +636,7 @@ fn split(bytes: &[u8]) -> Vec<Vec<u8>> {
 /// with the mean of its two levels' virtual temperatures, matches the difference of the profile's
 /// geopotential heights on average to −0.002% (GFS, 15 layers to 10 hPa) and −0.08% (RAP, 16 layers
 /// to 100 hPa); read as geometric heights, the layers would be 0.63% and 0.51% thinner than the
-/// geometric thickness. The test holds each mean within 0.1% and beyond −0.4%, as for Wyoming's.
+/// geometric thickness. The test holds each mean to those figures as rounded.
 #[test]
 fn recorded_heights_are_geopotential() {
     use hpr_atmos::moist::{WATER_VAPOUR_MOLECULAR_WEIGHT_KG_PER_KMOL, vapour_pressure_pa};
@@ -659,10 +677,159 @@ fn recorded_heights_are_geopotential() {
         #[expect(clippy::cast_precision_loss, reason = "a few dozen layers")]
         let layers = (levels.len() - 1) as f64;
         let (geopotential, geometric) = (as_geopotential / layers, as_geometric / layers);
+        // The means to the rounding quoted: GFS −0.002% and −0.63%, RAP −0.08% and −0.51%.
+        let (geopotential_range, geometric_range) = match name {
+            "nomads-gfs.grib2" => (-0.0025e-2..-0.0015e-2, -0.635e-2..-0.625e-2),
+            _ => (-0.085e-2..-0.075e-2, -0.515e-2..-0.505e-2),
+        };
         assert!(
-            geopotential.abs() < 1e-3,
+            geopotential_range.contains(&geopotential),
             "{name}: {geopotential} as geopotential"
         );
-        assert!(geometric < -4e-3, "{name}: {geometric} as geometric");
+        assert!(
+            geometric_range.contains(&geometric),
+            "{name}: {geometric} as geometric"
+        );
     }
+}
+
+/// A RAP request answered with a GFS cut for the same run and hour (here the recorded GFS cut,
+/// served for RAP's 00 UTC run at hour 18) is refused, and nothing is cached.
+#[test]
+fn a_cut_of_the_other_model_is_refused_and_not_cached() {
+    let dir = tempfile::tempdir().unwrap();
+    let transport = replay();
+    let online = Client::new(&transport, Cache::new(dir.path()), Mode::Online);
+    let mut request = NomadsRequest::new(
+        LATITUDE_DEG,
+        LONGITUDE_DEG,
+        NomadsModel::Rap,
+        GFS_CYCLE_S,
+        18,
+    );
+    request.endpoint = Some("https://example.test/cgi-bin".to_owned());
+    match nomads::fetch(&online, &request, 1_790_800_000) {
+        Err(NomadsError::Net(NetError::Refused { reason, .. })) => {
+            assert!(reason.contains("not Rap's"), "{reason}");
+        }
+        other => panic!("{other:?}"),
+    }
+    let offline = Client::new(Forbidden, Cache::new(dir.path()), Mode::Offline);
+    assert!(matches!(
+        nomads::fetch(&offline, &request, 1_790_800_000),
+        Err(NomadsError::Net(NetError::NotCached { .. }))
+    ));
+}
+
+/// The recorded message `m` with its section 6 replaced by a bitmap marking every point but
+/// `missing`, and section 5's count of packed values one less; the packed values are kept (a few
+/// more than needed, which the format allows).
+fn with_point_missing(m: &[u8], points: u64, missing: u64) -> Vec<u8> {
+    let mut out = m[..16].to_vec();
+    let mut at = 16;
+    while &m[at..at + 4] != b"7777" {
+        let length =
+            usize::try_from(u32::from_be_bytes(m[at..at + 4].try_into().unwrap())).unwrap();
+        let mut s = m[at..at + length].to_vec();
+        match s[4] {
+            5 => {
+                let count = u32::from_be_bytes(s[5..9].try_into().unwrap());
+                s[5..9].copy_from_slice(&(count - 1).to_be_bytes());
+            }
+            6 => {
+                assert_eq!(s[5], 255, "the recording has no bitmap");
+                let bytes = usize::try_from(points.div_ceil(8)).unwrap();
+                let mut bits = vec![0xFF_u8; bytes];
+                let k = usize::try_from(missing).unwrap();
+                bits[k / 8] &= !(0x80 >> (k % 8));
+                s = [
+                    &u32::try_from(6 + bytes).unwrap().to_be_bytes()[..],
+                    &[6, 0],
+                    &bits,
+                ]
+                .concat();
+            }
+            _ => {}
+        }
+        out.extend_from_slice(&s);
+        at += length;
+    }
+    out.extend_from_slice(b"7777");
+    let total = out.len() as u64;
+    out[8..16].copy_from_slice(&total.to_be_bytes());
+    out
+}
+
+/// A level whose field has no value at one of the four points around the site is dropped as
+/// `NoData`; the others read as before.
+#[test]
+fn a_point_missing_around_the_site_drops_its_level() {
+    let gfs = fixture("nomads-gfs.grib2");
+    let before = NomadsProfile::parse(&gfs, LATITUDE_DEG, LONGITUDE_DEG).unwrap();
+    let corner = before.grid_points[3].index;
+    let messages = split(&gfs);
+    let edited: Vec<u8> = messages
+        .iter()
+        .flat_map(|m| {
+            let p = grib2::parse(m).unwrap()[0].product;
+            if (p.category, p.number, p.surface.kind, p.surface.value)
+                == (1, 1, 100, Some(50_000.0))
+            {
+                with_point_missing(m, 9, corner)
+            } else {
+                m.clone()
+            }
+        })
+        .collect();
+    let rh = grib2::parse(&edited)
+        .unwrap()
+        .into_iter()
+        .find(|f| f.product.category == 1 && f.product.surface.value == Some(50_000.0))
+        .unwrap();
+    assert_eq!(rh.value(corner).unwrap(), None);
+    let after = NomadsProfile::parse(&edited, LATITUDE_DEG, LONGITUDE_DEG).unwrap();
+    assert!(
+        after
+            .dropped
+            .iter()
+            .any(|d| d.pressure_pa == 50_000.0 && d.reason == DropReason::NoData)
+    );
+    assert_eq!(after.levels.len(), before.levels.len() - 1);
+    let kept: Vec<_> = before
+        .levels
+        .iter()
+        .filter(|l| l.pressure_pa != 50_000.0)
+        .collect();
+    assert!(after.levels.iter().zip(kept).all(|(a, b)| a == b));
+}
+
+/// A cut of more than `MAX_FIELDS` fields is refused before it is read: here the recorded GFS cut
+/// with 900 copies of its 500 hPa temperature, each moved to a level of its own.
+#[test]
+fn a_cut_of_too_many_fields_is_refused() {
+    let gfs = fixture("nomads-gfs.grib2");
+    let messages = split(&gfs);
+    let t500 = messages
+        .iter()
+        .find(|m| {
+            let p = grib2::parse(m).unwrap()[0].product;
+            (p.category, p.number, p.surface.value) == (0, 0, Some(50_000.0))
+        })
+        .unwrap();
+    let mut body = gfs.clone();
+    for level in 0..900_u32 {
+        let mut m = t500.clone();
+        // Section 4's first fixed surface's scaled value, after sections 1 and 3.
+        let mut at = 16;
+        while m[at + 4] != 4 {
+            at += usize::try_from(u32::from_be_bytes(m[at..at + 4].try_into().unwrap())).unwrap();
+        }
+        m[at + 24..at + 28].copy_from_slice(&(1_000 + level).to_be_bytes());
+        body.extend_from_slice(&m);
+    }
+    assert!(matches!(
+        NomadsProfile::parse(&body, LATITUDE_DEG, LONGITUDE_DEG),
+        Err(NomadsError::TooManyFields { count: 1_047 })
+    ));
+    assert_eq!(nomads::MAX_FIELDS, 1_000);
 }

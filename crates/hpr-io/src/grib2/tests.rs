@@ -55,7 +55,7 @@ fn latlon_grid(ni: u32, nj: u32, la1: i64, lo1: i64, scanning: u8, flags: u8) ->
     b.extend_from_slice(&sm32(lo1));
     b.push(flags);
     b.extend_from_slice(&sm32(la1 + 250_000 * i64::from(nj - 1)));
-    b.extend_from_slice(&sm32(lo1 + 250_000 * i64::from(ni - 1)));
+    b.extend_from_slice(&sm32((lo1 + 250_000 * i64::from(ni - 1)) % 360_000_000));
     b.extend_from_slice(&250_000_u32.to_be_bytes());
     b.extend_from_slice(&250_000_u32.to_be_bytes());
     b.push(scanning);
@@ -528,12 +528,13 @@ fn broken_files_are_refused() {
 #[test]
 fn a_huge_grid_claimed_by_a_tiny_file_is_refused() {
     // 0 bits per value would let a 100-byte file claim any grid; MAX_POINTS bounds it.
-    let side = 1 << 13;
+    // 2²⁴ points along each of 2 rows: on the Earth, but twice MAX_POINTS.
+    let row = 1 << 24;
     let bytes = message(&[
         identification(),
-        latlon_grid(side, side, 0, 0, 0x40, 0x30),
+        latlon_grid(row, 2, 0, 0, 0x40, 0x30),
         product(0, 0, 100, 50_000),
-        packing(side * side, 0.0, 0, 0, 0),
+        packing(row * 2, 0.0, 0, 0, 0),
         section(6, &[255]),
         section(7, &[]),
     ]);
@@ -603,4 +604,194 @@ proptest::proptest! {
             }
         }
     }
+}
+
+#[test]
+fn a_wind_along_the_grids_x_axis_bears_east_by_theta() {
+    // The grid's +x is east turned by θ: a 10 m/s wind along it has east component 10 cos θ and
+    // north −10 sin θ (north of east when θ < 0, as the grid points' latitudes show).
+    let grid = lambert(4, 3);
+    let theta = grid.north_to_grid_y_rad(253.0);
+    let (u, v) = grid.earth_relative_wind(10.0, 0.0, 253.0);
+    assert!((u - 10.0 * theta.cos()).abs() < 1e-12, "{u}");
+    assert!((v + 10.0 * theta.sin()).abs() < 1e-12, "{v}");
+    assert!(v > 0.0);
+}
+
+/// A message whose sections 3 to 7 are `sections`.
+fn with(sections: Vec<Vec<u8>>) -> Result<Vec<Field<'static>>, Grib2Error> {
+    let mut all = vec![identification()];
+    all.extend(sections);
+    let bytes: &'static [u8] = Vec::leak(message(&all));
+    parse(bytes)
+}
+
+fn temperature_sections(repr: Vec<u8>, bitmap: Vec<u8>) -> Vec<Vec<u8>> {
+    vec![
+        latlon_grid(3, 2, 32_750_000, 252_750_000, 0x40, 0x30),
+        product(0, 0, 100, 50_000),
+        repr,
+        bitmap,
+        section(7, &[0; 24]),
+    ]
+}
+
+/// The refusal a message gets, as `(what, value)` for [`Grib2Error::Unsupported`] or the reason
+/// for [`Grib2Error::Malformed`].
+fn refusal(sections: Vec<Vec<u8>>) -> String {
+    match with(sections) {
+        Err(Grib2Error::Unsupported { what, value, .. }) => format!("{what} {value}"),
+        Err(Grib2Error::Malformed { reason, .. }) => reason,
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn each_refusal_names_its_cause() {
+    let plain = || packing(6, 0.0, 0, 0, 8);
+    let none = || section(6, &[255]);
+    // Section 6: a bitmap reused before any is given, and a predefined one.
+    assert!(refusal(temperature_sections(plain(), section(6, &[254]))).contains("reuses a bitmap"));
+    assert_eq!(
+        refusal(temperature_sections(plain(), section(6, &[7]))),
+        "bitmap indicator 7"
+    );
+    // Section 5: more than 32 bits, a NaN reference, integers of another type.
+    assert_eq!(
+        refusal(temperature_sections(packing(6, 0.0, 0, 0, 33), none())),
+        "bits per value 33"
+    );
+    assert!(
+        refusal(temperature_sections(packing(6, f32::NAN, 0, 0, 8), none())).contains("not finite")
+    );
+    let mut other_type = plain();
+    other_type[20] = 2;
+    assert_eq!(
+        refusal(temperature_sections(other_type, none())),
+        "type of original field values 2"
+    );
+    // A decimal scale that overflows the other way.
+    assert!(
+        refusal(temperature_sections(packing(6, 1.0, 0, -400, 8), none())).contains("not finite")
+    );
+    // Section 4: another product template.
+    let mut sections = temperature_sections(plain(), none());
+    sections[1][8] = 8;
+    assert_eq!(refusal(sections), "product definition template 8");
+    // Section 7 before section 4.
+    let sections = vec![latlon_grid(3, 2, 0, 0, 0x40, 0x30), section(7, &[0; 6])];
+    assert!(refusal(sections).contains("before sections"));
+    // A grid with 0 subdivisions of its basic angle.
+    let mut grid = latlon_grid(3, 2, 0, 0, 0x40, 0x30);
+    grid[38..42].copy_from_slice(&1_u32.to_be_bytes());
+    grid[42..46].copy_from_slice(&0_u32.to_be_bytes());
+    assert!(refusal(vec![grid]).contains("subdivisions are 0"));
+    // Rows running off the Earth: 2 rows from 90° N northward.
+    assert!(refusal(vec![latlon_grid(3, 2, 90_000_000, 0, 0x40, 0x30)]).contains("off the Earth"));
+    // Lambert: the south pole on the plane; an oblate Earth; LaD off the tangent latitude; a
+    // radius not the Earth's.
+    let mut south = lambert_grid(4, 3, 25_000_000, 25_000_000);
+    south[63] = 0x80;
+    assert_eq!(refusal(vec![south]), "Lambert projection centre flag 128");
+    let mut oblate = lambert_grid(4, 3, 25_000_000, 25_000_000);
+    oblate[14] = 5;
+    assert_eq!(
+        refusal(vec![oblate]),
+        "Lambert grid on the figure of the Earth 5"
+    );
+    let mut lad = lambert_grid(4, 3, 25_000_000, 25_000_000);
+    lad[47..51].copy_from_slice(&sm32(38_500_000));
+    assert!(refusal(vec![lad]).contains("tangent cone"));
+    let mut tiny = lambert_grid(4, 3, 25_000_000, 25_000_000);
+    tiny[14] = 1;
+    tiny[15] = 0;
+    tiny[16..20].copy_from_slice(&0_u32.to_be_bytes());
+    assert!(refusal(vec![tiny]).contains("radius is 0 m"));
+}
+
+#[test]
+fn a_given_radius_is_read_with_its_scale() {
+    // Code 1: 6,371,000 m written as 63,710 × 10² (scale factor −2).
+    let mut g = lambert_grid(4, 3, 25_000_000, 25_000_000);
+    g[14] = 1;
+    g[15] = 0x82;
+    g[16..20].copy_from_slice(&63_710_u32.to_be_bytes());
+    let fields = with(vec![
+        g,
+        product(2, 2, 100, 50_000),
+        packing(12, 0.0, 0, 0, 0),
+        section(6, &[255]),
+        section(7, &[]),
+    ])
+    .unwrap();
+    assert_eq!(
+        fields[0].grid.earth,
+        Earth::Sphere {
+            radius_m: 6_371_000.0
+        }
+    );
+}
+
+#[test]
+#[expect(
+    clippy::disallowed_types,
+    reason = "a test timing the reader, not a result; the core itself reads no clock"
+)]
+fn reusing_one_large_bitmap_costs_no_more_per_field() {
+    // 20,000 fields over one bitmap of about a million points, the last point's value read from
+    // each: counting the bitmap per field and per value would read 5 GB, seconds even optimised;
+    // the running counts make each a few dozen bytes.
+    let (ni, nj) = (1_440_u32, 721_u32);
+    let points = ni * nj;
+    let mut bits = vec![0_u8; usize::try_from(points.div_ceil(8)).unwrap()];
+    bits[0] = 0x80; // the first point and the last have values
+    let last = usize::try_from(points - 1).unwrap();
+    bits[last / 8] |= 0x80 >> (last % 8);
+    let mut sections = vec![latlon_grid(ni, nj, -90_000_000, 0, 0x40, 0x30)];
+    for k in 0..20_000_u32 {
+        sections.push(product(0, 0, 100, k));
+        sections.push(packing(2, 0.0, 0, 0, 8));
+        let s6 = if k == 0 {
+            [&[0][..], &bits].concat()
+        } else {
+            vec![254]
+        };
+        sections.push(section(6, &s6));
+        sections.push(section(7, &[1, u8::try_from(k % 256).unwrap()]));
+    }
+    let start = std::time::Instant::now();
+    let fields = with(sections).unwrap();
+    assert_eq!(fields.len(), 20_000);
+    for (k, f) in fields.iter().enumerate() {
+        assert_eq!(
+            f.value(u64::from(points) - 1).unwrap(),
+            Some((k % 256) as f64)
+        );
+        assert_eq!(f.value(1).unwrap(), None);
+    }
+    // Measured in milliseconds; a loaded debug build has seconds to spare.
+    assert!(start.elapsed().as_secs_f64() < 5.0, "{:?}", start.elapsed());
+}
+
+#[test]
+fn running_counts_rank_every_point() {
+    // A pseudo-random bitmap across several 64-byte blocks, against a plain count.
+    let mut state = 0x2545_f491_u32;
+    let bits: Vec<u8> = (0..300)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            (state & 0xFF) as u8
+        })
+        .collect();
+    let bitmap = Bitmap::new(&bits);
+    let mut plain = 0;
+    for index in 0..(bits.len() as u64 * 8) {
+        assert_eq!(bitmap.ones_before(index), plain, "bit {index}");
+        let set = bits[(index / 8) as usize] & (0x80 >> (index % 8)) != 0;
+        assert_eq!(bitmap.get(index), set);
+        plain += u64::from(set);
+    }
+    assert_eq!(bitmap.ones_before(bits.len() as u64 * 8), plain);
 }

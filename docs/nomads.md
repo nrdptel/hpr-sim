@@ -6,8 +6,8 @@ two weather models whose output hpr reads:
 
 - the **Global Forecast System (GFS)**, which covers the whole Earth on a grid a quarter of a
   degree apart (about 28 km), and
-- the **Rapid Refresh (RAP)**, which covers North America on a grid 13 km apart and is started
-  again every hour.
+- the **Rapid Refresh (RAP)**, which covers the contiguous United States and nearby parts of
+  Canada and Mexico on a grid 13 km apart, and is started again every hour.
 
 hpr asks NOAA's download server, NOMADS (NOAA Operational Model Archive and Distribution System),
 for a small piece of one forecast around the site. The piece arrives as a [GRIB2](glossary.md#grib2)
@@ -27,7 +27,8 @@ measurement ([Weather-balloon soundings](soundings.md)).
 - How good a forecast is depends on the model, and nothing here measures that: no forecast has
   been compared with a weather balloon or a flight log.
 - The pad sits on the model's ground, which is smoothed: at Spaceport America it is 1,476 m in
-  GFS and 1,429 m in RAP, where Open-Meteo gives 1,400 m.
+  GFS and 1,429 m in RAP, where Open-Meteo gives 1,400 m
+  ([Launch-day weather's example](weather.md#an-example)).
 - The tests replay two recorded answers; the live connection to NOMADS is not tested in CI.
 
 Code: `hpr_net::nomads` ([API reference](api/hpr_net/nomads/index.html)), with the decoder in
@@ -41,24 +42,24 @@ crate. The choices are in
 A forecast comes from a *run*: the model starts from the weather observed at one hour, its
 [cycle](glossary.md#forecast-run-cycle), and steps forward. Each *forecast hour* is the forecast
 for that many hours after the cycle. Times are in UTC (universal time, the time at Greenwich) and
-given in seconds since 1 January 1970 UTC (Unix time).
+given in seconds since 1 January 1970 UTC (Unix time). Pressures are in hectopascals (hPa, 100 Pa;
+sea-level pressure is about 1013 hPa). A *pressure level* is a height named by the pressure there.
 
 | model | grid | runs start | forecast hours | pressure levels asked for |
 |---|---|---|---|---|
-| GFS | 0.25° of latitude and longitude, the whole Earth | every 6 hours (00, 06, 12, 18 UTC) | 0 to 384 | 28, from 1000 to 10 hPa (about 31 km) |
-| RAP | 13 km, North America, on a [Lambert conformal](glossary.md#lambert-conformal-projection) map | every hour | 0 to 51 | 37, from 1000 to 100 hPa every 25 (about 16 km) |
+| GFS | 0.25° of latitude and longitude, the whole Earth | every 6 hours (00, 06, 12, 18 UTC) | every hour to 120, then every third hour to 384 | 28, from 1000 to 10 hPa (about 31 km) |
+| RAP | 13 km, on a [Lambert conformal](glossary.md#lambert-conformal-projection) map of the contiguous United States and nearby parts of Canada and Mexico (not Alaska or Hawaii) | every hour | every hour to 21; to 51 only from the 03, 09, 15 and 21 UTC runs | 37, from 1000 to 100 hPa every 25 (about 16 km) |
 
-Pressures are in hectopascals (hPa, 100 Pa; sea-level pressure is about 1013 hPa). A *pressure
-level* is a height named by the pressure there.
-
-`NomadsRequest::new(latitude, longitude, model, cycle, forecast_hour)` says what to ask for, and
-refuses a cycle the model doesn't run or an hour past its last. hpr picks neither for you: to fly
-at 18 UTC, ask for GFS's 00 UTC run at hour 18, say, or RAP's 12 UTC run at hour 6.
+`NomadsRequest::new(latitude, longitude, model, cycle, forecast_hour)` says what to ask for; it
+can't fail. The request's `url()`, and so `nomads::fetch`, refuse a cycle the model doesn't run
+or a forecast hour its run doesn't have (`NomadsModel::has_forecast_hour(cycle_hour, hour)` says
+which it has). hpr picks neither for you: to fly at 18 UTC, ask for GFS's 00 UTC run at hour 18,
+say, or RAP's 12 UTC run at hour 6. A site outside the model's grid is refused.
 
 The request's address is NOMADS' *grib filter*, a web form that cuts chosen variables, levels and
 a box of latitude and longitude out of a run's file. hpr asks for a box 0.3° each way around the
-site, which holds the four [grid points](glossary.md#grid-point) around it: about 28 KB for GFS
-and 40 KB for RAP. It asks for:
+site, which holds 9 GFS or about 25 RAP [grid points](glossary.md#grid-point), among them the four
+around the site: about 28 KB for GFS and 40 KB for RAP. It asks for:
 
 | variable | where |
 |---|---|
@@ -67,13 +68,19 @@ and 40 KB for RAP. It asks for:
 | temperature and relative humidity | 2 m above the ground and each pressure level |
 | wind, as two components | 10 m above the ground and each pressure level |
 
-GRIB2 fixes each variable's unit, so there are no units to check.
+GRIB2 fixes each variable's unit, so there are no units to check. The filter also sends the
+ground's own (skin) temperature, since it asks for temperature at the surface; hpr decodes it but
+doesn't use it. With it, a cut holds 147 GFS or 192 RAP
+[messages](glossary.md#grib2), one variable on one level each. A cut of more than 1,000 is
+refused unread.
 
 The answer goes through `hpr-net`'s cache ([Online data and the cache](online-data.md)), and
 `nomads::fetch(&client, &request, now)` takes the time now, in Unix seconds, to judge how fresh a
 saved copy is. A run's files don't change once NOAA writes them, so a saved copy stays fresh for
-30 days. NOMADS itself keeps GFS runs for about 10 days and RAP runs for about 2, so a past launch
-needs a copy saved while NOMADS still had it. Offline mode answers from the disk only. Only an
+30 days. NOMADS keeps only recent runs; on 2026-09-30 its grib filters listed 10 days of GFS
+runs and 2 of RAP, so a past launch needs a copy saved while NOMADS still had it. A run appears
+on NOMADS some hours after its start time, and NOMADS limits how often one may ask, so keep to
+that. Offline mode answers from the disk only. Only an
 answer that decodes, makes a sounding, and is for the run and hour asked for is saved, so a bad
 answer can't replace a good copy.
 
@@ -84,7 +91,8 @@ NCEP's forecasts are U.S. government works, free of copyright. Every answer carr
 
 **Between grid points.** A model gives each value only at its grid points. hpr takes the four
 around the site and blends them *bilinearly*: each point's weight grows as the site nears it, in
-the grid's own rows and columns, and the four weights add up to 1.
+the grid's own rows and columns, and the four weights add up to 1. The blend of the four points'
+positions must lie within 1 km of the site, or the cut is refused as not the site's.
 
 **The ground** is at the model's terrain height at the site, with the surface pressure, the 2 m
 temperature and humidity, and the 10 m wind. Putting the 10 m wind at the ground makes it the wind
@@ -101,8 +109,11 @@ its 37. The profile lists every level it left out, and why.
 
 **Heights.** GRIB2 gives heights in geopotential metres, which hpr converts to heights above sea
 level at the site's latitude with the World Meteorological Organization's formula (WMO-No. 8 eq.
-12.16, as the [atmosphere page](physics/atmosphere.md) explains). The ground's height is converted
-the same way; at 1,400 m the two differ by about 0.3 m.
+12.16, as the [atmosphere page](physics/atmosphere.md) explains). The model's terrain height is also given in
+geopotential metres and converted the same way. At this latitude that adds about 1.9 m at
+1,400 m: GFS's 1,474.4 gpm becomes 1,476.4 m. If the model's terrain were really a height above
+sea level, as for [Open-Meteo's elevation](weather.md#how-the-answer-becomes-a-sounding), the
+ground would sit about 1.9 m too high.
 
 **RAP's winds are turned to east and north.** RAP's map is a cone unrolled flat (a
 [Lambert conformal](glossary.md#lambert-conformal-projection) projection), and it gives each wind
@@ -153,7 +164,8 @@ these calls:
    the two files recorded for the tests.
 2. `NomadsRequest::new(latitude, longitude, NomadsModel::Gfs, cycle, 18)` says what to ask for
    (and `NomadsModel::Rap` for RAP), and `nomads::fetch(&client, &request, now)` fetches it and
-   reads it at the site.
+   reads it at the site. Here it reads the two recorded forecasts, as a real program would fetch
+   them.
 3. `profile.sounding(WindInterpolation::SpeedDirection)` makes the sounding, and
    `sounding.wind()` its wind.
 4. `hpr_sim::Environment::new(earth, sounding, wind)` puts both in a flight's environment.
@@ -204,8 +216,10 @@ warmer, and its 10 m wind 1.8 m/s stronger.
 Calisto climbs 14 to 16 m higher in either forecast than in the standard atmosphere with no wind.
 At apogee it is west-southwest of the pad, upwind: the wind at the ground blows from the
 west-southwest (242° and 246°), and a rocket just off the rail, still slow, turns into the wind
-([weathercocking](glossary.md#weathercocking)) and flies that way. The stronger wind near GFS's
-ground carries it 49 m further west and 48 m further south than RAP's. The calm flight's 5.1 m west
+([weathercocking](glossary.md#weathercocking)) and flies that way. GFS's stronger wind near the
+ground turns it further into the wind; it ends 49 m further west and 48 m further south than in
+RAP's forecast. How much of that comes from the ground's wind and how much from the winds aloft is
+not separated. The calm flight's 5.1 m west
 is Earth's rotation: a climbing rocket is pushed west (the Coriolis effect), as on the
 [Launch-day weather](weather.md#an-example) page. Which model is nearer the air Calisto would have
 met is not measured.
@@ -222,34 +236,44 @@ for Medium-Range Weather Forecasts' decoder, run on the same files by
 and committed as `crates/hpr-net/tests/fixtures/nomads-eccodes.json`. The tests read that file
 directly, not through the decoder under test.
 
+Each line gives what was measured, then the bound the test holds it to.
+
 - **Every value.** Each of the 147 GFS messages (9 grid points each) and 192 RAP messages (25 grid
   points each) names the same variable, level and times as ecCodes, and all 6,123 values are within
-  2.2e-16 of ecCodes', relatively. That is one rounding: ecCodes multiplies by an inexact `10^−D`
-  where hpr divides by an exact `10^D`.
-- **Every grid point's position** is within 5.7e-14° of ecCodes'. The four points' weights add up
-  to 1, and the blend of their positions is the site, to 1e-5°.
+  2.2e-16 of ecCodes', relatively (bound 2.5e-16). That is one rounding: ecCodes multiplies by an
+  inexact `10^−D` where hpr divides by an exact `10^D`. It uses only basic arithmetic, which is the
+  same on every platform.
+- **Every grid point's position** is within 5.7e-14° of ecCodes' on macOS (bound 1e-12°, since
+  other platforms' maths libraries can differ in the last digits). The four points' weights add
+  up to 1, and the blend of their positions is the site, to 1e-5°.
 - **RAP's wind turn** is `sin 25° × (λ − 265°)`, −5.06° at the site. ecCodes' own positions of two
-  neighbouring grid points show the map's rows bearing 90° + θ from north, to 2.2e-6°, which pins
-  the sign. GFS's winds are not turned.
+  neighbouring grid points show the map's rows bearing 90° + θ from north, to 2.2e-6° (bound
+  3e-6°), which pins the sign. GFS's winds are not turned.
 - **The profile.** The sounding is sampled at the ground and every kept level's height. It gives
-  back ecCodes' values interpolated to the site: the pressure to a relative 1e-12, the
-  temperature to 1e-9 K and the wind to 1e-9 m/s, and each level holds the humidity to 1e-12.
-  The six underground levels of each model are the ones left out.
+  back ecCodes' values interpolated to the site: the pressure within a relative 1e-13, the
+  temperature within 1e-11 K and the wind within 1e-11 m/s, and each level holds the humidity
+  within 1e-14. The six underground levels of each model are the ones left out.
 - **The heights are geopotential metres.** From 500 hPa up, each layer's thickness matches what
-  the [hypsometric equation](glossary.md#hypsometric-equation) gives it in geopotential metres on
-  average to −0.002% (GFS, 15 layers to 10 hPa) and −0.08% (RAP, 16 layers to 100 hPa). Read as
-  metres above sea level, the layers would be 0.63% and 0.51% too thin. The test holds each average
-  within 0.1%, and beyond −0.4% read the other way.
+  the [hypsometric equation](glossary.md#hypsometric-equation) gives it when the file's heights are
+  read as geopotential metres, on average to −0.002% (GFS, 15 layers to 10 hPa) and −0.08% (RAP,
+  16 layers to 100 hPa). Read as metres above sea level, the layers would be 0.63% and 0.51% too
+  thin. The test holds each average to those figures as rounded.
 - **The two models read alike** for the same hour: their 2 m temperatures within 3 K, their
   500 hPa heights within 30 m and their 500 hPa winds within 5 m/s. That is a guard against a
   misread file, not a check of either forecast.
 - **The cache.** The request's address is the one recorded, so a replayed answer fills the cache.
   A second request is answered from the cache, and offline mode answers without the network, 40
-  days later, marked stale. A file for another run or hour than the one asked for is refused and
-  not saved.
+  days later, [marked stale](online-data.md#what-it-promises).
+- **Wrong answers aren't saved.** A RAP request answered with a GFS cut, and a cut of another run
+  or hour than the one asked for, are refused and not saved.
+- **Humidity.** A humidity over 100% is kept in the level and taken as 100% in the sounding (a
+  unit test).
+- **Missing and hostile data.** A level whose field has no value at one of the four points around
+  the site is left out as missing data; a cut of more than 1,000 fields is refused before it is
+  read (a real one has 147 or 192).
 - **Refusals.** A site outside the file's grid, text that isn't GRIB2, a cycle the model doesn't
-  run and an hour past its last are refused. The decoder's own tests build small files by hand to
-  pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid, and
+  run and a forecast hour its run doesn't have are refused. The decoder's own tests build small
+  files by hand to pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid, and
   refusals of every other kind of file by name.
 
 ## What it leaves out
@@ -267,6 +291,9 @@ directly, not through the decoder under test.
   temperature and pressure, with the top level's share of water vapour (capped where the air
   saturates). The wind holds the top level's wind. Both are marked as extrapolated. A flight above
   16 km in RAP's forecast is flying on that guess.
+- **Underground grid points.** A kept level is blended from the four grid points even where one
+  of them has that level underground. In the RAP cut, 850 hPa takes 13% of its weight from a point
+  whose ground is at 845.8 hPa; the effect here is about 0.02 K, and larger in steep terrain.
 - **The ground.** The pad is placed on the model's smoothed terrain, not the site's real height;
   hpr doesn't shift the profile to the real ground.
 - **Humidity over ice.** Whether NCEP gives humidity over ice at cold levels is unsettled here; it

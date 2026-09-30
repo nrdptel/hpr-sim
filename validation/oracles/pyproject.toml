@@ -25,6 +25,11 @@ dependencies = [
     # Labelled arrays (Apache-2.0): runs the guide's conversion of a netCDF-4 ERA5 file to the
     # 64-bit offset format, exactly as a user would (`validation/oracles/netcdf/era5.py`).
     "xarray==2026.7.0",
+    # ECMWF's GRIB decoder (Apache-2.0), run as the outside decoder `hpr_io::grib2` is checked
+    # against (`validation/oracles/grib2/eccodes_dump.py`): the Python interface, and the
+    # library's binary build, which reports version 2.49.0.
+    "eccodes==2.48.0",
+    "eccodeslib==2.49.0.30",
 ]
 
 [tool.uv]

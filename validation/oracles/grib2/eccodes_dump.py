@@ -8,13 +8,16 @@ its unit), whether the winds are along the grid, and every value as ecCodes unpa
 file, every grid point's latitude and longitude as ecCodes computes them. Floats are written by
 Python's `repr`, which round-trips a double exactly.
 
-Run from the repository root, in an environment with ecCodes 2.49.0 (`pip install eccodes==2.49.0
-eccodeslib==2.49.0` gives the binary library):
+The library is ecCodes 2.49.0, from the `eccodeslib` 2.49.0.30 wheel, driven by the `eccodes` 2.48.0
+Python interface; both are pinned in `validation/oracles/pyproject.toml` and `uv.lock`, which
+`cargo xtask refs fetch` installs into `refs/venv`. Each file's SHA-256 is written with its reading.
+Run from the repository root:
 
-    python validation/oracles/grib2/eccodes_dump.py \
+    refs/venv/bin/python validation/oracles/grib2/eccodes_dump.py \
         > crates/hpr-net/tests/fixtures/nomads-eccodes.json
 """
 
+import hashlib
 import json
 import sys
 
@@ -68,12 +71,15 @@ def main():
                     sys.exit(f"{name}: the grid changes between messages")
                 messages.append(m)
                 eccodes.codes_release(h)
-        out["files"][name] = {"points": points, "messages": messages}
+        with open(DIR + name, "rb") as f:
+            sha256 = hashlib.sha256(f.read()).hexdigest()
+        out["files"][name] = {"sha256": sha256, "points": points, "messages": messages}
     # One message per line, so a change shows as a line in a diff.
     w = sys.stdout.write
     w('{"eccodes": "%s", "files": {\n' % VERSION)
     for n, (name, f) in enumerate(out["files"].items()):
-        w(' "%s": {\n  "points": %s,\n  "messages": [\n' % (name, json.dumps(f["points"])))
+        w(' "%s": {\n  "sha256": "%s",\n' % (name, f["sha256"]))
+        w('  "points": %s,\n  "messages": [\n' % json.dumps(f["points"]))
         w(",\n".join("   " + json.dumps(m) for m in f["messages"]))
         w("\n  ]\n }%s\n" % ("," if n + 1 < len(out["files"]) else ""))
     w("}}\n")

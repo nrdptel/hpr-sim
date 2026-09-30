@@ -35,8 +35,9 @@
 //! **Grids.** [`Grid::point_deg`] gives a grid point's latitude and longitude, and
 //! [`Grid::index_at`] the (fractional) grid indices of a place. On a Lambert conformal grid both
 //! use the spherical Lambert conformal conic projection of Snyder, *Map Projections: A Working
-//! Manual*, USGS Professional Paper 1395 (1987), eqs. 15-1 to 15-5 and 14-4, 15-9 to 15-11 for the
-//! inverse, with the tangent cone's `n = sin φ₁`. Winds on such a grid may be given along the
+//! Manual*, USGS Professional Paper 1395 (1987): eqs. 14-1, 14-2, 14-4, 15-1 and 15-2, and for
+//! the inverse 14-9 to 14-11 and 15-5, with a tangent cone's `n = sin φ₁` (the one-parallel case
+//! of eq. 15-3). Winds on such a grid may be given along the
 //! grid's axes rather than east and north (flag table 3.3, bit 5, [`Grid::winds_grid_relative`]);
 //! [`Grid::earth_relative_wind`] turns them by the angle between the grid's `y` axis and true
 //! north, `θ = n (λ − λ₀)`.
@@ -46,6 +47,8 @@
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -53,7 +56,9 @@ mod tests;
 
 /// The most grid points a field may have: 2²⁴, about 16.8 million. The largest common grids are
 /// well inside it (GFS at 0.25°, about 1.04 million; ECMWF at 0.1°, about 6.5 million). A field of
-/// 0 bits has no packed data to bound its grid, so this bounds what [`Field::values`] allocates.
+/// 0 bits has no packed data to bound its grid, so this bounds what [`Field::values`] allocates:
+/// 16 bytes a point, up to 256 MiB for one field, whatever the file's size. [`Field::value`] reads
+/// one point and allocates nothing.
 pub const MAX_POINTS: u64 = 1 << 24;
 
 /// Why a GRIB2 file was refused.
@@ -142,11 +147,13 @@ pub struct ReferenceTime {
 pub enum Earth {
     /// A sphere of this radius, m: codes 0 (6,367,470 m), 1 (given), 6 (6,371,229 m) and
     /// 8 (6,371,200 m).
+    #[non_exhaustive]
     Sphere {
         /// Radius, m.
         radius_m: f64,
     },
     /// An oblate spheroid or another figure, by its code; a Lambert grid on it is refused.
+    #[non_exhaustive]
     Other {
         /// The code in table 3.2.
         code: u8,
@@ -158,6 +165,7 @@ pub enum Earth {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Projection {
     /// Template 3.0: points evenly spaced in latitude and longitude.
+    #[non_exhaustive]
     LatLon {
         /// The first point's latitude, degrees north.
         first_lat_deg: f64,
@@ -169,6 +177,7 @@ pub enum Projection {
         dj_deg: f64,
     },
     /// Template 3.30: a Lambert conformal conic projection, on a tangent cone.
+    #[non_exhaustive]
     LambertConformal {
         /// The first point's latitude, degrees north.
         first_lat_deg: f64,
@@ -318,7 +327,7 @@ pub struct Field<'a> {
     pub packing: SimplePacking,
     /// One bit per grid point, first point in the first byte's high bit: 1 when the point has a
     /// value. `None` when every point has one.
-    bitmap: Option<&'a [u8]>,
+    bitmap: Option<Bitmap<'a>>,
     /// The packed values, `packing.bits` each, from the first byte's high bit.
     data: &'a [u8],
 }
@@ -340,19 +349,21 @@ impl Field<'_> {
         if index >= points {
             return Err(Grib2Error::PointOutside { index, points });
         }
-        let packed = match self.bitmap {
+        let packed = match &self.bitmap {
             Some(bitmap) => {
-                if !bit(bitmap, index) {
+                if !bitmap.get(index) {
                     return Ok(None);
                 }
-                ones_before(bitmap, index)
+                bitmap.ones_before(index)
             }
             None => index,
         };
         Ok(Some(self.packing.unpack(self.packed(packed))))
     }
 
-    /// Every grid point's value, in grid order; `None` where the bitmap marks none.
+    /// Every grid point's value, in grid order; `None` where the bitmap marks none. It allocates 16
+    /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file;
+    /// [`Field::value`] reads one point without allocating.
     #[must_use]
     pub fn values(&self) -> Vec<Option<f64>> {
         let points = self.points();
@@ -360,7 +371,7 @@ impl Field<'_> {
         let mut out = Vec::with_capacity(usize::try_from(points).unwrap_or(0));
         let mut packed = 0;
         for index in 0..points {
-            let present = self.bitmap.is_none_or(|bitmap| bit(bitmap, index));
+            let present = self.bitmap.as_ref().is_none_or(|bitmap| bitmap.get(index));
             out.push(present.then(|| {
                 let x = self.packed(packed);
                 packed += 1;
@@ -397,31 +408,57 @@ impl Field<'_> {
     }
 }
 
-/// Whether bit `index` of `bitmap` is set; `parse` checked the bitmap is long enough.
-fn bit(bitmap: &[u8], index: u64) -> bool {
-    let byte = usize::try_from(index / 8)
-        .ok()
-        .and_then(|i| bitmap.get(i))
-        .copied()
-        .unwrap_or(0);
-    byte & (0x80 >> (index % 8)) != 0
+/// A bitmap, one bit per grid point from the first byte's high bit, with its running count of set
+/// bits every 64 bytes: a point's place among the packed values then costs at most 64 bytes of
+/// counting, however large the grid, and fields that reuse the bitmap share the counts.
+#[derive(Debug, Clone, PartialEq)]
+struct Bitmap<'a> {
+    bits: &'a [u8],
+    /// `ones[k]`: the set bits in `bits[..64 k]`, one entry per 64 bytes and one more, so an
+    /// eighth of the bitmap's size.
+    ones: Arc<[u64]>,
 }
 
-/// The set bits of `bitmap` before bit `index`.
-fn ones_before(bitmap: &[u8], index: u64) -> u64 {
-    let whole = usize::try_from(index / 8)
-        .unwrap_or(usize::MAX)
-        .min(bitmap.len());
-    let mut n: u64 = bitmap[..whole]
-        .iter()
-        .map(|b| u64::from(b.count_ones()))
-        .sum();
-    let rest = index % 8;
-    if rest > 0 {
-        let partial = bitmap.get(whole).copied().unwrap_or(0) & !(0xFF_u8 >> rest);
-        n += u64::from(partial.count_ones());
+impl<'a> Bitmap<'a> {
+    fn new(bits: &'a [u8]) -> Self {
+        let ones = std::iter::once(0)
+            .chain(bits.chunks(64).scan(0, |total, chunk| {
+                *total += count_ones(chunk);
+                Some(*total)
+            }))
+            .collect();
+        Self { bits, ones }
     }
-    n
+
+    /// Whether bit `index` is set; `parse` checked the bitmap covers the grid.
+    fn get(&self, index: u64) -> bool {
+        let byte = usize::try_from(index / 8)
+            .ok()
+            .and_then(|i| self.bits.get(i))
+            .copied()
+            .unwrap_or(0);
+        byte & (0x80 >> (index % 8)) != 0
+    }
+
+    /// The set bits before bit `index`.
+    fn ones_before(&self, index: u64) -> u64 {
+        let byte = usize::try_from(index / 8)
+            .unwrap_or(usize::MAX)
+            .min(self.bits.len());
+        let block = byte / 64;
+        let mut n =
+            self.ones.get(block).copied().unwrap_or(0) + count_ones(&self.bits[block * 64..byte]);
+        let rest = index % 8;
+        if rest > 0 {
+            let partial = self.bits.get(byte).copied().unwrap_or(0) & !(0xFF_u8 >> rest);
+            n += u64::from(partial.count_ones());
+        }
+        n
+    }
+}
+
+fn count_ones(bytes: &[u8]) -> u64 {
+    bytes.iter().map(|b| u64::from(b.count_ones())).sum()
 }
 
 impl Grid {
@@ -499,7 +536,7 @@ impl Grid {
     }
 
     /// The angle from true north to the grid's `+y` axis at a place, clockwise positive, rad:
-    /// `θ = n (λ − λ₀)` on a Lambert grid (Snyder eq. 15-3), 0 on a latitude/longitude grid,
+    /// `θ = n (λ − λ₀)` on a Lambert grid (Snyder eq. 14-4), 0 on a latitude/longitude grid,
     /// whose axes point east and north. West of the central meridian `θ < 0`: the meridians lean
     /// toward the cone's apex, so north is turned toward `+x` and the grid's `+y` west of north.
     #[must_use]
@@ -528,7 +565,7 @@ impl Grid {
 
 /// The spherical Lambert conformal conic projection on a tangent cone (Snyder 1987, ch. 15).
 struct Lambert {
-    /// Cone constant `n = sin φ₁` (eq. 15-3 for a tangent cone).
+    /// Cone constant `n = sin φ₁` (eq. 15-3 with one standard parallel).
     n: f64,
     /// `R F`, with `F = cos φ₁ tanⁿ(π/4 + φ₁/2) / n` (eq. 15-2).
     rf: f64,
@@ -557,7 +594,7 @@ impl Lambert {
         })
     }
 
-    /// `θ = n (λ − λ₀)`, with `λ − λ₀` folded into `[−π, π)` (eq. 15-3's `θ`).
+    /// `θ = n (λ − λ₀)`, with `λ − λ₀` folded into `[−π, π)` (eq. 14-4).
     fn theta(&self, longitude_deg: f64) -> f64 {
         let d = (longitude_deg.to_radians() - self.lon0_rad + std::f64::consts::PI)
             .rem_euclid(std::f64::consts::TAU)
@@ -565,8 +602,8 @@ impl Lambert {
         self.n * d
     }
 
-    /// `x = ρ sin θ`, `y = −ρ cos θ`, `ρ = R F / tanⁿ(π/4 + φ/2)` (eqs. 15-1, 15-4, 15-5, with the
-    /// origin at the cone's apex, `ρ₀ = 0`; only differences are used).
+    /// `x = ρ sin θ`, `y = −ρ cos θ`, `ρ = R F / tanⁿ(π/4 + φ/2)` (eqs. 14-1, 14-2 and 15-1, with
+    /// the origin at the cone's apex, `ρ₀ = 0`; only differences are used).
     fn forward(&self, latitude_deg: f64, longitude_deg: f64) -> (f64, f64) {
         let rho = self.rf / quarter_tan(latitude_deg.to_radians()).powf(self.n);
         let theta = self.theta(longitude_deg);
@@ -574,7 +611,7 @@ impl Lambert {
     }
 
     /// The inverse, `ρ = √(x² + y²)`, `θ = atan2(x, −y)`, `φ = 2 atan((R F/ρ)^(1/n)) − π/2`,
-    /// `λ = θ/n + λ₀` (eqs. 14-4, 15-9 to 15-11 for `n > 0`), in degrees.
+    /// `λ = θ/n + λ₀` (eqs. 14-10, 14-11, 15-5 and 14-9, for `n > 0` and `ρ₀ = 0`), in degrees.
     fn inverse(&self, x: f64, y: f64) -> (f64, f64) {
         let rho = x.hypot(y);
         let theta = x.atan2(-y);
@@ -663,8 +700,8 @@ fn read_message<'a>(
     let mut product: Option<Product> = None;
     let mut packing: Option<SimplePacking> = None;
     // `Some(None)`: section 6 said there is no bitmap.
-    let mut bitmap: Option<Option<&'a [u8]>> = None;
-    let mut last_bitmap: Option<&'a [u8]> = None;
+    let mut bitmap: Option<Option<Bitmap<'a>>> = None;
+    let mut last_bitmap: Option<Bitmap<'a>> = None;
     let before = fields.len();
     while offset < end {
         if end - offset < 5 {
@@ -692,10 +729,10 @@ fn read_message<'a>(
                 let indicator = at(s, 5, message)?;
                 bitmap = Some(match indicator {
                     0 => {
-                        last_bitmap = Some(&s[6..]);
-                        last_bitmap
+                        last_bitmap = Some(Bitmap::new(&s[6..]));
+                        last_bitmap.clone()
                     }
-                    254 => Some(last_bitmap.ok_or_else(|| {
+                    254 => Some(last_bitmap.clone().ok_or_else(|| {
                         malformed(message, "section 6 reuses a bitmap none gave")
                     })?),
                     255 => None,
@@ -762,18 +799,18 @@ fn check_field(field: &Field<'_>) -> Result<(), Grib2Error> {
     let message = field.message;
     let points = field.points();
     let count = u64::from(field.packing.count);
-    match field.bitmap {
+    match &field.bitmap {
         Some(bitmap) => {
-            let have = bitmap.len() as u64 * 8;
+            let have = bitmap.bits.len() as u64 * 8;
             if have < points {
                 return Err(truncated(
                     message,
                     "the bitmap",
                     points.div_ceil(8),
-                    bitmap.len(),
+                    bitmap.bits.len(),
                 ));
             }
-            let marked = ones_before(bitmap, points);
+            let marked = bitmap.ones_before(points);
             if marked != count {
                 return Err(malformed(
                     message,
@@ -789,7 +826,7 @@ fn check_field(field: &Field<'_>) -> Result<(), Grib2Error> {
         }
         None => {}
     }
-    // `Y` rises with `X` (or falls, for a negative scale), so the ends bound every value.
+    // `Y` rises with `X` (`2^E > 0`), so the ends bound every value.
     let packing = &field.packing;
     let largest = u32::try_from((1_u64 << packing.bits) - 1).unwrap_or(u32::MAX);
     if !(packing.unpack(0).is_finite() && packing.unpack(largest).is_finite()) {
@@ -856,6 +893,15 @@ fn be_u32(b: &[u8]) -> u32 {
     u32::from_be_bytes([b[0], b[1], b[2], b[3]])
 }
 
+/// A latitude, degrees, if it is on the Earth.
+fn on_earth(latitude_deg: f64, message: usize) -> Result<f64, Grib2Error> {
+    if latitude_deg.abs() <= 90.0 {
+        Ok(latitude_deg)
+    } else {
+        Err(malformed(message, format!("a latitude of {latitude_deg}°")))
+    }
+}
+
 /// A sign-and-magnitude 32-bit integer (WMO-No. 306, Regulation 92.1.5).
 fn be_i32(b: &[u8]) -> i64 {
     let raw = be_u32(b);
@@ -908,13 +954,9 @@ fn read_earth(t: &[u8]) -> Earth {
         0 => Earth::Sphere {
             radius_m: 6_367_470.0,
         },
-        1 => {
-            let scale = be_i8(t[1]);
-            let value = f64::from(be_u32(&t[2..6]));
-            Earth::Sphere {
-                radius_m: value / 10_f64.powi(scale),
-            }
-        }
+        1 => Earth::Sphere {
+            radius_m: scaled(be_u32(&t[2..6]), be_i8(t[1])),
+        },
         6 => Earth::Sphere {
             radius_m: 6_371_229.0,
         },
@@ -948,23 +990,53 @@ fn read_grid(s: &[u8], message: usize) -> Result<Grid, Grib2Error> {
             let basic = be_u32(&s[38..42]);
             let subdivisions = be_u32(&s[42..46]);
             // Code: 0 or all ones means units of 10⁻⁶ degree.
-            let unit_deg = if basic == 0 || basic == u32::MAX || subdivisions == u32::MAX {
-                1e-6
-            } else if subdivisions == 0 {
-                return Err(malformed(message, "the grid's angle subdivisions are 0"));
+            // Template 3.0's note 1: angles are in units of `basic / subdivisions` degrees, a basic
+            // angle of 0 or missing meaning 1 and missing subdivisions meaning 10⁶.
+            let basic = if basic == 0 || basic == u32::MAX {
+                1
             } else {
-                f64::from(basic) / f64::from(subdivisions)
+                basic
             };
+            let subdivisions = if subdivisions == u32::MAX {
+                1_000_000
+            } else {
+                subdivisions
+            };
+            if subdivisions == 0 {
+                return Err(malformed(message, "the grid's angle subdivisions are 0"));
+            }
+            let degrees = |units: f64| units * f64::from(basic) / f64::from(subdivisions);
             let di = be_u32(&s[63..67]);
             let dj = be_u32(&s[67..71]);
             if di == u32::MAX || dj == u32::MAX || di == 0 || dj == 0 {
                 return Err(malformed(message, "the grid's increments are missing or 0"));
             }
+            let nj = be_u32(&s[34..38]);
+            let first_lat_deg = degrees(be_i32(&s[46..50]) as f64);
+            let (di_deg, dj_deg) = (degrees(f64::from(di)), degrees(f64::from(dj)));
+            // The rows run from the first latitude by `dj`, north or south; all of them must be on
+            // the Earth, and a step can't pass a whole turn.
+            let span_deg = f64::from(nj.saturating_sub(1)) * dj_deg;
+            let last_lat_deg = if s[71] & 0x40 != 0 {
+                first_lat_deg + span_deg
+            } else {
+                first_lat_deg - span_deg
+            };
+            let on_earth = |lat: f64| lat.abs() <= 90.0 + 1e-6;
+            if !on_earth(first_lat_deg) || !on_earth(last_lat_deg) || di_deg > 360.0 {
+                return Err(malformed(
+                    message,
+                    format!(
+                        "the grid's rows from {first_lat_deg}° to {last_lat_deg}° or its \
+                         {di_deg}° steps are off the Earth"
+                    ),
+                ));
+            }
             let projection = Projection::LatLon {
-                first_lat_deg: be_i32(&s[46..50]) as f64 * unit_deg,
-                first_lon_deg: (be_i32(&s[50..54]) as f64 * unit_deg).rem_euclid(360.0),
-                di_deg: f64::from(di) * unit_deg,
-                dj_deg: f64::from(dj) * unit_deg,
+                first_lat_deg,
+                first_lon_deg: degrees(be_i32(&s[50..54]) as f64).rem_euclid(360.0),
+                di_deg,
+                dj_deg,
             };
             (
                 be_u32(&s[30..34]),
@@ -984,11 +1056,18 @@ fn read_grid(s: &[u8], message: usize) -> Result<Grid, Grib2Error> {
                     s[14].into(),
                 ));
             };
+            // A sphere given by its radius (code 1) must be about the Earth's size.
+            if !(6.0e6..=7.0e6).contains(&radius_m) {
+                return Err(malformed(
+                    message,
+                    format!("the Earth's radius is {radius_m} m"),
+                ));
+            }
             let centre = s[63];
             if centre & 0xC0 != 0 {
                 return Err(unsupported("Lambert projection centre flag", centre.into()));
             }
-            let micro = |b: &[u8]| be_i32(b) as f64 * 1e-6;
+            let micro = |b: &[u8]| be_i32(b) as f64 / 1e6;
             let lad = micro(&s[47..51]);
             let latin1 = micro(&s[65..69]);
             let latin2 = micro(&s[69..73]);
@@ -1009,7 +1088,7 @@ fn read_grid(s: &[u8], message: usize) -> Result<Grid, Grib2Error> {
                 return Err(malformed(message, "the grid's lengths are missing or 0"));
             }
             let projection = Projection::LambertConformal {
-                first_lat_deg: micro(&s[38..42]),
+                first_lat_deg: on_earth(micro(&s[38..42]), message)?,
                 first_lon_deg: micro(&s[42..46]).rem_euclid(360.0),
                 tangent_lat_deg: latin1,
                 orientation_lon_deg: micro(&s[51..55]).rem_euclid(360.0),
@@ -1054,12 +1133,20 @@ fn read_grid(s: &[u8], message: usize) -> Result<Grid, Grib2Error> {
 }
 
 /// A fixed surface from its type, scale factor and scaled value.
+/// `value / 10^scale`, with one rounding: powers of ten to 10^22 are exact.
+fn scaled(value: u32, scale: i32) -> f64 {
+    if scale >= 0 {
+        f64::from(value) / 10_f64.powi(scale)
+    } else {
+        f64::from(value) * 10_f64.powi(-scale)
+    }
+}
+
 fn read_surface(s: &[u8]) -> Surface {
     let kind = s[0];
     let scale = s[1];
     let raw = be_u32(&s[2..6]);
-    let value =
-        (scale != 0xFF && raw != u32::MAX).then(|| f64::from(raw) / 10_f64.powi(be_i8(scale)));
+    let value = (scale != 0xFF && raw != u32::MAX).then(|| scaled(raw, be_i8(scale)));
     Surface { kind, value }
 }
 

@@ -7,13 +7,14 @@
 //!
 //! | model | grid | runs | forecast hours | pressure levels asked for |
 //! |---|---|---|---|---|
-//! | [`NomadsModel::Gfs`], the Global Forecast System | 0.25° latitude/longitude | every 6 h | 0 to 384 | [`GFS_LEVELS_HPA`], 1000 to 10 hPa |
-//! | [`NomadsModel::Rap`], the Rapid Refresh | 13 km Lambert conformal, North America | every hour | 0 to 51 | [`RAP_LEVELS_HPA`], 1000 to 100 hPa every 25 |
+//! | [`NomadsModel::Gfs`], the Global Forecast System | 0.25° latitude/longitude | every 6 h | every hour to 120, every third to 384 | [`GFS_LEVELS_HPA`], 1000 to 10 hPa |
+//! | [`NomadsModel::Rap`], the Rapid Refresh | 13 km Lambert conformal, the contiguous U.S. and nearby Canada and Mexico | every hour | to 21; to 51 from the 03, 09, 15 and 21 UTC runs | [`RAP_LEVELS_HPA`], 1000 to 100 hPa every 25 |
 //!
 //! A [`NomadsRequest`] names the model, the run (its start, the *cycle*), the forecast hour and the
-//! site. Its URL asks for a box 0.3° each way around the site, which holds the four grid points
-//! around it: at those 9 GFS points or about 25 RAP points, 147 or 192 fields, about 28 or 40 KB.
-//! It asks for:
+//! site; [`NomadsRequest::url`] refuses a run or an hour the model doesn't have. Its URL asks for
+//! a box 0.3° each way around the site, which holds the four grid points around it: 9 GFS points
+//! or about 25 RAP points, 147 or 192 fields (the ground's skin temperature, `TMP` at the surface,
+//! comes too and is not used), about 28 or 40 KB. It asks for:
 //!
 //! | variable | GRIB2 parameter (discipline 0) | where |
 //! |---|---|---|
@@ -35,6 +36,13 @@
 //!   beneath the terrain. So is one without every variable at every surrounding point.
 //!   [`NomadsProfile::dropped`] lists each with its reason.
 //!
+//! The ground test is made at the site only: a kept level can take weight from a grid point where
+//! it is underground, and so from the model's extrapolation there. In the recorded RAP cut, 850 hPa
+//! takes 13% of its weight from a point whose ground is at 845.8 hPa, about 0.02 K; in steep
+//! terrain it can be more. A cut is refused when the four points' weighted position is not within
+//! 1 km of the site (bilinear weights put it within a metre), which catches a grid whose numbers are
+//! self-consistent but wrong, and when it holds more than [`MAX_FIELDS`] fields.
+//!
 //! **Winds along the grid.** RAP gives its winds along the Lambert grid's axes, not east and north
 //! (GRIB2 flag table 3.3, bit 5). They are turned to east and north by the angle between the
 //! grid's `y` axis and true north at the site, `θ = n (λ − λ₀)`
@@ -45,7 +53,10 @@
 //! **Heights** are geopotential metres, which is what GRIB2 defines `HGT` in, converted to
 //! geometric heights at the site's latitude with WMO-No. 8 eq. 12.16
 //! ([`hpr_atmos::profile::geometric_from_wmo_geopotential_m`]), as for Open-Meteo. The terrain
-//! height is also given in gpm; at 1,400 m the two differ by about 0.3 m. **Relative humidity** is
+//! height is also given in gpm and converted the same way: at 1,400 m and 33° N the two differ by
+//! 1.9 m, so if a model's terrain is really a geometric height the ground here sits that far high
+//! ([ADR-119][adr-119]'s caveat, from the Open-Meteo
+//! source). **Relative humidity** is
 //! taken as over liquid water, which [`SoundingLevel`] means. Whether NCEP's models report it
 //! over ice at cold levels is not settled here; if they do, the density there shifts by under
 //! 0.1% (the bound on [`crate::open_meteo`]). A humidity above 100% is kept as recorded and
@@ -55,7 +66,7 @@
 //! [`fetch`] asks a [`Client`] for the URL, so the answer comes from the cache when it can, and
 //! offline from the cache only; only an answer that decodes into a profile for the run and hour
 //! asked is cached. A run's files don't change once written, so a copy stays fresh 30 days (NOMADS
-//! keeps GFS for about 10 days and RAP for about 2). The data is a U.S. government work, free of
+//! keeps only recent runs: on 2026-09-30 its filters listed 10 days of GFS and 2 of RAP). The data is a U.S. government work, free of
 //! copyright; [`ATTRIBUTION`] credits it.
 //!
 //! **How far to trust it:** the decoder gives every value and grid point ecCodes does (the tests),
@@ -78,6 +89,7 @@
 //!
 //! [l6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l6
 //! [guide]: https://nrdptel.github.io/hpr-sim/nomads.html
+//! [adr-119]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-119-m52-split-open-meteos-pressure-levels-as-a-sounding-2026-09-30
 //! [adr-004]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-004-atmosphere-wind-turbulence-and-the-seeded-generator-2026-09-17
 
 use std::collections::HashMap;
@@ -85,7 +97,7 @@ use std::f64::consts::TAU;
 
 use hpr_atmos::profile::geometric_from_wmo_geopotential_m;
 use hpr_atmos::{AtmosError, SoundingLevel, SoundingProfile, WindInterpolation};
-use hpr_io::grib2::{self, Field, Grib2Error, Grid};
+use hpr_io::grib2::{self, Field, Grib2Error, Grid, Projection};
 use serde::{Deserialize, Serialize};
 
 use crate::civil::{date_hour, unix_day_start};
@@ -114,6 +126,14 @@ pub const RAP_LEVELS_HPA: [u32; 37] = [
 /// (0.25°) and, at the latitudes RAP covers, a rotated 13 km RAP cell.
 const BOX_DEG: f64 = 0.3;
 
+/// The most fields a cut may hold: a real one has 147 (GFS) or 192 (RAP). It bounds the work a
+/// hostile answer can ask for.
+pub const MAX_FIELDS: usize = 1_000;
+
+/// How far the four grid points' weighted position may be from the site, m: bilinear weights on a
+/// grid place it within a metre; farther means the grid is not what it says.
+const PLACE_TOLERANCE_M: f64 = 1_000.0;
+
 /// A run's file doesn't change once written.
 const TTL_S: u64 = 30 * 86_400;
 
@@ -141,7 +161,8 @@ const ABOVE_GROUND: u8 = 103;
 pub enum NomadsModel {
     /// The Global Forecast System on its 0.25° grid (`gfs.tHHz.pgrb2.0p25.fFFF`).
     Gfs,
-    /// The Rapid Refresh on its 13 km North American grid 130 (`rap.tHHz.awp130pgrbfFF.grib2`).
+    /// The Rapid Refresh on its 13 km grid 130 over the contiguous United States
+    /// (`rap.tHHz.awp130pgrbfFF.grib2`).
     Rap,
 }
 
@@ -155,13 +176,16 @@ impl NomadsModel {
         }
     }
 
-    /// The longest forecast, hours: 384 for GFS; 51 for RAP (its 03, 09, 15 and 21 UTC runs, the
-    /// others reaching 21).
+    /// Whether a run starting at `cycle_hour_utc` has a forecast `forecast_hour` hours on: GFS's
+    /// every hour to 120, then every third hour to 384; RAP's every hour to 21, and to 51 from its
+    /// 03, 09, 15 and 21 UTC runs.
     #[must_use]
-    pub fn max_forecast_hour(self) -> u32 {
+    pub fn has_forecast_hour(self, cycle_hour_utc: u32, forecast_hour: u32) -> bool {
         match self {
-            Self::Gfs => 384,
-            Self::Rap => 51,
+            Self::Gfs => {
+                forecast_hour <= 120 || (forecast_hour <= 384 && forecast_hour.is_multiple_of(3))
+            }
+            Self::Rap => forecast_hour <= 21 || (forecast_hour <= 51 && cycle_hour_utc % 6 == 3),
         }
     }
 
@@ -195,7 +219,7 @@ pub struct NomadsRequest {
     /// The run's start (its cycle), seconds since the Unix epoch (UTC): a whole multiple of
     /// [`NomadsModel::cycle_hours`], from 1970 to the year 9999.
     pub cycle_unix_s: i64,
-    /// Hours after the cycle, up to [`NomadsModel::max_forecast_hour`].
+    /// Hours after the cycle, one the run has ([`NomadsModel::has_forecast_hour`]).
     pub forecast_hour: u32,
     /// Another server's address in place of [`ENDPOINT`], such as a mirror; `None` for NOMADS.
     /// It must hold no `?` or `#`.
@@ -248,7 +272,10 @@ impl NomadsRequest {
                 self.cycle_unix_s.to_string(),
             ));
         }
-        if self.forecast_hour > self.model.max_forecast_hour() {
+        let (_, _, _, cycle_hour) = date_hour(self.cycle_unix_s);
+        // `date_hour` gives an hour of the day, 0 to 23.
+        let cycle_hour = u32::try_from(cycle_hour).unwrap_or(0);
+        if !self.model.has_forecast_hour(cycle_hour, self.forecast_hour) {
             return Err(refuse("forecast hour", self.forecast_hour.to_string()));
         }
         let endpoint = match &self.endpoint {
@@ -389,6 +416,8 @@ pub struct NomadsProfile {
     pub cycle_unix_s: i64,
     /// The time the forecast is for, s since the Unix epoch (UTC).
     pub valid_unix_s: i64,
+    /// The cut's grid.
+    pub grid: Grid,
     /// The four grid points around the site, with their weights.
     pub grid_points: [GridPoint; 4],
     /// The angle the winds were turned by, from the grid's axes to east and north, rad; 0 when
@@ -466,6 +495,9 @@ impl NomadsProfile {
             .into_iter()
             .filter(|f| f.discipline == 0)
             .collect();
+        if all.len() > MAX_FIELDS {
+            return Err(NomadsError::TooManyFields { count: all.len() });
+        }
         let Some(first) = all.first() else {
             return Err(NomadsError::NoSurface {
                 what: "any meteorological field",
@@ -473,9 +505,12 @@ impl NomadsProfile {
         };
         let grid = first.grid;
         let reference = first.reference_time;
-        let lead_s = first.product.forecast_time_s().ok_or(NomadsError::Mixed {
-            what: "forecast time unit",
-        })?;
+        let lead_s = first
+            .product
+            .forecast_time_s()
+            .ok_or(NomadsError::TimeUnit {
+                code: first.product.time_unit,
+            })?;
         let mut fields = HashMap::with_capacity(all.len());
         for field in all {
             if field.grid != grid {
@@ -509,6 +544,44 @@ impl NomadsProfile {
             + i64::from(reference.minute) * 60
             + i64::from(reference.second);
         let corners = corners(&grid, latitude_deg, longitude_deg)?;
+        let grid_points = corners.map(|(index, weight)| {
+            let (lat, lon) = grid.point_deg(index).unwrap_or((f64::NAN, f64::NAN));
+            GridPoint {
+                index,
+                latitude_deg: lat,
+                longitude_deg: lon,
+                weight,
+            }
+        });
+        // The points' weighted position must be the site: a grid whose numbers are self-consistent
+        // but wrong (its projection or its steps) would otherwise weight points far away.
+        let unit = |lat: f64, lon: f64| {
+            let (lat, lon) = (lat.to_radians(), lon.to_radians());
+            [lat.cos() * lon.cos(), lat.cos() * lon.sin(), lat.sin()]
+        };
+        let site = unit(latitude_deg, longitude_deg);
+        let mut blend = [0.0; 3];
+        for g in &grid_points {
+            let u = unit(g.latitude_deg, g.longitude_deg);
+            for (b, c) in blend.iter_mut().zip(u) {
+                *b += g.weight * c;
+            }
+        }
+        let chord = blend
+            .iter()
+            .zip(site)
+            .map(|(b, s)| (b - s).powi(2))
+            .sum::<f64>()
+            .sqrt();
+        // The mean radius the WMO height conversion uses; the check needs no better.
+        // A NaN position (a point off the grid's projection) fails too.
+        let near = chord * 6_371_000.0 < PLACE_TOLERANCE_M;
+        if !near {
+            return Err(NomadsError::Outside {
+                latitude_deg,
+                longitude_deg,
+            });
+        }
         let cut = Cut { fields, corners };
         let lat_rad = latitude_deg.to_radians();
         let height = |gpm: f64| {
@@ -582,20 +655,12 @@ impl NomadsProfile {
                 wind_north_m_s: north,
             });
         }
-        let grid_points = corners.map(|(index, weight)| {
-            let (lat, lon) = grid.point_deg(index).unwrap_or((f64::NAN, f64::NAN));
-            GridPoint {
-                index,
-                latitude_deg: lat,
-                longitude_deg: lon,
-                weight,
-            }
-        });
         Ok(Self {
             latitude_deg,
             longitude_deg,
             cycle_unix_s,
             valid_unix_s: cycle_unix_s + lead_s,
+            grid,
             grid_points,
             wind_turn_rad,
             surface,
@@ -704,8 +769,17 @@ pub fn fetch<T: Transport>(
     let url = request.url()?;
     let (lat, lon) = (request.latitude_deg, request.longitude_deg);
     let (cycle, valid) = (request.cycle_unix_s, request.valid_unix_s());
+    let model = request.model;
     let check = |body: &[u8]| {
         let profile = NomadsProfile::parse(body, lat, lon).map_err(|e| e.to_string())?;
+        let model_grid = match profile.grid.projection {
+            Projection::LatLon { .. } => Some(NomadsModel::Gfs),
+            Projection::LambertConformal { .. } => Some(NomadsModel::Rap),
+            _ => None,
+        };
+        if model_grid != Some(model) {
+            return Err(format!("the cut's grid is not {model:?}'s"));
+        }
         if profile.cycle_unix_s != cycle || profile.valid_unix_s != valid {
             return Err(format!(
                 "the cut is the run of {} s for {} s, not the run of {cycle} s for {valid} s",
@@ -743,6 +817,19 @@ pub enum NomadsError {
         /// What differs.
         what: &'static str,
     },
+    /// The first field's forecast time is in a unit other than those
+    /// [`hpr_io::grib2::Product::forecast_time_s`] converts.
+    #[error("the cut's forecast time is in unit {code} of GRIB2 code table 4.4, which is not read")]
+    TimeUnit {
+        /// The unit's code.
+        code: u8,
+    },
+    /// The cut holds more than [`MAX_FIELDS`] fields.
+    #[error("the cut holds {count} fields, more than {MAX_FIELDS}")]
+    TooManyFields {
+        /// Its meteorological fields.
+        count: usize,
+    },
     /// A variable is given twice on one surface.
     #[error("parameter {category}.{number} is given twice on a surface of type {surface}")]
     Duplicate {
@@ -778,4 +865,32 @@ pub enum NomadsError {
     /// The fetch failed, or its answer was refused.
     #[error(transparent)]
     Net(#[from] NetError),
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        reason = "tests stop at the failure, as `#[test]` functions may (clippy.toml)"
+    )]
+
+    use super::*;
+
+    /// A humidity past saturation is kept in the profile as recorded and clamped in the sounding.
+    #[test]
+    fn humidity_past_saturation_is_clamped_in_the_sounding() {
+        let body = include_bytes!("../tests/fixtures/replay/nomads-gfs.grib2");
+        let mut profile = NomadsProfile::parse(body, 32.99, -106.97).unwrap();
+        profile.surface.relative_humidity = 1.04;
+        profile.levels[3].relative_humidity = 1.2;
+        let air = profile.sounding(WindInterpolation::SpeedDirection).unwrap();
+        let levels = air.levels();
+        assert_eq!(levels[0].relative_humidity, Some(1.0));
+        assert_eq!(levels[4].relative_humidity, Some(1.0));
+        assert_eq!(
+            levels[5].relative_humidity,
+            Some(profile.levels[4].relative_humidity)
+        );
+        assert_eq!(profile.levels[3].relative_humidity, 1.2);
+    }
 }
