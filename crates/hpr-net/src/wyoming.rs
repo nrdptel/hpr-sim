@@ -32,13 +32,16 @@
 //! 8 eqs. 12.17 and 12.18), within 5% ([`THICKNESS_SHARE`]) plus what rounding the pressures can
 //! move it plus 30 m ([`THICKNESS_SLACK_M`]). The rows that fit form a chain from the ground; a row
 //! missing only its wind or humidity still joins it, so a gap in the wind doesn't widen the layer
-//! checked. A row that fits, but that the next row fits only through the row before it, is the
-//! odd one out and doesn't join. A row that doesn't join is left out ([`DropReason::Thickness`]);
-//! in the recordings every row fits, to within 1 m beyond rounding. Then it keeps:
+//! checked. A row that fits is still the odd one out, and doesn't join, if the next row misses it
+//! but fits the chain's end better than it does. A row that misses the end but agrees with the
+//! next row (which misses the end too), and fits one of the 10 chain rows before the end better than the end does, joins in place of the
+//! rows after that one, which are the odd ones out. A row that doesn't join, or is taken out, is
+//! left out ([`DropReason::Thickness`]); in the recordings every row fits, to within 1 m beyond
+//! rounding. Then it keeps:
 //!
 //! - **The ground**, the first row: the pressure, temperature, humidity and wind at the station
-//!   when the balloon was released. Nothing before it checks it, so rows after it that miss it
-//!   but fit each other refuse the answer ([`WyomingError::GroundMisfit`]).
+//!   when the balloon was released. Nothing before it checks it, so three rows after it that miss
+//!   it while fitting each other refuse the answer ([`WyomingError::GroundMisfit`]).
 //! - **One row of each run of rows that fit with the same pressure**, the middle one. BUFR's
 //!   pressures are rounded to 0.1 hPa, and high up the balloon climbs tens of metres while the
 //!   pressure falls that much, so runs of rows share a pressure; the rounded value is the pressure
@@ -51,13 +54,16 @@
 //!
 //! So a row with a bad pressure or height, a pressure missing a digit, say, is left out, not kept
 //! to hide the good rows after it; rows that fall or stay at one height, a balloon coming down,
-//! fit and are left out however many. More than [`MAX_MISFITS`] consecutive rows that don't fit
-//! refuse the answer ([`WyomingError::Misfit`]): the last row that fit, or all of them, are wrong
-//! (a block of heights 1 km off), or a long run of rows with no temperature leaves a layer too
-//! thick for its two ends' temperatures to give. Not caught: a wrong wind, humidity or temperature
-//! (the check doesn't use the wind, humidity moves it by a few percent, and on thin layers any
-//! temperature within the bounds fits), a height error within the allowance, a row whose pressure
-//! and height are both wrong yet fit each other, and a bad ground with one row after it.
+//! fit and are left out however many. More than [`MAX_MISFITS`] consecutive rows that don't join
+//! the chain refuse the answer ([`WyomingError::Misfit`]): the chain's end, or all of them, are
+//! wrong (a block of heights 1 km off), or a long run of rows with no temperature leaves a layer
+//! too thick for its two ends' temperatures to give. Not caught: a wrong wind, humidity or
+//! temperature (the check doesn't use the wind, humidity moves it by a few percent, and on layers
+//! under about 100 m any temperature within the bounds fits), a height error within the
+//! allowance, a row whose pressure and height are both wrong yet fit each other, and a bad ground
+//! with fewer than three rows after it. A row kept a little too high leaves out the good rows just
+//! above it, which now lie below it: in the tests, at most 2 other levels of a coded message and
+//! 7 other rows of a BUFR file.
 //!
 //! Heights are geopotential metres (the column says so), converted to geometric heights at the
 //! first row's latitude with WMO-No. 8 (2023) eqs. 12.15 and 12.16
@@ -125,7 +131,7 @@ pub const YOUNG_TTL_S: u64 = 3_600;
 /// How long an answer fetched after its sounding settled stays fresh, s: 30 days.
 pub const SETTLED_TTL_S: u64 = 30 * 86_400;
 
-/// The most consecutive rows that may not fit the last row that did. More means that row, or all of
+/// The most consecutive rows that may fail to join the chain of rows that fit. More means that row, or all of
 /// them, are wrong (a block of heights 1 km off), and the answer is refused. In a BUFR file 10
 /// rows are about 10 s of the balloon's climb, some 50 m; in a coded message they can span
 /// kilometres.
@@ -139,7 +145,7 @@ pub const THICKNESS_SHARE: f64 = 0.05;
 
 /// The metres a row's height may miss its layer's thickness by, beyond the share and the pressures'
 /// rounding: 30 m. A coded message's heights from 500 hPa up are rounded to 10 m; a height 30 m
-/// off misplaces its level by as much as a pressure error of 0.35% to 0.55% (the air's scale
+/// off misplaces its level by as much as a pressure error of 0.33% to 0.55% (the air's scale
 /// height, the climb over which pressure falls by a factor of e, is 5.5 to 9 km), so the check is
 /// for gross errors, not for these.
 pub const THICKNESS_SLACK_M: f64 = 30.0;
@@ -347,8 +353,9 @@ pub enum DropReason {
     /// Its height is not above the last row kept, or its pressure not below it.
     NotAbove,
     /// Its height above the last row that fit is not the thickness the two rows' pressures and
-    /// temperatures give (see [`THICKNESS_SHARE`]), or the next row fits that row but not it: its
-    /// pressure, height or temperature is wrong.
+    /// temperatures give (see [`THICKNESS_SHARE`]), or the rows around it fit each other better
+    /// than they fit it: its pressure, height or temperature is likely wrong. Rarely, a good row
+    /// beside a bad one that only just fits is left out in its place.
     Thickness,
 }
 
@@ -390,9 +397,10 @@ impl WyomingSounding {
     ///   a number (or, in the first row, the time is not a date).
     /// - [`WyomingError::NoGround`] when there is no row, or the first is missing a value or has
     ///   one out of range.
-    /// - [`WyomingError::GroundMisfit`] when a row misses the ground but the row after it fits it.
-    /// - [`WyomingError::Misfit`] when more than [`MAX_MISFITS`] consecutive rows don't fit the
-    ///   last row that did.
+    /// - [`WyomingError::GroundMisfit`] when three rows after the ground miss it while fitting
+    ///   each other.
+    /// - [`WyomingError::Misfit`] when more than [`MAX_MISFITS`] consecutive rows fail to join
+    ///   the chain of rows that fit.
     pub fn parse(body: &[u8]) -> Result<Self, WyomingError> {
         let text = std::str::from_utf8(body).map_err(|_| WyomingError::Missing {
             field: "header".to_owned(),
@@ -483,35 +491,62 @@ impl WyomingSounding {
         });
 
         // Which rows fit: each row with a pressure, height and temperature is checked against the
-        // chain's end, the last row that fit (the ground at first), and joins the chain when it
-        // fits, unless the next such row fits the end but not it: then it is the odd one out.
+        // chain's end, the last row that fit (the ground at first).
         let with_thermo: Vec<(usize, Thermo)> = read
             .iter()
             .enumerate()
             .filter_map(|(i, (_, thermo, _))| thermo.map(|t| (i, t)))
             .collect();
         let mut fit = vec![false; read.len()];
-        fit[0] = true;
-        let mut end = with_thermo[0];
+        let mut chain = vec![with_thermo[0]];
         // The rows since the chain's end that didn't join it: the first's line and how many.
         let mut misfits: Option<(usize, usize)> = None;
         for (k, &(i, thermo)) in with_thermo.iter().enumerate().skip(1) {
-            let next = with_thermo.get(k + 1).map(|&(_, t)| t);
-            let joins = if fits(&end.1, &thermo, coarse) {
-                !next.is_some_and(|n| !fits(&thermo, &n, coarse) && fits(&end.1, &n, coarse))
-            } else {
-                // Nothing before the ground checks it: rows that miss it but fit each other say
-                // it is the odd one out, and it can't be left out.
-                if end.0 == 0 && next.is_some_and(|n| fits(&thermo, &n, coarse)) {
+            let next = |ahead: usize| with_thermo.get(k + ahead).map(|&(_, t)| t);
+            let end = chain[chain.len() - 1].1;
+            let joins = if fits(&end, &thermo, coarse) {
+                // It fits, but the next row fits the end and not it, and the end better than it
+                // does: it is the odd one out.
+                !next(1).is_some_and(|n| {
+                    !fits(&thermo, &n, coarse)
+                        && miss_share(&end, &n, coarse) < miss_share(&end, &thermo, coarse)
+                })
+            } else if next(1).is_some_and(|n| fits(&thermo, &n, coarse) && !fits(&end, &n, coarse))
+            {
+                // It misses the end, and the next row agrees with it: the end, and the rows of
+                // the chain back to one it fits better than the end does, are the odd ones out.
+                let back = chain.len().saturating_sub(MAX_MISFITS + 1);
+                if let Some(j) = (back..chain.len() - 1).rev().find(|&j| {
+                    let share = miss_share(&chain[j].1, &thermo, coarse);
+                    share <= 1.0 && share < miss_share(&chain[j].1, &end, coarse)
+                }) {
+                    for (dropped, _) in chain.drain(j + 1..) {
+                        fit[dropped] = false;
+                    }
+                    true
+                } else if chain.len() == 1
+                    && next(2).is_some_and(|n2| {
+                        next(1).is_some_and(|n1| {
+                            fits(&n1, &n2, coarse)
+                                && !fits(&end, &n1, coarse)
+                                && !fits(&end, &n2, coarse)
+                        })
+                    })
+                {
+                    // Nothing before the ground checks it: three rows that miss it while fitting
+                    // each other say it is the odd one out, and it can't be left out.
                     return Err(WyomingError::GroundMisfit {
                         line: ground_line,
                         first: read[i].0,
                     });
+                } else {
+                    false
                 }
+            } else {
                 false
             };
             if joins {
-                end = (i, thermo);
+                chain.push((i, thermo));
                 fit[i] = true;
                 misfits = None;
             } else {
@@ -519,12 +554,13 @@ impl WyomingSounding {
                 *count += 1;
                 if *count > MAX_MISFITS {
                     return Err(WyomingError::Misfit {
-                        after: read[end.0].0,
+                        after: read[chain[chain.len() - 1].0].0,
                         line: *first,
                     });
                 }
             }
         }
+        fit[0] = true;
 
         // Of each run of complete rows that fit with the same pressure, all but the middle one;
         // a run at the ground's pressure, all of it. Other rows between them don't end a run.
@@ -691,8 +727,9 @@ pub enum WyomingError {
         /// The line of the first row, counting the header as line 1.
         line: usize,
     },
-    /// The ground doesn't fit the rows after it, which fit each other: it is wrong, and it can't
-    /// be left out.
+    /// Three rows after the ground miss it while fitting each other: the ground is taken as wrong,
+    /// and it can't be left out. Three bad rows right after a good ground that agree with each
+    /// other look the same.
     #[error(
         "the Wyoming answer's ground (line {line}) doesn't fit the rows after it, which fit each \
          other (from line {first})"
@@ -700,11 +737,11 @@ pub enum WyomingError {
     GroundMisfit {
         /// The ground's line, counting the header as line 1.
         line: usize,
-        /// The first row that doesn't fit it.
+        /// The first of the three rows.
         first: usize,
     },
-    /// More than [`MAX_MISFITS`] consecutive rows don't fit the last row that did: that row, or
-    /// all of them, are wrong, or rows with no temperature leave a layer too thick to check.
+    /// More than [`MAX_MISFITS`] consecutive rows fail to join the chain of rows that fit: its
+    /// end, or all of them, are wrong, or rows with no temperature leave a layer too thick to check.
     #[error(
         "the Wyoming answer's line {after} and the more than {MAX_MISFITS} rows from line {line} \
          on don't fit each other: the hypsometric thickness between them is wrong"
@@ -753,7 +790,7 @@ fn thermo(
 /// temperature `T̄_v` (WMO-No. 8 (2023), Vol. I, eqs. 12.17 and 12.18):
 ///
 /// ```text
-/// ΔZ = (R_d T̄_v / g₀) ln(p_lower / p_upper)
+/// ΔZ = (R_d T̄_v / g₀) ln(p_bottom / p_top)
 /// ```
 ///
 /// It may miss by [`THICKNESS_SHARE`] of `|ΔZ|`, plus what rounding each pressure can move it
@@ -761,6 +798,12 @@ fn thermo(
 /// step is 1 hPa for a pressure of 100 hPa or more in a `coarse` answer (a coded message's), else
 /// 0.1 hPa.
 fn fits(lower: &Thermo, upper: &Thermo, coarse: bool) -> bool {
+    miss_share(lower, upper, coarse) <= 1.0
+}
+
+/// How far `upper`'s height misses the thickness from `lower`, as a share of what [`fits`] allows:
+/// at most 1 when it fits; infinite when it can't be worked out.
+fn miss_share(lower: &Thermo, upper: &Thermo, coarse: bool) -> f64 {
     let scale_height_m = DRY_AIR_GAS_CONSTANT_J_PER_KG_K
         * 0.5
         * (lower.virtual_temperature_k + upper.virtual_temperature_k)
@@ -773,8 +816,13 @@ fn fits(lower: &Thermo, upper: &Thermo, coarse: bool) -> bool {
         * (half_step_pa(lower.pressure_pa) / lower.pressure_pa
             + half_step_pa(upper.pressure_pa) / upper.pressure_pa);
     let miss_m = upper.geopotential_height_m - lower.geopotential_height_m - thickness_m;
-    miss_m.is_finite()
-        && miss_m.abs() <= THICKNESS_SHARE * thickness_m.abs() + rounding_m + THICKNESS_SLACK_M
+    let allowance_m = THICKNESS_SHARE * thickness_m.abs() + rounding_m + THICKNESS_SLACK_M;
+    let share = miss_m.abs() / allowance_m;
+    if share.is_finite() {
+        share
+    } else {
+        f64::INFINITY
+    }
 }
 
 /// The virtual temperature, K, of air at `temperature_k` with relative humidity `humidity` (a

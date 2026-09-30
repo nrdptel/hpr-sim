@@ -20,9 +20,10 @@ instead of a forecast ([Launch-day weather](weather.md)) or the
   America), and the balloon goes up hours before or after the flight. Nothing here measures how
   much that changes a flight.
 - Each row's height is checked against the layer below it, which catches a gross error in a
-  pressure or height (57 hPa recorded for 557). More than 10 bad rows in a row refuse the answer.
-  A wrong wind, humidity or temperature is not caught: on thin layers the check allows any
-  temperature from −150 to 80 °C.
+  pressure or height (57 hPa recorded for 557). More than 10 bad rows in a row refuse the answer,
+  and so does a ground that the rows after it agree is wrong. A wrong wind, humidity or
+  temperature is not caught: on layers under about 100 m thick the check allows any temperature
+  from −150 to 80 °C.
 - The archive serves two versions of most soundings, and they can disagree near the ground. In
   the example below, Calisto is 402 m from the pad at apogee in one and 563 m in the other.
 - The tests replay recorded answers; the live connection to the archive is not tested in CI.
@@ -85,8 +86,8 @@ radiosonde archive" wherever you show the sounding. Every answer carries it.
 
 **Heights.** The file gives geopotential metres, which hpr converts to heights above sea level
 at the first row's latitude with the World Meteorological Organization's formula (WMO-No. 8,
-its *Guide to Instruments and Methods of Observation*, eqs. 12.15 and 12.16, as the [atmosphere page](physics/atmosphere.md) explains). The balloon
-drifts as it climbs. Converting at the latitude it reached instead would move a height by about
+its *Guide to Instruments and Methods of Observation*, eqs. 12.15 and 12.16, as the
+[atmosphere page](physics/atmosphere.md) explains). The balloon drifts as it climbs. Converting at the latitude it reached instead would move a height by about
 0.8 m per degree of drift at 10 km, and 2.5 m at 30 km; the example's balloon drifted 0.06°.
 
 **Why geopotential.** Air pressure falls with height at a rate set by the air's temperature and
@@ -97,14 +98,16 @@ each layer between two pressures must be, in geopotential metres:
 thickness = (R_d T̄_v / g₀) ln(p_bottom / p_top)
 ```
 
-Here `R_d` is dry air's gas constant (287.05 J/(kg·K)), `g₀` standard gravity (9.80665 m/s²) and
+Here `p_bottom` and `p_top` are the pressures at the layer's bottom and top, `R_d` is dry air's
+gas constant (287.05 J/(kg·K)), `g₀` standard gravity (9.80665 m/s²) and
 `T̄_v` the mean of the two rows' [virtual temperatures](glossary.md#virtual-temperature): the
 temperature, raised a little for the humidity (WMO-No. 8, eqs. 12.17 and 12.18). In the three
 recorded soundings, across the 13 layers between the standard levels from 850 to 10 hPa, the
 recorded thicknesses match that to 0.01% to 0.03% on average; single layers are off by 0.05% to
 0.13% on average, either way. Read as metres above sea level instead, the layers would be 0.51% to
 0.60% too thin on average. So they are geopotential metres, as the column says. The test holds the
-average under 0.1% as geopotential metres, and beyond −0.4% as metres above sea level.
+average under 0.1% as geopotential metres, and more than 0.4% too thin as metres above sea
+level.
 
 **Each row is checked against the last row that fit.** A row with a pressure, height and
 temperature *fits* when its height above that row is the layer's thickness, give or take an
@@ -123,19 +126,25 @@ elsewhere. For example, from the coded message's row at 557 hPa to the next at 5
 Every row must also lie above the last row kept, so without the check one bad row can hide the
 good ones. A 557 hPa row with a digit lost, 57 hPa at 5,035 m, would be kept, and every good row
 up to 57 hPa, about 20 km, would lie below it and be dropped. With the check it is left out: it
-would have to be 18.6 km above the 570 hPa row, not 183 m.
+would have to be 18.6 km above the row before it, at 570 hPa, not 183 m.
 
 The rows that fit form a chain from the ground. A row with no wind or humidity is left out of the
 profile but still joins the chain, so the next row is checked across a thin layer, not a thick
-one. A row that fits, but that the next row fits only through the row before it, is the odd one
-out: it is left out, so a row that only just fits can't push the good rows after it out of the
-chain.
+one. Each row is also weighed against the next:
+
+- A row that fits the chain's end, but that the next row misses, is the *odd one out* if the next
+  row fits the end better than it does (misses it by a smaller share of the allowance). It is
+  left out, so a row that only just fits can't push the good rows after it out of the chain.
+- A row that misses the chain's end, when the next row fits it and misses the end too, may show
+  the end was the odd one out. If the row fits one of the 10 chain rows before the end better
+  than the end does, it joins after that row, and the chain rows after that row are taken out
+  and left out.
 
 In the three recordings every row fits, missing by at most 1 m beyond rounding. So the 30 m and
 the 5% are margin, and the check is for gross errors, not small ones:
 
 - The 30 m leaves room for the coded message's heights from 500 hPa up, which are rounded to
-  10 m. A height 30 m off misplaces its level by about as much as a 0.35% to 0.55% pressure error
+  10 m. A height 30 m off misplaces its level by about as much as a 0.33% to 0.55% pressure error
   (the air's *scale height*, the climb over which pressure falls by a factor of e, is 5.5 to
   9 km).
 - The 5% is a judgment, not a measurement: no row in the recordings needs any of it. It leaves
@@ -146,8 +155,7 @@ Then hpr keeps:
 
 - **The ground, the first row**: the pressure, temperature, humidity and wind at the station
   when the balloon was released. A first row with a value missing or impossible refuses the
-  answer. No row before the ground checks it, so the rows after it do: if a row misses the ground
-  but the row after it fits it, the ground is the odd one out and the answer is refused.
+  answer.
 - **One row of each run of rows that fit with the same pressure, the middle one.** The BUFR file
   gives pressures to 0.1 hPa, and high up the balloon climbs tens of metres while the pressure
   falls that much, so runs of rows share one pressure. The rounded value is the pressure at about
@@ -165,9 +173,14 @@ It leaves out:
   60 km, a wind speed below zero or above 300 m/s, a humidity below zero or a direction beyond
   360° is dropped the same way.
 
-The profile lists every row it left out, and why. More than 10 consecutive rows that don't fit
-refuse the answer. hpr takes that to mean the last row that fit is wrong, or all of them are (a
-block of heights 1 km off). A long run of rows with no temperature can also refuse it: the layer
+The profile lists every row it left out, and why. Two things refuse the answer:
+
+- **A ground the rows after it disagree with.** No row before the ground checks it, so the rows
+  after it do: when the three rows after it each miss it while fitting each other, the ground is
+  taken as wrong. Three bad rows that agree with each other, right after a good ground, would be
+  refused the same way.
+- **More than 10 consecutive rows that don't join the chain.** hpr takes that to mean the chain's
+  end is wrong, or all of them are (a block of heights 1 km off). A long run of rows with no temperature can also refuse it: the layer
 across the run is then too thick for its two ends' temperatures to give. In a BUFR file 10 rows
 are about 10 s of the climb, some 50 m; in a coded message they can span kilometres. A refused
 answer names the lines and is not cached; the other version, or the sounding 12 hours earlier,
@@ -304,14 +317,20 @@ network.
   - A row whose vapour pressure would exceed the air's pressure (16 hPa at 30 °C, saturated).
   - A row that only just fits, alone: 854 hPa 50 m low, 101 hPa 95 m high, and a BUFR row at
     112.8 hPa 35 m high. The rows after it are kept.
+  - A row that only just fits, alone, where the good row before it would fit either way: 808 hPa
+    raised 50 m, and a BUFR row at 244.2 hPa raised 35 m. The row before it is kept.
   - A BUFR row at 150.6 hPa raised 50 m, whose pressure is rounded to 0.1 hPa. In the coded
     message, 549 hPa raised 45 m fits within its pressures' 1 hPa rounding and is kept.
+  - Two such rows in a row, together: 100 and 99 hPa raised 100 m, and BUFR rows at 112.8 and
+    112.7 hPa raised 50 m.
+  - The two rows after the ground raised 850 m; the ground and the rest are kept. A row
+    inserted at 870 hPa, about 20 m above the ground, but 45 m too high, is left out.
 - Rows kept or left out as they fit:
   - With no wind, or no humidity, from 250 to 55 hPa (73 rows), every row after the gap fits and
     is kept. Checked across the gap instead, the next row would not fit.
-  - Rows falling or staying at one height at the end, and rows crossing the last row kept, are
-    left out without refusing the answer. When a row that fits and lies above follows them, the
-    rows are left out and the row is kept.
+  - Rows falling or staying at one height at the end are left out without refusing the answer.
+    When a row that fits and lies above follows them, the rows are left out and the row is kept.
+    Of rows crossing back and forth over the last row kept, the first above it is kept.
   - A BUFR run of three rows at one pressure whose middle is raised 100 m keeps its first row.
   - A row at 0.1 hPa and −150 °C, 55.6 km up, fits the row below it and is kept.
 - Answers refused:
@@ -320,7 +339,15 @@ network.
     lost), 8 hPa off, or 80 m high. Also a ground at 1,200 hPa, at −1,000 m or at −150 °C: these
     are within the bounds, but no row above fits them. A ground 40 m high, or at 80 °C, fits the
     first layer and is kept with every row. With only one row after a bad ground, the row is
-    left out.
+    left out. A row with no temperature right after a bad ground is passed over, and the three
+    rows after it refuse the answer.
+  - The three rows after the ground raised 850 m: they agree with each other, and the answer is
+    refused as if the ground were wrong.
+- One row raised within its allowance, kept, leaves out the good rows just above it, which now
+  lie below it. Raising each row of the coded messages, and every 50th row of the BUFR file, by
+  20, 35, 50 or 100 m refuses no answer and loses at most 2 other levels of a coded message and 7
+  other rows of the BUFR file, about 40 m of its climb. Lowering a row by 50 m or changing its
+  pressure by 3% loses no other.
 - Values just past the bounds above are left out. Unit tests keep values at each bound; at the top
   row, temperatures of −150 and 80 °C and a wind of 300 m/s are kept and make a profile.
 - The request's address is the one recorded, so a replayed answer fills the cache. A second
@@ -333,7 +360,7 @@ network.
   first row with a value missing are refused. A header or a row of a million commas, and more
   than 100,000 rows, are refused without being read further.
 - The heights are geopotential, by the hypsometric check above: the test holds each average
-  under 0.1% as geopotential metres, and beyond −0.4% as metres above sea level.
+  under 0.1% as geopotential metres, and more than 0.4% too thin as metres above sea level.
 
 ## What it leaves out
 
@@ -343,13 +370,16 @@ network.
 - A level with any value missing is left out whole, even when its other values are good.
 - The check catches a gross error in a row's pressure or height. It keeps:
   - A wrong wind, or a wrong humidity: the check doesn't use the wind, and humidity moves the
-    thickness by only a few percent (1.6% for saturated air at 30 °C and sea-level pressure). Only a wind outside 0 to
-    300 m/s is caught.
+    thickness by only a few percent (1.6% for saturated air at 30 °C and sea-level pressure).
+    Only a wind outside 0 to 300 m/s is caught.
   - A wrong temperature that keeps the thickness within the allowance, and a height error within
     it: 50 m on the example's layer, more on thicker ones.
   - A row whose pressure and height are both wrong yet fit each other.
-  - A wrong ground with one row after it, or one within the allowance of its first layer (40 m
-    high, or 80 °C instead of 28.4 °C).
+  - A wrong ground with fewer than three rows after it, or one within the allowance of its first
+    layer (40 m high, or 80 °C instead of 28.4 °C).
+- A row kept a little too high leaves out the good rows just above it: in the tests, at most 2
+  other levels of a coded message and 7 other rows of a BUFR file. Rarely, a good row next to a
+  bad one that only just fits is left out in its place.
 - Only the archive's comma-separated text is read, not its other formats, and there is no list
   of stations to search by place.
 - Its terms of use are not stated; only soundings from U.S. stations, which are U.S. government

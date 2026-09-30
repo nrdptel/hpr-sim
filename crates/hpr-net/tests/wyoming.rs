@@ -700,6 +700,12 @@ fn a_bad_row_is_left_out() {
         assert_eq!(lines, [(38, DropReason::Thickness)], "{edits:?}");
         assert_eq!(pressure_pa, without_pa);
     }
+    // A row that doesn't fit is left out as such even when it lacks a wind too.
+    let windless = ROW_557
+        .replace(" 557.0,", "  57.0,")
+        .replace("200, 9.8", "   ,    ");
+    let (lines, _) = thickness(edited(&[(ROW_557, &windless)]));
+    assert_eq!(lines, [(38, DropReason::Thickness)]);
     for second in [
         ROW_549.replace(" 5151,", "51510,"),
         ROW_549.replace(" 549.0,", "  49.0,"),
@@ -752,6 +758,44 @@ fn a_bad_ground_is_refused() {
         let sounding = parse(from, to).unwrap();
         assert_eq!(sounding.levels.len(), 227, "{to}");
     }
+    // Two bad rows right after a good ground are left out; three that agree with each other are
+    // taken for a bad ground. With the next row missing its temperature, the refusal names the
+    // row after it.
+    let raised = |rows: std::ops::RangeInclusive<usize>| {
+        WyomingSounding::parse(&with_field(4, |line, height| {
+            let z: f64 = height.trim().parse().unwrap();
+            format!("{}", if rows.contains(&line) { z + 850.0 } else { z })
+        }))
+    };
+    let two = raised(3..=4).unwrap();
+    let thickness: Vec<_> = two
+        .dropped
+        .iter()
+        .filter(|d| d.reason == DropReason::Thickness)
+        .map(|d| d.line)
+        .collect();
+    assert_eq!(thickness, [3, 4]);
+    assert!(matches!(
+        raised(3..=5),
+        Err(WyomingError::GroundMisfit { line: 2, first: 3 })
+    ));
+    let low = GROUND.replace(" 872.0,", "  87.2,");
+    let no_temperature = ROW_854.replace(" 26.8,", "     ,");
+    match WyomingSounding::parse(&edited(&[(GROUND, &low), (ROW_854, &no_temperature)])) {
+        Err(WyomingError::GroundMisfit { line, first }) => assert_eq!((line, first), (2, 4)),
+        other => panic!("{other:?}"),
+    }
+    // A row 20 m above the ground (870 hPa) that is 45 m off misses it, but the row after it fits
+    // the ground too: the row is left out, not the answer refused.
+    let thin = format!(
+        "{GROUND}\n2025-06-21 11:02:00,-106.7000,31.8600, 870.0, 1317, 28.2,  9.3,  9.3, 31, 31, \
+         8.50,265, 5.8"
+    );
+    let sounding = WyomingSounding::parse(&edited(&[(GROUND, &thin)])).unwrap();
+    assert_eq!(sounding.levels.len(), 227);
+    assert_eq!(sounding.dropped[0].line, 3);
+    assert_eq!(sounding.dropped[0].reason, DropReason::Thickness);
+
     // With a single row after it, nothing tells the ground from the row: the row is left out.
     let text =
         String::from_utf8(edited(&[(GROUND, &GROUND.replace(" 872.0,", "  87.2,"))])).unwrap();
@@ -763,8 +807,10 @@ fn a_bad_ground_is_refused() {
 
 /// A row that fits the chain's end only just, which the next row fits only through that end, is
 /// the odd one out and is left out alone: 854 hPa 50 m low, 101 hPa 95 m high, and a BUFR row at
-/// 112.8 hPa 35 m high. In the coded message, 549 hPa 45 m high fits within its pressures'
-/// 1 hPa rounding and is kept; a BUFR row at 150.6 hPa 50 m high, rounded to 0.1 hPa, doesn't.
+/// 112.8 hPa 35 m high. The good row before a bad one fits better than it and is kept: row 9
+/// before row 10 raised 50 m, BUFR row 1881 before 1882 raised 35 m. In the coded message, 549 hPa
+/// 45 m high fits within its pressures' 1 hPa rounding and is kept; a BUFR row at 150.6 hPa 50 m
+/// high, rounded to 0.1 hPa, doesn't. Two rows in a row are left out together.
 #[test]
 fn a_row_that_only_just_fits_is_left_out() {
     let thickness = |body: Vec<u8>| {
@@ -776,7 +822,7 @@ fn a_row_that_only_just_fits_is_left_out() {
             .map(|d| d.line)
             .collect::<Vec<_>>()
     };
-    for (line, by) in [(3, -50.0), (132, 95.0), (39, 45.0)] {
+    for (line, by) in [(3, -50.0), (132, 95.0), (39, 45.0), (10, 50.0)] {
         let body = with_field(4, |l, height| {
             let z: f64 = height.trim().parse().unwrap();
             format!("{}", if l == line { z + by } else { z })
@@ -785,7 +831,7 @@ fn a_row_that_only_just_fits_is_left_out() {
         assert_eq!(thickness(body), expected, "line {line}");
     }
     let bufr = String::from_utf8(fixture(BUFR)).unwrap();
-    for (line, by) in [(2889, 35.0), (2528, 50.0)] {
+    for (line, by) in [(2889, 35.0), (2528, 50.0), (1882, 35.0)] {
         let mut out = String::new();
         for (i, row) in bufr.lines().enumerate() {
             let mut fields: Vec<String> = row.split(',').map(str::to_owned).collect();
@@ -797,6 +843,86 @@ fn a_row_that_only_just_fits_is_left_out() {
             out.push('\n');
         }
         assert_eq!(thickness(out.into_bytes()), [line], "BUFR line {line}");
+    }
+    let body = with_field(4, |l, height| {
+        let z: f64 = height.trim().parse().unwrap();
+        format!(
+            "{}",
+            if (133..=134).contains(&l) {
+                z + 100.0
+            } else {
+                z
+            }
+        )
+    });
+    assert_eq!(thickness(body), [133, 134]);
+    let mut out = String::new();
+    for (i, row) in bufr.lines().enumerate() {
+        let mut fields: Vec<String> = row.split(',').map(str::to_owned).collect();
+        if (2889..=2890).contains(&(i + 1)) {
+            let z: f64 = fields[4].trim().parse().unwrap();
+            fields[4] = format!("{}", z + 50.0);
+        }
+        out.push_str(&fields.join(","));
+        out.push('\n');
+    }
+    assert_eq!(thickness(out.into_bytes()), [2889, 2890]);
+}
+
+/// A row raised within its allowance is kept, and the good rows just above it, now below it, are
+/// left out; nothing is refused. Raising each row of the coded messages, and every 50th row of the
+/// BUFR file, by 20, 35, 50 or 100 m loses at most 2 other levels in a coded message and 7 other
+/// rows (about 40 m of the climb) in the BUFR file. Lowering a row by 50 m or changing its
+/// pressure by 3% loses no other.
+#[test]
+fn one_bad_row_costs_few_others() {
+    let kept = |body: &str| {
+        let sounding = WyomingSounding::parse(body.as_bytes()).unwrap();
+        sounding
+            .levels
+            .iter()
+            .map(|l| (l.pressure_pa * 10.0).round() as u64)
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    for (name, step, most) in [(FM35, 1, 2), (WINTER, 1, 1), (BUFR, 50, 7)] {
+        let text = String::from_utf8(fixture(name)).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        let recorded = kept(&text);
+        let mut worst = 0;
+        for k in (2..lines.len()).step_by(step) {
+            let fields: Vec<&str> = lines[k].split(',').collect();
+            let (Ok(p), Ok(z)) = (
+                fields[3].trim().parse::<f64>(),
+                fields[4].trim().parse::<f64>(),
+            ) else {
+                continue;
+            };
+            let own = (p * 1000.0).round() as u64;
+            for (field, value) in [
+                (4, format!("{}", z + 20.0)),
+                (4, format!("{}", z + 35.0)),
+                (4, format!("{}", z + 50.0)),
+                (4, format!("{}", z + 100.0)),
+                (4, format!("{}", z - 50.0)),
+                (3, format!("{:.1}", p * 0.97)),
+                (3, format!("{:.1}", p * 1.03)),
+            ] {
+                let mut edited: Vec<String> = fields.iter().map(|f| (*f).to_owned()).collect();
+                edited[field] = value;
+                let mut out: Vec<&str> = lines.clone();
+                let row = edited.join(",");
+                out[k] = &row;
+                let lost = recorded
+                    .difference(&kept(&out.join("\n")))
+                    .filter(|&&q| q != own)
+                    .count();
+                if field == 3 || z - 50.0 == edited[4].parse::<f64>().unwrap() {
+                    assert_eq!(lost, 0, "{name} line {}: {row}", k + 1);
+                }
+                worst = worst.max(lost);
+            }
+        }
+        assert_eq!(worst, most, "{name}");
     }
 }
 
@@ -861,9 +987,10 @@ fn with_field(field: usize, edit: impl Fn(usize, &str) -> String) -> Vec<u8> {
     out.into_bytes()
 }
 
-/// Rows missing a wind or a humidity still carry the chain: with neither from line 92 to 164 (250
-/// to 55 hPa), every row after them fits and is kept, though the layer across the gap is too thick
-/// for its two ends' temperatures to give. Two blocks of six raised rows, a good row between them,
+/// Rows missing a wind or a humidity still carry the chain: with no wind from line 92 to 164 (250
+/// to 55 hPa), and separately no humidity, every row after them fits and is kept. With no
+/// temperature there, the layer across the gap is too thick for its two ends' temperatures to
+/// give, and the answer is refused. Two blocks of six raised rows, a good row between them,
 /// are left out without refusing. A row whose vapour would outweigh its air (16 hPa at 30 °C,
 /// saturated) is left out, not taken to fit anything. A row at the bounds that fits (0.1 hPa at
 /// −150 °C, 55.6 km) is kept and makes a profile.
@@ -894,6 +1021,17 @@ fn gaps_blocks_and_extremes() {
             .map(|l| (l, DropReason::NoData))
             .collect();
         assert_eq!(dropped(&gap), (227 - 73, no_data), "field {field}");
+    }
+    let gap = with_field(5, |line, value| {
+        if (92..=164).contains(&line) {
+            String::new()
+        } else {
+            value.to_owned()
+        }
+    });
+    match WyomingSounding::parse(&gap) {
+        Err(WyomingError::Misfit { after, line }) => assert_eq!((after, line), (91, 165)),
+        other => panic!("{other:?}"),
     }
 
     let blocks = with_field(4, |line, height| {
