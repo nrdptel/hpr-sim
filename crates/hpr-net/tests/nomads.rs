@@ -850,9 +850,9 @@ fn patched(bytes: &[u8], number: u8, offset: usize, new: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-/// Each model's grid is its own; a cut on another grid, even a self-consistent one (here GFS's
-/// with its steps made 0.5°, which still holds the site), reads but is not the model's, so `fetch`
-/// refuses it.
+/// Each model's grid steps and projection are its own; a cut with others, even a self-consistent
+/// one (GFS's with a step made 0.5°, RAP's with another central meridian, cell or tangent), reads
+/// but is not the model's, so `fetch` refuses it.
 #[test]
 fn each_model_knows_its_grid() {
     let gfs = fixture("nomads-gfs.grib2");
@@ -866,10 +866,34 @@ fn each_model_knows_its_grid() {
     assert!(NomadsModel::Rap.has_grid(&grid(&rap)));
     assert!(!NomadsModel::Rap.has_grid(&grid(&gfs)));
     assert!(!NomadsModel::Gfs.has_grid(&grid(&rap)));
-    // Template 3.0's Di and Dj, octets 64 to 71 of section 3.
-    let half = [500_000_u32.to_be_bytes(), 500_000_u32.to_be_bytes()].concat();
-    let coarse = patched(&gfs, 3, 63, &half);
-    assert!(!NomadsModel::Gfs.has_grid(&grid(&coarse)));
+    // Template 3.0's Di and Dj, octets 64 to 67 and 68 to 71 of section 3, each made 0.5°.
+    let half = 500_000_u32.to_be_bytes();
+    for offset in [63, 67] {
+        let coarse = patched(&gfs, 3, offset, &half);
+        assert!(
+            !NomadsModel::Gfs.has_grid(&grid(&coarse)),
+            "octet {}",
+            offset + 1
+        );
+    }
+    // Template 3.30's LoV (octets 52 to 55), Dx (56 to 59) and Dy (60 to 63): LoV 264°, cells
+    // of 13,546 m. Latin1 and Latin2 move with LaD, which the decoder requires equal.
+    for (offset, value) in [(51, 264_000_000_u32), (55, 13_546_000), (59, 13_546_000)] {
+        let other = patched(&rap, 3, offset, &value.to_be_bytes());
+        assert!(
+            !NomadsModel::Rap.has_grid(&grid(&other)),
+            "octet {}",
+            offset + 1
+        );
+    }
+    let lat = 26_000_000_u32.to_be_bytes();
+    let tangent = patched(
+        &patched(&patched(&rap, 3, 47, &lat), 3, 65, &lat),
+        3,
+        69,
+        &lat,
+    );
+    assert!(!NomadsModel::Rap.has_grid(&grid(&tangent)));
 }
 
 /// A forecast time in a unit the reader doesn't convert is refused by name.

@@ -895,7 +895,7 @@ fn be_u32(b: &[u8]) -> u32 {
 
 /// A latitude, degrees, if it is on the Earth.
 fn on_earth(latitude_deg: f64, message: usize) -> Result<f64, Grib2Error> {
-    if latitude_deg.abs() <= 90.0 + 1e-6 {
+    if latitude_deg.abs() <= 90.0 {
         Ok(latitude_deg)
     } else {
         Err(malformed(message, format!("a latitude of {latitude_deg}°")))

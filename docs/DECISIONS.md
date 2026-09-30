@@ -10001,8 +10001,8 @@ on the model's own grid: GFS's 0.25° latitude/longitude (3.0), RAP's 13 km Lamb
    scale factors that make an infinite value are refused; so are latitudes off the Earth and a
    given radius outside 6,000 to 7,000 km. `hpr_net::nomads` keys fields in a hash map, so neither
    the duplicate check nor the lookups are quadratic, refuses a cut of more than 1,000 fields (a real
-   one has 147 or 192); `fetch` refuses a cut on any grid but the model's own (GFS's 0.25° steps;
-   RAP's 13,545 m cells, tangent at 25° N about 265° E), which a self-consistent but wrong grid
+   one has 147 or 192); `fetch` refuses a cut whose grid steps and projection aren't the model's (GFS's 0.25°
+   steps; RAP's 13,545 m cells, tangent at 25° N about 265° E; where the grid starts is not checked), which a self-consistent but wrong grid
    would otherwise pass: the bilinear weights and the points' positions come from the same grid.
 3. **Lambert grids** use Snyder's spherical Lambert conformal conic (USGS PP 1395, 1987,
    eqs. 14-1, 14-2, 14-4, 15-1 and 15-2; inverse 14-9 to 14-11 and 15-5) with `n = sin φ₁`, eq.

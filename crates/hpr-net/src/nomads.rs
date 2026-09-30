@@ -40,7 +40,7 @@
 //! it is underground, and so from the model's extrapolation there. In the recorded RAP cut, 850 hPa
 //! takes 13% of its weight from a point whose ground is at 845.8 hPa, about 0.02 K; in steep
 //! terrain it can be more. A cut of more than [`MAX_FIELDS`] fields is refused, and [`fetch`]
-//! refuses one whose grid is not the model's ([`NomadsModel::has_grid`]).
+//! refuses one whose grid steps and projection are not the model's ([`NomadsModel::has_grid`]).
 //!
 //! **Winds along the grid.** RAP gives its winds along the Lambert grid's axes, not east and north
 //! (GRIB2 flag table 3.3, bit 5). They are turned to east and north by the angle between the
@@ -184,9 +184,10 @@ impl NomadsModel {
         }
     }
 
-    /// Whether `grid` is the model's own: GFS's 0.25° latitude/longitude grid, or RAP's grid 130,
-    /// 13,545 m Lambert conformal cells on a cone tangent at 25° N about 265° E. A cut on another
-    /// grid, even a self-consistent one, is not this model's answer.
+    /// Whether `grid` has the model's steps and projection: GFS's 0.25° latitude/longitude steps,
+    /// or RAP's grid 130, 13,545 m Lambert conformal cells on a cone tangent at 25° N about 265° E.
+    /// A cut with others, even a self-consistent one, is not this model's answer. Where the grid
+    /// starts is not checked: the filter cuts whole grid points.
     #[must_use]
     pub fn has_grid(self, grid: &Grid) -> bool {
         let near = |a: f64, b: f64| (a - b).abs() < 1e-6;

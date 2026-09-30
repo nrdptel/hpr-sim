@@ -91,8 +91,9 @@ NCEP's forecasts are U.S. government works, free of copyright. Every answer carr
 
 **Between grid points.** A model gives each value only at its grid points. hpr takes the four
 around the site and blends them *bilinearly*: each point's weight grows as the site nears it, in
-the grid's own rows and columns, and the four weights add up to 1. A cut on a grid other than
-the model's own (GFS's 0.25° steps, RAP's 13,545 m cells about 265° E) is refused and not saved.
+the grid's own rows and columns, and the four weights add up to 1. A cut whose grid steps and
+projection aren't the model's (GFS's 0.25° steps, RAP's 13,545 m cells about 265° E) is refused
+and not saved.
 
 **The ground** is at the model's terrain height at the site, with the surface pressure, the 2 m
 temperature and humidity, and the 10 m wind. Putting the 10 m wind at the ground makes it the wind
