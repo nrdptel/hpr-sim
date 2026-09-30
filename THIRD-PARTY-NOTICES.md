@@ -89,6 +89,18 @@ adds a source.
   (<https://creativecommons.org/licenses/by/4.0/>). `hpr_net::open_meteo` also fetches such
   answers at run time, when a program asks, and caches them on the user's disk; each answer
   carries this credit for the program to show.
+- **University of Wyoming soundings** (<https://weather.uwyo.edu/upperair/sounding.shtml>):
+  `crates/hpr-net/tests/fixtures/replay/wyoming-72364-fm35.csv`, `wyoming-72364-bufr.csv` and
+  `wyoming-72572-fm35.csv` are three answers recorded unchanged on 2026-09-30 from the University
+  of Wyoming's radiosonde archive: the Santa Teresa, New Mexico, sounding of 21 June 2025, 12 UTC,
+  as the coded message and as the BUFR file, and the Salt Lake City, Utah, sounding of 15 January
+  2025, 12 UTC. The archive states no terms of use (checked 2026-09-30). The soundings are
+  observations by the U.S. National Weather Service, a work of the United States government,
+  which is not subject to copyright in the United States (17 U.S.C. § 105), and weather services
+  exchange them freely under WMO Resolution 40. Only soundings from U.S. stations are committed
+  (ADR-120). The example `crates/hpr/examples/wyoming_sounding.rs` reads the Santa Teresa pair.
+  `hpr_net::wyoming` also fetches soundings at run time, when a program asks, and caches them on
+  the user's disk; each carries a credit to the archive for the program to show.
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).

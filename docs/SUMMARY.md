@@ -20,6 +20,8 @@
 
 [Launch-day weather](weather.md)
 
+[Weather-balloon soundings](soundings.md)
+
 [Reading a flight log](reading-a-flight-log.md)
 
 [Your own rocket](your-own-rocket.md)

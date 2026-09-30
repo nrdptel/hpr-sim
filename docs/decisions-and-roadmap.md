@@ -339,7 +339,7 @@ missing or its status disagrees.
 | <a id="m5-1b"></a>[M5.1b][phase-2] | The HTTP transport, with rustls, behind a cargo feature, and the platform's cache folder, tested against a server on the loopback address ([ADR-118][adr-118], [Online data and the cache](online-data.md)) | done |
 | <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
 | <a id="m5-2a"></a>[M5.2a][phase-2] | A launch site's weather from Open-Meteo, forecast or archived, as a sounding: the ground and the pressure levels above it ([ADR-119][adr-119], [Launch-day weather](weather.md)) | done |
-| <a id="m5-2b"></a>[M5.2b][phase-2] | Weather-balloon soundings from the University of Wyoming | not yet done |
+| <a id="m5-2b"></a>[M5.2b][phase-2] | Weather-balloon soundings from the University of Wyoming's archive, as a sounding: the ground and every level above it ([ADR-120][adr-120], [Weather-balloon soundings](soundings.md)) | done |
 | <a id="m5-2c"></a>[M5.2c][phase-2] | NOAA's GFS and RAP weather-model files (GRIB2), read without outside libraries | not yet done |
 | <a id="m5-2d"></a>[M5.2d][phase-2] | Weather files you download, and the `hpr weather` command | not yet done |
 | <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
@@ -580,6 +580,7 @@ is the milestone that added or will add that test.
 [adr-117]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-117-m51-split-the-cache-and-offline-mode-2026-09-29
 [adr-118]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-118-m51b-http-over-the-cache-2026-09-30
 [adr-119]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-119-m52-split-open-meteos-pressure-levels-as-a-sounding-2026-09-30
+[adr-120]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

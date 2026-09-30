@@ -44,3 +44,7 @@ serde_json.workspace = true
 [[example]]
 name = "open_meteo_weather"
 required-features = ["net"]
+
+[[example]]
+name = "wyoming_sounding"
+required-features = ["net"]

@@ -594,10 +594,9 @@
     design within 5% of OpenRocket in apogee (3 vs OR without its early chute) and largest speed.
 
 - [x] **M1.10 Outputs and derived metrics.** Met in a to c (ADR-077 to ADR-080): stability
-  margins over the flight, optimum ejection delay, max q, flutter velocity and margin (primary
-  source cited), landing lat/lon; CSV, JSON, Parquet (feature), KML, GeoJSON. *Done when* (met):
-  metrics are unit-tested; exported files are validated (GeoJSON by schema, KML by parsing);
-  flutter matches the worked example in the cited source.
+  margins over the flight, optimum ejection delay, max q, flutter velocity and margin, landing
+  lat/lon; CSV, JSON, Parquet, KML, GeoJSON. *Done when* (met): metrics are unit-tested; exports
+  validated (GeoJSON by schema, KML by parsing); flutter matches the cited source's worked example.
   - Loft lessons: L32, L33, L34, L35, L94.
   - [x] **M1.10a Flight metrics.** Met (ADR-077): hand-tested to 1e-6, margins to 1e-9.
     - Loft lessons: L33, L34, L35, L94.
@@ -786,8 +785,9 @@
   - [x] **M5.2a Open-Meteo.** Forecast and historical-forecast pressure levels as a sounding,
     through the cache. *Done when:* both bullets above hold for Open-Meteo. *Result:* met
     (ADR-119): 2 recordings, ground and 14 levels to rounding; heights geopotential (hypsometric).
-  - [ ] **M5.2b U. Wyoming soundings.** *Done when:* a recorded sounding's profile reproduces its
-    pressure, temperature and wind at every level, from recorded-fixture tests.
+  - [x] **M5.2b U. Wyoming soundings.** *Done when:* a recorded sounding's profile reproduces its
+    pressure, temperature and wind at every level, from recorded-fixture tests. *Result:* met
+    (ADR-120): 3 recordings (FM 35, BUFR), every kept row to rounding; 1,931 repeated BUFR rows.
   - [ ] **M5.2c GFS/RAP GRIB2, pure Rust.** *Done when:* a recorded GRIB2 cut decodes to the values
     an outside decoder (ecCodes, run-only) prints, and its levels become a profile.
   - [ ] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline.

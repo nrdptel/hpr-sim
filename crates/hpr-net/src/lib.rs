@@ -5,10 +5,13 @@
 //!
 //! [guide-page]: https://nrdptel.github.io/hpr-sim/online-data.html
 //! [weather]: https://nrdptel.github.io/hpr-sim/weather.html
+//! [soundings]: https://nrdptel.github.io/hpr-sim/soundings.html
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
-//! Status: pre-alpha, with one data source: [`open_meteo`], a launch site's weather as a sounding
-//! ([M5.2a][roadmap], the first weather increment; the [weather page][weather] explains it). This
+//! Status: pre-alpha, with two data sources: [`open_meteo`], a launch site's weather as a sounding
+//! ([M5.2a][roadmap], the first weather increment; the [weather page][weather] explains it), and
+//! [`wyoming`], weather-balloon soundings from the University of Wyoming's archive ([M5.2b][roadmap];
+//! the [soundings page][soundings]). This
 //! crate does network and file I/O, so it is never a dependency of the pure core. Milestone
 //! [M5.1][roadmap] added the cache, the offline mode and HTTP: a [`Client`] asks a [`Transport`] for a URL's bytes only when it is [`Mode::Online`]
 //! and its [`Cache`] holds no fresh copy. In [`Mode::Offline`] it never calls the transport; it
@@ -51,10 +54,12 @@
 )]
 
 mod cache;
+mod civil;
 mod client;
 #[cfg(feature = "http")]
 mod http;
 pub mod open_meteo;
+pub mod wyoming;
 
 pub use cache::{Cache, CacheEntry};
 pub use client::{Client, Fetched, Freshness, Mode, Replay, Source, Transport};

@@ -23,7 +23,7 @@ Planned:
   atmospheres and winds, and recovery with drift.
 - Designing rockets from a parts catalog; import and export of OpenRocket, RockSim, RASAero and
   RocketPy files; a new open design format.
-- Online weather (Open-Meteo's forecasts, in the library today), terrain and live motor stock from [motor.fusionspace.co](https://motor.fusionspace.co),
+- Online weather (Open-Meteo's forecasts and weather-balloon soundings, in the library today), terrain and live motor stock from [motor.fusionspace.co](https://motor.fusionspace.co),
   all optional. Everything works offline on macOS, Windows and Linux.
 - Monte Carlo dispersion, sensitivity analysis, and optimization for competition challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.

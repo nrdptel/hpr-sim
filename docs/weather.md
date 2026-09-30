@@ -174,8 +174,9 @@ service (21 June 2025, 15:00 and 16:00 UTC) and one from the forecast service (2
 
 ## What it leaves out
 
-- Nothing checks a forecast against the weather that came. Weather-balloon soundings from the
-  University of Wyoming are planned next ([M5.2b](decisions-and-roadmap.md#m5-2b)), then the model
+- Nothing checks a forecast against the weather that came. Weather-balloon soundings, the
+  measured air, can be fetched too ([Weather-balloon soundings](soundings.md)), but no forecast has
+  been compared with one. Next come the model
   files of NOAA's Global Forecast System and Rapid Refresh (GFS and RAP,
   [M5.2c](decisions-and-roadmap.md#m5-2c)) and files you download yourself
   ([M5.2d](decisions-and-roadmap.md#m5-2d)).
