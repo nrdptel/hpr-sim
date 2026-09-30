@@ -17,6 +17,7 @@ wasm = true
 
 [dependencies]
 flate2.workspace = true
+hayro-jpeg2000.workspace = true
 hpr-atmos.workspace = true
 hpr-design.workspace = true
 hpr-motor.workspace = true

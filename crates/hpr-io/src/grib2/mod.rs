@@ -16,11 +16,11 @@
 //! |---|---|
 //! | 3, grid | 3.0 latitude/longitude; 3.30 Lambert conformal, on a sphere, tangent cone, north pole on the plane |
 //! | 4, product | 4.0, a field at a level at one time; 4.8, the same over a time interval (one time range) |
-//! | 5, packing | 5.0, simple packing; 5.2, complex packing; 5.3, complex packing with spatial differencing |
+//! | 5, packing | 5.0, simple packing; 5.2, complex packing; 5.3, complex packing with spatial differencing; 5.40, JPEG 2000, lossless, to 24 bits |
 //! | 6, bitmap | none, one given, or the one before it in the message |
 //!
 //! Anything else is refused with [`Grib2Error::Unsupported`], naming the template, never read
-//! wrongly. JPEG 2000 (5.40), which some of NCEP's files use, is for [M5.2d3][roadmap].
+//! wrongly.
 //!
 //! **Values.** Simple packing stores each value as an integer `X` of a fixed number of bits, with
 //! a reference value `R` (a 32-bit float), a binary scale factor `E` and a decimal scale factor
@@ -37,6 +37,11 @@
 //! integers it rebuilds unpack by the same regulation. [`ComplexPacking`] has the details. Its
 //! values can only be read in order, so [`Field::value`] reads the field up to the point asked
 //! for; [`Field::values_at`] reads several points in one pass.
+//!
+//! **JPEG 2000** (5.40) codes the integers `X` as a greyscale image in a JPEG 2000 codestream,
+//! decoded by `hayro-jpeg2000`; [`Jpeg2000Packing`] has the limits. The image is decoded whole
+//! each time values are read, so read a field's values once with [`Field::values`] or
+//! [`Field::values_at`].
 //!
 //! **Grids.** [`Grid::point_deg`] gives a grid point's latitude and longitude, and
 //! [`Grid::index_at`] the (fractional) grid indices of a place. On a Lambert conformal grid both
@@ -61,10 +66,12 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 mod complex;
+mod jpeg2000;
 #[cfg(test)]
 mod tests;
 
 pub use complex::{ComplexPacking, SpatialDifferencing};
+pub use jpeg2000::{Jpeg2000Packing, MAX_BITS as MAX_JPEG2000_BITS};
 
 /// The most grid points a field may have: 2²⁴, about 16.8 million. The largest common grids are
 /// well inside it (GFS at 0.25°, about 1.04 million; ECMWF at 0.1°, about 6.5 million). A field of
@@ -345,7 +352,7 @@ fn unpack(reference: f32, binary_scale: i16, decimal_scale: i16, x: f64) -> f64 
     }
 }
 
-/// How a field's values are packed: data representation template 5.0, 5.2 or 5.3.
+/// How a field's values are packed: data representation template 5.0, 5.2, 5.3 or 5.40.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Packing {
@@ -353,6 +360,8 @@ pub enum Packing {
     Simple(SimplePacking),
     /// Templates 5.2 and 5.3.
     Complex(ComplexPacking),
+    /// Template 5.40.
+    Jpeg2000(Jpeg2000Packing),
 }
 
 impl Packing {
@@ -362,16 +371,18 @@ impl Packing {
         match self {
             Self::Simple(p) => p.count,
             Self::Complex(p) => p.count,
+            Self::Jpeg2000(p) => p.count,
         }
     }
 
-    /// The data representation template: 0, 2 or 3.
+    /// The data representation template: 0, 2, 3 or 40.
     #[must_use]
     pub fn template(&self) -> u16 {
         match self {
             Self::Simple(_) => 0,
             Self::Complex(p) if p.spatial_differencing.is_some() => 3,
             Self::Complex(_) => 2,
+            Self::Jpeg2000(_) => 40,
         }
     }
 }
@@ -402,7 +413,7 @@ pub struct Field<'a> {
     /// value. `None` when every point has one.
     bitmap: Option<Bitmap<'a>>,
     /// Section 7's data after its header: for simple packing the packed values, `bits` each,
-    /// from the first byte's high bit.
+    /// from the first byte's high bit; for JPEG 2000 the codestream.
     data: &'a [u8],
     /// Where complex packing's parts start in `data`, with the packing `parse` checked them
     /// against.
@@ -418,12 +429,13 @@ impl Field<'_> {
 
     /// The value at grid point `index` (numbered as on [`Grid`]), or `None` where the field has
     /// none there. A complex-packed field's values can only be read in order, so this reads it
-    /// from its start up to the point: for more than a few points, use [`Field::values_at`] or
-    /// [`Field::values`], which read it once.
+    /// from its start up to the point, and a JPEG 2000 field's image is decoded whole: for more
+    /// than a few points, use [`Field::values_at`] or [`Field::values`], which read it once.
     ///
     /// # Errors
     /// [`Grib2Error::PointOutside`] when `index` is not below [`Field::points`], and
-    /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow.
+    /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow or a JPEG
+    /// 2000 codestream does not decode to the field's values.
     pub fn value(&self, index: u64) -> Result<Option<f64>, Grib2Error> {
         if let (Packing::Simple(p), None) = (&self.packing, &self.layout) {
             let points = self.points();
@@ -484,6 +496,16 @@ impl Field<'_> {
                 .into_iter()
                 .map(|w| w.map(|k| p.unpack(self.packed(p, k))))
                 .collect()),
+            (Packing::Jpeg2000(p), None) => {
+                let x = jpeg2000::decode(p, self.data, self.message)?;
+                Ok(wanted
+                    .into_iter()
+                    // `check_field` held the bitmap's marks to `count`, and `decode` returns
+                    // `count` integers, so `k` is in range.
+                    .map(|w| w.and_then(|k| usize::try_from(k).ok().and_then(|k| x.get(k))))
+                    .map(|x| x.map(|&x| p.unpack(x)))
+                    .collect())
+            }
             (Packing::Complex(_), None) => Err(malformed(self.message, "no layout")),
         }
     }
@@ -492,7 +514,8 @@ impl Field<'_> {
     /// bytes a point, up to 256 MiB at [`MAX_POINTS`], even for a field of 0 bits in a tiny file.
     ///
     /// # Errors
-    /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow.
+    /// [`Grib2Error::Malformed`] when a complex-packed field's differences overflow or a JPEG
+    /// 2000 codestream does not decode to the field's values.
     pub fn values(&self) -> Result<Vec<Option<f64>>, Grib2Error> {
         let points = self.points();
         // `parse` bounds `points` by `MAX_POINTS`, so this fits a `usize` on every target.
@@ -520,6 +543,17 @@ impl Field<'_> {
                         k += 1;
                         p.unpack(x)
                     }));
+                }
+            }
+            (Packing::Jpeg2000(p), None) => {
+                let mut x = jpeg2000::decode(p, self.data, self.message)?.into_iter();
+                for index in 0..points {
+                    // `decode` returns one integer per point the bitmap marks.
+                    out.push(if marked(index) {
+                        x.next().map(|x| p.unpack(x))
+                    } else {
+                        None
+                    });
                 }
             }
             (Packing::Complex(_), None) => return Err(malformed(self.message, "no layout")),
@@ -971,7 +1005,7 @@ fn check_field(field: &mut Field<'_>) -> Result<(), Grib2Error> {
         None => {}
     }
     // `Y` rises with `X` (`2^E > 0`), so the ends bound every value: for simple packing `0` and
-    // `2^bits − 1`; for complex packing, whose rebuilt integers the headers don't bound, the ends
+    // `2^bits − 1` (JPEG 2000's too); for complex packing, whose rebuilt integers the headers don't bound, the ends
     // of `i64`.
     #[allow(
         clippy::cast_precision_loss,
@@ -990,6 +1024,12 @@ fn check_field(field: &mut Field<'_>) -> Result<(), Grib2Error> {
         Packing::Complex(p) => (
             p.unpack(i64::MIN),
             p.unpack(i64::MAX),
+            p.binary_scale,
+            p.decimal_scale,
+        ),
+        Packing::Jpeg2000(p) => (
+            p.unpack(0),
+            p.unpack((1_u32 << p.bits) - 1),
             p.binary_scale,
             p.decimal_scale,
         ),
@@ -1014,6 +1054,7 @@ fn check_field(field: &mut Field<'_>) -> Result<(), Grib2Error> {
             }
         }
         Packing::Complex(p) => field.layout = Some(complex::layout(p, field.data, message)?),
+        Packing::Jpeg2000(p) => jpeg2000::check(p, field.data, message)?,
     }
     Ok(())
 }
@@ -1369,13 +1410,14 @@ fn read_product(s: &[u8], message: usize) -> Result<Product, Grib2Error> {
     })
 }
 
-/// Section 5: data representation template 5.0, 5.2 or 5.3.
+/// Section 5: data representation template 5.0, 5.2, 5.3 or 5.40.
 fn read_packing(s: &[u8], message: usize) -> Result<Packing, Grib2Error> {
     let s = need(s, 11, "section 5", message)?;
     let template = be_u16(&s[9..11]);
     match template {
         0 => {}
         2 | 3 => return complex::read(s, template, message).map(Packing::Complex),
+        40 => return jpeg2000::read(s, message).map(Packing::Jpeg2000),
         _ => {
             return Err(Grib2Error::Unsupported {
                 message,

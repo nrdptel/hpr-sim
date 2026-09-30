@@ -140,6 +140,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-121: GFS and RAP from NOMADS' grib filter, read by an in-house GRIB2 decoder][adr-121] | NOAA's GFS and RAP forecasts are fetched as a small GRIB2 cut from NOMADS' grib filter, 0.3° each way around the site, and blended bilinearly between the four grid points around it. The ground and the levels above it follow [ADR-119][adr-119] (the Open-Meteo sounding), and RAP's winds, given along its map's grid, are turned to east and north at the site. hpr reads GRIB2 with its own decoder (latitude/longitude and Lambert grids, simple packing) rather than the `grib` crate, which gives single-precision values and binds C libraries; every value matches ecCodes' to one rounding. Whole NCEP files, with complex packing or JPEG 2000, are refused and left for files you download | [NOAA forecasts: GFS and RAP](nomads.md) |
 | [ADR-122: `hpr weather`, and M5.2d split][adr-122] | The command line fetches a launch day's weather from any of the sources, one subcommand each, through the same cache as the library. `--offline` answers from the cache alone, and `--from` reads an answer saved earlier, held to the same checks as a fetched one. The profile is written as the library's own sounding type, which reads it back with its checks. NOAA's whole files, with their other compressions, follow in two more steps | [The command line](cli.md#hpr-weather) |
 | [ADR-123: Complex packing, and a whole GFS file][adr-123] | hpr's GRIB2 decoder reads the tighter packing of NOAA's whole GFS files, and totals over a time span (such as accumulated rain; read, not used in a profile). Every value of one whole file was checked against ecCodes by a script, run once outside CI; CI checks eight of its messages and a recorded cut ecCodes packed the same way. A whole file's profile is its NOMADS cut's to 1.04e-7, with the levels above 10 hPa as well | [A whole GFS file](nomads.md#a-whole-gfs-file) |
+| [ADR-124: JPEG 2000 packing, through `hayro-jpeg2000`][adr-124] | hpr's GRIB2 decoder reads fields stored as JPEG 2000 images, as NOAA's whole RAP files are, using a JPEG 2000 decoder written in Rust rather than one of its own. Only lossless images of up to 24 bits a value are read, which its 32-bit floats hold exactly; the rest are refused by name. CI checks four public RAP fields against ecCodes | [Files in JPEG 2000](nomads.md#files-in-jpeg-2000) |
 
 ## The roadmap
 
@@ -341,14 +342,14 @@ missing or its status disagrees.
 | <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | done |
 | <a id="m5-1a"></a>[M5.1a][phase-2] | The cache, its freshness rule and an offline mode that never fetches, tested with a hand-written sample response ([ADR-117][adr-117], [Online data and the cache](online-data.md)) | done |
 | <a id="m5-1b"></a>[M5.1b][phase-2] | The HTTP transport, with rustls, behind a cargo feature, and the platform's cache folder, tested against a server on the loopback address ([ADR-118][adr-118], [Online data and the cache](online-data.md)) | done |
-| <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
+| <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | done |
 | <a id="m5-2a"></a>[M5.2a][phase-2] | A launch site's weather from Open-Meteo, forecast or archived, as a sounding: the ground and the pressure levels above it ([ADR-119][adr-119], [Launch-day weather](weather.md)) | done |
 | <a id="m5-2b"></a>[M5.2b][phase-2] | Weather-balloon soundings from the University of Wyoming's archive, as a sounding: the ground and every level above it ([ADR-120][adr-120], [Weather-balloon soundings](soundings.md)) | done |
 | <a id="m5-2c"></a>[M5.2c][phase-2] | NOAA's GFS and RAP forecasts from NOMADS, as a sounding: a small GRIB2 cut around the site, read by hpr's own decoder and checked value for value against ecCodes ([ADR-121][adr-121], [NOAA forecasts: GFS and RAP](nomads.md)) | done |
-| <a id="m5-2d"></a>[M5.2d][phase-2] | Weather files you download, and the `hpr weather` command: the command done in [M5.2d1](#m5-2d1); NOAA's whole files in [M5.2d2, complex packing](#m5-2d2) and [M5.2d3, JPEG 2000](#m5-2d3) | not yet done |
+| <a id="m5-2d"></a>[M5.2d][phase-2] | Weather files you download, and the `hpr weather` command: the command done in [M5.2d1](#m5-2d1); NOAA's whole files in [M5.2d2, complex packing](#m5-2d2) and [M5.2d3, JPEG 2000](#m5-2d3) | done |
 | <a id="m5-2d1"></a>[M5.2d1][phase-2] | `hpr weather`: a launch site's profile from Open-Meteo, a Wyoming sounding, GFS, RAP or an ERA5 file, fetched, from the cache, or from a saved answer ([ADR-122][adr-122], [The command line](cli.md#hpr-weather)) | done |
 | <a id="m5-2d2"></a>[M5.2d2][phase-2] | NOAA's whole GRIB2 files: complex packing, checked against ecCodes on every value of a whole GFS file ([ADR-123][adr-123], [A whole GFS file](nomads.md#a-whole-gfs-file)) | done |
-| <a id="m5-2d3"></a>[M5.2d3][phase-2] | NOAA's whole GRIB2 files: JPEG 2000 | not yet done |
+| <a id="m5-2d3"></a>[M5.2d3][phase-2] | NOAA's whole GRIB2 files: JPEG 2000, checked against ecCodes on four public RAP fields ([ADR-124][adr-124], [Files in JPEG 2000](nomads.md#files-in-jpeg-2000)) | done |
 | <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
 | <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
@@ -590,6 +591,7 @@ is the milestone that added or will add that test.
 [adr-120]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-120-university-of-wyoming-soundings-2026-09-30
 [adr-121]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30
 [adr-123]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30
+[adr-124]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

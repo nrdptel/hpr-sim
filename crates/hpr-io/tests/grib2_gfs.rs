@@ -9,6 +9,11 @@
 //! correctly rounded sums over every value, every 997th value, and template 4.8's interval. The
 //! same script's `compare` checks every value of the whole file, which is not committed; its
 //! record is `validation/oracles/grib2/gfs-whole-file.json` (ADR-123).
+//!
+//! `tests/fixtures/rap-jpeg2000.grib2` is four whole messages of NOAA's RAP (public domain) in
+//! JPEG 2000 (template 5.40), cut by byte range from NOMADS's 00 UTC run of 2026-09-30, and
+//! `rap-jpeg2000-eccodes.json` ecCodes' reading of them, by the same script's `cut-rap`, with
+//! every 13th value (ADR-124).
 
 #![allow(
     clippy::unwrap_used,
@@ -73,9 +78,15 @@ struct EcStatistics {
     second_of_end_of_overall_time_interval: u8,
 }
 
-fn read() -> (&'static [u8], Reading) {
+fn gfs() -> (&'static [u8], Reading) {
     let bytes = include_bytes!("fixtures/gfs-messages.grib2");
     let json = include_str!("fixtures/gfs-messages-eccodes.json");
+    (bytes, serde_json::from_str(json).unwrap())
+}
+
+fn rap() -> (&'static [u8], Reading) {
+    let bytes = include_bytes!("fixtures/rap-jpeg2000.grib2");
+    let json = include_str!("fixtures/rap-jpeg2000-eccodes.json");
     (bytes, serde_json::from_str(json).unwrap())
 }
 
@@ -102,7 +113,23 @@ fn close(ours: f64, theirs: f64, bound: f64) -> bool {
 
 #[test]
 fn whole_gfs_messages_decode_to_eccodes_values() {
-    let (bytes, reading) = read();
+    let (bytes, reading) = gfs();
+    decode_to_eccodes_values(bytes, &reading);
+}
+
+#[test]
+fn rap_messages_in_jpeg2000_decode_to_eccodes_values() {
+    let (bytes, reading) = rap();
+    assert!(
+        reading
+            .messages
+            .iter()
+            .all(|m| m.data_representation_template_number == 40)
+    );
+    decode_to_eccodes_values(bytes, &reading);
+}
+
+fn decode_to_eccodes_values(bytes: &[u8], reading: &Reading) {
     assert_eq!(
         Sha256::digest(bytes)
             .iter()
@@ -219,7 +246,13 @@ fn whole_gfs_messages_decode_to_eccodes_values() {
 
 #[test]
 fn points_read_alone_or_together_match_the_whole_field() {
-    let (bytes, reading) = read();
+    let (bytes, reading) = gfs();
+    points_match_the_whole_field(bytes, &reading);
+    let (bytes, reading) = rap();
+    points_match_the_whole_field(bytes, &reading);
+}
+
+fn points_match_the_whole_field(bytes: &[u8], reading: &Reading) {
     let fields = grib2::parse(bytes).unwrap();
     // The fields with points without a value (a bitmap, or missing values), and the first.
     for (n, (field, m)) in fields.iter().zip(&reading.messages).enumerate() {

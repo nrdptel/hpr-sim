@@ -129,6 +129,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-121 | M5.2c: GFS and RAP from NOMADS' grib filter as a sounding, bilinear at the site, RAP's winds turned from its grid; an in-house GRIB2 decoder (3.0, 3.30 tangent, 4.0, 5.0) in `hpr-io` in place of the `grib` crate, checked value for value against ecCodes | accepted |
 | ADR-122 | M5.2d split d1 to d3; M5.2d1: `hpr weather`, one subcommand per source, fetched through `hpr_net`'s cache, `--offline` from the cache alone, `--from` a saved answer held to a fetch's checks; the profile written as `SoundingProfile`'s JSON | accepted |
 | ADR-123 | M5.2d2: complex packing (5.2, 5.3) and product template 4.8 in `hpr_io::grib2`; a whole GFS file's 746,770,303 values against ecCodes by hand, eight of its messages committed with ecCodes' sums and samples, the cut repacked by ecCodes for CI; NOMADS parsing keys layers by both surfaces, skips statistics and wraps a global grid | accepted |
+| ADR-124 | M5.2d3: JPEG 2000 (5.40) in `hpr_io::grib2` through `hayro-jpeg2000`, lossless and to 24 bits, the rest refused by name; four public RAP messages against ecCodes in CI | accepted |
 
 ---
 
@@ -10198,3 +10199,46 @@ interval, such as accumulated rain). No 5.2 or first-order 5.3.
 **Consequences.** M5.2d2 is met. GFS's whole 0.25° files read offline. Files in JPEG 2000 (5.40)
 stay refused, by name, until M5.2d3. RAP's whole files were not surveyed. The whole-file check is
 by hand; CI holds eight of its messages and the repacked cut.
+
+## ADR-124: JPEG 2000 packing, through `hayro-jpeg2000` (2026-09-30)
+
+**Context.** M5.2d3's *done when*: a GRIB2 file in JPEG 2000 packing (data representation template
+5.40) decodes to ecCodes' values. Template 5.40 codes a field's integers as a greyscale image in a
+JPEG 2000 codestream (ISO/IEC 15444-1), then unpacks them as simple packing does,
+`Y = (R + X · 2^E) / 10^D`. Messages sampled by byte range from NOMADS's 00 UTC run of
+2026-09-30 were in 5.40 in each of RAP's pressure-level files (grids 32, 130, 200, 236, 242, 243,
+252; `wrfmsl` is 5.3) and in 5.3 in NAM's. A JPEG 2000 decoder (tier-1 arithmetic decoding, tier-2 packets, the wavelets) is
+far more code than the packings before it.
+
+**Decision.**
+
+1. **`hayro-jpeg2000` 0.4.0 decodes the codestream.** It is pure Rust, `MIT OR Apache-2.0`, forbids
+   `unsafe` in its own code, and builds for wasm32; with no default features (only `std`) it pulls
+   in no other crate. Writing a decoder in house was judged a milestone of its own for no gain in
+   what is checked, since the check is against ecCodes either way. The C OpenJPEG (through
+   `jpeg2k`) was ruled out: it links C and does not build for wasm32.
+2. **Lossless, to 24 bits, the rest refused by name.** The crate holds samples as `f32`; its
+   reversible 5/3 wavelet takes floors of whole numbers, so every integer below `2^24` comes back
+   exact. More bits (`bits per value in JPEG 2000`) and lossy coding (code table 5.40's 1,
+   `type of JPEG 2000 compression`) are refused: lossy samples would be rounded by the crate's own
+   `f32` arithmetic, which nothing here checks. Every decoded sample must be a whole number from 0
+   to `2^bits − 1`, and the image must hold one sample per packed value at section 5's bits
+   (checked from the codestream's header when the file is parsed), or the field is refused as
+   malformed. A field of 0 bits has no codestream and is its reference value everywhere, as in
+   ecCodes.
+3. **Decoded whole, on each read.** A JPEG 2000 image is decoded whole, so `Field::value` decodes it
+   for one point; `values` and `values_at` read it once. Nothing is cached in `Field`, which
+   borrows the file and stays `Clone` and cheap.
+4. **Checked against ecCodes in CI, on public data.** Four whole messages cut by byte range from
+   RAP's 00 UTC run of 2026-09-30 (a U.S. government work): 500 hPa temperature on grids 200
+   (6 bits) and 130 (9 bits, 151,987 points), and cloud base and top heights on grid 200 with
+   bitmaps (15 and 16 bits; the top marks 434 of 10,152 points). `whole_file.py cut-rap` writes
+   ecCodes 2.49.0's reading: counts of points and missing points, two correctly rounded sums over
+   every value, and every 13th value. `tests/grib2_gfs.rs` holds `hpr_io::grib2` to it as it holds
+   the GFS messages. A damage test edits the codestream at random and asks for a refusal, never a
+   panic (5,000 cases run once by hand; CI runs proptest's default 256).
+
+**Consequences.** M5.2d3 is met, and with it M5.2d and M5.2. RAP's whole pressure-level files are
+decoded; whether `hpr weather rap --from` reads a whole RAP file as it reads a whole GFS one was not
+tried (no whole RAP file was fetched). A new dependency, `hayro-jpeg2000`, sits in `hpr-io`.
+Lossy JPEG 2000 and fields over 24 bits stay refused; none were seen in the survey.

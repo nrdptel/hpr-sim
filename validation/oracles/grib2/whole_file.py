@@ -28,6 +28,19 @@ times its point's index plus one, and every value at the points whose index is a
 
     refs/venv/bin/python validation/oracles/grib2/whole_file.py cut \\
         refs/gfs/gfs.t00z.pgrb2.0p25.f018
+
+`cut-rap FILE` does the same for JPEG 2000 (template 5.40), which RAP's pressure-level files use
+throughout, writing every message of FILE to `rap-jpeg2000.grib2` and its reading to
+`rap-jpeg2000-eccodes.json`, with every 13th value (`RAP_STRIDE`: prime, so the samples cross
+rows on both grids). FILE is
+four messages cut by byte range (from each file's `.idx`) from NOMADS's RAP run of 00 UTC,
+2026-09-30, hour 0: the 500 hPa temperature and the cloud base and top heights on grid 200
+(`rap.t00z.awp200f00.grib2`, bytes 377355-379589, 885476-898443 and 898444-900958), and the 500
+hPa temperature on grid 130 (`rap.t00z.awp130pgrbf00.grib2`, bytes 4742901-4773295). NOAA's
+model output is in the public domain; NOMADS keeps a run for about two days.
+
+    refs/venv/bin/python validation/oracles/grib2/whole_file.py cut-rap \\
+        refs/scratch/jpeg/public-540.grib2
 """
 
 import collections
@@ -61,6 +74,14 @@ KINDS = {
     605: "5.3, template 4.8, the smallest",
     730: "5.3 with primary missing values",
 }
+# The four RAP messages in JPEG 2000 `cut-rap` reads: two without a bitmap, two with one.
+RAP_KINDS = {
+    0: "5.40, 6 bits, grid 200",
+    1: "5.40, 15 bits, a bitmap",
+    2: "5.40, 16 bits, a bitmap marking 434 of 10,152 points",
+    3: "5.40, 9 bits, grid 130",
+}
+RAP_STRIDE = 13
 STATISTICS = [
     "typeOfStatisticalProcessing",
     "indicatorOfUnitForTimeRange",
@@ -219,15 +240,16 @@ def compare(path):
         f.write("\n")
 
 
-def cut(path):
+def cut(path, kinds=None, name="gfs-messages", stride=STRIDE):
     pinned()
+    kinds = kinds or KINDS
     raw, read = [], []
     with open(path, "rb") as f:
         k = 0
         while (h := eccodes.codes_grib_new_from_file(f)) is not None:
-            if k in CUT:
+            if k in kinds:
                 raw.append(eccodes.codes_get_message(h))
-                m = {"message_in_file": k, "kind": KINDS[k]}
+                m = {"message_in_file": k, "kind": kinds[k]}
                 m.update(
                     {
                         key: eccodes.codes_get(h, key, ktype=str if key == "shortName" else int)
@@ -244,28 +266,34 @@ def cut(path):
                 m["sum"] = math.fsum(v[present].tolist())
                 m["index_weighted_sum"] = math.fsum((v[present] * index[present]).tolist())
                 m["samples"] = [
-                    None if math.isnan(x) else float(x) for x in v[::STRIDE].tolist()
+                    None if math.isnan(x) else float(x) for x in v[::stride].tolist()
                 ]
                 read.append(m)
             eccodes.codes_release(h)
             k += 1
-    with open(OUT + "gfs-messages.grib2", "wb") as f:
+    if len(raw) != len(kinds):
+        sys.exit(f"{len(raw)} of the {len(kinds)} messages asked for are in {path}")
+    with open(OUT + name + ".grib2", "wb") as f:
         f.write(b"".join(raw))
     out = {
         "eccodes": VERSION,
         "from": path.rsplit("/", 1)[-1],
         "from_sha256": sha256(path),
-        "sha256": sha256(OUT + "gfs-messages.grib2"),
-        "stride": STRIDE,
+        "sha256": sha256(OUT + name + ".grib2"),
+        "stride": stride,
     }
     # One message per line, so a change shows as a line in a diff.
-    with open(OUT + "gfs-messages-eccodes.json", "w") as f:
+    with open(OUT + name + "-eccodes.json", "w") as f:
         f.write(json.dumps(out)[:-1] + ', "messages": [\n')
         f.write(",\n".join(" " + json.dumps(m) for m in read))
         f.write("\n]}\n")
 
 
+def cut_rap(path):
+    cut(path, RAP_KINDS, "rap-jpeg2000", RAP_STRIDE)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3 or sys.argv[1] not in ("compare", "cut"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("compare", "cut", "cut-rap"):
         sys.exit(__doc__)
-    {"compare": compare, "cut": cut}[sys.argv[1]](sys.argv[2])
+    {"compare": compare, "cut": cut, "cut-rap": cut_rap}[sys.argv[1]](sys.argv[2])

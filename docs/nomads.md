@@ -276,6 +276,23 @@ within 1.04e-7 of each value, relatively, and 13 more above them. Why they diffe
 packs its cuts again in fewer bits. Read with ecCodes, without hpr, the two files already differ
 by up to 2.4e-6, relatively, at the cut's grid points.
 
+## Files in JPEG 2000
+
+Some of NCEP's files compress each field as a picture: the packed whole numbers become a
+greyscale image, stored in the JPEG 2000 image format (GRIB2's template 5.40). RAP's whole
+pressure-level files are packed this way. hpr decodes them with
+[`hayro-jpeg2000`](https://crates.io/crates/hayro-jpeg2000), a JPEG 2000 decoder written in Rust,
+then turns each whole number into a value as it does for the other packings.
+
+It reads the lossless kind with up to 24 bits a value, which is every RAP field sampled so far. A lossy
+image, or one with more bits, is refused, naming what it is: the decoder works in 32-bit floats,
+which hold every whole number up to 16,777,215 (24 bits) exactly, and nothing here checks what a
+lossy image decodes to. A picture has to be decoded whole, so reading one point decodes the whole
+field; read all the values you need in one go (`Field::values_at`).
+
+A whole RAP file through `hpr weather rap --from` has not been tried: no whole RAP file was
+downloaded, only four of its fields (below).
+
 ## How it is checked
 
 The tests in [`crates/hpr-net/tests/nomads.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/nomads.rs)
@@ -349,6 +366,15 @@ Linux and Windows.
   goes through every check above: its 1,323 values match ecCodes' to one rounding (bound 2.5e-16),
   and its profile matches at every level. `hpr weather` writes its profile, which is the cut's within 6.9e-8,
   relatively (bound 7e-8).
+- **JPEG 2000 in CI.** Four fields cut unchanged from RAP's run of 00 UTC, 30 September 2026:
+  500 hPa temperature on two grids (10,152 and 151,987 points), and the heights of cloud base and
+  cloud top, which have a value only where there is cloud (6,824 and 434 points of 10,152). Their
+  182,443 points match ecCodes' reading: which points have no value, two sums over every value,
+  and every 13th value alone (`rap_messages_in_jpeg2000_decode_to_eccodes_values` in
+  `crates/hpr-io/tests/grib2_gfs.rs`; ecCodes' reading is written by `whole_file.py cut-rap`,
+  [ADR-124](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30)).
+  A damaged image is refused, never a crash: a test changes bytes of one at random, 256 times in
+  CI.
 - **Refusals.** A site outside the file's grid, text that isn't GRIB2, a cycle the model doesn't
   run and a forecast hour its run doesn't have are refused. The decoder's own tests build small
   files by hand to pin the unpacking formula, bitmaps (masks of grid points with no value), both kinds of grid,
@@ -357,9 +383,10 @@ Linux and Windows.
 
 ## What it leaves out
 
-- **JPEG 2000.** Some GRIB2 files are compressed with JPEG 2000 (template 5.40), which hpr refuses
-  by name for now; reading it is planned in [M5.2d3, JPEG 2000](decisions-and-roadmap.md#m5-2d3).
-  Whole GFS files use complex packing, which hpr reads. RAP's whole files have not been tried.
+- **Lossy JPEG 2000.** A field compressed as a lossy JPEG 2000 image, or one of more than 24 bits
+  a value, is refused by name ([Files in JPEG 2000](#files-in-jpeg-2000)). None has been seen.
+- **Whole RAP files.** Their packing is read, but a whole file has not been run through
+  `hpr weather`.
 - **Coarser GFS files.** GFS's 0.5° and 1° files are refused: hpr checks for the 0.25° grid.
 - **Forecast accuracy.** Nothing here checks a forecast against the weather that came.
 - **Time.** One forecast hour per request, with no interpolation between hours: you pick the run
