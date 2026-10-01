@@ -1,0 +1,14 @@
+3449 parts from 16 makers
+
+LOC Precision PNC-3.00: Nose cone, polypropylene, PNC-3.00, ogive, 12.5"
+  Ogive, 285.8 mm long, 78.7 mm across
+  wall 1.96 mm
+  shoulder 95.2 mm long, 75.9 mm across
+  Polypropylene, bulk, 946 kg/m³
+
+Giant Leap TAC-24: Parachute, TAC-1 type, 24 in., 4 shrouds
+  610 mm across, 4 sides, 4 lines of 914 mm
+  stated mass 153.1 g
+
+Estes parts numbered with 30316:
+  BT-20, 30316: Body tube, BT-20, 18 in.

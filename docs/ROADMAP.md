@@ -738,13 +738,12 @@
 - [x] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
   recorded fixtures (no live network in CI); offline mode never touches the network (asserted by
-  test). Split into a and b.
-  - [x] **M5.1a Cache and offline mode** (TTLs, `Mode::Offline`, attribution). *Done when:* an
-    offline fetch never calls the transport (one that fails if called) and serves a stale entry
-    marked stale, in recorded-fixture tests. *Result:* met (ADR-117): `tests/offline.rs`, 30 days.
+  test). Split into a and b. Met: M5.1a an offline fetch never calls the transport (one that fails
+  if called) and serves a stale entry marked stale, in recorded-fixture tests, `tests/offline.rs`
+  (ADR-117); M5.1b a loopback server replaying a recorded fixture fills the cache, `cargo deny`
+  passes, `tests/http.rs` (ADR-118).
+  - [x] **M5.1a Cache and offline mode** (TTLs, `Mode::Offline`, attribution).
   - [x] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
-    *Done when:* a loopback server replaying a recorded fixture fills the cache; `cargo deny` passes.
-    *Result:* met (ADR-118): `tests/http.rs` on 127.0.0.1; limit on unpacked bytes; paths by hand.
 
 - [x] **M5.2 Weather.** Split a to d (ADR-119): Open-Meteo forecast and historical-forecast with
   pressure-level winds, turned into an atmosphere/wind profile; GFS/RAP GRIB2 (pure Rust); U.
@@ -787,18 +786,11 @@
       *Result:* met (ADR-128): rasterio's (GDAL 3.12.2) on 7 fixtures and a whole USGS tile;
       corners bit for bit, exact sums, 4,064 places' pixel and value.
 
-- [x] **M5.4 Motor stock and prices.**
-  - motor.fusionspace.co client (`meta`, `motors`, `in-stock`, `vendors`, and per-motor
-    endpoints), joined with ThrustCurve curves.
-  - Offline snapshot; `hpr motors search --in-stock --class L --max-price 150`.
-
-  *Done when:*
-  - Recorded-fixture tests pass.
-  - The designation to ThrustCurve id mapping covers at least 95% of in-stock motors, with a
-    report of the misses.
-  - Attribution is displayed as the API asks.
-
-  Split a to c (ADR-129). *Result:* met by M5.4a to c.
+- [x] **M5.4 Motor stock and prices.** motor.fusionspace.co client (`meta`, `motors`, `in-stock`,
+  `vendors`, and per-motor endpoints), joined with ThrustCurve curves; offline snapshot; `hpr
+  motors search --in-stock --class L --max-price 150`. *Done when:* recorded-fixture tests pass;
+  the designation to ThrustCurve id mapping covers at least 95% of in-stock motors, with a report
+  of the misses; attribution is displayed as the API asks. Split a to c (ADR-129), each met.
   - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`), its five files via the cache.
     *Done when:* recorded-fixture tests read each endpoint's answer to the values in it, a second
     read works offline, and every answer carries the credit the API asks for. *Result:* met
@@ -815,6 +807,14 @@
   notices). Lookup by vendor and part number; parts can be used from the design API.
 
   *Done when:* all `.orc` files parse, and a design built from catalog parts simulates.
+  Split a and b (ADR-132).
+  - [x] **M5.5a The `.orc` reader** (`hpr_io::orc`), the 16 files OpenRocket 24.12 ships bundled.
+    *Done when:* every bundled file reads, every part OpenRocket's preset loader returns (the
+    oracle) with each value equal to its reading bar named, counted departures; parts are found
+    by maker and part number. *Result:* met (ADR-132): 3,449 parts; 17,911 of 18,306 numbers to
+    the bit, the rest 185 ounces, 207 stated-mass densities, 3 undefined; 252 makers' names.
+  - [ ] **M5.5b Catalog parts in the builder.** *Done when:* a rocket built from catalog parts
+    flies through the builder; each part's mass as built is held to OpenRocket's for its preset.
 ## Phase 3: Uncertainty, optimization, challenges
 
 - [ ] **M6.1 Monte Carlo and sensitivity.**

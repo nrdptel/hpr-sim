@@ -360,7 +360,9 @@ missing or its status disagrees.
 | <a id="m5-4a"></a>[M5.4a][phase-2] | The motor finder's files (its build, every motor, those in stock, the vendors, one motor's page) read through the cache, so they work offline, each carrying the credit the site asks for ([ADR-129][adr-129], [Motor stock and prices](motor-stock.md)) | done |
 | <a id="m5-4b"></a>[M5.4b][phase-2] | ThrustCurve.org's search and a motor's thrust curve through the cache, and the motors in stock matched to ThrustCurve.org's by name, with a report of the misses: 282 of 282 matched ([ADR-130][adr-130], [Motor stock and prices](motor-stock.md#matching-motors-to-thrustcurveorg)) | done |
 | <a id="m5-4c"></a>[M5.4c][phase-2] | `hpr motors search`: motors in stock by class and price, from the network, a saved list or offline, with both sources' credit on every list ([ADR-131][adr-131], [Motors you can buy](cli.md#motors-you-can-buy)) | done |
-| <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
+| <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts: OpenRocket's parts files, looked up by maker and part number, and parts from them in a design; split in two ([ADR-132][adr-132]) | not yet done |
+| <a id="m5-5a"></a>[M5.5a][phase-2] | The 16 `.orc` parts files OpenRocket ships, bundled and read, every part held to OpenRocket's own reading: 3,449 parts, 17,911 values to the bit, the rest counted with their causes ([ADR-132][adr-132], [OpenRocket `.orc` parts catalogues](format/orc.md)) | done |
+| <a id="m5-5b"></a>[M5.5b][phase-2] | Catalogue parts in the builder, and a rocket of them flown | not yet done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
@@ -607,6 +609,7 @@ is the milestone that added or will add that test.
 [adr-129]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-129-m54-split-and-m54a-the-motor-finders-api-through-the-cache-2026-10-01
 [adr-130]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01
 [adr-131]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-131-m54c-hpr-motors-search-stock-and-prices-at-the-command-line-2026-10-01
+[adr-132]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-132-m55a-openrockets-orc-parts-catalogues-held-to-openrockets-reading-2026-10-01
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

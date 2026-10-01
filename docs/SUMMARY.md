@@ -75,6 +75,7 @@
 
 - [The hpr design format (`.hpr` and `.hprz`)](format/hpr.md)
 - [OpenRocket `.ork` design files](format/ork.md)
+- [OpenRocket `.orc` parts catalogues](format/orc.md)
 - [RASP `.eng` motor files](format/eng.md)
 - [RockSim `.rse` motor files](format/rse.md)
 - [ERA5 weather files](format/era5.md)
