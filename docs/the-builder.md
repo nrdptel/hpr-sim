@@ -368,8 +368,8 @@ Where the masses differ, the test checks each cause:
   blunt nose cones. Four elliptical ones fall outside the tolerance: three up to 0.48% heavier
   here, their centres up to 1.7e-3 of their length apart, and one, which states its mass, by its
   centre alone, 1.0e-3 of its length.
-- **Masses stated in ounces,** 185 parts (not the hollow ones above), differ by OpenRocket's rounded ounce, 8.8e-10 of the
-  mass.
+- **Masses stated in ounces,** on 185 parts of every kind (a different 185 from the hollow parts
+  above), differ by OpenRocket's rounded ounce, 8.8e-10 of the mass.
 - **The 4 refused parts.** One nose cone names a material its file doesn't define. Three tubes or
   rings have a bore no narrower than their outside.
 
