@@ -229,11 +229,9 @@
   - Pitch, yaw and roll damping; roll forcing from cant.
   - Extend the M1.5 override tables to CNα and CP vs Mach and AoA, importable from RASAero CSV.
   - Loft lessons: L7, L17, L18.
-  *Done when:*
-  - Cd vs Mach is within 10% of RocketPy's RASAero CSVs across Mach 0.1–2.0 for the available
-    rockets. Per-band errors are in the report.
-  - The supersonic cases in the M2.1 suite are within their tolerances.
-  - Roll-rate steady state matches the analytic cant/damping balance.
+  *Done when:* Cd vs Mach is within 10% of RocketPy's RASAero CSVs across Mach 0.1–2.0 for the
+  available rockets, per-band errors in the report; the supersonic cases in the M2.1 suite are
+  within their tolerances; roll-rate steady state matches the analytic cant/damping balance.
 
   Split into M1.8a to M1.8e. The measured reference throughout is NASA's Arcas Robin wind-tunnel
   model: TN D-4013 (Mach 0.6–1.2) and TN D-4014 (Mach 1.5–4.63).
@@ -599,10 +597,9 @@
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
   - Loft lessons: L83.
-  *Done when:*
-  - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
-  - Mean absolute apogee error is reported against the 5% target.
-  - Each outlier has an explanation.
+  *Done when:* at least 6 real flights are in the report, with apogee error and altitude-trace
+  RMS; mean absolute apogee error is reported against the 5% target; each outlier has an
+  explanation.
   - [x] **M2.3a ERA5 weather.** Met: netCDF classic and 64-bit offset read as Unidata's library
     reads them, netCDF-4 refused with the conversion; ERA5 levels match RocketPy 1.13's to 1e-12;
     a guide page and an example CI runs.
@@ -806,34 +803,39 @@
   - Landing ellipses at confidence levels; apogee distribution.
   - Sensitivity analysis (Morris screening and Sobol indices).
   - Loft lessons: L52, L53, L54, L55, L96.
-  *Done when:*
-  - Results are bit-reproducible for the same seed.
-  - The ellipse math is tested against analytic Gaussians.
-  - 10,000 flights of an L2 design finish in ≤10 s on the dev machine (recorded).
+  *Done when:* results are bit-reproducible for the same seed; the ellipse math is tested against
+  analytic Gaussians; 10,000 flights of an L2 design finish in ≤10 s on the dev machine (recorded).
   Split a to d (ADR-134).
-  - [x] **M6.1a Seeded dispersion** (`hpr_analysis::montecarlo`). *Done when:* the same seed gives
-    bit-identical samples whatever the run's length or thread count; zero dispersion flies the
-    nominal flight bit for bit; failed samples are counted; the apogee's distribution is reported;
-    the five lessons' tests pass. *Result:* met (ADR-134): 11 inputs; sample 4 the same in runs of
-    3 and 6 and on 1, 2 and 5 threads; the guide's 200 flights, none failed.
+  - [x] **M6.1a Seeded dispersion.** *Done when:* the same seed gives bit-identical samples
+    whatever the run's length or thread count; zero dispersion flies the nominal bit for bit;
+    failures counted; the apogee's distribution reported; the lessons' tests pass. Met (ADR-134).
   - [x] **M6.1b Landing ellipses** at confidence levels. *Done when:* the ellipse math (covariance,
     axes, the χ² scale of a confidence level) is tested against analytic Gaussians. *Result:* met
     (ADR-135): axes to 1e-14, a density's mass inside to 1e-12, sampled shares within 5σ.
-  - [x] **M6.1c Sensitivity:** Morris screening and Sobol indices. *Done when:* both match the
-    known indices of test functions with closed forms (Ishigami, Sobol's g) within sampling error.
-    *Result:* met (ADR-136): within 4 standard errors, calibrated on 500 to 1,000 seeds.
-  - [x] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on
-    the dev machine, recorded in `docs/perf.md`. *Result:* met (ADR-137): Valetudo 3.00 s; a
-    supersonic K940 rocket 9.43 s (264 s before): one layout and one supersonic table a run.
+  - [x] **M6.1c Sensitivity:** Morris and Sobol. *Done when:* both match the known indices of test
+    functions with closed forms (Ishigami, Sobol's g) within sampling error. Met (ADR-136).
+  - [x] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s,
+    recorded in `docs/perf.md`. Met (ADR-137): Valetudo 3.00 s, a supersonic K940 rocket 9.43 s.
 
 - [ ] **M6.2 Optimization engine.**
   - Continuous and discrete design variables, including motor choice and catalog parts.
   - Constraints and single- or multi-objective goals.
   - Algorithms: CMA-ES, NSGA-II, Bayesian/EGO; robust (MC-in-the-loop) mode.
-
-  *Done when:*
-  - Benchmark functions converge to known optima within tolerance.
-  - A "hit 3,048 m" design problem is solved with the result validated by re-simulation.
+  *Done when:* benchmark functions converge to known optima within tolerance; a "hit 3,048 m"
+  design problem is solved with the result validated by re-simulation. Split a to e (ADR-138).
+  - [x] **M6.2a CMA-ES, continuous variables** (`hpr_analysis::optimize`). *Done when:* sphere,
+    ellipsoid, rotated ellipsoid and Rosenbrock (10 variables) reach their minima to 1e-10 from 20
+    seeds (Rosenbrock from ≥17, the rest in its local minimum), median evaluations within 25% of
+    pycma's; a "hit 3,048 m" problem is solved, the winner re-flown within 0.1 m. *Result:* met
+    (ADR-138): within 5% of pycma; Rosenbrock 17 of 20; 3,048.017 m in 162 flights, re-flown alike.
+  - [ ] **M6.2b Discrete variables and constraints.** *Done when:* a catalogue motor and part are
+    chosen with continuous variables under stability-margin and rail-exit constraints; "hit
+    3,048 m" with the motor free, each constraint re-checked on the winner by re-simulation.
+  - [ ] **M6.2c NSGA-II.** *Done when:* ZDT1 to ZDT3 fronts within a stated generational distance;
+    a two-goal rocket problem gives a front.
+  - [ ] **M6.2d EGO.** *Done when:* Branin and Hartmann reach their minima in a stated budget.
+  - [ ] **M6.2e Robust mode.** *Done when:* a Monte Carlo statistic is optimized with common random
+    numbers, the winner checked by a fresh Monte Carlo run.
 
 - [ ] **M6.3 Challenge specs and presets.**
   - A TOML/JSON challenge format: target apogee and scoring, impulse limits, stability

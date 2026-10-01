@@ -18,6 +18,8 @@
 
 [Sensitivity analysis](sensitivity.md)
 
+[Optimization](optimization.md)
+
 [The command line](cli.md)
 
 [Online data and the cache](online-data.md)

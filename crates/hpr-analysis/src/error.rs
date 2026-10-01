@@ -57,6 +57,16 @@ pub enum AnalysisError {
     /// Two sensitivity factors with one name, which would make their results ambiguous.
     #[error("two factors named {0:?}")]
     DuplicateFactor(String),
+    /// Two optimization variables with one name, which would make the result ambiguous.
+    #[error("two variables named {0:?}")]
+    DuplicateVariable(String),
+    /// An optimizer's first candidates, of which not one fell inside the variables' bounds in
+    /// the draws allowed: the steps are too large for the bounds.
+    #[error("no candidate inside the variables' bounds in {draws} draws")]
+    OutOfBounds {
+        /// How many draws were made.
+        draws: usize,
+    },
     /// A rocket configuration the design doesn't have.
     #[error("no configuration {0:?} in the design")]
     NoConfiguration(String),

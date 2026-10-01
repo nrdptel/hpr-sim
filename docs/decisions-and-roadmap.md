@@ -368,7 +368,12 @@ missing or its status disagrees.
 | <a id="m6-1b"></a>[M6.1b][phase-3] | Landing ellipses holding a chosen share of the landings, checked against normal spreads with known answers; the next flight's ellipse; the landings each holds counted ([ADR-135][adr-135], [Landing ellipses](monte-carlo.md#landing-ellipses)) | done |
 | <a id="m6-1c"></a>[M6.1c][phase-3] | Sensitivity analysis, Morris screening and Sobol' indices, checked against functions with known answers within their own standard errors ([ADR-136][adr-136], [Sensitivity analysis](sensitivity.md)) | done |
 | <a id="m6-1d"></a>[M6.1d][phase-3] | 10,000 flights of a Level 2 rocket (one on a J, K or L motor) in 10 s or less, timed and recorded: 3.0 s for Valetudo, 9.4 s for a rocket past Mach 1.6, a run's flights sharing one layout and one supersonic table ([ADR-137][adr-137], [How long a run takes](monte-carlo.md#how-long-a-run-takes)) | done |
-| <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |
+| <a id="m6-2"></a>[M6.2][phase-3] | Design optimization; split in five ([ADR-138][adr-138]) | not yet done |
+| <a id="m6-2a"></a>[M6.2a][phase-3] | CMA-ES over continuous design variables, held to four test functions' known minima and to pycma, its author's implementation; a rocket's ballast and body length found to hit 3,048 m and checked by flying it again ([ADR-138][adr-138], [Optimization](optimization.md)) | done |
+| <a id="m6-2b"></a>[M6.2b][phase-3] | Discrete choices (a motor, a catalogue part) and limits such as a minimum stability margin | not yet done |
+| <a id="m6-2c"></a>[M6.2c][phase-3] | Several goals at once: NSGA-II and a Pareto front | not yet done |
+| <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights | not yet done |
+| <a id="m6-2e"></a>[M6.2e][phase-3] | Robust designs: a Monte Carlo run inside the optimizer | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
 | <a id="m6-4"></a>[M6.4][phase-3] | Airbrakes, with a controller that aims for a target apogee | not yet done |
 | <a id="m6-5"></a>[M6.5][phase-3] | Canards, fixed and then movable for roll control | not yet done |
@@ -619,6 +624,7 @@ is the milestone that added or will add that test.
 [adr-135]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-135-landing-ellipses-the-normal-ellipse-the-next-flights-and-a-count-of-what-each-holds-2026-10-01
 [adr-136]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-136-sensitivity-analysis-morris-paths-and-saltellis-sobol-estimates-with-their-standard-errors-2026-10-01
 [adr-137]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-137-ten-thousand-flights-a-runs-flights-share-the-nominals-layout-and-supersonic-table-2026-10-01
+[adr-138]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-138-optimization-cma-es-first-held-to-test-functions-and-to-pycma-2026-10-01
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

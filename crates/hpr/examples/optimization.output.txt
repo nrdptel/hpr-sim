@@ -1,0 +1,13 @@
+CMA-ES on four test functions, 10 variables, run to f ≤ 1e-10 (seed 2026)
+function            start   evaluations   best value   distance to the minimum
+sphere                1.0          1660      9.4e-11                    9.7e-6
+ellipsoid             1.0          5900      8.3e-11                    4.0e-6
+rotated ellipsoid     1.0          6040      9.4e-11                    1.4e-6
+Rosenbrock            0.0          6430      7.1e-11                    2.4e-6
+
+Hit 3,048 m with a 66 mm rocket on a J760 by its nose ballast and body length
+Not yet validated: see the Accuracy page before trusting these numbers.
+Start: 0.300 kg of ballast, a 1.000 m body: apogee 3128.8 m
+Found: 0.995 kg of ballast, a 0.806 m body, in 162 flights (27 generations, stopped: Target)
+Flown again: apogee 3048.017 m (miss +0.017 m)
+Flown again, tolerances 100 times tighter: apogee 3048.014 m (miss +0.014 m)
