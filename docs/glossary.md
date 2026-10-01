@@ -237,6 +237,10 @@ An answer written as an exact formula, such as the parabola a body follows in a 
 
 Several motors in one rocket, burning side by side: in one mount of several like tubes (an OpenRocket `3-ring`, say), or each in its own mount. hpr lights each motor at its own ignition (at launch unless told otherwise). It sums their thrusts and masses, and adds the turning moment of any motor set off the axis, as when one motor of a cluster fails to light (a "motor out"). Tests check this against hand calculations, and OpenRocket's cluster example, read from its `.ork` file with a motor in every tube, flies within 5% of OpenRocket's apogee and largest speed. Three of its apogees are compared with OpenRocket's flight with no parachute, since its parachute opened before apogee ([M1.9c](decisions-and-roadmap.md#m1-9c), a two-stage and a cluster design against OpenRocket). See [Clusters](physics/design.md#clusters).
 
+## CMA-ES
+
+The covariance matrix adaptation evolution strategy, N. Hansen's [optimization](#optimization) method. It samples designs from a cloud (a normal distribution), moves the cloud toward the better ones, and learns from them which way and how far to step next. It needs only the order of the results, not their slopes. See [Optimization](optimization.md).
+
 ## Code-to-code comparison
 
 Flying the same rocket, or the same part of a flight, in hpr and in another simulator from the same
@@ -838,6 +842,10 @@ incompatible with hpr's. The comparison with it is [M2.2](decisions-and-roadmap.
 OpenRocket milestone: its mass comparison is done
 ([M2.2a](decisions-and-roadmap.md#m2-2a)), and flights come in
 [M2.2d](decisions-and-roadmap.md#m2-2d).
+
+## Optimization
+
+Searching for the design that makes a chosen number as small (or as large) as it can be: the squared miss from a target apogee, say. hpr's optimizer is [CMA-ES](#cma-es). See [Optimization](optimization.md).
 
 ## Oracle
 

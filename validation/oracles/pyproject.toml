@@ -34,6 +34,9 @@ dependencies = [
     # MIT): writes the GeoTIFF fixtures and reads the heights `hpr_io::geotiff` is checked
     # against (`validation/oracles/geotiff/dem.py`).
     "rasterio==1.5.2",
+    # Nikolaus Hansen's reference CMA-ES (BSD-3-Clause), run as the outside optimizer
+    # `hpr_analysis::optimize::cmaes` is checked against (`validation/oracles/cmaes/pycma_runs.py`).
+    "cma==4.5.0",
 ]
 
 [tool.uv]

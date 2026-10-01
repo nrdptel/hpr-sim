@@ -46,7 +46,9 @@ pub enum AnalysisError {
         /// The length it should have.
         expected: usize,
     },
-    /// A model's output that isn't a finite number, at the given point of a sensitivity design.
+    /// A model's output that can't be used: one that isn't finite at the given point of a
+    /// sensitivity design, or a NaN or `−∞` at the given evaluation of an optimizer's run, both
+    /// counted from 0.
     #[error("the output at point {index} is not finite: {value}")]
     Output {
         /// The point's index in the design's order.
@@ -57,6 +59,16 @@ pub enum AnalysisError {
     /// Two sensitivity factors with one name, which would make their results ambiguous.
     #[error("two factors named {0:?}")]
     DuplicateFactor(String),
+    /// Two optimization variables with one name, which would make the result ambiguous.
+    #[error("two variables named {0:?}")]
+    DuplicateVariable(String),
+    /// A first candidate of an optimizer that didn't fall inside the variables' bounds in the
+    /// draws allowed: the steps are too large for the bounds, or the starts too close to them.
+    #[error("no candidate inside the variables' bounds in {draws} draws")]
+    OutOfBounds {
+        /// How many draws were made.
+        draws: usize,
+    },
     /// A rocket configuration the design doesn't have.
     #[error("no configuration {0:?} in the design")]
     NoConfiguration(String),

@@ -448,6 +448,7 @@ Nothing here is bundled.
 | `netCDF4` 1.7.4 | MIT | run-only | the Unidata netCDF C library's Python interface: writes the reader's test files and records its reading (`validation/oracles/netcdf/`) |
 | `xarray` 2026.7.0 | Apache-2.0 | run-only | runs the guide's conversion of a netCDF-4 ERA5 file to the classic format (`validation/oracles/netcdf/era5.py`) |
 | `rasterio` 1.5.2 | BSD-3-Clause; its wheel bundles GDAL 3.12.2 (MIT) and the libraries GDAL links | run-only | writes the GeoTIFF fixtures and records the reading `hpr_io::geotiff` is checked against (`validation/oracles/geotiff/`) |
+| `cma` 4.5.0 (pycma) | BSD-3-Clause | run-only | N. Hansen's CMA-ES, run on four test functions as the reference `hpr_analysis::optimize::cmaes` is held to (`validation/oracles/cmaes/pycma_runs.py`); none of its code is ported |
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
 | a Java 17 runtime (for example `brew install openjdk@17`) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 
