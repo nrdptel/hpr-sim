@@ -10591,12 +10591,12 @@ match exactly one ThrustCurve record on (manufacturer, designation), as all 598 
    `fetch_*` through `Client::fetch_checked`, so an answer that doesn't parse is never cached. The
    types mirror the API's JSON field for field (prices `u64` cents, impulse and thrust `f64`, the
    listing status, motor type and hazmat as enums), so a value read is the answer's and writes
-   back to it. Unknown fields are ignored (the API may add some under v1). The cheapest offer's
-   prices are optional, as the API's OpenAPI schema has them (its generator writes null when no
-   in-stock listing shows a price); a listing status the API adds later reads as `Unknown`, so
-   one new word doesn't refuse the list; a stock count is read as the vendor shows it, signed.
-   An unknown motor type or hazmat label is refused. `fetch_motor` returns the page, with its
-   build time.
+   back to it, bar a listing status added later (below). Unknown fields are ignored (the API may
+   add some under v1). The cheapest offer's prices are optional, as the API's OpenAPI schema has
+   them, though no recorded offer lacks one; a listing status the API adds later reads as
+   `Unknown` (its word is lost), so one new word doesn't refuse the list; a stock count is read as
+   the vendor shows it, signed. An unknown motor type or hazmat label is refused (ThrustCurve's
+   metadata lists the three types). `fetch_motor` returns the page, with its build time.
 3. **Refused: the structural rules; pinned: the derived ones.** The parser refuses another schema
    version, a build time that isn't UTC ISO 8601, a list whose `count` disagrees, an impulse
    class that isn't one capital letter, a diameter not above zero, a negative impulse, thrust or
@@ -10611,8 +10611,8 @@ match exactly one ThrustCurve record on (manufacturer, designation), as all 598 
 4. **A manufacturer and designation.** `Endpoint::motor` takes the API's three manufacturers by
    name or slug, any case, and a designation of ASCII letters, digits, `-`, `_`, `.` and `/` (the
    characters ThrustCurve's designations use), not empty and not all dots, so no request leaves
-   the API's `motors/` folder; anything else is refused before the client is asked. The variant is
-   `#[non_exhaustive]`, so no caller builds one past the checks.
+   the API's `motors/` folder; anything else is refused before the client is asked. The name is a
+   `MotorName` with private fields, so no caller builds or changes one past the checks.
 5. **An hour's TTL,** the site's rebuild interval; offline, or with the site down, the cached copy
    is served stale, as every source does (ADR-117).
 6. **The credit.** `ATTRIBUTION` names motor.fusionspace.co, its two sources and its caution to

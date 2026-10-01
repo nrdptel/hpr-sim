@@ -21,8 +21,8 @@ use std::cell::Cell;
 use std::path::Path;
 
 use hpr_net::motor_finder::{
-    self, ATTRIBUTION, Endpoint, Hazmat, ListingStatus, MotorFinderError, MotorList, MotorType,
-    TTL_S,
+    self, ATTRIBUTION, Endpoint, Hazmat, Listing, ListingStatus, MotorFinderError, MotorList,
+    MotorType, TTL_S,
 };
 use hpr_net::{Cache, Client, Freshness, Mode, NetError, Replay, Transport};
 use serde::Serialize;
@@ -466,18 +466,18 @@ fn answers_that_break_the_apis_rules_are_refused() {
         };
         assert_eq!(kind, refused);
     }
-    for change in [
-        changed("motor-finder-vendors.json", |j| {
-            j["schema_version"] = 0.into()
-        }),
-        changed("motor-finder-vendors.json", |j| {
-            j["generated_at"] = "now".into()
-        }),
-    ] {
-        assert!(matches!(
-            motor_finder::parse_vendors(&change),
-            Err(MotorFinderError::Schema { found: 0 } | MotorFinderError::Field { .. })
-        ));
+    let vendors = "motor-finder-vendors.json";
+    let old = changed(vendors, |j| j["schema_version"] = 0.into());
+    assert!(matches!(
+        motor_finder::parse_vendors(&old),
+        Err(MotorFinderError::Schema { found: 0 })
+    ));
+    let undated = changed(vendors, |j| j["generated_at"] = "now".into());
+    match motor_finder::parse_vendors(&undated) {
+        Err(MotorFinderError::Field { field, value }) => {
+            assert_eq!((field.as_str(), value.as_str()), ("generated_at", "now"));
+        }
+        other => panic!("{other:?}"),
     }
     let missing = changed("motor-finder-aerotech-H128W.json", |j| {
         j["motor"].as_object_mut().unwrap().remove("listings");
@@ -519,8 +519,10 @@ fn what_the_api_allows_is_read() {
 
 /// The enums read the API's words with their meaning: H128W is a reload shipped as hazardous
 /// material, F27R/L a single-use motor whose shipping varies, D13W a reload that ships as
-/// ordinary goods; and the recording's listings count 827 in stock, 2,363 out and 495 on special
-/// order.
+/// ordinary goods; every D and E motor ships as ordinary goods, every H and up as hazardous, and
+/// F and G motors vary (75) or not (29); the recording's listings count 827 in stock, 2,363 out
+/// and 495 on special order. Also the guide page's counts: 267 listings show units on hand, 263
+/// fall on a half cent, and E15W and G38FJ are discontinued but in stock.
 #[test]
 fn the_apis_words_read_with_their_meaning() {
     let all = motor_finder::parse_motors(&fixture("motor-finder-motors.json")).unwrap();
@@ -535,6 +537,33 @@ fn the_apis_words_read_with_their_meaning() {
     assert_eq!(find("H128W"), (Some(MotorType::Reload), Hazmat::Required));
     assert_eq!(find("F27R/L"), (Some(MotorType::SingleUse), Hazmat::Varies));
     assert_eq!(find("D13W"), (Some(MotorType::Reload), Hazmat::NotRequired));
+    // The hazmat labels by class, as the rustdoc of `Hazmat` quotes them.
+    let labelled = |classes: &str, hazmat: Hazmat| {
+        let motors = all
+            .motors
+            .iter()
+            .filter(|m| classes.contains(&m.impulse_class));
+        motors.filter(|m| m.hazmat == hazmat).count()
+    };
+    let in_classes = |classes: &str| {
+        let motors = all.motors.iter();
+        motors
+            .filter(|m| classes.contains(&m.impulse_class))
+            .count()
+    };
+    assert_eq!(labelled("DE", Hazmat::NotRequired), in_classes("DE"));
+    assert_eq!(
+        labelled("HIJKLMNO", Hazmat::Required),
+        in_classes("HIJKLMNO")
+    );
+    assert_eq!(
+        (
+            labelled("FG", Hazmat::Varies),
+            labelled("FG", Hazmat::Required)
+        ),
+        (75, 29)
+    );
+    assert_eq!(in_classes("FG"), 104);
     let count = |status: ListingStatus| {
         let listings = all.motors.iter().flat_map(|m| &m.listings);
         listings.filter(|l| l.status == status).count()
@@ -549,6 +578,25 @@ fn the_apis_words_read_with_their_meaning() {
         .map(count),
         [827, 2_363, 495, 0]
     );
+    // The guide page's other counts: listings that show units on hand, and those whose price of
+    // one motor falls on a half cent; and the discontinued motors in stock.
+    let listings: Vec<_> = all.motors.iter().flat_map(|m| &m.listings).collect();
+    let counted = listings.iter().filter(|l| l.stock_count.is_some()).count();
+    let half_cent = |l: &&&Listing| {
+        let (price, pack) = (l.price_cents.unwrap(), u64::from(l.pack_size));
+        2 * (price % pack) == pack
+    };
+    assert_eq!(
+        (counted, listings.iter().filter(half_cent).count()),
+        (267, 263)
+    );
+    let old_stock: Vec<&str> = all
+        .motors
+        .iter()
+        .filter(|m| m.discontinued && m.in_stock)
+        .map(|m| m.designation.as_str())
+        .collect();
+    assert_eq!(old_stock, ["E15W", "G38FJ"]);
 }
 
 /// A transport that answers each call with the next of its bodies.

@@ -20,8 +20,8 @@
 //! a price or stock is shown: the API's terms ask for credit to motor.fusionspace.co, and say to
 //! check stock and price on the vendor's own page before relying on them.
 //!
-//! **How far to trust it:** a value is the answer's, unchanged (`tests/motor_finder.rs` reads
-//! every field of every recorded answer back). Whether a vendor really has a motor, at that price,
+//! **How far to trust it:** a value is the answer's, unchanged, bar a listing status the API adds
+//! later (`tests/motor_finder.rs` reads every field of every recorded answer back). Whether a vendor really has a motor, at that price,
 //! is the vendor's to say: the finder reads their public listings, up to about an hour old when it
 //! builds its files, and a fresh cached copy may be an hour older again. One value that breaks a
 //! rule refuses the whole file, so the last good copy is kept; a cheapest offer with no price,
@@ -82,14 +82,30 @@ pub enum Endpoint {
     InStock,
     /// `vendors.json`: the vendors read.
     Vendors,
-    /// One motor's page. Build it with [`Endpoint::motor`], which checks both fields.
-    #[non_exhaustive]
-    Motor {
-        /// The manufacturer's slug, one of [`MANUFACTURERS`].
-        manufacturer_slug: &'static str,
-        /// The designation, as ThrustCurve spells it (`H128W`, `F27R/L`, `3683L851-P`).
-        designation: String,
-    },
+    /// One motor's page. Build it with [`Endpoint::motor`], which checks the motor's name.
+    Motor(MotorName),
+}
+
+/// A motor's manufacturer and designation, checked by [`Endpoint::motor`] so its page's URL stays
+/// in the API's `motors/` folder. Its fields are private, so it can't be changed past the checks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MotorName {
+    manufacturer_slug: &'static str,
+    designation: String,
+}
+
+impl MotorName {
+    /// The manufacturer's slug, one of [`MANUFACTURERS`].
+    #[must_use]
+    pub fn manufacturer_slug(&self) -> &'static str {
+        self.manufacturer_slug
+    }
+
+    /// The designation, as ThrustCurve spells it (`H128W`, `F27R/L`, `3683L851-P`).
+    #[must_use]
+    pub fn designation(&self) -> &str {
+        &self.designation
+    }
 }
 
 impl Endpoint {
@@ -111,10 +127,10 @@ impl Endpoint {
                 value: designation.to_owned(),
             });
         }
-        Ok(Self::Motor {
+        Ok(Self::Motor(MotorName {
             manufacturer_slug,
             designation: designation.to_owned(),
-        })
+        }))
     }
 
     /// The file's URL under [`BASE_URL`]. A `/` in a motor's designation is written `~`, as the
@@ -126,12 +142,10 @@ impl Endpoint {
             Self::Motors => format!("{BASE_URL}/motors.json"),
             Self::InStock => format!("{BASE_URL}/in-stock.json"),
             Self::Vendors => format!("{BASE_URL}/vendors.json"),
-            Self::Motor {
-                manufacturer_slug,
-                designation,
-            } => format!(
-                "{BASE_URL}/motors/{manufacturer_slug}/{}.json",
-                designation.replace('/', "~")
+            Self::Motor(name) => format!(
+                "{BASE_URL}/motors/{}/{}.json",
+                name.manufacturer_slug,
+                name.designation.replace('/', "~")
             ),
         }
     }
@@ -296,8 +310,8 @@ pub enum Hazmat {
     NotRequired,
 }
 
-/// The cheapest in-stock offer of a motor: the in-stock listing with the lowest unit price, or,
-/// when no in-stock listing shows a price, one of them with no price.
+/// The cheapest in-stock offer of a motor: the in-stock listing with the lowest unit price. The
+/// API's schema lets its prices be null; no recorded offer has them so.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Offer {
