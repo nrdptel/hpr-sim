@@ -1,34 +1,44 @@
-//! A launch site's ground elevation from Open-Meteo's elevation API.
+//! A launch site's elevation (height above sea level) from Open-Meteo's elevation API.
 //!
 //! [Open-Meteo's elevation API](https://open-meteo.com/en/docs/elevation-api)
-//! (`api.open-meteo.com/v1/elevation`) answers the ground's height at up to [`MAX_PLACES`] places
-//! in one request, as `{"elevation":[1400.0]}`, one number per place in the order asked. Its data is
-//! the Copernicus DEM GLO-90 (2021 release), a digital elevation model with a 3 arc-second grid,
-//! about 90 m. Its heights are orthometric, above the EGM2008 geoid (mean sea level), not
-//! above the WGS 84 ellipsoid: a site's ellipsoidal height is `h = H + N`, with `N` the geoid
-//! undulation there, which hpr has no model for (`docs/physics/geodesy.md`).
+//! (`api.open-meteo.com/v1/elevation`) answers the height at up to [`MAX_PLACES`] places in one
+//! request, as `{"elevation":[1400.0]}`, one number per place in the order asked. Its data is the
+//! Copernicus DEM GLO-90 (2021 release), a digital elevation model on a grid 3 arc-seconds apart
+//! in latitude, about 90 m; in longitude the spacing widens above 50° to keep cells about 90 m
+//! across. The Copernicus DEM is a *surface* model: its heights include buildings and vegetation,
+//! so over a tree line or buildings they sit above the bare ground. Its heights are above the
+//! EGM2008 geoid (mean sea level), not the WGS 84 ellipsoid ([product handbook][handbook], issue
+//! 5.0, §1.2.1): a site's ellipsoidal height is `h = H + N`, with `N` the geoid undulation
+//! there, which hpr has no model for ([geodesy notes][geodesy]). The ocean has no tiles and reads
+//! 0 m.
 //!
 //! An [`ElevationRequest`] names the places; [`parse`] reads the answer, refusing one with the
 //! wrong number of heights, a height that is not a number, or a height outside
 //! [`HEIGHT_RANGE_M`]. [`fetch`] asks a [`Client`] for the URL, so the answer comes from the cache
 //! when it can, and offline from the cache only; an answer that doesn't parse is never cached.
-//! The ground doesn't move, so a copy stays fresh for [`TTL_S`], a year. Show [`ATTRIBUTION`] (it
-//! is on every [`Fetched`]) wherever the height is shown.
+//! The URL writes each coordinate to 5 decimals (about 1 m), so a place rebuilt from radians
+//! finds its cached answer. The cache key is the whole request: the same places, in the same
+//! order. The ground doesn't move, so a copy stays fresh for [`TTL_S`], a year. Show
+//! [`ATTRIBUTION`] (it is on every [`Fetched`]) wherever the height is shown.
 //!
-//! **How far to trust it:** a height is the answer's number, unchanged (the tests). Open-Meteo
-//! answers in whole metres: every height in 100 random places asked on 2026-10-01 was whole. How
-//! close that is to the ground under a launch rail depends on the DEM, whose cells are about 90 m
-//! across; nothing here measures that. The [guide page][guide] says more.
+//! **How far to trust it:** a height is the answer's number, unchanged (`tests/elevation.rs`).
+//! The recorded heights are whole metres; Open-Meteo doesn't document its rounding. The
+//! handbook states the DEM's absolute vertical accuracy as under 4 m (90% linear error) outside
+//! Antarctica and Greenland; nothing here measures it. The [guide page][guide] says more.
 //!
 //! ```
-//! use hpr_net::elevation;
+//! use hpr_net::elevation::{self, Place};
 //!
 //! // An answer recorded for Spaceport America's launch area, 32.99° N, 106.97° W.
 //! let body = include_bytes!("../tests/fixtures/replay/open-meteo-elevation.json");
-//! assert_eq!(elevation::parse(body, 1)?, [1400.0]);
+//! let spaceport = Place::new(32.99, -106.97);
+//! let heights = elevation::parse(body, &[spaceport])?;
+//! assert_eq!((heights[0].place, heights[0].height_msl_m), (spaceport, 1400.0));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
+//! [handbook]: https://dataspace.copernicus.eu/sites/default/files/media/files/2024-06/geo1988-copernicusdem-spe-002_producthandbook_i5.0.pdf
+//! [geodesy]: https://nrdptel.github.io/hpr-sim/physics/geodesy.html
 //! [guide]: https://nrdptel.github.io/hpr-sim/elevation.html
 
 use serde::{Deserialize, Serialize};
@@ -46,17 +56,21 @@ pub const MAX_PLACES: usize = 100;
 /// DEM release, years apart.
 pub const TTL_S: u64 = 365 * 86_400;
 
-/// The heights [`parse`] accepts, m above mean sea level. The lowest land is the Dead Sea's shore,
-/// about −430 m, and the highest Everest's summit, 8,849 m; the margins leave room for the DEM's
-/// own errors. A height outside them is a broken answer, such as a 16-bit no-data value (−32,768).
+/// The heights [`parse`] accepts, m above mean sea level. The lowest land, by the Dead Sea, is
+/// about −440 m, and the highest, Everest's summit, 8,849 m; the margins leave room for the DEM's
+/// own errors. A height outside them is a broken answer, such as a 16-bit no-data value.
 pub const HEIGHT_RANGE_M: std::ops::RangeInclusive<f64> = -1_000.0..=9_000.0;
 
-/// The credit Open-Meteo asks for: itself, and the Copernicus programme whose DEM it serves, in
-/// the DEM licence's words.
-pub const ATTRIBUTION: &str = "Elevation data by Open-Meteo.com, from the Copernicus DEM GLO-90: \
-                               © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 \
-                               provided under COPERNICUS by the European Union and ESA; all rights \
-                               reserved";
+/// The decimals each coordinate is written with in the URL: 1e-5° is at most 1.1 m on the ground,
+/// far inside the DEM's 90 m cells.
+const URL_DECIMALS: usize = 5;
+
+/// The credit Open-Meteo's licence (CC BY 4.0) asks for: itself, and the Copernicus programme
+/// whose DEM it serves, in the DEM licence's words.
+pub const ATTRIBUTION: &str = "Elevation data by Open-Meteo.com (CC BY 4.0), from the Copernicus \
+                               DEM GLO-90: © DLR e.V. 2010-2014 and © Airbus Defence and Space \
+                               GmbH 2014-2018 provided under COPERNICUS by the European Union and \
+                               ESA; all rights reserved";
 
 /// A place on the ground.
 #[non_exhaustive]
@@ -77,6 +91,16 @@ impl Place {
             longitude_deg,
         }
     }
+}
+
+/// A place's height, as the elevation API answers it.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Elevation {
+    /// The place, as asked for.
+    pub place: Place,
+    /// The DEM's height there, m above mean sea level (the EGM2008 geoid), not the ellipsoid.
+    pub height_msl_m: f64,
 }
 
 /// What to ask Open-Meteo's elevation API for: one place or up to [`MAX_PLACES`].
@@ -101,22 +125,25 @@ impl ElevationRequest {
     }
 
     /// The URL that asks for every place's height: the latitudes, then the longitudes, each
-    /// comma-separated in the places' order.
+    /// comma-separated in the places' order and written to 5 decimals, trailing zeros dropped.
     ///
     /// # Errors
     /// [`ElevationError::Request`] when there are no places or more than [`MAX_PLACES`], a place
-    /// is outside the range its doc gives, or the endpoint is empty or holds a `?` or `#`.
+    /// is outside the range its doc gives (the value names the place's index), or the endpoint is
+    /// empty or holds a `?` or `#`.
     pub fn url(&self) -> Result<String, ElevationError> {
         let refuse = |what: &'static str, value: String| ElevationError::Request { what, value };
         if !(1..=MAX_PLACES).contains(&self.places.len()) {
             return Err(refuse("number of places", self.places.len().to_string()));
         }
-        for place in &self.places {
+        for (i, place) in self.places.iter().enumerate() {
             if !(-90.0..=90.0).contains(&place.latitude_deg) {
-                return Err(refuse("latitude (deg)", place.latitude_deg.to_string()));
+                let value = format!("place {i}: {}", place.latitude_deg);
+                return Err(refuse("latitude (deg)", value));
             }
             if !(-180.0..=180.0).contains(&place.longitude_deg) {
-                return Err(refuse("longitude (deg)", place.longitude_deg.to_string()));
+                let value = format!("place {i}: {}", place.longitude_deg);
+                return Err(refuse("longitude (deg)", value));
             }
         }
         let endpoint = match &self.endpoint {
@@ -127,7 +154,7 @@ impl ElevationRequest {
             None => ENDPOINT,
         };
         let join = |value: fn(&Place) -> f64| {
-            let values: Vec<String> = self.places.iter().map(|p| value(p).to_string()).collect();
+            let values: Vec<String> = self.places.iter().map(|p| coordinate(value(p))).collect();
             values.join(",")
         };
         Ok(format!(
@@ -149,22 +176,34 @@ impl ElevationRequest {
     }
 }
 
-/// Reads an answer of the elevation API: the ground's height at each of `places` places, m above
-/// mean sea level (the EGM2008 geoid), in the order asked.
+/// A coordinate as the URL writes it: [`URL_DECIMALS`] decimals, trailing zeros and a bare point
+/// dropped, and a negative zero written as `0`.
+fn coordinate(deg: f64) -> String {
+    let fixed = format!("{deg:.URL_DECIMALS$}");
+    let trimmed = fixed.trim_end_matches('0').trim_end_matches('.');
+    if trimmed == "-0" {
+        "0".to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
+
+/// Reads an answer of the elevation API for `places`: each place's height, m above mean sea level
+/// (the EGM2008 geoid), in the order asked.
 ///
 /// # Errors
 /// [`ElevationError::Json`] when the body is not JSON; [`ElevationError::Server`] for Open-Meteo's
 /// error answer; [`ElevationError::Missing`] when `elevation` is not an array of numbers;
-/// [`ElevationError::Count`] when it holds another number of heights than `places`;
+/// [`ElevationError::Count`] when it holds another number of heights than places;
 /// [`ElevationError::OutOfRange`] for a height outside [`HEIGHT_RANGE_M`].
-pub fn parse(body: &[u8], places: usize) -> Result<Vec<f64>, ElevationError> {
+pub fn parse(body: &[u8], places: &[Place]) -> Result<Vec<Elevation>, ElevationError> {
     let json: Value =
         serde_json::from_slice(body).map_err(|e| ElevationError::Json(e.to_string()))?;
     if json.get("error").and_then(Value::as_bool) == Some(true) {
         let reason = json
             .get("reason")
             .and_then(Value::as_str)
-            .unwrap_or("none given");
+            .unwrap_or("no reason given");
         return Err(ElevationError::Server {
             reason: reason.to_owned(),
         });
@@ -174,29 +213,36 @@ pub fn parse(body: &[u8], places: usize) -> Result<Vec<f64>, ElevationError> {
         .get("elevation")
         .and_then(Value::as_array)
         .ok_or_else(|| missing("elevation".to_owned()))?;
-    if heights.len() != places {
+    if heights.len() != places.len() {
         return Err(ElevationError::Count {
-            expected: places,
+            expected: places.len(),
             found: heights.len(),
         });
     }
     heights
         .iter()
+        .zip(places)
         .enumerate()
-        .map(|(index, height)| {
-            let height_m = height
+        .map(|(index, (height, &place))| {
+            let height_msl_m = height
                 .as_f64()
                 .ok_or_else(|| missing(format!("elevation[{index}]")))?;
-            if HEIGHT_RANGE_M.contains(&height_m) {
-                Ok(height_m)
+            if HEIGHT_RANGE_M.contains(&height_msl_m) {
+                Ok(Elevation {
+                    place,
+                    height_msl_m,
+                })
             } else {
-                Err(ElevationError::OutOfRange { index, height_m })
+                Err(ElevationError::OutOfRange {
+                    index,
+                    height_m: height_msl_m,
+                })
             }
         })
         .collect()
 }
 
-/// Fetches `request` through `client` and reads each place's height, m above mean sea level.
+/// Fetches `request` through `client` and reads each place's height above mean sea level.
 ///
 /// The answer comes from the client's cache while fresh (see [`ElevationRequest::source`]);
 /// offline, from the cache only. The [`Fetched`] says which, carries [`ATTRIBUTION`] and holds the
@@ -212,9 +258,9 @@ pub fn fetch<T: Transport>(
     client: &Client<T>,
     request: &ElevationRequest,
     now_s: u64,
-) -> Result<(Vec<f64>, Fetched), ElevationError> {
+) -> Result<(Vec<Elevation>, Fetched), ElevationError> {
     let url = request.url()?;
-    let places = request.places.len();
+    let places = &request.places;
     let check = |body: &[u8]| parse(body, places).map(drop).map_err(|e| e.to_string());
     let fetched = client.fetch_checked(&request.source(), &url, now_s, check)?;
     let heights = parse(&fetched.body, places)?;
@@ -230,7 +276,7 @@ pub enum ElevationError {
     Request {
         /// The field.
         what: &'static str,
-        /// Its value.
+        /// Its value; for a coordinate, with its place's index.
         value: String,
     },
     /// The fetch failed.
@@ -240,8 +286,9 @@ pub enum ElevationError {
     #[error("the Open-Meteo elevation answer is not JSON: {0}")]
     Json(String),
     /// The body is Open-Meteo's error answer. Open-Meteo sends it with HTTP status 400, which
-    /// `Http` reports as [`NetError::Transport`] without the body; [`fetch`] reports any answer
-    /// that doesn't parse as [`NetError::Refused`], with this error's message.
+    /// `Http` reports as [`NetError::Transport`] naming the status, without the body; this error
+    /// comes only from a transport that hands the body on, or a self-hosted server that answers
+    /// it with status 200.
     #[error("Open-Meteo refused the elevation request: {reason}")]
     Server {
         /// Its reason.
@@ -254,7 +301,7 @@ pub enum ElevationError {
         field: String,
     },
     /// The answer holds another number of heights than places asked for.
-    #[error("the Open-Meteo elevation answer holds {found} heights for {expected} places")]
+    #[error("the Open-Meteo elevation answer holds {found} heights, not the {expected} asked for")]
     Count {
         /// The places asked for.
         expected: usize,
@@ -275,13 +322,15 @@ pub enum ElevationError {
 mod tests {
     use super::*;
 
-    fn request(places: &[(f64, f64)]) -> ElevationRequest {
-        ElevationRequest::new(
-            places
-                .iter()
-                .map(|&(lat, lon)| Place::new(lat, lon))
-                .collect(),
-        )
+    fn places(places: &[(f64, f64)]) -> Vec<Place> {
+        places
+            .iter()
+            .map(|&(lat, lon)| Place::new(lat, lon))
+            .collect()
+    }
+
+    fn request(list: &[(f64, f64)]) -> ElevationRequest {
+        ElevationRequest::new(places(list))
     }
 
     /// The field a request refusal names.
@@ -290,6 +339,16 @@ mod tests {
             Err(ElevationError::Request { what, value }) => (what, value),
             other => panic!("not a request refusal: {other:?}"),
         }
+    }
+
+    /// Only the heights of an answer.
+    fn heights(body: &[u8], list: &[(f64, f64)]) -> Vec<f64> {
+        let read = parse(body, &places(list)).unwrap();
+        assert_eq!(
+            read.iter().map(|e| e.place).collect::<Vec<_>>(),
+            places(list)
+        );
+        read.iter().map(|e| e.height_msl_m).collect()
     }
 
     #[test]
@@ -312,6 +371,40 @@ mod tests {
         );
     }
 
+    /// A place rebuilt from radians has other last digits (−106.91° comes back as
+    /// −106.91000000000001); the URL, and so the cache key, is the same.
+    #[test]
+    fn the_url_survives_a_round_trip_through_radians() {
+        let mut changed = 0;
+        for hundredths in -18_000..=18_000 {
+            let deg = f64::from(hundredths) / 100.0;
+            let again = deg.to_radians().to_degrees();
+            changed += usize::from(again.to_bits() != deg.to_bits());
+            let lat = deg / 2.0;
+            let back = (lat.to_radians().to_degrees(), again);
+            assert_eq!(
+                request(&[back]).url().unwrap(),
+                request(&[(lat, deg)]).url().unwrap(),
+                "{deg}"
+            );
+        }
+        // The case is real: thousands of two-decimal longitudes change on the way.
+        assert!(changed > 1_000, "{changed}");
+        assert_eq!(coordinate(-106.910_000_000_000_01), "-106.91");
+    }
+
+    #[test]
+    fn coordinates_are_written_to_five_decimals() {
+        assert_eq!(coordinate(0.0), "0");
+        assert_eq!(coordinate(-0.0), "0");
+        assert_eq!(coordinate(-0.000_001), "0");
+        assert_eq!(coordinate(-0.000_01), "-0.00001");
+        assert_eq!(coordinate(90.0), "90");
+        assert_eq!(coordinate(-180.0), "-180");
+        assert_eq!(coordinate(12.345_678), "12.34568");
+        assert_eq!(coordinate(1.5), "1.5");
+    }
+
     #[test]
     fn a_request_out_of_range_names_its_field() {
         assert_eq!(refused(&request(&[])), ("number of places", "0".to_owned()));
@@ -324,19 +417,19 @@ mod tests {
         );
         assert_eq!(
             refused(&request(&[(0.0, 0.0), (90.5, 0.0)])),
-            ("latitude (deg)", "90.5".to_owned())
+            ("latitude (deg)", "place 1: 90.5".to_owned())
         );
         assert_eq!(
             refused(&request(&[(f64::NAN, 0.0)])),
-            ("latitude (deg)", "NaN".to_owned())
+            ("latitude (deg)", "place 0: NaN".to_owned())
         );
         assert_eq!(
             refused(&request(&[(-90.0, -180.5)])),
-            ("longitude (deg)", "-180.5".to_owned())
+            ("longitude (deg)", "place 0: -180.5".to_owned())
         );
         assert_eq!(
             refused(&request(&[(0.0, f64::NAN)])),
-            ("longitude (deg)", "NaN".to_owned())
+            ("longitude (deg)", "place 0: NaN".to_owned())
         );
         assert!(request(&[(-90.0, 180.0), (90.0, -180.0)]).url().is_ok());
         for endpoint in ["", "https://x.test/v1/elevation?a=1", "https://x.test/#e"] {
@@ -347,13 +440,13 @@ mod tests {
     }
 
     #[test]
-    fn the_source_carries_the_copernicus_credit_and_a_year() {
+    fn the_source_carries_both_credits_and_a_year() {
         let source = request(&[(0.0, 0.0)]).source();
         assert_eq!(source.ttl_s, 31_536_000);
         assert!(
             source
                 .attribution
-                .starts_with("Elevation data by Open-Meteo.com")
+                .starts_with("Elevation data by Open-Meteo.com (CC BY 4.0)")
         );
         assert!(source.attribution.contains("Copernicus DEM GLO-90"));
         assert!(source.attribution.ends_with("all rights reserved"));
@@ -362,22 +455,27 @@ mod tests {
 
     #[test]
     fn parse_reads_every_height_in_order() {
+        let three = [(32.99, -106.97), (31.5, 35.5), (0.0, -30.0)];
         assert_eq!(
-            parse(br#"{"elevation":[1400.0, -427.0, 0.0]}"#, 3).unwrap(),
+            heights(br#"{"elevation":[1400.0, -427.0, 0.0]}"#, &three),
             [1400.0, -427.0, 0.0]
         );
         // Another field beside `elevation` is ignored, as Open-Meteo may add some.
         assert_eq!(
-            parse(br#"{"elevation":[12.5],"generationtime_ms":0.1}"#, 1).unwrap(),
+            heights(
+                br#"{"elevation":[12.5],"generationtime_ms":0.1}"#,
+                &[(1.0, 2.0)]
+            ),
             [12.5]
         );
-        let edges = parse(br#"{"elevation":[-1000, 9000]}"#, 2).unwrap();
+        let edges = heights(br#"{"elevation":[-1000, 9000]}"#, &[(0.0, 0.0), (1.0, 1.0)]);
         assert_eq!(edges, [-1_000.0, 9_000.0]);
     }
 
     #[test]
     fn parse_refuses_a_broken_answer() {
-        let error = |body: &[u8], places| parse(body, places).unwrap_err();
+        let at = |n: usize| vec![Place::new(0.0, 0.0); n];
+        let error = |body: &[u8], n: usize| parse(body, &at(n)).unwrap_err();
         assert!(matches!(error(b"<html>", 1), ElevationError::Json(_)));
         let server =
             r#"{"error":true,"reason":"Latitude must be in range of -90 to 90°. Given: 95.0."}"#;
@@ -391,28 +489,32 @@ mod tests {
             other => panic!("{other:?}"),
         }
         match error(br#"{"error":true}"#, 1) {
-            ElevationError::Server { reason } => assert_eq!(reason, "none given"),
+            ElevationError::Server { reason } => assert_eq!(reason, "no reason given"),
             other => panic!("{other:?}"),
         }
-        for (body, field) in [
-            (&br#"{}"#[..], "elevation"),
-            (br#"{"elevation":1400.0}"#, "elevation"),
-            (br#"{"elevation":[1400.0, null]}"#, "elevation[1]"),
-            (br#"{"elevation":["1400"]}"#, "elevation[0]"),
+        for (body, n, field) in [
+            (&br#"{}"#[..], 1, "elevation"),
+            (br#"{"elevation":1400.0}"#, 1, "elevation"),
+            (br#"{"elevation":[1400.0, null]}"#, 2, "elevation[1]"),
+            (br#"{"elevation":["1400"]}"#, 1, "elevation[0]"),
         ] {
-            let places = if field == "elevation[1]" { 2 } else { 1 };
-            match error(body, places) {
+            match error(body, n) {
                 ElevationError::Missing { field: f } => assert_eq!(f, field),
                 other => panic!("{other:?}"),
             }
         }
+        let count = error(br#"{"elevation":[1.0, 2.0]}"#, 3);
         assert!(matches!(
-            error(br#"{"elevation":[1.0, 2.0]}"#, 3),
+            count,
             ElevationError::Count {
                 expected: 3,
                 found: 2
             }
         ));
+        assert_eq!(
+            count.to_string(),
+            "the Open-Meteo elevation answer holds 2 heights, not the 3 asked for"
+        );
         assert!(matches!(
             error(br#"{"elevation":[]}"#, 1),
             ElevationError::Count {
@@ -420,12 +522,13 @@ mod tests {
                 found: 0
             }
         ));
-        for (body, index, height) in [
-            (&br#"{"elevation":[0.0, -32768]}"#[..], 1, -32_768.0),
-            (br#"{"elevation":[-1000.5]}"#, 0, -1_000.5),
-            (br#"{"elevation":[9000.5]}"#, 0, 9_000.5),
+        for (body, n, index, height) in [
+            (&br#"{"elevation":[0.0, -32768]}"#[..], 2, 1, -32_768.0),
+            (br#"{"elevation":[-32767]}"#, 1, 0, -32_767.0),
+            (br#"{"elevation":[-1000.5]}"#, 1, 0, -1_000.5),
+            (br#"{"elevation":[9000.5]}"#, 1, 0, 9_000.5),
         ] {
-            match error(body, if index == 1 { 2 } else { 1 }) {
+            match error(body, n) {
                 ElevationError::OutOfRange { index: i, height_m } => {
                     assert_eq!((i, height_m), (index, height));
                 }

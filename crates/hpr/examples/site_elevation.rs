@@ -1,6 +1,6 @@
-//! A launch site's ground elevation from Open-Meteo: three places looked up in one request, the
-//! same lookup again offline from the cache, the standard atmosphere at each ground, and a
-//! flight's environment placed on the first.
+//! A launch site's elevation from Open-Meteo: three places looked up in one request, the same
+//! lookup again offline from the cache, the standard atmosphere at each height, and a flight's
+//! environment placed on the first.
 //!
 //! Run it from anywhere in the repository (it needs the `net` feature):
 //!
@@ -57,7 +57,7 @@ impl Transport for NoSignal {
 fn main() -> Result<(), Box<dyn Error>> {
     let names = [
         "Spaceport America, New Mexico",
-        "the Dead Sea's shore",
+        "the Dead Sea (its surface)",
         "the open Atlantic",
     ];
     let places = vec![
@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Place::new(31.5, 35.5),
         Place::new(0.0, -30.0),
     ];
-    let request = ElevationRequest::new(places.clone());
+    let request = ElevationRequest::new(places);
 
     // 1. Online: the heights are fetched and cached. A real program would keep its cache in
     //    `Cache::platform_dir()`, so the heights are there offline next time.
@@ -73,6 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let online = Client::new(Recorded, Cache::new(&folder), Mode::Online);
     let now_s = 1_790_812_800;
     let (heights, fetched) = elevation::fetch(&online, &request, now_s)?;
+    // Each `Elevation` holds its place and `height_msl_m`, the height above mean sea level.
 
     // 2. Offline, a day later: the same lookup comes from the cache, and the transport is never
     //    asked.
@@ -89,31 +90,37 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     println!();
 
-    // 3. The standard atmosphere at each ground, beside sea level's.
+    // 3. The standard atmosphere at each height, beside sea level's.
     let standard = Ussa76::standard();
     let sea = standard.air(0.0)?.air;
     println!(
         "{:<30} {:>9} {:>14} {:>16} {:>14}",
-        "place", "lat (°)", "ground (m)", "pressure (hPa)", "density / sea"
+        "place", "lat (°)", "height (m)", "pressure (hPa)", "density / sea"
     );
-    for ((name, place), height_m) in names.iter().zip(&places).zip(&heights) {
-        let air = standard.air(*height_m)?.air;
+    for (name, height) in names.iter().zip(&heights) {
+        let air = standard.air(height.height_msl_m)?.air;
         println!(
-            "{name:<30} {:>9.2} {height_m:>14.0} {:>16.1} {:>14.3}",
-            place.latitude_deg,
+            "{name:<30} {:>9.2} {:>14.0} {:>16.2} {:>14.3}",
+            height.place.latitude_deg,
+            height.height_msl_m,
             air.pressure_pa / 100.0,
             air.density_kg_m3 / sea.density_kg_m3,
         );
     }
 
-    // 4. A flight's environment on the first ground. The height is above mean sea level and a
+    // 4. A flight's environment on the first place. The height is above mean sea level and a
     //    site takes its height above the WGS 84 ellipsoid; with no geoid model, give the same
     //    number and leave the geoid undulation at 0, so the atmosphere sees the right height.
-    let site = Geodetic::from_degrees(places[0].latitude_deg, places[0].longitude_deg, heights[0])?;
+    let first = heights[0];
+    let site = Geodetic::from_degrees(
+        first.place.latitude_deg,
+        first.place.longitude_deg,
+        first.height_msl_m,
+    )?;
     let environment = Environment::standard(site)?;
     println!();
     println!(
-        "A flight from {} starts {:.0} m above sea level, at {:.1} hPa.",
+        "A flight from {} starts {:.0} m above sea level, at {:.2} hPa.",
         names[0],
         environment.site().height_m - environment.geoid_undulation_m,
         environment
