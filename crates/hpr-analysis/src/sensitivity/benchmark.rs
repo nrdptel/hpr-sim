@@ -108,7 +108,8 @@ impl Ishigami {
 /// Each `gᵢ` has mean 1 and variance `Vᵢ = 1/(3 (1 + aᵢ)²)`, so (A. Saltelli and others, 2010,
 /// the module [`super::sobol`]'s reference, Appendix A, p. 268, eqs. (31) and (32))
 ///
-/// - `V = Πᵢ (1 + Vᵢ) − 1`,
+/// - `V = Πᵢ (1 + Vᵢ) − 1`, computed as `exp(Σᵢ ln(1 + Vᵢ)) − 1` with `ln_1p` and `exp_m1`, so
+///   that a large `aᵢ` (a tiny `Vᵢ`) isn't lost in the `1 +`,
 /// - `Sᵢ = Vᵢ/V`, and
 /// - `S_Tᵢ = Vᵢ Πⱼ≠ᵢ (1 + Vⱼ) / V`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -198,7 +199,12 @@ impl SobolG {
 
     /// Its variance, `V = Πᵢ (1 + Vᵢ) − 1`.
     pub fn variance(&self) -> f64 {
-        self.parts().iter().map(|v| 1.0 + v).product::<f64>() - 1.0
+        self.log_product().exp_m1()
+    }
+
+    /// `ln Πᵢ (1 + Vᵢ)`.
+    fn log_product(&self) -> f64 {
+        self.parts().iter().map(|v| v.ln_1p()).sum()
     }
 
     /// The first-order indices, `Sᵢ = Vᵢ/V`.
@@ -209,10 +215,12 @@ impl SobolG {
 
     /// The total indices, `S_Tᵢ = Vᵢ Πⱼ≠ᵢ (1 + Vⱼ) / V`.
     pub fn total(&self) -> Vec<f64> {
-        let parts = self.parts();
-        let v = self.variance();
-        let all: f64 = parts.iter().map(|vj| 1.0 + vj).product();
-        parts.iter().map(|vi| vi * all / (1.0 + vi) / v).collect()
+        let log_all = self.log_product();
+        let v = log_all.exp_m1();
+        self.parts()
+            .iter()
+            .map(|vi| vi * (log_all - vi.ln_1p()).exp() / v)
+            .collect()
     }
 }
 
@@ -222,13 +230,13 @@ mod tests {
 
     #[test]
     fn ishigamis_indices_are_the_published_ones() {
-        // Sobol' and Levitan's b = 0.05 case (p. 59, Example 6.3): S₁ = 0.2185, S₂ = 0.6869,
+        // Sobol' and Levitan's b = 0.05 case (p. 59, Example 6.3): S₁ = 0.219, S₂ = 0.687,
         // S₁₃ = 0.0946, to their printing.
         let f = Ishigami { a: 7.0, b: 0.05 };
         let [s1, s2, s3] = f.first_order();
         let [t1, _, t3] = f.total();
-        assert!((s1 - 0.2185).abs() < 5e-5, "{s1}");
-        assert!((s2 - 0.6869).abs() < 5e-5, "{s2}");
+        assert!((s1 - 0.219).abs() < 5e-4, "{s1}");
+        assert!((s2 - 0.687).abs() < 5e-4, "{s2}");
         assert_eq!(s3, 0.0);
         assert!((t3 - 0.0946).abs() < 5e-5, "{t3}");
         assert!((t1 - s1 - t3).abs() < 1e-15);
@@ -283,6 +291,11 @@ mod tests {
         for i in 0..3 {
             assert!(t[i] > t[i + 1]);
         }
+        // A huge a: its tiny part isn't lost in 1 + Vᵢ.
+        let tiny = SobolG::new(vec![1e9]).unwrap();
+        let part = 1.0 / (3.0 * (1.0 + 1e9) * (1.0 + 1e9));
+        assert!((tiny.variance() / part - 1.0).abs() < 1e-12);
+        assert!((tiny.first_order()[0] - 1.0).abs() < 1e-12);
         // One factor: all its variance is its own, 1/3 at a = 0.
         let one = SobolG::new(vec![0.0]).unwrap();
         assert!((one.variance() - 1.0 / 3.0).abs() < 1e-16);
@@ -321,13 +334,20 @@ mod tests {
         assert_eq!(g.evaluate(&[0.5, 0.5]), (1.0 / 2.0) * (2.0 / 3.0));
         assert!(matches!(
             SobolG::new(vec![]),
-            Err(AnalysisError::TooFew { .. })
+            Err(AnalysisError::TooFew {
+                what: "g function's factors",
+                count: 0,
+                minimum: 1
+            })
         ));
         match SobolG::new(vec![1.0, -0.5]) {
             Err(AnalysisError::Domain { value, .. }) => assert_eq!(value, -0.5),
             other => panic!("{other:?}"),
         }
-        assert!(serde_json::from_str::<SobolG>(r#"{"a":[1.0,-1.0]}"#).is_err());
+        let refused = serde_json::from_str::<SobolG>(r#"{"a":[1.0,-1.0]}"#)
+            .unwrap_err()
+            .to_string();
+        assert!(refused.contains("g function's a"), "{refused}");
         assert_eq!(
             serde_json::from_str::<SobolG>(r#"{"a":[1.0,2.0]}"#).unwrap(),
             g

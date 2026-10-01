@@ -12,16 +12,17 @@ It needs some Rust, and follows on from [Monte Carlo dispersion](monte-carlo.md)
 > rocket, the ranking they give is only as good as the ranges you give and hpr-sim's flight
 > models, which are not yet validated against real flights ([Accuracy](accuracy.md)).
 >
-> - **Tested:** both methods match the known answers of two standard test functions within their
->   own [standard errors](glossary.md#standard-error). Over a thousand runs with different seeds,
->   the error each run reports is the scatter the runs really show. The same
+> - **Tested:** both methods match the known answers of two standard test functions within four
+>   of their own [standard errors](glossary.md#standard-error). Over 500 to 1,000 runs with
+>   different seeds, the error a run reports for a Sobol' index, or for a Morris `μ*` of the g
+>   function, is the scatter the runs really show. The same
 >   [seed](glossary.md#seed) gives the same numbers, bit for bit
 >   ([`tests/sensitivity.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/sensitivity.rs)).
 > - **Not checked:** whether a rocket's ranking matches what real flights would show.
 > - **Left out:** inputs that depend on each other, inputs that aren't spread evenly over a
 >   range, and the [Sobol' indices](glossary.md#sobol-index) of pairs of inputs. A Sobol'
->   analysis of a whole flight costs hundreds of flights per input, so this page's rocket example
->   uses only the cheaper Morris screening.
+>   analysis costs thousands of runs per input, too many flights for this page's rocket example,
+>   which uses only the cheaper Morris screening.
 
 ## Inputs as factors
 
@@ -39,8 +40,9 @@ itself.
 ## Morris screening
 
 Morris's method nudges one factor at a time and watches the output move. It works on a grid: each
-factor's range is cut into `p` evenly spaced *levels* (4 is usual). A step moves one factor half
-the levels, a fraction `Δ = p / (2(p − 1))` of its range, which is 2/3 for four levels.
+factor's range is cut into `p` evenly spaced *levels* (4 is usual). A step moves one factor `p/2`
+levels (two of four), which is a fraction `Δ = p / (2(p − 1))` of its range: 2/3 for four
+levels.
 
 The change in the output over one step, divided by `Δ`, is an
 [elementary effect](glossary.md#elementary-effect). It is the change the factor would cause across
@@ -59,9 +61,9 @@ A factor with `μ*` near zero can be left at its planned value. The screening al
 standard error, which shrinks as `1/√r`: ten paths are usually enough to rank, and the cost is
 `r (k + 1)` runs.
 
-For example, Ishigami's test function (below) has `a sin² x₂` as a term. On a four-level grid from
-−π to π, a step of `x₂` moves `sin²` by exactly 3/4, up or down, so every effect of `x₂` is
-`± (3/4)(7)/(2/3) = ± 7.875`. The example's screening finds `μ* = 7.875` with no error, and
+For example, Ishigami's test function (below) has `a sin² x₂` as a term, with `a` = 7. On a
+four-level grid from −π to π, a step of `x₂` moves `sin²` by exactly 3/4, up or down, so every
+effect of `x₂` is `± (3/4)(7)/(2/3) = ± 7.875`. The example's screening finds `μ* = 7.875` with no error, and
 `μ` near zero.
 
 M. D. Morris, "Factorial sampling plans for preliminary computational experiments",
@@ -69,6 +71,11 @@ M. D. Morris, "Factorial sampling plans for preliminary computational experiment
 J. Cariboni and A. Saltelli, "An effective screening design for sensitivity analysis of large
 models", *Environmental Modelling & Software* 22, 1509–1518, 2007, add `μ*`. They found, by
 experiment rather than proof, that it ranks factors in the same order as the total Sobol' index.
+
+That is usual, not certain. On Ishigami's function, Morris puts `x₂` first (`μ*` 7.875 against
+7.704 for `x₁`), while the total index puts `x₁` first (0.558 against 0.442). The two measure
+different things, and a four-level grid sees `sin² x₂` at only two values. So treat factors whose
+`μ*`s are close as tied, and use Sobol' indices to settle their order if it matters.
 [`hpr_analysis::sensitivity::morris`](api/hpr_analysis/sensitivity/morris/index.html) gives the
 equations and page numbers.
 
@@ -110,11 +117,14 @@ Two test functions have Sobol' indices known in closed form
   117, 1999, p. 57).
 - **Sobol's g function**, a product of one term per factor, each with a weight `aᵢ`: the factor
   matters most at `aᵢ = 0` and hardly at all at 99. The closed forms are Saltelli and others' (2010,
-  p. 268).
+  p. 268). The tests use `aᵢ` = 0, 1, 4.5, 9 and four 99s, spanning the four classes Marrel and
+  others (2008) name, as the
+  [SFU library of test functions](https://www.sfu.ca/~ssurjano/gfunc.html) quotes them: very
+  important at 0, relatively important at 1, non-important at 9 and non-significant at 99.
 
 For Morris there is also an exact answer. A screening estimates the moments of a finite set of
 effects: every step on the grid. [`Morris::population`] runs the model at every grid point and
-computes them exactly. For both functions they also follow in closed form, which the tests check.
+computes them exactly: the example's "whole grid" column. For both functions they also follow in closed form, which the tests check.
 
 The tests in
 [`tests/sensitivity.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/sensitivity.rs)
@@ -123,10 +133,12 @@ check four things:
 - Every Sobol' index of both functions, from 32,768 and 16,384 rows, lies within four standard
   errors of its closed form.
 - Every Morris `μ*`, from 1,000 paths, lies within four standard errors of the exact one.
-- The standard errors are honest. Over 1,000 seeds (500 for the g function's Sobol' indices),
-  each estimate's distance from the known answer, divided by its standard error, has a mean
-  within `4/√n` of 0 and a standard deviation within `4/√(2n)` of 1, for `n` seeds. Making the
-  standard errors 15% too small fails this check.
+- The standard errors are honest. Take each estimate's distance from the known answer, divided by
+  its standard error. Over `n` seeds, these have a mean within `4/√n` of 0 and a standard
+  deviation within `4/√(2n)` of 1. This holds for every Sobol' index of Ishigami's function
+  (1,000 seeds) and of the g function's first four factors (500 seeds), and for Morris's `μ*` of
+  those four (1,000 seeds). The same test checks that standard errors 15% too small would fail.
+  A separate unit test computes each Sobol' standard error a second way, from the raw row means.
 - On the g function, twenty Morris paths rank the four factors that matter in the order of their
   total indices.
 
@@ -142,7 +154,7 @@ of the repository with:
 cargo run --example sensitivity -p hpr
 ```
 
-The test functions take a closure:
+Excerpts from it follow. The test functions take a closure:
 
 ```rust,ignore
 let ishigami = Ishigami::STANDARD;
@@ -160,19 +172,38 @@ let nominal = monte_carlo.draw(seed, 0);                 // every input as plann
 let factors = vec![
     Factor::new("dry mass factor", 0.95, 1.05)?,
     Factor::new("drag factor", 0.9, 1.1)?,
-    // ... impulse, wind speed, wind turn, rail angle
+    Factor::new("impulse factor", 0.94, 1.06)?,
+    Factor::new("wind speed (m/s)", 0.0, 8.0)?,
+    Factor::new("wind turn (°)", -30.0, 30.0)?,
+    Factor::new("rail angle (°)", 80.0, 90.0)?,
 ];
 let morris = Morris::new(factors, 4, 10)?;               // 4 levels, 10 paths: 70 flights
 let design = morris.design(seed);
 for x in design.points() {
     let mut draw = nominal.clone();
-    draw.drag_scale = x[1];
-    // ... set the other five
+    draw.drag_scale = x[1];                              // a factor on the drag
+    draw.wind_speed_scale = x[3] / 4.0;                  // a factor on the 4 m/s forecast
+    draw.rail_elevation_offset_rad = (x[5] - 85.0).to_radians(); // an offset from 85°
+    // ... and the dry mass, impulse and wind turn the same way
     let flight = monte_carlo.inputs(&draw)?.fly()?;
     apogees.push(flight.apogee.as_ref().ok_or("no apogee")?.height_above_ground_m);
 }
 let apogee = design.analyse(&apogees)?;                  // the same flights, any output
 ```
+
+The six inputs, with ranges made up for the example:
+
+| Input | Range | Planned value | What it is |
+|---|---|---|---|
+| dry mass factor | 0.95 to 1.05 | 1 | the rocket's mass without its motor, ±5% |
+| drag factor | 0.9 to 1.1 | 1 | the zero-lift drag, ±10% |
+| impulse factor | 0.94 to 1.06 | 1 | the motor's total impulse, ±6%; NFPA 1125 caps a motor type's standard deviation at 6.7% |
+| wind speed | 0 to 8 m/s | 4 m/s | the wind at every height |
+| wind turn | −30° to 30° | 0° | the wind's direction turned clockwise from the forecast's west |
+| rail angle | 80° to 90° | 85° | the rail's angle above the horizon; 90° is vertical |
+
+A [`Draw`] can also move a stage's centre of mass, the motor's burn time and ejection delay, the
+rail's heading and a recovery device's delay ([What each dispersion does](monte-carlo.md#what-each-dispersion-does)).
 
 It prints:
 
@@ -217,13 +248,15 @@ How to read it:
   digits. `S₃` comes out slightly below zero: the estimate of a share that is really zero
   scatters around zero. The g function's `x5` shows "± 0.0000" because its error is below
   0.00005.
-- **Ishigami's Morris screening** at 400 runs ranks `x2`, `x1`, `x3` as the whole grid does. Its
-  `σ`s are as large as its `μ*`s, the sign of a function that bends or whose factors act
-  together.
+- **Ishigami's Morris screening** at 400 runs puts `x2`, `x1`, `x3` in the whole grid's order, but
+  the gaps are only about one standard error, so at 100 paths they aren't really ranked. Its `σ`s
+  are as large as its `μ*`s, the sign of a function that bends or whose factors act together.
 - **The rocket's apogee** moves most with the motor's impulse (118 m across ±6%) and the drag
   (113 m across ±10%), then the rail's angle (68 m across 80° to 90°), the wind's speed (50 m)
   and the dry mass (36 m across ±5%). The wind's direction hardly matters (4 m). The `σ`s are
-  small beside the `μ*`s: each input acts nearly in a straight line and alone.
+  small beside the `μ*`s: each input acts nearly in a straight line and alone. The exception is
+  the wind's direction, whose small effect changes sign. The impulse and the drag are 1.4 errors
+  apart: ten paths don't settle which comes first.
 - **The landing** is the wind's: 1,418 m across calm to 8 m/s, then the rail's angle (350 m).
   Here the `σ`s are large, so these effects bend or depend on the other inputs.
 
@@ -236,14 +269,19 @@ support; a factor's effect grows with its range.
   range, at the same cost per path. The number must be even.
 - **Paths:** ten to twenty to rank. Check `μ*`'s standard error: two factors whose `μ*`s differ
   by less than a couple of errors aren't ranked yet.
-- **Rows:** a Sobol' analysis needs thousands of rows to pin an index to ±0.01. Use Morris first
-  to find the few factors that matter, then Sobol' on those if you need the shares.
+- **Rows:** a Sobol' analysis needs about 8,000 rows, each `k + 2` runs, to pin an index to
+  ±0.01. Use Morris first to find the few factors that matter, then Sobol' on those if you need
+  the shares or the order of two close ones.
+- **Normal inputs:** give each one the same multiple of its standard deviation, such as ±2, so
+  they are compared alike. A range spreads the input evenly, which weighs its ends more than a
+  normal spread does.
 
 ## Left out
 
 - Factors are uniform over their ranges and independent. A normal input can be given as a range
   about its mean, such as ±2 standard deviations, which spreads it more evenly than it really is.
-- Sobol' rows are plain pseudo-random draws, not the quasi-random sequences that converge faster.
+- Sobol' rows are plain pseudo-random draws, not quasi-random ones (evenly spread sequences, such
+  as Sobol's own), which converge faster.
 - No second-order Sobol' indices (the share of each pair alone).
 - No choice of the most spread-out Morris paths among many (Campolongo's improvement).
 - No command-line or Python front end yet.
@@ -256,3 +294,4 @@ The API reference is
 [`SobolIndex`]: api/hpr_analysis/sensitivity/sobol/struct.SobolIndex.html
 [`Morris::population`]: api/hpr_analysis/sensitivity/morris/struct.Morris.html#method.population
 [`MonteCarlo::inputs`]: api/hpr_analysis/montecarlo/struct.MonteCarlo.html#method.inputs
+[`Draw`]: api/hpr_analysis/montecarlo/struct.Draw.html

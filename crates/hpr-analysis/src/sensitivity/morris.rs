@@ -29,11 +29,14 @@
 //!
 //! M. D. Morris, "Factorial sampling plans for preliminary computational experiments",
 //! *Technometrics* 33(2), 161–174, 1991, <https://doi.org/10.2307/1269043>, defines the effects
-//! (his eq. (1), p. 163), the grid, `Δ` and the paths. F. Campolongo, J. Cariboni and A. Saltelli, "An effective
-//! screening design for sensitivity analysis of large models", *Environmental Modelling &
-//! Software* 22, 1509–1518, 2007, <https://doi.org/10.1016/j.envsoft.2006.10.004>, add `μ*`,
-//! which doesn't let effects of opposite signs cancel (pp. 1511–1512), and find, by experiment
-//! rather than proof, that it ranks factors as the total Sobol' index does (p. 1517).
+//! (his eq. (1), p. 163), the grid, `Δ` and the paths. F. Campolongo, J. Cariboni and A.
+//! Saltelli, "An effective screening design for sensitivity analysis of large models",
+//! *Environmental Modelling & Software* 22, 1509–1518, 2007,
+//! <https://doi.org/10.1016/j.envsoft.2006.10.004>, add `μ*`, which doesn't let effects of
+//! opposite signs cancel (pp. 1511–1512), and find, by experiment rather than proof, that it
+//! ranks factors as the total Sobol' index does (p. 1517). Not always: on Ishigami's function at
+//! four levels, `μ*` puts `x₂` first (7.875 against 7.704 for `x₁`), the total index `x₁` (0.558
+//! against 0.442), as the grid sees `sin² x₂` at only two values.
 //!
 //! [`Morris::population`] computes `Fᵢ`'s three moments exactly, by running the model at every
 //! grid point: the numbers the paths estimate, for a model cheap enough to run `p^k` times.
@@ -41,11 +44,14 @@
 use hpr_core::random::SeededRng;
 use serde::{Deserialize, Serialize};
 
-use super::{Factor, check_factors, check_outputs, product};
+use super::{Factor, check_factors, check_outputs, check_size};
 use crate::error::AnalysisError;
 
 /// The most grid points [`Morris::population`] will run the model at.
 pub const MAX_POPULATION_POINTS: usize = 1 << 24;
+
+/// The most levels a grid may have. Morris and Campolongo use 4 to 10.
+pub const MAX_LEVELS: usize = 1 << 16;
 
 /// A Morris screening: the factors, the grid's number of levels and the number of paths. It
 /// serializes as its fields, and reads back through [`Morris::new`]'s checks.
@@ -76,6 +82,7 @@ impl TryFrom<MorrisData> for Morris {
 
 /// One path: where it starts on the grid, and which way and in which order its factors step.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Path {
     /// Each factor's level at the start, `0` to `p − 1`.
     pub start: Vec<usize>,
@@ -85,7 +92,8 @@ pub struct Path {
     pub up: Vec<bool>,
 }
 
-/// The points of a Morris screening, path after path, each path's `k + 1` points in order.
+/// The points of a Morris screening, path after path, each path's `k + 1` points in order. It is
+/// not serialized: [`Morris::design`] rebuilds it, bit for bit, from the screening and its seed.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MorrisDesign {
     factors: Vec<Factor>,
@@ -96,6 +104,7 @@ pub struct MorrisDesign {
 /// A factor's elementary effects: from a screening's paths ([`MorrisDesign::analyse`]), or all
 /// of them on the grid ([`Morris::population`]).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ElementaryEffects {
     /// The factor's name.
     pub name: String,
@@ -115,6 +124,7 @@ pub struct ElementaryEffects {
 
 /// What a Morris screening found: each factor's effects, in the factors' order.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Screening {
     /// The grid's number of levels, `p`.
     pub levels: usize,
@@ -131,9 +141,12 @@ impl Morris {
     ///
     /// - [`AnalysisError::TooFew`] with no factors, fewer than 2 levels, or fewer than 2 paths
     ///   (a standard deviation needs two).
+    /// - [`AnalysisError::DuplicateFactor`] for two factors with one name.
     /// - [`AnalysisError::Unsupported`] for an odd number of levels: Morris's step `Δ` is a whole
     ///   number of levels only for an even one.
-    /// - [`AnalysisError::Count`] for a design too large to count.
+    /// - [`AnalysisError::Count`] for more than [`MAX_LEVELS`] levels, or a design of more than
+    ///   [`MAX_DESIGN_POINTS`](super::MAX_DESIGN_POINTS) points or
+    ///   [`MAX_DESIGN_VALUES`](super::MAX_DESIGN_VALUES) coordinates.
     pub fn new(factors: Vec<Factor>, levels: usize, paths: usize) -> Result<Self, AnalysisError> {
         check_factors(&factors)?;
         if levels < 2 {
@@ -141,6 +154,13 @@ impl Morris {
                 what: "grid levels",
                 count: levels,
                 minimum: 2,
+            });
+        }
+        if levels > MAX_LEVELS {
+            return Err(AnalysisError::Count {
+                what: "grid levels",
+                count: levels,
+                limit: MAX_LEVELS,
             });
         }
         if !levels.is_multiple_of(2) {
@@ -155,13 +175,8 @@ impl Morris {
                 minimum: 2,
             });
         }
-        let per_path = factors.len().checked_add(1).ok_or(AnalysisError::Count {
-            what: "factors",
-            count: factors.len(),
-            limit: usize::MAX - 1,
-        })?;
-        let points = product("Morris paths", paths, per_path)?;
-        product("Morris points' coordinates", points, factors.len())?;
+        let k = factors.len();
+        check_size("Morris points", paths, k.saturating_add(1), k)?;
         Ok(Self {
             factors,
             levels,
@@ -244,7 +259,8 @@ impl Morris {
     ///
     /// # Errors
     ///
-    /// - [`AnalysisError::Count`] for a grid of more than [`MAX_POPULATION_POINTS`] points.
+    /// - [`AnalysisError::Count`] for a grid of more than [`MAX_POPULATION_POINTS`] points, its
+    ///   count `p^k` saturating at `usize::MAX`.
     /// - [`AnalysisError::Output`] for an output that isn't finite, at its grid point's index
     ///   (factor 0's level the fastest-changing digit).
     pub fn population(
@@ -253,16 +269,14 @@ impl Morris {
     ) -> Result<Vec<ElementaryEffects>, AnalysisError> {
         let k = self.factors.len();
         let p = self.levels;
-        let too_many = || AnalysisError::Count {
-            what: "Morris grid points",
-            count: usize::MAX,
-            limit: MAX_POPULATION_POINTS,
-        };
-        let total = (0..k).try_fold(1_usize, |n, _| {
-            n.checked_mul(p)
-                .filter(|&n| n <= MAX_POPULATION_POINTS)
-                .ok_or_else(too_many)
-        })?;
+        let total = (0..k).fold(1_usize, |n, _| n.saturating_mul(p));
+        if total > MAX_POPULATION_POINTS {
+            return Err(AnalysisError::Count {
+                what: "Morris grid points",
+                count: total,
+                limit: MAX_POPULATION_POINTS,
+            });
+        }
         let mut levels = vec![0_usize; k];
         let mut point = vec![0.0; k];
         let mut outputs = Vec::with_capacity(total);
@@ -468,10 +482,19 @@ mod tests {
                 ..
             })
         ));
+        match Morris::new(unit_factors(2), 5, 10) {
+            Err(AnalysisError::Unsupported(why)) => assert!(why.starts_with("5 grid levels")),
+            other => panic!("{other:?}"),
+        }
         assert!(matches!(
-            Morris::new(unit_factors(2), 5, 10),
-            Err(AnalysisError::Unsupported(_))
+            Morris::new(unit_factors(2), MAX_LEVELS + 2, 10),
+            Err(AnalysisError::Count {
+                what: "grid levels",
+                limit: MAX_LEVELS,
+                ..
+            })
         ));
+        assert!(Morris::new(unit_factors(2), MAX_LEVELS, 10).is_ok());
         assert!(matches!(
             Morris::new(unit_factors(2), 4, 1),
             Err(AnalysisError::TooFew {
@@ -480,10 +503,21 @@ mod tests {
                 ..
             })
         ));
+        // Points past the limit: refused when laid out, not when allocated.
+        assert!(matches!(
+            Morris::new(unit_factors(1), 4, 1 << 62),
+            Err(AnalysisError::Count {
+                what: "Morris points",
+                limit: crate::sensitivity::MAX_DESIGN_POINTS,
+                ..
+            })
+        ));
+        assert!(Morris::new(unit_factors(1), 4, 1 << 21).is_ok());
         assert!(matches!(
             Morris::new(unit_factors(2), 4, usize::MAX / 2),
             Err(AnalysisError::Count {
-                what: "Morris paths",
+                what: "Morris points",
+                count: usize::MAX,
                 ..
             })
         ));
@@ -588,8 +622,9 @@ mod tests {
         assert!(matches!(
             m.population(|_| 0.0),
             Err(AnalysisError::Count {
+                what: "Morris grid points",
+                count: 67_108_864,
                 limit: MAX_POPULATION_POINTS,
-                ..
             })
         ));
         let m = Morris::new(unit_factors(2), 4, 2).unwrap();
@@ -612,6 +647,9 @@ mod tests {
         let json = serde_json::to_string(&m).unwrap();
         assert_eq!(serde_json::from_str::<Morris>(&json).unwrap(), m);
         let odd = json.replace("\"levels\":4", "\"levels\":3");
-        assert!(serde_json::from_str::<Morris>(&odd).is_err());
+        let refused = serde_json::from_str::<Morris>(&odd)
+            .unwrap_err()
+            .to_string();
+        assert!(refused.contains("3 grid levels"), "{refused}");
     }
 }

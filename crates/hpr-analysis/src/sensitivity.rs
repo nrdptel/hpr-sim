@@ -13,7 +13,7 @@
 //!   finds the factors that don't matter, at about ten runs per factor.
 //! - [`sobol`]: Sobol' indices. Many runs split the output's variance among the factors: the
 //!   share each causes alone (its *first-order* index) and the share it has any part in, with
-//!   the others (its *total* index). It costs hundreds of runs per factor.
+//!   the others (its *total* index). It costs thousands of runs per factor.
 //! - [`benchmark`]: two test functions whose indices are known in closed form, Ishigami and
 //!   Homma's and Sobol's g, which the tests hold both methods to.
 //!
@@ -41,9 +41,18 @@ pub mod benchmark;
 pub mod morris;
 pub mod sobol;
 
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::AnalysisError;
+
+/// The most points a design lays out: 4,194,304, far more than flights can be flown for, so a
+/// design never allocates more than a few hundred megabytes.
+pub const MAX_DESIGN_POINTS: usize = 1 << 22;
+
+/// The most coordinates (points times factors) a design holds: 67,108,864, half a gigabyte.
+pub const MAX_DESIGN_VALUES: usize = 1 << 26;
 
 /// An uncertain input, spread evenly between `low` and `high`. It serializes as its three
 /// fields, and reads back through [`Factor::new`]'s checks.
@@ -119,7 +128,7 @@ impl Factor {
     }
 }
 
-/// Checks that there is at least one factor.
+/// Checks that there is at least one factor, and no two share a name.
 fn check_factors(factors: &[Factor]) -> Result<(), AnalysisError> {
     if factors.is_empty() {
         return Err(AnalysisError::TooFew {
@@ -127,6 +136,12 @@ fn check_factors(factors: &[Factor]) -> Result<(), AnalysisError> {
             count: 0,
             minimum: 1,
         });
+    }
+    let mut names = BTreeSet::new();
+    for factor in factors {
+        if !names.insert(factor.name()) {
+            return Err(AnalysisError::DuplicateFactor(factor.name().to_owned()));
+        }
     }
     Ok(())
 }
@@ -146,13 +161,31 @@ fn check_outputs(outputs: &[f64], points: usize) -> Result<(), AnalysisError> {
     Ok(())
 }
 
-/// `a × b` for a design's size, refused if it overflows.
-fn product(what: &'static str, a: usize, b: usize) -> Result<usize, AnalysisError> {
-    a.checked_mul(b).ok_or(AnalysisError::Count {
-        what,
-        count: a,
-        limit: usize::MAX / b.max(1),
-    })
+/// Checks a design of `count` paths or rows, `per` points each, over `factors` factors, against
+/// [`MAX_DESIGN_POINTS`] and [`MAX_DESIGN_VALUES`].
+fn check_size(
+    what: &'static str,
+    count: usize,
+    per: usize,
+    factors: usize,
+) -> Result<(), AnalysisError> {
+    let points = count.saturating_mul(per);
+    if points > MAX_DESIGN_POINTS {
+        return Err(AnalysisError::Count {
+            what,
+            count: points,
+            limit: MAX_DESIGN_POINTS,
+        });
+    }
+    let values = points.saturating_mul(factors);
+    if values > MAX_DESIGN_VALUES {
+        return Err(AnalysisError::Count {
+            what: "design coordinates (points times factors)",
+            count: values,
+            limit: MAX_DESIGN_VALUES,
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -187,7 +220,55 @@ mod tests {
         let json = serde_json::to_string(&f).unwrap();
         assert_eq!(json, r#"{"name":"wind","low":0.0,"high":8.0}"#);
         assert_eq!(serde_json::from_str::<Factor>(&json).unwrap(), f);
-        assert!(serde_json::from_str::<Factor>(r#"{"name":"w","low":2.0,"high":1.0}"#).is_err());
+        let refused = serde_json::from_str::<Factor>(r#"{"name":"w","low":2.0,"high":1.0}"#)
+            .unwrap_err()
+            .to_string();
+        assert!(refused.contains("factor's high value"), "{refused}");
+        let unknown = serde_json::from_str::<Factor>(r#"{"name":"w","low":0.0,"high":1.0,"sd":1}"#)
+            .unwrap_err()
+            .to_string();
+        assert!(unknown.contains("unknown field `sd`"), "{unknown}");
+    }
+
+    #[test]
+    fn factors_need_one_and_distinct_names() {
+        assert!(matches!(
+            check_factors(&[]),
+            Err(AnalysisError::TooFew {
+                what: "factors",
+                count: 0,
+                minimum: 1
+            })
+        ));
+        let x = Factor::new("x", 0.0, 1.0).unwrap();
+        let y = Factor::new("y", 0.0, 1.0).unwrap();
+        assert!(check_factors(&[x.clone(), y.clone()]).is_ok());
+        match check_factors(&[x.clone(), y, x]) {
+            Err(AnalysisError::DuplicateFactor(name)) => assert_eq!(name, "x"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_design_is_held_to_its_size_limits() {
+        assert!(check_size("points", 1 << 20, 4, 16).is_ok());
+        match check_size("points", 1 << 21, 3, 1) {
+            Err(AnalysisError::Count { what, count, limit }) => {
+                assert_eq!((what, count, limit), ("points", 3 << 21, MAX_DESIGN_POINTS));
+            }
+            other => panic!("{other:?}"),
+        }
+        match check_size("points", usize::MAX, 2, 1) {
+            Err(AnalysisError::Count { count, .. }) => assert_eq!(count, usize::MAX),
+            other => panic!("{other:?}"),
+        }
+        match check_size("points", 1 << 20, 4, 17) {
+            Err(AnalysisError::Count { what, count, limit }) => {
+                assert_eq!(what, "design coordinates (points times factors)");
+                assert_eq!((count, limit), (17 << 22, MAX_DESIGN_VALUES));
+            }
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

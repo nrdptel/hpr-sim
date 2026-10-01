@@ -171,7 +171,8 @@ fn rocket_screening(seed: u64) -> Result<(), Box<dyn Error>> {
     let monte_carlo = MonteCarlo::new(launch.inputs()?, Dispersion::default())?;
     let nominal = monte_carlo.draw(seed, 0);
 
-    // Each input's range, made up for the example (the motor's ±6% is about NFPA 1125's 6.7%).
+    // Each input's range, made up for the example. NFPA 1125 caps a motor type's impulse
+    // standard deviation at 6.7%.
     let factors = vec![
         Factor::new("dry mass factor", 0.95, 1.05)?,
         Factor::new("drag factor", 0.9, 1.1)?,

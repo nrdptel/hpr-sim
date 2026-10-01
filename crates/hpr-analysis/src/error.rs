@@ -54,6 +54,9 @@ pub enum AnalysisError {
         /// The output.
         value: f64,
     },
+    /// Two sensitivity factors with one name, which would make their results ambiguous.
+    #[error("two factors named {0:?}")]
+    DuplicateFactor(String),
     /// A rocket configuration the design doesn't have.
     #[error("no configuration {0:?} in the design")]
     NoConfiguration(String),

@@ -10,8 +10,9 @@ use hpr_analysis::sensitivity::benchmark::{Ishigami, SobolG};
 use hpr_analysis::sensitivity::morris::{ElementaryEffects, Morris};
 use hpr_analysis::sensitivity::sobol::Sobol;
 
-/// Saltelli and others' (2010) g-function parameters: four factors from most to little
-/// important, and four that hardly matter.
+/// g-function parameters spanning the four classes Marrel and others (2008) name, as the SFU
+/// Virtual Library of Simulation Experiments quotes them: `aᵢ = 0` very important, 1 relatively
+/// important, 9 non-important, 99 non-significant; 4.5 between the middle two.
 const G_A: [f64; 8] = [0.0, 1.0, 4.5, 9.0, 99.0, 99.0, 99.0, 99.0];
 
 /// The mean and the sample standard deviation of `xs`.
@@ -57,14 +58,23 @@ fn sobol_indices_of_the_g_function_match_the_closed_form() {
 
 /// Over many seeds, `(estimate − known) / standard error` should have mean 0 and standard
 /// deviation 1. With `seeds` independent runs the sample mean's own error is `1/√seeds` and the
-/// standard deviation's about `1/√(2 seeds)`; four of each are allowed.
+/// standard deviation's about `1/√(2 seeds)`; four of each are allowed. The check must also have
+/// the power to see standard errors 15% too small: the same `z`s divided by 0.85 must fail it.
 fn assert_calibrated(what: &str, zs: &[f64]) {
-    let n = zs.len() as f64;
+    let calibrated = |zs: &[f64]| {
+        let n = zs.len() as f64;
+        let (mean, sd) = mean_sd(zs);
+        mean.abs() < 4.0 / n.sqrt() && (sd - 1.0).abs() < 4.0 / (2.0 * n).sqrt()
+    };
     let (mean, sd) = mean_sd(zs);
-    assert!(mean.abs() < 4.0 / n.sqrt(), "{what}: z mean {mean}");
     assert!(
-        (sd - 1.0).abs() < 4.0 / (2.0 * n).sqrt(),
-        "{what}: z standard deviation {sd}"
+        calibrated(zs),
+        "{what}: z mean {mean}, standard deviation {sd}"
+    );
+    let too_small: Vec<f64> = zs.iter().map(|z| z / 0.85).collect();
+    assert!(
+        !calibrated(&too_small),
+        "{what}: can't see 15% too small (sd {sd})"
     );
 }
 
@@ -207,11 +217,11 @@ fn morris_screening_matches_the_closed_form() {
     for (got, (mu, mu_star, sigma)) in pairs {
         // μ*'s error is the run's own; μ's is σ/√r, with σ known.
         let r = got.count as f64;
-        if got.mean_absolute_standard_error > 0.0 {
+        if got.mean_absolute_standard_error > 1e-12 {
             let z = (got.mean_absolute - mu_star) / got.mean_absolute_standard_error;
             assert!(z.abs() < 4.0, "{got:?}: μ* z {z}");
         } else {
-            // Every |effect| equal: Ishigami's x₂.
+            // Every |effect| equal up to rounding: Ishigami's x₂, whose error is ~1e-16.
             assert!((got.mean_absolute - mu_star).abs() < 1e-12, "{got:?}");
         }
         assert!((got.mean - mu).abs() < 4.0 * sigma / r.sqrt(), "{got:?}");
