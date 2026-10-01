@@ -10307,8 +10307,9 @@ are works of the United States government.
    second residue whose cause is not known; this code's `Ẋ′` passes the same derivative test, and
    the file's rates of `H` and `F` follow from its own `X` and rates to 1e-6. Those columns are
    held to their measured worst (7.2e-4 nT; 2.2e-6 nT; 1.5e-6 nT a year), 140 times below the
-   0.1 nT the report allows single precision. The cause in NCEI's program is not known; review
-   found the residue grows with `|X′|`, at most about one single-precision step of it.
+   0.1 nT the report allows single precision. The cause in NCEI's program is not known (an
+   uncommitted check in review suggested it grows with `|X′|`, within about one single-precision
+   step of it).
 6. **Compass zones by the report's thresholds.** `MagneticField::compass_zone` reports the
    blackout (horizontal intensity under 2,000 nT) and caution (under 6,000 nT) zones of section
    1.8, so a program can warn where a declination cannot be trusted.

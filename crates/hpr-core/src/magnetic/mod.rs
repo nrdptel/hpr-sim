@@ -177,7 +177,14 @@ impl MagneticField {
     /// A true bearing from a magnetic one: `true = magnetic + D`, rad, in `[0, 2π)`.
     #[must_use]
     pub fn true_from_magnetic_rad(&self, magnetic_bearing_rad: f64) -> f64 {
-        (magnetic_bearing_rad + self.declination_rad).rem_euclid(std::f64::consts::TAU)
+        let bearing =
+            (magnetic_bearing_rad + self.declination_rad).rem_euclid(std::f64::consts::TAU);
+        // `rem_euclid` of a tiny negative number rounds up to 2π itself.
+        if bearing >= std::f64::consts::TAU {
+            0.0
+        } else {
+            bearing
+        }
     }
 }
 
@@ -321,7 +328,7 @@ fn geocentric(point: Geodetic) -> (f64, f64) {
     ((z / r).asin(), r)
 }
 
-/// Wraps an angle into `(−π, π]`. `rem_euclid` is exact for any finite angle.
+/// Wraps an angle into `(−π, π]`, to within a unit in the last place of 2π for any finite angle.
 fn wrap_pi(angle_rad: f64) -> f64 {
     let wrapped = angle_rad.rem_euclid(std::f64::consts::TAU);
     if wrapped > std::f64::consts::PI {
@@ -422,7 +429,8 @@ impl MagneticModel {
             });
         }
 
-        // Any finite longitude is accepted; reduce it exactly first, so that `m λ` stays small.
+        // Any finite longitude is accepted; reduce it to a turn first (to within a unit in the last
+        // place of 2π), so that `m λ` stays small.
         let longitude = point.longitude_rad.rem_euclid(std::f64::consts::TAU);
         let (latitude_prime, radius) = geocentric(point);
         let harmonics = Harmonics::new(latitude_prime, radius, longitude);

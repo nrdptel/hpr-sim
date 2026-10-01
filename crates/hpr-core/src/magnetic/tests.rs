@@ -240,7 +240,8 @@ fn ncei_high_precision_test_values() {
          {rate_outside_printing}, residue in X' {residue_max:e} nT, {share_max:e} of F"
     );
     assert_eq!((outside_printing, rate_outside_printing), (97, 24));
-    // Products of values each rounded to 1e-6: within 1e-6 of the printed rates.
+    // Products of values each rounded to 1e-6, so not to half a digit: measured 8.3e-7 (dH) and
+    // 8.6e-7 (dF), against worst-case rounding of about 1.2e-6 and 1.4e-6.
     for column in ["dH from the file", "dF from the file"] {
         assert!(worst.get(column) <= 1e-6, "{column}: {worst:?}");
     }
@@ -422,8 +423,8 @@ fn northern_grid_variation_subtracts_the_longitude() {
     assert!((gv - 21.23).abs() <= 0.005, "{gv}");
 }
 
-/// Any finite longitude gives the field of that longitude reduced to a turn, and NaN anywhere
-/// in the field puts it in the blackout zone.
+/// Any finite longitude gives the field of that longitude reduced to a turn, and a horizontal
+/// intensity that is NaN puts the field in the blackout zone.
 #[test]
 fn huge_longitudes_and_nan_fail_safe() {
     let reduced = 1e308_f64.rem_euclid(std::f64::consts::TAU);
@@ -465,8 +466,11 @@ fn the_surface_field_dips_below_table_1() {
 #[test]
 fn enu_components_are_the_launch_frames() {
     let f = at(2026.0, 1.4, 32.99, -106.97);
-    assert_eq!(f.enu_nt(), DVec3::new(f.east_nt, f.north_nt, -f.down_nt));
-    assert!(f.enu_nt().z < 0.0, "the field points down in the north");
+    let enu: DVec3 = f.enu_nt();
+    // East of north by the declination, and dipping down.
+    assert!(0.0 < enu.x && enu.x < enu.y);
+    assert!((enu.x.atan2(enu.y) - f.declination_rad).abs() < 1e-15);
+    assert!((enu.z.atan2(enu.x.hypot(enu.y)) + f.inclination_rad).abs() < 1e-15);
 }
 
 /// The field at a pole is the limit of the field approaching it along the same meridian.
@@ -653,6 +657,8 @@ fn a_magnetic_bearing_turns_by_the_declination() {
         (wrapped - (f.declination_rad - 0.01)).abs() < 1e-15,
         "{wrapped}"
     );
+    // A sum a hair below zero is 0, not 2π.
+    assert_eq!(f.true_from_magnetic_rad(-f.declination_rad - 3e-17), 0.0);
 }
 
 #[test]

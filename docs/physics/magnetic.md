@@ -16,7 +16,8 @@
   nT and angles to 0.01°, matches to its last digit in declination, inclination, the east
   component and four rates. Its north component differs at 97 points, by up to 7.18e-4 nT (2.11e-8
   of the total field), and the horizontal and total intensities with it; an independent check
-  in the tests places that difference in NCEI's file, not in hpr ([The test values](#the-test-values)).
+  in the tests that does not use hpr's derivative formula places that difference in NCEI's
+  file, not in hpr ([The test values](#the-test-values)).
   That shows the model is computed correctly. The model itself is only as good as the Earth
   allows: its own error estimate for declination is 0.29° at best and 0.35° to 0.56° at the
   example's sites, more near the magnetic poles. Each result carries that estimate.
@@ -29,7 +30,7 @@
 Code: [`hpr_core::magnetic`](../api/hpr_core/magnetic/index.html). Conventions:
 [Frames](frames.md) and [Geodesy](geodesy.md). Each source below is pinned by its checksum in the
 reference library ([`validation/refs.lock.toml`](https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml)),
-under the name given.
+under the name given; DLMF is a web reference.
 
 - **[WMM]** A. Chulliat, W. Brown, M. Nair, N. Gomez Perez, L.-Y. Young, C. Watson, N. Boneh,
   C. Beggan, B. Meyer and M. Paniccia, *The US/UK World Magnetic Model for 2025–2030: Technical
@@ -39,7 +40,8 @@ under the name given.
 - **[COF]** NCEI, `WMM2025COF.zip` (2024-12-17): the coefficient file `WMM2025.COF` and the test
   values `WMM2025_TestValues.txt`, committed unchanged in
   [`crates/hpr-core/data/wmm2025/`](https://github.com/nrdptel/hpr-sim/tree/main/crates/hpr-core/data/wmm2025),
-  with the report's Table 6 as `WMM2025_TEST_VALUES.txt`. Pinned as `wmm2025-coefficients`.
+  with the report's Table 6 as `WMM2025_TEST_VALUES.txt`. Pinned as `wmm2025-coefficients`, and
+  Table 6 as `wmm2025-test-values`.
 - **[DLMF]** NIST Digital Library of Mathematical Functions, equation
   [14.10.3](https://dlmf.nist.gov/14.10.E3): the recurrence used for the Legendre functions.
 
@@ -176,7 +178,7 @@ falls by about 0.08° a year, so it moves well under a degree over the model's f
 | NCEI's high-precision file, printed to 1e-6 nT and angles to 0.01° | 100 | `Y`, `D`, `I`, and the rates of `Y`, `Z`, `D`, `I` | half the last digit | 5e-7 nT, 0.005° |
 | the same file | 100 | `X`, `H`, `F` | 7.18e-4 nT | 7.2e-4 nT, the measured worst |
 | the same file | 100 | `Z`; the rates of `X`, `H`, `F` | 2.2e-6 nT; 1.5e-6 nT/yr | the measured worst |
-| the potential, by differences | 100 | hpr's `X′` and `Ẋ′` | 1.3e-7 nT | 1e-6 nT |
+| the potential, by differences | 100 | hpr's `X′` and `Ẋ′` | 1.3e-7 nT; `Ẋ′` under 1e-9 nT/yr | 1e-6 nT |
 
 Rows are counted from 0. The north component `X` in NCEI's file differs from hpr's at 97 of its
 100 points, by up to 7.18e-4 nT (row 35: 2026.5, 12 km, 33° N, 145° W). That is at most 2.11e-8
@@ -200,7 +202,12 @@ whose cause is not known. hpr's `Ẋ′` passes the same derivative check. The r
 follow from `X` and its rate.
 
 So the file's `X`, `H`, `F` and `Z`, and the rates of `X`, `H` and `F`, are held to the measured
-differences, not to the file's printing. [ADR-125][adr-125] records the decision.
+differences, not to the file's printing. [ADR-125][adr-125] records the decision. For a flight
+the difference is immaterial: 7.18e-4 nT turns the declination by about a millionth of a degree.
+
+Every comparison with a printed value first allows 64 units in the last place of the point's
+total field, about 7e-10 nT, for the rounding in both programs' sums: 700 times below the finest
+printed digit.
 
 A property test also checks, at random places and times, that `H`, `F`, `I` and `D` agree with
 `X`, `Y`, `Z` by their definitions, and that `F` lies between 20,000 and 70,000 nT. The report's

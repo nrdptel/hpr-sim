@@ -60,7 +60,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let (name, lat, lon, height_m) = sites[0];
     let field = WMM2025.field(Geodetic::from_degrees(lat, lon, height_m)?, year)?;
-    let rail_true = field.true_from_magnetic_rad(0.0).to_degrees();
+    // A rail aimed at magnetic north: its true bearing, as degrees east or west of north.
+    let mut rail_true = field.true_from_magnetic_rad(0.0).to_degrees();
+    if rail_true > 180.0 {
+        rail_true -= 360.0;
+    }
     println!();
     println!(
         "At {name}, a rail aimed at magnetic north points {:.2}° {} of true north.",
