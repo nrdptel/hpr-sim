@@ -99,22 +99,25 @@ pub const MAX_WARNINGS: usize = 1000;
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum WarningKind {
-    /// A part was left out: a size missing or unreadable, a unit or shape the reader doesn't
-    /// take, a material of the wrong kind, or an element that isn't a kind of part.
+    /// A part was left out: a size missing, unreadable or below zero, a unit or shape the reader
+    /// doesn't take, a material of the wrong kind, a value holding an element, or an element that
+    /// isn't a kind of part.
     PartLeftOut,
-    /// A material was left out: an unknown unit or kind, or no density.
+    /// A material was left out: an unknown unit or kind, no density, a density below zero or too
+    /// large for an `f64`, or a name or kind holding an element.
     MaterialLeftOut,
     /// A part names a material its file doesn't define; it has no density.
     MaterialUndefined,
     /// A file defines two materials of the same name and kind with different densities; parts
     /// take the first.
     MaterialRepeated,
-    /// Fields a part's kind doesn't have, or elements beside the catalogue's lists, were ignored.
+    /// Fields a part's kind doesn't have, elements beside the catalogue's lists, or a `<Version>`
+    /// holding an element, were ignored.
     Ignored,
-    /// A field was stated more than once; the last was read.
+    /// A field or a list was stated more than once; the last was read.
     Repeated,
-    /// A value read as written that can't be right: a wall of no thickness or less, or a fabric
-    /// lighter than any made.
+    /// A value read as written that can't be right: a wall of no thickness or less, a solid
+    /// lighter than air, or a fabric lighter than any made.
     Implausible,
     /// [`MAX_WARNINGS`] were given; the rest are counted, not listed.
     TooMany,
@@ -358,7 +361,7 @@ impl Shape {
 }
 
 /// The kind of density a material has.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum MaterialKind {
@@ -527,12 +530,16 @@ pub fn read(text: &str, file: &str) -> Result<CatalogFile, OrcError> {
     }
     for (name, _, count) in &lists {
         if *count > 1 {
+            // The oracle's probes show it for the two lists, not for `<Version>`.
+            let reads = if *name == "Version" {
+                ""
+            } else {
+                ", as OpenRocket reads it"
+            };
             warnings.push(
                 file,
                 WarningKind::Repeated,
-                format!(
-                    "<{name}> is stated {count} times; the last was read, as OpenRocket reads it"
-                ),
+                format!("<{name}> is stated {count} times; the last was read{reads}"),
             );
         }
     }
@@ -655,6 +662,8 @@ fn number(text: &str) -> Option<f64> {
         .parse::<f64>()
         .ok()
         .filter(|value| value.is_finite())
+        // `-0` is zero.
+        .map(|value| value + 0.0)
 }
 
 /// The SI factor of a length unit. These are the length units OpenRocket 24.12 reads in a
@@ -713,14 +722,15 @@ fn density_factor(kind: MaterialKind, unit: &str) -> Option<f64> {
     })
 }
 
-/// The lightest fabric this reads without a warning, kg/m²: 1 g/m². The lightest correctly labelled
-/// in the bundled files is 0.3 mil polyethylene film at 7.05 g/m²; a canopy under 1 g/m² is a unit written
-/// wrong, as the six `g/m2` ripstop nylons of the bundled files are (0.067 g/m² for a fabric of
-/// about 67 g/m²).
+/// The lightest fabric this reads without a warning, kg/m²: 1 g/m². The lightest correctly
+/// labelled in the bundled files is 0.3 mil polyethylene film at 7.05 g/m²; a canopy under 1 g/m²
+/// is a unit written wrong, as the six `g/m2` ripstop nylons of the bundled files are (0.067 g/m²
+/// for a fabric of about 67 g/m²).
 const LIGHTEST_FABRIC_KG_M2: f64 = 0.001;
 
 /// The lightest solid this reads without a warning, kg/m³: 1 kg/m³, below air at sea level
-/// (1.225 kg/m³). Two bundled files give a paper `0.0011` kg/m³, likely g/cm³ written as kg/m³.
+/// (1.225 kg/m³). Two bundled files give a paper `0.0011` kg/m³, where paper is roughly 1,000
+/// kg/m³: the value or its unit is wrong.
 const LIGHTEST_SOLID_KG_M3: f64 = 1.0;
 
 impl MaterialKind {

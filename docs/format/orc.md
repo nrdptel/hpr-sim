@@ -25,9 +25,12 @@ wrong for your rocket and that you should weigh your real parts.
 a part's sizes and material, and builds the part itself from them, with
 [the builder](../the-builder.md) or as a design written part by part
 ([your own rocket](../your-own-rocket.md)). Where a part states its mass, prefer it to the weight
-worked out from sizes and a material, which is only as good as the file's density. A design written
-part by part can set it as the part's mass [override](../physics/design.md#overrides); the builder
-can't take one yet.
+worked out from sizes and a material, which is only as good as the file's density. A design can
+set it as the part's mass [override](../physics/design.md#overrides), which keeps the part's
+computed centre of mass: write the design part by part
+([your own rocket](../your-own-rocket.md#what-else-a-design-can-hold)), or clone a builder rocket's
+`design()` and add one ([beyond the builder](../the-builder.md#beyond-the-builder)). The builder
+itself can't take one yet.
 
 Code: `hpr_io::orc` ([API reference](../api/hpr_io/orc/index.html)), written for
 [M5.5a](../decisions-and-roadmap.md#m5-5a), the parts reader. The decisions are in
@@ -188,8 +191,11 @@ published schema. The fields and units below are the ones the database project d
 | `Streamer` | length, width, thickness | 46 |
 
 Any part may also state its `Mass`; 229 of the built-in parts do: 207 solid parts, and 22
-parachutes and streamers. A parachute's or streamer's stated mass leaves its fabric's density
-alone, in hpr and in OpenRocket. A centering ring's length is its thickness. A coupler with an inside diameter of zero is a solid nose block.
+parachutes and streamers. Unlike a solid part's (see
+[Where hpr and OpenRocket differ](#where-hpr-and-openrocket-differ)), a parachute's or streamer's
+stated mass leaves its fabric's density as written, in hpr and in OpenRocket.
+
+A centering ring's length is its thickness. A coupler with an inside diameter of zero is a solid nose block.
 
 The units read are the ones OpenRocket 24.12 reads:
 
@@ -241,8 +247,8 @@ hpr keeps both numbers.
 
 The test shows that a stated mass is the cause on all 207. The oracle also reads each file with
 every `<Mass>` taken out, and then OpenRocket's density equals hpr's on every part, these 207
-included. On the 54 of them that are simple solids (7 body tubes, 4 bulkheads, and 34 filled conical
-nose cones and 9 transitions), the test also checks that OpenRocket's replaced density times the
+included. On the 54 of them that are simple solids (7 body tubes, 4 bulkheads, and 43 filled
+conical parts: 34 nose cones and 9 transitions), the test also checks that OpenRocket's replaced density times the
 part's volume gives the stated mass, to 1 part in 10¹⁵.
 When the builder takes catalogue parts ([M5.5b](../decisions-and-roadmap.md#m5-5b)), a part that
 states its mass will weigh that mass.
@@ -261,20 +267,22 @@ and reading goes on:
   a material of the wrong kind, a value with an element inside it, or an element that isn't a kind
   of part. OpenRocket 24.12 refuses the whole file for three of these: a missing size, an unknown
   unit and an unknown shape. It reads an unreadable size as zero, a material of the wrong kind
-  with a density of zero, and `BT<b>-</b>20` as `20`, and it skips an element that isn't a part.
-- **A material** with an unknown unit or kind, no density, a density below zero or too large to
-  hold, or an element inside its name. Parts that name it read with no density.
+  with a density of zero, and a part number written `BT<b>-</b>20` as `20`, and it skips an
+  element that isn't a part. What it does with a negative size is not probed.
+- **A material** with an unknown unit or kind, no density, a density below zero or too large for a
+  64-bit number, or an element inside its name. Parts that name it read with no density.
 - **A field** a part's kind doesn't have is ignored, with a warning. The 37 built-in nose cones
   that state an inside diameter read this way.
 - **A field stated twice** keeps the last, as OpenRocket does. Three built-in parts state two
   descriptions.
-- **A material defined twice** with two densities: parts take the first, as OpenRocket's do.
+- **A material defined twice** with two densities: parts take the first, as in OpenRocket.
 - **A list stated twice**: the last `<Materials>` and the last `<Components>` are read, as
   OpenRocket reads them. Anything else beside the lists is ignored.
 - **A value that is read as written but looks wrong**:
   - a tube whose inside diameter is not less than its outside diameter;
   - a solid lighter than air (under 1 kg/m³);
-  - a fabric lighter than 1 g/m². Ripstop nylon is about 40 to 70 g/m², so this is almost
+  - a fabric lighter than 1 g/m². The lightest correctly labelled fabric in the built-in files, a
+    polyethylene film, is 7.05 g/m², and their ripstop nylons are tens of g/m², so this is almost
     certainly a kg/m² value labelled `g/m2`, 1,000 times too light.
 
 A file with more than 1,000 warnings lists the first 1,000 and then says how many more there were.
@@ -295,7 +303,7 @@ On the built-in files there are 55 warnings, all of kinds listed above:
 
 Nothing is changed on account of them: each such part reads as written, as OpenRocket reads it.
 The 18 parts made of that paper (centering rings and engine blocks) would weigh about a millionth
-of a real one. The six Giant Leap parachutes on the light fabric all state their mass, so use
+of a real one: paper is roughly 1,000 kg/m³. The six Giant Leap parachutes on the light fabric all state their mass, so use
 that. `bundled()` drops these warnings; `read` each of `BUNDLED_FILES` to see them.
 
 ## Checked against OpenRocket

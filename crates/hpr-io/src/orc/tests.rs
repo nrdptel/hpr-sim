@@ -776,6 +776,31 @@ fn a_material_defined_twice_differently_keeps_the_first() {
 }
 
 #[test]
+fn a_material_is_found_by_its_kind_and_its_name() {
+    // One name, two kinds: each part gets the density of the kind it names, and neither
+    // definition is a repeat of the other.
+    let materials = [
+        "<Material UnitsOfMeasure=\"kg/m2\"><Name>Nylon</Name><Density>0.05</Density>\
+         <Type>SURFACE</Type></Material>",
+        &bulk("Nylon", "1150", "kg/m3"),
+    ]
+    .concat();
+    let streamer = "<Streamer><Manufacturer>Acme</Manufacturer><PartNumber>S</PartNumber>\
+                    <Material Type=\"SURFACE\">Nylon</Material><Length>1</Length>\
+                    <Width>0.05</Width><Thickness>0.0001</Thickness></Streamer>";
+    let read = read_ok(&file(&materials, &(body_tube("1", "Nylon", "") + streamer)));
+    assert!(read.warnings.is_empty(), "{:?}", read.warnings);
+    let densities: Vec<_> = read
+        .catalog
+        .parts
+        .iter()
+        .flat_map(|part| part.kind.materials())
+        .map(|material| material.density)
+        .collect();
+    assert_eq!(densities, [Some(1150.0), Some(0.05)]);
+}
+
+#[test]
 fn implausible_values_are_read_as_written_with_a_warning() {
     // A canopy fabric labelled g/m² whose number is plainly kg/m², as in the bundled files.
     let text = file(
@@ -876,6 +901,29 @@ fn the_counts_the_guide_gives_hold() {
         .filter(|part| matches!(part.kind, PartKind::NoseCone(_)))
         .count();
     assert_eq!((noses, parts.iter().filter(both).count() - noses), (8, 2));
+    // All ten say they are not filled, so the two agree: a hollow part with that wall.
+    let filled = |part: &&Part| match &part.kind {
+        PartKind::NoseCone(nose) => nose.filled,
+        PartKind::Transition(transition) => transition.filled,
+        _ => None,
+    };
+    assert!(
+        parts
+            .iter()
+            .filter(both)
+            .all(|part| filled(&part) == Some(false))
+    );
+    // The parts made of the paper lighter than air: 7 + 4 in BMS.ORC, 7 in ROCKETARIUM.ORC.
+    let paper = parts
+        .iter()
+        .filter(|part| {
+            part.kind
+                .materials()
+                .iter()
+                .any(|m| m.name == "Paper, bulk")
+        })
+        .count();
+    assert_eq!(paper, 18);
     // Part numbers naming two parts: 21, each pair of one kind, 3 pairs identical.
     let mut pairs = Vec::new();
     for (index, part) in parts.iter().enumerate() {

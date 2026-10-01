@@ -874,7 +874,8 @@ after such a turn as the upper limit of a boattail's [wave drag](#wave-drag). Se
 A small design made only to ask an [oracle](#oracle) one question, such as "what radius does
 OpenRocket give four tubes written `auto`?". It is usually a single body tube carrying the one part
 being asked about. A probe can be a small file of another kind too: the
-[parts catalogue](format/orc.md#checked-against-openrocket) probes are one-part `.orc` files. hpr's probe designs for OpenRocket are written by scripts under
+[parts catalogue](format/orc.md#checked-against-openrocket) probes are small `.orc` files, most
+with one part. hpr's probe designs for OpenRocket are written by scripts under
 `validation/oracles/openrocket/`, and OpenRocket's answers are committed under
 `validation/fixtures/ork/`, where tests hold hpr to them. See
 [`.ork` design files](format/ork.md#tube-fins-sized-from-the-body) for one set of them.
