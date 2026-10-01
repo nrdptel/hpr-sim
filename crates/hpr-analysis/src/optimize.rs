@@ -12,6 +12,8 @@
 //!   candidates around a mean, keeps the better half, and learns from them which way, and how
 //!   far, to step next. It needs only the output's ranking, no derivatives, so it suits flights,
 //!   whose outputs are noisy in their last digits.
+//! - [`Evaluation`]: a value and a constraint violation, for a model with constraints, ranked
+//!   by Deb's feasibility rules ([`cmaes::Run::tell_constrained`]).
 //! - [`benchmark`]: test functions with known minima, which the tests hold the optimizer to.
 //!
 //! A model is minimized; to maximize an output, minimize its negative. To hit a target, minimize
@@ -26,9 +28,8 @@
 //!
 //! # Left out
 //!
-//! Variables are continuous. Discrete choices (a motor, a catalogue part), constraints other than
-//! bounds, several objectives at once, Bayesian optimization and optimizing a Monte Carlo run's
-//! statistics are later increments of [M6.2, the optimization milestone][roadmap].
+//! Variables are continuous. Discrete choices (a motor, a catalogue part), several objectives at
+//! once, Bayesian optimization and optimizing a Monte Carlo run's statistics are later increments of [M6.2, the optimization milestone][roadmap].
 //!
 //! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 
@@ -185,6 +186,61 @@ impl Variable {
     }
 }
 
+/// What a model gives for one candidate under constraints: its value, and by how much it breaks
+/// the constraints, zero if it keeps them all.
+///
+/// Candidates are ranked by K. Deb's feasibility rules ("An efficient constraint handling method
+/// for genetic algorithms", *Computer Methods in Applied Mechanics and Engineering* 186(2–4),
+/// 311–338 (2000), <https://doi.org/10.1016/S0045-7825(99)00389-8>, §3): a candidate that keeps
+/// every constraint beats one that doesn't; of two that keep them, the smaller value wins; of
+/// two that don't, the smaller violation wins (here ties in violation go to the smaller value).
+/// No penalty weight is needed, as values and violations are never compared with each other.
+/// The rules rank, and CMA-ES uses only ranks.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Evaluation {
+    /// The model's value: `+∞` for a candidate it can't evaluate.
+    pub value: f64,
+    /// The total violation, `Σ max(0, gⱼ)` over constraints written `gⱼ ≤ 0`: zero if the
+    /// candidate keeps them all.
+    pub violation: f64,
+}
+
+impl Evaluation {
+    /// A value with no constraints to break.
+    pub const fn feasible(value: f64) -> Self {
+        Self {
+            value,
+            violation: 0.0,
+        }
+    }
+
+    /// A value under constraints `gⱼ(x) ≤ 0`, given as the numbers `gⱼ`: the violation is
+    /// `Σ max(0, gⱼ)`, Deb's (2000) overall violation. Deb divides each constraint by a constant
+    /// so that they count alike (a margin in calibers and a speed in m/s, say); do the same before
+    /// passing them in. A NaN `gⱼ` gives a NaN violation, which [`cmaes::Run::tell_constrained`]
+    /// refuses.
+    pub fn constrained(value: f64, constraints: &[f64]) -> Self {
+        let violation = constraints
+            .iter()
+            .map(|&g| if g.is_nan() || g > 0.0 { g } else { 0.0 })
+            .sum();
+        Self { value, violation }
+    }
+
+    /// Whether the candidate keeps every constraint.
+    pub fn is_feasible(&self) -> bool {
+        self.violation == 0.0
+    }
+
+    /// Deb's rules as an ordering: [`Less`](std::cmp::Ordering::Less) if `self` ranks ahead of
+    /// `other`. Violation first, then value; both by [`f64::total_cmp`].
+    pub fn rank(&self, other: &Self) -> std::cmp::Ordering {
+        self.violation
+            .total_cmp(&other.violation)
+            .then(self.value.total_cmp(&other.value))
+    }
+}
+
 /// Checks that there are between one and [`MAX_VARIABLES`] variables, and no two share a name.
 fn check_variables(variables: &[Variable]) -> Result<(), AnalysisError> {
     if variables.is_empty() {
@@ -227,6 +283,22 @@ mod tests {
         assert!(x.clone().within(f64::INFINITY, f64::INFINITY).is_err());
         let x = x.within(0.0, f64::INFINITY).unwrap();
         assert!(x.contains(0.0) && x.contains(1e300) && !x.contains(-1e-300));
+    }
+
+    #[test]
+    fn evaluations_rank_by_deb_rules() {
+        use std::cmp::Ordering::{Greater, Less};
+        let e = Evaluation::constrained(5.0, &[-1.0, 0.0, -3.0]);
+        assert!(e.is_feasible());
+        let broken = Evaluation::constrained(-100.0, &[0.25, -1.0, 0.5]);
+        assert_eq!(broken.violation, 0.75);
+        // Feasible beats infeasible, whatever the values.
+        assert_eq!(e.rank(&broken), Less);
+        // Two infeasible: the smaller violation, whatever the values.
+        assert_eq!(broken.rank(&Evaluation::constrained(-1e9, &[1.0])), Less);
+        // Two feasible: the smaller value.
+        assert_eq!(e.rank(&Evaluation::feasible(4.0)), Greater);
+        assert!(Evaluation::constrained(0.0, &[f64::NAN]).violation.is_nan());
     }
 
     #[test]

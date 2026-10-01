@@ -28,8 +28,11 @@ margin. It needs some Rust.
 >   and again with the flight's numerical integration 100 times stricter
 >   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (within
 >   2 mm, measured).
-> - **Left out, for now:** discrete choices (which motor, which catalogue part), limits other than
->   each variable's range (a minimum stability margin, say), trade-offs between goals (several
+> - **Limits** (a minimum stability margin, say): held to three test problems whose answers on
+>   their limits are known exactly, from 20 seeds each, to 10⁻¹⁰
+>   ([`tests/constrained.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/constrained.rs)).
+>   No rocket limit is checked yet ([Limits on a design](#limits-on-a-design)).
+> - **Left out, for now:** discrete choices (which motor, which catalogue part), trade-offs between goals (several
 >   goals can only be folded into one number, as the example does), and optimizing
 >   a [Monte Carlo](glossary.md#monte-carlo) run's statistics. They are the next steps of
 >   [M6.2](decisions-and-roadmap.md#m6-2), the optimization milestone. There is no command-line or
@@ -255,12 +258,50 @@ next. It returns the result once the run stops.
 - **Seed:** a different seed gives a different run. Rerun with two or three seeds if the answer
   matters: if they agree, the answer is not luck.
 
+## Limits on a design
+
+A design usually has limits as well as a goal: a stability margin of at least 1.5 calibres, say,
+or at least 15 m/s off the rail. The optimizer takes them as constraints, each written as a
+number `g` that must not be above zero. A margin of at least 1.5 calibres is `g = 1.5 − margin`.
+Your model returns an [`Evaluation`]: the value, and the *violation*, the sum of every `g` that
+is above zero. `Evaluation::constrained(value, &[g1, g2])` adds them up for you.
+
+Candidates are ranked by K. Deb's feasibility rules ([ADR-139][adr-139], from Deb's 2000 paper):
+
+| Comparing | The better one is |
+|---|---|
+| one that keeps every limit, one that doesn't | the one that keeps them |
+| two that keep every limit | the smaller value |
+| two that break some | the smaller violation |
+
+No penalty weight is needed, because a value is never weighed against a violation. Do scale the
+limits so that they count alike: a margin 0.1 calibre short and a rail speed 0.1 m/s short are
+not equally bad, so divide each `g` by a size you care about (the 1.5 calibres, the 15 m/s).
+
+Candidates that break a limit are kept and ranked, not redrawn, so a run can close in on an
+answer that sits right on a limit, as most good designs do. Only a point that keeps every limit
+counts as reaching a target; the [`Optimum`] reports its `violation`, zero when it keeps them all.
+For a bound that the answer will sit on, leave the variable unbounded on that side and write the
+bound as a limit.
+
+The tests hold this to three problems whose answers on their limits are known exactly:
+
+| Problem | Limit | Answer |
+|---|---|---|
+| Σ xᵢ², 10 variables | x₀ ≥ 1 | 1, at x = (1, 0, …, 0) |
+| Σ xᵢ², 10 variables (the "tangent" problem) | Σ xᵢ ≥ 10 | 10, at every xᵢ = 1 |
+| g06 of the CEC 2006 benchmark, 2 variables | inside one circle, outside another | −6961.81388, where the circles cross |
+
+From each of 20 seeds the run reaches the answer to 10⁻¹⁰ of its size and to within 10⁻⁴ of the
+point, also when it starts where the limit is broken. These are test problems; no rocket limit
+is checked yet. That comes with [M6.2b2](decisions-and-roadmap.md#m6-2b2).
+
 ## Left out
 
 - Variables are continuous. Discrete choices (a motor, a catalogue part) come next, in
-  [M6.2b](decisions-and-roadmap.md#m6-2b). Until then, run the optimizer once for each motor you
+  [M6.2b2](decisions-and-roadmap.md#m6-2b2). Until then, run the optimizer once for each motor you
   are considering and compare the results.
-- No limits other than a variable's range, and an answer on a bound is reached only slowly.
+- Limits are inequalities only. For an equality `h = 0`, write `|h| − ε ≤ 0` with a small `ε`.
 - No trade-offs between goals (a Pareto front): several goals can only be folded into one
   number, as the example does.
 - No optimizing of a Monte Carlo run's statistics, such as the chance of landing within a
@@ -271,6 +312,8 @@ The API reference is
 [`hpr_analysis::optimize`](api/hpr_analysis/optimize/index.html).
 
 [`Variable`]: api/hpr_analysis/optimize/struct.Variable.html
+[`Evaluation`]: api/hpr_analysis/optimize/struct.Evaluation.html
+[adr-139]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-139-optimization-constraints-by-debs-feasibility-rules-2026-10-01
 [`Stop`]: api/hpr_analysis/optimize/cmaes/enum.Stop.html
 [`Optimum`]: api/hpr_analysis/optimize/cmaes/struct.Optimum.html
 [`Run`]: api/hpr_analysis/optimize/cmaes/struct.Run.html
