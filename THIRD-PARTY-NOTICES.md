@@ -156,10 +156,10 @@ adds a source.
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).
-- **Karney's test set for geodesics** (`crates/hpr-core/tests/fixtures/geodtest-every-500th.dat`):
-  every 500th line of C. F. F. Karney, *Test set for geodesics*, `GeodTest.dat`
-  (doi:10.5281/zenodo.32156), 1,000 of its 500,000 WGS 84 geodesics, unchanged, under a
-  three-line header naming the source. Karney dedicates the set to the public domain under CC0 1.0
+- **Karney's test set for geodesics** (`crates/hpr-core/tests/fixtures/geodtest-*.dat`): lines
+  of C. F. F. Karney, *Test set for geodesics*, `GeodTest.dat` (doi:10.5281/zenodo.32156), each
+  under a three-line header naming the source: every 500th line, 1,000 of its 500,000 WGS 84
+  geodesics, unchanged; and its 21 mirror lines, each unchanged after its line number. Karney dedicates the set to the public domain under CC0 1.0
   (<https://creativecommons.org/publicdomain/zero/1.0/>); the whole file stays in `refs/`.
 
 ## Ported

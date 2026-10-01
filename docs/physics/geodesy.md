@@ -8,15 +8,19 @@
 - **Sources:** the NGA's WGS 84 standard, NGA.STND.0036 (2014); C. F. F. Karney, *Geodesics on
   an ellipsoid of revolution* (2011), appendix B; C. F. F. Karney, *Algorithms for geodesics*
   (2013), through the `geographiclib-rs` crate.
-- **How well it is validated:** the derived ellipsoid values reproduce the standard's Table 3.5
-  to its printed digits. In unit tests, random round trips return latitude within 1e-14 rad and
-  height within 2e-8 m, from −10 km to +1000 km. Distances and bearings match all 500,000 lines
-  of Karney's published test set within 15 nanometres
-  ([below](#distance-and-bearing-geodesics)). The conversions are not compared with another
-  library, a simulator or a real flight.
+- **How well it is validated:** for the conversions, the derived ellipsoid values reproduce the
+  standard's Table 3.5 to its printed digits, and in unit tests random round trips return
+  latitude within 1e-14 rad and height within 2e-8 m, from −10 km to +1000 km; they are not
+  compared with another library, a simulator or a real flight. For distance and bearing, every
+  one of the 500,000 lines of Karney's published test set is matched within 15 nanometres (nm,
+  billionths of a metre): distance within 11.18 nm, the far point within 14.02 nm, and the
+  bearings within 15 nm of sideways miss ([below](#distance-and-bearing-geodesics)). CI checks
+  every 500th line and 21 more; the whole set is checked where it has been downloaded.
 - **What it leaves out:** height above sea level, which needs the geoid, up to about 100 m from
   the ellipsoid ([Frames](frames.md#earth-centred-earth-fixed-ecef)). hpr has no geoid model; a
-  flight takes that difference at the site as an input.
+  flight takes that difference at the site as an input. Nothing in a flight uses distance and
+  bearing yet: the landing distance and bearing `hpr` prints come from flat east and north offsets
+  from the pad, and there is no command for them.
 
 ## Sources
 
@@ -113,25 +117,32 @@ normal.
 How far is the landing from the pad, and in which direction? On a flat map that is Pythagoras;
 on the Earth it is a **[geodesic](../glossary.md#geodesic)**, the shortest path over the
 ellipsoid's surface. Its length is the distance, and its direction where it leaves is the
-[bearing](../glossary.md#bearing). `hpr_core::geodesic` solves the two classic problems on any
-`Ellipsoid`:
+[bearing](../glossary.md#bearing). Geodesists call a bearing an *azimuth*; on this page the two
+words mean the same. `hpr_core::geodesic` solves the two classic problems
+([API reference](https://nrdptel.github.io/hpr-sim/api/hpr_core/geodesic/index.html)):
 
 - **Inverse** (`Ellipsoid::geodesic_inverse`): from two places, the distance `s₁₂` and the
   azimuths `α₁` (leaving the first) and `α₂` (arriving at the second).
 - **Direct** (`Ellipsoid::geodesic_direct`): from a place, a bearing `α₁` and a distance, the
-  place you reach and the azimuth `α₂` there.
+  latitude and longitude you reach and the azimuth `α₂` there.
 
-Azimuths are clockwise from true north, in radians from −π to π. `α₂` is the direction of travel
+Azimuths are clockwise from true north, in radians from −π to π, so due west is −π/2. For the 0°
+to 360° a compass uses, take `.to_degrees().rem_euclid(360.0)`. `α₂` is the direction of travel
 on arrival, so the bearing back to the start is `α₂ ± π`; over a long path it differs from
 `α₁ ± π` because meridians converge. Heights are ignored: the path runs on the ellipsoid's
-surface, and the direct problem's end has height 0.
+surface, and the direct problem's end has no height until you give it one.
 
 **Method.** The code is Karney's GeographicLib, as georust's `geographiclib-rs` 0.2.7 (MIT) ports
-it ([ADR-127 decision record][adr-127]). [Karney2013] maps the ellipsoid onto an auxiliary sphere,
-where the geodesic is a great circle, and corrects distance and longitude with series in the
-flattening to sixth order (§3 to §5). The inverse finds `α₁` by Newton's method on that sphere.
-Karney states that round-off stays under 15 nm (nanometres) in both problems on WGS 84, and that
-up to `f` = 1/150 the series' truncation is smaller still (§7, page 10).
+it. hpr uses the crate rather than a port of its own, so the code is Karney's line for line
+([ADR-127 decision record][adr-127]). [Karney2013] maps the ellipsoid onto an auxiliary sphere,
+where a geodesic is a great circle (the sphere's shortest path), and corrects distance and
+longitude with series in the flattening to sixth order (§2). The inverse finds `α₁` by Newton's
+method (§4), from a starting guess (§5). Karney states that round-off stays under 15 nm in both
+problems on WGS 84 (§7, page 10), and that up to a flattening of 1/150 the series' truncation is
+smaller still (page 9). Past 1/150 the series lose accuracy, so hpr refuses such an ellipsoid;
+WGS 84's flattening is 1/298. The familiar haversine formula treats the Earth as a sphere, which
+the Earth is not; Vincenty's ellipsoidal method is less accurate than Karney's, and its inverse
+sometimes fails to converge (§7).
 
 **Worked example.** A pad at 32.9904° N, 106.9750° W and a landing at 33.0000° N, 106.9680° W:
 
@@ -142,48 +153,49 @@ up to `f` = 1/150 the series' truncation is smaller still (§7, page 10).
 | azimuth on arrival `α₂` | 31.571° |
 
 The other way round, 2 km from the same pad on a bearing of 60° reaches 32.999415° N,
-106.956466° W, heading 60.010°. A flat-Earth estimate of the first (1,065 m north, 654 m east)
-gives 1,250 m at 31.6°; the geodesic matters over long paths and where precision does. A unit
-test, `the_guides_worked_example`, holds these numbers.
+106.956466° W, heading 60.010°. At recovery ranges a flat map gives the same distance, if it uses
+the ellipsoid's curvature at the middle latitude: 1,249.614 m again, to under a millimetre. The
+geodesic matters over long paths, where a flat map's error grows. A unit test,
+`the_guides_worked_example`, holds these numbers.
 
-**Validation.** [GeodTest] is Karney's set of 500,000 WGS 84 geodesics, worked in high precision
-with each end known to 1e-18°, in nine kinds: random, nearly antipodal, short, one end near a
-pole, both ends near opposite poles, nearly meridional, nearly equatorial, between vertices (where
-a geodesic runs due east or west) and ending close to vertices. `crates/hpr-core/tests/geodtest.rs`
-solves every line both ways and measures five errors, all held to Karney's 15 nm:
+**Validation.** [GeodTest] is Karney's set of 500,000 WGS 84 geodesics. They were worked
+separately from the code, with the series carried to thirtieth order and high-precision
+arithmetic, each end known to 1e-18°, so they check this code's method and its rounding. They come
+in nine kinds of 50,000 or 100,000 lines each, listed in the
+[geodesics report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/geodesics.md):
+random pairs, nearly antipodal pairs (almost opposite sides of the Earth), short paths, paths
+near the poles, nearly along a meridian or the equator, and paths near a *vertex*, the point
+where a geodesic runs due east or west. `crates/hpr-core/tests/geodtest.rs` solves every line both
+ways and measures five errors, each held to Karney's 15 nm on every line:
 
-- the inverse's distance error;
-- the inverse's *landing* miss: solve the direct problem from point 1 with the inverse's own
-  `α₁` and `s₁₂`, and measure how far it lands from point 2;
-- the inverse's azimuth errors times the reduced length `m₁₂`, the sideways miss an azimuth error
-  stands for at the other end;
-- the direct's end-point miss;
-- the direct's heading error at the end, times `m₁₂`, compared as a direction in space (near a
-  pole an azimuth swings through large angles as its point moves by nanometres).
-
-The full table is in the
-[geodesics report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/geodesics.md).
-The largest errors over all 500,000 lines:
-
-| error | largest | where |
+| error | what it is | largest |
 |---|---|---|
-| inverse distance | 11.18 nm | nearly antipodal, nearly equatorial, ending close to vertices |
-| inverse landing | 11.26 nm | ending close to vertices |
-| direct end point | 14.02 nm | nearly equatorial |
-| direct heading × `m₁₂` | 10.35 nm | random |
+| inverse distance | the computed `s₁₂` against the set's | 11.18 nm |
+| inverse landing | solve the direct problem with the inverse's own `α₁` and `s₁₂`, and measure how far it lands from the second place | 11.26 nm |
+| inverse azimuths × `m₁₂` | each azimuth's error times the *reduced length* `m₁₂`, how far the far end moves sideways per radian the start's bearing turns: the sideways miss the error stands for | 8.49 nm |
+| direct end point | the computed end against the set's, in Earth-centred coordinates | 14.02 nm |
+| direct heading × `a` | the angle between the computed and the set's direction of travel at the end, as directions in space, times the Earth's radius `a` | 13.99 nm |
 
-One measure needs a caveat. On 2 nearly antipodal lines that end close to a vertex, the inverse's
-azimuths are off by 3.15e-4 rad, 75.33 nm times `m₁₂`. These azimuths are ill-conditioned: the
-set's ends are rounded to the nearest `f64` on reading, and moving the far end by one step of
-that rounding (1.7 nm) turns `α₁` by 3.2e-4 rad, more than the error. The test checks that line
-by line. The distance and the landing on those lines are within the 15 nm.
+The inverse's azimuths can't be checked on the 50,000 "between vertices" lines: there `m₁₂` is
+below 1e-13 m, so any azimuth error reads as no miss. Their distance and landing are checked.
 
-Every 500th line (1,000 of them) is committed and checked in CI; the whole set is checked where
-`cargo xtask refs fetch` has downloaded it, against the committed report.
+**Two paths of the same length.** When the second place's latitude is exactly the first's
+negated (`φ₂ = −φ₁`), two geodesics of the same length join them, one the mirror of the other,
+and the second has `α₁` and `α₂` swapped (GeographicLib's `GeodSolve` manual, *Multiple
+solutions*). Either answer is right. The set has 21 such lines once its numbers are read into
+`f64`; on 4 of them hpr returns the other pair. The test accepts either pair on those lines, and
+both are within 15 nm. All 21 are committed and checked in CI.
+
+Every 500th line (1,000 of them) and the 21 two-path lines are committed and checked in CI. The
+whole set is checked where `cargo xtask refs fetch` has downloaded it, against the committed
+report. The report's table was written by a debug build on macOS; elsewhere the cells move by a
+few nanometres, and the test holds only the 15 nm bound.
 
 **What it leaves out.** Heights: two places at 3,000 m are as far apart as the same places at
-sea level. Only WGS 84 is measured; another `Ellipsoid` rests on Karney's method. Nothing in a
-flight uses geodesics yet, and `hpr` has no command for them.
+sea level. Only WGS 84 is measured; on any other ellipsoid up to a flattening of 1/150, the
+accuracy is Karney's claim, not something hpr has measured. A distance of many trips round the
+Earth carries its own rounding, one step of `f64` in the distance (15 nm at 67,000 km). Nothing
+in a flight uses geodesics yet, and `hpr` has no command for them.
 
 [Karney2013]: https://arxiv.org/abs/1109.4448
 [GeodTest]: https://doi.org/10.5281/zenodo.32156
