@@ -16,3 +16,7 @@ crates/hpr-motor/data/thrustcurve/curves/** -text
 # PerfectFlite logs keep the CRLF line ends the logger's software writes; the invented one is held
 # byte for byte to the code that writes it (hpr_flightdata's synthetic.rs).
 *.pf2 -text
+
+# OpenRocket's parts catalogue files keep the exact bytes OpenRocket 24.12 ships;
+# validation/oracles/openrocket/orc_presets.py checks the jar's copies against them.
+crates/hpr-io/data/openrocket-database/** -text

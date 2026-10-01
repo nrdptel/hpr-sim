@@ -35,6 +35,16 @@ adds a source.
   requires, this notice identifies that U.S. Government material, which is not subject to
   copyright protection. <https://www.ncei.noaa.gov/products/world-magnetic-model>
 
+- **OpenRocket's parts catalogue** (`crates/hpr-io/data/openrocket-database/`, compiled into
+  `hpr-io` as `hpr_io::orc::BUNDLED_FILES`): the 16 `.orc` files of the `openrocket-database`
+  project (<https://github.com/openrocket/openrocket-database>) at commit `1512874a` (2025-07-27),
+  unchanged, with the project's `LICENSE` beside them. Licensed under the Apache License 2.0; the
+  project has no `NOTICE` file. Created by Dave Cook and maintained by the OpenRocket team. Their
+  part data is the makers'; the project's README warns that it may be wrong and that real parts
+  should be weighed. OpenRocket 24.12's reading of every part, and of 32 probe files written by
+  `validation/oracles/openrocket/orc_presets.py`, is recorded in
+  `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (M5.5a, ADR-132).
+
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
   motor dimensions and aerodynamic-surface dimensions of seven example rockets, taken from RocketPy's
   notebooks and test code (never from its data files). They are recorded
@@ -329,7 +339,7 @@ same license and mode.
 | name | source | license | mode | notes |
 |---|---|---|---|---|
 | `rocketpy` | RocketPy v1.13.0 (example rockets, flight data, RASAero Cd exports, acceptance tests) | MIT; data files carry their own terms | fetched | code is MIT and may be ported with attribution; flight data carries team permissions recorded in RocketPy's notebooks, so `cargo xtask real-flights` (M2.3b, ADR-082) reads the logs, the example thrust files and the full ERA5 files from `refs/` and commits only derived numbers and file digests to `validation/reports/real-flights.{json,md}`, with the examples' sites, rails, launch hours and drag constants or knots transcribed from the notebooks' (MIT) code in `hpr_validate::real_flight`; the ERA5 weather files in `data/weather/` are Copernicus (C3S) data with attribution required; the NASADEM tile is NASA data |
-| `openrocket-database` | `openrocket/openrocket-database` (`.orc` parts) | Apache-2.0 | fetched | may be bundled with notices in M5.5. `validation/fixtures/ork/openrocket-automatic-radius.json` records the four radii OpenRocket resolves in its `ork/parachutes.ork`, and nothing else from the file |
+| `openrocket-database` | `openrocket/openrocket-database` (`.orc` parts) | Apache-2.0 | fetched | its 16 `.orc` files are bundled unchanged (see Bundled, M5.5a). `validation/fixtures/ork/openrocket-automatic-radius.json` records the four radii OpenRocket resolves in its `ork/parachutes.ork`, and nothing else from the file |
 | `fusionspace-loft` | `nrdptel/fusionspace-loft` (the project owner's own) | MIT | fetched | ported with a note; its seven `fixtures/demo-*.ork` designs are committed as test data (below) |
 | `fusionspace-debrief` | `nrdptel/fusionspace-debrief` (the project owner's own) | MIT | fetched | ported with a note; the flight-log format knowledge behind Phase 5. Its twelve public flight-log fixtures come from publicly shared flights whose upstream terms are unrecorded, so none is committed; a test reads its Pnut log where it is fetched (ADR-108) |
 | `loft-fixtures` | `nrdptel/loft-fixtures` | private; third-party design files | fetched | never committed; only derived statistics are published |

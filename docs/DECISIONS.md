@@ -137,6 +137,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-129 | M5.4 split a to c; M5.4a: motor.fusionspace.co's five files in `hpr_net::motor_finder` through the cache, an hour's TTL, its structural rules refused and its derived ones pinned on the recording; eight answers of one build committed as fixtures; the credit with the site's caution on every answer | accepted |
 | ADR-130 | M5.4b: ThrustCurve.org's search and download in `hpr_net::thrustcurve` through the cache, a day's TTL; the join by exact maker and designation, misses reported not guessed; three makers' searches and two public-domain files committed as fixtures; the join's report in `validation/reports/thrustcurve-join.md` | accepted |
 | ADR-131 | M5.4c: `hpr motors search`, the finder's list from the network, the cache or a saved file; five filters, `--max-price` in exact cents on the cheapest in-stock offer; cheapest first; both credits on every list; the example tested on an edited copy, as the recording lists nothing at $150 | accepted |
+| ADR-132 | M5.5 split a and b; M5.5a: `hpr_io::orc` reads OpenRocket's `.orc` parts catalogues; the 16 files OpenRocket 24.12 ships bundled unchanged (Apache-2.0); held part by part to OpenRocket's preset loader, run as an oracle; exact unit definitions, the file's makers' names and densities kept, a stated mass kept beside them; unreadable parts left out with a warning, not the file | accepted |
 
 ---
 
@@ -10792,3 +10793,72 @@ with the other list cached, the hint counting motors out of stock from the whole
 `--max-price` taking the next option as its value, and site text printed raw; all are fixed. The guide's [CLI page](cli.md#motors-you-can-buy) runs both examples through
 `cargo xtask cli`. Fetching online was not run; it is the same `Client` and `Http` as `hpr weather`,
 which were run by hand on 2026-09-30.
+
+## ADR-132: M5.5a, OpenRocket's `.orc` parts catalogues, held to OpenRocket's reading (2026-10-01)
+
+**Context.** M5.5 asks for OpenRocket's `.orc` component database, looked up by vendor and part
+number, with parts usable from the design API; done when "all `.orc` files parse, and a design
+built from catalog parts simulates". The database is `openrocket/openrocket-database`
+(Apache-2.0), pinned in `refs.lock.toml` at `1512874a` (2025-07-27). OpenRocket 24.12's jar ships
+its 16 files byte for byte. The format has no schema; the project's `docs/TechnicalInfo.md` lists
+fields and units, and says a shape parameter "cannot be specified" and a material must be defined
+in the same file. A survey of the files: 3,449 parts of ten kinds, 402 materials, lengths in `in`,
+`mm`, `cm` and `ft`, masses in `oz`, `g` and `kg`; 3 materials named but not defined; 21 part
+numbers naming two parts; no shape parameters.
+
+**Decision.**
+
+1. **Split a and b.** M5.5a reads the catalogue (this ADR); M5.5b builds parts from it in the
+   builder and flies a rocket of them, each part's built mass held to OpenRocket's for the same
+   preset.
+2. **The 16 files are bundled unchanged** in `crates/hpr-io/data/openrocket-database/` with the
+   project's `LICENSE`, compiled in by `include_str!` (2.1 MB of text; `hpr_io::orc::bundled`
+   reads them once), and listed under Bundled in `THIRD-PARTY-NOTICES.md`. Apache-2.0 allows it
+   with the licence and the notices kept; the files carry no `NOTICE`. `.gitattributes` keeps
+   their bytes. The `refs/` copy stays the pinned source; the oracle checks the jar's copies equal
+   the bundled ones.
+3. **OpenRocket's own reading is the oracle.** `validation/oracles/openrocket/orc_presets.py`
+   runs OpenRocket 24.12's public `OpenRocketComponentLoader.load` on each file (run, never read)
+   and records every value of every preset (`ComponentPreset.ORDERED_KEY_LIST`) to
+   `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (1.3 MB, one part a line).
+   `tests/orc_openrocket.rs` holds hpr's reading to it, part by part in order, every value to
+   the bit. Where the two differ the test counts each departure and checks its cause. The script
+   also has OpenRocket read 32 probe catalogues, each asking one question (every documented
+   unit, values with no units, a part or file it can't read), and records each probe's text with
+   OpenRocket's parts or refusal; the same test reads each probe and names what hpr does.
+4. **Units are their exact definitions** (NIST Handbook 44, Appendix C), so hpr departs from
+   OpenRocket's rounded factors: its ounce is 0.0283495231 kg against the exact 0.028349523125
+   (185 masses differ by 8.8e-10 of their value); the fixture's probes show `lb/ft³`, `oz/in²`, `oz/ft²`,
+   `lb/ft²` and `oz/ft` rounded the same way, none used by the bundled files. Values with no
+   `Unit` are SI, and a density with no `UnitsOfMeasure` is SI, as OpenRocket reads them
+   (probes). `g/m2` is read as written, as OpenRocket does, though the six Giant Leap canopies
+   labelled so are plainly kg/m² (0.067 g/m² is no fabric); those six parts state their mass.
+5. **The file's values are kept.** The maker is the file's (OpenRocket shows "LOC Precision" as
+   "LOC/Precision" and "Public Missiles" as "Public Missiles, Ltd.": 252 parts). A stated `Mass`
+   is kept in `Part::mass_kg` and the material keeps the file's density; OpenRocket instead gives
+   a bulk part its stated mass by replacing the density (207 parts; on the 11 tubes and bulkheads
+   among them, the replaced density times the part's volume is the stated mass to 1e-12, so that
+   is the cause). M5.5b makes a built part's mass the stated one. A material the file doesn't
+   define has no density (`None`) where OpenRocket gives it zero (3 parts). A field stated twice
+   keeps the last, as OpenRocket does (3 descriptions).
+6. **Strict per part, lenient per file.** Only text that isn't XML or whose root isn't
+   `<OpenRocketComponent>` is refused. A part with a missing or unreadable dimension, a unit or
+   shape the format lacks, a material of the wrong kind or an unknown element is left out with a
+   warning; OpenRocket 24.12 throws on the whole file for the first three (probes). An unknown
+   field is ignored with a warning (OpenRocket ignores it silently): the 37 nose cones that state
+   an `InsideDiameter` read that way. `in/64` is refused: OpenRocket reads it as inches.
+7. **Lookup.** `Catalog::find(maker, number)` matches the whole part number exactly and the maker
+   in any case, both trimmed, and returns every match (21 numbers name two parts). Numbers are
+   often several in one (`BT-20, 30316`); pieces are ambiguous (`White` names five parts), so
+   `Catalog::search` matches text in numbers and descriptions instead.
+
+**Consequences.** M5.5a is met: the 16 bundled files read; every part OpenRocket reads is read, in
+its order, 3,449 parts; 17,911 values equal OpenRocket's to the bit, and the departures are
+exactly 185 ounce masses, 252 makers' names, 207 derived densities and 3 undefined materials. The
+reader's warnings on the bundled files are 43: 37 nose cones' inside diameters, 3 doubled
+descriptions and 3 undefined materials. Changing the inch by one unit in the last place fails the
+oracle test. Of the 32 probes, hpr reads 20 as OpenRocket does to the bit, 6 within 1e-8 by
+its exact units, and leaves out what OpenRocket can't read (4 it refuses whole, `oz/in` among
+them, which hpr reads with the cord's density undefined) or reads oddly (`in/64`, a material of
+the wrong kind). Nothing flies a catalogue part yet (M5.5b), and no shape parameter or shoulder wall
+is chosen for one: the file gives neither.
