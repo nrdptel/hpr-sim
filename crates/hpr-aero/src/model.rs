@@ -6703,9 +6703,9 @@ mod tests {
     fn models_built_apart_share_the_table_only_on_the_same_body() {
         let rocket = straight_rocket();
         let nominal = model(&rocket);
-        let mut scaled = model(&rocket).with_drag_scale(1.1).unwrap();
+        let alone = model(&rocket).with_drag_scale(1.1).unwrap();
         let built = nominal.supersonic_body().unwrap() as *const SupersonicBody;
-        assert!(!std::ptr::eq(built, scaled.supersonic_body().unwrap()));
+        assert!(!std::ptr::eq(built, alone.supersonic_body().unwrap()));
         let mut scaled = model(&rocket).with_drag_scale(1.1).unwrap();
         assert!(!scaled.supersonic_built());
         assert!(scaled.share_tables(&nominal));

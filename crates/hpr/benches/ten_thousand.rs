@@ -14,7 +14,9 @@
 #![expect(
     clippy::unwrap_used,
     clippy::print_stdout,
-    reason = "a measurement with invalid fixed inputs should stop at once, and it exists to print"
+    clippy::disallowed_types,
+    reason = "a measurement with invalid fixed inputs should stop at once, it exists to print, and \
+              it reads the clock to time the library, outside it"
 )]
 
 use std::hint::black_box;
@@ -203,14 +205,19 @@ fn measure(name: &str, nominal: FlightInputs) {
         inputs
             .iter()
             .map(|inputs| inputs.simulation().unwrap())
-            .count()
+            .collect::<Vec<_>>()
     });
     let (sample_time, _) = fastest(|| {
         (0..SPLIT)
             .map(|index| monte_carlo.sample(SEED, index))
-            .count()
+            .collect::<Vec<_>>()
     });
-    let (alone_time, _) = fastest(|| inputs.iter().map(|inputs| inputs.fly().unwrap()).count());
+    let (alone_time, _) = fastest(|| {
+        inputs
+            .iter()
+            .map(|inputs| inputs.fly().unwrap())
+            .collect::<Vec<_>>()
+    });
     let per = |time: Duration| 1e3 * time.as_secs_f64() / SPLIT as f64;
     println!(
         "  one thread, per flight over {SPLIT}: {:.3} ms a sample, {:.3} ms of it building; \
