@@ -93,14 +93,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     println!();
 
-    // 3. The L motors in stock, cheapest first by the price of one motor.
+    // 3. The L motors in stock, cheapest first by the price of one motor; an offer whose vendor
+    //    shows no price goes last.
     let mut l_class: Vec<_> = in_stock
         .motors
         .iter()
         .filter(|m| m.impulse_class == "L")
         .filter_map(|m| Some((m, m.cheapest_in_stock.as_ref()?)))
         .collect();
-    l_class.sort_by_key(|(m, offer)| (offer.unit_price_cents, m.designation.clone()));
+    l_class.sort_by_key(|(m, offer)| {
+        let unit = offer.unit_price_cents;
+        (unit.is_none(), unit, m.designation.clone())
+    });
     println!(
         "{} L motors in stock; the five cheapest by the price of one motor:",
         l_class.len()
@@ -116,7 +120,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             motor.designation,
             motor.diameter_mm,
             motor.total_impulse_ns.unwrap_or(f64::NAN),
-            dollars(offer.unit_price_cents),
+            offer
+                .unit_price_cents
+                .map_or_else(|| "no price".to_owned(), dollars),
             offer.vendor,
             motor.in_stock_vendor_count,
         );

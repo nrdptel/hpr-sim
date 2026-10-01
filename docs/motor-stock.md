@@ -2,61 +2,76 @@
 
 This page covers where hpr gets motor stock and prices: [motor.fusionspace.co](https://motor.fusionspace.co),
 a free site that reads a dozen U.S. vendors' public listings every hour and publishes, for every
-AeroTech, Cesaroni and Loki motor they carry, who has it in stock and at what price. hpr reads
-the site's public data API (its machine-readable files) and saves each answer, so the same list
-works later with no network. It is for anyone choosing a motor they can actually buy: "which L
-motors are in stock, and what does one cost?" There is no `hpr` command for it yet: a Rust
-program calls the library.
+AeroTech, Cesaroni and Loki motor of [impulse class](glossary.md#impulse-class) D and up that they
+carry, who has it in stock and at what price. hpr reads the site's public data API (its
+machine-readable files) and saves each answer, so the same list works later with no network. It
+is for anyone choosing a motor they can actually buy: "which L motors are in stock, and what does
+one cost?" There is no `hpr` command for it yet: a Rust program calls the library. Nor does it yet
+connect a motor in stock to a [thrust curve](glossary.md#thrust-curve) you can fly; that is
+[M5.4b](decisions-and-roadmap.md#m5-4b), the next increment.
 
 **How far to trust it.** hpr gives back the site's values unchanged, and the saved copy gives them
 back offline. That is checked on eight recorded answers, below. Whether a vendor really has a motor,
-at that price, is the vendor's to say: the site reads public listings, up to about an hour old, and
-its terms ask you to check stock and price on the vendor's own page before relying on them. Prices
-are in U.S. dollars.
+at that price, is the vendor's to say. The site's data is up to about an hour old when it is built,
+and hpr counts its saved copy as fresh for another hour, so a fresh answer can be two hours behind
+the vendor's page; a stale copy is as old as its date says. The site's terms ask you to check stock
+and price on the vendor's own page before relying on them. Prices are in U.S. dollars.
 
-The tests replay saved answers and never contact the site. The live site was contacted by hand,
-over an encrypted (HTTPS) connection, to record them. So a change in the site's answers would
-show only when a program runs, as a refused answer.
+The tests replay saved answers, and CI never contacts the live site. It was contacted by hand, over
+an encrypted (HTTPS) connection, to record them. If the site changes its format, you will find out
+when your program gets a refused answer, not from a failing test.
 
 Code: `hpr_net::motor_finder` ([API reference](api/hpr_net/motor_finder/index.html)), written for
 [M5.4a](decisions-and-roadmap.md#m5-4a), the first motor-stock increment. It needs the `net`
-feature of the `hpr` crate. The choices are in
+feature of the `hpr` crate: `hpr = { ..., features = ["net"] }` in `Cargo.toml`, then
+`hpr::hpr_net::motor_finder`. The choices are in
 [ADR-129: motor stock through the cache](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-129-m54-split-and-m54a-the-motor-finders-api-through-the-cache-2026-10-01).
 How saved answers work is on [Online data and the cache](online-data.md). The motors hpr carries
-with it, with their thrust curves, are on [Solid motors](physics/motor.md).
+with it, with their thrust curves, are on [Solid motors](physics/motor.md); this list is not
+connected to them yet.
 
 ## What the site publishes
 
+The site documents its API, and its terms, in
+[its own repository](https://github.com/nrdptel/Hobby-Rocket-Motor-Finder/blob/main/docs/api.md).
 The API is a handful of files, rebuilt about every hour. There is no key, no limit on how often you
 ask, and no way to ask for part of a file: a program fetches a whole file and picks what it needs.
 
-| File | What it holds | Size on 2026-10-01 |
+| File | What it holds | On 2026-10-01 |
 |---|---|---|
 | `meta.json` | when the files were built, and how many motors, motors in stock and vendors they hold | 760 bytes |
 | `motors.json` | every motor some vendor lists, D class and up | 598 motors, 1.6 MB |
 | `in-stock.json` | the same, only those in stock at one vendor or more | 282 motors, 0.96 MB |
-| `vendors.json` | the vendors read, with how many motors each lists and has in stock | 12 vendors |
-| `motors/{maker}/{motor}.json` | one motor, as in the lists | 1 to 8 kB |
+| `vendors.json` | the vendors read, with how many motors each lists and has in stock | 12 vendors, 1.1 kB |
+| `motors/{maker}/{motor}.json` | one motor, as in the lists | 1.4 to 8.1 kB for the four recorded |
 
 Each motor carries its maker; its [designation](glossary.md#motor-designation) (`L1150R`,
-`3683L851-P`), spelled as [ThrustCurve.org](glossary.md#thrustcurveorg) spells it; its
-[impulse class](glossary.md#impulse-class), diameter, [total impulse](glossary.md#total-impulse),
-average thrust and burn time, taken from ThrustCurve.org; its propellant, reload hardware and
-[delays](glossary.md#ejection-delay); whether it ships as hazardous material; and every vendor's
-*listing* of it. A listing is one product page: its status (in stock, out of stock, special order
-or unknown), its sticker price, its pack size, the price of one motor, and when the site last read
-it. A vendor may list one motor several times, for different delays or pack sizes. Each motor in
-stock also names its cheapest offer, by the price of one motor.
+`3683L851-P`), spelled as [ThrustCurve.org](glossary.md#thrustcurveorg) spells it; its impulse
+class, diameter, [total impulse](glossary.md#total-impulse),
+[average thrust](glossary.md#average-thrust) and [burn time](glossary.md#burn-time), taken from
+ThrustCurve.org; its propellant; for a reload, the reusable case it needs (`RMS-29/180`); its
+[delays](glossary.md#ejection-delay); whether it is discontinued (old stock only: two motors in
+stock were, on the recorded morning); whether it ships as hazardous material, as the site labels it
+from the propellant's weight; and every vendor's *listing* of it.
 
-Prices are whole cents. The price of one motor is the sticker price over the pack size: a $38.49
-two-pack is $19.25 a motor (the recording rounds the half cent up, on all 3,685 listings).
+A listing is one product page: its status, its sticker price, its pack size, the price of one
+motor, units on hand when the vendor shows them (267 of the 3,685 listings did), and when the site
+last read it. The status is *in stock*, *out of stock*, *special order* (made or ordered for you,
+often with a lead time of weeks; not counted as in stock), or *unknown*. A vendor may list one
+motor several times, for different delays or pack sizes. Each motor in stock also names its
+cheapest offer, by the price of one motor.
+
+Prices are whole cents. The price of one motor is the sticker price over the pack size, to the
+nearest cent: a $38.49 two-pack is $19.25 a motor (the 263 of the 3,685 listings that fall on a
+half cent all round up).
 
 ### What hpr refuses
 
 An answer is refused, and not saved, when:
 
-- it isn't JSON, or a field is missing or of the wrong type (a status the API doesn't list, too);
-- its schema version isn't 1 (the API puts a breaking change under a new address);
+- it isn't JSON, or a field is missing or of the wrong type;
+- its schema version (the number the API puts on its format) isn't 1: the API puts a breaking
+  change under a new address;
 - its build time isn't a UTC time;
 - a list's count disagrees with the list;
 - a motor's impulse class isn't one capital letter, its diameter isn't above zero, or its impulse,
@@ -67,8 +82,14 @@ An answer is refused, and not saved, when:
 - `in-stock.json` holds a motor out of stock;
 - a motor's own page holds another motor.
 
-A motor the site doesn't list is its "not found" page, which comes back as an error naming the
-address.
+One broken value refuses the whole file: hpr keeps its last good copy rather than a list it can't
+trust, and online it hands that copy back, marked stale, with the reason. Two things the API
+allows are read, not refused: a cheapest offer with no price (when no vendor with the motor in
+stock shows one), and a listing status the API adds later, which reads as *unknown*.
+
+Asking for a motor the site doesn't list gets the site's "not found" page; hpr returns it as an
+error naming the address, and doesn't save it. The makers can be named in full or in short:
+`aerotech`, `cesaroni` and `loki`, in any case.
 
 ## An example
 
@@ -106,8 +127,9 @@ Cesaroni Technology  3683L851-P          75         3683.2     $290.39  Animal M
 AeroTech             L1150R              75         3517.0     $324.99  Animal Motor Works             1
 ```
 
-The first line is the credit the site asks for, with its caution; show it wherever a price or
-stock is shown. `Fetched` and `Stale` say where an answer came from
+CI checks that it still prints this (`cargo xtask examples --check`). The first line is the credit
+the site asks for, with its caution; show it wherever a price or stock is shown. `Fetched` and
+`Stale` say where an answer came from
 ([how long a copy stays fresh](online-data.md#how-long-a-copy-stays-fresh)). `vendors` is how many
 vendors had the motor in stock. On that morning no L motor in stock cost $150 or less: the
 cheapest was $260.99.
@@ -125,38 +147,44 @@ counts as fresh for an hour, as often as the site rebuilds.
 
 The tests in [`crates/hpr-net/tests/motor_finder.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/motor_finder.rs)
 replay eight answers recorded from one build of the site, on 1 October 2026 at 07:07 UTC: the four
-lists, and the pages of four motors, one from each maker and one whose designation holds a `/`
-(AeroTech's `F27R/L`, whose page is `F27R~L.json`). They read the expected values from the
-recordings themselves, not through the code being tested, and check that:
+lists, and the pages of four motors: one each from AeroTech, Cesaroni and Loki, plus AeroTech's
+`F27R/L`, whose name holds a `/` (its page is `F27R~L.json`). They read the expected values from
+the recordings themselves, not through the code being tested, and check that:
 
 - each answer, read and written back out, holds exactly the recording's fields and values, and
   carries the credit line;
+- the API's words read with their meaning: H128W is a reload that ships as hazardous material,
+  F27R/L a single-use motor whose shipping varies, D13W a reload that doesn't, and the listings
+  count 827 in stock, 2,363 out of stock and 495 on special order;
 - a second read online, inside the hour, is answered from the saved copy without a fetch;
 - offline, with a transport that fails the test if it is ever called, each read gives the same
   values, fresh for the hour and marked stale after it;
-- each motor's page is the same motor as in `motors.json`, and a maker can be named by its name or
-  its short form (`aerotech`), in any case;
+- each motor's page is the same motor as in `motors.json`, and a maker can be named in full or in
+  short, in any case;
 - the files agree with each other: `in-stock.json` is `motors.json`'s motors in stock, value for
   value, and `meta.json` counts both lists and the vendors;
-- each rule in the list above refuses an answer that breaks it, naming the field;
+- each rule in the list above refuses an answer that breaks it, naming the field, and what the API
+  allows (an offer with no price, a new status) is read;
 - an answer that isn't JSON is refused and not saved; when one arrives after a good copy has gone
   stale, the good copy comes back with the reason;
 - a page holding another motor is refused and not saved;
 - offline, a file never fetched is an error naming its address.
 
-They also check what the recording shows of the site's rules that hpr leaves unchecked: each
-motor's page is at the address it names, the price of one motor is the sticker price over the
-pack, the cheapest offer is the lowest-priced listing in stock, a motor is in stock exactly when
-one of its listings is, and the vendor counts count distinct vendors.
+Some of the site's rules hpr doesn't enforce when it reads an answer. The tests confirm that the
+recording keeps them: each motor's page is at the address it names, the price of one motor is the
+sticker price over the pack, the cheapest offer is the lowest-priced listing in stock, a motor is
+in stock exactly when one of its listings is, and the vendor counts count distinct vendors.
 
 ## What it leaves out
 
 - **No command.** `hpr motors` doesn't read stock yet;
-  [M5.4c](decisions-and-roadmap.md#m5-4c) adds `hpr motors search --in-stock --class L
+  [M5.4c](decisions-and-roadmap.md#m5-4c) will add `hpr motors search --in-stock --class L
   --max-price 150`.
 - **No thrust curves.** The site names a motor as ThrustCurve.org does, but carries no
-  ThrustCurve.org id or curve. Joining the two, so that a motor in stock can be flown, is
+  ThrustCurve.org id or curve. Matching the two by name, so that a motor in stock can be flown, is
   [M5.4b](decisions-and-roadmap.md#m5-4b).
+- **Prices as listed.** hpr shows a price as the site gives it, and doesn't screen out a shop's
+  placeholder price.
 - **U.S. vendors and dollars only,** and only the three makers the site reads.
 - **No history.** Each answer is the stock of one hour; hpr keeps only the latest copy of each
   file.

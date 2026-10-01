@@ -10591,8 +10591,12 @@ match exactly one ThrustCurve record on (manufacturer, designation), as all 598 
    `fetch_*` through `Client::fetch_checked`, so an answer that doesn't parse is never cached. The
    types mirror the API's JSON field for field (prices `u64` cents, impulse and thrust `f64`, the
    listing status, motor type and hazmat as enums), so a value read is the answer's and writes
-   back to it. Unknown fields are ignored (the API may add some under v1); an unknown enum value
-   is refused, and online a stale good copy is served in its place.
+   back to it. Unknown fields are ignored (the API may add some under v1). The cheapest offer's
+   prices are optional, as the API's OpenAPI schema has them (its generator writes null when no
+   in-stock listing shows a price); a listing status the API adds later reads as `Unknown`, so
+   one new word doesn't refuse the list; a stock count is read as the vendor shows it, signed.
+   An unknown motor type or hazmat label is refused. `fetch_motor` returns the page, with its
+   build time.
 3. **Refused: the structural rules; pinned: the derived ones.** The parser refuses another schema
    version, a build time that isn't UTC ISO 8601, a list whose `count` disagrees, an impulse
    class that isn't one capital letter, a diameter not above zero, a negative impulse, thrust or
@@ -10602,11 +10606,13 @@ match exactly one ThrustCurve record on (manufacturer, designation), as all 598 
    derives (the unit price is the sticker over the pack, rounded half up; the cheapest offer is
    the lowest-priced in-stock listing; in stock exactly when a listing is; distinct-vendor counts;
    each motor's `path`) are tested on the recording, not enforced: a change in how the site
-   computes them would otherwise refuse the whole catalogue.
+   computes them would otherwise refuse the whole catalogue. A value that breaks a checked rule
+   refuses its whole file: the last good copy is kept, served stale online with the reason.
 4. **A manufacturer and designation.** `Endpoint::motor` takes the API's three manufacturers by
    name or slug, any case, and a designation of ASCII letters, digits, `-`, `_`, `.` and `/` (the
    characters ThrustCurve's designations use), not empty and not all dots, so no request leaves
-   the API's `motors/` folder; anything else is refused before the client is asked.
+   the API's `motors/` folder; anything else is refused before the client is asked. The variant is
+   `#[non_exhaustive]`, so no caller builds one past the checks.
 5. **An hour's TTL,** the site's rebuild interval; offline, or with the site down, the cached copy
    is served stale, as every source does (ADR-117).
 6. **The credit.** `ATTRIBUTION` names motor.fusionspace.co, its two sources and its caution to
@@ -10624,7 +10630,11 @@ match exactly one ThrustCurve record on (manufacturer, designation), as all 598 
 **Consequences.** M5.4a is met: `tests/motor_finder.rs` reads each of the eight answers, writes it
 back and finds exactly the recording's keys and values; reads it again from the cache without a
 fetch, and offline, through a transport that fails if called, fresh for the hour and stale after;
-and finds `ATTRIBUTION` on every answer. The files agree with each other (`in-stock.json` is
+and finds `ATTRIBUTION` on every answer. A typed test pins the enums' meanings (H128W a reload
+shipped as hazardous material; 827 listings in stock, 2,363 out, 495 special order), since a
+round trip through the same names can't. Review found the first draft refusing the whole list
+for an offer with no price, which the API allows; an enum whose names could be swapped unseen;
+several refusals untested; and a page fetch that dropped its build time. All are fixed. The files agree with each other (`in-stock.json` is
 `motors.json`'s 282 motors in stock, value for value; `meta.json` counts 598, 282 and 12), each
 refusal above is tested by a one-field change to a recording, and the derived rules hold on all
 598 motors and 3,685 listings. On that build, 20 L motors were in stock and none sold for $150

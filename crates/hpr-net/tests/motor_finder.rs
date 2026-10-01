@@ -21,7 +21,8 @@ use std::cell::Cell;
 use std::path::Path;
 
 use hpr_net::motor_finder::{
-    self, ATTRIBUTION, Endpoint, ListingStatus, MotorFinderError, MotorList, TTL_S,
+    self, ATTRIBUTION, Endpoint, Hazmat, ListingStatus, MotorFinderError, MotorList, MotorType,
+    TTL_S,
 };
 use hpr_net::{Cache, Client, Freshness, Mode, NetError, Replay, Transport};
 use serde::Serialize;
@@ -169,32 +170,31 @@ fn each_motors_page_reads_to_its_values_then_works_offline_from_the_cache() {
     let online = Client::new(&transport, Cache::new(dir.path()), Mode::Online);
     let offline = Client::new(Forbidden, Cache::new(dir.path()), Mode::Offline);
     for (manufacturer, designation, file) in PAGES {
-        let (motor, fetched) =
+        let (page, fetched) =
             motor_finder::fetch_motor(&online, manufacturer, designation, NOW_S).unwrap();
         let recording = recorded(file);
-        assert_reads_back(&motor, &recording["motor"], file);
+        assert_reads_back(&page, &recording, file);
         assert_eq!(
             (fetched.freshness, fetched.attribution.as_str()),
             (Freshness::Fetched, ATTRIBUTION)
         );
-        let page = motor_finder::parse_motor(&fixture(file)).unwrap();
-        assert_reads_back(&page, &recording, file);
+        assert_eq!(page, motor_finder::parse_motor(&fixture(file)).unwrap());
         let listed = all
             .motors
             .iter()
             .find(|m| m.manufacturer == manufacturer && m.designation == designation)
             .unwrap();
-        assert_eq!(&motor, listed, "{file}");
+        assert_eq!(&page.motor, listed, "{file}");
         assert_eq!(page.generated_at, all.generated_at);
 
         let (read, fetched) =
             motor_finder::fetch_motor(&offline, manufacturer, designation, NOW_S + 60).unwrap();
-        assert_eq!((read, fetched.freshness), (motor, Freshness::Cached));
+        assert_eq!((read, fetched.freshness), (page, Freshness::Cached));
     }
     assert_eq!(transport.calls(), PAGES.len());
     // The manufacturer may be named by its slug, in any case: the same file, from the cache.
     let (read, _) = motor_finder::fetch_motor(&offline, "AEROTECH", "H128W", NOW_S).unwrap();
-    assert_eq!(read.designation, "H128W");
+    assert_eq!(read.motor.designation, "H128W");
 }
 
 /// The recording is one build: `in-stock.json` is `motors.json`'s motors in stock, in order and
@@ -264,7 +264,7 @@ fn the_recording_keeps_the_apis_stated_rules() {
         assert_eq!(m.in_stock, !stocked.is_empty(), "{}", m.designation);
         if let Some(offer) = &m.cheapest_in_stock {
             let lowest = stocked.iter().filter_map(|l| l.unit_price_cents).min();
-            assert_eq!(Some(offer.unit_price_cents), lowest, "{}", m.designation);
+            assert_eq!(offer.unit_price_cents, lowest, "{}", m.designation);
             assert!(
                 stocked
                     .iter()
@@ -313,7 +313,7 @@ fn answers_that_break_the_apis_rules_are_refused() {
         other => panic!("{other:?}"),
     };
     let motors = "motor-finder-motors.json";
-    let cases: [Case; 9] = [
+    let cases: [Case; 14] = [
         (
             "class",
             |j| j["motors"][3]["impulse_class"] = "LL".into(),
@@ -368,6 +368,36 @@ fn answers_that_break_the_apis_rules_are_refused() {
             "motors[1].cheapest_in_stock.pack_size",
             "0",
         ),
+        (
+            "offer unit price",
+            |j| j["motors"][1]["cheapest_in_stock"]["unit_price_cents"] = 1_000_000.into(),
+            "motors[1].cheapest_in_stock.unit_price_cents",
+            "1000000 over a price of ",
+        ),
+        (
+            "lower-case class",
+            |j| j["motors"][3]["impulse_class"] = "l".into(),
+            "motors[3].impulse_class",
+            "l",
+        ),
+        (
+            "thrust",
+            |j| j["motors"][3]["avg_thrust_n"] = (-2.0).into(),
+            "motors[3].avg_thrust_n",
+            "-2",
+        ),
+        (
+            "burn time",
+            |j| j["motors"][3]["burn_time_s"] = (-0.5).into(),
+            "motors[3].burn_time_s",
+            "-0.5",
+        ),
+        (
+            "negative diameter",
+            |j| j["motors"][3]["diameter_mm"] = (-29).into(),
+            "motors[3].diameter_mm",
+            "-29",
+        ),
     ];
     let all = recorded(motors);
     assert!(all["motors"][1]["in_stock"].as_bool().unwrap());
@@ -413,13 +443,42 @@ fn answers_that_break_the_apis_rules_are_refused() {
             found: 12
         })
     ));
-    let status = changed(motors, |j| {
-        j["motors"][0]["listings"][0]["status"] = "sold".into()
-    });
+    let kind = changed(motors, |j| j["motors"][0]["motor_type"] = "solid".into());
     assert!(matches!(
-        motor_finder::parse_motors(&status),
+        motor_finder::parse_motors(&kind),
         Err(MotorFinderError::Json(_))
     ));
+    let page = "motor-finder-aerotech-H128W.json";
+    for (change, refused) in [
+        (changed(page, |j| j["schema_version"] = 2.into()), "schema"),
+        (changed(page, |j| j["generated_at"] = "".into()), "time"),
+        (
+            changed(page, |j| j["motor"]["listing_count"] = 1.into()),
+            "field",
+        ),
+    ] {
+        let error = motor_finder::parse_motor(&change).unwrap_err();
+        let kind = match error {
+            MotorFinderError::Schema { found: 2 } => "schema",
+            MotorFinderError::Field { field, .. } if field == "generated_at" => "time",
+            MotorFinderError::Field { field, .. } if field == "motor.listing_count" => "field",
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(kind, refused);
+    }
+    for change in [
+        changed("motor-finder-vendors.json", |j| {
+            j["schema_version"] = 0.into()
+        }),
+        changed("motor-finder-vendors.json", |j| {
+            j["generated_at"] = "now".into()
+        }),
+    ] {
+        assert!(matches!(
+            motor_finder::parse_vendors(&change),
+            Err(MotorFinderError::Schema { found: 0 } | MotorFinderError::Field { .. })
+        ));
+    }
     let missing = changed("motor-finder-aerotech-H128W.json", |j| {
         j["motor"].as_object_mut().unwrap().remove("listings");
     });
@@ -432,6 +491,64 @@ fn answers_that_break_the_apis_rules_are_refused() {
         motor_finder::parse_motor(b"<!DOCTYPE html><html>"),
         Err(MotorFinderError::Json(_))
     ));
+}
+
+/// What the API allows, or may add, reads rather than refusing the list: an offer with no price
+/// (the API's schema allows it, when no in-stock listing shows one), a listing status it adds
+/// later (read as `Unknown`), and a stock count as the vendor shows it.
+#[test]
+fn what_the_api_allows_is_read() {
+    let body = changed("motor-finder-motors.json", |j| {
+        let motor = &mut j["motors"][1];
+        for listing in motor["listings"].as_array_mut().unwrap() {
+            listing["price_cents"] = Value::Null;
+            listing["unit_price_cents"] = Value::Null;
+        }
+        motor["cheapest_in_stock"]["price_cents"] = Value::Null;
+        motor["cheapest_in_stock"]["unit_price_cents"] = Value::Null;
+        j["motors"][2]["listings"][0]["status"] = "preorder".into();
+        j["motors"][2]["listings"][1]["stock_count"] = (-3).into();
+    });
+    let list = motor_finder::parse_motors(&body).unwrap();
+    let offer = list.motors[1].cheapest_in_stock.as_ref().unwrap();
+    assert_eq!((offer.price_cents, offer.unit_price_cents), (None, None));
+    let listings = &list.motors[2].listings;
+    assert_eq!(listings[0].status, ListingStatus::Unknown);
+    assert_eq!(listings[1].stock_count, Some(-3));
+}
+
+/// The enums read the API's words with their meaning: H128W is a reload shipped as hazardous
+/// material, F27R/L a single-use motor whose shipping varies, D13W a reload that ships as
+/// ordinary goods; and the recording's listings count 827 in stock, 2,363 out and 495 on special
+/// order.
+#[test]
+fn the_apis_words_read_with_their_meaning() {
+    let all = motor_finder::parse_motors(&fixture("motor-finder-motors.json")).unwrap();
+    let find = |designation: &str| {
+        let motor = all
+            .motors
+            .iter()
+            .find(|m| m.designation == designation)
+            .unwrap();
+        (motor.motor_type, motor.hazmat)
+    };
+    assert_eq!(find("H128W"), (Some(MotorType::Reload), Hazmat::Required));
+    assert_eq!(find("F27R/L"), (Some(MotorType::SingleUse), Hazmat::Varies));
+    assert_eq!(find("D13W"), (Some(MotorType::Reload), Hazmat::NotRequired));
+    let count = |status: ListingStatus| {
+        let listings = all.motors.iter().flat_map(|m| &m.listings);
+        listings.filter(|l| l.status == status).count()
+    };
+    assert_eq!(
+        [
+            ListingStatus::InStock,
+            ListingStatus::OutOfStock,
+            ListingStatus::SpecialOrder,
+            ListingStatus::Unknown
+        ]
+        .map(count),
+        [827, 2_363, 495, 0]
+    );
 }
 
 /// A transport that answers each call with the next of its bodies.

@@ -22,7 +22,11 @@
 //!
 //! **How far to trust it:** a value is the answer's, unchanged (`tests/motor_finder.rs` reads
 //! every field of every recorded answer back). Whether a vendor really has a motor, at that price,
-//! is the vendor's to say: the finder reads their public listings, up to an hour old.
+//! is the vendor's to say: the finder reads their public listings, up to about an hour old when it
+//! builds its files, and a fresh cached copy may be an hour older again. One value that breaks a
+//! rule refuses the whole file, so the last good copy is kept; a cheapest offer with no price,
+//! which the API allows, and a listing status it adds later (read as
+//! [`ListingStatus::Unknown`]) are read.
 //!
 //! ```
 //! use hpr_net::motor_finder;
@@ -60,7 +64,7 @@ pub const ATTRIBUTION: &str = "Motor stock and prices from motor.fusionspace.co,
 
 /// The manufacturers the API lists: each one's name as the API writes it, and the slug its
 /// motors' pages sit under.
-pub const MANUFACTURERS: [(&str, &str); 3] = [
+pub const MANUFACTURERS: &[(&str, &str)] = &[
     ("AeroTech", "aerotech"),
     ("Cesaroni Technology", "cesaroni"),
     ("Loki Research", "loki"),
@@ -78,7 +82,8 @@ pub enum Endpoint {
     InStock,
     /// `vendors.json`: the vendors read.
     Vendors,
-    /// One motor's page. Build it with [`Endpoint::motor`].
+    /// One motor's page. Build it with [`Endpoint::motor`], which checks both fields.
+    #[non_exhaustive]
     Motor {
         /// The manufacturer's slug, one of [`MANUFACTURERS`].
         manufacturer_slug: &'static str,
@@ -235,7 +240,7 @@ pub struct Motor {
     pub motor_type: Option<MotorType>,
     /// The reload hardware it fits (`RMS-29/180`); none for a single-use motor.
     pub case_info: Option<String>,
-    /// Whether it ships as hazardous material.
+    /// Whether it ships as hazardous material, as the site labels it.
     pub hazmat: Hazmat,
     /// The delays it comes with, s, comma-separated, or `P` for plugged.
     pub delays: Option<String>,
@@ -272,29 +277,34 @@ pub enum MotorType {
     Hybrid,
 }
 
-/// Whether a motor ships as hazardous material.
+/// Whether a motor ships as hazardous material (U.S. DOT), as the site labels it from the
+/// propellant's weight. Its API describes the labels as "required (>62.5g or H+), varies (F/G near
+/// the limit — vendor-dependent), none (<=62.5g, A-E)". On the 2026-10-01 recording, every D and
+/// E motor is `NotRequired` and every H and up `Required`; F and G motors are `Varies` (75) or
+/// `Required` (29).
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Hazmat {
-    /// Always: over 62.5 g of propellant, H class and up.
+    /// It ships as hazardous material: over 62.5 g of propellant, or H class and up.
     #[serde(rename = "required")]
     Required,
     /// It depends on the vendor: F and G motors near the limit.
     #[serde(rename = "varies")]
     Varies,
-    /// Never: 62.5 g of propellant or less, A to E.
+    /// It doesn't: 62.5 g of propellant or less, A to E.
     #[serde(rename = "none")]
     NotRequired,
 }
 
-/// The cheapest in-stock offer of a motor.
+/// The cheapest in-stock offer of a motor: the in-stock listing with the lowest unit price, or,
+/// when no in-stock listing shows a price, one of them with no price.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Offer {
-    /// The sticker price, cents.
-    pub price_cents: u64,
+    /// The sticker price, cents; `None` when the vendor's page shows none.
+    pub price_cents: Option<u64>,
     /// The price of one motor, cents: the sticker price over the pack size.
-    pub unit_price_cents: u64,
+    pub unit_price_cents: Option<u64>,
     /// The currency (`USD`).
     pub currency: String,
     /// The vendor's name.
@@ -327,15 +337,16 @@ pub struct Listing {
     pub currency: String,
     /// How many motors the pack holds.
     pub pack_size: u32,
-    /// Units on hand, when the vendor shows them.
-    pub stock_count: Option<u64>,
+    /// Units on hand, when the vendor shows them, as the vendor shows them.
+    pub stock_count: Option<i64>,
     /// The wait on a back order (`16–20 weeks`).
     pub lead_time: Option<String>,
     /// When the finder last read the listing, ISO 8601 UTC.
     pub last_seen: String,
 }
 
-/// A listing's stock.
+/// A listing's stock. A status the API adds later reads as [`ListingStatus::Unknown`], so one
+/// new word doesn't refuse the whole list.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -346,7 +357,8 @@ pub enum ListingStatus {
     OutOfStock,
     /// Made or ordered for the buyer, with a lead time.
     SpecialOrder,
-    /// The vendor's page doesn't say.
+    /// The vendor's page doesn't say, or the API gave a status this module doesn't know.
+    #[serde(other)]
     Unknown,
 }
 
@@ -506,8 +518,8 @@ pub fn fetch_vendors<T: Transport>(
     fetch(client, &Endpoint::Vendors, now_s, parse_vendors)
 }
 
-/// Fetches one motor's page through `client`, as [`fetch_meta`] does. A page for another motor
-/// than the one asked for is refused, and never cached.
+/// Fetches one motor's page through `client`, as [`fetch_meta`] does: the motor, and when its
+/// page was built. A page for another motor than the one asked for is refused, and never cached.
 ///
 /// # Errors
 /// [`MotorFinderError::Request`] for a bad manufacturer or designation ([`Endpoint::motor`]); as
@@ -518,7 +530,7 @@ pub fn fetch_motor<T: Transport>(
     manufacturer: &str,
     designation: &str,
     now_s: u64,
-) -> Result<(Motor, Fetched), MotorFinderError> {
+) -> Result<(MotorPage, Fetched), MotorFinderError> {
     let endpoint = Endpoint::motor(manufacturer, designation)?;
     let asked_slug = manufacturer_slug(manufacturer)?;
     let read = |body: &[u8]| {
@@ -533,7 +545,7 @@ pub fn fetch_motor<T: Transport>(
                 found: format!("{}/{}", page.motor.manufacturer, page.motor.designation),
             });
         }
-        Ok(page.motor)
+        Ok(page)
     };
     fetch(client, &endpoint, now_s, read)
 }
@@ -672,8 +684,8 @@ fn check_motor(motor: &Motor, at: &str) -> Result<(), MotorFinderError> {
         let at = format!("{at}.cheapest_in_stock");
         check_price(
             &at,
-            Some(offer.price_cents),
-            Some(offer.unit_price_cents),
+            offer.price_cents,
+            offer.unit_price_cents,
             offer.pack_size,
         )?;
     }
