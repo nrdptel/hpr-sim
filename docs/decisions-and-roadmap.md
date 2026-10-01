@@ -356,10 +356,10 @@ missing or its status disagrees.
 | <a id="m5-3c"></a>[M5.3c][phase-2] | Distance and bearing between two places on the WGS 84 ellipsoid, and a site's elevation from a GeoTIFF file the user gives; split in two ([ADR-127][adr-127]) | done |
 | <a id="m5-3c1"></a>[M5.3c1][phase-2] | Distance and bearing between two places on WGS 84, checked against Karney's published set of 500,000 geodesics ([ADR-127][adr-127], [Geodesy](physics/geodesy.md#distance-and-bearing-geodesics)) | done |
 | <a id="m5-3c2"></a>[M5.3c2][phase-2] | A launch site's elevation from a GeoTIFF file the user gives, checked against GDAL's reading through rasterio on seven files and a whole USGS tile ([ADR-128][adr-128], [A launch site's elevation](elevation.md#from-an-elevation-file-of-your-own)) | done |
-| <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices from motor.fusionspace.co, joined with ThrustCurve.org's motors; split in three ([ADR-129][adr-129]) | not yet done |
+| <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices from motor.fusionspace.co, joined with ThrustCurve.org's motors; split in three ([ADR-129][adr-129]) | done |
 | <a id="m5-4a"></a>[M5.4a][phase-2] | The motor finder's files (its build, every motor, those in stock, the vendors, one motor's page) read through the cache, so they work offline, each carrying the credit the site asks for ([ADR-129][adr-129], [Motor stock and prices](motor-stock.md)) | done |
 | <a id="m5-4b"></a>[M5.4b][phase-2] | ThrustCurve.org's search and a motor's thrust curve through the cache, and the motors in stock matched to ThrustCurve.org's by name, with a report of the misses: 282 of 282 matched ([ADR-130][adr-130], [Motor stock and prices](motor-stock.md#matching-motors-to-thrustcurveorg)) | done |
-| <a id="m5-4c"></a>[M5.4c][phase-2] | `hpr motors search`: motors in stock by class and price, from the network or offline | not yet done |
+| <a id="m5-4c"></a>[M5.4c][phase-2] | `hpr motors search`: motors in stock by class and price, from the network, a saved list or offline, with both sources' credit on every list ([ADR-131][adr-131], [Motors you can buy](cli.md#motors-you-can-buy)) | done |
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |
@@ -606,6 +606,7 @@ is the milestone that added or will add that test.
 [adr-128]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30
 [adr-129]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-129-m54-split-and-m54a-the-motor-finders-api-through-the-cache-2026-10-01
 [adr-130]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01
+[adr-131]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-131-m54c-hpr-motors-search-stock-and-prices-at-the-command-line-2026-10-01
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

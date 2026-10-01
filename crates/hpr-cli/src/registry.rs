@@ -41,7 +41,10 @@ pub fn availability(name: &str) -> Option<Availability> {
             reads: MotorFile::ALL
                 .iter()
                 .map(|format| format!("`{}`", format.extension()))
-                .chain(["the bundled catalog".to_owned()])
+                .chain([
+                    "the bundled catalog".to_owned(),
+                    "motor.fusionspace.co's stock and prices, fetched or saved".to_owned(),
+                ])
                 .collect(),
             writes: text_or_json(),
         }),

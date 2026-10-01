@@ -29,7 +29,7 @@ Planned:
   GeoTIFF terrain file of your own, in the library today) and
   [live motor stock and prices](https://nrdptel.github.io/hpr-sim/motor-stock.html) from
   [motor.fusionspace.co](https://motor.fusionspace.co), matched to ThrustCurve.org's thrust
-  curves (in the library today),
+  curves (in the library today; `hpr motors search` lists the stock and prices),
   all optional. Everything works offline on macOS, Windows and Linux.
 - Monte Carlo dispersion, sensitivity analysis, and optimization for competition challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.
@@ -59,7 +59,7 @@ lists only what exists: a "not yet" command refuses, with exit status 3, until i
 | `hpr sim` | Fly a .ork, an .hpr or .hprz design, or a rocket's .json from a rail and print its flight; export its recording | `.ork`, `.hpr` or `.hprz`, a rocket's `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-sim)) |
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-convert)) |
-| `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)) |
+| `hpr motors` | Look up motors in the bundled catalog, read a .eng or .rse motor file, or search vendors' stock and prices | `.eng`, `.rse`, the bundled catalog, motor.fusionspace.co's stock and prices, fetched or saved | text, JSON | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-motors)) |
 | `hpr weather` | Fetch a launch day's weather, or read a weather file, as a profile of air and wind | Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved, a whole GFS file, an ERA5 `.nc` | text, JSON, a profile as `.json` | available ([how to use it](https://nrdptel.github.io/hpr-sim/cli.html#hpr-weather)) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2) |

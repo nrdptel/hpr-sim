@@ -787,7 +787,7 @@
       *Result:* met (ADR-128): rasterio's (GDAL 3.12.2) on 7 fixtures and a whole USGS tile;
       corners bit for bit, exact sums, 4,064 places' pixel and value.
 
-- [ ] **M5.4 Motor stock and prices.**
+- [x] **M5.4 Motor stock and prices.**
   - motor.fusionspace.co client (`meta`, `motors`, `in-stock`, `vendors`, and per-motor
     endpoints), joined with ThrustCurve curves.
   - Offline snapshot; `hpr motors search --in-stock --class L --max-price 150`.
@@ -798,7 +798,7 @@
     report of the misses.
   - Attribution is displayed as the API asks.
 
-  Split a to c (ADR-129).
+  Split a to c (ADR-129). *Result:* met by M5.4a to c.
   - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`), its five files via the cache.
     *Done when:* recorded-fixture tests read each endpoint's answer to the values in it, a second
     read works offline, and every answer carries the credit the API asks for. *Result:* met
@@ -807,8 +807,9 @@
     cache. *Done when:* the designation to ThrustCurve id mapping covers at least 95% of in-stock
     motors, with a report of the misses; a mapped motor's recorded curve reads with `hpr_motor`.
     *Result:* met (ADR-130): 282 of 282 mapped; J450DM's file reads, the bundled one to the byte.
-  - [ ] **M5.4c `hpr motors search`.** *Done when:* `--in-stock --class L --max-price 150` lists
+  - [x] **M5.4c `hpr motors search`.** *Done when:* `--in-stock --class L --max-price 150` lists
     from a recorded snapshot and offline from the cache, with the credit shown as the API asks.
+    *Result:* met (ADR-131): none at $150 on the recording, the one on an edited copy; offline too.
 
 - [ ] **M5.5 Parts catalog.** Import the OpenRocket `.orc` component database (Apache-2.0, with
   notices). Lookup by vendor and part number; parts can be used from the design API.

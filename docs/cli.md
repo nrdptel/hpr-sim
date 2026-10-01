@@ -7,7 +7,8 @@ Today `hpr` does seven things:
 
 - It flies a design, read from an OpenRocket file or an hpr
   [design file](glossary.md#design-file), and prints how the flight went.
-- It looks up motors, from the catalog built into it or from a motor file of your own.
+- It looks up motors, from the catalog built into it or from a motor file of your own, and
+  searches vendors' stock and prices from [motor.fusionspace.co](https://motor.fusionspace.co).
 - It converts motor files between the two common formats, and designs between OpenRocket's `.ork`
   and [hpr's own format](format/hpr.md) (`.hpr`, and `.hprz` with other files beside the design).
 - It re-runs hpr-sim's validation against RocketPy and checks the results against the
@@ -49,8 +50,10 @@ Its other commands are registered but not available yet: each refuses and names 
 >   list of published accuracy numbers ([what it checks](#hpr-validate)).
 > - `hpr weather` runs the library's readers and writes the profiles they build, to the last bit
 >   ([how far to trust it](#hpr-weather)). Its online fetch is not tested automatically.
+> - `hpr motors search` gives back motor.fusionspace.co's values unchanged
+>   ([how far to trust it](#motors-you-can-buy)). Its online fetch is not tested automatically.
 > - The tests in
->   [`crates/hpr-cli/tests/cli.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/cli.rs)
+>   [`crates/hpr-cli/tests/`](https://github.com/nrdptel/hpr-sim/tree/main/crates/hpr-cli/tests)
 >   run every command as a user would, and check each `--json` document against its
 >   [published schema](#json-output).
 
@@ -84,7 +87,7 @@ only the files each command really reads. "Not yet" commands exit with
 | `hpr sim` | Fly a .ork, an .hpr or .hprz design, or a rocket's .json from a rail and print its flight; export its recording | `.ork`, `.hpr` or `.hprz`, a rocket's `.json`, a motor from the bundled catalog, `.eng` or `.rse` | text, JSON, a recording as `.csv`, `.json`, `.parquet`, `.geojson` or `.kml` | available ([how to use it](cli.md#hpr-sim)) |
 | `hpr validate` | Run the validation cases and check them against the committed reports and the census | a copy of the hpr-sim repository: its cases, references and committed reports | text, JSON | available ([how to use it](cli.md#hpr-validate)) |
 | `hpr convert` | Convert a motor file between .eng and .rse, or a catalog motor to either; or a design between .ork, .hpr and .hprz | `.eng`, `.rse`, the bundled catalog, a design as `.ork`, `.hpr` or `.hprz` | `.eng` or `.rse`, `.ork`, `.hpr` or `.hprz`, text, JSON | available ([how to use it](cli.md#hpr-convert)) |
-| `hpr motors` | Look up motors in the bundled catalog, or read a .eng or .rse motor file | `.eng`, `.rse`, the bundled catalog | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
+| `hpr motors` | Look up motors in the bundled catalog, read a .eng or .rse motor file, or search vendors' stock and prices | `.eng`, `.rse`, the bundled catalog, motor.fusionspace.co's stock and prices, fetched or saved | text, JSON | available ([how to use it](cli.md#hpr-motors)) |
 | `hpr weather` | Fetch a launch day's weather, or read a weather file, as a profile of air and wind | Open-Meteo, a University of Wyoming sounding, GFS or RAP, fetched or saved, a whole GFS file, an ERA5 `.nc` | text, JSON, a profile as `.json` | available ([how to use it](cli.md#hpr-weather)) |
 | `hpr mc` | Fly a design many times, each with randomly scattered inputs | - | - | not yet: [M6.1](decisions-and-roadmap.md#m6-1) |
 | `hpr optimize` | Search a design's parameters for a goal | - | - | not yet: [M6.2](decisions-and-roadmap.md#m6-2) |
@@ -303,7 +306,8 @@ after apogee and where it ends are not predictions.
 each with a public-domain thrust curve from ThrustCurve.org
 ([Solid motors](physics/motor.md#the-bundled-motors) says how they were chosen). For any other
 motor, download its `.eng` or `.rse` file ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files))
-from ThrustCurve.org and show that.
+from ThrustCurve.org and show that. `hpr motors search` lists the motors vendors have in stock,
+with their prices ([Motors you can buy](#motors-you-can-buy)).
 
 ### Listing the catalog
 
@@ -388,6 +392,103 @@ Some motor data is ambiguous. A delay of `0` can mean an ejection charge at burn
 motor with no charge. hpr shows it as "0 (at burnout, or plugged)" and ends the output with a
 warning; the Estes F15 in the catalog is one example. The warning's "RASP spec" is the `.eng`
 format's description ([RASP and RockSim files](glossary.md#rasp-and-rocksim-files)).
+
+### Motors you can buy
+
+`hpr motors search` lists the motors that U.S. vendors carry, with who has each one in stock and
+at what price. The list comes from [motor.fusionspace.co](https://motor.fusionspace.co), a free
+site that reads a dozen vendors' public listings every hour and covers AeroTech, Cesaroni and Loki
+motors of class D and up ([Motor stock and prices](motor-stock.md) says what it publishes and how
+hpr reads it). Five filters narrow the list, and each one given must match:
+
+- `--in-stock` keeps the motors at least one vendor has in stock.
+- `--class` takes an [impulse class](glossary.md#impulse-class), such as `L`.
+- `--diameter` takes a diameter in millimetres, such as `54`, and matches within 0.5 mm.
+- `--manufacturer` takes `AeroTech`, `Cesaroni` or `Loki`, or the full name the site uses
+  (`Cesaroni Technology`, `Loki Research`), in any case.
+- `--max-price` takes U.S. dollars, such as `150` or `149.99`, and keeps the motors in stock whose
+  price for one motor, at the cheapest vendor with it in stock, is at most that. A motor sold in
+  a pack counts at the pack's price divided by its size, as the site works it out, to the cent
+  ([What the site publishes](motor-stock.md#what-the-site-publishes)). A motor out of stock has no
+  such price, and nor does one whose cheapest vendor shows no price or prices it in another
+  currency than U.S. dollars (every vendor's price was in dollars on the recording):
+  `--max-price` never keeps them.
+
+The motors come cheapest first, by that price. The motors with no such price, including every
+motor out of stock, come last, by maker and designation. A filter that can't match anything real (a class that doesn't exist, a maker the site
+doesn't cover, a price that isn't dollars and cents) is refused with status 1, as `hpr motors list`
+refuses one. A list with nothing in it exits with 0. When `--max-price` leaves nothing, the last
+line names the cheapest motor in stock that the other filters keep, and its price, so you know
+what one costs.
+
+The list is fetched and saved as `hpr weather`'s answers are
+([Online, offline, and saved answers](#online-offline-and-saved-answers)): the first search
+fetches it over HTTPS and keeps a copy in hpr's cache folder, a search within the hour reads the
+copy, and `--offline` reads the copy however old it is. `--from FILE` reads a list saved earlier,
+the site's `motors.json` or `in-stock.json`, and touches neither the network nor the cache. With
+`--in-stock` or `--max-price`, which keep only motors in stock, hpr fetches the site's list of
+motors in stock (about 1 MB); otherwise, the whole list (about 1.6 MB). The two are saved
+separately. Offline, a search of motors in stock reads the whole list's copy when it has no copy
+of the in-stock one; a search of every motor needs the whole list's copy.
+
+Every list, even an empty one, carries two credit lines, under its first two lines: the site's, which its terms ask for,
+with its caution to check stock and price on the vendor's own page before relying on them; and
+ThrustCurve.org's, since the motors' figures (impulse, average thrust, burn time) are its published
+values, which the site repeats ([Credit and terms](motor-stock.md#credit-and-terms)). The JSON
+output carries both in `attribution`. Keep them wherever you show the list.
+
+This reads the list of motors in stock that the tests use, recorded at 07:07 UTC on 1 October 2026,
+and keeps the L motors in stock at up to $300 each:
+
+<!-- cli: example `hpr motors search --in-stock --class L --max-price 300 --from crates/hpr-net/tests/fixtures/replay/motor-finder-in-stock.json`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr motors search --in-stock --class L --max-price 300 --from crates/hpr-net/tests/fixtures/replay/motor-finder-in-stock.json
+4 motors (in stock, class L, at most $300.00 each) in motor.fusionspace.co's list built 2026-10-01T07:07:29Z.
+Read from motor-finder-in-stock.json
+Motor stock and prices from motor.fusionspace.co, aggregated from public vendor listings and ThrustCurve.org; provided as is, with no warranty: check stock and price on the vendor's own page before relying on them
+Motor data and thrust curves courtesy of ThrustCurve.org, https://www.thrustcurve.org/
+
+designation  maker     class  dia mm  impulse N·s   avg N  burn s  each $  pack  vendor
+L1520T       AeroTech  L          75       3715.9  1567.8    2.36  260.99     1  Balsa Machining Service
+L850W        AeroTech  L          75       3646.2   850.0    4.42  282.74     1  Sirius Rocketry
+3419L645-P   Cesaroni  L          75       3419.8   644.8    5.30  286.36     1  Performance Hobbies
+3683L851-P   Cesaroni  L          75       3683.2   849.1    4.34  290.39     1  Animal Motor Works
+```
+
+<!-- cli: end -->
+
+`each $` is the price of one motor and `pack` how many come in the pack, both at the vendor named
+last. A motor out of stock shows `-` for both and `out of stock` for the vendor; a vendor that
+shows no price gives `-` under `each $`; a price in another currency names it, such as
+`282.74 CAD`. The full product page is in the JSON output (`cheapest_in_stock.url`). At $150, the same
+recording lists nothing:
+
+<!-- cli: example `hpr motors search --in-stock --class L --max-price 150 --from crates/hpr-net/tests/fixtures/replay/motor-finder-in-stock.json`; written by `cargo xtask cli`; do not edit -->
+
+```text
+$ hpr motors search --in-stock --class L --max-price 150 --from crates/hpr-net/tests/fixtures/replay/motor-finder-in-stock.json
+0 motors (in stock, class L, at most $150.00 each) in motor.fusionspace.co's list built 2026-10-01T07:07:29Z.
+Read from motor-finder-in-stock.json
+Motor stock and prices from motor.fusionspace.co, aggregated from public vendor listings and ThrustCurve.org; provided as is, with no warranty: check stock and price on the vendor's own page before relying on them
+Motor data and thrust curves courtesy of ThrustCurve.org, https://www.thrustcurve.org/
+None costs $150.00 or less: of the 20 motors in stock the other filters pass, the cheapest is AeroTech L1520T at $260.99.
+```
+
+<!-- cli: end -->
+
+> **How far to trust it.** `hpr motors search` gives back the site's values unchanged, and reads
+> the list with the same checks the library makes on every answer from the site
+> ([What hpr refuses](motor-stock.md#what-hpr-refuses)). The tests in
+> [`crates/hpr-cli/tests/motors_search.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/motors_search.rs)
+> run it offline on the recorded lists, from the file and from the cache, and check every motor
+> it lists, and their order, against the recording's own JSON, filtered by the test itself, not by
+> hpr's code. With
+> one L motor's price edited to $149.99 in a copy, the `--max-price 150` search lists exactly that
+> motor. Fetching online is not tested automatically. Whether a vendor really has a motor at that
+> price is the vendor's to say. A list fetched now, or read from a copy under an hour old, can be
+> up to two hours behind the vendors' pages. A list read with `--offline`, with `--from`, or after a failed fetch is as old as the
+> "built" time on its first line ([How far to trust it](motor-stock.md)).
 
 ## `hpr convert`
 
@@ -811,6 +912,7 @@ a published [JSON Schema](https://json-schema.org), which describes its fields a
 | `hpr sim` | [`sim.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/sim.schema.json) |
 | `hpr motors list` | [`motors-list.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/motors-list.schema.json) |
 | `hpr motors show` | [`motors-show.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/motors-show.schema.json) |
+| `hpr motors search` | [`motors-search.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/motors-search.schema.json) |
 | `hpr convert` | [`convert.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/convert.schema.json) |
 | `hpr validate` | [`validate.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/validate.schema.json) |
 | `hpr analyze` | [`analyze.schema.json`](https://github.com/nrdptel/hpr-sim/blob/main/schema/cli/analyze.schema.json) |
@@ -822,7 +924,8 @@ Units are SI, and each field's name says its unit: `total_impulse_ns` is in newt
 `diameter_m` in metres. The exceptions say so in their names too: `hpr sim` gives angles in
 degrees (`latitude_deg`) and margins in calibres (`margin_cal`), `hpr weather` gives the wind's
 direction in degrees (`wind_from_deg`) and humidity as a fraction (`relative_humidity`, 0 to 1),
-and `hpr motors list` keeps the catalog's millimetres (`diameter_mm`). Numbers are not rounded, so a converted value can end in
+`hpr motors list` keeps the catalog's millimetres (`diameter_mm`), and `hpr motors search` the
+site's millimetres and cents (`diameter_mm`, `unit_price_cents`). Numbers are not rounded, so a converted value can end in
 digits such as `0.0036000000000000003`; a motor's figures carry no more precision than its curve
 file.
 
@@ -945,8 +1048,12 @@ you press Tab. Save it where your shell looks for completions:
   does is not checked.
 - **`hpr sim` doesn't fly the weather.** [`hpr weather`](#hpr-weather) writes a profile that only
   a program reads so far (issue [#265](https://github.com/nrdptel/hpr-sim/issues/265)).
+- **Stock from one site.** `hpr motors search` covers what motor.fusionspace.co does: U.S.
+  vendors, prices in dollars, and AeroTech, Cesaroni and Loki motors of class D and up
+  ([what it leaves out](motor-stock.md#what-it-leaves-out)). It has no filter by total impulse or
+  by reload case.
 - **Only 32 motors are built in.** Any other motor needs its `.eng` or `.rse` file. `hpr` never
-  goes online to fetch one.
+  goes online to fetch one: `hpr motors search` lists motors you can buy, not their curves.
 - **No ready-built program.** `hpr` is built from source with Rust; downloads for macOS, Windows
   and Linux wait until the project publishes releases.
 - **The text output is for people.** Its layout may change between versions; scripts should read
