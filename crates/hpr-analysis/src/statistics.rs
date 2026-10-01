@@ -173,7 +173,6 @@ impl Distribution {
         // Cast: a count of values is far below 2⁵³, and `h` lies in `[0, n − 1]`.
         let h = (self.sorted.len() - 1) as f64 * p;
         let below = h.floor();
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let index = below as usize;
         let Some(&above) = self.sorted.get(index + 1) else {
             return Ok(Some(last));

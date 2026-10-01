@@ -962,8 +962,8 @@ pub struct AeroModel {
     drag_scale: f64,
 }
 
-/// Whether a drag scale is 1, the factor that changes nothing.
-#[allow(clippy::trivially_copy_pass_by_ref)] // serde's `skip_serializing_if` passes a reference.
+/// Whether a drag scale is 1, the factor that changes nothing (by reference, as serde's
+/// `skip_serializing_if` asks).
 fn is_one(scale: &f64) -> bool {
     *scale == 1.0
 }
