@@ -178,7 +178,7 @@ falls by about 0.08° a year, so it moves well under a degree over the model's f
 | NCEI's high-precision file, printed to 1e-6 nT and angles to 0.01° | 100 | `Y`, `D`, `I`, and the rates of `Y`, `Z`, `D`, `I` | half the last digit | 5e-7 nT, 0.005° |
 | the same file | 100 | `X`, `H`, `F` | 7.18e-4 nT | 7.2e-4 nT, the measured worst |
 | the same file | 100 | `Z`; the rates of `X`, `H`, `F` | 2.2e-6 nT; 1.5e-6 nT/yr | the measured worst |
-| the potential, by differences | 100 | hpr's `X′` and `Ẋ′` | 1.3e-7 nT; `Ẋ′` under 1e-9 nT/yr | 1e-6 nT |
+| the potential, by differences | 100 | hpr's `X′` and `Ẋ′` | 1.3e-7 nT; `Ẋ′` within the rounding allowance (under 1e-9 nT/yr) | 1e-6 nT; 1e-6 nT/yr |
 
 Rows are counted from 0. The north component `X` in NCEI's file differs from hpr's at 97 of its
 100 points, by up to 7.18e-4 nT (row 35: 2026.5, 12 km, 33° N, 145° W). That is at most 2.11e-8
@@ -205,9 +205,9 @@ So the file's `X`, `H`, `F` and `Z`, and the rates of `X`, `H` and `F`, are held
 differences, not to the file's printing. [ADR-125][adr-125] records the decision. For a flight
 the difference is immaterial: 7.18e-4 nT turns the declination by about a millionth of a degree.
 
-Every comparison with a printed value first allows 64 units in the last place of the point's
-total field, about 7e-10 nT, for the rounding in both programs' sums: 700 times below the finest
-printed digit.
+Every comparison with Table 6 and NCEI's file first allows 64 units in the last place of the
+point's total field, about 7e-10 nT, for the rounding in both programs' sums: about 700 times
+below half the finest printed digit.
 
 A property test also checks, at random places and times, that `H`, `F`, `I` and `D` agree with
 `X`, `Y`, `Z` by their definitions, and that `F` lies between 20,000 and 70,000 nT. The report's
