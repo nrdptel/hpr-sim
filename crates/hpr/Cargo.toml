@@ -37,6 +37,8 @@ default = []
 net = ["dep:hpr-net", "hpr-net/http"]
 # `hpr_sim::export::parquet`: a recording as an Apache Parquet file.
 parquet = ["hpr-sim/parquet"]
+# `hpr_analysis::montecarlo::MonteCarlo::run_parallel`: Monte Carlo samples on worker threads.
+parallel = ["hpr-analysis/parallel"]
 
 [dev-dependencies]
 serde_json.workspace = true

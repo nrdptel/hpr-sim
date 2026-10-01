@@ -303,6 +303,59 @@ mod tests {
         }
     }
 
+    /// A drag scale multiplies the zero-lift coefficient and its parts, whatever gives it, and
+    /// the axial coefficient with it; a table's lookup and the buildup a model adjusts are left
+    /// as they are. A scale of 1 changes nothing, and a bad one is refused.
+    #[test]
+    fn a_drag_scale_multiplies_the_buildup_a_table_and_a_model() {
+        let table = DragTable::from_csv("0,0.45\n1,0.45\n", None).unwrap();
+        let conditions = DragConditions::thrusting(5.0e6, 0.0005);
+        let flow = Flow::new(0.6, f64::to_radians(7.0), 0.2);
+        for own in [
+            model(),
+            model().with_drag_table(table),
+            model().with_drag_model(Constant(0.7)),
+        ] {
+            let plain = own.drag(&flow, &conditions).unwrap();
+            assert_eq!(own.drag_scale(), 1.0);
+            assert_eq!(
+                own.clone()
+                    .with_drag_scale(1.0)
+                    .unwrap()
+                    .drag(&flow, &conditions)
+                    .unwrap(),
+                plain
+            );
+            let scaled_model = own.clone().with_drag_scale(1.25).unwrap();
+            assert_eq!(scaled_model.drag_scale(), 1.25);
+            let scaled = scaled_model.drag(&flow, &conditions).unwrap();
+            assert!(plain.zero_lift_coefficient > 0.0);
+            assert_eq!(
+                scaled.zero_lift_coefficient,
+                1.25 * plain.zero_lift_coefficient
+            );
+            assert_eq!(scaled.friction, 1.25 * plain.friction);
+            assert_eq!(scaled.pressure, 1.25 * plain.pressure);
+            assert_eq!(scaled.base, 1.25 * plain.base);
+            assert_eq!(scaled.parasitic, 1.25 * plain.parasitic);
+            let ratio = scaled.axial_coefficient / plain.axial_coefficient;
+            assert!((ratio - 1.25).abs() < 1e-15, "{ratio}");
+            assert_eq!(scaled.table, plain.table);
+            assert_eq!(
+                scaled_model.buildup_drag(&flow, &conditions).unwrap(),
+                own.buildup_drag(&flow, &conditions).unwrap()
+            );
+        }
+        for bad in [-0.1, f64::NAN, f64::INFINITY] {
+            let error = model().with_drag_scale(bad).unwrap_err();
+            assert!(
+                matches!(error, AeroError::Domain { what: "drag scale", value }
+                    if value.to_bits() == bad.to_bits()),
+                "{error:?}"
+            );
+        }
+    }
+
     #[test]
     fn a_model_and_a_table_replace_each_other() {
         let table = DragTable::from_csv("0,0.45\n1,0.45\n", None).unwrap();

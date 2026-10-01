@@ -334,6 +334,10 @@ motor, and OpenRocket uses it to find that curve in the motor database it ships.
 find a curve the file embeds, or one a caller supplies. Two different motors can, rarely, share a
 digest. See [the `.ork` format](format/ork.md#motors-in-the-reference-library).
 
+## Dispersion
+
+The uncertainty given to one input of a [Monte Carlo](#monte-carlo) run, as a [standard deviation](#standard-deviation): how far the rocket's mass, its motor's impulse or the wind's speed may differ from the plan from one flight to the next. See [Monte Carlo dispersion](monte-carlo.md#what-each-dispersion-does).
+
 ## Dormand–Prince and RK4
 
 Two ways of stepping the equations of motion through time. Dormand–Prince 5(4), also called
@@ -731,6 +735,10 @@ A step of the [roadmap][roadmap], the ordered plan of work, labelled like [M1.8]
 add. See [Decisions and the roadmap](decisions-and-roadmap.md).
 
 
+## Monte Carlo
+
+Flying the same rocket many times, each time with its uncertain inputs drawn at random, to see how far the results spread: the apogee, the landing. Named after the casino, for the random draws. See [Monte Carlo dispersion](monte-carlo.md).
+
 ## Motor designation
 
 A motor's name, such as `F32` or `L1150R`: the [impulse class](#impulse-class) letter, then the
@@ -847,6 +855,10 @@ A Parquet file stores a table column by column, and each column in pieces called
 with a small header saying how many values it holds and how they are stored. A reader decodes a
 page at a time. hpr-sim's pages hold up to 1024 numbers of 8 bytes each: 8 KiB, the page size the
 format's specification recommends. See [Exporting a flight](exporting-a-flight.md).
+
+## Percentile
+
+The value below which a given share of a sample falls: the 5th percentile of 200 apogees is the height that about 10 of them didn't reach. The 50th is the median. hpr computes them by linear interpolation between the sorted values (Hyndman and Fan's definition 7, as R and NumPy do). See [Monte Carlo dispersion](monte-carlo.md#a-run-of-200-flights).
 
 ## Pod
 
@@ -1094,6 +1106,11 @@ An agreed model of the air's temperature, pressure and density against height. h
 U.S. Standard Atmosphere from −5 to 86 km (288.15 K and 101,325 Pa at sea level). It can be offset
 to match conditions at the field, or replaced by a [sounding](#sounding). See
 [Atmosphere](physics/atmosphere.md#the-1976-standard-5-km-to-86-km).
+
+
+## Standard deviation
+
+How widely a set of numbers spreads about its mean: the square root of the mean squared difference from the mean (dividing by one less than the count, for a sample). For a normal distribution about two values in three lie within one standard deviation of the mean, and 95% within two. See [Monte Carlo dispersion](monte-carlo.md#what-each-dispersion-does).
 
 
 ## Standard error

@@ -474,6 +474,20 @@ impl Simulation {
         self
     }
 
+    /// Multiplies the rocket's zero-lift drag coefficient by `scale`, whatever gives it: hpr's
+    /// buildup, a drag table or a drag model ([`hpr_aero::AeroModel::with_drag_scale`]). Unlike
+    /// a table or a model it is not the whole stack's: a sustainer lit at a powered separation
+    /// keeps the same scale. Recovery devices' drag is their own and is not scaled. A Monte Carlo
+    /// run disperses drag this way (`hpr_analysis::montecarlo`).
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Aero`] for a scale that is negative or not finite.
+    pub fn with_drag_scale(mut self, scale: f64) -> Result<Self, SimError> {
+        self.vehicle.aero = self.vehicle.aero.clone().with_drag_scale(scale)?;
+        Ok(self)
+    }
+
     /// Keeps the aft base's whole drag while a motor burns, as OpenRocket 24.12 does, instead of
     /// taking the burning motor's cross-section off it
     /// ([`hpr_aero::AeroModel::with_full_base_drag_under_power`]). A sustainer lit at a powered
@@ -1815,7 +1829,8 @@ impl Simulation {
                         model.aero.with_full_base_drag_under_power()
                     } else {
                         model.aero
-                    };
+                    }
+                    .with_drag_scale(self.vehicle.aero.drag_scale())?;
                     let flown = Vehicle::lit(model.assembly, aero, lit_here)?;
                     booster = self.fly_bodies(
                         t,

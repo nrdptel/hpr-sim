@@ -749,59 +749,42 @@
   pressure-level winds, turned into an atmosphere/wind profile; GFS/RAP GRIB2 (pure Rust); U.
   Wyoming soundings; offline import of ERA5/GFS files the user provides. *Done when:*
   recorded-fixture tests pass; a profile built from a recorded Open-Meteo response reproduces the
-  pressure, temperature and wind values at the pressure levels.
-  - [x] **M5.2a Open-Meteo.** Forecast and historical-forecast pressure levels as a sounding,
-    through the cache. *Done when:* the parent's two clauses hold for Open-Meteo. *Result:* met
-    (ADR-119): 2 recordings, ground and 14 levels to rounding; heights geopotential (hypsometric).
-  - [x] **M5.2b U. Wyoming soundings.** *Done when:* a recorded sounding's profile reproduces its
-    pressure, temperature and wind at every level, from recorded-fixture tests. *Result:* met
-    (ADR-120): 3 recordings (FM 35, BUFR), every kept row to rounding; 1,931 repeated BUFR rows.
-  - [x] **M5.2c GFS/RAP GRIB2, pure Rust.** *Done when:* a recorded GRIB2 cut decodes to the values
-    an outside decoder (ecCodes, run-only) prints, and its levels become a profile. *Result:* met
-    (ADR-121): 6,123 values to 2.2e-16 of ecCodes; 22 GFS, 31 RAP levels; RAP winds turned by θ.
-  - [x] **M5.2d Files the user provides, and `hpr weather`.** ERA5 `.nc` and GFS GRIB2 offline
-    (whole files: packing 5.2, 5.3, 5.40). *Done when:* `hpr weather` writes a site's profile from
-    each source, offline from a fixture. Split d1 to d3 (ADR-122). *Result:* met by d1 to d3.
-    - [x] **M5.2d1 `hpr weather`.** *Done when:* the parent's, for the files read today. *Result:*
-      met (ADR-122): 4 sources, 6 recordings, 2 ERA5 files; the library's profile, to the bit.
-    - [x] **M5.2d2 Complex packing** (5.2, 5.3). *Done when:* a whole GFS file's fields decode to
-      ecCodes' values, and `hpr weather gfs --from` writes its profile. *Result:* met (ADR-123):
-      743 messages, 746,770,303 values to 4.4e-16; its profile is its cut's to 1.04e-7.
-    - [x] **M5.2d3 JPEG 2000** (5.40). *Done when:* a 5.40 file decodes to ecCodes' values.
-      *Result:* met (ADR-124): 4 public RAP messages, 182,443 points; exact sums, every 13th value.
+  pressure, temperature and wind values at the pressure levels. Met: M5.2a Open-Meteo, 2
+  recordings, ground and 14 levels to rounding (ADR-119); M5.2b Wyoming, 3 recordings, every kept
+  row to rounding (ADR-120); M5.2c GFS/RAP cuts, 6,123 values to 2.2e-16 of ecCodes (ADR-121);
+  M5.2d `hpr weather` offline from each source (d1, ADR-122), a whole GFS file's 746,770,303
+  values to 4.4e-16 (d2, ADR-123), 4 RAP JPEG 2000 messages (d3, ADR-124).
+  - [x] **M5.2a Open-Meteo.**
+  - [x] **M5.2b U. Wyoming soundings.**
+  - [x] **M5.2c GFS/RAP GRIB2, pure Rust.**
+  - [x] **M5.2d Files the user provides, and `hpr weather`.**
+    - [x] **M5.2d1 `hpr weather`.**
+    - [x] **M5.2d2 Complex packing** (5.2, 5.3).
+    - [x] **M5.2d3 JPEG 2000** (5.40).
 
 - [x] **M5.3 Site data.** Elevation (Open-Meteo API with cache; optional user GeoTIFF/DEM file),
   geodetic helpers, magnetic declination (WMM2025). Split a to c (ADR-125). *Done when:* WMM
   matches NOAA test values; elevation lookups are cached and work offline after the first fetch.
-  - [x] **M5.3a WMM2025.** *Done when:* the WMM matches NOAA's test values (the report's Table 6
-    and NCEI's 100 points). *Result:* met (ADR-125): Table 6 to its printing; NCEI's `X` off by
-    up to 7.18e-4 nT at 97 points, a residue a test places in the file's `X′`.
-  - [x] **M5.3b Elevation.** Open-Meteo's elevation API through the cache. *Done when:* a recorded
-    lookup's height is the answer's, and a second lookup works offline from the cache. *Result:*
-    met (ADR-126): 2 recordings, 4 heights exact; offline from the cache, stale after a year.
+  Met: M5.3a WMM2025, Table 6 to its printing, NCEI's 100 points bar `X`'s 7.18e-4 nT residue
+  (ADR-125); M5.3b Open-Meteo elevation, 4 heights exact, offline from the cache (ADR-126);
+  M5.3c1 Karney's 500,000 geodesics within 15 nm (ADR-127); M5.3c2 a GeoTIFF read as rasterio
+  reads it, 7 fixtures and a USGS tile (ADR-128).
+  - [x] **M5.3a WMM2025.**
+  - [x] **M5.3b Elevation.**
   - [x] **M5.3c Geodetic helpers and a user's elevation file.** Split c1, c2 (ADR-127).
-    - [x] **M5.3c1 Geodesics** on WGS 84. *Done when:* distances and bearings match a published
-      geodesic test set. *Result:* met (ADR-127): Karney's 500,000 within his 15 nm.
-    - [x] **M5.3c2 A user's GeoTIFF.** *Done when:* a site's height from it matches a reader's.
-      *Result:* met (ADR-128): rasterio's (GDAL 3.12.2) on 7 fixtures and a whole USGS tile;
-      corners bit for bit, exact sums, 4,064 places' pixel and value.
+    - [x] **M5.3c1 Geodesics** on WGS 84.
+    - [x] **M5.3c2 A user's GeoTIFF.**
 
 - [x] **M5.4 Motor stock and prices.** motor.fusionspace.co client (`meta`, `motors`, `in-stock`,
   `vendors`, and per-motor endpoints), joined with ThrustCurve curves; offline snapshot; `hpr
   motors search --in-stock --class L --max-price 150`. *Done when:* recorded-fixture tests pass;
   the designation to ThrustCurve id mapping covers at least 95% of in-stock motors, with a report
-  of the misses; attribution is displayed as the API asks. Split a to c (ADR-129), each met.
-  - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`), its five files via the cache.
-    *Done when:* recorded-fixture tests read each endpoint's answer to the values in it, a second
-    read works offline, and every answer carries the credit the API asks for. *Result:* met
-    (ADR-129): 8 answers of one build, every value read back and offline; the credit on each.
-  - [x] **M5.4b ThrustCurve.** `hpr_net::thrustcurve`: its search and a motor's curve, through the
-    cache. *Done when:* the designation to ThrustCurve id mapping covers at least 95% of in-stock
-    motors, with a report of the misses; a mapped motor's recorded curve reads with `hpr_motor`.
-    *Result:* met (ADR-130): 282 of 282 mapped; J450DM's file reads, the bundled one to the byte.
-  - [x] **M5.4c `hpr motors search`.** *Done when:* `--in-stock --class L --max-price 150` lists
-    from a recorded snapshot and offline from the cache, with the credit shown as the API asks.
-    *Result:* met (ADR-131): none at $150 on the recording, the one on an edited copy; offline too.
+  of the misses; attribution is displayed as the API asks. Split a to c (ADR-129). Met: M5.4a 8 answers read back and offline, the credit on each (ADR-129); M5.4b 282 of 282
+  mapped, J450DM's file read (ADR-130); M5.4c none at $150 on the recording, the one on an edited
+  copy, offline too (ADR-131).
+  - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`).
+  - [x] **M5.4b ThrustCurve.** `hpr_net::thrustcurve`.
+  - [x] **M5.4c `hpr motors search`.**
 
 - [x] **M5.5 Parts catalog.** Import the OpenRocket `.orc` component database (Apache-2.0, with
   notices). Lookup by vendor and part number; parts can be used from the design API. *Done when:*
@@ -827,6 +810,18 @@
   - Results are bit-reproducible for the same seed.
   - The ellipse math is tested against analytic Gaussians.
   - 10,000 flights of an L2 design finish in ≤10 s on the dev machine (recorded).
+  Split a to d (ADR-134).
+  - [x] **M6.1a Seeded dispersion** (`hpr_analysis::montecarlo`). *Done when:* the same seed gives
+    bit-identical samples whatever the run's length or thread count; zero dispersion flies the
+    nominal flight bit for bit; failed samples are counted; the apogee's distribution is reported;
+    the five lessons' tests pass. *Result:* met (ADR-134): 11 inputs; sample 4 the same in runs of
+    3 and 6 and on 1, 2 and 5 threads; the guide's 200 flights, none failed.
+  - [ ] **M6.1b Landing ellipses** at confidence levels. *Done when:* the ellipse math (covariance,
+    axes, the χ² scale of a confidence level) is tested against analytic Gaussians.
+  - [ ] **M6.1c Sensitivity:** Morris screening and Sobol indices. *Done when:* both match the
+    known indices of test functions with closed forms (Ishigami, Sobol's g) within sampling error.
+  - [ ] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on
+    the dev machine, recorded in `docs/perf.md`.
 
 - [ ] **M6.2 Optimization engine.**
   - Continuous and discrete design variables, including motor choice and catalog parts.

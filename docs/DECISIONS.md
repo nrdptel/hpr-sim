@@ -139,6 +139,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-131 | M5.4c: `hpr motors search`, the finder's list from the network, the cache or a saved file; five filters, `--max-price` in exact cents on the cheapest in-stock offer; cheapest first; both credits on every list; the example tested on an edited copy, as the recording lists nothing at $150 | accepted |
 | ADR-132 | M5.5 split a and b; M5.5a: `hpr_io::orc` reads OpenRocket's `.orc` parts catalogues; the 16 files OpenRocket 24.12 ships bundled unchanged (Apache-2.0); held part by part to OpenRocket's preset loader, run as an oracle; exact unit definitions, the file's makers' names and densities kept, a stated mass kept beside them; unreadable parts left out with a warning, not the file | accepted |
 | ADR-133 | M5.5b: catalogue parts in the builder (`from_catalog` on `Nose`, `Tube`, `Transition`, `MotorTube`, and the new `Fitting`); what the file leaves unsaid as OpenRocket 24.12 builds it, but a hollow part's shoulder takes its wall; a stated mass scales the part's density; a part with an undefined material refused; every part held to OpenRocket's built mass and centre, the two codes' hollow walls each checked | accepted |
+| ADR-134 | M6.1a: Monte Carlo dispersion in `hpr_analysis::montecarlo`; each input an independent normal about its nominal value; one random stream per sample, input and copy, keyed by `SeededRng::for_stream`; impulse dispersed with the propellant mass; a drag scale in the aero model; failed samples kept; M6.1 split a to d | accepted |
 
 ---
 
@@ -10966,3 +10967,67 @@ ellipsoid transitions not clipped and a parabola's `K′` of 0.75, each fail the
 design checks, so the example uses the 38 mm tube; that is issue #280. What is checked is each
 part's mass as its file describes it: a catalogue's sizes and densities are the makers' or the
 database's, and none was weighed here.
+
+## ADR-134: Monte Carlo dispersion: independent normals, one stream per sample and input (2026-10-01)
+
+**Context.** M6.1 asks for seeded, parallel dispersion over mass and CG, drag, motor impulse and
+timing, wind, launch angle and deployment delays; landing ellipses; Morris and Sobol sensitivity;
+and 10,000 flights of an L2 design in 10 s. Its *done when* is three bullets, and it carries five
+Loft lessons: L52 (thrust scaled without propellant mass), L53 (one random stream for a whole run),
+L54 (failed samples dropped), L55 (bearings drawn uniformly, the forecast thrown away) and L96 (the
+same seed and zero dispersion). That is more than one session.
+
+**Decision.**
+
+1. **M6.1 splits in four**, each with its own *done when* in `ROADMAP.md`: a, the dispersion and
+   its reproducibility, with all five lessons' tests; b, landing ellipses against analytic
+   Gaussians; c, Morris and Sobol against functions with known indices; d, the 10,000-flight
+   timing.
+2. **Each input is an independent normal about its nominal value**, its standard deviation given
+   by the user and zero by default. This is RocketPy's default reading of a `(nominal, standard
+   deviation)` pair (`rocketpy/stochastic/stochastic_model.py:190-199`, v1.13.0). Fractions for quantities that
+   scale (mass, drag, impulse, burn time, wind speed), absolute values for the rest. There are no
+   presets: NFPA 1125 (2021, §8.1.7 and §8.2.7) bounds a motor type's impulse spread at 6.7% and a
+   delay's error at 1.5 s or 20%, capped at 3 s, but a bound is not a spread, and four NAR
+   certification sheets measured 1.3% to 3.1%; the guide gives both and leaves the choice to the
+   user.
+3. **One stream per sample, input and copy.** `SeededRng::for_stream(seed, &[sample, input,
+   copy])` folds the key into one word with SplitMix64's output function and seeds xoshiro256++
+   from it, the counter-based idea of Salmon et al. (SC11). A sample is then the same whatever the
+   run's length, its thread count, or the other inputs dispersed. Jumping one generator ahead
+   (xoshiro's `jump`) would also give disjoint streams, but costs a jump per sample and ties
+   sample `k` to the order streams are handed out. Two keys collide only by a 64-bit hash
+   collision. An input with zero dispersion draws nothing and changes nothing, so zero dispersion
+   flies the nominal flight bit for bit (L96).
+4. **Impulse scales the thrust and the propellant mass together** (`dispersed_motor`), keeping
+   `I/m_p` (L52): a column's mass, BATES grains' density so the grain geometry is kept. Burn time
+   stretches the curve and divides the thrust by the same factor, keeping the impulse. A cluster is
+   one draw, because the design holds it as one motor.
+5. **Drag is scaled in the aero model** (`AeroModel::with_drag_scale`,
+   `Simulation::with_drag_scale`), multiplying whatever gives the zero-lift coefficient: the
+   buildup, a table or a drag model. Wrapping the drag in a drag model instead would have made it
+   the whole stack's, refused at a powered separation; the scale passes to the sustainer instead.
+6. **Wind is turned about its own direction** (`DispersedWind`): the base model's velocity at every
+   height, scaled and turned clockwise, so a profile keeps its shape and the forecast's heading is
+   the mean (L55). The rail's heading is likewise an offset. A rail drawn past vertical leans the
+   other way (`E′ = π − E`, heading and roll turned half a turn), the same attitude.
+7. **Delays are cut at zero**, since a charge can't fire before its event; every other impossible
+   draw (a negative mass, a rail below the horizon) fails its sample, which is kept with its reason
+   and counted (L54). A probability is reported as two bounds, failures counted as failing and as
+   passing (`Share`).
+8. **Statistics on sorted values**: mean and standard deviation shifted by the smallest value
+   (Chan, Golub and LeVeque, 1983), quantiles by Hyndman and Fan's definition 7. Sums run over the
+   sorted values, so a summary is the same however the samples were flown.
+9. **Parallelism is rayon behind `hpr-analysis`'s `parallel` feature**, off by default and never
+   built for wasm32 (`ARCHITECTURE.md`'s plan, `clippy.toml`'s rule). Its `collect` keeps the
+   samples in order.
+10. **The inputs are `FlightInputs`**, the arguments of `Simulation::new` plus recovery, a drag
+    override and the drag scale, because `Simulation` is neither `Clone` nor open. Events,
+    separations and staging a `Simulation` can be given aren't in it yet; `hpr::FlightBuilder::inputs`
+    builds it, and `FlightBuilder::simulation` now goes through it.
+
+**Consequences.** M6.1a is met (`crates/hpr-analysis/src/montecarlo.rs`'s tests, the guide's
+`docs/monte-carlo.md` and its example). Each sample rebuilds its `Simulation`, so a supersonic
+design rebuilds its supersonic tables every flight (300 to 700 ms each, `docs/perf.md`); M6.1d has
+to share them. Not dispersed: the atmosphere, ignition times, recovery devices' drag, correlations
+between inputs. No measured set of repeated flights has checked the spread a run gives.
