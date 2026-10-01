@@ -1,14 +1,13 @@
-CMA-ES on four test functions, 10 variables, run to f ≤ 1e-10 (seed 2026)
-function            start   evaluations   best value   distance to the minimum
-sphere                1.0          1660      9.4e-11                    9.7e-6
-ellipsoid             1.0          5900      8.3e-11                    4.0e-6
-rotated ellipsoid     1.0          6040      9.4e-11                    1.4e-6
-Rosenbrock            0.0          6430      7.1e-11                    2.4e-6
+CMA-ES on three test functions, 10 variables from 1.0, run to f ≤ 1e-10 (seed 2026)
+function             reached f ≤ 1e-10   best point within 1e-5 of x = 0
+sphere                             yes                               yes
+ellipsoid                          yes                               yes
+rotated ellipsoid                  yes                               yes
 
-Hit 3,048 m with a 66 mm rocket on a J760 by its nose ballast and body length
+A 66 mm rocket on a J760: find the nose ballast and body length for a 3,048 m apogee
+and a static margin of 2.20 calibres at launch mass, at Mach 0.3
 Not yet validated: see the Accuracy page before trusting these numbers.
-Start: 0.300 kg of ballast, a 1.000 m body: apogee 3128.8 m
-Found: 0.991 kg of ballast, a 0.808 m body, in 78 flights (13 generations, stopped: Target)
-Flown again: apogee 3047.914 m (miss -0.086 m)
-Flown again, tolerances 100 times tighter: apogee 3047.916 m (miss -0.084 m)
-Static margin of the winner at launch mass, Mach 0.3 (not constrained): 2.53 calibres
+Start: 0.30 kg of ballast, a 1.00 m body: apogee 3128.8 m, margin 1.79 calibres
+Found: 0.34 kg of ballast, a 1.11 m body (stopped: Target)
+Flown again: apogee 3048.0 m, margin 2.20 calibres
+Flown again, tolerances 100 times tighter: apogee 3048.0 m

@@ -5,8 +5,9 @@ Sometimes you know the result you want and need the design that gives it: that i
 that reaches exactly 3,048 m (10,000 ft) for a competition, or the lightest fins that keep it
 stable. An *optimizer* searches for that design. It tries designs, flies each one, and uses what
 it learns to choose better ones, until it finds the best it can. This page shows hpr-sim's
-optimizer, [CMA-ES](glossary.md#cma-es). It runs on four test functions whose answers are known, then finds the nose
-ballast and body length that send a rocket to 3,048 m. It needs some Rust.
+optimizer, [CMA-ES](glossary.md#cma-es). It runs on test functions whose answers are known, then
+finds the nose ballast and body length that send a rocket to 3,048 m with a chosen stability
+margin. It needs some Rust.
 
 > **How far to trust it.** The optimizer is tested against answers known exactly, and against the
 > reference implementation by its author. On a rocket, its answer is only as good as hpr-sim's
@@ -25,7 +26,8 @@ ballast and body length that send a rocket to 3,048 m. It needs some Rust.
 >   [`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
 > - **Checked by re-flying:** the rocket design the example finds is flown again from scratch,
 >   and again with the flight's numerical integration 100 times stricter
->   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m.
+>   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (within
+>   2 mm, measured).
 > - **Left out, for now:** discrete choices (which motor, which catalogue part), limits other than
 >   each variable's range (a minimum stability margin, say), several goals at once, and optimizing
 >   a [Monte Carlo](glossary.md#monte-carlo) run's statistics. They are the next steps of
@@ -165,13 +167,20 @@ whose results are committed beside the test.
 
 The example program
 [`crates/hpr/examples/optimization.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/optimization.rs)
-runs CMA-ES on the four test functions. Then it takes a 66 mm rocket on a J760 and finds the nose
-ballast and body tube length that send it to 3,048 m above the pad. The rocket starts from a 3 m
-rail at 85°, into 5 m/s of wind. Run it from a copy of the repository with:
+runs CMA-ES on three of the test functions. Then it takes a 66 mm rocket on a J760, starting from
+a 3 m rail at 85° into 5 m/s of wind. It finds the nose ballast and body tube length that give it
+two things at once: an apogee of 3,048 m above the pad, and a static margin of 2.20
+[calibres](glossary.md#calibre-caliber) at launch mass (at Mach 0.3). Run it from a copy of the
+repository with:
 
 ```text
 cargo run --example optimization -p hpr
 ```
+
+Why two goals? With one goal, the apogee, and two variables, there is a whole curve of answers:
+more ballast and a shorter body cancel out, and the run would stop at whichever hit it reached
+first. A second goal, the margin, leaves one design that meets both, so the answer is the
+rocket's, not the run's.
 
 The heart of it, abridged from the example:
 
@@ -181,55 +190,48 @@ let variables = vec![
     Variable::new("body tube (m)", 1.0, 0.1)?.within(0.6, 1.4)?,
 ];
 let optimizer = Cmaes::new(variables)?
-    .with_target(0.1 * 0.1)?          // stop at a miss of 0.1 m or less
-    .with_max_evaluations(1_000)?;
+    .with_target(1e-4)?            // stop within a centimetre and a ten-thousandth of a calibre
+    .with_max_evaluations(2_000)?;
 let optimum = optimizer.minimize(seed, |x| {
-    match fly(x[0], x[1], FlightSettings::default()) {
-        Ok(flight) => flight
-            .apogee_m()
-            .map_or(f64::INFINITY, |apogee| (apogee - 3048.0).powi(2)),
-        Err(_) => f64::INFINITY,       // a design the simulator refuses ranks last
-    }
+    // (apogee miss in m)² + (margin miss in hundredths of a calibre)²;
+    // a design the simulator refuses ranks last
+    miss(x[0], x[1], FlightSettings::default()).unwrap_or(f64::INFINITY)
 })?;
 ```
 
-`fly` builds the rocket with that ballast and body length and flies it. A design that can't fly
-returns infinity, which ranks below every real flight. Then the example flies the winner twice
-more: once from a fresh build, which must give the optimizer's apogee to the last bit, and once
-with the integrator's tolerances 100 times tighter, which must still hit within 0.1 m.
+`miss` builds the rocket with that ballast and body length, flies it, and adds the two squared
+misses, each in a unit that makes a miss of one about equally bad. A design that can't fly returns
+infinity, which ranks below every real flight. Then the example flies the winner twice more: once
+from a fresh build, which must give the optimizer's result to the last bit, and once with the
+integrator's tolerances 100 times tighter, which must still reach apogee within 0.1 m of
+3,048 m.
 
-The first table is one run of each function, from seed 2026; "start" is where every variable
-starts. The medians above are over seeds 1 to 20, so they differ a little. It prints:
+The example prints whether each test function reached its minimum, not how many evaluations it
+took. Operating systems round the last bit of `ln` and `exp` differently, and an optimizer's path
+amplifies that, so the counts move by a few per cent between macOS, Linux and Windows. The
+medians [above](#checked-against) are the test's, on the development machine. It prints:
 
 <!-- quote: crates/hpr/examples/optimization.output.txt -->
 ```text
-CMA-ES on four test functions, 10 variables, run to f ≤ 1e-10 (seed 2026)
-function            start   evaluations   best value   distance to the minimum
-sphere                1.0          1660      9.4e-11                    9.7e-6
-ellipsoid             1.0          5900      8.3e-11                    4.0e-6
-rotated ellipsoid     1.0          6040      9.4e-11                    1.4e-6
-Rosenbrock            0.0          6430      7.1e-11                    2.4e-6
+CMA-ES on three test functions, 10 variables from 1.0, run to f ≤ 1e-10 (seed 2026)
+function             reached f ≤ 1e-10   best point within 1e-5 of x = 0
+sphere                             yes                               yes
+ellipsoid                          yes                               yes
+rotated ellipsoid                  yes                               yes
 
-Hit 3,048 m with a 66 mm rocket on a J760 by its nose ballast and body length
+A 66 mm rocket on a J760: find the nose ballast and body length for a 3,048 m apogee
+and a static margin of 2.20 calibres at launch mass, at Mach 0.3
 Not yet validated: see the Accuracy page before trusting these numbers.
-Start: 0.300 kg of ballast, a 1.000 m body: apogee 3128.8 m
-Found: 0.991 kg of ballast, a 0.808 m body, in 78 flights (13 generations, stopped: Target)
-Flown again: apogee 3047.914 m (miss -0.086 m)
-Flown again, tolerances 100 times tighter: apogee 3047.916 m (miss -0.084 m)
-Static margin of the winner at launch mass, Mach 0.3 (not constrained): 2.53 calibres
+Start: 0.30 kg of ballast, a 1.00 m body: apogee 3128.8 m, margin 1.79 calibres
+Found: 0.34 kg of ballast, a 1.11 m body (stopped: Target)
+Flown again: apogee 3048.0 m, margin 2.20 calibres
+Flown again, tolerances 100 times tighter: apogee 3048.0 m
 ```
 
-The rocket started 81 m too high. The optimizer found a hit in 78 flights. It didn't find *the*
-answer, because there is a whole curve of them. More ballast and a shorter body cancel out, and
-two variables against one target leave one degree of freedom. The run stops at the first hit it
-finds. Here that is 0.991 kg of ballast, almost on the 1 kg bound, so a run that strays toward the
-bound slows down there (see [Bounds](#bounds)). To choose among the hits, add a second wish to the
-number you minimize: a small penalty on the ballast mass, say. Or fix one variable and optimize
-the other alone.
-
-Limits such as a minimum stability margin are not handled yet, so check the winner's margin
-yourself. The example prints it with `Rocket::static_margin_cal`: 2.53
-[calibres](glossary.md#calibre-caliber) at launch mass, at Mach 0.3.
+The rocket started 81 m too high, with a margin of 1.79 calibres. The optimizer found the design
+in 300 flights on the development machine, about 50 generations. Flown again with tighter
+tolerances, its apogee moves by 1.4 mm. Limits on other things, such as the rail-exit speed, are
+not handled yet: check those yourself, or add them to the number you minimize.
 
 ## Evaluating designs your own way
 
@@ -245,9 +247,8 @@ next. It returns the result once the run stops.
   step.
 - **Target:** for a target apogee, the squared miss you accept: `0.1 * 0.1` for 0.1 m. Without a
   target, a run goes on until it converges, which can take many more flights than a hit needs.
-- **Evaluations:** a cap on flights, 10,000 by default. The example's two variables needed 78
-  flights to hit within 0.1 m; the ten-variable test functions take 1,600 to 6,500 evaluations to
-  converge.
+- **Evaluations:** a cap on flights, 10,000 by default. The example's two variables needed 300
+  flights; the ten-variable test functions take 1,600 to 6,500 evaluations to converge.
 - **Population:** leave it at the default unless the output has many local minima. Then a larger
   population ([`Cmaes::with_population`]) searches more widely, at more flights per generation.
 - **Seed:** a different seed gives a different run. Rerun with two or three seeds if the answer

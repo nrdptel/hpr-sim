@@ -11323,10 +11323,14 @@ Table 1 (`C^(−1/2)` by the Denman–Beavers iteration), steps 0.5, 2 and 0.01,
 takes `h_σ` through both values: mean, `σ` and `C` agree to 1e-12. One-off mutations: dropping the
 rank-μ update takes the ellipsoid's median to 7,875 and fails the pycma comparison; `h_σ` held at
 1, its exponent `2g` for `2(g + 1)`, and the mean's step unscaled each pass the pycma comparison
-(found in review) and fail the dense recomputation. The guide's example hits 3,048 m with a J760
-rocket in 78 flights (3,047.914 m); flown again from a fresh build it gives the optimizer's apogee
-to the bit, and at tolerances 100 times tighter 3,047.916 m. Two variables against one target
-leave a curve of answers; the run stops at the first, at 0.991 kg of a 1 kg ballast range, and
-the guide says how to choose among them. The papers are cited, not pinned in `refs.lock.toml`, as
+(found in review) and fail the dense recomputation. The guide's example finds the ballast and
+body length of a J760 rocket for a 3,048 m apogee and a 2.20-calibre margin together (one goal
+alone leaves a curve of answers, and the run stopped at whichever it met first): 0.3373 kg and
+1.1084 m in 300 flights, apogee 3,047.9997 m, margin 2.199996; flown again from a fresh build it
+gives the optimizer's value to the bit, and at tolerances 100 times tighter 3,048.0011 m. The
+example prints only what doesn't depend on the platform's last bits: CI first failed on Linux
+and Windows, where `ln` and `exp` round differently and Windows' sphere run took 1,580
+evaluations to macOS's 1,660. So it prints whether each test function reached its minimum, and
+the design to 0.01, 2 to 3 mm from a rounding edge against a solution good to about 10⁻⁴. The papers are cited, not pinned in `refs.lock.toml`, as
 no test reads them. Left out: active CMA, restarts
 (IPOP/BIPOP), repair or penalty bound handling, and the command line and Python.
