@@ -29,7 +29,8 @@ margin. It needs some Rust.
 >   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (within
 >   2 mm, measured).
 > - **Left out, for now:** discrete choices (which motor, which catalogue part), limits other than
->   each variable's range (a minimum stability margin, say), several goals at once, and optimizing
+>   each variable's range (a minimum stability margin, say), trade-offs between goals (several
+>   goals can only be folded into one number, as the example does), and optimizing
 >   a [Monte Carlo](glossary.md#monte-carlo) run's statistics. They are the next steps of
 >   [M6.2](decisions-and-roadmap.md#m6-2), the optimization milestone. There is no command-line or
 >   Python front end yet.
@@ -260,7 +261,8 @@ next. It returns the result once the run stops.
   [M6.2b](decisions-and-roadmap.md#m6-2b). Until then, run the optimizer once for each motor you
   are considering and compare the results.
 - No limits other than a variable's range, and an answer on a bound is reached only slowly.
-- One goal at a time: no trade-offs between two goals (a Pareto front).
+- No trade-offs between goals (a Pareto front): several goals can only be folded into one
+  number, as the example does.
 - No optimizing of a Monte Carlo run's statistics, such as the chance of landing within a
   distance.
 - No command-line or Python front end yet.

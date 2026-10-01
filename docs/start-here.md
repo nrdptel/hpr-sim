@@ -149,7 +149,8 @@ out.
   draws the ellipse its landings fall in ([Landing ellipses](monte-carlo.md#landing-ellipses)).
   Morris screening and Sobol' indices rank which inputs matter most
   ([Sensitivity analysis](sensitivity.md)). CMA-ES finds the values of a design's numbers that
-  hit a target, such as the ballast for a 3,048 m apogee ([Optimization](optimization.md)); motor
+  hit a target, such as the ballast and body length for a 3,048 m apogee with a chosen margin
+  ([Optimization](optimization.md)); motor
   choice, limits and several goals at once are not handled yet. No app yet: it is on the
   [roadmap][roadmap].
 - **The flight-log analyzer reads one logger so far.** `hpr analyze` reads a PerfectFlite

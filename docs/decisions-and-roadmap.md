@@ -369,7 +369,7 @@ missing or its status disagrees.
 | <a id="m6-1c"></a>[M6.1c][phase-3] | Sensitivity analysis, Morris screening and Sobol' indices, checked against functions with known answers within their own standard errors ([ADR-136][adr-136], [Sensitivity analysis](sensitivity.md)) | done |
 | <a id="m6-1d"></a>[M6.1d][phase-3] | 10,000 flights of a Level 2 rocket (one on a J, K or L motor) in 10 s or less, timed and recorded: 3.0 s for Valetudo, 9.4 s for a rocket past Mach 1.6, a run's flights sharing one layout and one supersonic table ([ADR-137][adr-137], [How long a run takes](monte-carlo.md#how-long-a-run-takes)) | done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization; split in five ([ADR-138][adr-138]) | not yet done |
-| <a id="m6-2a"></a>[M6.2a][phase-3] | CMA-ES over continuous design variables, held to four test functions' known minima and to pycma, its author's implementation; a rocket's ballast and body length found to hit 3,048 m and checked by flying it again ([ADR-138][adr-138], [Optimization](optimization.md)) | done |
+| <a id="m6-2a"></a>[M6.2a][phase-3] | CMA-ES over continuous design variables, held to four test functions' known minima and to pycma, its author's implementation; a rocket's ballast and body length found for a 3,048 m apogee and a 2.2-calibre margin, and checked by flying it again ([ADR-138][adr-138], [Optimization](optimization.md)) | done |
 | <a id="m6-2b"></a>[M6.2b][phase-3] | Discrete choices (a motor, a catalogue part) and limits such as a minimum stability margin | not yet done |
 | <a id="m6-2c"></a>[M6.2c][phase-3] | Several goals at once: NSGA-II and a Pareto front | not yet done |
 | <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights | not yet done |

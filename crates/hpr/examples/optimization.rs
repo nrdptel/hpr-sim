@@ -1,6 +1,6 @@
 //! Optimization: CMA-ES checked against three test functions whose minima are known, then the
-//! nose ballast and body length that send a rocket to 3,048 m (10,000 ft) with a 2-calibre static
-//! margin, the winner checked by flying it again.
+//! nose ballast and body length that send a rocket to 3,048 m (10,000 ft) with a 2.20-calibre
+//! static margin, the winner checked by flying it again.
 //!
 //! ```text
 //! cargo run --example optimization -p hpr

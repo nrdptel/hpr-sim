@@ -11331,6 +11331,7 @@ gives the optimizer's value to the bit, and at tolerances 100 times tighter 3,04
 example prints only what doesn't depend on the platform's last bits: CI first failed on Linux
 and Windows, where `ln` and `exp` round differently and Windows' sphere run took 1,580
 evaluations to macOS's 1,660. So it prints whether each test function reached its minimum, and
-the design to 0.01, 2 to 3 mm from a rounding edge against a solution good to about 10⁻⁴. The papers are cited, not pinned in `refs.lock.toml`, as
+the design to 0.01: the ballast 2.3 g and the body 3.4 mm from a rounding edge, against a
+solution good to about 10⁻⁴. The papers are cited, not pinned in `refs.lock.toml`, as
 no test reads them. Left out: active CMA, restarts
 (IPOP/BIPOP), repair or penalty bound handling, and the command line and Python.
