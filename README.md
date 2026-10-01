@@ -32,7 +32,8 @@ Planned:
   curves (in the library today; `hpr motors search` lists the stock and prices),
   all optional. Everything works offline on macOS, Windows and Linux.
 - [Monte Carlo dispersion](https://nrdptel.github.io/hpr-sim/monte-carlo.html) (seeded and
-  reproducible, in the library today), sensitivity analysis, and optimization for competition
+  reproducible) and [sensitivity analysis](https://nrdptel.github.io/hpr-sim/sensitivity.html)
+  (Morris screening and Sobol' indices), in the library today; optimization for competition
   challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.
 - Later: a modern desktop/web/mobile UI with 3D flight replay.
