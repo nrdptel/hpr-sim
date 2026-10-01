@@ -135,6 +135,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-127 | M5.3c split c1, c2; geodesics in `hpr_core::geodesic` through `geographiclib-rs`, flattening past 1/150 refused; Karney's 500,000-line test set within his 15 nm on five measures, either azimuth pair on its 21 mirror lines | accepted |
 | ADR-128 | M5.3c2: a user's GeoTIFF in `hpr_io::geotiff` over the `tiff` crate; geographic CRSs within a few metres of WGS 84 only, projections and far datums refused; the containing pixel placed as GDAL places it; GDAL's scale and offset, units the file states, else metres; held to rasterio 1.5.2 on seven fixtures and a whole USGS tile | accepted |
 | ADR-129 | M5.4 split a to c; M5.4a: motor.fusionspace.co's five files in `hpr_net::motor_finder` through the cache, an hour's TTL, its structural rules refused and its derived ones pinned on the recording; eight answers of one build committed as fixtures; the credit with the site's caution on every answer | accepted |
+| ADR-130 | M5.4b: ThrustCurve.org's search and download in `hpr_net::thrustcurve` through the cache, a day's TTL; the join by exact maker and designation, misses reported not guessed; three makers' searches and two public-domain files committed as fixtures; the join's report in `validation/reports/thrustcurve-join.md` | accepted |
 
 ---
 
@@ -10642,3 +10643,72 @@ or less a motor (the cheapest, $260.99), so M5.4c's example command lists nothin
 recording; its test will need a price that does. The join (M5.4b) starts from the exact match
 above, with ThrustCurve's whole `search.json` (1,156 motors, 0.93 MB, its terms unstated) kept
 under `refs/` unless a smaller recorded answer can carry the test.
+
+## ADR-130: M5.4b, ThrustCurve searches and curves through the cache, and the in-stock join (2026-10-01)
+
+**Context.** M5.4b (ADR-129 §1) asks for ThrustCurve.org's search and a motor's curve through the
+cache; done when the designation to ThrustCurve id mapping covers at least 95% of the motors in
+stock, with a report of the misses, and a mapped motor's recorded curve reads with `hpr_motor`.
+ThrustCurve's API (`/api/v1`, an OpenAPI 2 spec under the ISC licence; its page says the JSON
+endpoints take a query string by GET or a JSON body by POST, and no key or header) has a search,
+whose records carry ThrustCurve's 24-hex-digit `motorId`, and a download, whose files come
+base64-encoded with their format (`RASP` or `RockSim`), source (`cert`, `mfr`, `user`) and licence
+(`PD`, `free`, `other`, or absent). Its spec says "only fields with values will be returned". The
+API states no terms for its data. Errors come back as HTTP 200 with an `error` field, on the
+answer or on a search criterion; an unknown motor id downloads as an empty list. On 2026-10-01 a
+search by maker with `maxResults=5000` returned AeroTech's 307 records, Cesaroni Technology's 296
+and Loki Research's 60, each whole (`matches` equal to the records returned), and the same records
+whether the maker was named in full or by its abbreviation.
+
+**Decision.**
+
+1. **`hpr_net::thrustcurve`,** shaped as the other sources: `Search` and `Download` build the URLs
+   (GET, query values percent-encoded, fields in a fixed order so a URL is one cache key);
+   `parse_search` and `parse_download` are pure; `fetch_search` and `fetch_download` go through
+   `Client::fetch_checked`, so an answer that doesn't parse is never cached. The types mirror the
+   JSON field for field and write back to it; every record field but `motorId`, `manufacturer` and
+   `designation` is optional, as the spec allows. The motor type, availability, source and licence
+   stay the API's words (strings: the response schema types them as open strings); the format is
+   an enum of the two the request takes, and the answer must hold the one asked.
+2. **Refused:** an answer or criterion carrying `error`; a search returning more records than
+   `matches`; a `motorId` not of 24 hex digits; a size, thrust, impulse, burn time or weight below
+   zero; a file that isn't base64 or UTF-8 (`hpr motors` reads motor files as UTF-8 too); a
+   download holding another motor's file or format. A request's motor id is checked before the
+   client is asked. Files that `hpr_motor` refuses are an error of `DataFile::read`, not of the
+   parser: the answer is still ThrustCurve's.
+3. **The join by name only.** `join` maps a finder motor to the one record whose `manufacturer`
+   (full name) and `designation` equal the motor's, byte for byte; none or several is a `Miss` with
+   its reason, and `Join::report` lists counts by maker and every miss. No fallback on case,
+   punctuation, impulse or diameter: the finder copies ThrustCurve's spellings (ADR-129), and a
+   guessed match could hand a flier the wrong curve, where a miss only costs a lookup.
+4. **Whole searches for the join.** `fetch_finder_records` runs one search per maker the finder
+   reads (`motor_finder::MANUFACTURERS`, by full name), each asking `maxResults=5000`, and refuses
+   (and doesn't cache) one that matches more records than it returns, so a join never runs on part
+   of a maker.
+5. **A day's TTL.** Records and curves change seldom; offline or with the site down, the cached
+   copy is served stale, as every source does (ADR-117).
+6. **The credit.** The API asks for none. `ATTRIBUTION`, "Motor data and thrust curves courtesy of
+   ThrustCurve.org", matches the bundled curves' notice (ADR-005) and is on every `Fetched`. A
+   file's licence is passed through, not filtered: the caller decides what to keep or pass on.
+7. **Fixtures.** Five answers recorded 2026-10-01 08:22 UTC are committed under
+   `crates/hpr-net/tests/fixtures/replay/`: the three makers' searches (250, 246 and 50 kB) and
+   two downloads, AeroTech J450DM's RASP file (certification data, `PD`) and AeroTech F27R/L's
+   RockSim file (`user`, `PD`), requested by format so no file without a public-domain licence is
+   recorded. The records are published motor figures, as the bundled catalogue already copies
+   (ADR-005); ThrustCurve's whole `search.json` (1,156 records) stays under `refs/`, the three
+   makers' searches being enough for the join.
+8. **The report.** `validation/reports/thrustcurve-join.md` holds `Join::report` on the recordings,
+   compared as text on every OS by `tests/thrustcurve.rs` (counts only, no float);
+   `HPR_WRITE_THRUSTCURVE_JOIN=1` rewrites it.
+
+**Consequences.** M5.4b is met: on the recorded in-stock list (282 motors, the finder's build of
+07:07:29 UTC) and the three searches (663 records), 282 of 282 motors map to exactly one record,
+each listing a data file, against the 95% asked; the test works the expected mapping out from the
+recordings' JSON, not through `join`. J450DM, mapped and in stock, has its recorded RASP file read
+by `hpr_motor::eng` to the 36 points in its lines, and the file is byte for byte the public-domain
+one `hpr_motor` bundles (`5f4294d20002e9000000086b.eng`, downloaded 2026-09-17); F27R/L's RockSim
+file reads by `hpr_motor::rse` to the points in its XML. A renamed motor, a doubled record and a
+designation in another case are misses with their reasons. Each refusal is tested by a one-field
+change to a recording. The example `motor_stock` prints the join and J450DM's curve: 1,061.6 N·s,
+2.28 s and 541.4 N from the file, beside its record's certification figures of 1,055 N·s, 2.27 s
+and 558 N. M5.4c (`hpr motors search`) can now show a motor in stock with its curve.
