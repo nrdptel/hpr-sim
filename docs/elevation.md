@@ -10,8 +10,8 @@ air pressure and density. There is no `hpr` command for it yet: a Rust program c
 it back offline. That is checked on two recorded answers, below. The number comes from a terrain
 model whose cells are about 90 m across, and it is a *surface* height: over trees or buildings it
 sits above the bare ground. The model's makers state its accuracy as better than 4 m for 90% of
-points, averaged over the world outside Antarctica and Greenland; in about 1 one-degree square in
-90 it is worse than 10 m. hpr hasn't measured it. In the standard atmosphere, 10 m of height
+points, averaged over the world outside Antarctica and Greenland; in about 1 area in 90 it is worse
+than 10 m. hpr hasn't measured it. In the standard atmosphere, 10 m of height
 error changes the air's density by about 0.1%: the example below shows it 12.8% thinner over
 1,400 m. The recorded heights are whole
 metres; Open-Meteo doesn't document its rounding.
@@ -66,8 +66,9 @@ vegetation ([the dataset's readme](https://copernicus-dem-30m.s3.amazonaws.com/r
 
 Its stated accuracy is under 4 m for 90% of points (handbook, Table 1, page 10). That is a mean
 over the world outside Antarctica and Greenland, and the makers warn that it varies from place to
-place: of the 16,363 one-degree squares there, 184 (1.1%) are worse than 10 m (Table 12,
-page 31).
+place: of the 16,363 tiles there, each about a degree across, 184 (1.1%) are worse than 10 m
+(Table 12, page 31, which prints 0.9%, a share of all tiles, Antarctica and Greenland
+included).
 
 The ground doesn't move, so a saved answer stays fresh for a year. Open-Meteo's forecast for
 Spaceport America ([Launch-day weather](weather.md)) gives the same ground height there, 1,400 m.
@@ -184,7 +185,7 @@ The code's own tests check the address hpr builds, for one place and three, and 
 same after a trip through radians for every longitude in steps of 0.01°, and for 720,000 values
 given to 6 or 8 decimals, the 6-decimal ones all sitting on a rounding half step. They check that
 it refuses no places, 101 places, a latitude or longitude out of range or not a number (naming the
-place), and a bad server address. They check that the reader takes negative heights and the
+place, counting from 0), and a bad server address. They check that the reader takes negative heights and the
 range's edges, and refuses each kind of broken answer above.
 
 ## What it leaves out

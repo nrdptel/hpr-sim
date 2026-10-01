@@ -24,8 +24,9 @@
 //! **How far to trust it:** a height is the answer's number, unchanged (`tests/elevation.rs`).
 //! The recorded heights are whole metres; Open-Meteo doesn't document its rounding. The handbook
 //! states the DEM's absolute vertical accuracy as under 4 m (90% linear error), a global mean
-//! outside Antarctica and Greenland (Table 1, p. 10); in 184 of the 16,363 one-degree tiles there
-//! (1.1%) it is over 10 m (Table 12, p. 31). Nothing here measures it. The [guide page][guide]
+//! outside Antarctica and Greenland (Table 1, p. 10); in 184 of the 16,363 geotiles there, each
+//! about a degree across (1.1%; the table's 0.9% is of all tiles), it is over 10 m (Table 12,
+//! p. 31). Nothing here measures it. The [guide page][guide]
 //! says more.
 //!
 //! ```
@@ -184,8 +185,10 @@ impl ElevationRequest {
     }
 }
 
-/// A coordinate as the URL writes it: rounded to [`URL_DECIMALS`] decimals, halves away from zero,
-/// trailing zeros and a bare point dropped, and a value that rounds to zero written as `0`.
+/// A coordinate as the URL writes it: its [`FIRST_DECIMALS`]-decimal value rounded to
+/// [`URL_DECIMALS`] decimals, halves away from zero, trailing zeros and a bare point dropped, and a
+/// value that rounds to zero written as `0`. A value given to more than 9 decimals is so rounded
+/// twice, by at most 1e-5° in all.
 ///
 /// Rounding the binary value straight to 5 decimals would let a trip through radians flip a value
 /// that sits on a half step (32.990415 is 32.990415000000006 after one): it is written to
@@ -193,13 +196,16 @@ impl ElevationRequest {
 /// ±180 (checked by [`ElevationRequest::url`]).
 fn coordinate(deg: f64) -> String {
     let fixed = format!("{:.*}", FIRST_DECIMALS as usize, deg.abs());
-    // The digits of `|deg|` in units of 10^-FIRST_DECIMALS; under 2e11, so no overflow.
+    // The digits of `|deg|` in units of 10^-FIRST_DECIMALS: under 2e11 for a checked coordinate,
+    // and saturating rather than overflowing for any other.
     let units = fixed
         .bytes()
         .filter(u8::is_ascii_digit)
-        .fold(0_u64, |n, b| n * 10 + u64::from(b - b'0'));
+        .fold(0_u64, |n, b| {
+            n.saturating_mul(10).saturating_add(u64::from(b - b'0'))
+        });
     let step = 10_u64.pow(FIRST_DECIMALS - URL_DECIMALS);
-    let kept = (units + step / 2) / step;
+    let kept = units.saturating_add(step / 2) / step;
     let one = 10_u64.pow(URL_DECIMALS);
     let sign = if kept != 0 && deg < 0.0 { "-" } else { "" };
     let (whole, fraction) = (kept / one, kept % one);
@@ -298,7 +304,7 @@ pub enum ElevationError {
     Request {
         /// The field.
         what: &'static str,
-        /// Its value; for a coordinate, followed by its place's index, as `90.5 (place 1)`.
+        /// Its value; for a coordinate, followed by its place's index from 0, as `90.5 (place 1)`.
         value: String,
     },
     /// The fetch failed.
@@ -423,12 +429,12 @@ mod tests {
     fn half_steps_survive_a_round_trip_through_radians() {
         let mut changed = 0;
         let mut flips_if_rounded_straight = 0;
-        for (millionths, scale) in (0..360_000)
+        for (units, scale) in (0..360_000)
             .map(|i: i64| (-179_999_995 + i * 1_000, 1e6))
             .chain((0..360_000).map(|i| (-17_999_999_999 + i * 99_999, 1e8)))
         {
             // Under 2^53, so exact as an `f64`.
-            let deg = millionths as f64 / scale;
+            let deg = units as f64 / scale;
             let again = deg.to_radians().to_degrees();
             changed += usize::from(again.to_bits() != deg.to_bits());
             flips_if_rounded_straight += usize::from(format!("{deg:.5}") != format!("{again:.5}"));

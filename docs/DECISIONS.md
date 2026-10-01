@@ -10332,7 +10332,8 @@ places, and answers `{"elevation":[...]}`, one height per place in order, or HTT
 latitude), a digital *surface* model (buildings and vegetation included; the dataset's readme),
 whose heights are above the EGM2008 geoid (product handbook issue 5.0, §1.2.1, p. 13), stated
 to under 4 m absolute, 90% linear error, a global mean outside Antarctica and Greenland (Table 1,
-p. 10); 184 of the 16,363 one-degree tiles there are over 10 m (Table 12, p. 31). Its licence asks for
+p. 10); 184 of the 16,363 geotiles there (each about a degree across) are over 10 m (Table 12,
+p. 31). Its licence asks for
 the credit "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under
 COPERNICUS by the European Union and ESA; all rights reserved"; Open-Meteo's API data is CC BY 4.0
 and it asks for a credit to Copernicus and to itself. The recorded heights are whole metres, and
