@@ -39,7 +39,7 @@ use std::sync::Arc;
 use hpr_aero::{AeroModel, DragModel, DragTable, NormalForceTable};
 use hpr_core::DVec3;
 use hpr_design::Rocket;
-use hpr_design::checks::{check, has_errors};
+use hpr_design::checks::{check_with_layout, has_errors};
 use serde::{Deserialize, Serialize};
 
 use crate::dynamics::{Conditions, Evaluation, Phase, Vehicle};
@@ -354,7 +354,11 @@ impl Simulation {
         rail: Rail,
         settings: FlightSettings,
     ) -> Result<Self, SimError> {
-        let findings = check(rocket)?;
+        // The checks and the assembly share one layout: laying a design out is most of the cost
+        // of building a simulation, which a Monte Carlo run pays every flight.
+        rocket.check_configuration_ids()?;
+        let layout = rocket.layout()?;
+        let findings = check_with_layout(rocket, &layout)?;
         if has_errors(&findings) && !settings.accept_design_errors {
             return Err(SimError::DesignChecks(findings));
         }
@@ -366,7 +370,7 @@ impl Simulation {
             });
         }
         rail.validate()?;
-        let assembly = rocket.assemble(configuration_id)?;
+        let assembly = rocket.assemble_with_layout(layout, configuration_id)?;
         let aero = AeroModel::new(&assembly.layout)?;
         // No separation yet, so a motor lit by one has no time.
         let ignition_s = assembly.ignition_times_s(|_| None);
@@ -1051,6 +1055,15 @@ impl Simulation {
     #[must_use]
     pub fn aero(&self) -> &AeroModel {
         &self.vehicle.aero
+    }
+
+    /// Shares `other`'s supersonic table with this flight's aerodynamic model, where the table is
+    /// the same ([`AeroModel::share_tables`]), so that it is built once for both: for many
+    /// flights of one airframe, as a Monte Carlo run's. `other` is usually another simulation's
+    /// [`Simulation::aero`]. The flight is unchanged, bit for bit. A sustainer's model, built at
+    /// a powered separation, builds its own. Gives whether the table is shared.
+    pub fn share_tables(&mut self, other: &AeroModel) -> bool {
+        self.vehicle.aero.share_tables(other)
     }
 
     /// The rail guides.

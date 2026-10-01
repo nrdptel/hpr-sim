@@ -263,12 +263,26 @@ On another platform (operating system and processor) a draw can differ in its la
 because the normal numbers use the platform's logarithm; a run then agrees to many digits, not to
 the bit. The decision record is [ADR-134](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-134-monte-carlo-dispersion-independent-normals-one-stream-per-sample-and-input-2026-10-01).
 
-**Run time.** A subsonic Level 2 flight takes about 1 ms in a release build in hpr-sim's
-benchmarks ([Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md)). But each
-flight of a run builds its own aerodynamic model, and a rocket that passes Mach 1.2 builds
-supersonic tables that take 0.3 to 0.7 s. So 1,000 flights of a supersonic rocket can take several
-minutes on one thread, until [M6.1d](decisions-and-roadmap.md#m6-1d) shares that work between
-flights.
+## How long a run takes
+
+On the development machine, an Apple M5 with 10 cores, 10,000 flights of a Level 2 rocket from
+ignition to the ground take:
+
+| rocket | peak Mach | 10,000 flights, 10 threads | one flight, one thread |
+|---|---|---|---|
+| Valetudo, one of RocketPy's examples: 9.7 kg on a K400C | 0.3 to 0.4 | 3.5 s | 2.3 ms |
+| a minimum-diameter 54 mm rocket on a K940 | 1.6 to 2.0 | 9.9 s | 6.3 ms |
+
+Both are release builds; a debug build is many times slower. The program that times them, and
+the before-and-after numbers, are on
+[Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md).
+
+A rocket that passes Mach 1.2 needs a supersonic table, which takes a few tenths of a second to
+build. A dispersion changes the rocket's masses, its motor and the weather, never its shape, so the
+flights of a run share the nominal flight's table: the run builds it once, and every flight flies
+exactly as it would alone. Before [M6.1d](decisions-and-roadmap.md#m6-1d) each flight built its
+own, and the supersonic run above took four and a half minutes. Issue
+[#285](https://github.com/nrdptel/hpr-sim/issues/285) is about making each flight itself faster.
 
 ## Choosing the numbers
 
@@ -320,8 +334,7 @@ The edition in force today hasn't been checked.
 The run gives each flight's whole [`FlightSummary`](api/hpr_sim/metrics/struct.FlightSummary.html),
 so any number a flight reports can be spread with `run.distribution(...)`, as the example does for
 the landing. To find which input moves the apogee most, see
-[Sensitivity analysis](sensitivity.md). Still to come in [M6.1](decisions-and-roadmap.md#m6-1):
-10,000 flights in seconds ([M6.1d](decisions-and-roadmap.md#m6-1d)).
+[Sensitivity analysis](sensitivity.md).
 
 The API reference is [`hpr_analysis::montecarlo`](api/hpr_analysis/montecarlo/index.html),
 [`hpr_analysis::statistics`](api/hpr_analysis/statistics/index.html) and

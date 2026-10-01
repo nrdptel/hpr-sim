@@ -51,6 +51,13 @@
 //! instead, since a charge can't fire before its event and a wind can't blow at less than calm: a
 //! normal tail past zero becomes zero.
 //!
+//! # Speed
+//!
+//! Every sample flies a simulation of its own, built from its draw. None of the dispersed inputs
+//! changes the rocket's shape, so the samples share the nominal flight's supersonic table
+//! ([`hpr_aero::AeroModel::share_tables`]): a design that flies past Mach 1.2 builds it once for
+//! the run, not once a flight, and a run flies the same either way, bit for bit.
+//!
 //! # Left out
 //!
 //! Dispersions are independent normals: no correlations between inputs, no other
@@ -67,8 +74,8 @@
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::sync::Arc;
 
-use hpr_aero::DragModel;
 use hpr_aero::table::DragTable;
+use hpr_aero::{AeroModel, DragModel};
 use hpr_atmos::{AtmosError, Wind, WindSample};
 use hpr_core::DVec3;
 use hpr_core::random::SeededRng;
@@ -178,7 +185,16 @@ impl FlightInputs {
     /// As [`FlightInputs::simulation`], [`Simulation::run`] and
     /// [`FlightMetrics::summary`].
     pub fn fly(&self) -> Result<FlightSummary, SimError> {
-        let simulation = self.simulation()?;
+        self.fly_sharing(None)
+    }
+
+    /// As [`FlightInputs::fly`], sharing `tables`' supersonic table where it is this flight's
+    /// ([`Simulation::share_tables`]).
+    fn fly_sharing(&self, tables: Option<&AeroModel>) -> Result<FlightSummary, SimError> {
+        let mut simulation = self.simulation()?;
+        if let Some(tables) = tables {
+            simulation.share_tables(tables);
+        }
         let mut metrics = FlightMetrics::new();
         let result = simulation.run(&mut metrics)?;
         metrics.summary(&result, &self.environment)
@@ -444,6 +460,9 @@ pub struct MonteCarlo {
     dispersion: Dispersion,
     stages: Vec<StageMass>,
     configuration: usize,
+    /// The nominal flight's aerodynamic model, whose supersonic table the samples share; `None`
+    /// when the nominal flight can't be built, whose samples then fail on their own.
+    tables: Option<AeroModel>,
 }
 
 impl MonteCarlo {
@@ -480,11 +499,16 @@ impl MonteCarlo {
                 dispersed_motor(&mounted.motor, 1.0, 1.0)?;
             }
         }
+        let tables = nominal
+            .simulation()
+            .ok()
+            .map(|simulation| simulation.aero().clone());
         Ok(Self {
             nominal,
             dispersion,
             stages,
             configuration,
+            tables,
         })
     }
 
@@ -704,7 +728,7 @@ impl MonteCarlo {
                 at: FailedAt::Inputs,
                 reason: error.to_string(),
             },
-            Ok(inputs) => match inputs.fly() {
+            Ok(inputs) => match inputs.fly_sharing(self.tables.as_ref()) {
                 Ok(summary) => Outcome::Flown {
                     summary: Box::new(summary),
                 },
@@ -1187,6 +1211,31 @@ mod tests {
         assert_eq!(first, dispersed.run(SEED, 2));
         let json = serde_json::to_string(&first).unwrap();
         assert_eq!(serde_json::from_str::<Run>(&json).unwrap(), first);
+    }
+
+    /// Valetudo's motor at four times its impulse in a quarter of its time takes it past Mach
+    /// 1.2, where its flights need the supersonic table: the samples build the nominal's and
+    /// share it, and each flies as the same inputs flown alone, on a table of their own, bit for
+    /// bit.
+    #[test]
+    fn samples_share_the_nominal_table_and_fly_as_alone() {
+        let mut inputs = nominal();
+        let mounted = &mut inputs.rocket.configurations[0].motors[0];
+        mounted.motor = dispersed_motor(&mounted.motor, 4.0, 0.25).unwrap();
+        let monte_carlo = MonteCarlo::new(inputs, every_dispersion()).unwrap();
+        let tables = monte_carlo.tables.as_ref().unwrap();
+        assert!(!tables.supersonic_built());
+        assert!(monte_carlo.sample(SEED, 0).summary().is_some());
+        // The sample built the nominal's table.
+        assert!(tables.supersonic_built());
+        for index in 0..2 {
+            let alone = monte_carlo.inputs(&monte_carlo.draw(SEED, index)).unwrap();
+            assert!(alone.simulation().unwrap().share_tables(tables));
+            let flight = alone.fly().unwrap();
+            let max_mach = flight.max_mach.as_ref().unwrap().value;
+            assert!(max_mach > 1.3, "Mach {max_mach}");
+            assert_eq!(monte_carlo.sample(SEED, index).summary(), Some(&flight));
+        }
     }
 
     #[test]

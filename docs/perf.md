@@ -3,6 +3,50 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Ten thousand flights (M6.1d)
+
+- **Benchmark:** `cargo bench -p hpr --features parallel --bench ten_thousand`
+  (`crates/hpr/benches/ten_thousand.rs`), release profile. One run is 10,000 flights through
+  `MonteCarlo::run_parallel` on rayon's global pool, one thread per core. The program times three
+  runs and prints the fastest.
+- **When and where:** 2026-10-01 on an Apple M5 (10 cores: 4 performance, 6 efficiency) with
+  rustc 1.98.1, in an unattended session with nothing else building.
+- **Inputs:** two Level 2 rockets. Each flies from a 3 m rail at 85° heading west into a 5 m/s
+  west wind at Spaceport America. Each has a 0.6 m drogue at apogee and a 2.4 m main at 150 m, as
+  under Recovery (M1.7a) below. Ten inputs are dispersed as in the guide's example, plus 0.2 s on
+  each device's lag. Every flight runs to the ground.
+  - **Valetudo** (`rocketpy-valetudo.json`, K400C, 9.7 kg): apogee 762 m on average, peak Mach
+    0.29 to 0.40.
+  - **A minimum-diameter 54 mm rocket on a Cesaroni K940**, built in the program: a 66 mm
+    airframe, 3.4 kg on the pad. Apogee 3,688 m on average, peak Mach 1.58 to 1.97, so every
+    flight needs the supersonic table.
+
+| rocket | before M6.1d | after |
+|---|---|---|
+| Valetudo, 10,000 flights on 10 threads | 4.59 s | **3.52 s** |
+| Valetudo, one flight on one thread | 2.76 ms (0.82 ms of it building) | 2.32 ms (0.41 ms) |
+| K940, 10,000 flights on 10 threads | 264 s | **9.90 s** |
+| K940, one flight on one thread | 193 ms (191 ms on its own table) | 6.31 ms (0.46 ms building) |
+
+- **The budget** is 10 s for 10,000 flights of a Level 2 rocket ([M6.1d](decisions-and-roadmap.md#m6-1d)).
+  Valetudo takes 3.5 s, 2.8 times inside it. The supersonic rocket takes 9.9 s, only just inside;
+  [#285](https://github.com/nrdptel/hpr-sim/issues/285) lists where its remaining time goes.
+  "Before" is the same program run on the commit before M6.1d, in the same session. Both give the
+  same apogee and Mach statistics, and a unit test holds a sample to the same flight flown alone,
+  bit for bit.
+- **What changed.**
+  - A run's samples share the nominal flight's supersonic table (`AeroModel::share_tables`). Before,
+    each flight built its own on its first pass of Mach 1.2: 191 ms of a 193 ms flight. A
+    dispersion changes masses, motors and weather, never the rocket's shape, and the table follows
+    from the shape alone. So the run builds it once, in whichever sample needs it first.
+  - `Simulation::new` lays the design out once, not twice: once for its checks and once for the
+    assembly. That halves the cost of building each flight.
+- **Threads.** Ten threads fly 6.4 times as fast as one on the supersonic rocket, and 6.6 times on
+  Valetudo. The six efficiency cores are slower than the four performance cores, so ten is not the
+  ceiling.
+- **Run to run.** Repeat runs in the same session were 3.52 to 3.57 s and 9.90 s. A busy machine
+  will be slower: the first number to watch is the supersonic one.
+
 ## Build memory during an unattended run
 
 - **Benchmark:** `scripts/build-memory.sh`, which builds into an empty `CARGO_TARGET_DIR` and sums
@@ -64,9 +108,9 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
   the body ahead of the flare for the flow at its corner and then lays out and marches a second
   body with the flare drawn. Both are one-time costs behind the table's `OnceLock`, paid only once
   a flow passes Mach 1.2 and shared by a model's clones. A Monte Carlo run
-  ([M6.1a](decisions-and-roadmap.md#m6-1a)) doesn't share them yet: each of its flights builds
-  its own model, so a supersonic design pays them every flight, until
-  [M6.1d](decisions-and-roadmap.md#m6-1d). Two obvious savings are left on the table for a later milestone: reading the flow at an
+  ([M6.1a](decisions-and-roadmap.md#m6-1a)) builds a model per flight, and since
+  [M6.1d](decisions-and-roadmap.md#m6-1d) its flights share the nominal flight's table, so a
+  supersonic design pays for it once a run (Ten thousand flights, above). Two obvious savings are left on the table for a later milestone: reading the flow at an
   interior station instead of marching the fore body again, and swapping the last segment of one
   body instead of rebuilding it.
 

@@ -62,3 +62,8 @@ required-features = ["net"]
 [[example]]
 name = "wyoming_sounding"
 required-features = ["net"]
+
+[[bench]]
+name = "ten_thousand"
+harness = false
+required-features = ["parallel"]

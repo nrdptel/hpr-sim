@@ -492,19 +492,43 @@ impl Rocket {
     /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
     pub fn assemble(&self, configuration_id: &str) -> Result<Assembly, DesignError> {
         self.check_configuration_ids()?;
-        let configuration =
-            self.configuration(configuration_id)
-                .ok_or_else(|| DesignError::UnknownId {
-                    what: "configuration",
-                    id: configuration_id.to_owned(),
-                })?;
-        let layout = self.layout()?;
+        self.configuration_or_error(configuration_id)?;
+        self.assemble_with_layout(self.layout()?, configuration_id)
+    }
+
+    /// As [`Rocket::assemble`], on `layout`, which must be this design's ([`Rocket::layout`]):
+    /// for a caller that has laid the design out already ([`crate::checks::check_with_layout`]).
+    ///
+    /// # Errors
+    ///
+    /// - As [`Layout::place_motors`].
+    /// - [`DesignError::DuplicateId`] for an empty or repeated configuration id.
+    /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
+    pub fn assemble_with_layout(
+        &self,
+        layout: Layout,
+        configuration_id: &str,
+    ) -> Result<Assembly, DesignError> {
+        self.check_configuration_ids()?;
+        let configuration = self.configuration_or_error(configuration_id)?;
         let motors = layout.place_motors(configuration)?;
         Ok(Assembly {
             configuration: configuration.id.clone(),
             layout,
             motors,
         })
+    }
+
+    /// Configuration `configuration_id`, or [`DesignError::UnknownId`].
+    fn configuration_or_error(
+        &self,
+        configuration_id: &str,
+    ) -> Result<&Configuration, DesignError> {
+        self.configuration(configuration_id)
+            .ok_or_else(|| DesignError::UnknownId {
+                what: "configuration",
+                id: configuration_id.to_owned(),
+            })
     }
 }
 

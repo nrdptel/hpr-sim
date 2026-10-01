@@ -142,6 +142,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-134 | M6.1a: Monte Carlo dispersion in `hpr_analysis::montecarlo`; each input an independent normal about its nominal value; one random stream per sample, input and copy, keyed by `SeededRng::for_stream`; impulse dispersed with the propellant mass; a drag scale in the aero model; failed samples kept; M6.1 split a to d | accepted |
 | ADR-135 | M6.1b: landing ellipses in `hpr_analysis::ellipse`; the normal ellipse of the sample's mean and covariance, scaled by `k² = −2 ln(1 − p)`; a prediction ellipse for the next flight by Hotelling's `T²`; the landings each ellipse really holds counted, failures as bounds; tested against normal spreads with known answers | accepted |
 | ADR-136 | M6.1c: sensitivity analysis in `hpr_analysis::sensitivity`; uniform independent factors; Morris's paths with `μ`, `μ*`, `σ` and `μ*`'s standard error, and the exact grid moments by `Morris::population`; Saltelli 2010's first-order and Jansen's total estimates on pseudo-random rows, with delta-method standard errors; held to Ishigami and Sobol's g in closed form and calibrated over seeds | accepted |
+| ADR-137 | M6.1d: a Monte Carlo run's flights share the nominal flight's supersonic table (`AeroModel::share_tables`, when the covered segments and reference area are equal); `Simulation::new` lays a design out once; 10,000 flights timed on Valetudo (the Level 2 rocket of the flight benchmarks) and on a supersonic K940 rocket; per-evaluation speed-ups left to #285 | accepted |
 
 ---
 
@@ -11174,3 +11175,51 @@ leaves it out. M6.1d's speed work makes it practical. The papers were read from 
 institutions' copies and are cited by DOI, not pinned in `refs.lock.toml`, because no test reads
 them. Second-order indices, quasi-random rows, other distributions and a command-line front end are
 left out.
+
+## ADR-137: Ten thousand flights: a run's flights share one supersonic table (2026-10-01)
+
+**Context.** M6.1d asks for 10,000 flights of a Level 2 design in 10 s or less on the development
+machine, recorded in `docs/perf.md`. Each Monte Carlo sample builds its own `Simulation` from its
+draw. Measured before this change (Apple M5, 10 threads, release build, flights to the ground under
+a drogue and a main): Valetudo on a K400C, which stays below Mach 0.4, took 4.59 s. A
+minimum-diameter 54 mm rocket on a K940, peak Mach 1.6 to 2.0, took 264 s. Each of its flights
+spent 191 ms of 193 ms building its own supersonic table on its first pass of Mach 1.2. Building
+a simulation took 0.82 ms of Valetudo's 2.76 ms, half of it laying the design out a second time.
+Open: which design is "an L2 design", and how to stop paying for the table every flight without
+changing a flight.
+
+**Decision.**
+
+1. **The flights of a run share the nominal flight's supersonic table.** `MonteCarlo::new` builds
+   the nominal simulation once and keeps its `AeroModel`. Each sample calls
+   `Simulation::share_tables` with it. The table is a pure function of the shock-expansion run's
+   segments and the reference area (`SupersonicBody::new(run, reference_area_m2)`).
+   `AeroModel::share_tables` therefore shares only when both are equal (`PartialEq`, `==` on
+   `f64`), and leaves a different shape alone. No dispersion changes the shape: masses and centres
+   are stage overrides, a dispersed motor keeps its geometry, and drag is a scale on the model's
+   output. So every sample of a design shares, yet nothing is assumed: a sample that did differ
+   would build its own. The table sits behind `Arc<OnceLock>`, so the first sample that needs it
+   builds it once, and threads that need it meanwhile wait for it. The flights are unchanged bit for
+   bit. A test flies two supersonic samples against the same inputs flown alone, on a table of
+   their own. It also checks that the samples built the nominal's table, which fails if sharing is
+   turned off. A sustainer built at a powered separation still builds its own table.
+2. **`Simulation::new` lays the design out once.** Its checks and its assembly each called
+   `Rocket::layout`. Now `hpr_design::checks::check_with_layout` and
+   `Rocket::assemble_with_layout` share one layout. Errors come in the same order as before.
+3. **"An L2 design" is Valetudo**, RocketPy's 9.7 kg rocket on a K400C, already the "typical
+   Level 2" flight of `hpr-sim`'s flight benchmarks since M1.6b. The supersonic K940 rocket is timed
+   beside it, because supersonic flights are where a Monte Carlo run was slow. Both fly to the
+   ground under a drogue and a main.
+4. **The measurement is a bench target, not a test:** `crates/hpr/benches/ten_thousand.rs`, run
+   by `cargo bench -p hpr --features parallel --bench ten_thousand`. A wall-clock limit in CI would
+   fail on shared runners for reasons that have nothing to do with the code. The program prints
+   the fastest of three runs, and how one flight's time splits between building and flying.
+
+**Consequences.** M6.1d is met. After the change, Valetudo's 10,000 flights take 3.52 s and the
+K940 rocket's 9.90 s, with the same apogee and Mach statistics as before. The supersonic run is
+only just inside the budget. A profile puts 11% of its busy time in `atan2` (flow angles, the
+geodetic conversion, gravity), 8% in `pow` (drag terms, the atmosphere) and 7% in copies. Each fix
+changes the flown numbers in their last bits, so every committed report, including the corpus
+reports that CI can't fly, would have to be regenerated. That is left to #285. A Sobol' analysis of
+a supersonic flight now costs `N(k + 2)` flights of a few milliseconds each, not of a fifth of a
+second.

@@ -1597,6 +1597,32 @@ impl AeroModel {
         self.drag_scale
     }
 
+    /// Whether the supersonic table ([`AeroModel::supersonic_body`]) has been built, by this
+    /// model or one sharing it ([`AeroModel::share_tables`]); building it waits for a flow past
+    /// Mach 1.2.
+    pub fn supersonic_built(&self) -> bool {
+        self.supersonic.0.get().is_some()
+    }
+
+    /// Shares `other`'s supersonic table ([`AeroModel::supersonic_body`]) when it is this model's
+    /// too: when the two cover the same segments on the same reference area, from which the
+    /// table follows. Then whichever model first needs the table builds it once for both, and
+    /// for every clone of either; the flights they fly are unchanged, bit for bit. Building the
+    /// table takes up to about 125 runs of the shock-expansion method, hundreds of
+    /// milliseconds, so many flights of one airframe — a Monte Carlo run, whose samples change
+    /// masses, motors and weather but not the shape — share it this way. Gives whether it did;
+    /// a model with no table to build (its first body isn't a nose the method takes) has
+    /// nothing to share.
+    pub fn share_tables(&mut self, other: &AeroModel) -> bool {
+        let shared = self.supersonic_run.is_some()
+            && self.supersonic_run == other.supersonic_run
+            && self.reference_area_m2 == other.reference_area_m2;
+        if shared {
+            self.supersonic = other.supersonic.clone();
+        }
+        shared
+    }
+
     /// `conditions` as this model reads them: with no motor area under power when the base keeps
     /// its whole drag.
     fn read(&self, conditions: &DragConditions) -> DragConditions {
@@ -6668,5 +6694,46 @@ mod tests {
         let built = model.supersonic_body().unwrap() as *const SupersonicBody;
         assert_eq!(model, clone);
         assert!(std::ptr::eq(built, clone.supersonic_body().unwrap()));
+    }
+
+    /// Two models built apart share a table only where the table follows from the same segments
+    /// and reference area: a drag scale doesn't stop it, another shape or a body the method
+    /// doesn't take does.
+    #[test]
+    fn models_built_apart_share_the_table_only_on_the_same_body() {
+        let rocket = straight_rocket();
+        let nominal = model(&rocket);
+        let mut scaled = model(&rocket).with_drag_scale(1.1).unwrap();
+        let built = nominal.supersonic_body().unwrap() as *const SupersonicBody;
+        assert!(!std::ptr::eq(built, scaled.supersonic_body().unwrap()));
+        let mut scaled = model(&rocket).with_drag_scale(1.1).unwrap();
+        assert!(!scaled.supersonic_built());
+        assert!(scaled.share_tables(&nominal));
+        assert!(scaled.supersonic_built());
+        assert!(std::ptr::eq(built, scaled.supersonic_body().unwrap()));
+        // The other way round: the model that shares builds the table for the one it shares.
+        let first = model(&rocket);
+        let mut second = model(&rocket);
+        assert!(second.share_tables(&first));
+        assert!(!first.supersonic_built());
+        let built = second.supersonic_body().unwrap() as *const SupersonicBody;
+        assert!(first.supersonic_built());
+        assert!(std::ptr::eq(built, first.supersonic_body().unwrap()));
+        // A longer nose covers other segments; a blunt one has no table.
+        let mut longer = rocket.clone();
+        longer.stages[0].components[0].part =
+            nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.4, 0.027);
+        let mut longer = model(&longer);
+        assert!(!longer.share_tables(&nominal));
+        assert!(!std::ptr::eq(
+            nominal.supersonic_body().unwrap(),
+            longer.supersonic_body().unwrap()
+        ));
+        let mut blunt = rocket;
+        blunt.stages[0].components[0].part =
+            nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.027, 0.027);
+        let mut blunt = model(&blunt);
+        assert!(!blunt.share_tables(&nominal));
+        assert!(blunt.supersonic_body().is_none());
     }
 }

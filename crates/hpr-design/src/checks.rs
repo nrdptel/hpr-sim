@@ -182,10 +182,20 @@ impl Finding {
 /// design that doesn't resolve can't be checked.
 pub fn check(rocket: &Rocket) -> Result<Vec<Finding>, DesignError> {
     rocket.check_configuration_ids()?;
-    let layout = rocket.layout()?;
-    let mut findings = check_layout(&layout);
+    check_with_layout(rocket, &rocket.layout()?)
+}
+
+/// As [`check`], on `layout`, which must be `rocket`'s ([`Rocket::layout`]): for a caller that
+/// needs the layout too, and so lays the design out once ([`Rocket::assemble_with_layout`]).
+///
+/// # Errors
+///
+/// As [`Rocket::check_configuration_ids`] and [`Layout::place_motors`].
+pub fn check_with_layout(rocket: &Rocket, layout: &Layout) -> Result<Vec<Finding>, DesignError> {
+    rocket.check_configuration_ids()?;
+    let mut findings = check_layout(layout);
     for configuration in &rocket.configurations {
-        findings.extend(check_configuration(&layout, configuration)?);
+        findings.extend(check_configuration(layout, configuration)?);
     }
     Ok(findings)
 }
