@@ -5,9 +5,8 @@ label, the rocket weighs a few grams more than the plan, the wind is not the for
 [Monte Carlo](glossary.md#monte-carlo) run flies the rocket hundreds or thousands of times. Each
 time it draws the uncertain inputs afresh around their planned (nominal) values, and the run shows
 how far the apogee and the landing spread, and draws the ellipse the landings fall in. This page
-runs one, says what each
-[dispersion](glossary.md#dispersion) does to a flight, and how to choose the numbers. It needs some
-Rust and follows on from [The builder](the-builder.md).
+runs one, says what each [dispersion](glossary.md#dispersion) does to a flight, and how to choose
+the numbers. It needs some Rust and follows on from [The builder](the-builder.md).
 
 > **How far to trust it.** The sampling is tested; the spread it gives is only as good as the
 > uncertainties you give it and hpr-sim's flight models, which are not yet validated against real
@@ -163,9 +162,9 @@ it to answer "will my next flight land in the field?".
 
 **Landings inside** counts the run's landings each ellipse really holds
 ([`Scatter::share_inside`]). Here they are 48.0%, 94.5% and 95.5%. Those are within the
-[standard error](glossary.md#standard-error) of a share from a run of 200 (about 3.5 percentage
-points at 50%, 1.5 at 95%), so the landings are consistent with a normal spread, though that
-doesn't prove it. With few landings the shares run high, because the ellipse is fitted to the
+[standard error](glossary.md#standard-error) of a share `p` from a run of 200, `√(p(1 − p)/200)`:
+about 3.5 percentage points at 50%, 1.5 at 95%. So the landings are consistent with a normal
+spread, though that doesn't prove it. With few landings the shares run high, because the ellipse is fitted to the
 same points: with three landings, even the 50% ellipse holds all three. If the share is far from
 the level in a run of hundreds of flights, the landings aren't normal: an uncertain wind
 heading in a strong wind spreads them along an arc, and an ellipse is then the wrong shape. Look at
@@ -185,7 +184,8 @@ for the lower bound and inside for the upper ([Failed flights are counted](#fail
 > - A new point lands inside the next-flight ellipse of 3, 5 or 20 others at its level, within
 >   five standard errors, and inside the plain ellipse visibly less often.
 >
-> The checks can fail: a long, narrow 95% ellipse turned 6° off its axes holds 90.6%.
+> The tests can catch a wrong ellipse: the 95% ellipse of a spread 200 m long and 30 m wide (one
+> standard deviation each way), turned 6° off its axes, holds 90.6%, and the test pins that.
 
 ## What each dispersion does
 

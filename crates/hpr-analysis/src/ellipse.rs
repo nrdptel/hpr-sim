@@ -234,10 +234,11 @@ impl Covariance {
     /// on a line.
     pub fn principal_axes(&self) -> PrincipalAxes {
         let (a, c, b) = (self.east_m2, self.north_m2, self.east_north_m2);
-        let major = 0.5 * (a + c) + (0.5 * (a - c)).hypot(b);
+        let major = (0.5 * a + 0.5 * c) + (0.5 * a - 0.5 * c).hypot(b);
         let determinant = a.mul_add(c, -(b * b));
+        // Rounding can put a circle's `a²/a` a unit above `a`: the minor is never the larger.
         let minor = if major > 0.0 {
-            (determinant / major).max(0.0)
+            (determinant / major).max(0.0).min(major)
         } else {
             0.0
         };
@@ -441,12 +442,17 @@ impl TryFrom<ScatterData> for Scatter {
 }
 
 impl Scatter {
+    /// The largest distance east or north of the pad a point may have, m: 10⁹ m, 25 times round
+    /// the Earth, and small enough that every square and sum of a scatter stays finite.
+    pub const MAX_COORDINATE_M: f64 = 1e9;
+
     /// The scatter of `points`, each `[east_m, north_m]`, from `attempted` samples (those that
     /// gave no point make up the difference).
     ///
     /// # Errors
     ///
-    /// - [`AnalysisError::Domain`] for a coordinate that isn't finite.
+    /// - [`AnalysisError::Domain`] for a coordinate that isn't finite, or is more than
+    ///   [`Scatter::MAX_COORDINATE_M`] from the pad.
     /// - [`AnalysisError::Count`] for more points than samples.
     pub fn new(points: Vec<[f64; 2]>, attempted: usize) -> Result<Self, AnalysisError> {
         if points.len() > attempted {
@@ -456,7 +462,11 @@ impl Scatter {
                 limit: attempted,
             });
         }
-        if let Some(&bad) = points.iter().flatten().find(|v| !v.is_finite()) {
+        if let Some(&bad) = points
+            .iter()
+            .flatten()
+            .find(|v| v.is_nan() || v.abs() > Self::MAX_COORDINATE_M)
+        {
             return Err(AnalysisError::Domain {
                 what: "point in a scatter",
                 value: bad,
@@ -529,7 +539,7 @@ impl Scatter {
         Some(Covariance {
             east_m2,
             north_m2,
-            east_north_m2: (en / dof).clamp(-bound, bound),
+            east_north_m2: (en / dof).max(-bound).min(bound),
         })
     }
 
@@ -807,7 +817,7 @@ mod tests {
         let mut turned = Ellipse::gaussian(0.0, 0.0, &sigma, 0.95).unwrap();
         turned.major_heading_rad += 0.1;
         let p = probability_inside(&sigma, &turned);
-        assert!(p < 0.94, "{p}");
+        assert!((p - 0.9059).abs() < 1e-4, "{p}");
     }
 
     #[test]
@@ -1074,6 +1084,27 @@ mod tests {
     }
 
     #[test]
+    fn a_circle_s_axes_stay_ordered() {
+        // `a²/a` rounds a unit above `a` for some `a`: the minor axis must still not pass the
+        // major, or the ellipse fails its own checks on reading back.
+        let mut rng = SeededRng::seed_from_u64(66);
+        for _ in 0..10_000 {
+            let a = 1.0 + 1000.0 * rng.uniform();
+            for b in [0.0, 1e-13 * a] {
+                let sigma = Covariance::new(a, a, b).unwrap();
+                let axes = sigma.principal_axes();
+                assert!(
+                    axes.minor_variance_m2 <= axes.major_variance_m2,
+                    "{a}: {axes:?}"
+                );
+                let ellipse = Ellipse::gaussian(0.0, 0.0, &sigma, 0.9).unwrap();
+                let json = serde_json::to_string(&ellipse).unwrap();
+                assert_eq!(serde_json::from_str::<Ellipse>(&json).unwrap(), ellipse);
+            }
+        }
+    }
+
+    #[test]
     fn an_ellipse_reads_back_through_its_checks() {
         let sigma = Covariance::new(4.0, 1.0, 0.5).unwrap();
         let ellipse = Ellipse::gaussian(10.0, -20.0, &sigma, 0.9).unwrap();
@@ -1223,6 +1254,13 @@ mod tests {
             Scatter::new(vec![[1.0, f64::NAN]], 1),
             Err(AnalysisError::Domain { what: "point in a scatter", value }) if value.is_nan()
         ));
+        // Past 10⁹ m the squares could overflow; at it, they don't.
+        assert!(matches!(
+            Scatter::new(vec![[1e200, 0.0], [-1e200, 0.0]], 2),
+            Err(AnalysisError::Domain { what: "point in a scatter", value }) if value == 1e200
+        ));
+        let far = Scatter::new(vec![[1e9, -1e9], [-1e9, 1e9], [1e9, 1e9]], 3).unwrap();
+        assert!(far.ellipse(0.5).unwrap().is_some());
         assert!(matches!(
             Scatter::new(vec![[1.0, 2.0], [3.0, 4.0]], 1),
             Err(AnalysisError::Count {

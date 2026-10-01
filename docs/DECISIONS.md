@@ -11082,7 +11082,9 @@ normal.
    `Covariance`'s minor variance is `(ac − b²)/λ₁`, which keeps it along the axes. The covariance
    of points on a line is cut to the Cauchy–Schwarz bound, so it passes its own checks, and
    `Covariance::new` allows four units of rounding past it. A point on a flat ellipse's axis is
-   kept inside by a floor of `10⁻¹²` of its size and distance on each semi-axis.
+   kept inside by a floor of `10⁻¹²` of its size and distance on each semi-axis. A point more
+   than 10⁹ m from the pad is refused, so no square or sum can overflow. An `Ellipse`'s fields
+   stay public, as `Summary`'s do, but it is `#[non_exhaustive]` and checked when read back.
 7. **The tests use normal spreads whose answers are known**: the scale against NIST's chi-square
    table and the closed forms; the axes of rotated covariances to 1e-14; the normal density
    integrated over its ellipse (along rays, in closed form per ray) to its level within 1e-12;
