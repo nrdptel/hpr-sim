@@ -209,6 +209,7 @@ may be from its reference and still pass.
 | [Frames](physics/frames.md) | RocketPy's starting attitude, worked out from the launch rail's angles, for 8 rail setups | within 1e-12 rad |
 | [Frames](physics/frames.md) | an exactly solvable spin whose axis sweeps round a cone (coning), over 1e6 integration steps | attitude within 1e-9 rad |
 | [Geodesy](physics/geodesy.md) | the ellipsoid values printed in Table 3.5 of the [WGS 84](glossary.md#wgs-84) standard | to their printed digits |
+| [Geodesy](physics/geodesy.md#distance-and-bearing-geodesics) | Karney's published test set of 500,000 WGS 84 geodesics, solved both ways | distance within 11.18 nm, end points within 14.02 nm, the inverse's bearing and distance landing within 11.26 nm; all within Karney's stated 15 nm bar 2 ill-conditioned azimuths, each within what one rounding step of an input explains |
 | [Geodesy](physics/geodesy.md) | round trips at random points from −10 km to +1000 km: latitude, longitude and height to Earth-centred x, y, z, and back | latitude within 1e-14 rad, height within 2e-8 m |
 | [Gravity](physics/gravity.md) | the WGS 84 formulas, worked to 40 digits by a separate script, at 11 points from the equator to both poles and up to 200 km high | gravity's strength within 2e-14 relative |
 | [Gravity](physics/gravity.md) | RocketPy's gravity formula, at 8 points | under 1e-12 relative |

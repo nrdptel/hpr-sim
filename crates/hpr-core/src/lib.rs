@@ -21,6 +21,7 @@ pub mod attitude;
 pub mod earth;
 pub mod error;
 pub mod frames;
+pub mod geodesic;
 pub mod geodesy;
 pub mod gravity;
 pub mod interp;

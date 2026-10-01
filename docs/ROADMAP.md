@@ -785,20 +785,20 @@
       *Result:* met (ADR-124): 4 public RAP messages, 182,443 points; exact sums, every 13th value.
 
 - [ ] **M5.3 Site data.** Elevation (Open-Meteo API with cache; optional user GeoTIFF/DEM file),
-  geodetic helpers, magnetic declination (WMM2025).
+  geodetic helpers, magnetic declination (WMM2025). Split a to c (ADR-125).
   *Done when:*
   - WMM matches NOAA test values.
   - Elevation lookups are cached and work offline after the first fetch.
-  Split a to c (ADR-125).
   - [x] **M5.3a WMM2025.** *Done when:* the WMM matches NOAA's test values (the report's Table 6
     and NCEI's 100 points). *Result:* met (ADR-125): Table 6 to its printing; NCEI's `X` off by
     up to 7.18e-4 nT at 97 points, a residue a test places in the file's `X′`.
   - [x] **M5.3b Elevation.** Open-Meteo's elevation API through the cache. *Done when:* a recorded
     lookup's height is the answer's, and a second lookup works offline from the cache. *Result:*
     met (ADR-126): 2 recordings, 4 heights exact; offline from the cache, stale after a year.
-  - [ ] **M5.3c Geodetic helpers and a user's elevation file.** Distance and bearing between two
-    places on WGS 84; a site's height from a GeoTIFF the user gives. *Done when:* distances and
-    bearings match a published geodesic test set, and a GeoTIFF's height matches a reader's.
+  - [ ] **M5.3c Geodetic helpers and a user's elevation file.** Split c1, c2 (ADR-127).
+    - [x] **M5.3c1 Geodesics** on WGS 84. *Done when:* distances and bearings match a published
+      geodesic test set. *Result:* met (ADR-127): Karney's 500,000 within his 15 nm.
+    - [ ] **M5.3c2 A user's GeoTIFF.** *Done when:* a site's height from it matches a reader's.
 
 - [ ] **M5.4 Motor stock and prices.**
   - motor.fusionspace.co client (`meta`, `motors`, `in-stock`, `vendors`, and per-motor

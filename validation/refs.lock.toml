@@ -505,6 +505,24 @@ license = "arXiv non-exclusive license"
 mode = "fetched"
 
 [[file]]
+name = "karney-2013-algorithms-for-geodesics"
+title = "C. F. F. Karney, Algorithms for geodesics, J. Geodesy 87 (2013) 43-55, arXiv:1109.4448v2"
+url = "https://arxiv.org/pdf/1109.4448v2"
+sha256 = "2e0d2448ab3ee0829e5e9f5ccffa01ba5c7efdbd23157a668f797f3b5366bb54"
+dest = "refs/papers/karney-2013-algorithms-for-geodesics.pdf"
+license = "arXiv non-exclusive license"
+mode = "fetched"
+
+[[file]]
+name = "karney-geodtest"
+title = "C. F. F. Karney, Test set for geodesics, GeodTest.dat, Zenodo, doi:10.5281/zenodo.32156"
+url = "https://zenodo.org/records/32156/files/GeodTest.dat?download=1"
+sha256 = "c1cabdddbcd7d5cfc6e6111db4608fa55be292b15ba2c5bcd6372a178848c692"
+dest = "refs/sources/geodtest/GeodTest.dat"
+license = "CC0 1.0"
+mode = "fetched"
+
+[[file]]
 name = "sola-2017-quaternion-kinematics"
 title = "J. Solà, Quaternion kinematics for the error-state Kalman filter, arXiv:1711.02508v1, 2017"
 url = "https://arxiv.org/pdf/1711.02508v1"

@@ -131,6 +131,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-123 | M5.2d2: complex packing (5.2, 5.3) and product template 4.8 in `hpr_io::grib2`; a whole GFS file's 746,770,303 values against ecCodes by hand, eight of its messages committed with ecCodes' sums and samples, the cut repacked by ecCodes for CI; NOMADS parsing keys layers by both surfaces, skips statistics and wraps a global grid | accepted |
 | ADR-124 | M5.2d3: JPEG 2000 (5.40) in `hpr_io::grib2` through `hayro-jpeg2000` in strict mode, lossless, to 21 bits, NCEP's coding only, the rest refused by name; four public RAP messages against ecCodes in CI | accepted |
 | ADR-125 | M5.3 split a to c; WMM2025 in `hpr_core::magnetic`, finite at the poles, refused outside 2025 to 2030 and −1 to 850 km; NOAA's 112 test values, NCEI's file's `X` to its measured 7.18e-4 nT residue, shown to lie in the file's `X′` | accepted |
+| ADR-127 | M5.3c split c1, c2; geodesics in `hpr_core::geodesic` through `geographiclib-rs`, held to Karney's 500,000-line test set within his 15 nm, the inverse's azimuths by the miss they stand for | accepted |
 | ADR-126 | M5.3b: Open-Meteo's elevation in `hpr_net::elevation`, up to 100 places a request, coordinates to 5 decimals in the URL, a year's TTL, heights refused outside −1,000 to 9,000 m, a surface model above the EGM2008 geoid with `N` left to the caller; no command yet | accepted |
 
 ---
@@ -10372,3 +10373,51 @@ Spaceport America's 1,400 m equals the `elevation` of the two weather recordings
 nothing in a flight looks the site up by itself: a program passes the height to its `Geodetic`
 site. Over trees or buildings the height is the surface's, not the pad's. The cache key is the
 whole request, so a place looked up in a list is found offline only by the same list.
+
+## ADR-127: M5.3c1, geodesics through GeographicLib, held to Karney's test set (2026-09-30)
+
+**Context.** M5.3c asks for distance and bearing between two places on WGS 84, matched against a
+published geodesic test set, and a site's height from a user's GeoTIFF, matched against another
+reader's. The two share nothing: one is a pure model, the other a file reader. The method of
+record is C. F. F. Karney, *Algorithms for geodesics*, J. Geodesy 87 (2013) 43–55
+(arXiv:1109.4448v2): series to `O(f⁶)` and Newton's method on the auxiliary sphere, whose
+round-off "in the direct and inverse methods are less than 15 nanometers" (§7, page 10), with the
+truncation below round-off for `f` up to 1/150. Karney publishes the set it was tested on,
+`GeodTest.dat` (doi:10.5281/zenodo.32156, CC0): 500,000 WGS 84 geodesics in nine kinds (random,
+nearly antipodal, short, near a pole, and so on), worked from exact `φ₁`, `α₁`, `s₁₂` in high
+precision, each end to 1e-18°. GeographicLib (MIT) is Karney's own code; georust's
+`geographiclib-rs` 0.2.7 (MIT, 2026-02 release, `libm` its one dependency without default
+features) ports it to Rust.
+
+**Decision.**
+
+1. **M5.3c splits.** c1: geodesics, done when distances and bearings match Karney's test set.
+   c2: a site's height from a user's GeoTIFF, done when it matches another reader's. c1 first:
+   no file format, and the oracle is a published file.
+2. **`geographiclib-rs`, not a port.** It is Karney's algorithm line for line, maintained, pure
+   Rust and wasm32-clean; a port would be the same code with our bugs. `hpr_core::geodesic` puts
+   it behind `Ellipsoid::geodesic_inverse` and `geodesic_direct`, in radians and metres on
+   `Geodetic`, heights ignored (the direct's end has height 0). The direct refuses a non-finite
+   azimuth or distance; any `Ellipsoid` is accepted, with Karney's 1/150 noted as the limit of
+   what is shown.
+3. **What is measured, per kind, over the whole set.** The inverse's `|s₁₂|` error; where the
+   direct problem from point 1 with the inverse's `α₁` and `s₁₂` lands, from point 2; the
+   inverse's azimuth errors times `|m₁₂|` (the reduced length, so the sideways miss an azimuth
+   error stands for at the other end); the direct's end-point miss in ECEF; and the direct's
+   heading at the end, compared as a vector in ECEF (near a pole an azimuth turns through large
+   angles as its point moves by nanometres; the heading does not) times `|m₁₂|`. Each is held to
+   Karney's 15 nm, every line. The one exception is the inverse's azimuths on 2 lines that end
+   close to a vertex and are nearly antipodal (`m₁₂` = 0.24 mm): their error, 3.15e-4 rad
+   (75.33 nm times `m₁₂`), is smaller than the turn one ulp of an input gives (moving point 2
+   1.7 nm turns `α₁` 3.2e-4 rad), and the test asserts that line by line. The same pair's bearing
+   and distance land within 11.26 nm.
+4. **Where it runs.** Every 500th line (1,000) is committed and checked in CI; the whole file
+   is pinned in `refs.lock.toml` and checked where fetched, against the committed table in
+   `validation/reports/geodesics.md` (rewritten by `HPR_WRITE_GEODESICS=1`).
+
+**Consequences.** M5.3c1 is met: the largest errors over the 500,000 lines are 11.18 nm in
+distance, 11.26 nm landing, 14.02 nm in the direct's end point and 10.35 nm in its heading. A
+sample changing `a` by 1e-15 fails CI's check at 26 nm. Nothing in a flight uses geodesics yet;
+`hpr` has no command for them. The set is WGS 84 only, so other ellipsoids rest on Karney's
+method, not on a measurement here.
+

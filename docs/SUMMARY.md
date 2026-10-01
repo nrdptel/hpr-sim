@@ -37,7 +37,7 @@
 # The environment
 
 - [Frames and sign conventions](physics/frames.md)
-- [Geodesy: the ellipsoid and coordinate conversions](physics/geodesy.md)
+- [Geodesy: the ellipsoid, coordinates, distance and bearing](physics/geodesy.md)
 - [Gravity and Earth rotation](physics/gravity.md)
 - [The magnetic field and declination](physics/magnetic.md)
 - [Atmosphere](physics/atmosphere.md)
