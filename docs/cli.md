@@ -50,7 +50,7 @@ Its other commands are registered but not available yet: each refuses and names 
 >   list of published accuracy numbers ([what it checks](#hpr-validate)).
 > - `hpr weather` runs the library's readers and writes the profiles they build, to the last bit
 >   ([how far to trust it](#hpr-weather)). Its online fetch is not tested automatically.
-> - `hpr motors search` gives back motor.fusionspace.co's list unchanged
+> - `hpr motors search` gives back motor.fusionspace.co's values unchanged
 >   ([how far to trust it](#motors-you-can-buy)). Its online fetch is not tested automatically.
 > - The tests in
 >   [`crates/hpr-cli/tests/`](https://github.com/nrdptel/hpr-sim/tree/main/crates/hpr-cli/tests)
@@ -418,7 +418,8 @@ The motors come cheapest first, by that price. The motors with no such price, in
 motor out of stock, come last, by maker and designation. A filter that can't match anything real (a class that doesn't exist, a maker the site
 doesn't cover, a price that isn't dollars and cents) is refused with status 1, as `hpr motors list`
 refuses one. A list with nothing in it exits with 0. When `--max-price` leaves nothing, the last
-line names the cheapest motor the other filters keep, so you know what one costs.
+line names the cheapest motor in stock that the other filters keep, and its price, so you know
+what one costs.
 
 The list is fetched and saved as `hpr weather`'s answers are
 ([Online, offline, and saved answers](#online-offline-and-saved-answers)): the first search
@@ -458,8 +459,9 @@ L850W        AeroTech  L          75       3646.2   850.0    4.42  282.74     1 
 <!-- cli: end -->
 
 `each $` is the price of one motor and `pack` how many come in the pack, both at the vendor named
-last. A motor out of stock shows `-` for both and `out of stock` for the vendor; a price in
-another currency names it, such as `282.74 CAD`. The full product page is in the JSON output (`cheapest_in_stock.url`). At $150, the same
+last. A motor out of stock shows `-` for both and `out of stock` for the vendor; a vendor that
+shows no price gives `-` under `each $`; a price in another currency names it, such as
+`282.74 CAD`. The full product page is in the JSON output (`cheapest_in_stock.url`). At $150, the same
 recording lists nothing:
 
 <!-- cli: example `hpr motors search --in-stock --class L --max-price 150 --from crates/hpr-net/tests/fixtures/replay/motor-finder-in-stock.json`; written by `cargo xtask cli`; do not edit -->
@@ -484,8 +486,8 @@ None costs $150.00 or less: of the 20 motors in stock the other filters pass, th
 > hpr's code. With
 > one L motor's price edited to $149.99 in a copy, the `--max-price 150` search lists exactly that
 > motor. Fetching online is not tested automatically. Whether a vendor really has a motor at that
-> price is the vendor's to say. A freshly fetched list can be up to two hours behind the vendors'
-> pages. A list read with `--offline`, with `--from`, or after a failed fetch is as old as the
+> price is the vendor's to say. A list fetched now, or read from a copy under an hour old, can be
+> up to two hours behind the vendors' pages. A list read with `--offline`, with `--from`, or after a failed fetch is as old as the
 > "built" time on its first line ([How far to trust it](motor-stock.md)).
 
 ## `hpr convert`
