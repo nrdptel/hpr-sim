@@ -159,10 +159,9 @@ fn name(motor: &Value) -> (String, String) {
 fn values_are_the_recordings(document: &Value, list: &Value) {
     let recorded = list["motors"].as_array().unwrap();
     for listed in document["motors"].as_array().unwrap() {
-        let motor = recorded
-            .iter()
-            .find(|m| name(m) == name(listed))
-            .unwrap_or_else(|| panic!("{listed} is not in the recording"));
+        let motor = recorded.iter().find(|m| name(m) == name(listed));
+        assert!(motor.is_some(), "{listed} is not in the recording");
+        let motor = motor.unwrap();
         for (out, raw) in [
             ("manufacturer", "manufacturer"),
             ("designation", "designation"),
