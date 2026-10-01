@@ -26,6 +26,8 @@
 
 [A launch site's elevation](elevation.md)
 
+[Motor stock and prices](motor-stock.md)
+
 [Reading a flight log](reading-a-flight-log.md)
 
 [Your own rocket](your-own-rocket.md)

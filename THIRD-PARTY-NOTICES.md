@@ -111,6 +111,19 @@ adds a source.
   the European Union and ESA; all rights reserved. Open-Meteo asks for a credit to Copernicus and
   to itself. `hpr_net::elevation` also fetches such answers at run time, when a program asks, and
   caches them on the user's disk; each answer carries the credit for the program to show.
+- **motor.fusionspace.co answers** (<https://motor.fusionspace.co/api>):
+  `crates/hpr-net/tests/fixtures/replay/motor-finder-meta.json`, `motor-finder-motors.json`,
+  `motor-finder-in-stock.json`, `motor-finder-vendors.json` and the four `motor-finder-<maker>-<motor>.json`
+  files are eight answers recorded unchanged from one build of the site's public API, 2026-10-01
+  07:07:29 UTC (one file renamed: the site's `F27R~L.json` is stored as `F27R_L`). The site is
+  the project owner's; its terms read "Free to use; attribution to motor.fusionspace.co is
+  appreciated", the data gathered from public vendor listings and ThrustCurve.org and provided as
+  is, with no warranty. The motor figures in it are ThrustCurve.org's published values (credit
+  above, under the bundled curves)
+  ([ADR-129](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-129-m54-split-and-m54a-the-motor-finders-api-through-the-cache-2026-10-01)).
+  The example `crates/hpr/examples/motor_stock.rs` reads the build and in-stock files.
+  `hpr_net::motor_finder` also fetches such answers at run time, when a program asks, and caches
+  them on the user's disk; each answer carries the credit for the program to show.
 - **University of Wyoming soundings** (<https://weather.uwyo.edu/upperair/sounding.shtml>):
   `crates/hpr-net/tests/fixtures/replay/wyoming-72364-fm35.csv`, `wyoming-72364-bufr.csv` and
   `wyoming-72572-fm35.csv` are three answers recorded unchanged on 2026-09-30 from the University

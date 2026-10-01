@@ -475,19 +475,11 @@
   - [x] **M3.1c Motors, recovery, stages and what OpenRocket last did** (L57, L64, L65, L66). Met
     (ADR-055 to ADR-058) bar the text of a tag's unread second copy, its done-when bars kept; split
     c1 to c4 (ADR-055).
-    - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
-      motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
-      archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's
-      and L65's named tests are live; every `<motor>` in the reference library is read into its
-      configuration or left out with its reason, and flies from a curve or is named as unresolved;
-      and `cargo xtask ork` prints those counts and how many designs assemble a configuration.
-      *Result:* met (ADR-055): 206 motors in 174 configurations, 6 left out in pods and parallel
-      stages; 6 curves found; 1 configuration flies, on an airframe read without a warning.
-    - [x] **M3.1c2 Recovery and separation.** When each parachute and streamer opens and each
-      stage separates, per configuration, and the drag coefficient each device states. *Done
-      when:* every recovery device and stage in the library has its settings read or left out
-      with a reason, and `cargo xtask ork` prints the counts. *Result:* met (ADR-056): 137 devices
-      read, 2 left out in pods; 18 of 93 stages separate, 2 parallel stages' left out.
+    - [x] **M3.1c1 Motors and their configurations** (L57, L65). Met (ADR-055), bars kept: 206
+      motors in 174 configurations, 6 left out in pods and parallel stages; 6 curves found from the
+      archive or the bundled catalog; 1 configuration flies; L57's and L65's tests live.
+    - [x] **M3.1c2 Recovery and separation.** Met (ADR-056), bars kept: 137 devices read, 2 left
+      out in pods; 18 of 93 stages separate, 2 parallel stages' left out; counts by `xtask ork`.
     - [x] **M3.1c3 What OpenRocket last did** (L64). Met (ADR-057), its done-when bars kept: stored
       conditions, summaries, time series and events read back, 174 simulations and 142 series
       counted by `cargo xtask ork`, units measured by a probe.
@@ -524,11 +516,8 @@
       override on a weightless one are OR's on probes, to 1e-12; roll within 1% on 57 of 74.
     - [x] **M2.2b4 Clusters, fillets and unread parts.** Met (ADR-064), bars kept: cluster, fillets
       pinned, unread parts kept; 58/71 mass, 59/71 centre, 50/71 pitch, 56/71 roll within 1%.
-    - [x] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live: stored runs remain
-      readable, but only current, provenance-bearing, structurally plausible results pass the
-      stored-reference screen; hpr reproduction is a separate screen and both report stable reasons
-      (ADR-065). *Result:* met (ADR-065): 91 of 174 pass, 83 excluded by stable reason; 1 of the 91
-      is reproducible by hpr (79 unflyable configurations, 11 reduced designs).
+    - [x] **M2.2b5 Stored results as found** (L87). Met (ADR-065), bars kept (L87 live, two screens
+      with stable reasons): 91 of 174 pass, 83 excluded; 1 of the 91 reproducible by hpr.
   - [x] **M2.2c The motors OpenRocket flies.** Met (ADR-066, ADR-067), its done-when bars kept:
     every configuration held back only for want of a curve flies or is named with its reason, each
     curve's impulse within 0.1% of OR's. Split into c1 and c2.
@@ -810,6 +799,17 @@
   - The designation to ThrustCurve id mapping covers at least 95% of in-stock motors, with a
     report of the misses.
   - Attribution is displayed as the API asks.
+
+  Split a to c (ADR-129).
+  - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`), its five files via the cache.
+    *Done when:* recorded-fixture tests read each endpoint's answer to the values in it, a second
+    read works offline, and every answer carries the credit the API asks for. *Result:* met
+    (ADR-129): 8 answers of one build, every value read back and offline; the credit on each.
+  - [ ] **M5.4b ThrustCurve.** `hpr_net::thrustcurve`: its search and a motor's curve, through the
+    cache. *Done when:* the designation to ThrustCurve id mapping covers at least 95% of in-stock
+    motors, with a report of the misses; a mapped motor's recorded curve reads with `hpr_motor`.
+  - [ ] **M5.4c `hpr motors search`.** *Done when:* `--in-stock --class L --max-price 150` lists
+    from a recorded snapshot and offline from the cache, with the credit shown as the API asks.
 
 - [ ] **M5.5 Parts catalog.** Import the OpenRocket `.orc` component database (Apache-2.0, with
   notices). Lookup by vendor and part number; parts can be used from the design API.
