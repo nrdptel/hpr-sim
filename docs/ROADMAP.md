@@ -752,10 +752,9 @@
   dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
   recorded fixtures (no live network in CI); offline mode never touches the network (asserted by
   test). Split into a and b.
-  - [x] **M5.1a Cache and offline mode.** A cache on disk with TTLs, `Mode::Offline` and attribution
-    over a transport trait. *Done when:* recorded-fixture tests pass; an offline fetch never calls
-    the transport (the test's transport fails if called), and serves a stale entry marked stale.
-    *Result:* met (ADR-117): `tests/offline.rs` replays a recording; a panicking transport, 30 days.
+  - [x] **M5.1a Cache and offline mode** (TTLs, `Mode::Offline`, attribution). *Done when:* an
+    offline fetch never calls the transport (one that fails if called) and serves a stale entry
+    marked stale, in recorded-fixture tests. *Result:* met (ADR-117): `tests/offline.rs`, 30 days.
   - [x] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
     *Done when:* a loopback server replaying a recorded fixture fills the cache; `cargo deny` passes.
     *Result:* met (ADR-118): `tests/http.rs` on 127.0.0.1; limit on unpacked bytes; paths by hand.
@@ -794,8 +793,9 @@
   - [x] **M5.3a WMM2025.** *Done when:* the WMM matches NOAA's test values (the report's Table 6
     and NCEI's 100 points). *Result:* met (ADR-125): Table 6 to its printing; NCEI's `X` off by
     up to 7.18e-4 nT at 97 points, a residue a test places in the file's `X′`.
-  - [ ] **M5.3b Elevation.** Open-Meteo's elevation API through the cache. *Done when:* a recorded
-    lookup's height is the answer's, and a second lookup works offline from the cache.
+  - [x] **M5.3b Elevation.** Open-Meteo's elevation API through the cache. *Done when:* a recorded
+    lookup's height is the answer's, and a second lookup works offline from the cache. *Result:*
+    met (ADR-126): 2 recordings, 4 heights exact; offline from the cache, stale after a year.
   - [ ] **M5.3c Geodetic helpers and a user's elevation file.** Distance and bearing between two
     places on WGS 84; a site's height from a GeoTIFF the user gives. *Done when:* distances and
     bearings match a published geodesic test set, and a GeoTIFF's height matches a reader's.

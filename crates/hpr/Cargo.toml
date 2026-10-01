@@ -50,5 +50,9 @@ name = "open_meteo_weather"
 required-features = ["net"]
 
 [[example]]
+name = "site_elevation"
+required-features = ["net"]
+
+[[example]]
 name = "wyoming_sounding"
 required-features = ["net"]

@@ -7,13 +7,16 @@
 //! [weather]: https://nrdptel.github.io/hpr-sim/weather.html
 //! [soundings]: https://nrdptel.github.io/hpr-sim/soundings.html
 //! [nomads]: https://nrdptel.github.io/hpr-sim/nomads.html
+//! [elevation]: https://nrdptel.github.io/hpr-sim/elevation.html
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
-//! Status: pre-alpha, with three data sources: [`open_meteo`], a launch site's weather as a
+//! Status: pre-alpha, with four data sources: [`open_meteo`], a launch site's weather as a
 //! sounding ([M5.2a][roadmap], the first weather increment; the [weather page][weather] explains
 //! it); [`wyoming`], weather-balloon soundings from the University of Wyoming's archive
-//! ([M5.2b][roadmap]; the [soundings page][soundings]); and [`nomads`], NOAA's GFS and RAP
-//! forecasts as GRIB2 cuts from NOMADS ([M5.2c][roadmap]; the [NOAA forecasts page][nomads]). This
+//! ([M5.2b][roadmap]; the [soundings page][soundings]); [`nomads`], NOAA's GFS and RAP
+//! forecasts as GRIB2 cuts from NOMADS ([M5.2c][roadmap]; the [NOAA forecasts page][nomads]); and
+//! [`elevation`], a site's ground height from Open-Meteo ([M5.3b][roadmap]; the
+//! [elevation page][elevation]). This
 //! crate does network and file I/O, so it is never a dependency of the pure core. Milestone
 //! [M5.1][roadmap] added the cache, the offline mode and HTTP: a [`Client`] asks a [`Transport`] for a URL's bytes only when it is [`Mode::Online`]
 //! and its [`Cache`] holds no fresh copy. In [`Mode::Offline`] it never calls the transport; it
@@ -58,6 +61,7 @@
 mod cache;
 mod civil;
 mod client;
+pub mod elevation;
 #[cfg(feature = "http")]
 mod http;
 pub mod nomads;

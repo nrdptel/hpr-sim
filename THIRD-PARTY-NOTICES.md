@@ -100,6 +100,16 @@ adds a source.
   (<https://creativecommons.org/licenses/by/4.0/>). `hpr_net::open_meteo` also fetches such
   answers at run time, when a program asks, and caches them on the user's disk; each answer
   carries this credit for the program to show.
+- **Open-Meteo elevation answers** (<https://open-meteo.com/en/docs/elevation-api>):
+  `crates/hpr-net/tests/fixtures/replay/open-meteo-elevation.json` and
+  `open-meteo-elevation-three.json` are two answers recorded unchanged on 2026-10-01 (UTC) from
+  Open-Meteo's elevation API: four heights in all, for 32.99° N, 106.97° W; 31.5° N, 35.5° E; and
+  0°, 30° W. The example `crates/hpr/examples/site_elevation.rs` reads the second. The heights are
+  Open-Meteo's reading of the Copernicus DEM GLO-90, whose licence is free and asks for this credit:
+  © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by
+  the European Union and ESA; all rights reserved. Open-Meteo asks for a credit to Copernicus and
+  to itself. `hpr_net::elevation` also fetches such answers at run time, when a program asks, and
+  caches them on the user's disk; each answer carries the credit for the program to show.
 - **University of Wyoming soundings** (<https://weather.uwyo.edu/upperair/sounding.shtml>):
   `crates/hpr-net/tests/fixtures/replay/wyoming-72364-fm35.csv`, `wyoming-72364-bufr.csv` and
   `wyoming-72572-fm35.csv` are three answers recorded unchanged on 2026-09-30 from the University
