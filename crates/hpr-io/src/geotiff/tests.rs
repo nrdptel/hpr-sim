@@ -1008,9 +1008,8 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
         vec![(4099, 9001)],
         vec![(4098, 5103)],
         vec![(4096, 32767), (4099, 9001)],
-        // A known vertical CRS beside a datum key GDAL may resolve away (a private one, or 6030
-        // beside WGS 84, which GDAL turns into WGS 84 3D).
-        vec![(4096, 5703), (4098, 40_000)],
+        // A known vertical CRS beside a datum key GDAL may resolve away (6030 beside WGS 84,
+        // which GDAL turns into WGS 84 3D).
         vec![(4096, 5703), (4098, 6030)],
     ] {
         let bytes = with_z_keys(&directory(&keys(&more)), 0.1, 0.0, 1000.0, None);
@@ -1028,21 +1027,14 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
             assert_eq!((info.scale, info.offset), (1.0, 0.0), "{more:?}");
         }
     }
-    // A vertical CRS beside WGS 84 3D (GDAL drops the whole CRS), or with no model type (GDAL
-    // drops the vertical CRS).
-    for keys in [
-        vec![(1024, 2), (1025, 1), (2048, 4979), (4096, 5703)],
-        vec![(1025, 1), (2048, 4326), (4096, 3855)],
-    ] {
-        let bytes = with_z_keys(&directory(&keys), 0.1, 0.0, 1000.0, None);
-        assert!(
-            matches!(
-                ElevationRaster::parse(&bytes),
-                Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("heights in ModelPixelScaleTag")
-            ),
-            "{keys:?}"
-        );
-    }
+    // With no model type but a unit key, GDAL keeps the vertical CRS, but this reader doesn't
+    // claim to know it applies the heights.
+    let keys = [(1025, 1), (2048, 4326), (4096, 3855), (4099, 9001)];
+    let bytes = with_z_keys(&directory(&keys), 0.1, 0.0, 1000.0, None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("heights in ModelPixelScaleTag")
+    ));
     // GDAL's own S_z 1 and Z₀ 0 beside keys GDAL may resolve away, with another scale in
     // GDAL_METADATA: GDAL reads S_z where it keeps the vertical CRS, the metadata where not.
     let meta =
@@ -1062,6 +1054,51 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
 }
 
 #[test]
+fn vertical_keys_gdal_drops_are_refused() {
+    // Measured through rasterio: GDAL reports no vertical unit for any of these, where this
+    // reader would read one.
+    for (keys, why) in [
+        (
+            vec![(1024, 2), (2048, 4326), (4096, 40_000), (4099, 9002)],
+            "private value 40000",
+        ),
+        (
+            vec![(1024, 2), (2048, 4326), (4096, 6360), (4098, 40_000)],
+            "private value 40000",
+        ),
+        (
+            vec![
+                (1024, 2),
+                (2048, 4326),
+                (4096, 32767),
+                (4098, 40_000),
+                (4099, 9002),
+            ],
+            "private value 40000",
+        ),
+        (
+            vec![(2048, 4326), (4096, 6360)],
+            "no model type and no unit key",
+        ),
+        (vec![(1024, 2), (2048, 4979), (4096, 6360)], "WGS 84 3D"),
+    ] {
+        let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+        assert!(
+            matches!(
+                ElevationRaster::parse(&bytes),
+                Err(GeoTiffError::Unsupported { what: "vertical keys GDAL drops:", ref value, .. })
+                    if value.contains(why)
+            ),
+            "{keys:?}"
+        );
+    }
+    // WGS 84 3D with no vertical key reads.
+    let keys = [(1024, 2), (2048, 4979)];
+    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+    assert!(ElevationRaster::parse(&bytes).is_ok());
+}
+
+#[test]
 fn a_user_defined_vertical_crs_is_no_epsg_code() {
     let keys = [(1024, 2), (2048, 4326), (4096, 32767), (4099, 9002)];
     let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
@@ -1072,7 +1109,7 @@ fn a_user_defined_vertical_crs_is_no_epsg_code() {
         (VerticalUnit::Foot, true)
     );
     // Without a unit, its unit is unknown.
-    let keys = [(1024, 2), (2048, 4326), (4096, 40_000)];
+    let keys = [(1024, 2), (2048, 4326), (4096, 32767)];
     let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
     assert!(matches!(
         ElevationRaster::parse(&bytes),
@@ -1157,31 +1194,84 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
     // Refused: forms GDAL doesn't write, where its quirks (attribute names in any case, C's
     // `atoi` for the sample, text only as an item's one child, prefixed names compared whole,
     // IMAGE_STRUCTURE's own keys) could read another scale than hpr would.
-    for refused in [
-        scale(r#"NAME="S" SAMPLE="0" ROLE="scale""#),
-        scale(r#"name="S" sample="0" Role="scale""#),
-        scale(r#"name="S" sample=" 0" role="scale""#),
-        scale(r#"name="S" sample="0.0" role="scale""#),
-        scale(r#"name="S" sample="x" role="scale""#),
-        scale(r#"name="S" sample="" role="scale""#),
-        scale(r#"name="S" sample="-1" role="scale""#),
-        scale(r#"name="S" sample="4294967296" role="scale""#),
-        scale(r#"name="S" sample="0" role="scale" domain="image_structure""#),
-        item(r#"name="S" sample="0" role="scale""#, "0.5<!--c-->"),
-        item(r#"name="S" sample="0" role="scale""#, "0.5<b/>"),
-        r#"<GDALMetadata xmlns:x="u"><x:Item name="S" sample="0" role="scale">0.5</x:Item></GDALMetadata>"#
-            .to_string(),
-        r#"<x:GDALMetadata xmlns:x="u"><Item name="S" sample="0" role="scale">0.5</Item></x:GDALMetadata>"#
-            .to_string(),
+    let caps = "a namespace or an attribute name in capitals";
+    let sample = "sample is not a plain number";
+    let text = "value is not plain text";
+    for (refused, why) in [
+        (scale(r#"NAME="S" SAMPLE="0" ROLE="scale""#), caps),
+        (scale(r#"name="S" sample="0" Role="scale""#), caps),
+        (
+            r#"<GDALMetadata xmlns:x="u"><Item name="S" sample="0" x:role="foo" role="scale">0.5</Item></GDALMetadata>"#
+                .to_string(),
+            caps,
+        ),
+        (
+            r#"<GDALMetadata xmlns:x="u"><x:Item name="S" sample="0" role="scale">0.5</x:Item></GDALMetadata>"#
+                .to_string(),
+            caps,
+        ),
+        (scale(r#"name="S" sample=" 0" role="scale""#), sample),
+        (scale(r#"name="S" sample="0.0" role="scale""#), sample),
+        (scale(r#"name="S" sample="x" role="scale""#), sample),
+        (scale(r#"name="S" sample="" role="scale""#), sample),
+        (scale(r#"name="S" sample="-1" role="scale""#), sample),
+        (scale(r#"name="S" sample="4294967296" role="scale""#), sample),
+        (
+            scale(r#"name="S" sample="0" role="scale" domain="image_structure""#),
+            "IMAGE_STRUCTURE",
+        ),
+        (item(r#"name="S" sample="0" role="scale""#, "0.5<!--c-->"), text),
+        (item(r#"name="S" sample="0" role="scale""#, "0.5<b/>"), text),
+        (item(r#"name="S" sample="0" role="scale""#, "0.<![CDATA[5]]>"), text),
+        (item(r#"name="S" sample="0" role="scale""#, "<![CDATA[0.5]]>"), text),
+        (item(r#"name="U" sample="0" role="unittype""#, "f<![CDATA[t]]>"), text),
+        (
+            r#"<x:GDALMetadata xmlns:x="u"><Item name="S" sample="0" role="scale">0.5</Item></x:GDALMetadata>"#
+                .to_string(),
+            "root in an XML namespace",
+        ),
     ] {
         assert!(
             matches!(
                 parse(&wgs84, &refused),
-                Err(GeoTiffError::Unsupported { what: "GDAL_METADATA", .. })
+                Err(GeoTiffError::Unsupported { what: "GDAL_METADATA", ref value, .. })
+                    if value.contains(why)
             ),
             "{refused}"
         );
     }
+    // Unicode spaces are not the blanks GDAL's number parsing skips: they are not numbers, nor
+    // units.
+    assert!(matches!(
+        parse(
+            &wgs84,
+            &item(r#"name="S" sample="0" role="scale""#, "&#160;0.5")
+        ),
+        Err(GeoTiffError::Malformed {
+            what: "GDAL_METADATA",
+            ..
+        })
+    ));
+    assert!(matches!(
+        parse(
+            &wgs84,
+            &item(r#"name="U" sample="0" role="unittype""#, "&#160;ft")
+        ),
+        Err(GeoTiffError::Unsupported {
+            what: "a GDAL_METADATA unit type",
+            ..
+        })
+    ));
+    // ASCII blanks are skipped, as GDAL skips them.
+    assert_eq!(
+        parse(
+            &wgs84,
+            &item(r#"name="S" sample="0" role="scale""#, " 0.5\n")
+        )
+        .unwrap()
+        .scale,
+        0.5
+    );
 }
 
 #[test]

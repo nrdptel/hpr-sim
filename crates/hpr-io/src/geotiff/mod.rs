@@ -38,37 +38,49 @@
 //! floats; uncompressed, LZW, Deflate or PackBits, with or without the horizontal or
 //! floating-point predictor; tiles or strips; little- or big-endian; classic TIFF or BigTIFF.
 //! The first image in the file is the one read (later ones are a cloud-optimized GeoTIFF's
-//! overviews). The CRS must be geographic (`GTModelTypeGeoKey` 2) in degrees from Greenwich, and
+//! overviews). The CRS must be geographic (`GTModelTypeGeoKey` 2, or a geodetic CRS key with no
+//! model type, as GeoTIFF 1.0 writers leave it) in degrees from Greenwich, and
 //! one of [`NEAR_WGS84`]: datums within a few metres of WGS 84, where a point's WGS 84 latitude
 //! and longitude read the right pixel to within a few metres (more near the rupture of a large
 //! earthquake since the datum was fixed; the list gives examples). Its EPSG code is reported. Any
 //! other, and a projected file (UTM, say), is refused with [`GeoTiffError::Unsupported`] naming
 //! its code; `gdalwarp -t_srs EPSG:4326 in.tif out.tif` turns it into one this reads.
 //!
-//! **Heights.** A pixel's raw value `v` becomes a height in metres as
-//! `(v·scale + offset)·unit`. The scale and offset are GDAL's: for a GeoTIFF 1.1 file naming a
-//! vertical CRS this module knows, `S_z` from `ModelPixelScaleTag` and `Z₀ − z₀·S_z` from the
-//! tiepoint's heights; otherwise the `scale` and `offset` items of GDAL's `GDAL_METADATA` tag;
-//! otherwise 1 and 0. Heights in those tags with no vertical key are ignored, as GDAL ignores
-//! them; with other vertical keys, whether GDAL applies them turns on how it resolves the keys,
-//! and the file is refused. `GDAL_METADATA`'s scale, offset and unit are read only in the form
-//! GDAL writes them, and refused in any other, which GDAL may read differently. In a GeoTIFF 1.0 directory GDAL drops the vertical CRS, and with it
-//! those heights; this module does the same, and reports the CRS's code and unit. The unit is the
-//! vertical unit the file states (`VerticalUnitsGeoKey`: metres, international feet or US survey
-//! feet, refused if it disagrees with the vertical CRS's), the unit of a vertical CRS this module
-//! knows (any other is refused: GDAL takes its unit from EPSG's registry), or the `unittype` item
-//! of `GDAL_METADATA` (refused if it disagrees with the keys); a file that states none is read as metres, an assumption GDAL doesn't make (it
-//! reports no unit), flagged by [`RasterInfo::vertical_unit_stated`]. A file in feet that states
-//! no unit reads 3.28 times too high. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008,
-//! say) is reported, not applied. A value equal to the file's nodata value (GDAL's `GDAL_NODATA`
-//! tag) or a NaN reads as no height; a nodata value the sample type can't hold exactly, such as
-//! 12.5 on integers, matches nothing.
+//! **Heights.** A pixel's raw value `v` becomes a height in metres as `(v·scale + offset)·unit`,
+//! with GDAL's scale and offset:
+//!
+//! - `S_z` from `ModelPixelScaleTag` and `Z₀ − z₀·S_z` from the tiepoint's heights, where GDAL
+//!   certainly applies them: a GeoTIFF 1.1 directory of model type 2 naming a vertical CRS from
+//!   [`VERTICAL_CRS_UNITS`], with no `VerticalDatumGeoKey`, beside a geographic CRS other than
+//!   WGS 84 3D. With no vertical key, or in a GeoTIFF 1.0 directory (where GDAL drops the vertical
+//!   CRS), they are ignored, as GDAL ignores them. Between those, whether GDAL applies them turns
+//!   on how it resolves the keys, and the file is refused unless they are GDAL's own `S_z` 1 and
+//!   `Z₀` 0 and `GDAL_METADATA` gives no other scale.
+//! - Otherwise the `scale` and `offset` items of GDAL's `GDAL_METADATA` tag; otherwise 1 and 0.
+//!   GDAL matches that tag's items with quirks, so an item with one of the roles read here is
+//!   refused if it has a namespace, a capital in an attribute's name, a sample that isn't plain
+//!   digits, a value that isn't a single text node (CDATA included), or the `IMAGE_STRUCTURE`
+//!   domain. GDAL's own skips (no name, no sample, another band) are skipped.
+//!
+//! The unit is the one the file states by `VerticalUnitsGeoKey` (metres, international feet or US
+//! survey feet), by a vertical CRS from [`VERTICAL_CRS_UNITS`], or by the `unittype` item of
+//! `GDAL_METADATA`; two that disagree are refused, as is a vertical CRS off the list (GDAL takes
+//! its unit from EPSG's registry, whatever the key says). Vertical keys GDAL drops with their unit
+//! are refused: a private value (above 32767) in any of them, a vertical key beside WGS 84 3D,
+//! and a vertical CRS with no model type and no unit key. In a GeoTIFF 1.0 directory GDAL drops
+//! the vertical CRS but keeps its unit; this module reports both. A file that states no unit is
+//! read as metres, an assumption GDAL doesn't make (it reports no unit), flagged by
+//! [`RasterInfo::vertical_unit_stated`]; a file in feet that states none reads 3.28 times too
+//! high. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008, say) is reported, not applied.
+//! A value equal to the file's nodata value (GDAL's `GDAL_NODATA` tag) or a NaN reads as no
+//! height; a nodata value the sample type can't hold exactly, such as 12.5 on integers, matches
+//! nothing.
 //!
 //! **Bounds on a hostile file.** A tile or strip larger than [`MAX_CHUNK_BYTES`] decoded is
 //! refused at [`ElevationRaster::parse`], and [`ElevationRaster::values`] grows the raster
-//! fallibly, a row of tiles at a time as they decode. `GDAL_METADATA` nested more than 16 deep
-//! is refused before it is parsed. The `tiff` crate prints one
-//! debug line to standard error when a tag's value passes its 1 MiB limit (its own `dbg!`).
+//! fallibly as rows of tiles decode. `GDAL_METADATA` nested more than 16 deep is refused before
+//! it is parsed. The `tiff` crate prints one debug line to standard error when a tag's value
+//! passes its 1 MiB limit (its own `dbg!`).
 //!
 //! **Guide:** [A launch site's elevation][guide] walks through an example and says how the reader
 //! is checked: against GDAL's reading, through rasterio, of seven files and a whole USGS tile.
@@ -137,7 +149,7 @@ pub const MAX_CHUNK_BYTES: u64 = 256 << 20;
 /// for SIRGAS 2000 or Wenchuan's in 2008 for CGCS2000, the ground moved several metres. JGD2000
 /// is left out: Japan's 2011 earthquake moved its north-east by more than 5 m, and JGD2011
 /// replaced it.
-pub const NEAR_WGS84: [(u16, &str); 14] = [
+pub const NEAR_WGS84: &[(u16, &str)] = &[
     (4326, "WGS 84"),
     (4979, "WGS 84, 3D"),
     (4269, "NAD83"),
@@ -299,9 +311,10 @@ impl VerticalUnit {
     }
 }
 
-/// The vertical CRSs whose unit this reader knows when a file names one without stating its
-/// unit, from EPSG's registry: (code, unit). All are gravity-related heights, positive up.
-pub const VERTICAL_CRS_UNITS: [(u16, VerticalUnit); 8] = [
+/// The vertical CRSs read, by EPSG code, with their unit from EPSG's registry: (code, unit). All
+/// are gravity-related heights, positive up. A file naming another is refused, as GDAL would take
+/// its unit from the registry, which this reader doesn't hold.
+pub const VERTICAL_CRS_UNITS: &[(u16, VerticalUnit)] = &[
     (3855, VerticalUnit::Metre),        // EGM2008 height
     (5701, VerticalUnit::Metre),        // ODN height
     (5703, VerticalUnit::Metre),        // NAVD88 height
@@ -534,6 +547,7 @@ impl<'a> ElevationRaster<'a> {
             }
         };
         let geographic_crs_epsg = geographic_crs(&keys)?;
+        vertical_kept_by_gdal(&keys, geographic_crs_epsg)?;
         let (vertical_crs_epsg, vertical_unit, vertical_unit_stated) = vertical(&keys)?;
         let georef = transform(&mut decoder)?;
         let [mut lon0, lon_step, mut lat0, lat_step] = georef.corner;
@@ -1100,8 +1114,46 @@ fn geographic_crs(keys: &GeoKeys) -> Result<u16, GeoTiffError> {
     Ok(code)
 }
 
+/// Refuses vertical keys GDAL 3.12.2 drops, unit and all (`gt_wkt_srs.cpp`, each case measured
+/// through rasterio 1.5.2): a private value (above 32767) in any of them, any beside WGS 84 3D,
+/// and a vertical CRS with no model type and no unit key. This reader would read a unit there
+/// that GDAL doesn't report.
+fn vertical_kept_by_gdal(keys: &GeoKeys, geographic_crs_epsg: u16) -> Result<(), GeoTiffError> {
+    let mut present = Vec::new();
+    for key in [VERTICAL_CRS_KEY, VERTICAL_DATUM_KEY, VERTICAL_UNITS_KEY] {
+        if let Some(value) = keys.get(key)? {
+            present.push((key, value));
+        }
+    }
+    let dropped = |value: String| GeoTiffError::Unsupported {
+        what: "vertical keys GDAL drops:",
+        value,
+        hint: "; GDAL reads the file with no vertical unit, so its heights' unit is uncertain",
+    };
+    if let Some((key, value)) = present.iter().find(|(_, value)| *value > 32767) {
+        return Err(dropped(format!(
+            "key {key} holds the private value {value}"
+        )));
+    }
+    if !present.is_empty() && geographic_crs_epsg == 4979 {
+        return Err(dropped(
+            "vertical keys beside WGS 84 3D (EPSG:4979)".to_string(),
+        ));
+    }
+    if keys.get(MODEL_TYPE_KEY)?.is_none()
+        && keys.has(VERTICAL_CRS_KEY)
+        && !keys.has(VERTICAL_UNITS_KEY)
+    {
+        return Err(dropped(
+            "a vertical CRS with no model type and no unit key".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiffError> {
-    // 0 is "undefined", 32767 "user-defined" and those above private: none is an EPSG code.
+    // 0 is "undefined" and 32767 "user-defined" (those above, private, are refused before): none
+    // is an EPSG code.
     let crs = keys
         .get(VERTICAL_CRS_KEY)?
         .filter(|c| (1..32767).contains(c));
@@ -1142,7 +1194,7 @@ fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiff
         (Some(unit), _, _) | (None, Some(unit), _) => Ok((crs, unit, true)),
         (None, None, None) if user_defined => Err(GeoTiffError::Unsupported {
             what: "a user-defined vertical CRS without VerticalUnitsGeoKey",
-            value: "VerticalGeoKey 32767 or above".to_string(),
+            value: "VerticalGeoKey 32767".to_string(),
             hint: "; its unit is unknown here",
         }),
         (None, None, None) => Ok((None, VerticalUnit::Metre, false)),
@@ -1261,8 +1313,8 @@ fn transform<R: std::io::Read + std::io::Seek>(
 /// Whether GDAL takes a scale and offset from `S_z` and the tiepoint's heights. It does for one
 /// band when its CRS is vertical, which depends on the directory's revision and on how GDAL and
 /// PROJ resolve the vertical keys (GDAL 3.12.2's `gt_wkt_srs.cpp` drops the vertical CRS for a
-/// private key value, for `VerticalDatumGeoKey` 6030 beside WGS 84, and with no model type; it
-/// drops the whole CRS beside WGS 84 3D). Certain: applied for a GeoTIFF 1.1 directory of model
+/// private key value, for `VerticalDatumGeoKey` 6030 beside WGS 84, and with no model type and
+/// no unit key; it drops the whole CRS beside WGS 84 3D). Certain: applied for a GeoTIFF 1.1 directory of model
 /// type 2 naming a vertical CRS this reader knows, with no datum key, beside any geographic CRS
 /// but WGS 84 3D; ignored for a 1.0 directory (GDAL drops its vertical CRS, rasterio 1.5.2
 /// shows) and for one with no vertical key. Anything between is refused, unless the tags hold
@@ -1338,9 +1390,13 @@ struct Metadata {
 /// The deepest nesting `GDAL_METADATA` may have: GDAL writes a root and its items, two levels.
 const MAX_METADATA_DEPTH: usize = 16;
 
+/// The blanks C's number parsing skips; Rust's `trim` would also take Unicode spaces, which GDAL
+/// keeps.
+const ASCII_BLANK: [char; 6] = [' ', '\t', '\n', '\r', '\u{b}', '\u{c}'];
+
 /// A unit as GDAL's `unittype` item names it; `None` for an empty name.
 fn unit_type(name: &str) -> Result<Option<VerticalUnit>, GeoTiffError> {
-    let lower = name.trim().to_ascii_lowercase();
+    let lower = name.trim_matches(ASCII_BLANK).to_ascii_lowercase();
     Ok(Some(match lower.as_str() {
         "" => return Ok(None),
         "m" | "metre" | "meter" | "metres" | "meters" => VerticalUnit::Metre,
@@ -1393,19 +1449,22 @@ fn gdal_metadata<R: std::io::Read + std::io::Seek>(
     if root.tag_name().namespace().is_some() {
         return Err(odd("a GDALMetadata root in an XML namespace"));
     }
-    // GDAL's matching has quirks (attribute names in any case, C's `atoi` for the sample, text
-    // only when it is an item's one child). An item with a role read here is read only in the
+    // GDAL's matching has quirks (attribute names in any case and compared with their prefix,
+    // C's `atoi` for the sample, text only when it is an item's one child, CDATA a child of its
+    // own). An item any of whose `role` attributes names a role read here is read only in the
     // form GDAL writes, `<Item name=".." sample="0" role="scale">0.25</Item>`, and refused in any
     // other; GDAL's measured skips (no name, no sample, another band) are skipped.
+    let ours = |value: &str| {
+        matches!(
+            value.to_ascii_lowercase().as_str(),
+            "scale" | "offset" | "unittype"
+        )
+    };
     for item in root.children().filter(|n| named(n, "Item")) {
-        let Some(role) = item
+        if !item
             .attributes()
-            .find(|a| a.name().eq_ignore_ascii_case("role"))
-            .map(|a| a.value().to_ascii_lowercase())
-        else {
-            continue;
-        };
-        if !matches!(role.as_str(), "scale" | "offset" | "unittype") {
+            .any(|a| a.name().eq_ignore_ascii_case("role") && ours(a.value()))
+        {
             continue;
         }
         if item.tag_name().namespace().is_some()
@@ -1433,10 +1492,18 @@ fn gdal_metadata<R: std::io::Read + std::io::Seek>(
         {
             return Err(odd("a scale, offset or unit in the IMAGE_STRUCTURE domain"));
         }
+        // Past the checks above the one `role` is plain and lower-case, and names a role read here.
+        let role = item.attribute("role").unwrap_or("").to_ascii_lowercase();
+        // roxmltree joins CDATA to the text beside it; GDAL keeps them apart, so look at the source.
+        if document.input_text()[item.range()].contains("<![CDATA[") {
+            return Err(odd("an item whose value is not plain text"));
+        }
         let mut children = item.children();
         let text = match (children.next(), children.next()) {
             (None, _) => continue,
-            (Some(only), None) if only.is_text() => only.text().unwrap_or("").trim(),
+            (Some(only), None) if only.is_text() => {
+                only.text().unwrap_or("").trim_matches(ASCII_BLANK)
+            }
             _ => return Err(odd("an item whose value is not plain text")),
         };
         if text.is_empty() {
