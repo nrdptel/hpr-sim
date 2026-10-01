@@ -6,17 +6,21 @@
 //! cargo bench -p hpr --features parallel --bench ten_thousand
 //! ```
 //!
-//! Two rockets: Valetudo on a K400C, which stays below Mach 0.6, and a minimum-diameter 54 mm
-//! rocket on a K940, which passes Mach 1.2 and so needs the supersonic table. Not a criterion
-//! benchmark: one run is 10,000 flights, so the program times whole runs itself and prints the
-//! fastest of three, then where one flight's time goes on one thread.
+//! Two rockets: Valetudo on a K400C, which stays below Mach 0.4, and a 66 mm rocket with a
+//! 54 mm motor mount on a K940, which passes Mach 1.2 and so needs the supersonic table. Not a
+//! criterion benchmark: one run is 10,000 flights, so the program times whole runs itself, each
+//! from `MonteCarlo::new` (which a run's supersonic table is built after), and prints the fastest
+//! of three; then where one flight's time goes, on one thread. It takes about two minutes after
+//! it compiles, and does nothing unless `cargo bench` runs it, so `cargo test --all-targets`
+//! doesn't fly 60,000 flights in a debug build.
 
 #![expect(
     clippy::unwrap_used,
     clippy::print_stdout,
     clippy::disallowed_types,
+    clippy::disallowed_methods,
     reason = "a measurement with invalid fixed inputs should stop at once, it exists to print, and \
-              it reads the clock to time the library, outside it"
+              it reads the clock and its arguments to time the library, outside it"
 )]
 
 use std::hint::black_box;
@@ -42,6 +46,9 @@ const REPEATS: usize = 3;
 
 /// The flights timed one at a time for the split.
 const SPLIT: u64 = 200;
+
+/// The flights timed one at a time on tables of their own, each of which builds one.
+const ALONE: u64 = 20;
 
 /// The run's seed.
 const SEED: u64 = 2026;
@@ -92,12 +99,11 @@ fn valetudo() -> FlightInputs {
     inputs
 }
 
-/// A minimum-diameter rocket on a Cesaroni K940 (Pro54, 1,633 N·s): a 66 mm filament-wound
-/// airframe around a 54 mm motor tube, three G10 fins, 3.4 kg on the pad. The same site, rail
-/// and wind.
+/// A rocket on a Cesaroni K940 (Pro54, 1,633 N·s): a 66 mm filament-wound airframe with a
+/// 54 mm motor mount, three G10 fins, 3.4 kg on the pad. The same site, rail and wind.
 fn k940() -> FlightInputs {
     let fiberglass = || material("fiberglass_filament_wound").unwrap();
-    let mut rocket = Rocket::new("Minimum-diameter 54 mm", 0.066).unwrap();
+    let mut rocket = Rocket::new("66 mm on a K940", 0.066).unwrap();
     rocket
         .add_nose(
             Nose::hollow(
@@ -160,10 +166,11 @@ fn fastest<T>(mut f: impl FnMut() -> T) -> (Duration, T) {
     (best, last.unwrap())
 }
 
-/// Times a run of [`COUNT`] flights of `nominal` on every core, then, on one thread, building
-/// and flying [`SPLIT`] of its samples apart, and flying them as each flight did before M6.1d,
-/// on a supersonic table of its own.
-fn measure(name: &str, nominal: FlightInputs) {
+/// Times a run of [`COUNT`] flights of `nominal` on every core, from `MonteCarlo::new`; then, on
+/// one thread, [`SPLIT`] of its samples, building their simulations alone, laying their designs
+/// out alone and from the nominal's, and [`ALONE`] of them each flown as every flight was before
+/// M6.1d, on a supersonic table of its own.
+fn measure(name: &str, nominal: &FlightInputs) {
     let dispersion = Dispersion {
         dry_mass_sd_fraction: 0.02,
         cg_sd_m: 0.005,
@@ -177,8 +184,8 @@ fn measure(name: &str, nominal: FlightInputs) {
         deployment_lag_sd_s: 0.2,
         ..Dispersion::default()
     };
-    let monte_carlo = MonteCarlo::new(nominal, dispersion).unwrap();
-    let (run_time, run) = fastest(|| monte_carlo.run_parallel(SEED, COUNT));
+    let monte_carlo = || MonteCarlo::new(nominal.clone(), dispersion).unwrap();
+    let (run_time, run) = fastest(|| monte_carlo().run_parallel(SEED, COUNT));
     let apogee = run.apogee().unwrap().summary();
     let mach = run
         .distribution(|flight| flight.max_mach.as_ref().map(|peak| peak.value))
@@ -187,7 +194,7 @@ fn measure(name: &str, nominal: FlightInputs) {
     println!("{name}");
     println!(
         "  {COUNT} flights on {} threads: {:.2} s (fastest of {REPEATS}), {} failed",
-        std::thread::available_parallelism().unwrap(),
+        rayon::current_num_threads(),
         run_time.as_secs_f64(),
         run.failed().count(),
     );
@@ -198,6 +205,8 @@ fn measure(name: &str, nominal: FlightInputs) {
         mach.max.unwrap()
     );
 
+    let per = |time: Duration, count: u64| 1e3 * time.as_secs_f64() / count as f64;
+    let monte_carlo = monte_carlo();
     let inputs: Vec<_> = (0..SPLIT)
         .map(|index| monte_carlo.inputs(&monte_carlo.draw(SEED, index)).unwrap())
         .collect();
@@ -207,28 +216,58 @@ fn measure(name: &str, nominal: FlightInputs) {
             .map(|inputs| inputs.simulation().unwrap())
             .collect::<Vec<_>>()
     });
+    // Laying a sample's design out alone, and from the nominal's layout, as a run's samples do.
+    let (lay_out_time, _) = fastest(|| {
+        inputs
+            .iter()
+            .map(|inputs| inputs.rocket.lay_out().unwrap())
+            .collect::<Vec<_>>()
+    });
+    let nominal_laid_out = nominal.rocket.lay_out().unwrap();
+    let (relay_time, _) = fastest(|| {
+        inputs
+            .iter()
+            .map(|inputs| nominal_laid_out.relay(inputs.rocket.clone()).unwrap())
+            .collect::<Vec<_>>()
+    });
+    // The run's table is built by its first sample past Mach 1.2, before the timing.
+    monte_carlo.sample(SEED, 0);
     let (sample_time, _) = fastest(|| {
         (0..SPLIT)
             .map(|index| monte_carlo.sample(SEED, index))
             .collect::<Vec<_>>()
     });
+    println!(
+        "  one thread, a sample: {:.3} ms over {SPLIT}; building its simulation alone {:.3} ms, \
+         laying it out {:.3} ms alone and {:.3} ms from the nominal's",
+        per(sample_time, SPLIT),
+        per(build_time, SPLIT),
+        per(lay_out_time, SPLIT),
+        per(relay_time, SPLIT),
+    );
+    let (table_time, _) = fastest(|| {
+        let simulation = nominal.simulation().unwrap();
+        simulation.aero().supersonic_body().is_some()
+    });
     let (alone_time, _) = fastest(|| {
-        inputs
+        inputs[..ALONE as usize]
             .iter()
             .map(|inputs| inputs.fly().unwrap())
             .collect::<Vec<_>>()
     });
-    let per = |time: Duration| 1e3 * time.as_secs_f64() / SPLIT as f64;
     println!(
-        "  one thread, per flight over {SPLIT}: {:.3} ms a sample, {:.3} ms of it building; \
-         {:.3} ms flown on a table of its own",
-        per(sample_time),
-        per(build_time),
-        per(alone_time)
+        "  one thread, on a table of its own: {:.3} ms a flight over {ALONE}; building the \
+         nominal's simulation and its table {:.3} ms",
+        per(alone_time, ALONE),
+        1e3 * table_time.as_secs_f64(),
     );
 }
 
 fn main() {
-    measure("Valetudo, K400C", valetudo());
-    measure("Minimum-diameter 54 mm, K940", k940());
+    // `cargo bench` passes `--bench`; `cargo test` doesn't.
+    if !std::env::args().any(|argument| argument == "--bench") {
+        return;
+    }
+    measure("Valetudo, K400C", &valetudo());
+    measure("66 mm with a 54 mm mount, K940", &k940());
 }

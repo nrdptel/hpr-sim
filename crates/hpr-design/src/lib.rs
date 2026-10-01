@@ -38,7 +38,9 @@ pub mod tree;
 mod testing;
 
 pub use checks::{Finding, Severity};
-pub use config::{Assembly, Configuration, Ignition, MotorMount, MountedMotor, PlacedMotor};
+pub use config::{
+    Assembly, Configuration, Ignition, LaidOut, MotorMount, MountedMotor, PlacedMotor,
+};
 pub use error::DesignError;
 pub use finish::Finish;
 pub use fins::{FinCrossSection, FinFillet, FinPlanform, FinSet, FinTab, TubeFinSet};

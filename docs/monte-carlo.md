@@ -265,24 +265,47 @@ the bit. The decision record is [ADR-134](https://github.com/nrdptel/hpr-sim/blo
 
 ## How long a run takes
 
-On the development machine, an Apple M5 with 10 cores, 10,000 flights of a Level 2 rocket from
-ignition to the ground take:
+On the development machine, an Apple M5 with 10 cores, 10,000 flights of a Level 2 rocket (one
+on a J, K or L [impulse class](glossary.md#impulse-class) motor) from ignition to the ground,
+under a drogue and a main, take:
 
 | rocket | peak Mach | 10,000 flights, 10 threads | one flight, one thread |
 |---|---|---|---|
-| Valetudo, one of RocketPy's examples: 9.7 kg on a K400C | 0.3 to 0.4 | 3.5 s | 2.3 ms |
-| a minimum-diameter 54 mm rocket on a K940 | 1.6 to 2.0 | 9.9 s | 6.3 ms |
+| Valetudo, one of RocketPy's examples: 9.7 kg on a K400C | 0.3 to 0.4 | 3.0 s | 1.9 ms |
+| a 66 mm rocket with a 54 mm motor mount on a K940 | 1.6 to 2.0 | 9.5 s | 5.8 ms |
 
-Both are release builds; a debug build is many times slower. The program that times them, and
-the before-and-after numbers, are on
-[Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md).
+No flight failed. These are release builds, with optimisation on: add `--release` to
+`cargo run`, or build your program with it. A debug build, what plain `cargo run` gives, is
+many times slower. To time it on your own machine, from a copy of the repository:
 
-A rocket that passes Mach 1.2 needs a supersonic table, which takes a few tenths of a second to
-build. A dispersion changes the rocket's masses, its motor and the weather, never its shape, so the
-flights of a run share the nominal flight's table: the run builds it once, and every flight flies
-exactly as it would alone. Before [M6.1d](decisions-and-roadmap.md#m6-1d) each flight built its
-own, and the supersonic run above took four and a half minutes. Issue
+```text
+cargo bench -p hpr --features parallel --bench ten_thousand
+```
+
+It takes about two minutes. Its output, the before-and-after numbers and where the time goes are
+on [Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md). Other machines
+haven't been timed.
+
+A rocket that passes Mach 1.2 flies on a supersonic table: its body's lift and centre of
+pressure by the shock-expansion method, worked out at every 0.05 Mach once and then looked up
+([The body faster than sound in a flight](physics/aero.md#the-body-faster-than-sound-in-a-flight)).
+Building it takes about a fifth of a second for the rocket above. A dispersion changes the
+rocket's masses, its motor, the weather and a scale on its drag, never its shape, so the flights
+of a run share the nominal flight's table: the run builds it once. Each flight also reuses the
+nominal rocket's layout, its parts placed and weighed. Every flight flies exactly as it would
+alone, bit for bit; a unit test holds a supersonic flight to that, on one, two and five threads
+(`samples_share_the_nominal_table_and_fly_as_alone`).
+
+Before this speed-up ([M6.1d](decisions-and-roadmap.md#m6-1d), October 2026), each flight built
+its own table, and the supersonic run above took 264 s. To fly draws of your own, as a
+[sensitivity analysis](sensitivity.md) does, use `monte_carlo.fly(&draw)`, which shares the same
+work; `inputs.fly()` on a draw's inputs builds its own. A two-stage rocket's sustainer, built
+when the stages separate, still builds its own table in every flight. Issue
 [#285](https://github.com/nrdptel/hpr-sim/issues/285) is about making each flight itself faster.
+
+This times the run. It says nothing about how accurate a Mach 2 flight is: no validation flight
+goes past Mach 1.06 (see
+[The body faster than sound in a flight](physics/aero.md#the-body-faster-than-sound-in-a-flight)).
 
 ## Choosing the numbers
 

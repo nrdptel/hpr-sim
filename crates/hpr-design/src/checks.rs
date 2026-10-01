@@ -13,7 +13,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::Configuration;
+use crate::config::{Configuration, LaidOut};
 use crate::error::DesignError;
 use crate::tree::{LENGTH_TOLERANCE_M, Layout, Part, PlacedComponent, Rocket};
 
@@ -182,17 +182,22 @@ impl Finding {
 /// design that doesn't resolve can't be checked.
 pub fn check(rocket: &Rocket) -> Result<Vec<Finding>, DesignError> {
     rocket.check_configuration_ids()?;
-    check_with_layout(rocket, &rocket.layout()?)
+    check_on(rocket, &rocket.layout()?)
 }
 
-/// As [`check`], on `layout`, which must be `rocket`'s ([`Rocket::layout`]): for a caller that
-/// needs the layout too, and so lays the design out once ([`Rocket::assemble_with_layout`]).
-///
-/// # Errors
-///
-/// As [`Rocket::check_configuration_ids`] and [`Layout::place_motors`].
-pub fn check_with_layout(rocket: &Rocket, layout: &Layout) -> Result<Vec<Finding>, DesignError> {
-    rocket.check_configuration_ids()?;
+impl LaidOut {
+    /// As [`check`], on this layout.
+    ///
+    /// # Errors
+    ///
+    /// As [`Layout::place_motors`].
+    pub fn check(&self) -> Result<Vec<Finding>, DesignError> {
+        check_on(self.rocket(), self.layout())
+    }
+}
+
+/// Every check on `rocket`, whose layout is `layout`.
+fn check_on(rocket: &Rocket, layout: &Layout) -> Result<Vec<Finding>, DesignError> {
     let mut findings = check_layout(layout);
     for configuration in &rocket.configurations {
         findings.extend(check_configuration(layout, configuration)?);

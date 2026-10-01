@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::DesignError;
 use crate::mass::MassProperties;
 use crate::shapes::check_dimension;
-use crate::tree::{Layout, Rocket};
+use crate::tree::{Layout, Rocket, StageMasses};
 
 /// Makes a body tube or inner tube a motor mount.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
@@ -492,30 +492,30 @@ impl Rocket {
     /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
     pub fn assemble(&self, configuration_id: &str) -> Result<Assembly, DesignError> {
         self.check_configuration_ids()?;
-        self.configuration_or_error(configuration_id)?;
-        self.assemble_with_layout(self.layout()?, configuration_id)
-    }
-
-    /// As [`Rocket::assemble`], on `layout`, which must be this design's ([`Rocket::layout`]):
-    /// for a caller that has laid the design out already ([`crate::checks::check_with_layout`]).
-    ///
-    /// # Errors
-    ///
-    /// - As [`Layout::place_motors`].
-    /// - [`DesignError::DuplicateId`] for an empty or repeated configuration id.
-    /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
-    pub fn assemble_with_layout(
-        &self,
-        layout: Layout,
-        configuration_id: &str,
-    ) -> Result<Assembly, DesignError> {
-        self.check_configuration_ids()?;
         let configuration = self.configuration_or_error(configuration_id)?;
+        let layout = self.layout()?;
         let motors = layout.place_motors(configuration)?;
         Ok(Assembly {
             configuration: configuration.id.clone(),
             layout,
             motors,
+        })
+    }
+
+    /// Lays the design out once ([`Rocket::layout`]), to check it ([`LaidOut::check`]) and
+    /// assemble it ([`LaidOut::assemble`]) without laying it out again: the layout is most of the
+    /// cost of either, and a Monte Carlo run builds a flight thousands of times.
+    ///
+    /// # Errors
+    ///
+    /// As [`Rocket::check_configuration_ids`] and [`Rocket::layout`].
+    pub fn lay_out(&self) -> Result<LaidOut, DesignError> {
+        self.check_configuration_ids()?;
+        let (components, masses) = self.placed_components()?;
+        Ok(LaidOut {
+            layout: self.staged_layout(components, &masses)?,
+            rocket: self.clone(),
+            masses,
         })
     }
 
@@ -532,6 +532,91 @@ impl Rocket {
     }
 }
 
+/// A copy of a design and its layout, laid out once by [`Rocket::lay_out`], to check it and
+/// assemble it without laying it out again. Its fields are private, so the layout is always the
+/// design's own.
+#[derive(Debug, Clone)]
+pub struct LaidOut {
+    rocket: Rocket,
+    layout: Layout,
+    /// What the layout's stages are made from, for [`LaidOut::relay`].
+    masses: StageMasses,
+}
+
+impl LaidOut {
+    /// The design.
+    pub fn rocket(&self) -> &Rocket {
+        &self.rocket
+    }
+
+    /// The layout ([`Rocket::layout`]).
+    pub fn layout(&self) -> &Layout {
+        &self.layout
+    }
+
+    /// As [`Rocket::assemble`], on this layout, with the design given back.
+    ///
+    /// # Errors
+    ///
+    /// - As [`Layout::place_motors`].
+    /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
+    pub fn assemble(self, configuration_id: &str) -> Result<(Rocket, Assembly), DesignError> {
+        let configuration = self.rocket.configuration_or_error(configuration_id)?;
+        let motors = self.layout.place_motors(configuration)?;
+        let assembly = Assembly {
+            configuration: configuration.id.clone(),
+            layout: self.layout,
+            motors,
+        };
+        Ok((self.rocket, assembly))
+    }
+
+    /// `rocket` laid out, as [`Rocket::lay_out`] lays it out, bit for bit. Where `rocket` differs
+    /// from this design only in its stages' overrides (mass, centre of mass, inertia) and its
+    /// configurations (motors), this layout's parts are kept and only the stages are done again:
+    /// placing the parts is most of a layout's cost, and a Monte Carlo sample changes nothing
+    /// else. Any other difference lays `rocket` out from the start.
+    ///
+    /// # Errors
+    ///
+    /// As [`Rocket::lay_out`].
+    pub fn relay(&self, rocket: Rocket) -> Result<LaidOut, DesignError> {
+        if !self.same_but_overrides_and_motors(&rocket) {
+            return rocket.lay_out();
+        }
+        rocket.check_configuration_ids()?;
+        let layout = rocket.staged_layout(self.layout.components.clone(), &self.masses)?;
+        Ok(LaidOut {
+            rocket,
+            layout,
+            masses: self.masses.clone(),
+        })
+    }
+
+    /// Whether `rocket` is this design but for its stages' overrides and its configurations.
+    /// Every other field is compared, so a field added to either type has to be added here.
+    fn same_but_overrides_and_motors(&self, rocket: &Rocket) -> bool {
+        let Rocket {
+            name,
+            stages,
+            reference_diameter,
+            configurations: _,
+        } = rocket;
+        *name == self.rocket.name
+            && *reference_diameter == self.rocket.reference_diameter
+            && stages.len() == self.rocket.stages.len()
+            && stages.iter().zip(&self.rocket.stages).all(|(stage, ours)| {
+                let crate::Stage {
+                    id,
+                    name,
+                    components,
+                    overrides: _,
+                } = stage;
+                *id == ours.id && *name == ours.name && *components == ours.components
+            })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use hpr_core::DMat3;
@@ -542,6 +627,75 @@ mod tests {
     /// The sample rocket's mount spans stations 0.7 to 1.0 with 0.01 m of overhang, so the nozzle
     /// exit is at 1.01. Its envelope motor (1 kg loaded, 0.5 kg of propellant, 0.2 m long) puts
     /// dry mass and propellant both 0.1 m forward of the nozzle, at body z = −0.91.
+    /// Laying a design out once checks and assembles it as [`crate::checks::check`] and
+    /// [`Rocket::assemble`] do, and refuses an unknown configuration the same way.
+    #[test]
+    fn a_design_laid_out_once_checks_and_assembles_as_twice() {
+        let design = three_fin_rocket();
+        let laid_out = design.lay_out().unwrap();
+        assert_eq!(laid_out.layout(), &design.layout().unwrap());
+        assert_eq!(
+            laid_out.check().unwrap(),
+            crate::checks::check(&design).unwrap()
+        );
+        let id = design.configurations[0].id.clone();
+        assert_eq!(
+            laid_out.clone().assemble(&id).unwrap(),
+            (design.clone(), design.assemble(&id).unwrap())
+        );
+        assert!(matches!(
+            laid_out.assemble("no such configuration"),
+            Err(DesignError::UnknownId { what: "configuration", ref id }) if id == "no such configuration"
+        ));
+    }
+
+    /// A design relaid from another's layout is the design laid out alone, bit for bit: with
+    /// other stage overrides and motors, the parts are kept; with another part, it starts over.
+    #[test]
+    fn a_relaid_design_is_laid_out_as_alone() {
+        let nominal = three_fin_rocket();
+        let laid_out = nominal.lay_out().unwrap();
+        let id = nominal.configurations[0].id.clone();
+        let same = |relaid: &LaidOut, design: &Rocket| {
+            let alone = design.lay_out().unwrap();
+            assert_eq!(relaid.rocket(), design);
+            assert_eq!(relaid.layout(), alone.layout());
+            assert_eq!(relaid.check().unwrap(), alone.check().unwrap());
+            assert_eq!(
+                relaid.clone().assemble(&id).unwrap(),
+                alone.assemble(&id).unwrap()
+            );
+        };
+        let mut overridden = nominal.clone();
+        let stage = &mut overridden.stages[0].overrides;
+        stage.mass_kg = Some(1.234_567);
+        stage.cg_aft_m = Some(0.456_789);
+        stage.cg_xy_m = Some([0.001, -0.002]);
+        let mounted = &mut overridden.configurations[0].motors[0];
+        mounted.motor = motor(&mounted.mount, mounted.diameter_m, 0.25).motor;
+        let relaid = laid_out.relay(overridden.clone()).unwrap();
+        same(&relaid, &overridden);
+        assert_ne!(relaid.layout(), laid_out.layout());
+        // Relaid again, back to the nominal design.
+        same(&relaid.relay(nominal.clone()).unwrap(), &nominal);
+        // Another part: laid out from the start.
+        let mut longer = nominal.clone();
+        let crate::Part::BodyTube(tube) = &mut longer.stages[0].components[1].part else {
+            panic!("the test rocket's second component is its airframe");
+        };
+        tube.length_m += 0.1;
+        let relaid = laid_out.relay(longer.clone()).unwrap();
+        same(&relaid, &longer);
+        assert_ne!(relaid.layout().length_m, laid_out.layout().length_m);
+        // A bad override is refused as laying it out alone refuses it.
+        let mut bad = nominal;
+        bad.stages[0].overrides.mass_kg = Some(-1.0);
+        assert_eq!(
+            laid_out.relay(bad.clone()).unwrap_err().to_string(),
+            bad.lay_out().unwrap_err().to_string()
+        );
+    }
+
     #[test]
     fn motor_sits_at_mount_aft_end_plus_overhang() {
         let design = three_fin_rocket();

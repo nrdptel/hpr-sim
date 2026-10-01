@@ -191,7 +191,7 @@ for x in design.points() {
     draw.wind_speed_scale = x[3] / 4.0;                  // a factor on the 4 m/s forecast
     draw.rail_elevation_offset_rad = (x[5] - 85.0).to_radians(); // an offset from 85°
     // ... and the dry mass, impulse and wind turn the same way
-    let flight = monte_carlo.inputs(&draw)?.fly()?;
+    let flight = monte_carlo.fly(&draw)?;
     apogees.push(flight.apogee.as_ref().ok_or("no apogee")?.height_above_ground_m);
 }
 let apogee = design.analyse(&apogees)?;                  // the same flights, any output
