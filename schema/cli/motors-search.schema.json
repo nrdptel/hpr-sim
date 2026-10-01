@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MotorSearch",
+  "description": "`hpr motors search`: motor.fusionspace.co's motors that pass the filters, with their stock and\nprices.",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "description": "The credits, shown with every list: motor.fusionspace.co's, as its terms ask, with their\ncaution to check stock and price on the vendor's own page; then ThrustCurve.org's, whose\nfigures the site repeats.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generated_at": {
+      "description": "When motor.fusionspace.co built the list, ISO 8601 UTC as the site writes it.",
+      "type": "string"
+    },
+    "motors": {
+      "description": "The motors that pass the filters, cheapest first: by one motor's price at the cheapest\nvendor with it in stock, then by maker and designation. Motors with no such price in U.S.\ndollars come last, by maker and designation.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/FoundMotor"
+      }
+    },
+    "read_from": {
+      "description": "Where the list was read from.",
+      "$ref": "#/$defs/ReadFrom"
+    }
+  },
+  "required": [
+    "attribution",
+    "read_from",
+    "generated_at",
+    "motors"
+  ],
+  "$defs": {
+    "FoundMotor": {
+      "description": "One motor that passed `hpr motors search`'s filters, as motor.fusionspace.co lists it. The\nfigures are ThrustCurve.org's published ones, which the site repeats.",
+      "type": "object",
+      "properties": {
+        "average_thrust_n": {
+          "description": "Average thrust, N, as stated.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "burn_time_s": {
+          "description": "Burn time, s, as stated.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "cheapest_in_stock": {
+          "description": "The vendor with it in stock at the lowest price of one motor; `None` when out of stock.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FoundOffer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "common_name": {
+          "description": "The designation without its propellant code, such as `L851`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "delays": {
+          "description": "The delays it comes with, s, comma-separated, or `P` for plugged.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "designation": {
+          "description": "The designation, as ThrustCurve.org spells it, such as `3683L851-P`.",
+          "type": "string"
+        },
+        "diameter_mm": {
+          "description": "Diameter, mm.",
+          "type": "number",
+          "format": "double"
+        },
+        "impulse_class": {
+          "description": "The impulse class, such as `L`.",
+          "type": "string"
+        },
+        "in_stock": {
+          "description": "In stock at one vendor or more.",
+          "type": "boolean"
+        },
+        "in_stock_vendor_count": {
+          "description": "How many vendors have it in stock.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "manufacturer": {
+          "description": "The manufacturer, as the site names it, such as `Cesaroni Technology`.",
+          "type": "string"
+        },
+        "motor_type": {
+          "description": "`single_use`, `reload` or `hybrid`, when the site says.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MotorKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "propellant": {
+          "description": "The propellant's trade name, such as `White Lightning`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "total_impulse_ns": {
+          "description": "Total impulse, N·s, as stated.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      },
+      "required": [
+        "manufacturer",
+        "designation",
+        "impulse_class",
+        "diameter_mm",
+        "in_stock",
+        "in_stock_vendor_count"
+      ]
+    },
+    "FoundOffer": {
+      "description": "A vendor's offer of a motor in stock, as motor.fusionspace.co lists it.",
+      "type": "object",
+      "properties": {
+        "currency": {
+          "description": "The currency, such as `USD`.",
+          "type": "string"
+        },
+        "pack_size": {
+          "description": "How many motors the pack holds.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "price_cents": {
+          "description": "The price of the pack, in hundredths of the currency, when the page shows one.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "unit_price_cents": {
+          "description": "The price of one motor, in hundredths of the currency (cents), when the page shows one.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "url": {
+          "description": "The product page, where stock and price are the vendor's to say.",
+          "type": "string"
+        },
+        "vendor": {
+          "description": "The vendor's name.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "vendor",
+        "url",
+        "pack_size",
+        "currency"
+      ]
+    },
+    "MotorKind": {
+      "description": "Whether a motor is used once or reloaded into a reusable case.",
+      "oneOf": [
+        {
+          "description": "A single-use motor.",
+          "type": "string",
+          "const": "single_use"
+        },
+        {
+          "description": "A reload for a reusable case.",
+          "type": "string",
+          "const": "reload"
+        },
+        {
+          "description": "A hybrid: listed, but hpr models solid motors only.",
+          "type": "string",
+          "const": "hybrid"
+        }
+      ]
+    },
+    "ReadFrom": {
+      "description": "Where a source's answer was read from.",
+      "oneOf": [
+        {
+          "description": "A file given on the command line: `--from`, or an ERA5 file.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "file"
+            },
+            "path": {
+              "description": "The path as given.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "path"
+          ]
+        },
+        {
+          "description": "Fetched now, and saved in the cache.",
+          "type": "object",
+          "properties": {
+            "fetched_at_unix_s": {
+              "description": "When, in seconds since the Unix epoch.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "network"
+            }
+          },
+          "required": [
+            "kind",
+            "fetched_at_unix_s"
+          ]
+        },
+        {
+          "description": "The cache, still fresh.",
+          "type": "object",
+          "properties": {
+            "fetched_at_unix_s": {
+              "description": "When the copy was fetched, in seconds since the Unix epoch.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "cache"
+            }
+          },
+          "required": [
+            "kind",
+            "fetched_at_unix_s"
+          ]
+        },
+        {
+          "description": "The cache, older than the source keeps a copy fresh: offline, or the fetch failed.",
+          "type": "object",
+          "properties": {
+            "fetched_at_unix_s": {
+              "description": "When the copy was fetched, in seconds since the Unix epoch.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "stale_cache"
+            },
+            "reason": {
+              "description": "Online, why the fetch failed or its answer was refused.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "fetched_at_unix_s"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -209,36 +209,32 @@ fn profile_json(sounding: &SoundingProfile) -> Result<String, Failure> {
     Ok(format!("{text}\n"))
 }
 
-fn read_file(path: &str) -> Result<Vec<u8>, Failure> {
+pub(crate) fn read_file(path: &str) -> Result<Vec<u8>, Failure> {
     std::fs::read(path).map_err(|error| Failure::Input(format!("{path}: {error}")))
 }
 
-/// A client over the network and the platform's cache, or the cache alone offline.
-fn client(fetching: &Fetching) -> Result<Client<Http>, Failure> {
+/// A client over the network and the platform's cache, or the cache alone `offline`, for the
+/// command named `command` (`hpr weather`).
+pub(crate) fn client(offline: bool, command: &str) -> Result<Client<Http>, Failure> {
     let dir = Cache::platform_dir().ok_or_else(|| {
-        Failure::Input(
-            "hpr weather keeps what it fetches in a cache folder, and this system names no home \
+        Failure::Input(format!(
+            "{command} keeps what it fetches in a cache folder, and this system names no home \
              folder to put it in: set HPR_CACHE_DIR to a folder"
-                .to_owned(),
-        )
+        ))
     })?;
-    let mode = if fetching.offline {
-        Mode::Offline
-    } else {
-        Mode::Online
-    };
+    let mode = if offline { Mode::Offline } else { Mode::Online };
     Ok(Client::new(Http::new(), Cache::new(dir), mode))
 }
 
 /// Seconds since the Unix epoch now; 0 if the clock is before it, which makes every cached copy
 /// stale rather than fresh.
-fn now_s() -> u64 {
+pub(crate) fn now_s() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_secs())
 }
 
-fn read_from(fetched: &Fetched) -> ReadFrom {
+pub(crate) fn read_from(fetched: &Fetched) -> ReadFrom {
     match fetched.freshness {
         Freshness::Fetched => ReadFrom::Network {
             fetched_at_unix_s: fetched.fetched_at_s,
@@ -283,8 +279,12 @@ fn open_meteo(args: &OpenMeteoArgs) -> Result<Read, Failure> {
             let (latitude, longitude) = site(args.latitude, args.longitude)?;
             let mut request = OpenMeteoRequest::new(latitude, longitude, time, api);
             request.model.clone_from(&args.model);
-            let (profile, fetched) =
-                open_meteo::fetch(&client(&args.fetching)?, &request, now_s()).map_err(refused)?;
+            let (profile, fetched) = open_meteo::fetch(
+                &client(args.fetching.offline, "hpr weather")?,
+                &request,
+                now_s(),
+            )
+            .map_err(refused)?;
             (profile, read_from(&fetched))
         }
     };
@@ -358,9 +358,12 @@ fn wyoming(args: &WyomingArgs) -> Result<Read, Failure> {
             if args.bufr {
                 request.version = WyomingVersion::Bufr;
             }
-            let (sounding, fetched) =
-                wyoming::fetch(&client(&args.fetching)?, &request, now_s())
-                    .map_err(|error| Failure::Input(format!("University of Wyoming: {error}")))?;
+            let (sounding, fetched) = wyoming::fetch(
+                &client(args.fetching.offline, "hpr weather")?,
+                &request,
+                now_s(),
+            )
+            .map_err(|error| Failure::Input(format!("University of Wyoming: {error}")))?;
             (sounding, read_from(&fetched))
         }
     };
@@ -434,8 +437,12 @@ fn nomads(
         }
         (None, Some((cycle, hour))) => {
             let request = NomadsRequest::new(args.latitude, args.longitude, model, cycle, hour);
-            let (profile, fetched) = nomads::fetch(&client(&args.fetching)?, &request, now_s())
-                .map_err(|error| Failure::Input(format!("NOMADS: {error}")))?;
+            let (profile, fetched) = nomads::fetch(
+                &client(args.fetching.offline, "hpr weather")?,
+                &request,
+                now_s(),
+            )
+            .map_err(|error| Failure::Input(format!("NOMADS: {error}")))?;
             (profile, read_from(&fetched))
         }
         (None, None) => {
@@ -567,30 +574,7 @@ fn text_lines(document: &Weather) -> Vec<String> {
             degrees(position.longitude_deg, ["E", "W"]),
             document.time
         ),
-        match &document.read_from {
-            // The name alone, as `hpr analyze` prints a log's; the JSON has the path.
-            ReadFrom::File { path } => format!(
-                "Read from {}",
-                std::path::Path::new(path)
-                    .file_name()
-                    .map_or(path.clone(), |name| name.to_string_lossy().into_owned())
-            ),
-            ReadFrom::Network { .. } => "Fetched now".to_owned(),
-            ReadFrom::Cache { fetched_at_unix_s } => format!(
-                "From the cache, fetched {}",
-                format_utc(i64::try_from(*fetched_at_unix_s).unwrap_or(i64::MAX))
-            ),
-            ReadFrom::StaleCache {
-                fetched_at_unix_s,
-                reason,
-            } => format!(
-                "From the cache, stale, fetched {}{}",
-                format_utc(i64::try_from(*fetched_at_unix_s).unwrap_or(i64::MAX)),
-                reason
-                    .as_ref()
-                    .map_or(String::new(), |reason| format!(": {reason}"))
-            ),
-        },
+        read_from_line(&document.read_from),
         document.source.attribution.clone(),
         String::new(),
         format!(
@@ -715,9 +699,37 @@ fn parse_utc(text: &str) -> Result<i64, Failure> {
     Ok(instant.unix_seconds() as i64)
 }
 
+/// Where an answer was read from, as one line of text.
+pub(crate) fn read_from_line(read_from: &ReadFrom) -> String {
+    match read_from {
+        // The name alone, as `hpr analyze` prints a log's; the JSON has the path.
+        ReadFrom::File { path } => format!(
+            "Read from {}",
+            std::path::Path::new(path)
+                .file_name()
+                .map_or(path.clone(), |name| name.to_string_lossy().into_owned())
+        ),
+        ReadFrom::Network { .. } => "Fetched now".to_owned(),
+        ReadFrom::Cache { fetched_at_unix_s } => format!(
+            "From the cache, fetched {}",
+            format_utc(i64::try_from(*fetched_at_unix_s).unwrap_or(i64::MAX))
+        ),
+        ReadFrom::StaleCache {
+            fetched_at_unix_s,
+            reason,
+        } => format!(
+            "From the cache, stale, fetched {}{}",
+            format_utc(i64::try_from(*fetched_at_unix_s).unwrap_or(i64::MAX)),
+            reason
+                .as_ref()
+                .map_or(String::new(), |reason| format!(": {reason}"))
+        ),
+    }
+}
+
 /// Writes seconds since the Unix epoch as `YYYY-MM-DDTHH:MM:SSZ`, with Hinnant's
 /// `civil_from_days` (<https://howardhinnant.github.io/date_algorithms.html>, public domain).
-fn format_utc(unix_s: i64) -> String {
+pub(crate) fn format_utc(unix_s: i64) -> String {
     let (days, seconds) = (unix_s.div_euclid(86_400), unix_s.rem_euclid(86_400));
     let z = days + 719_468;
     let era = z.div_euclid(146_097);

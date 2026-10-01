@@ -26,6 +26,8 @@ pub enum MotorsCommand {
     List(ListArgs),
     /// Work out a motor's figures from its thrust curve: a catalog name, or a .eng or .rse file
     Show(ShowArgs),
+    /// Search motor.fusionspace.co's motors, with who has them in stock and at what price
+    Search(crate::motor_search::SearchArgs),
 }
 
 /// `hpr motors list`'s filters. Each one given must match.
@@ -91,6 +93,7 @@ pub(crate) fn run(command: &MotorsCommand, to: &mut Out<'_>) -> Result<(), Failu
     match command {
         MotorsCommand::List(args) => list(args, to),
         MotorsCommand::Show(args) => show(&args.motor, to),
+        MotorsCommand::Search(args) => crate::motor_search::run(args, to),
     }
 }
 
@@ -149,7 +152,7 @@ fn list(args: &ListArgs, to: &mut Out<'_>) -> Result<(), Failure> {
 }
 
 /// The class label `--class` names, as [`ImpulseClass::label`] writes it, or a refusal.
-fn class_label(class: &str) -> Result<String, Failure> {
+pub(crate) fn class_label(class: &str) -> Result<String, Failure> {
     class
         .trim()
         .parse::<ImpulseClass>()

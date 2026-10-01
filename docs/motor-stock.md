@@ -9,8 +9,10 @@ is for anyone choosing a motor they can actually buy: "which L motors are in sto
 one cost?" hpr then matches each motor in stock to its record on
 [ThrustCurve.org](glossary.md#thrustcurveorg), the public database of motor data, and can download
 that record's [thrust curve](glossary.md#thrust-curve), so a motor you can buy is a motor you can
-fly ([A motor from a file](physics/motor.md#a-motor-from-a-file)). There is no `hpr` command for
-it yet: a Rust program calls the library.
+fly ([A motor from a file](physics/motor.md#a-motor-from-a-file)). At the command line,
+`hpr motors search --in-stock --class L --max-price 150` lists the motors in stock by class and
+price ([Motors you can buy](cli.md#motors-you-can-buy)); a Rust program calls the library, as
+below.
 
 **How far to trust it.** hpr gives back the site's values unchanged, and the saved copy gives them
 back offline. That is checked on thirteen recorded answers, below: eight from
@@ -39,6 +41,8 @@ The choices are in
 [ADR-129: motor stock through the cache](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-129-m54-split-and-m54a-the-motor-finders-api-through-the-cache-2026-10-01)
 and
 [ADR-130: ThrustCurve.org and the match](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01).
+`hpr motors search` was added by [M5.4c](decisions-and-roadmap.md#m5-4c), the third; its choices are in
+[ADR-131: the command](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-131-m54c-hpr-motors-search-stock-and-prices-at-the-command-line-2026-10-01).
 How saved answers work is on [Online data and the cache](online-data.md). The motors hpr carries
 with it, with their thrust curves, are on [Solid motors](physics/motor.md).
 
@@ -246,8 +250,9 @@ the published figures on the ThrustCurve.org record:
 
 The site's terms: "Free to use; attribution to motor.fusionspace.co is appreciated." The data is
 gathered from public vendor listings and from ThrustCurve.org, and comes as is, with no warranty.
-hpr puts its credit line, `motor_finder::ATTRIBUTION`, on every answer, fetched or saved, and the
-example above prints it first. The site asks programs to use its files rather than read the
+hpr puts its credit line, `motor_finder::ATTRIBUTION`, on every answer, fetched or saved; the
+example above prints it first, and `hpr motors search` prints it at the top of every list, in
+text and in JSON, with ThrustCurve.org's below it. The site asks programs to use its files rather than read the
 vendors' pages themselves, and to keep a copy rather than fetch on every use: hpr's saved copy
 counts as fresh for an hour, as often as the site rebuilds.
 
@@ -317,9 +322,8 @@ check that:
 
 ## What it leaves out
 
-- **No command.** `hpr motors` doesn't read stock yet;
-  [M5.4c](decisions-and-roadmap.md#m5-4c) will add `hpr motors search --in-stock --class L
-  --max-price 150`.
+- **No curves at the command line.** `hpr motors search` lists stock and prices; it doesn't
+  match motors to ThrustCurve.org or download their curves. A program does, as in the example.
 - **A match by name only.** A motor ThrustCurve.org spells differently from the finder is a miss;
   hpr doesn't fall back on impulse or size. None missed on the recording.
 - **The first motor of a file.** `Curve::thrust_curve()` reads a file's first motor; the two

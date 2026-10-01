@@ -71,6 +71,75 @@ pub enum MotorKind {
     Hybrid,
 }
 
+/// `hpr motors search`: motor.fusionspace.co's motors that pass the filters, with their stock and
+/// prices.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct MotorSearch {
+    /// The credits, shown with every list: motor.fusionspace.co's, as its terms ask, with their
+    /// caution to check stock and price on the vendor's own page; then ThrustCurve.org's, whose
+    /// figures the site repeats.
+    pub attribution: Vec<String>,
+    /// Where the list was read from.
+    pub read_from: ReadFrom,
+    /// When motor.fusionspace.co built the list, ISO 8601 UTC as the site writes it.
+    pub generated_at: String,
+    /// The motors that pass the filters, cheapest first: by one motor's price at the cheapest
+    /// vendor with it in stock, then by maker and designation. Motors with no such price in U.S.
+    /// dollars come last, by maker and designation.
+    pub motors: Vec<FoundMotor>,
+}
+
+/// One motor that passed `hpr motors search`'s filters, as motor.fusionspace.co lists it. The
+/// figures are ThrustCurve.org's published ones, which the site repeats.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct FoundMotor {
+    /// The manufacturer, as the site names it, such as `Cesaroni Technology`.
+    pub manufacturer: String,
+    /// The designation, as ThrustCurve.org spells it, such as `3683L851-P`.
+    pub designation: String,
+    /// The designation without its propellant code, such as `L851`.
+    pub common_name: Option<String>,
+    /// The impulse class, such as `L`.
+    pub impulse_class: String,
+    /// `single_use`, `reload` or `hybrid`, when the site says.
+    pub motor_type: Option<MotorKind>,
+    /// Diameter, mm.
+    pub diameter_mm: f64,
+    /// Total impulse, N·s, as stated.
+    pub total_impulse_ns: Option<f64>,
+    /// Average thrust, N, as stated.
+    pub average_thrust_n: Option<f64>,
+    /// Burn time, s, as stated.
+    pub burn_time_s: Option<f64>,
+    /// The propellant's trade name, such as `White Lightning`.
+    pub propellant: Option<String>,
+    /// The delays it comes with, s, comma-separated, or `P` for plugged.
+    pub delays: Option<String>,
+    /// In stock at one vendor or more.
+    pub in_stock: bool,
+    /// How many vendors have it in stock.
+    pub in_stock_vendor_count: u32,
+    /// The vendor with it in stock at the lowest price of one motor; `None` when out of stock.
+    pub cheapest_in_stock: Option<FoundOffer>,
+}
+
+/// A vendor's offer of a motor in stock, as motor.fusionspace.co lists it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct FoundOffer {
+    /// The vendor's name.
+    pub vendor: String,
+    /// The product page, where stock and price are the vendor's to say.
+    pub url: String,
+    /// The price of one motor, in hundredths of the currency (cents), when the page shows one.
+    pub unit_price_cents: Option<u64>,
+    /// The price of the pack, in hundredths of the currency, when the page shows one.
+    pub price_cents: Option<u64>,
+    /// How many motors the pack holds.
+    pub pack_size: u32,
+    /// The currency, such as `USD`.
+    pub currency: String,
+}
+
 /// `hpr motors show`: each motor's figures, worked out from its thrust curve.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
 pub struct MotorShow {
@@ -1180,6 +1249,7 @@ pub fn schemas() -> Vec<(&'static str, String)> {
     let mut schemas = vec![
         ("motors-list.schema.json", schema::<MotorList>()),
         ("motors-show.schema.json", schema::<MotorShow>()),
+        ("motors-search.schema.json", schema::<MotorSearch>()),
         ("sim.schema.json", schema::<SimFlight>()),
         ("completions.schema.json", schema::<Completions>()),
         ("convert.schema.json", schema::<Convert>()),

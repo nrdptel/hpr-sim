@@ -29,6 +29,7 @@
 pub mod analyze;
 pub mod convert;
 mod convert_design;
+pub mod motor_search;
 pub mod motors;
 pub mod output;
 pub mod registry;
@@ -111,7 +112,8 @@ pub enum Command {
     /// Convert a motor file between .eng and .rse, or a catalog motor to either; or a design
     /// between .ork, .hpr and .hprz
     Convert(convert::ConvertArgs),
-    /// Look up motors in the bundled catalog, or read a .eng or .rse motor file
+    /// Look up motors in the bundled catalog, read a .eng or .rse motor file, or search vendors'
+    /// stock and prices
     #[command(subcommand)]
     Motors(motors::MotorsCommand),
     /// Fetch a launch day's weather, or read a weather file, as a profile of air and wind
