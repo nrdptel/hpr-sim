@@ -353,7 +353,9 @@ missing or its status disagrees.
 | <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: magnetic declination in [M5.3a](#m5-3a), ground elevation in [M5.3b](#m5-3b), distances between places and a user's elevation file in [M5.3c](#m5-3c) | not yet done |
 | <a id="m5-3a"></a>[M5.3a][phase-2] | Magnetic declination from the World Magnetic Model, WMM2025, checked against NOAA's test values ([ADR-125][adr-125], [The magnetic field](physics/magnetic.md)) | done |
 | <a id="m5-3b"></a>[M5.3b][phase-2] | A launch site's ground elevation from Open-Meteo, cached so it works offline after the first lookup ([ADR-126][adr-126], [A launch site's elevation](elevation.md)) | done |
-| <a id="m5-3c"></a>[M5.3c][phase-2] | Distance and bearing between two places on the WGS 84 ellipsoid, and a site's elevation from a GeoTIFF file the user gives | not yet done |
+| <a id="m5-3c"></a>[M5.3c][phase-2] | Distance and bearing between two places on the WGS 84 ellipsoid, and a site's elevation from a GeoTIFF file the user gives; split in two ([ADR-127][adr-127]) | not yet done |
+| <a id="m5-3c1"></a>[M5.3c1][phase-2] | Distance and bearing between two places on WGS 84, checked against Karney's published set of 500,000 geodesics ([ADR-127][adr-127], [Geodesy](physics/geodesy.md#distance-and-bearing-geodesics)) | done |
+| <a id="m5-3c2"></a>[M5.3c2][phase-2] | A launch site's elevation from a GeoTIFF file the user gives, checked against another program's reading | not yet done |
 | <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
@@ -597,6 +599,7 @@ is the milestone that added or will add that test.
 [adr-124]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30
 [adr-125]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-125-site-data-split-and-wmm2025-in-hpr-core-2026-09-30
 [adr-126]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-126-m53b-open-meteos-elevation-through-the-cache-2026-09-30
+[adr-127]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-127-m53c1-geodesics-through-geographiclib-held-to-karneys-test-set-2026-09-30
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

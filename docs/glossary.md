@@ -529,6 +529,15 @@ moves shows up in review. See [Accuracy](accuracy.md#whole-flights-with-each-cod
 Separately from both, the [accuracy census](#accuracy-census) fails CI when any number it counts
 moves, whether or not it is inside its gate or target.
 
+## Geodesic
+
+The shortest path between two places on the [WGS 84](#wgs-84) ellipsoid: the true distance
+between them over ground that curves. Its length is the distance, and its direction where it
+leaves is the [bearing](#bearing) to the second place. hpr's flight output still measures the
+landing on a flat map round the pad. See
+[Geodesy](physics/geodesy.md#distance-and-bearing-geodesics).
+
+
 ## Geodetic latitude
 
 Latitude as maps and GPS give it: the angle between the equator's plane and the

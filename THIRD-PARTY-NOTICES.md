@@ -156,6 +156,11 @@ adds a source.
 - **netCDF test files** (`validation/fixtures/weather/netcdf/*.nc`): written by
   `validation/oracles/netcdf/write_cases.py` with the Unidata netCDF C library, holding values
   invented for the tests (one variable borrows the packing scale and offset of an extract).
+- **Karney's test set for geodesics** (`crates/hpr-core/tests/fixtures/geodtest-*.dat`): lines
+  of C. F. F. Karney, *Test set for geodesics*, `GeodTest.dat` (doi:10.5281/zenodo.32156), each
+  under a three-line header naming the source: every 500th line, 1,000 of its 500,000 WGS 84
+  geodesics, unchanged; and its 21 mirror lines, each unchanged after its line number. Karney dedicates the set to the public domain under CC0 1.0
+  (<https://creativecommons.org/publicdomain/zero/1.0/>); the whole file stays in `refs/`.
 
 ## Ported
 
@@ -230,6 +235,7 @@ adds a source.
 | `clap_complete` | MIT OR Apache-2.0 | `hpr-cli` | `hpr completions`: shell completion scripts from the same argument types |
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `flate2` | MIT OR Apache-2.0 | `hpr-io` | gzip and deflate, with the pure-Rust `miniz_oxide` backend so that `hpr-io` still builds for wasm32 and links no C: one of the three containers a `.ork` design arrives in, and the compression inside the other |
+| `geographiclib-rs` | MIT | `hpr-core` | geodesics on an ellipsoid, distance and bearing between two places (`hpr_core::geodesic`): georust's port of Karney's GeographicLib, held to Karney's test set; no default features, so `libm` is its one dependency (ADR-127) |
 | `hayro-jpeg2000` | Apache-2.0 OR MIT | `hpr-io` | decodes GRIB2 fields packed as JPEG 2000 images (template 5.40); pure Rust with no default features, so no other crate and nothing that stops wasm32 (ADR-124) |
 | `jsonschema` | MIT | `hpr-sim`, `hpr-cli` (tests only) | checks exported GeoJSON against the published GeoJSON schema, and each `hpr --json` output against its schema in `schema/cli/`; no default features, so it fetches and reads nothing (ADR-079) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
@@ -333,6 +339,8 @@ same license and mode.
 | `kidwell-2001-streamer-duration` | C. Kidwell, Streamer Duration Optimization: Material and Length-to-Width Ratio, NAR R&D, NARAM-43, 2001 | unknown terms | fetched | NARHAMS library copy with no licence stated; its drop-test masses and descent rates are cited as measurements, its text never copied |
 | `wgs84-nga-stnd-0036` | NGA.STND.0036_1.0.0_WGS84, Department of Defense World Geodetic System 1984, Its Definition and Relationships with Local Geodetic Systems, 2014 | US government work | fetched | cited for the ellipsoid, geodetic conversion and normal gravity (M1.1); no text copied |
 | `karney-2011-geodesics` | C. F. F. Karney, Geodesics on an ellipsoid of revolution, arXiv:1102.1215v1, 2011 | arXiv non-exclusive license | fetched | appendix B cited for the ECEF-to-geodetic conversion (M1.1); no text copied |
+| `karney-2013-algorithms-for-geodesics` | C. F. F. Karney, Algorithms for geodesics, J. Geodesy 87 (2013) 43-55, arXiv:1109.4448v2 | arXiv non-exclusive license | fetched | cited for the geodesics' method and their 15 nm bound (M5.3c1); no text copied |
+| `karney-geodtest` | C. F. F. Karney, Test set for geodesics, GeodTest.dat, Zenodo, doi:10.5281/zenodo.32156 | CC0 1.0 | fetched | the oracle for `hpr_core::geodesic` (M5.3c1); every 500th line and the 21 mirror lines are committed, and the whole set is checked where fetched |
 | `sola-2017-quaternion-kinematics` | J. Solà, Quaternion kinematics for the error-state Kalman filter, arXiv:1711.02508v1, 2017 | CC BY-NC-SA 4.0 | fetched | cited for the attitude kinematics (M1.1); no text copied |
 | `mil-f-8785c` | MIL-F-8785C, Military Specification: Flying Qualities of Piloted Airplanes, 5 November 1980 | US government work | fetched | cited for the Dryden spectra, turbulence parameters and log wind law (M1.2); no text copied |
 | `nasa-tm-2008-215633` | D. L. Johnson (ed.), Terrestrial Environment (Climatic) Criteria Guidelines for Use in Aerospace Vehicle Development, 2008 Revision, NASA/TM-2008-215633 | US government work | fetched | cited for the power-law wind profile and roughness lengths (M1.2); no text copied |
