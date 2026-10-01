@@ -523,6 +523,24 @@ license = "CC0 1.0"
 mode = "fetched"
 
 [[file]]
+name = "ogc-19-008r4-geotiff"
+title = "OGC GeoTIFF Standard, version 1.1, OGC 19-008r4, E. Devys, T. Habermann, C. Heazel, R. Lott, E. Rouault (eds.), 2019"
+url = "https://docs.ogc.org/is/19-008r4/19-008r4.pdf"
+sha256 = "664e0aeee57c04dd4308ade2e68e68a7824a866f6c4e268d73aed5994fdca87e"
+dest = "refs/papers/ogc-19-008r4-geotiff-1.1.pdf"
+license = "OGC Document License"
+mode = "fetched"
+
+[[file]]
+name = "usgs-3dep-1-n33w107"
+title = "USGS 3D Elevation Program, 1 arc-second DEM tile n33w107 (32-33 N, 107-106 W), GeoTIFF, published 2024-04-22"
+url = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/current/n33w107/USGS_1_n33w107.tif"
+sha256 = "63887e514a6fb664f2e033168b676037b0fdf0c6a477a560f3bd58ad557e2051"
+dest = "refs/dem/USGS_1_n33w107.tif"
+license = "public domain"
+mode = "fetched"
+
+[[file]]
 name = "sola-2017-quaternion-kinematics"
 title = "J. Solà, Quaternion kinematics for the error-state Kalman filter, arXiv:1711.02508v1, 2017"
 url = "https://arxiv.org/pdf/1711.02508v1"

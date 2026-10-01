@@ -133,6 +133,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-125 | M5.3 split a to c; WMM2025 in `hpr_core::magnetic`, finite at the poles, refused outside 2025 to 2030 and −1 to 850 km; NOAA's 112 test values, NCEI's file's `X` to its measured 7.18e-4 nT residue, shown to lie in the file's `X′` | accepted |
 | ADR-126 | M5.3b: Open-Meteo's elevation in `hpr_net::elevation`, up to 100 places a request, coordinates to 5 decimals in the URL, a year's TTL, heights refused outside −1,000 to 9,000 m, a surface model above the EGM2008 geoid with `N` left to the caller; no command yet | accepted |
 | ADR-127 | M5.3c split c1, c2; geodesics in `hpr_core::geodesic` through `geographiclib-rs`, flattening past 1/150 refused; Karney's 500,000-line test set within his 15 nm on five measures, either azimuth pair on its 21 mirror lines | accepted |
+| ADR-128 | M5.3c2: a user's GeoTIFF in `hpr_io::geotiff` over the `tiff` crate; geographic CRSs only, projected refused; the containing pixel placed as GDAL places it; units the file states, else metres; held to rasterio 1.5.2 on five fixtures and a whole USGS tile | accepted |
 
 ---
 
@@ -10435,3 +10436,63 @@ direct's end point and 13.99 nm in its heading times `a`. Multiplying `a` by `1 
 CI's sample at 26.08 nm. Nothing in a flight uses geodesics yet, and `hpr` has no command for
 them; the landing distance a flight prints is still a flat offset from the pad. The set is
 WGS 84 only, so other ellipsoids up to 1/150 rest on Karney's method, not on a measurement here.
+
+## ADR-128: M5.3c2, a site's height from a user's GeoTIFF, held to rasterio's reading (2026-09-30)
+
+**Context.** M5.3c2 asks for a site's height from an elevation file the user gives, matched
+against another reader's. Elevation files (DEMs) mostly come as GeoTIFF: a TIFF image of heights
+whose tags tie pixels to places (OGC GeoTIFF Standard 1.1, OGC 19-008r4, 2019). The USGS's 3D
+Elevation Program (public domain), Copernicus and SRTM all publish GeoTIFFs on a latitude and
+longitude grid; finer national lidar comes projected (UTM). GDAL is the reader nearly every other
+program uses, and rasterio 1.5.2 (BSD-3-Clause) wraps it, its wheel bundling GDAL 3.12.2. The
+TIFF layer is large (codecs, predictors, tiles, strips, BigTIFF, byte orders); image-rs's `tiff`
+0.11.3 (MIT, 125 million downloads, 2026-02 release) decodes all of it in pure Rust, its
+floating-point predictor included.
+
+**Decision.**
+
+1. **`hpr_io::geotiff`, over the `tiff` crate.** Its LZW and Deflate codecs only (PackBits and
+   no compression are built in); JPEG, fax, WebP and zstd stay off, so no C code and nothing that
+   stops wasm32. In a file using zstd the tags read but a lookup fails, the decoder naming the codec (a test holds it). The GeoKeys and the
+   georeferencing tags are read here, by the standard.
+2. **Geographic CRSs only.** `GTModelTypeGeoKey` 2, or a geodetic CRS key with no model type
+   (GeoTIFF 1.0 writers), in degrees. A projected file is refused naming its EPSG code, with the
+   `gdalwarp -t_srs EPSG:4326` that converts it; projecting UTM and the rest would be a model of
+   its own, for a later milestone if users ask. The datum is reported, not applied: WGS 84, NAD83
+   and ETRS89 differ by about 2 m, under a pixel of the files this is for.
+3. **The containing pixel, placed as GDAL places it.** A point reads the pixel whose area holds
+   it, with no interpolation, which is what GDAL's and rasterio's point sampling return. The
+   corner is GDAL's arithmetic (`X − I·S_x`, `Y − J·(−S_y)`, half a pixel back for pixel is
+   point), so corners and pixel sizes come out bit for bit as GDAL's; the column is
+   `⌊(λ − λ₀)/Δλ⌋`, the floor of a correctly rounded quotient. A longitude is tried as given and
+   360° to either side, for files on 0° to 360°. One tiepoint with a pixel scale, or an unrotated
+   transformation matrix; ground control points and rotation are refused.
+4. **Heights in metres, units the file states.** `VerticalUnitsGeoKey` (metres, feet, US survey
+   feet), else the unit of a vertical CRS from a short table of EPSG codes (EGM2008, EGM96, NAVD88
+   in metres, feet and US survey feet, and others); a file naming neither is read as metres, as
+   GDAL does, and says so (`vertical_unit_stated`). A vertical CRS outside the table with no unit
+   is refused: its unit could be feet. The vertical datum is reported, not applied. The pixel
+   scale's `S_z` is ignored, as GDAL ignores it. Nodata is GDAL's `GDAL_NODATA` tag, rounded to
+   the sample type; NaN is no data too.
+5. **One chunk per lookup.** `height_at` decodes only the tile or strip holding the point (the
+   `tiff` crate's 256 MiB per-chunk limit applies), `values_at` decodes each needed chunk once,
+   and `values` decodes the whole raster up to 2²⁸ pixels. The chunk count must fit a u32.
+6. **The oracle.** `validation/oracles/geotiff/dem.py` cuts 70 by 50 pixels around Spaceport
+   America from USGS 3DEP's tile n33w107 (pinned in `refs.lock.toml`) into five encodings: float32
+   LZW with the floating-point predictor on 16-pixel tiles, int16 Deflate with the horizontal
+   predictor in 7-row big-endian strips, float64 uncompressed BigTIFF pixel-is-point, uint16
+   PackBits in NAVD88 US survey feet with nodata holes, and int32 LZW on 32-pixel tiles with
+   longitudes past 180°. It records rasterio's reading: the transform, the CRS, the unit, the
+   nodata value, `math.fsum` of every value and of each value times its index, and 400 seeded
+   points per file (the site, the rest random, some off the raster) with rasterio's pixel and
+   value, each value checked against rasterio's own `sample`. The whole tile gets the same with
+   2,000 points. `tests/geotiff_rasterio.rs` holds hpr to all of it exactly; the whole tile runs
+   where `refs/` has it.
+
+**Consequences.** M5.3c2 is met: all five fixtures and the whole 3,612 by 3,612 tile read to
+rasterio's corners and pixel sizes bit for bit, to its two sums exactly (13 million values in
+the tile), and at 4,000 points (3,401 on a raster, 9 of them nodata) to its pixel and value. Removing the
+pixel-is-point shift fails the float64 fixture's corner. At Spaceport America (32.99° N,
+106.97° W) the tile reads 1,400.691 m above NAVD88; Open-Meteo's answer there
+(ADR-126) is 1,400 m. M5.3 is complete. `hpr` has no command for a site's height yet, and no
+flight reads one from a file; a projected file needs `gdalwarp` first.

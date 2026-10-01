@@ -1,10 +1,12 @@
 # A launch site's elevation
 
-This page covers looking up a launch site's elevation, its altitude above sea level (the field
-elevation a club lists), from [Open-Meteo](https://open-meteo.com), a free weather and terrain
-service. The answer is saved, so the same lookup works later with no network, on a field with no
-signal. It is for anyone who needs a site's height above sea level to start a flight at the right
-air pressure and density. There is no `hpr` command for it yet: a Rust program calls the library.
+This page covers two ways to get a launch site's elevation, its altitude above sea level (the
+field elevation a club lists). The first looks it up from [Open-Meteo](https://open-meteo.com), a
+free weather and terrain service; the answer is saved, so the same lookup works later with no
+network, on a field with no signal. The second reads it from an elevation file you have, a
+GeoTIFF ([below](#from-an-elevation-file-of-your-own)). It is for anyone who needs a site's height
+above sea level to start a flight at the right air pressure and density. There is no `hpr`
+command for either yet: a Rust program calls the library.
 
 **How far to trust it.** hpr gives back Open-Meteo's number unchanged, and the saved copy gives
 it back offline. That is checked on two recorded answers, below. The number comes from a terrain
@@ -16,6 +18,10 @@ error changes the air's density by about 0.1%: the example below shows it 12.8% 
 1,400 m. The recorded heights are whole
 metres; Open-Meteo doesn't document its rounding.
 
+From a file, hpr reads the same number GDAL, the library most mapping programs read terrain
+with, reads at the same place: checked on five small files and a whole USGS tile at 4,000 places.
+How good that number is depends on the file.
+
 The tests replay two saved answers and never contact Open-Meteo. The live service was contacted
 by hand, over an encrypted (HTTPS) connection, to record them. So a change in Open-Meteo's answers
 would show only when a program runs, as a refused answer.
@@ -25,7 +31,10 @@ Code: `hpr_net::elevation` ([API reference](api/hpr_net/elevation/index.html)), 
 feature of the `hpr` crate. The weather over a site is on [Launch-day weather](weather.md), and
 the compass's offset from true north on
 [The magnetic field and declination](physics/magnetic.md). The choices are in
-[ADR-126: Open-Meteo's elevation through the cache](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-126-m53b-open-meteos-elevation-through-the-cache-2026-09-30).
+[ADR-126: Open-Meteo's elevation through the cache](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-126-m53b-open-meteos-elevation-through-the-cache-2026-09-30); the file reader is
+`hpr_io::geotiff` ([API reference](api/hpr_io/geotiff/index.html)), written for
+[M5.3c2](decisions-and-roadmap.md#m5-3c2), with its choices in
+[ADR-128: a site's height from a user's GeoTIFF](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30).
 
 ## What hpr asks for
 
@@ -200,5 +209,115 @@ range's edges, and refuses each kind of broken answer above.
   pad; for a pad cut out of forest, use a surveyed height.
 - **One number per place.** The answer is the model's height there, at about 90 m spacing; a pad
   on a hill or beside a cliff can sit metres off it.
-- **Your own terrain file** (a GeoTIFF) is planned for
-  [M5.3c](decisions-and-roadmap.md#m5-3c).
+- **Your own terrain file** is read by a separate reader, [below](#from-an-elevation-file-of-your-own).
+
+## From an elevation file of your own
+
+A *digital elevation model* (DEM) is a grid of ground heights. Most are published as GeoTIFF
+files: an image whose pixels are heights, with tags saying where on Earth each pixel lies (the
+[OGC GeoTIFF Standard 1.1](https://docs.ogc.org/is/19-008r4/19-008r4.html)). The USGS's
+[3D Elevation Program](https://www.usgs.gov/3d-elevation-program) publishes the United States
+this way, free and in the public domain, at 1 arc-second (about 30 m) and finer. So do
+Copernicus and NASA for the world. `ElevationRaster::parse(&bytes)` reads such a file's tags,
+and `height_at(latitude, longitude)` gives the height there in metres.
+
+The height is the value of the pixel the place falls in, as GDAL gives it. There is no smoothing
+between pixels, so on a 1-arc-second grid it is the ground within about 20 m of the site. A
+lookup decodes only the tile or strip of the file that holds the place, so a large file costs
+little memory. `values_at` reads many places at once, decoding each tile once.
+
+### What it reads
+
+| what | read | refused |
+|---|---|---|
+| the grid | latitude and longitude in degrees, on any datum (WGS 84, NAD83 and others are within about 2 m of each other) | a projected grid such as UTM: the error names its EPSG code and the `gdalwarp -t_srs EPSG:4326 in.tif out.tif` that converts it |
+| the pixels | one band of 8-, 16- or 32-bit integers, or 32- or 64-bit floats; tiles or strips; uncompressed, LZW, Deflate or PackBits, with either predictor; either byte order; BigTIFF | several bands; zstd, JPEG and other codecs (the lookup fails, naming the codec) |
+| where the pixels lie | one tiepoint with a pixel size, or a transformation without rotation; pixel is area or pixel is point; longitudes 0° to 360° as well as −180° to 180° | a rotated grid; ground control points |
+| the heights' unit | metres, feet or US survey feet as the file states, or as its vertical datum implies (EGM2008, NAVD88 and others); metres if it says nothing, and `vertical_unit_stated` is then `false` | a vertical datum hpr doesn't know, with no unit stated |
+| no data | the file's nodata value, and NaN, read as `None` | |
+
+The height is above the file's own vertical datum, which the reader reports
+(`vertical_crs_epsg`) but doesn't change. For USGS files that is NAVD88, the US's sea-level
+datum; for Copernicus files, EGM2008. Both are heights above sea level in the sense the
+[section above](#what-the-height-means) uses, so a flight's site takes them the same way.
+
+### An example with a file
+
+[`crates/hpr/examples/site_geotiff.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/site_geotiff.rs)
+reads two small files cut from the USGS tile around Spaceport America: one in metres, and a copy
+stored in whole US survey feet with some pixels blanked out as nodata. It makes these calls:
+
+1. `ElevationRaster::parse(bytes)` reads the tags; `info()` holds what they say:
+   the size, the corner and pixel size in degrees, the CRS, the sample type and the unit.
+2. `height_at(lat, lon)` gives the height at three places: the runway, a place in a blanked-out
+   hole (`None`) and Albuquerque, off the file (an error naming the file's edges).
+3. `value_at` gives the feet file's raw value, and `height_at` the same in metres.
+4. `Ussa76::standard().air(height)` gives the standard atmosphere at the runway's height.
+
+Run it from a copy of the repository with `cargo run --example site_geotiff -p hpr`. It prints:
+
+<!-- quote: crates/hpr/examples/site_geotiff.output.txt -->
+```text
+70 by 50 pixels of 1.000" by 1.000", PixelIsArea, CRS EPSG:4269, values F32 in Metre (stated: false)
+latitudes 32.98333 to 32.99722, longitudes -106.98500 to -106.96556
+
+place                            lat (°)     lon (°)  height
+Spaceport America, New Mexico    32.9900   -106.9700  1400.691 m
+a hole in the data               32.9960   -106.9832  no data
+Albuquerque, New Mexico          35.0844   -106.6504  refused: latitude 35.0844° and longitude -106.6504° are outside the raster, which spans latitudes 32.98333333325034° to 32.99722222213969° and longitudes -106.98500000021532° to -106.96555555577024°
+
+in feet: 4595 UsSurveyFoot (vertical CRS EPSG:6360) = 1400.559 m, -0.132 m from the metres file
+at 1400.7 m: 855.95 hPa, density 0.872 of sea level's
+```
+
+`1.000"` is one arc-second. The runway reads 1,400.691 m above NAVD88; Open-Meteo's answer for
+the same place, [above](#an-example), is 1,400 m, from a different terrain model 90 m across. The
+feet file stores 4,595 ftUS, which is 1,400.559 m, 0.132 m from the metres file: rounding to whole
+feet moves a height by up to 0.152 m.
+
+### How the file reader is checked
+
+The oracle is GDAL 3.12.2, run through rasterio 1.5.2, its Python interface: the reader most
+mapping programs use. A script,
+[`validation/oracles/geotiff/dem.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/geotiff/dem.py),
+cut 70 by 50 pixels around Spaceport America from the USGS's 1-arc-second tile `n33w107` and wrote
+them in five encodings:
+
+| file | pixels | layout | georeferencing |
+|---|---|---|---|
+| `usgs-f32-lzw-fp-tiles.tif` | 32-bit floats, LZW, floating-point predictor | 16-pixel tiles | NAD83, pixel is area, nodata holes |
+| `usgs-i16-deflate-strips-be.tif` | 16-bit integers, Deflate, horizontal predictor | 7-row strips, big-endian | WGS 84 |
+| `usgs-f64-raw-bigtiff-point.tif` | 64-bit floats, uncompressed | BigTIFF | WGS 84, pixel is point |
+| `usgs-u16-packbits-ftus-nodata.tif` | 16-bit unsigned, PackBits | strips | NAD83 with NAVD88 in US survey feet, nodata holes |
+| `usgs-i32-lzw-tiles-lon360.tif` | 32-bit integers, LZW, horizontal predictor | 32-pixel tiles | WGS 84, longitudes past 180° |
+
+The script recorded what rasterio reads from each, and from the whole 3,612 by 3,612 tile: the
+corner, the pixel size, the CRS, the unit and the nodata value; the exactly rounded sum of every
+value, and of each value times its place in the file; and, at 400 places in each small file and
+2,000 in the tile (some off the edge), which pixel rasterio puts the place in and its value. The
+tests in
+[`crates/hpr-io/tests/geotiff_rasterio.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-io/tests/geotiff_rasterio.rs)
+hold hpr to all of it exactly:
+
+| check | result |
+|---|---|
+| corner and pixel size | the same to the last bit, in all six files |
+| the two sums over every pixel | exact, 13 million pixels in the tile |
+| places in the five files | 2,000: the same pixel and value at all 1,705 on a file (9 of them nodata), and "outside" at the other 295 |
+| places in the tile | 2,000: the same pixel and value at all 1,696 on it, and "outside" at the other 304 |
+
+CI checks the five small files; the whole tile (45 MB, fetched by `cargo xtask refs fetch`) is
+checked where it has been downloaded. The code's own tests build files to check each refusal in
+the table above, the half-pixel move of pixel is point, the units, and nodata. A property test
+checks, on random strip layouts, that every place reads the pixel it is placed in.
+
+### What the file reader leaves out
+
+- **No projected grids.** A UTM file needs `gdalwarp` first.
+- **No smoothing.** A place reads its pixel's value; on a slope the next pixel can be metres
+  higher.
+- **No datum changes.** NAD83 and WGS 84 latitudes are taken as the same, and the vertical datum
+  is reported, not converted.
+- **The file's accuracy is the file's.** The reader gives back what is stored; the USGS and
+  other publishers state their own accuracy.
+- **No command.** As for the online lookup, a program calls the library.

@@ -1,0 +1,10 @@
+70 by 50 pixels of 1.000" by 1.000", PixelIsArea, CRS EPSG:4269, values F32 in Metre (stated: false)
+latitudes 32.98333 to 32.99722, longitudes -106.98500 to -106.96556
+
+place                            lat (°)     lon (°)  height
+Spaceport America, New Mexico    32.9900   -106.9700  1400.691 m
+a hole in the data               32.9960   -106.9832  no data
+Albuquerque, New Mexico          35.0844   -106.6504  refused: latitude 35.0844° and longitude -106.6504° are outside the raster, which spans latitudes 32.98333333325034° to 32.99722222213969° and longitudes -106.98500000021532° to -106.96555555577024°
+
+in feet: 4595 UsSurveyFoot (vertical CRS EPSG:6360) = 1400.559 m, -0.132 m from the metres file
+at 1400.7 m: 855.95 hPa, density 0.872 of sea level's

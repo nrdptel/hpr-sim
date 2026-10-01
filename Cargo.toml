@@ -84,6 +84,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
 sha2 = "0.11.0"
 tempfile = "3.27.0"
+# A user's GeoTIFF elevation file (M5.3c2): image-rs's TIFF decoder, pure Rust. Only the LZW and
+# Deflate codecs, the two a DEM is written with; the others pull in JPEG, fax and zstd (C) code.
+tiff = { version = "0.11.3", default-features = false, features = ["deflate", "lzw"] }
 thiserror = "2.0.20"
 toml = "1.1.6"
 # `hpr-net`'s HTTP transport, behind its `http` feature: blocking HTTP/1.1 over rustls with the
