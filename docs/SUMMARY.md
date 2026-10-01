@@ -24,6 +24,8 @@
 
 [NOAA forecasts: GFS and RAP](nomads.md)
 
+[A launch site's elevation](elevation.md)
+
 [Reading a flight log](reading-a-flight-log.md)
 
 [Your own rocket](your-own-rocket.md)

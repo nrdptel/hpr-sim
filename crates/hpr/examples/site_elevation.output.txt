@@ -1,0 +1,9 @@
+Elevation data by Open-Meteo.com (CC BY 4.0), from the Copernicus DEM GLO-90: © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved
+first lookup: Fetched; offline a day later: Cached, the same heights: true
+
+place                            lat (°)     height (m)   pressure (hPa)  density / sea
+Spaceport America, New Mexico      32.99           1400           856.02          0.872
+the Dead Sea (its surface)         31.50           -427          1065.61          1.042
+the open Atlantic                   0.00              0          1013.25          1.000
+
+A flight from Spaceport America, New Mexico starts 1400 m above sea level, at 856.02 hPa.
