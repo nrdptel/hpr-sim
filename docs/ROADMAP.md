@@ -816,8 +816,9 @@
     nominal flight bit for bit; failed samples are counted; the apogee's distribution is reported;
     the five lessons' tests pass. *Result:* met (ADR-134): 11 inputs; sample 4 the same in runs of
     3 and 6 and on 1, 2 and 5 threads; the guide's 200 flights, none failed.
-  - [ ] **M6.1b Landing ellipses** at confidence levels. *Done when:* the ellipse math (covariance,
-    axes, the χ² scale of a confidence level) is tested against analytic Gaussians.
+  - [x] **M6.1b Landing ellipses** at confidence levels. *Done when:* the ellipse math (covariance,
+    axes, the χ² scale of a confidence level) is tested against analytic Gaussians. *Result:* met
+    (ADR-135): axes to 1e-14, a density's mass inside to 1e-12, sampled shares within 5σ.
   - [ ] **M6.1c Sensitivity:** Morris screening and Sobol indices. *Done when:* both match the
     known indices of test functions with closed forms (Ishigami, Sobol's g) within sampling error.
   - [ ] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on

@@ -702,6 +702,42 @@ dest = "refs/papers/nar-cert-aerotech-g80.pdf"
 license = "NAR copyright"
 mode = "fetched"
 
+[[file]]
+name = "wang-shi-miao-2015-sde-confidence"
+title = "B. Wang, W. Shi and Z. Miao, Confidence analysis of standard deviational ellipse and its extension into higher dimensional Euclidean space, PLoS ONE 10(3): e0118537, 2015 (eqs. 13 to 20: the axes and the level of a normal spread's ellipse)"
+url = "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0118537&type=printable"
+sha256 = "5aeb58a61860a82de6b28a8199416982a6d3a51de5718db1a2608ef025d0d564"
+dest = "refs/papers/wang-shi-miao-2015-sde-confidence-plosone.pdf"
+license = "CC-BY-4.0"
+mode = "fetched"
+
+[[file]]
+name = "abramowitz-stegun-p940"
+title = "M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions, NBS AMS 55, 1964, p. 940 (eq. 26.3.21: a bivariate normal's mass inside its ellipse; eq. 26.4.1: the chi-square function)"
+url = "https://personal.math.ubc.ca/~cbm/aands/page_940.jpg"
+sha256 = "4526403143827a61b566cc7efa0721c57eacf4fd0f0784a234241f3e436e55c2"
+dest = "refs/papers/abramowitz-stegun-p940.jpg"
+license = "public domain (U.S. government work)"
+mode = "fetched"
+
+[[file]]
+name = "abramowitz-stegun-p941"
+title = "M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions, NBS AMS 55, 1964, p. 941 (eq. 26.4.5: the chi-square function for even degrees of freedom)"
+url = "https://personal.math.ubc.ca/~cbm/aands/page_941.jpg"
+sha256 = "295c7e2074ca8b39057e70e7be64c8c5c68daa32fa07b8f3edf19c6470130eca"
+dest = "refs/papers/abramowitz-stegun-p941.jpg"
+license = "public domain (U.S. government work)"
+mode = "fetched"
+
+[[file]]
+name = "abramowitz-stegun-p946"
+title = "M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions, NBS AMS 55, 1964, p. 946 (eq. 26.6.4: the F distribution's function for an even first degree of freedom)"
+url = "https://personal.math.ubc.ca/~cbm/aands/page_946.jpg"
+sha256 = "055a22011445e0e86043a7cd7a76da4623ed274e15d5d95657955ff0ff642b06"
+dest = "refs/papers/abramowitz-stegun-p946.jpg"
+license = "public domain (U.S. government work)"
+mode = "fetched"
+
 # Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor
 # finder hourly), so a fresh fetch elsewhere may not reproduce these bytes: fetch then fails and
 # keeps the new capture aside, and `fetch --adopt-snapshots` repins to it.
