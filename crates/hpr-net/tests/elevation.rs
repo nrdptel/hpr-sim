@@ -51,7 +51,7 @@ fn recorded_heights(name: &str) -> Vec<f64> {
 }
 
 /// The recordings, each with the places it was asked for: Spaceport America's launch area alone;
-/// then with the Dead Sea's shore, below sea level, and the open Atlantic.
+/// then with the Dead Sea's surface, below sea level, and the open Atlantic.
 fn recordings() -> [(&'static str, Vec<Place>); 2] {
     let spaceport = Place::new(32.99, -106.97);
     [
@@ -125,8 +125,8 @@ fn a_lookup_gives_the_answers_heights_then_works_offline_from_the_cache() {
 }
 
 /// The recordings hold what the guide page quotes: Spaceport America at 1,400 m, the Dead Sea's
-/// shore below sea level, the open ocean at 0 m. The weather recordings at the same place give the
-/// same ground height: Open-Meteo's forecasts use this model for their `elevation`.
+/// surface below sea level, the open ocean at 0 m. The weather recordings at the same place give
+/// the same ground height.
 #[test]
 fn the_recordings_hold_the_heights_the_guide_quotes() {
     assert_eq!(recorded_heights("open-meteo-elevation.json"), [1_400.0]);

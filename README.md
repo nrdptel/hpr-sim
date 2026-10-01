@@ -24,8 +24,9 @@ Planned:
 - Designing rockets from a parts catalog; import and export of OpenRocket, RockSim, RASAero and
   RocketPy files; a new open design format.
 - Online weather (Open-Meteo's forecasts, weather-balloon soundings and NOAA's GFS and RAP, in the
-  library and `hpr weather` today), a site's elevation (Open-Meteo's, in the library today; a
-  terrain file of your own next) and live motor stock from [motor.fusionspace.co](https://motor.fusionspace.co),
+  library and `hpr weather` today),
+  [a site's elevation](https://nrdptel.github.io/hpr-sim/elevation.html) (Open-Meteo's, in the
+  library today; a terrain file of your own next) and live motor stock from [motor.fusionspace.co](https://motor.fusionspace.co),
   all optional. Everything works offline on macOS, Windows and Linux.
 - Monte Carlo dispersion, sensitivity analysis, and optimization for competition challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.

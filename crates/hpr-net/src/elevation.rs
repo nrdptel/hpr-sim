@@ -4,27 +4,29 @@
 //! (`api.open-meteo.com/v1/elevation`) answers the height at up to [`MAX_PLACES`] places in one
 //! request, as `{"elevation":[1400.0]}`, one number per place in the order asked. Its data is the
 //! Copernicus DEM GLO-90 (2021 release), a digital elevation model on a grid 3 arc-seconds apart
-//! in latitude, about 90 m; in longitude the spacing widens above 50° to keep cells about 90 m
-//! across. The Copernicus DEM is a *surface* model: its heights include buildings and vegetation,
-//! so over a tree line or buildings they sit above the bare ground. Its heights are above the
-//! EGM2008 geoid (mean sea level), not the WGS 84 ellipsoid ([product handbook][handbook], issue
-//! 5.0, §1.2.1): a site's ellipsoidal height is `h = H + N`, with `N` the geoid undulation
-//! there, which hpr has no model for ([geodesy notes][geodesy]). The ocean has no tiles and reads
-//! 0 m.
+//! in latitude, about 93 m; in longitude its spacing narrows from 93 m at the equator to 60 m at
+//! 50°, then widens in steps (the [product handbook][handbook], issue 5.0, Table 3, p. 15). It is
+//! a *surface* model: its heights include buildings and vegetation, so over a tree line or
+//! buildings they sit above the bare ground. Its heights are above the EGM2008 geoid (mean sea
+//! level), not the WGS 84 ellipsoid (§1.2.1, p. 13): a site's ellipsoidal height is `h = H + N`,
+//! with `N` the geoid undulation there, which hpr has no model for ([geodesy notes][geodesy]).
+//! The ocean has no tiles and reads 0 m.
 //!
 //! An [`ElevationRequest`] names the places; [`parse`] reads the answer, refusing one with the
 //! wrong number of heights, a height that is not a number, or a height outside
 //! [`HEIGHT_RANGE_M`]. [`fetch`] asks a [`Client`] for the URL, so the answer comes from the cache
 //! when it can, and offline from the cache only; an answer that doesn't parse is never cached.
-//! The URL writes each coordinate to 5 decimals (about 1 m), so a place rebuilt from radians
-//! finds its cached answer. The cache key is the whole request: the same places, in the same
-//! order. The ground doesn't move, so a copy stays fresh for [`TTL_S`], a year. Show
-//! [`ATTRIBUTION`] (it is on every [`Fetched`]) wherever the height is shown.
+//! The cache key is the whole request: the same places, in the same order. The URL writes each
+//! coordinate to 5 decimals (about 1 m), so a place given to 8 decimals or fewer and rebuilt from
+//! radians finds its cached answer. The ground doesn't move, so a copy stays fresh for [`TTL_S`],
+//! a year. Show [`ATTRIBUTION`] (it is on every [`Fetched`]) wherever the height is shown.
 //!
 //! **How far to trust it:** a height is the answer's number, unchanged (`tests/elevation.rs`).
-//! The recorded heights are whole metres; Open-Meteo doesn't document its rounding. The
-//! handbook states the DEM's absolute vertical accuracy as under 4 m (90% linear error) outside
-//! Antarctica and Greenland; nothing here measures it. The [guide page][guide] says more.
+//! The recorded heights are whole metres; Open-Meteo doesn't document its rounding. The handbook
+//! states the DEM's absolute vertical accuracy as under 4 m (90% linear error), a global mean
+//! outside Antarctica and Greenland (Table 1, p. 10); in 184 of the 16,363 one-degree tiles there
+//! (1.1%) it is over 10 m (Table 12, p. 31). Nothing here measures it. The [guide page][guide]
+//! says more.
 //!
 //! ```
 //! use hpr_net::elevation::{self, Place};
@@ -56,14 +58,20 @@ pub const MAX_PLACES: usize = 100;
 /// DEM release, years apart.
 pub const TTL_S: u64 = 365 * 86_400;
 
-/// The heights [`parse`] accepts, m above mean sea level. The lowest land, by the Dead Sea, is
-/// about −440 m, and the highest, Everest's summit, 8,849 m; the margins leave room for the DEM's
-/// own errors. A height outside them is a broken answer, such as a 16-bit no-data value.
+/// The heights [`parse`] accepts, m above mean sea level. The lowest land, by the Dead Sea, lies a
+/// little over 400 m below sea level, and the highest, Everest's summit, 8,849 m above it; the
+/// margins leave room for the DEM's own errors. A height outside them is a broken answer, such as
+/// a 16-bit no-data value.
 pub const HEIGHT_RANGE_M: std::ops::RangeInclusive<f64> = -1_000.0..=9_000.0;
 
 /// The decimals each coordinate is written with in the URL: 1e-5° is at most 1.1 m on the ground,
 /// far inside the DEM's 90 m cells.
-const URL_DECIMALS: usize = 5;
+const URL_DECIMALS: u32 = 5;
+
+/// The decimals a coordinate is first written to, exactly, before it is rounded to
+/// [`URL_DECIMALS`]. A trip through radians moves a value by a few units in its last place (under
+/// 1e-13°), so a value given to 8 decimals or fewer is written the same after one.
+const FIRST_DECIMALS: u32 = 9;
 
 /// The credit Open-Meteo's licence (CC BY 4.0) asks for: itself, and the Copernicus programme
 /// whose DEM it serves, in the DEM licence's words.
@@ -138,11 +146,11 @@ impl ElevationRequest {
         }
         for (i, place) in self.places.iter().enumerate() {
             if !(-90.0..=90.0).contains(&place.latitude_deg) {
-                let value = format!("place {i}: {}", place.latitude_deg);
+                let value = format!("{} (place {i})", place.latitude_deg);
                 return Err(refuse("latitude (deg)", value));
             }
             if !(-180.0..=180.0).contains(&place.longitude_deg) {
-                let value = format!("place {i}: {}", place.longitude_deg);
+                let value = format!("{} (place {i})", place.longitude_deg);
                 return Err(refuse("longitude (deg)", value));
             }
         }
@@ -176,16 +184,30 @@ impl ElevationRequest {
     }
 }
 
-/// A coordinate as the URL writes it: [`URL_DECIMALS`] decimals, trailing zeros and a bare point
-/// dropped, and a negative zero written as `0`.
+/// A coordinate as the URL writes it: rounded to [`URL_DECIMALS`] decimals, halves away from zero,
+/// trailing zeros and a bare point dropped, and a value that rounds to zero written as `0`.
+///
+/// Rounding the binary value straight to 5 decimals would let a trip through radians flip a value
+/// that sits on a half step (32.990415 is 32.990415000000006 after one): it is written to
+/// [`FIRST_DECIMALS`] first, exactly, and that decimal is rounded. `deg` is finite and within
+/// ±180 (checked by [`ElevationRequest::url`]).
 fn coordinate(deg: f64) -> String {
-    let fixed = format!("{deg:.URL_DECIMALS$}");
-    let trimmed = fixed.trim_end_matches('0').trim_end_matches('.');
-    if trimmed == "-0" {
-        "0".to_owned()
-    } else {
-        trimmed.to_owned()
+    let fixed = format!("{:.*}", FIRST_DECIMALS as usize, deg.abs());
+    // The digits of `|deg|` in units of 10^-FIRST_DECIMALS; under 2e11, so no overflow.
+    let units = fixed
+        .bytes()
+        .filter(u8::is_ascii_digit)
+        .fold(0_u64, |n, b| n * 10 + u64::from(b - b'0'));
+    let step = 10_u64.pow(FIRST_DECIMALS - URL_DECIMALS);
+    let kept = (units + step / 2) / step;
+    let one = 10_u64.pow(URL_DECIMALS);
+    let sign = if kept != 0 && deg < 0.0 { "-" } else { "" };
+    let (whole, fraction) = (kept / one, kept % one);
+    if fraction == 0 {
+        return format!("{sign}{whole}");
     }
+    let digits = format!("{fraction:05}");
+    format!("{sign}{whole}.{}", digits.trim_end_matches('0'))
 }
 
 /// Reads an answer of the elevation API for `places`: each place's height, m above mean sea level
@@ -276,7 +298,7 @@ pub enum ElevationError {
     Request {
         /// The field.
         what: &'static str,
-        /// Its value; for a coordinate, with its place's index.
+        /// Its value; for a coordinate, followed by its place's index, as `90.5 (place 1)`.
         value: String,
     },
     /// The fetch failed.
@@ -393,6 +415,32 @@ mod tests {
         assert_eq!(coordinate(-106.910_000_000_000_01), "-106.91");
     }
 
+    /// Values on a half step, given to 6 decimals (as a GPS gives them), and values given to 8,
+    /// are written the same after a trip through radians. About 1 in 17 of the six-decimal values,
+    /// all on a half step, would flip if rounded straight to 5 decimals (21,127 of 360,000 when
+    /// measured), and 19 of the eight-decimal ones.
+    #[test]
+    fn half_steps_survive_a_round_trip_through_radians() {
+        let mut changed = 0;
+        let mut flips_if_rounded_straight = 0;
+        for (millionths, scale) in (0..360_000)
+            .map(|i: i64| (-179_999_995 + i * 1_000, 1e6))
+            .chain((0..360_000).map(|i| (-17_999_999_999 + i * 99_999, 1e8)))
+        {
+            // Under 2^53, so exact as an `f64`.
+            let deg = millionths as f64 / scale;
+            let again = deg.to_radians().to_degrees();
+            changed += usize::from(again.to_bits() != deg.to_bits());
+            flips_if_rounded_straight += usize::from(format!("{deg:.5}") != format!("{again:.5}"));
+            assert_eq!(coordinate(again), coordinate(deg), "{deg}");
+        }
+        assert!(changed > 10_000, "{changed}");
+        assert!(
+            flips_if_rounded_straight > 1_000,
+            "{flips_if_rounded_straight}"
+        );
+    }
+
     #[test]
     fn coordinates_are_written_to_five_decimals() {
         assert_eq!(coordinate(0.0), "0");
@@ -403,6 +451,14 @@ mod tests {
         assert_eq!(coordinate(-180.0), "-180");
         assert_eq!(coordinate(12.345_678), "12.34568");
         assert_eq!(coordinate(1.5), "1.5");
+        // Halves round away from zero, carrying into the whole degrees.
+        assert_eq!(coordinate(32.990_415), "32.99042");
+        assert_eq!(coordinate(-106.969_225), "-106.96923");
+        assert_eq!(coordinate(-0.000_005), "-0.00001");
+        assert_eq!(coordinate(0.000_004_999), "0");
+        assert_eq!(coordinate(179.999_995), "180");
+        assert_eq!(coordinate(-179.999_996), "-180");
+        assert_eq!(coordinate(89.999_996), "90");
     }
 
     #[test]
@@ -417,19 +473,19 @@ mod tests {
         );
         assert_eq!(
             refused(&request(&[(0.0, 0.0), (90.5, 0.0)])),
-            ("latitude (deg)", "place 1: 90.5".to_owned())
+            ("latitude (deg)", "90.5 (place 1)".to_owned())
         );
         assert_eq!(
             refused(&request(&[(f64::NAN, 0.0)])),
-            ("latitude (deg)", "place 0: NaN".to_owned())
+            ("latitude (deg)", "NaN (place 0)".to_owned())
         );
         assert_eq!(
             refused(&request(&[(-90.0, -180.5)])),
-            ("longitude (deg)", "place 0: -180.5".to_owned())
+            ("longitude (deg)", "-180.5 (place 0)".to_owned())
         );
         assert_eq!(
             refused(&request(&[(0.0, f64::NAN)])),
-            ("longitude (deg)", "place 0: NaN".to_owned())
+            ("longitude (deg)", "NaN (place 0)".to_owned())
         );
         assert!(request(&[(-90.0, 180.0), (90.0, -180.0)]).url().is_ok());
         for endpoint in ["", "https://x.test/v1/elevation?a=1", "https://x.test/#e"] {
