@@ -7,5 +7,11 @@ apogee (m)              1113.3   1119.8     47.4   1040.5   1121.3   1198.8
 landing distance (m)     662.4    660.3    208.9    329.3    670.5    996.5
 landing east (m)         662.4    626.1    209.6    274.9    635.5    957.7
 
+Landing ellipses, centred 626 m east and 23 m south of the pad:
+                       semi-major  semi-minor  heading  landings inside
+50%                         253 m       239 m     131°            48.0%
+95%                         525 m       497 m     131°            94.5%
+95%, the next flight        532 m       503 m     131°            95.5%
+
 Reached 1,100 m: 65.5% of the flights
 Apogee with 5% less drag: +29 m; with 5% more: -27 m

@@ -4,9 +4,9 @@ No two flights of one rocket are the same. The motor burns a little hotter or co
 label, the rocket weighs a few grams more than the plan, the wind is not the forecast's. A
 [Monte Carlo](glossary.md#monte-carlo) run flies the rocket hundreds or thousands of times. Each
 time it draws the uncertain inputs afresh around their planned (nominal) values, and the run shows
-how far the apogee and the landing spread. This page runs one, says what each
-[dispersion](glossary.md#dispersion) does to a flight, and how to choose the numbers. It needs some
-Rust and follows on from [The builder](the-builder.md).
+how far the apogee and the landing spread, and draws the ellipse the landings fall in. This page
+runs one, says what each [dispersion](glossary.md#dispersion) does to a flight, and how to choose
+the numbers. It needs some Rust and follows on from [The builder](the-builder.md).
 
 > **How far to trust it.** The sampling is tested; the spread it gives is only as good as the
 > uncertainties you give it and hpr-sim's flight models, which are not yet validated against real
@@ -17,7 +17,8 @@ Rust and follows on from [The builder](the-builder.md).
 >   flight in every sample; each dispersion moves its input as the table below says; a dispersed
 >   motor keeps its [specific impulse](glossary.md#specific-impulse); failed flights are counted
 >   ([`montecarlo.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/montecarlo.rs)'s
->   tests).
+>   tests). The [landing ellipses](#landing-ellipses) are tested against normal spreads with known
+>   answers.
 > - **Not checked:** whether the spread matches the spread of real flights. No measured set of
 >   repeated flights has been compared yet.
 > - **Left out:** correlations between inputs, distributions other than the
@@ -60,6 +61,10 @@ let dispersion = Dispersion {
 let monte_carlo = MonteCarlo::new(launch.inputs()?, dispersion)?;
 let run = monte_carlo.run(2026, 200);          // seed 2026, 200 flights
 let apogee = run.apogee()?;                    // the apogees' spread
+let landing = run.landing()?;                  // where they landed
+let ellipse = landing
+    .prediction_ellipse(0.95)?                 // where the next flight lands, 95 times in 100
+    .ok_or("too few landings")?;
 ```
 
 It prints:
@@ -74,6 +79,12 @@ Not yet validated: see the Accuracy page before trusting these numbers.
 apogee (m)              1113.3   1119.8     47.4   1040.5   1121.3   1198.8
 landing distance (m)     662.4    660.3    208.9    329.3    670.5    996.5
 landing east (m)         662.4    626.1    209.6    274.9    635.5    957.7
+
+Landing ellipses, centred 626 m east and 23 m south of the pad:
+                       semi-major  semi-minor  heading  landings inside
+50%                         253 m       239 m     131°            48.0%
+95%                         525 m       497 m     131°            94.5%
+95%, the next flight        532 m       503 m     131°            95.5%
 
 Reached 1,100 m: 65.5% of the flights
 Apogee with 5% less drag: +29 m; with 5% more: -27 m
@@ -99,6 +110,82 @@ How to read it:
   about a third of its mean (209 of 660 m); the apogee's is 4% (47 of 1,120 m). Under the parachute
   the drift is the wind's speed times the time in the air, and the wind's speed is the most
   uncertain input here.
+
+## Landing ellipses
+
+A [landing ellipse](glossary.md#landing-ellipse) is the outline a range safety officer or a
+competition asks for: an area on the ground that the rocket lands inside, say, 95 times in 100.
+Comparing it with the field's boundary says whether the field is big enough for this rocket in this
+wind. For that check, use the *next-flight* ellipse below ([`Scatter::prediction_ellipse`]).
+
+The ellipse assumes the landings follow a [normal
+distribution](glossary.md#normal-distribution), and it is only as good as the run's landings,
+which carry the flight models' errors and those of the dispersions you chose; neither has been
+compared with real flights yet. The section ends with how to tell when the landings aren't normal.
+
+hpr-sim draws the ellipse from the run's landing points ([`Run::landing`], then
+[`Scatter::ellipse`]) in three steps. Its *semi-major* and *semi-minor* axes are its half-lengths
+along its long and its short direction.
+
+1. **The centre** is the landings' mean: here 626 m east and 23 m south of the pad.
+2. **The axes.** The landings' [covariance](glossary.md#covariance) gives the direction they spread
+   most, the *major axis*, and the direction across it, the *minor axis*, with a standard deviation
+   along each. Here those are about 214.6 m and 203.0 m. The spread is nearly round, because the wind's
+   uncertain heading (15°) spreads the landings sideways about as much as its uncertain speed (25%)
+   spreads them downwind.
+3. **The size.** If the landings follow a two-dimensional [normal
+   distribution](glossary.md#normal-distribution), the ellipse reaching `k` standard deviations
+   along each axis holds the share `p = 1 − e^(−k²/2)` of them. So the ellipse of level `p` has
+   `k = √(−2 ln(1 − p))`:
+
+   | Level `p` | 50% | 90% | 95% | 99% |
+   |---|---|---|---|---|
+   | Scale `k` | 1.177 | 2.146 | 2.448 | 3.035 |
+
+   The 95% ellipse's semi-axes are 2.448 × 214.6 m = 525 m and 2.448 × 203.0 m = 497 m.
+
+In two dimensions it takes more standard deviations to hold 95% than in one (2.448 against 1.960),
+because a landing can stray in two directions at once.
+
+**Heading** is the major axis's direction, clockwise from north, between 0° and 180°: here 131°,
+running from north-west to south-east. With axes this close to equal the heading means little: a
+few landings more or less could turn it a long way. A circle has no heading at all; hpr-sim then
+reports 90°, east.
+
+**The next flight.** The mean and covariance of 200 flights are only estimates, so an ellipse
+drawn from them holds a little less than its level of the flights still to come. For normal
+landings [`Scatter::prediction_ellipse`] allows for that exactly. Its `k` comes from Hotelling's
+`T²` distribution, the one that accounts for the mean and the spread both being estimated from the
+same flights: `k² = ((n² − 1)/n)((1 − p)^(−2/(n − 2)) − 1)` for `n` landings. With
+200 landings its axes are 1.3% longer (532 m against 525 m); with 10 they would be 36% longer. Use
+it to answer "will my next flight land in the field?".
+
+**Landings inside** counts the run's landings each ellipse really holds
+([`Scatter::share_inside`]). Here they are 48.0%, 94.5% and 95.5%. Those are within the
+[standard error](glossary.md#standard-error) of a share `p` from a run of 200, `√(p(1 − p)/200)`:
+about 3.5 percentage points at 50%, 1.5 at 95%. So the landings are consistent with a normal
+spread, though that doesn't prove it. With few landings the shares run high, because the ellipse is fitted to the
+same points: with three landings, even the 50% ellipse holds all three. If the share is far from
+the level in a run of hundreds of flights, the landings aren't normal: an uncertain wind
+heading in a strong wind spreads them along an arc, and an ellipse is then the wrong shape. Look at
+the points themselves ([`Scatter::points`]). A failed flight has no landing; it counts as outside
+for the lower bound and inside for the upper ([Failed flights are counted](#failed-flights-are-counted)).
+
+> **How far to trust it.** The ellipse math is tested against normal spreads whose answers are
+> known exactly
+> ([`ellipse.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/ellipse.rs)'s
+> tests):
+>
+> - The scale matches the NIST/SEMATECH handbook's chi-square table and its closed form.
+> - The axes and heading of turned, stretched covariances come back to 1e-14.
+> - Integrating a normal density over its ellipse gives the level to 1e-12.
+> - 100,000 points drawn from a known normal spread give back its covariance, and land inside each
+>   ellipse at its level, within five standard errors.
+> - A new point lands inside the next-flight ellipse of 3, 5 or 20 others at its level, within
+>   five standard errors, and inside the plain ellipse visibly less often.
+>
+> The tests can catch a wrong ellipse: the 95% ellipse of a spread 200 m long and 30 m wide (one
+> standard deviation each way), turned 6° off its axes, holds 90.6%, and the test pins that.
 
 ## What each dispersion does
 
@@ -232,14 +319,19 @@ The edition in force today hasn't been checked.
 
 The run gives each flight's whole [`FlightSummary`](api/hpr_sim/metrics/struct.FlightSummary.html),
 so any number a flight reports can be spread with `run.distribution(...)`, as the example does for
-the landing. Still to come in [M6.1](decisions-and-roadmap.md#m6-1): landing ellipses at a
-confidence level, to compare with a field's boundary ([M6.1b](decisions-and-roadmap.md#m6-1b));
+the landing. Still to come in [M6.1](decisions-and-roadmap.md#m6-1):
 sensitivity analysis, which input moves the apogee most ([M6.1c](decisions-and-roadmap.md#m6-1c));
 and 10,000 flights in seconds ([M6.1d](decisions-and-roadmap.md#m6-1d)).
 
-The API reference is [`hpr_analysis::montecarlo`](api/hpr_analysis/montecarlo/index.html) and
-[`hpr_analysis::statistics`](api/hpr_analysis/statistics/index.html).
+The API reference is [`hpr_analysis::montecarlo`](api/hpr_analysis/montecarlo/index.html),
+[`hpr_analysis::statistics`](api/hpr_analysis/statistics/index.html) and
+[`hpr_analysis::ellipse`](api/hpr_analysis/ellipse/index.html).
 
 [`Run::failed`]: api/hpr_analysis/montecarlo/struct.Run.html#method.failed
 [`Run::apogee`]: api/hpr_analysis/montecarlo/struct.Run.html#method.apogee
 [`run_parallel`]: api/hpr_analysis/montecarlo/struct.MonteCarlo.html#method.run_parallel
+[`Run::landing`]: api/hpr_analysis/montecarlo/struct.Run.html#method.landing
+[`Scatter::ellipse`]: api/hpr_analysis/ellipse/struct.Scatter.html#method.ellipse
+[`Scatter::prediction_ellipse`]: api/hpr_analysis/ellipse/struct.Scatter.html#method.prediction_ellipse
+[`Scatter::share_inside`]: api/hpr_analysis/ellipse/struct.Scatter.html#method.share_inside
+[`Scatter::points`]: api/hpr_analysis/ellipse/struct.Scatter.html#method.points

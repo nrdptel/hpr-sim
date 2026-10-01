@@ -134,6 +134,37 @@ fn main() -> Result<(), Box<dyn Error>> {
     let east = run.distribution(|flight| flight.landing.as_ref().map(|l| l.east_m))?;
     row("landing east (m)", nominal_landing.east_m, &east)?;
     println!();
+    // The landings as ellipses: each holds a share of them if they spread normally. The last row
+    // allows for 200 flights giving only an estimate of the spread: a new flight lands inside it
+    // 95% of the time.
+    let landing = run.landing()?;
+    let centre = landing.mean().ok_or("no landings")?;
+    let (north, north_or_south) = if centre[1] < 0.0 {
+        (-centre[1], "south")
+    } else {
+        (centre[1], "north")
+    };
+    println!(
+        "Landing ellipses, centred {:.0} m east and {north:.0} m {north_or_south} of the pad:",
+        centre[0]
+    );
+    println!("                       semi-major  semi-minor  heading  landings inside");
+    for (name, ellipse) in [
+        ("50%", landing.ellipse(0.5)?),
+        ("95%", landing.ellipse(0.95)?),
+        ("95%, the next flight", landing.prediction_ellipse(0.95)?),
+    ] {
+        let ellipse = ellipse.ok_or("too few landings")?;
+        let inside = landing.share_inside(&ellipse).ok_or("no flights")?;
+        println!(
+            "{name:<21} {:>9.0} m {:>9.0} m {:>7.0}° {:>15.1}%",
+            ellipse.semi_major_m,
+            ellipse.semi_minor_m,
+            ellipse.major_heading_rad.to_degrees(),
+            100.0 * inside.low
+        );
+    }
+    println!();
     let share = apogee.share_at_least(1100.0)?.ok_or("no flights")?;
     println!("Reached 1,100 m: {:.1}% of the flights", 100.0 * share.low);
     // Why the mean apogee isn't the nominal one: the nominal flight with 5% less and 5% more

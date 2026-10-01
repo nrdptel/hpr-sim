@@ -12,7 +12,8 @@
 //! (RocketPy 1.13.0's `rocketpy/stochastic/stochastic_model.py:190-199`, a `(nominal, standard deviation)` pair is a normal
 //! distribution), flies the flight, and keeps what it drew and what the flight came to
 //! ([`Sample`]). A [`Run`] is the samples in order; [`Run::apogee`] is the spread of their
-//! apogees, with the samples that failed counted, not dropped.
+//! apogees, with the samples that failed counted, not dropped, and [`Run::landing`] where they
+//! landed, whose ellipses are in [`crate::ellipse`].
 //!
 //! # Reproducibility
 //!
@@ -79,6 +80,7 @@ use hpr_sim::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::ellipse::Scatter;
 use crate::error::AnalysisError;
 use crate::statistics::Distribution;
 
@@ -405,6 +407,25 @@ impl Run {
                 .as_ref()
                 .map(|apogee| apogee.height_above_ground_m)
         })
+    }
+
+    /// Where the flights landed, east and north of the pad (m): the flight itself, the stack or
+    /// after a powered separation the sustainer ([`FlightSummary::landing`]). A failed sample,
+    /// or one that never landed, counts as tried with no point. Its ellipses are in
+    /// [`crate::ellipse`].
+    ///
+    /// # Errors
+    ///
+    /// [`AnalysisError::Domain`] for a coordinate that isn't finite, or is more than
+    /// [`Scatter::MAX_COORDINATE_M`] from the pad.
+    pub fn landing(&self) -> Result<Scatter, AnalysisError> {
+        let points = self
+            .samples
+            .iter()
+            .filter_map(|sample| sample.summary()?.landing.as_ref())
+            .map(|landing| [landing.east_m, landing.north_m])
+            .collect();
+        Scatter::new(points, self.samples.len())
     }
 }
 
@@ -1062,6 +1083,20 @@ mod tests {
         let share = apogee.share_at_least(0.0).unwrap().unwrap();
         assert_eq!(share.low, (16 - failed_count) as f64 / 16.0);
         assert_eq!(share.high, 1.0);
+        // The landings likewise: every flown sample's point, in order, the failures missing.
+        let landing = run.landing().unwrap();
+        assert_eq!((landing.attempted(), landing.missing()), (16, failed_count));
+        let mut points: Vec<[f64; 2]> = run
+            .samples
+            .iter()
+            .filter_map(Sample::summary)
+            .map(|summary| {
+                let landing = summary.landing.as_ref().unwrap();
+                [landing.east_m, landing.north_m]
+            })
+            .collect();
+        points.sort_by(|p, q| p[0].total_cmp(&q[0]).then(p[1].total_cmp(&q[1])));
+        assert_eq!(landing.points(), points.as_slice());
         // A draw that leaves a motor with no impulse fails before it flies.
         let run = MonteCarlo::new(
             nominal(),

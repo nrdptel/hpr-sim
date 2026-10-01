@@ -10,11 +10,13 @@
 //! - [`montecarlo`]: one rocket flown many times with its uncertain inputs drawn afresh each
 //!   time, seeded and reproducible sample by sample, in parallel with the `parallel` feature.
 //! - [`statistics`]: the spread of what the samples gave, with the failed ones counted.
+//! - [`ellipse`]: where the landings scatter, as an ellipse holding a chosen share of them.
 //!
-//! Status: dispersion and the apogee's spread (milestone [M6.1a][roadmap] of the roadmap).
-//! Landing ellipses, sensitivity analysis, optimization and challenge specifications are planned
-//! for the rest of [M6.1][roadmap] to [M6.3][roadmap].
+//! Status: dispersion, the apogee's spread and landing ellipses (milestones [M6.1a and
+//! M6.1b][roadmap] of the roadmap). Sensitivity analysis, optimization and challenge
+//! specifications are planned for the rest of [M6.1][roadmap] to [M6.3][roadmap].
 
+pub mod ellipse;
 mod error;
 pub mod montecarlo;
 pub mod statistics;
