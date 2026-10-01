@@ -823,8 +823,8 @@
     known indices of test functions with closed forms (Ishigami, Sobol's g) within sampling error.
     *Result:* met (ADR-136): within 4 standard errors, calibrated on 500 to 1,000 seeds.
   - [x] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on
-    the dev machine, recorded in `docs/perf.md`. *Result:* met (ADR-137): Valetudo 2.96 s; a
-    supersonic K940 rocket 9.47 s (264 s before): one layout and one supersonic table a run.
+    the dev machine, recorded in `docs/perf.md`. *Result:* met (ADR-137): Valetudo 3.00 s; a
+    supersonic K940 rocket 9.43 s (264 s before): one layout and one supersonic table a run.
 
 - [ ] **M6.2 Optimization engine.**
   - Continuous and discrete design variables, including motor choice and catalog parts.

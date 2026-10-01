@@ -365,7 +365,8 @@ impl Simulation {
 
     /// As [`Simulation::new`], on a design laid out already ([`hpr_design::LaidOut`]). The checks
     /// and the assembly share its layout, which is most of the cost of building a simulation; a
-    /// Monte Carlo run lays out each flight from the nominal one's ([`hpr_design::LaidOut::relay`]).
+    /// Monte Carlo run lays out each flight from the nominal one's
+    /// ([`hpr_design::LaidOut::relay`]).
     ///
     /// # Errors
     ///
@@ -389,7 +390,7 @@ impl Simulation {
             });
         }
         rail.validate()?;
-        let (rocket, assembly) = laid_out.assemble(configuration_id)?;
+        let (rocket, assembly) = laid_out.into_assembly(configuration_id)?;
         let aero = AeroModel::new(&assembly.layout)?;
         // No separation yet, so a motor lit by one has no time.
         let ignition_s = assembly.ignition_times_s(|_| None);
@@ -3105,22 +3106,25 @@ impl PhaseSystem<'_> {
     /// copy: an evaluation is a few hundred bytes, and the integrator asks for one at every
     /// stage and event check.
     fn evaluation(&mut self, t: f64, y: &[f64; STATE_LEN]) -> Result<&Evaluation, SimError> {
-        let cached = matches!(&self.cache, Some((ct, cy, _)) if *ct == t && cy == y);
-        if !cached {
-            let evaluation = self.simulation.evaluate(
-                self.vehicle,
-                self.phase,
-                self.window,
+        if !matches!(&self.cache, Some((ct, cy, _)) if *ct == t && cy == y) {
+            self.cache = None;
+        }
+        let (_, _, evaluation) = match &mut self.cache {
+            Some(entry) => entry,
+            slot @ None => slot.insert((
                 t,
-                y,
-                self.canopies.drag_area_m2(t),
-            )?;
-            return Ok(&self.cache.insert((t, *y, evaluation)).2);
-        }
-        match &self.cache {
-            Some((_, _, evaluation)) => Ok(evaluation),
-            None => unreachable!("a cache that holds the state is set"),
-        }
+                *y,
+                self.simulation.evaluate(
+                    self.vehicle,
+                    self.phase,
+                    self.window,
+                    t,
+                    y,
+                    self.canopies.drag_area_m2(t),
+                )?,
+            )),
+        };
+        Ok(evaluation)
     }
 
     /// An event value, or NaN with the error kept for the caller.

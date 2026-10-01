@@ -6,11 +6,11 @@
 //! cargo bench -p hpr --features parallel --bench ten_thousand
 //! ```
 //!
-//! Two rockets: Valetudo on a K400C, which stays below Mach 0.4, and a 66 mm rocket with a
+//! Two rockets: Valetudo on a K400C, which peaks at Mach 0.3 to 0.4, and a 66 mm rocket with a
 //! 54 mm motor mount on a K940, which passes Mach 1.2 and so needs the supersonic table. Not a
 //! criterion benchmark: one run is 10,000 flights, so the program times whole runs itself, each
 //! from `MonteCarlo::new` (which a run's supersonic table is built after), and prints the fastest
-//! of three; then where one flight's time goes, on one thread. It takes about two minutes after
+//! of three; then where one flight's time goes, on one thread. It takes about a minute after
 //! it compiles, and does nothing unless `cargo bench` runs it, so `cargo test --all-targets`
 //! doesn't fly 60,000 flights in a debug build.
 

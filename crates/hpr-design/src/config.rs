@@ -18,6 +18,7 @@
 //! See `docs/physics/design.md`.
 
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use hpr_core::DVec3;
 use hpr_motor::{Delay, MassElement, SolidMotor};
@@ -503,19 +504,24 @@ impl Rocket {
     }
 
     /// Lays the design out once ([`Rocket::layout`]), to check it ([`LaidOut::check`]) and
-    /// assemble it ([`LaidOut::assemble`]) without laying it out again: the layout is most of the
-    /// cost of either, and a Monte Carlo run builds a flight thousands of times.
+    /// assemble it ([`LaidOut::into_assembly`]) without laying it out again: the layout is most
+    /// of the cost of either, and a Monte Carlo run builds a flight thousands of times.
     ///
     /// # Errors
     ///
     /// As [`Rocket::check_configuration_ids`] and [`Rocket::layout`].
     pub fn lay_out(&self) -> Result<LaidOut, DesignError> {
+        self.clone().into_laid_out()
+    }
+
+    /// As [`Rocket::lay_out`], keeping this copy of the design.
+    fn into_laid_out(self) -> Result<LaidOut, DesignError> {
         self.check_configuration_ids()?;
         let (components, masses) = self.placed_components()?;
         Ok(LaidOut {
             layout: self.staged_layout(components, &masses)?,
-            rocket: self.clone(),
-            masses,
+            rocket: self,
+            masses: Arc::new(masses),
         })
     }
 
@@ -533,14 +539,15 @@ impl Rocket {
 }
 
 /// A copy of a design and its layout, laid out once by [`Rocket::lay_out`], to check it and
-/// assemble it without laying it out again. Its fields are private, so the layout is always the
-/// design's own.
+/// assemble it ([`LaidOut::into_assembly`]) without laying it out again. Its fields are private,
+/// so the layout is always the design's own.
 #[derive(Debug, Clone)]
 pub struct LaidOut {
     rocket: Rocket,
     layout: Layout,
-    /// What the layout's stages are made from, for [`LaidOut::relay`].
-    masses: StageMasses,
+    /// What the layout's stages are made from, for [`LaidOut::relay`]; shared by the designs
+    /// relaid from it.
+    masses: Arc<StageMasses>,
 }
 
 impl LaidOut {
@@ -554,13 +561,14 @@ impl LaidOut {
         &self.layout
     }
 
-    /// As [`Rocket::assemble`], on this layout, with the design given back.
+    /// As [`Rocket::assemble`], on this layout, which it takes rather than copies, with the design
+    /// given back.
     ///
     /// # Errors
     ///
     /// - As [`Layout::place_motors`].
     /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
-    pub fn assemble(self, configuration_id: &str) -> Result<(Rocket, Assembly), DesignError> {
+    pub fn into_assembly(self, configuration_id: &str) -> Result<(Rocket, Assembly), DesignError> {
         let configuration = self.rocket.configuration_or_error(configuration_id)?;
         let motors = self.layout.place_motors(configuration)?;
         let assembly = Assembly {
@@ -571,9 +579,11 @@ impl LaidOut {
         Ok((self.rocket, assembly))
     }
 
-    /// `rocket` laid out, as [`Rocket::lay_out`] lays it out, bit for bit. Where `rocket` differs
-    /// from this design only in its stages' overrides (mass, centre of mass, inertia) and its
-    /// configurations (motors), this layout's parts are kept and only the stages are done again:
+    /// `rocket` laid out, as [`Rocket::lay_out`] lays it out. Where `rocket` differs from this
+    /// design only in its stages' overrides (mass, centre of mass, inertia) and its
+    /// configurations (motors), this layout's parts are kept and only the stages are done again,
+    /// which gives the same layout bit for bit when the rest of the two designs is bitwise
+    /// equal, as a copy's is (two values equal under `==` can still differ in a zero's sign):
     /// placing the parts is most of a layout's cost, and a Monte Carlo sample changes nothing
     /// else. Any other difference lays `rocket` out from the start.
     ///
@@ -582,14 +592,14 @@ impl LaidOut {
     /// As [`Rocket::lay_out`].
     pub fn relay(&self, rocket: Rocket) -> Result<LaidOut, DesignError> {
         if !self.same_but_overrides_and_motors(&rocket) {
-            return rocket.lay_out();
+            return rocket.into_laid_out();
         }
         rocket.check_configuration_ids()?;
         let layout = rocket.staged_layout(self.layout.components.clone(), &self.masses)?;
         Ok(LaidOut {
             rocket,
             layout,
-            masses: self.masses.clone(),
+            masses: Arc::clone(&self.masses),
         })
     }
 
@@ -624,9 +634,6 @@ mod tests {
     use super::*;
     use crate::testing::{motor, three_fin_rocket};
 
-    /// The sample rocket's mount spans stations 0.7 to 1.0 with 0.01 m of overhang, so the nozzle
-    /// exit is at 1.01. Its envelope motor (1 kg loaded, 0.5 kg of propellant, 0.2 m long) puts
-    /// dry mass and propellant both 0.1 m forward of the nozzle, at body z = −0.91.
     /// Laying a design out once checks and assembles it as [`crate::checks::check`] and
     /// [`Rocket::assemble`] do, and refuses an unknown configuration the same way.
     #[test]
@@ -640,12 +647,13 @@ mod tests {
         );
         let id = design.configurations[0].id.clone();
         assert_eq!(
-            laid_out.clone().assemble(&id).unwrap(),
+            laid_out.clone().into_assembly(&id).unwrap(),
             (design.clone(), design.assemble(&id).unwrap())
         );
         assert!(matches!(
-            laid_out.assemble("no such configuration"),
-            Err(DesignError::UnknownId { what: "configuration", ref id }) if id == "no such configuration"
+            laid_out.into_assembly("no such configuration"),
+            Err(DesignError::UnknownId { what: "configuration", ref id })
+                if id == "no such configuration"
         ));
     }
 
@@ -662,8 +670,8 @@ mod tests {
             assert_eq!(relaid.layout(), alone.layout());
             assert_eq!(relaid.check().unwrap(), alone.check().unwrap());
             assert_eq!(
-                relaid.clone().assemble(&id).unwrap(),
-                alone.assemble(&id).unwrap()
+                relaid.clone().into_assembly(&id).unwrap(),
+                alone.into_assembly(&id).unwrap()
             );
         };
         let mut overridden = nominal.clone();
@@ -673,6 +681,7 @@ mod tests {
         stage.cg_xy_m = Some([0.001, -0.002]);
         let mounted = &mut overridden.configurations[0].motors[0];
         mounted.motor = motor(&mounted.mount, mounted.diameter_m, 0.25).motor;
+        assert!(laid_out.same_but_overrides_and_motors(&overridden));
         let relaid = laid_out.relay(overridden.clone()).unwrap();
         same(&relaid, &overridden);
         assert_ne!(relaid.layout(), laid_out.layout());
@@ -684,8 +693,38 @@ mod tests {
             panic!("the test rocket's second component is its airframe");
         };
         tube.length_m += 0.1;
+        assert!(!laid_out.same_but_overrides_and_motors(&longer));
         let relaid = laid_out.relay(longer.clone()).unwrap();
         same(&relaid, &longer);
+        // Another stage id, or a stage more: laid out from the start too.
+        let mut renamed = nominal.clone();
+        renamed.stages[0].id = "renamed".to_owned();
+        assert!(!laid_out.same_but_overrides_and_motors(&renamed));
+        same(&laid_out.relay(renamed.clone()).unwrap(), &renamed);
+        let mut staged = nominal.clone();
+        let mut booster = staged.stages[0].clone();
+        booster.id = "booster".to_owned();
+        for (index, component) in booster.components.iter_mut().enumerate() {
+            component.id = format!("booster-{index}");
+            component.children.clear();
+        }
+        booster
+            .components
+            .retain(|c| matches!(c.part, crate::Part::BodyTube(_)));
+        staged.stages.push(booster);
+        assert!(!laid_out.same_but_overrides_and_motors(&staged));
+        let relaid = laid_out.relay(staged.clone()).unwrap();
+        same(&relaid, &staged);
+        assert_eq!(relaid.layout().stages.len(), 2);
+        // Two stages, the second's mass and centre overridden: its parts are kept.
+        let mut heavier = staged.clone();
+        heavier.stages[1].overrides.mass_kg = Some(0.75);
+        heavier.stages[1].overrides.cg_aft_m = Some(0.3);
+        assert!(relaid.same_but_overrides_and_motors(&heavier));
+        let twice = relaid.relay(heavier.clone()).unwrap();
+        same(&twice, &heavier);
+        assert_ne!(twice.layout().stages[1], relaid.layout().stages[1]);
+        assert_eq!(twice.layout().stages[0], relaid.layout().stages[0]);
         assert_ne!(relaid.layout().length_m, laid_out.layout().length_m);
         // A bad override is refused as laying it out alone refuses it.
         let mut bad = nominal;
@@ -696,6 +735,9 @@ mod tests {
         );
     }
 
+    /// The sample rocket's mount spans stations 0.7 to 1.0 with 0.01 m of overhang, so the nozzle
+    /// exit is at 1.01. Its envelope motor (1 kg loaded, 0.5 kg of propellant, 0.2 m long) puts
+    /// dry mass and propellant both 0.1 m forward of the nozzle, at body z = −0.91.
     #[test]
     fn motor_sits_at_mount_aft_end_plus_overhang() {
         let design = three_fin_rocket();

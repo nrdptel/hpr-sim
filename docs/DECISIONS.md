@@ -11183,7 +11183,7 @@ machine, recorded in `docs/perf.md`. Each Monte Carlo sample builds its own `Sim
 draw. Before this change, timed on an Apple M5 with 10 threads, release build, flights to the
 ground under a drogue and a main:
 
-- Valetudo on a K400C, below Mach 0.4, took 4.59 s for 10,000 flights.
+- Valetudo on a K400C, peaking at Mach 0.3 to 0.4, took 4.59 s for 10,000 flights.
 - A 66 mm rocket with a 54 mm mount on a K940, peak Mach 1.6 to 2.0, took 264 s. Each of its
   flights built its own supersonic table on its first pass of Mach 1.2: most of a 193 ms flight.
 - Building a simulation laid the design out twice, 0.4 ms each time.
@@ -11246,9 +11246,9 @@ changing a flight.
 
 **Consequences.** M6.1d is met.
 
-- Valetudo's 10,000 flights take 2.96 s and the K940 rocket's 9.47 s (2.91 s and 9.33 s in another
-  run), with the same apogee and Mach statistics as before.
-- The supersonic run is 5% inside the budget. A profile, taken before item 3, puts 11% of its
+- Valetudo's 10,000 flights take 3.00 s and the K940 rocket's 9.43 s (2.91 to 3.00 s and 9.33 to
+  9.47 s over three runs), with the same apogee and Mach statistics as before.
+- The supersonic run is about 6% inside the budget. A profile, taken before item 3, puts 11% of its
   busy time in `atan2`
   (flow angles, the geodetic conversion, gravity) and 8% in `pow` (drag terms, the atmosphere).
   Each fix changes the flown numbers in their last bits, so every committed report, including the

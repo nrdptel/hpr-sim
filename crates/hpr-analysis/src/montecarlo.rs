@@ -748,8 +748,8 @@ impl MonteCarlo {
 
     /// Flies `draw` ([`MonteCarlo::inputs`]) to the ground and gives its metrics, on what the
     /// run's flights share (the module's *Speed*): as [`FlightInputs::fly`] on the same inputs,
-    /// bit for bit, but without laying out the parts or building a supersonic table again. For flights drawn by hand, as a sensitivity
-    /// analysis's ([`crate::sensitivity`]).
+    /// bit for bit, but without laying out the parts or building a supersonic table again. For
+    /// flights drawn by hand, as a sensitivity analysis's ([`crate::sensitivity`]).
     ///
     /// # Errors
     ///
@@ -1280,8 +1280,8 @@ mod tests {
             assert_eq!(monte_carlo.sample(SEED, index).summary(), Some(&flight));
             assert_eq!(monte_carlo.fly(&draw).unwrap(), flight);
         }
-        // Threads that meet the table while another builds it wait for it: a fresh run's, on
-        // two and five threads, is the run flown on one.
+        // A fresh run on two and five threads, whose flights build the shared table on whichever
+        // thread first needs it, is the run flown on one.
         #[cfg(feature = "parallel")]
         {
             let run = monte_carlo.run(SEED, 3);

@@ -272,7 +272,7 @@ under a drogue and a main, take:
 | rocket | peak Mach | 10,000 flights, 10 threads | one flight, one thread |
 |---|---|---|---|
 | Valetudo, one of RocketPy's examples: 9.7 kg on a K400C | 0.3 to 0.4 | 3.0 s | 1.9 ms |
-| a 66 mm rocket with a 54 mm motor mount on a K940 | 1.6 to 2.0 | 9.5 s | 5.8 ms |
+| a 66 mm rocket with a 54 mm motor mount on a K940 | 1.6 to 2.0 | 9.4 s | 5.7 ms |
 
 No flight failed. These are release builds, with optimisation on: add `--release` to
 `cargo run`, or build your program with it. A debug build, what plain `cargo run` gives, is
@@ -282,7 +282,7 @@ many times slower. To time it on your own machine, from a copy of the repository
 cargo bench -p hpr --features parallel --bench ten_thousand
 ```
 
-It takes about two minutes. Its output, the before-and-after numbers and where the time goes are
+It takes about a minute. Its output, the before-and-after numbers and where the time goes are
 on [Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md). Other machines
 haven't been timed.
 
