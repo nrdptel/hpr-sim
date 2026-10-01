@@ -266,8 +266,9 @@ without the motor.
 > it builds the same catalogue part: within 0.1%, with its centre of mass within 0.1% of its
 > length. The few exceptions are counted in "How far to trust it" below. One is deliberate, and
 > this nose has it: its [shoulder](glossary.md#shoulder), the short tube that slides into the
-> body, has the nose's own plastic wall here and weighs nothing in OpenRocket, which weighs the
-> nose at 61.5 g. Nothing checks the flight itself; the note at the top of this page applies. The
+> body, has the nose's own plastic wall here and weighs nothing in OpenRocket. OpenRocket weighs
+> the nose at 61.5 g; here it weighs 87.7 g, 26.1 g of it the shoulder. That is 6% of the
+> structure. Nothing checks the flight itself; the note at the top of this page applies. The
 > top speed, Mach 0.91, is close to the speed of sound, where drag rises steeply and is least
 > certain ([Drag through Mach 1](physics/aero.md#drag-through-mach-1)). The
 > [stability margin](glossary.md#stability-margin), 1.07
@@ -339,9 +340,9 @@ The tolerances were set before measuring. Every part is in one row:
 
 | Parts | Count | Allowed | Largest difference found |
 |---|---|---|---|
-| Tubes, couplers, rings, bulkheads, lugs, parachutes, streamers | 2,230 | 1e-12 of the mass; centre 1e-12 of the length | under 1e-14 of the mass, or OpenRocket's ounce where it is stated in ounces (below); centre under 1e-13 of the length |
-| Filled nose cones and transitions | 1,029 | 1e-3 of the mass; centre 1e-3 of the length | 2.0e-4 of the mass, or OpenRocket's ounce; centre 7.0e-5 of the length |
-| Hollow nose cones and transitions, shoulders taken out | 181 | the same | 6.3e-4 of the mass, or OpenRocket's ounce; centre 9.7e-4 of the length |
+| Tubes, couplers, rings, bulkheads, lugs, parachutes, streamers | 2,230 | 1e-12 of the mass; centre 1e-12 of the length | under 1e-14 of the mass, or 8.8e-10 where it is stated in ounces (below); centre under 1e-13 of the length |
+| Filled nose cones and transitions | 1,029 | 1e-3 of the mass; centre 1e-3 of the length | 2.0e-4 of the mass, or 8.8e-10 in ounces; centre 7.0e-5 of the length |
+| Hollow nose cones and transitions, shoulders taken out | 181 | the same | 6.3e-4 of the mass, or 8.8e-10 in ounces; centre 9.7e-4 of the length |
 | Hollow elliptical nose cones whose walls differ | 4 | counted | up to 0.48% heavier here; centre up to 1.7e-3 of the length |
 | A streamer that states its mass | 1 | counted | hpr weighs the stated mass; OpenRocket ignores it |
 | Refused by the builder | 4 | counted | OpenRocket weighs each as nothing |
@@ -358,13 +359,16 @@ Where the masses differ, the test checks each cause:
 - **Two walls.** hpr's wall is every point within its thickness of the outer surface. OpenRocket's
   masses follow a wall measured across each [station](glossary.md#station) instead, whose inner
   radius is `r − t √(1 + r′²)` (`r` the radius, `t` the thickness, `r′` the slope). The test works
-  out both on its own. OpenRocket's 185 hollow parts agree with the station-wise wall: in centre
-  to 1.1e-4 of the length, and the 111 that state no mass in mass to 2.5e-4 (a stated mass is
-  OpenRocket's whatever the wall). hpr's 113 hollow conical, tangent-ogive and elliptical nose
-  cones agree with integrals of its own wall, in volume and centre, to 1e-9. The two walls differ
-  most on short, blunt nose cones. Four elliptical ones fall outside the tolerance: three up to
-  0.48% heavier here, and one, which states its mass, by its centre alone.
-- **Masses stated in ounces,** 185 of them, differ by OpenRocket's rounded ounce, 8.8e-10 of the
+  out both on its own. All 185 hollow parts' OpenRocket centres agree with the station-wise wall
+  to 1.1e-4 of the length, and their masses to 2.5e-4, on the 111 that state no mass (a stated
+  mass is OpenRocket's whatever the wall). hpr's 113 hollow conical, tangent-ogive and elliptical
+  nose cones agree with integrals of its own wall, in volume and centre, to 1e-9. The other 72
+  hollow parts (Haack and parabolic noses, and transitions) have no such integral: they are
+  checked only against OpenRocket, within the tolerance. The two walls differ most on short,
+  blunt nose cones. Four elliptical ones fall outside the tolerance: three up to 0.48% heavier
+  here, their centres up to 1.7e-3 of their length apart, and one, which states its mass, by its
+  centre alone, 1.0e-3 of its length.
+- **Masses stated in ounces,** 185 parts (not the hollow ones above), differ by OpenRocket's rounded ounce, 8.8e-10 of the
   mass.
 - **The 4 refused parts.** One nose cone names a material its file doesn't define. Three tubes or
   rings have a bore no narrower than their outside.

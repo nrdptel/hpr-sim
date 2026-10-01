@@ -452,7 +452,7 @@ fn stated(part: &orc::Part, design: &Part) -> Result<Option<f64>, Error> {
     // The body radius only places a launch lug; its mass is the same on any tube.
     let weighed_kg = design.mass_properties(Some(1.0))?.mass_kg;
     let factor = stated_kg / weighed_kg;
-    if weighed_kg > 0.0 && factor.is_finite() {
+    if weighed_kg > 0.0 && weighed_kg.is_finite() && factor.is_finite() {
         Ok(Some(factor))
     } else {
         Err(catalog_error(part, CatalogProblem::NoVolume))

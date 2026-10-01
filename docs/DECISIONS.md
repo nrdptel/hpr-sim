@@ -10959,8 +10959,8 @@ nose cones (16 cones, 87 tangent ogives, 10 ellipsoids) to 1e-9. Dropping the sl
 station-wise wall fails the test, and so does moving a cone's centre. The 4 whose walls differ by
 more than the threshold are short, blunt elliptical nose cones, each with hpr's wall checked:
 three up to 0.48% heavier here (the test asserts hpr's is the heavier), one stating its mass
-1.0e-3 of its length apart in centre; the largest centre gap is 1.7e-3. Two mutations, ellipsoid transitions not clipped and a parabola's `K′`
-of 0.75, each fail the test. `crates/hpr/examples/catalog_rocket.rs` builds LOC Precision's
+1.0e-3 of its length apart in centre; the largest centre gap is 1.7e-3. Two mutations,
+ellipsoid transitions not clipped and a parabola's `K′` of 0.75, each fail the test. `crates/hpr/examples/catalog_rocket.rs` builds LOC Precision's
 2.56 in airframe from the catalogue, its fins by hand, and flies it on an AeroTech H170 to
 1,119 m. A nominal 29 mm motor doesn't fit LOC's 29 mm motor tube (bore 28.956 mm) under the
 design checks, so the example uses the 38 mm tube; that is issue #280. What is checked is each

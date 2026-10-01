@@ -82,6 +82,10 @@ struct Survey {
     wall_departures: usize,
     wall_departure_mass: f64,
     wall_departure_centre: f64,
+    /// Of them, those stating their mass, which depart by their centre alone, and the largest
+    /// centre difference among those.
+    wall_departures_stated: usize,
+    wall_departure_stated_centre: f64,
     /// Hollow parts with a shoulder, which hpr gives the part's wall; of them, those stating
     /// their mass.
     hollow_shoulders: usize,
@@ -97,9 +101,9 @@ struct Survey {
     ounce_masses: usize,
     /// Parts refused for a material their file doesn't define.
     undefined_materials: usize,
-    /// Parachutes built with lines of a material their file doesn't define, or of none,
-    /// weightless.
+    /// Parachutes built with lines of a material their file doesn't define, weightless.
     undefined_lines: usize,
+    /// Parachutes whose file names no line material, built with weightless lines.
     no_lines: usize,
     /// Tube-like parts refused for a bore not narrower than the outside.
     no_bore: usize,
@@ -524,6 +528,10 @@ fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
                 "{at}: OpenRocket's wall is the heavier"
             );
             departed = true;
+            if part.mass_kg.is_some() {
+                survey.wall_departures_stated += 1;
+                survey.wall_departure_stated_centre = survey.wall_departure_stated_centre.max(off);
+            }
             survey.wall_departures += 1;
             survey.wall_departure_mass = survey.wall_departure_mass.max(mass_off);
             survey.wall_departure_centre = survey.wall_departure_centre.max(off);
@@ -609,7 +617,7 @@ fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
 
 /// A hollow part's wall, each side held to its own definition: OpenRocket's mass and centre to
 /// the station-wise wall (`station_wall`), within the revolved parts' threshold; hpr's body to an
-/// integral of its own wall where there is one (`exact_wall_volume`).
+/// integral of its own wall where there is one (`exact_wall`).
 struct Wall<'a> {
     built: &'a PlacedComponent,
     wall_m: f64,
@@ -811,11 +819,13 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
         printed(survey.wall_rule_centre),
         printed(survey.wall_departure_mass),
         printed(survey.wall_departure_centre),
+        printed(survey.wall_departure_stated_centre),
     ];
     assert_eq!(
         quoted,
         [
-            "2.0e-4", "7.0e-5", "6.3e-4", "9.7e-4", "2.5e-4", "1.1e-4", "4.8e-3", "1.7e-3"
+            "2.0e-4", "7.0e-5", "6.3e-4", "9.7e-4", "2.5e-4", "1.1e-4", "4.8e-3", "1.7e-3",
+            "1.0e-3"
         ],
         "{survey:#?}"
     );
@@ -826,6 +836,7 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
         survey.wall_rule_checked,
         survey.wall_rule_mass_checked,
         survey.wall_departures,
+        survey.wall_departures_stated,
         survey.cones_closed_form,
         survey.hollow_shoulders,
         survey.hollow_shoulders_stated,
@@ -839,7 +850,7 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
     ];
     assert_eq!(
         counts,
-        [185, 111, 4, 85, 67, 74, 46, 185, 1, 2, 6, 3, 1],
+        [185, 111, 4, 1, 85, 67, 74, 46, 185, 1, 2, 6, 3, 1],
         "{survey:#?}"
     );
     let exact: Vec<_> = survey.exact_walls.iter().map(|(k, v)| (*k, *v)).collect();
@@ -881,6 +892,42 @@ fn probes_weigh_what_openrocket_builds() {
         ("1.5e-4".into(), "4.2e-5".into()),
         "{survey:#?}"
     );
+}
+
+/// The example's nose cone (`examples/catalog_rocket.rs`), as `docs/the-builder.md` quotes it:
+/// OpenRocket's mass, hpr's, and the gap, which is its shoulder's wall.
+#[test]
+fn the_example_nose_weighs_its_shoulder_more() {
+    let fixture = fixture();
+    let loc = fixture["files"]
+        .as_array()
+        .expect("files")
+        .iter()
+        .find(|file| file["file"] == "loc_precision.orc")
+        .expect("LOC Precision's file");
+    let theirs = loc["parts"]
+        .as_array()
+        .expect("parts")
+        .iter()
+        .find(|part| part["PartNo"] == "PNC-2.56")
+        .expect("PNC-2.56");
+    let theirs_kg = theirs["mass_kg"].as_f64().expect("a mass");
+    let part = hpr::hpr_io::orc::bundled().find("LOC Precision", "PNC-2.56")[0];
+    let built = build(part).expect("it builds");
+    let shoulders_kg: f64 = hollow_shoulders(part, built_density(&built))
+        .iter()
+        .map(|(kg, _)| kg)
+        .sum();
+    let grams = |kg: f64| format!("{:.1}", 1000.0 * kg);
+    assert_eq!(
+        [
+            grams(theirs_kg),
+            grams(built.own.mass_kg),
+            grams(shoulders_kg)
+        ],
+        ["61.5", "87.7", "26.1"]
+    );
+    assert!(apart(built.own.mass_kg - shoulders_kg, theirs_kg) <= REVOLVED);
 }
 
 #[test]
