@@ -585,6 +585,33 @@ dest = "refs/papers/iapws-r12-08-water-viscosity.pdf"
 license = "IAPWS: publication allowed with attribution"
 mode = "fetched"
 
+[[file]]
+name = "wmm2025-report"
+title = "A. Chulliat, W. Brown, M. Nair et al., The US/UK World Magnetic Model for 2025-2030: Technical Report, NCEI, NOAA, 2025, doi:10.25923/prbc-s316"
+url = "https://library.oarcloud.noaa.gov/noaa_documents.lib/NESDIS/NCEI/WWM_Report_2025.pdf"
+sha256 = "3bed06a4381b06caa0ca04296aa428a6647974bbc06ec936cf744876e4fc0f28"
+dest = "refs/papers/wmm2025-report.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "wmm2025-coefficients"
+title = "NCEI, WMM2025COF.zip: the WMM2025 coefficient file and high-precision test values, 2024-12-17"
+url = "https://www.ncei.noaa.gov/sites/default/files/2024-12/WMM2025COF.zip"
+sha256 = "2e76569370d081f2cd7919490218bd094ca9afde347b198eff5621e0af460d03"
+dest = "refs/sources/wmm2025/WMM2025COF.zip"
+license = "public domain"
+mode = "fetched"
+
+[[file]]
+name = "wmm2025-test-values"
+title = "NCEI, WMM2025_TEST_VALUES.txt: the WMM2025 report's Table 6 test values, 2025-02"
+url = "https://www.ncei.noaa.gov/sites/default/files/2025-02/WMM2025_TEST_VALUES.txt"
+sha256 = "ae289c94e2200e4deeae2dfdedf543a8a0e93096512b30d6a754199731f570d0"
+dest = "refs/sources/wmm2025/WMM2025_TEST_VALUES.txt"
+license = "public domain"
+mode = "fetched"
+
 # Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor
 # finder hourly), so a fresh fetch elsewhere may not reproduce these bytes: fetch then fails and
 # keeps the new capture aside, and `fetch --adopt-snapshots` repins to it.

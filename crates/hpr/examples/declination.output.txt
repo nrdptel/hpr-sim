@@ -1,0 +1,9 @@
+WMM-2025 on 2026-06-20 (decimal year 2026.4658)
+
+site                             D (°)  ± (°)  dD (°/yr)   I (°)  F (nT)  GV (°)  zone
+Spaceport America, New Mexico     7.75   0.35     -0.076   59.89   46981       -  Reliable
+Black Rock Desert, Nevada        12.85   0.36     -0.096   64.24   49646       -  Reliable
+Lucerne Dry Lake, California     11.16   0.35     -0.079   59.38   46407       -  Reliable
+Andøya, Norway                    9.41   0.56      0.268   78.16   53674   -6.61  Reliable
+
+At Spaceport America, New Mexico, a rail aimed at magnetic north points 7.75° east of true north.

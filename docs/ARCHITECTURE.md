@@ -25,7 +25,7 @@ or a public trait gets an entry in `DECISIONS.md` first.
 
 | crate | role | depends on |
 |---|---|---|
-| `hpr-core` | math (`glam` f64: `DVec3`/`DQuat`/`DMat3`), unit helpers, frames, Earth/gravity models, interpolation tables, error types | — |
+| `hpr-core` | math (`glam` f64: `DVec3`/`DQuat`/`DMat3`), unit helpers, frames, Earth/gravity models, the magnetic field (WMM2025, ADR-125), interpolation tables, error types | — |
 | `hpr-atmos` | USSA76/ISA, custom soundings, wind models (profiles, turbulence) | core |
 | `hpr-motor` | solid-motor model (thrust, mass, CG and inertia over time), `.eng`/`.rse` I/O, catalog types | core |
 | `hpr-design` | component tree, shapes, materials, mass properties, configurations/stages, design checks | core, motor |

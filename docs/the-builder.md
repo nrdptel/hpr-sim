@@ -140,7 +140,8 @@ where the air is read, and as the height above the [ellipsoid](glossary.md#ellip
 `Flight::builder(&rocket, &environment, 1.8)` sets up a flight from a vertical 1.8 m rail.
 `inclination_deg` is the rail's angle above the horizon: 90 is vertical, and 85 leans 5° off it.
 OpenRocket measures its launch rod angle from the vertical instead, so its 5° is 85 here.
-`heading_deg` is the way the rail leans, clockwise from north. A wind's direction is where it
+`heading_deg` is the way the rail leans, clockwise from true north (add the
+[declination](physics/magnetic.md) to a compass reading). A wind's direction is where it
 comes from, so a rail leaning into a west wind has both at 270. `fly()` flies the rocket to the
 ground. The flight's `apogee_m`, `max_speed_m_s`, `rail_exit_speed_m_s` and `landing` are the
 numbers most asked for; `summary()` has every metric the [metrics page](physics/metrics.md)
