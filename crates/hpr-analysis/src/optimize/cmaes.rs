@@ -193,11 +193,16 @@ pub struct Optimum {
 }
 
 /// The serialized form of a number that is finite or `+∞`, the only infinity an [`Optimum`]
-/// holds: an option, none for `+∞`, as JSON has no infinity.
+/// holds: an option, none for `+∞`, as JSON has no infinity. A NaN or `−∞` is refused, as
+/// it would read back as `+∞`.
 pub(crate) mod infinity_as_none {
+    use serde::ser::Error as _;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     pub(crate) fn serialize<S: Serializer>(x: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+        if x.is_nan() || *x == f64::NEG_INFINITY {
+            return Err(S::Error::custom(format!("{x} is neither finite nor +∞")));
+        }
         let value = (*x != f64::INFINITY).then_some(*x);
         value.serialize(serializer)
     }
@@ -874,7 +879,7 @@ mod tests {
     }
 
     #[test]
-    fn violations_must_be_finite_and_not_negative() {
+    fn violations_must_not_be_negative_or_nan() {
         let cmaes = Cmaes::new(variables(2, 1.0, 0.5)).unwrap();
         for bad in [-1e-300, f64::NAN, f64::NEG_INFINITY] {
             let mut run = cmaes.start(1).unwrap();
@@ -894,6 +899,55 @@ mod tests {
                 other => panic!("{bad}: {other:?}"),
             }
         }
+    }
+
+    /// A NaN or −∞ isn't written as JSON's `null`, which reads back as a failure's `+∞`.
+    #[test]
+    fn json_refuses_what_would_read_back_as_a_failure() {
+        for bad in [f64::NAN, f64::NEG_INFINITY] {
+            let e = Evaluation {
+                value: 1.0,
+                violation: bad,
+            };
+            assert!(serde_json::to_string(&e).is_err(), "{bad}");
+            assert!(
+                serde_json::to_string(&Evaluation::feasible(bad)).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
+    /// Failed candidates rank last: a run where every one fails reports `+∞` for both, and
+    /// survives JSON; a run where some fail finds the minimum among the rest.
+    #[test]
+    fn failed_candidates_rank_last() {
+        let cmaes = Cmaes::new(variables(3, 3.0, 1.0))
+            .unwrap()
+            .with_max_evaluations(300)
+            .unwrap();
+        let none = cmaes
+            .minimize_constrained(5, |_| Evaluation::failed())
+            .unwrap();
+        assert_eq!((none.value, none.violation), (f64::INFINITY, f64::INFINITY));
+        let json = serde_json::to_string(&none).unwrap();
+        assert_eq!(serde_json::from_str::<Optimum>(&json).unwrap(), none);
+        // Every candidate with x₁ < 0 fails; the minimum (1, 0, 0) is on that edge.
+        let cmaes = Cmaes::new(variables(3, 3.0, 1.0))
+            .unwrap()
+            .with_max_evaluations(20_000)
+            .unwrap();
+        let some = cmaes
+            .minimize_constrained(5, |x| {
+                if x[1] < 0.0 {
+                    Evaluation::failed()
+                } else {
+                    sphere_above(x)
+                }
+            })
+            .unwrap();
+        assert_eq!(some.violation, 0.0);
+        assert!(some.point[1] >= 0.0);
+        assert!((some.value - 1.0).abs() < 1e-8, "{}", some.value);
     }
 
     /// A target counts only for a point that keeps the constraints: an infeasible candidate
