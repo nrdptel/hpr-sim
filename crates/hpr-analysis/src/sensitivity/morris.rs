@@ -34,9 +34,12 @@
 //! *Environmental Modelling & Software* 22, 1509–1518, 2007,
 //! <https://doi.org/10.1016/j.envsoft.2006.10.004>, add `μ*`, which doesn't let effects of
 //! opposite signs cancel (pp. 1511–1512), and find, by experiment rather than proof, that it
-//! ranks factors as the total Sobol' index does (p. 1517). Not always: on Ishigami's function at
-//! four levels, `μ*` puts `x₂` first (7.875 against 7.704 for `x₁`), the total index `x₁` (0.558
-//! against 0.442), as the grid sees `sin² x₂` at only two values.
+//! ranks factors as the total Sobol' index does (p. 1517). Not always. A step is about half the
+//! range, so it misses a response that repeats over about half the range: on Ishigami's function
+//! (on `[−π, π]`) a step of `x₂` is `pπ/(p − 1)`, near the period `π` of `sin² x₂`. At four levels
+//! `μ*` puts `x₂` first (7.875 against 7.704 for `x₁`), the total index `x₁` (0.558 against
+//! 0.442); at six or more, `μ*` puts `x₂` last (2.687 at six levels), though its first-order
+//! index is the largest.
 //!
 //! [`Morris::population`] computes `Fᵢ`'s three moments exactly, by running the model at every
 //! grid point: the numbers the paths estimate, for a model cheap enough to run `p^k` times.
@@ -50,7 +53,7 @@ use crate::error::AnalysisError;
 /// The most grid points [`Morris::population`] will run the model at.
 pub const MAX_POPULATION_POINTS: usize = 1 << 24;
 
-/// The most levels a grid may have. Morris and Campolongo use 4 to 10.
+/// The most levels a grid may have: far more than a screening uses (the guide suggests 4).
 pub const MAX_LEVELS: usize = 1 << 16;
 
 /// A Morris screening: the factors, the grid's number of levels and the number of paths. It
@@ -512,7 +515,7 @@ mod tests {
                 ..
             })
         ));
-        assert!(Morris::new(unit_factors(1), 4, 1 << 21).is_ok());
+        assert!(Morris::new(unit_factors(1), 4, 1 << 19).is_ok());
         assert!(matches!(
             Morris::new(unit_factors(2), 4, usize::MAX / 2),
             Err(AnalysisError::Count {

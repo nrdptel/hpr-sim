@@ -134,12 +134,16 @@ impl TryFrom<SobolGData> for SobolG {
 }
 
 impl SobolG {
+    /// The largest `aᵢ`: `3 (1 + aᵢ)²` overflows past about 7.7e153, and at 1e100 a factor's
+    /// share is already 1e-200 of the next one's.
+    pub const MAX_A: f64 = 1e100;
+
     /// The function with one factor for each of `a`.
     ///
     /// # Errors
     ///
     /// - [`AnalysisError::TooFew`] for an empty `a`.
-    /// - [`AnalysisError::Domain`] for an `aᵢ` that isn't finite and at least zero.
+    /// - [`AnalysisError::Domain`] for an `aᵢ` that isn't between 0 and [`SobolG::MAX_A`].
     pub fn new(a: Vec<f64>) -> Result<Self, AnalysisError> {
         if a.is_empty() {
             return Err(AnalysisError::TooFew {
@@ -148,9 +152,9 @@ impl SobolG {
                 minimum: 1,
             });
         }
-        if let Some(&value) = a.iter().find(|&&ai| !(ai.is_finite() && ai >= 0.0)) {
+        if let Some(&value) = a.iter().find(|&&ai| !(0.0..=Self::MAX_A).contains(&ai)) {
             return Err(AnalysisError::Domain {
-                what: "g function's a (finite, at least 0)",
+                what: "g function's a (from 0 to 1e100)",
                 value,
             });
         }
@@ -298,10 +302,11 @@ mod tests {
         assert!((tiny.first_order()[0] - 1.0).abs() < 1e-12);
         // One factor: all its variance is its own, 1/3 at a = 0.
         let one = SobolG::new(vec![0.0]).unwrap();
-        assert!((one.variance() - 1.0 / 3.0).abs() < 1e-16);
-        // (1 + 1/3) − 1 is not 1/3 in floating point, so V and Vᵢ differ in the last bit.
-        assert!((one.first_order()[0] - 1.0).abs() < 1e-15);
-        assert!((one.total()[0] - 1.0).abs() < 1e-15);
+        assert!((one.variance() - 1.0 / 3.0).abs() < 1e-15);
+        // V = exp_m1(ln_1p(1/3)) may differ from 1/3 in its last bits on another platform's
+        // ln_1p and exp_m1.
+        assert!((one.first_order()[0] - 1.0).abs() < 1e-14);
+        assert!((one.total()[0] - 1.0).abs() < 1e-14);
     }
 
     #[test]
@@ -348,6 +353,15 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(refused.contains("g function's a"), "{refused}");
+        assert!(SobolG::new(vec![SobolG::MAX_A]).is_ok());
+        match SobolG::new(vec![1e101]) {
+            Err(AnalysisError::Domain { what, value }) => {
+                assert_eq!((what, value), ("g function's a (from 0 to 1e100)", 1e101));
+            }
+            other => panic!("{other:?}"),
+        }
+        let big = SobolG::new(vec![SobolG::MAX_A, SobolG::MAX_A]).unwrap();
+        assert!(big.first_order().iter().all(|s| (s - 0.5).abs() < 1e-12));
         assert_eq!(
             serde_json::from_str::<SobolG>(r#"{"a":[1.0,2.0]}"#).unwrap(),
             g

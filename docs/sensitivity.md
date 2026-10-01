@@ -13,16 +13,17 @@ It needs some Rust, and follows on from [Monte Carlo dispersion](monte-carlo.md)
 > models, which are not yet validated against real flights ([Accuracy](accuracy.md)).
 >
 > - **Tested:** both methods match the known answers of two standard test functions within four
->   of their own [standard errors](glossary.md#standard-error). Over 500 to 1,000 runs with
->   different seeds, the error a run reports for a Sobol' index, or for a Morris `μ*` of the g
->   function, is the scatter the runs really show. The same
+>   of their own [standard errors](glossary.md#standard-error). Repeated with 500 to 1,000
+>   different seeds, the error an analysis reports is the scatter the repeats really show: for
+>   every Sobol' index of Ishigami's function, and for the Sobol' indices and Morris `μ*`s of a
+>   four-factor g function. The same
 >   [seed](glossary.md#seed) gives the same numbers, bit for bit
 >   ([`tests/sensitivity.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/sensitivity.rs)).
 > - **Not checked:** whether a rocket's ranking matches what real flights would show.
 > - **Left out:** inputs that depend on each other, inputs that aren't spread evenly over a
 >   range, and the [Sobol' indices](glossary.md#sobol-index) of pairs of inputs. A Sobol'
->   analysis costs thousands of runs per input, too many flights for this page's rocket example,
->   which uses only the cheaper Morris screening.
+>   analysis costs thousands of runs per input: 65,536 flights for this page's rocket, against
+>   Morris's 70, so the rocket example uses only the Morris screening.
 
 ## Inputs as factors
 
@@ -63,8 +64,8 @@ standard error, which shrinks as `1/√r`: ten paths are usually enough to rank,
 
 For example, Ishigami's test function (below) has `a sin² x₂` as a term, with `a` = 7. On a
 four-level grid from −π to π, a step of `x₂` moves `sin²` by exactly 3/4, up or down, so every
-effect of `x₂` is `± (3/4)(7)/(2/3) = ± 7.875`. The example's screening finds `μ* = 7.875` with no error, and
-`μ` near zero.
+effect of `x₂` is `± (3/4)(7)/(2/3) = ± 7.875`. The example's screening finds `μ* = 7.875` with no
+error, and `μ` near zero.
 
 M. D. Morris, "Factorial sampling plans for preliminary computational experiments",
 *Technometrics* 33(2), 161–174, 1991, defines the effects, the grid and the paths. F. Campolongo,
@@ -72,10 +73,14 @@ J. Cariboni and A. Saltelli, "An effective screening design for sensitivity anal
 models", *Environmental Modelling & Software* 22, 1509–1518, 2007, add `μ*`. They found, by
 experiment rather than proof, that it ranks factors in the same order as the total Sobol' index.
 
-That is usual, not certain. On Ishigami's function, Morris puts `x₂` first (`μ*` 7.875 against
-7.704 for `x₁`), while the total index puts `x₁` first (0.558 against 0.442). The two measure
-different things, and a four-level grid sees `sin² x₂` at only two values. So treat factors whose
-`μ*`s are close as tied, and use Sobol' indices to settle their order if it matters.
+That is usual, not certain. A step spans about half of each range, so it can miss a response
+that repeats over about half the range. Ishigami's `sin² x₂` repeats every π, half of its range
+from −π to π. At four levels, Morris puts `x₂` first (`μ*` 7.875 against 7.704 for `x₁`), while
+the total index puts `x₁` first (0.558 against 0.442). At six levels or more, Morris puts `x₂`
+last (2.687 at six levels), though it causes the largest share of the variance alone. A rocket's
+outputs rarely repeat like that, but treat factors whose `μ*`s are close as tied, and use Sobol'
+indices to settle an order that matters.
+
 [`hpr_analysis::sensitivity::morris`](api/hpr_analysis/sensitivity/morris/index.html) gives the
 equations and page numbers.
 
@@ -124,7 +129,8 @@ Two test functions have Sobol' indices known in closed form
 
 For Morris there is also an exact answer. A screening estimates the moments of a finite set of
 effects: every step on the grid. [`Morris::population`] runs the model at every grid point and
-computes them exactly: the example's "whole grid" column. For both functions they also follow in closed form, which the tests check.
+computes them exactly: the example's "whole grid" column. For both functions they also follow in
+closed form, which the tests check.
 
 The tests in
 [`tests/sensitivity.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/sensitivity.rs)
@@ -199,7 +205,7 @@ The six inputs, with ranges made up for the example:
 | drag factor | 0.9 to 1.1 | 1 | the zero-lift drag, ±10% |
 | impulse factor | 0.94 to 1.06 | 1 | the motor's total impulse, ±6%; NFPA 1125 caps a motor type's standard deviation at 6.7% |
 | wind speed | 0 to 8 m/s | 4 m/s | the wind at every height |
-| wind turn | −30° to 30° | 0° | the wind's direction turned clockwise from the forecast's west |
+| wind turn | −30° to 30° | 0° | the wind's direction, turned clockwise from the forecast's (a wind from the west) |
 | rail angle | 80° to 90° | 85° | the rail's angle above the horizon; 90° is vertical |
 
 A [`Draw`] can also move a stage's centre of mass, the motor's burn time and ejection delay, the
@@ -255,8 +261,9 @@ How to read it:
   (113 m across ±10%), then the rail's angle (68 m across 80° to 90°), the wind's speed (50 m)
   and the dry mass (36 m across ±5%). The wind's direction hardly matters (4 m). The `σ`s are
   small beside the `μ*`s: each input acts nearly in a straight line and alone. The exception is
-  the wind's direction, whose small effect changes sign. The impulse and the drag are 1.4 errors
-  apart: ten paths don't settle which comes first.
+  the wind's direction, whose `σ` (5.4 m) exceeds its `μ*` (4.4 m): its effects differ in size or
+  sign from path to path. The impulse and the drag are 1.4 combined standard errors apart: ten
+  paths don't settle which comes first.
 - **The landing** is the wind's: 1,418 m across calm to 8 m/s, then the rail's angle (350 m).
   Here the `σ`s are large, so these effects bend or depend on the other inputs.
 
@@ -265,16 +272,16 @@ support; a factor's effect grows with its range.
 
 ## Choosing the numbers
 
-- **Levels:** four, as Morris and Campolongo use. More levels lets a path reach more of each
-  range, at the same cost per path. The number must be even.
+- **Levels:** four, an even number as the method needs. More levels let a path start from more
+  places in each range, at the same cost per path, but the step stays about half the range, so
+  more levels don't help with a response that repeats (see [Morris screening](#morris-screening)).
 - **Paths:** ten to twenty to rank. Check `μ*`'s standard error: two factors whose `μ*`s differ
   by less than a couple of errors aren't ranked yet.
-- **Rows:** a Sobol' analysis needs about 8,000 rows, each `k + 2` runs, to pin an index to
-  ±0.01. Use Morris first to find the few factors that matter, then Sobol' on those if you need
-  the shares or the order of two close ones.
-- **Normal inputs:** give each one the same multiple of its standard deviation, such as ±2, so
-  they are compared alike. A range spreads the input evenly, which weighs its ends more than a
-  normal spread does.
+- **Rows:** a Sobol' analysis needs about 8,000 rows, each `k + 2` runs, to pin an index to about
+  ±0.01 to ±0.015 (one standard error). Use Morris first to find the few factors that matter, then
+  Sobol' on those if you need the shares or the order of two close ones. - **Normal inputs:** give
+  each one the same multiple of its standard deviation, such as ±2, so they are compared alike. A
+  range spreads the input evenly, which weighs its ends more than a normal spread does.
 
 ## Left out
 

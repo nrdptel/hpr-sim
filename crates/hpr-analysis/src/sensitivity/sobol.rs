@@ -253,7 +253,9 @@ impl SobolDesign {
     /// - [`AnalysisError::Length`] unless there is one output per point.
     /// - [`AnalysisError::Output`] for an output that isn't finite.
     /// - [`AnalysisError::Domain`] if the outputs of `A` and `B` are all the same, as with no
-    ///   variance there is nothing to share out, or so spread that their variance overflows.
+    ///   variance there is nothing to share out, or so spread that their variance overflows; or
+    ///   if an index or its standard error overflows, from a mixed point's output far beyond the
+    ///   others.
     pub fn analyse(&self, outputs: &[f64]) -> Result<SobolIndices, AnalysisError> {
         check_outputs(outputs, self.len())?;
         let k = self.factors.len();
@@ -290,7 +292,7 @@ impl SobolDesign {
         let standard_error = |psi: &mut dyn Iterator<Item = f64>| {
             (psi.map(|x| x * x).sum::<f64>() / (n * (n - 1.0))).sqrt()
         };
-        let factors = self
+        let factors: Vec<SobolIndex> = self
             .factors
             .iter()
             .enumerate()
@@ -322,6 +324,23 @@ impl SobolDesign {
                 }
             })
             .collect();
+        if let Some(value) = factors
+            .iter()
+            .flat_map(|f| {
+                [
+                    f.first_order,
+                    f.first_order_standard_error,
+                    f.total,
+                    f.total_standard_error,
+                ]
+            })
+            .find(|x| !x.is_finite())
+        {
+            return Err(AnalysisError::Domain {
+                what: "Sobol' index or standard error (an output too large)",
+                value,
+            });
+        }
         Ok(SobolIndices {
             rows: rows.len(),
             mean: shift + big_m,
@@ -457,7 +476,7 @@ mod tests {
         let design = Sobol::new(unit_factors(3), 1000).unwrap().design(4);
         let outputs: Vec<f64> = design.points().iter().map(|x| f(x)).collect();
         let indices = design.analyse(&outputs).unwrap();
-        let rows: Vec<&[f64]> = outputs.chunks_exact(5).collect();
+        let rows: Vec<&[f64; 5]> = outputs.as_chunks::<5>().0.iter().collect();
         let n = rows.len() as f64;
         let mean = |v: &[f64]| v.iter().sum::<f64>() / n;
         let covariance = |a: &[f64], b: &[f64]| {
@@ -515,11 +534,23 @@ mod tests {
     #[test]
     fn outputs_whose_variance_overflows_are_refused() {
         let sobol = Sobol::new(unit_factors(2), 10).unwrap();
-        assert!(sobol.indices(1, |x| 1e150 * x[0]).is_ok());
+        let large = sobol.indices(1, |x| 1e150 * x[0]).unwrap();
+        assert!(large.factors.iter().all(|f| f.first_order.is_finite()
+            && f.total.is_finite()
+            && f.first_order_standard_error.is_finite()
+            && f.total_standard_error.is_finite()));
         match sobol.indices(1, |x| 1e160 * x[0]) {
             Err(AnalysisError::Domain { what, value }) => {
                 assert_eq!(what, "output variance over A and B");
                 assert!(value.is_infinite());
+            }
+            other => panic!("{other:?}"),
+        }
+        // A and B ordinary, a mixed point's output huge: the variance is 1, the total overflows.
+        let design = Sobol::new(unit_factors(1), 2).unwrap().design(1);
+        match design.analyse(&[1.0, -1.0, 1e160, -1.0, 1.0, -1e160]) {
+            Err(AnalysisError::Domain { what, .. }) => {
+                assert_eq!(what, "Sobol' index or standard error (an output too large)");
             }
             other => panic!("{other:?}"),
         }

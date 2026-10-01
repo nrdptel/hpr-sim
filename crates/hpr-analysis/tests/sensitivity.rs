@@ -277,6 +277,31 @@ fn morris_ranks_the_g_function_as_its_total_indices() {
 }
 
 #[test]
+fn morris_misses_a_response_that_repeats_over_its_step() {
+    // A step of x₂ is pπ/(p − 1), near sin²'s period π. At four levels μ* ranks x₂ first, the
+    // total index ranks x₁ first; at six, μ* ranks x₂ last, though S₂ is the largest
+    // first-order index. The guide warns of this; the test keeps the warning true.
+    let f = Ishigami::STANDARD;
+    let (first, total) = (f.first_order(), f.total());
+    assert!(first[1] > first[0] && first[1] > first[2]);
+    assert!(total[0] > total[1]);
+    let mu_star = |levels: usize| -> Vec<f64> {
+        Morris::new(Ishigami::factors().unwrap(), levels, 2)
+            .unwrap()
+            .population(|x| f.evaluate(x))
+            .unwrap()
+            .iter()
+            .map(|e| e.mean_absolute)
+            .collect()
+    };
+    let four = mu_star(4);
+    assert!(four[1] > four[0] && four[0] > four[2], "{four:?}");
+    let six = mu_star(6);
+    assert!(six[1] < six[2] && six[2] < six[0], "{six:?}");
+    assert!((six[1] - 2.687).abs() < 5e-4, "{six:?}");
+}
+
+#[test]
 fn the_same_seed_gives_the_same_numbers_bit_for_bit() {
     let f = Ishigami::STANDARD;
     let sobol = Sobol::new(Ishigami::factors().unwrap(), 300).unwrap();

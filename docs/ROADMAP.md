@@ -821,7 +821,7 @@
     (ADR-135): axes to 1e-14, a density's mass inside to 1e-12, sampled shares within 5σ.
   - [x] **M6.1c Sensitivity:** Morris screening and Sobol indices. *Done when:* both match the
     known indices of test functions with closed forms (Ishigami, Sobol's g) within sampling error.
-    *Result:* met (ADR-136): every index within 4 standard errors; errors calibrated over 500-1,000 seeds.
+    *Result:* met (ADR-136): within 4 standard errors, calibrated on 500 to 1,000 seeds.
   - [ ] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on
     the dev machine, recorded in `docs/perf.md`.
 

@@ -47,12 +47,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AnalysisError;
 
-/// The most points a design lays out: 4,194,304, far more than flights can be flown for, so a
-/// design never allocates more than a few hundred megabytes.
-pub const MAX_DESIGN_POINTS: usize = 1 << 22;
+/// The most points a design lays out: 1,048,576, far more than flights can be flown for. With
+/// [`MAX_DESIGN_VALUES`] it keeps a design's points under about 200 MiB (a point costs its
+/// coordinates, 8 bytes each, and a list of them, about 40 bytes).
+pub const MAX_DESIGN_POINTS: usize = 1 << 20;
 
-/// The most coordinates (points times factors) a design holds: 67,108,864, half a gigabyte.
-pub const MAX_DESIGN_VALUES: usize = 1 << 26;
+/// The most coordinates (points times factors) a design holds: 16,777,216, 128 MiB.
+pub const MAX_DESIGN_VALUES: usize = 1 << 24;
 
 /// An uncertain input, spread evenly between `low` and `high`. It serializes as its three
 /// fields, and reads back through [`Factor::new`]'s checks.
@@ -251,10 +252,10 @@ mod tests {
 
     #[test]
     fn a_design_is_held_to_its_size_limits() {
-        assert!(check_size("points", 1 << 20, 4, 16).is_ok());
-        match check_size("points", 1 << 21, 3, 1) {
+        assert!(check_size("points", 1 << 18, 4, 16).is_ok());
+        match check_size("points", 1 << 19, 3, 1) {
             Err(AnalysisError::Count { what, count, limit }) => {
-                assert_eq!((what, count, limit), ("points", 3 << 21, MAX_DESIGN_POINTS));
+                assert_eq!((what, count, limit), ("points", 3 << 19, MAX_DESIGN_POINTS));
             }
             other => panic!("{other:?}"),
         }
@@ -262,10 +263,10 @@ mod tests {
             Err(AnalysisError::Count { count, .. }) => assert_eq!(count, usize::MAX),
             other => panic!("{other:?}"),
         }
-        match check_size("points", 1 << 20, 4, 17) {
+        match check_size("points", 1 << 18, 4, 17) {
             Err(AnalysisError::Count { what, count, limit }) => {
                 assert_eq!(what, "design coordinates (points times factors)");
-                assert_eq!((count, limit), (17 << 22, MAX_DESIGN_VALUES));
+                assert_eq!((count, limit), (17 << 20, MAX_DESIGN_VALUES));
             }
             other => panic!("{other:?}"),
         }
