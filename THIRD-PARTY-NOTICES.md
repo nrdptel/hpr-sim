@@ -163,10 +163,10 @@ adds a source.
   (<https://creativecommons.org/publicdomain/zero/1.0/>); the whole file stays in `refs/`.
 - **USGS terrain cut into GeoTIFF fixtures** (`crates/hpr-io/tests/fixtures/geotiff/usgs-*.tif`):
   70 by 50 pixels around Spaceport America from the USGS 3D Elevation Program's 1-arc-second tile
-  `USGS_1_n33w107.tif`, written in five encodings (and some pixels blanked as nodata) by
+  `USGS_1_n33w107.tif`, written in seven encodings (and some pixels blanked as nodata) by
   `validation/oracles/geotiff/dem.py cut` with rasterio. USGS data is a work of the United States
   government, in the public domain (17 U.S.C. § 105); the USGS asks to be credited as its
-  source. `utm13n-refused.tif` beside them holds invented values. `rasterio.json` is rasterio
+  source. `utm13n-refused.tif` and `zstd-refused.tif` beside them hold invented values. `rasterio.json` is rasterio
   1.5.2's (GDAL 3.12.2's) reading of them and of the whole tile, written by `dem.py read`; rasterio
   is run as an outside reader and none of its code is ported.
 

@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // 1. Reading the tags: where the pixels lie, and what their values are.
     let raster = ElevationRaster::parse(metres)?;
     let info = raster.info();
-    let (south, north, west, east) = info.bounds_deg();
+    let bounds = info.bounds();
     println!(
         "{} by {} pixels of {:.3}\" by {:.3}\", {:?}, CRS EPSG:{}, values {:?} in {:?} (stated: {})",
         info.width,
@@ -41,12 +41,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         info.pixel_longitude_deg * 3600.0,
         -info.pixel_latitude_deg * 3600.0,
         info.raster_type,
-        info.geographic_crs_epsg.unwrap_or(0),
+        info.geographic_crs_epsg,
         info.sample,
         info.vertical_unit,
         info.vertical_unit_stated,
     );
-    println!("latitudes {south:.5} to {north:.5}, longitudes {west:.5} to {east:.5}");
+    println!(
+        "latitudes {:.5} to {:.5}, longitudes {:.5} to {:.5}",
+        bounds.south_deg, bounds.north_deg, bounds.west_deg, bounds.east_deg
+    );
     println!();
 
     // 2. Heights: each the value of the pixel the place falls in.

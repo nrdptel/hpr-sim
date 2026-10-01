@@ -18,7 +18,7 @@
 
 use std::path::{Path, PathBuf};
 
-use hpr_io::geotiff::{ElevationRaster, GeoTiffError, RasterType};
+use hpr_io::geotiff::{ElevationRaster, GeoTiffError, Pixel, RasterType};
 use serde::Deserialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -41,6 +41,9 @@ struct Reading {
     nodata: Option<f64>,
     horizontal_epsg: Option<u16>,
     vertical_unit_m: Option<f64>,
+    vertical_epsg: Option<u16>,
+    scale: f64,
+    offset: f64,
     sum: f64,
     weighted_sum: f64,
     nodata_count: usize,
@@ -57,8 +60,10 @@ fn oracle() -> Oracle {
     serde_json::from_str(text).unwrap()
 }
 
-/// The correctly rounded sum of `terms`, as Python's `math.fsum` gives it: Shewchuk's exact
-/// partials, then the round-half-even correction of the last step.
+/// The correctly rounded sum of `terms`, as Python's `math.fsum` gives it: J. R. Shewchuk's
+/// exact partials (*Adaptive precision floating-point arithmetic and fast robust geometric
+/// predicates*, Discrete Comput. Geom. 18, 1997, 305-363), then the round-half-even correction
+/// of the last step, written from that algorithm.
 fn fsum(terms: impl Iterator<Item = f64>) -> f64 {
     let mut partials: Vec<f64> = Vec::new();
     for mut x in terms {
@@ -83,8 +88,8 @@ fn fsum(terms: impl Iterator<Item = f64>) -> f64 {
         return 0.0;
     };
     let mut lo = 0.0;
-    while let Some(x) = partials.pop() {
-        let y = hi;
+    while let Some(y) = partials.pop() {
+        let x = hi;
         hi = x + y;
         let yr = hi - x;
         lo = y - yr;
@@ -141,7 +146,17 @@ fn check(bytes: &[u8], reading: &Reading) -> (usize, usize, usize) {
         point,
         "{name}"
     );
-    assert_eq!(info.geographic_crs_epsg, reading.horizontal_epsg, "{name}");
+    assert_eq!(
+        Some(info.geographic_crs_epsg),
+        reading.horizontal_epsg,
+        "{name}"
+    );
+    assert_eq!(info.vertical_crs_epsg, reading.vertical_epsg, "{name}");
+    assert_eq!(
+        (info.scale, info.offset),
+        (reading.scale, reading.offset),
+        "{name}"
+    );
     match reading.vertical_unit_m {
         // The WKT prints the unit to 15 significant digits.
         Some(m) => {
@@ -152,7 +167,10 @@ fn check(bytes: &[u8], reading: &Reading) -> (usize, usize, usize) {
                 "{name}: {unit} m against {m} m"
             );
         }
-        None => assert_eq!(info.vertical_unit.metres(), 1.0, "{name}"),
+        None => {
+            assert!(!info.vertical_unit_stated, "{name}");
+            assert_eq!(info.vertical_unit.metres(), 1.0, "{name}");
+        }
     }
     assert_eq!(info.nodata, reading.nodata, "{name}");
 
@@ -184,7 +202,7 @@ fn check(bytes: &[u8], reading: &Reading) -> (usize, usize, usize) {
     // Read together, each tile decoded once (the whole tile's 2,000 points one by one take
     // minutes in a debug build); a few read alone, which must agree.
     let latlon: Vec<(f64, f64)> = reading.points.iter().map(|p| (p.1, p.0)).collect();
-    let together = raster.values_at(&latlon).unwrap();
+    let together = raster.values_at(&latlon);
     let mut inside = 0;
     for (k, (&(lon, lat, row, col, ref value), read)) in
         reading.points.iter().zip(together).enumerate()
@@ -203,17 +221,21 @@ fn check(bytes: &[u8], reading: &Reading) -> (usize, usize, usize) {
             continue;
         }
         inside += 1;
-        let expected = (u32::try_from(col).unwrap(), u32::try_from(row).unwrap());
-        assert_eq!(pixel, Some(expected), "{at}: rasterio's (column, row)");
+        let expected = Pixel {
+            row: u32::try_from(row).unwrap(),
+            col: u32::try_from(col).unwrap(),
+        };
+        assert_eq!(pixel, Some(expected), "{at}: rasterio's pixel");
         let read = read.unwrap_or_else(|e| panic!("{at}: {e}"));
         assert_eq!(read, value.as_f64(), "{at}");
         if k % 97 == 0 {
+            // GDAL's scale and offset, then the unit (the WKT's, or metres where it has none).
+            let unit = reading
+                .vertical_unit_m
+                .map_or(1.0, |_| info.vertical_unit.metres());
             let height = raster.height_at(lat, lon).unwrap();
-            assert_eq!(
-                height,
-                read.map(|v| v * info.vertical_unit.metres()),
-                "{at}"
-            );
+            let theirs = read.map(|v| (v * reading.scale + reading.offset) * unit);
+            assert_eq!(height, theirs, "{at}");
         }
     }
     let nodata = reading.points.iter().filter(|p| p.4.is_null()).count();
@@ -243,9 +265,9 @@ fn fixtures_read_as_rasterio_reads_them() {
         assert!(i > p / 2, "{}: {i} of {p} inside", reading.file);
         (files, points, inside, nodata) = (files + 1, points + p, inside + i, nodata + n);
     }
-    // The counts the guide's tables quote: 5 files, 2000 places, 1705 on a raster, 9 of them
+    // The counts the guide's tables quote: 7 files, 2800 places, 2368 on a raster, 9 of them
     // on nodata.
-    assert_eq!((files, points, inside, nodata), (5, 2000, 1705, 9));
+    assert_eq!((files, points, inside, nodata), (7, 2800, 2368, 9));
 }
 
 /// The whole USGS tile (44.7 MB, `cargo xtask refs fetch`): 13 million pixels' sums and 2,000
@@ -264,4 +286,18 @@ fn whole_usgs_tile_reads_as_rasterio_reads_it() {
     };
     // 2000 places, 1696 on the tile, none on nodata.
     assert_eq!(check(&bytes, reading), (2000, 1696, 0));
+}
+
+#[test]
+fn fsum_rounds_as_python_does() {
+    // CPython's own examples of `math.fsum`.
+    assert_eq!(
+        fsum([1e-16, 1.0, 1e16].into_iter()),
+        1.000_000_000_000_000_2e16
+    );
+    assert_eq!(fsum([0.1; 10].into_iter()), 1.0);
+    assert_eq!(
+        fsum([1e100, 1.0, -1e100, 1e-100, 1e50, -1.0, -1e50].into_iter()),
+        1e-100
+    );
 }

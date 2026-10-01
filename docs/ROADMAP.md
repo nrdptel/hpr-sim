@@ -797,8 +797,8 @@
     - [x] **M5.3c1 Geodesics** on WGS 84. *Done when:* distances and bearings match a published
       geodesic test set. *Result:* met (ADR-127): Karney's 500,000 within his 15 nm.
     - [x] **M5.3c2 A user's GeoTIFF.** *Done when:* a site's height from it matches a reader's.
-      *Result:* met (ADR-128): rasterio's (GDAL 3.12.2) on 5 fixtures and a whole USGS tile;
-      corners bit for bit, exact sums, 3,401 places' pixel and value.
+      *Result:* met (ADR-128): rasterio's (GDAL 3.12.2) on 7 fixtures and a whole USGS tile;
+      corners bit for bit, exact sums, 4,064 places' pixel and value.
 
 - [ ] **M5.4 Motor stock and prices.**
   - motor.fusionspace.co client (`meta`, `motors`, `in-stock`, `vendors`, and per-motor

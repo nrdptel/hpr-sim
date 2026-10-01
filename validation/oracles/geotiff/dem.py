@@ -9,13 +9,14 @@ rasterio 1.5.2 (BSD-3-Clause) is run as the outside reader, with the GDAL 3.12 i
 
 `cut` writes small fixtures cut from that tile to `crates/hpr-io/tests/fixtures/geotiff/`, each in
 a different encoding a DEM can arrive in (sample type, codec, predictor, tiles or strips, byte
-order, classic or BigTIFF, pixel-is-area or pixel-is-point, compound vertical units, nodata,
-longitudes past 180), plus a projected one and a Zstandard-compressed one the reader must
+order, classic or BigTIFF, pixel-is-area or pixel-is-point, compound vertical units, a scale and
+offset in the pixel scale or in GDAL's metadata, nodata, longitudes past 180), plus a projected one and a Zstandard-compressed one the reader must
 refuse. `read` writes rasterio's
 reading of every fixture, and of the whole tile, to `rasterio.json` beside them:
 
 - the raster's size, its affine transform, its area-or-point flag, its nodata value, its CRS
-  (the horizontal EPSG code, and the vertical unit's length in metres where it has one);
+  (the horizontal EPSG code, and the vertical CRS's code and unit's length in metres where it has
+  one), and the band's scale and offset as GDAL sets them;
 - the correctly rounded sums (Python's `math.fsum`) of its values and of each value times its
   pixel's row-major index plus one, over the pixels that are not nodata, and the nodata count;
 - at seeded random points (some outside the raster) the pixel rasterio's `index` puts them in
@@ -101,6 +102,25 @@ def fixtures(a):
             CRS.from_user_input("EPSG:4269+6360"),
             "Area",
         ),
+        # uint32 centimetres above 1,000 m, Deflate, a scale and offset GDAL writes into the
+        # pixel scale's S_z and the tiepoint's height, as it does for a file with a vertical CRS
+        # (here EGM2008).
+        (
+            "usgs-u32-cm-scaled-egm2008.tif",
+            np.round((a.astype(np.float64) - 1000.0) * 100.0).astype("uint32"),
+            dict(dtype="uint32", compress="deflate", scales=(0.01,), offsets=(1000.0,)),
+            CRS.from_user_input("EPSG:4326+3855"),
+            "Area",
+        ),
+        # uint8 quarter metres above 1,395 m, with no vertical CRS: GDAL writes the scale and
+        # offset into its GDAL_METADATA tag.
+        (
+            "usgs-u8-metadata-scaled.tif",
+            np.round((a.astype(np.float64) - 1395.0) * 4.0).astype("uint8"),
+            dict(dtype="uint8", compress="lzw", scales=(0.25,), offsets=(1395.0,)),
+            CRS.from_epsg(4326),
+            "Area",
+        ),
         # int32 decimetres, LZW with the horizontal predictor, 32-pixel tiles; longitudes 0-360.
         (
             "usgs-i32-lzw-tiles-lon360.tif",
@@ -120,6 +140,8 @@ def cut():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, values, extra, crs, area_or_point in fixtures(a):
         extra = dict(extra)
+        scales = extra.pop("scales", None)
+        offsets = extra.pop("offsets", None)
         t = transform
         if extra.pop("lon360", False):
             t = Affine(t.a, t.b, t.c + 360.0, t.d, t.e, t.f)
@@ -128,6 +150,9 @@ def cut():
         with rasterio.open(OUT / name, "w", **profile) as dst:
             if area_or_point == "Point":
                 dst.update_tags(AREA_OR_POINT="Point")
+            if scales is not None:
+                dst.scales = scales
+                dst.offsets = offsets
             dst.write(values, 1)
     # A projected file (UTM zone 13 N), which the reader refuses: 8 by 8 pixels of 30 m.
     t = Affine(30.0, 0.0, 309000.0, 0.0, -30.0, 3652000.0)
@@ -147,6 +172,32 @@ def vertical_unit_m(crs):
     wkt = crs.to_wkt()
     m = re.search(r'VERT_CS\[.*?UNIT\["[^"]*",([0-9.eE+-]+)', wkt)
     return float(m.group(1)) if m else None
+
+
+def vertical_epsg(crs):
+    """The EPSG code of the VERT_CS node: its last direct AUTHORITY."""
+    wkt = crs.to_wkt()
+    m = re.search(r"VERT_CS\[", wkt)
+    if not m:
+        return None
+    return own_authority(wkt, m.end() - 1)
+
+
+def own_authority(wkt, start):
+    """The EPSG code of the WKT node opening at `start`: its last AUTHORITY at depth 1."""
+    depth = 0
+    for i in range(start, len(wkt)):
+        depth += {"[": 1, "]": -1}.get(wkt[i], 0)
+        if depth == 0:
+            node = wkt[start : i + 1]
+            break
+    own = None
+    depth = 0
+    for i, ch in enumerate(node):
+        depth += {"[": 1, "]": -1}.get(ch, 0)
+        if depth == 1 and node.startswith("AUTHORITY[", i + 1):
+            own = re.match(r'AUTHORITY\["EPSG","(\d+)"\]', node[i + 1 :])
+    return int(own.group(1)) if own else None
 
 
 def horizontal_epsg(crs):
@@ -219,6 +270,9 @@ def reading(path, n_points, seed):
             "nodata": nodata,
             "horizontal_epsg": horizontal_epsg(ds.crs),
             "vertical_unit_m": vertical_unit_m(ds.crs),
+            "vertical_epsg": vertical_epsg(ds.crs),
+            "scale": ds.scales[0],
+            "offset": ds.offsets[0],
             "sum": total,
             "weighted_sum": weighted,
             "nodata_count": int((~valid).sum()),

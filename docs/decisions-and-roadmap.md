@@ -355,7 +355,7 @@ missing or its status disagrees.
 | <a id="m5-3b"></a>[M5.3b][phase-2] | A launch site's ground elevation from Open-Meteo, cached so it works offline after the first lookup ([ADR-126][adr-126], [A launch site's elevation](elevation.md)) | done |
 | <a id="m5-3c"></a>[M5.3c][phase-2] | Distance and bearing between two places on the WGS 84 ellipsoid, and a site's elevation from a GeoTIFF file the user gives; split in two ([ADR-127][adr-127]) | done |
 | <a id="m5-3c1"></a>[M5.3c1][phase-2] | Distance and bearing between two places on WGS 84, checked against Karney's published set of 500,000 geodesics ([ADR-127][adr-127], [Geodesy](physics/geodesy.md#distance-and-bearing-geodesics)) | done |
-| <a id="m5-3c2"></a>[M5.3c2][phase-2] | A launch site's elevation from a GeoTIFF file the user gives, checked against GDAL's reading through rasterio on five files and a whole USGS tile ([ADR-128][adr-128], [A launch site's elevation](elevation.md#from-an-elevation-file-of-your-own)) | done |
+| <a id="m5-3c2"></a>[M5.3c2][phase-2] | A launch site's elevation from a GeoTIFF file the user gives, checked against GDAL's reading through rasterio on seven files and a whole USGS tile ([ADR-128][adr-128], [A launch site's elevation](elevation.md#from-an-elevation-file-of-your-own)) | done |
 | <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |

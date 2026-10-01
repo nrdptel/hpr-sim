@@ -105,7 +105,15 @@ fn a_pixel_holds_the_points_of_its_area() {
         ),
         (10.0, 20.0, 0.5, -0.25)
     );
-    assert_eq!(info.bounds_deg(), (19.25, 20.0, 10.0, 12.0));
+    assert_eq!(
+        info.bounds(),
+        Bounds {
+            south_deg: 19.25,
+            north_deg: 20.0,
+            west_deg: 10.0,
+            east_deg: 12.0
+        }
+    );
     // Pixel (row 1, column 2) spans 10.0..10.5 + 2·0.5 in longitude, 19.75..19.5 in latitude.
     assert_eq!(raster.value_at(19.6, 11.2).unwrap(), Some(12.0));
     // A west and a north edge belong to the pixel (the floor of an exact quotient).
@@ -120,12 +128,11 @@ fn a_pixel_holds_the_points_of_its_area() {
         raster.value_at(19.25, 11.0),
         Err(GeoTiffError::Outside { .. })
     ));
-    assert_eq!(raster.pixel(2, 3).unwrap(), Some(23.0));
+    assert_eq!(raster.pixel(Pixel { row: 2, col: 3 }).unwrap(), Some(23.0));
     assert_eq!(
-        raster.pixel(3, 0),
+        raster.pixel(Pixel { row: 3, col: 0 }),
         Err(GeoTiffError::NoSuchPixel {
-            row: 3,
-            col: 0,
+            pixel: Pixel { row: 3, col: 0 },
             width: 4,
             height: 3
         })
@@ -148,13 +155,18 @@ fn an_outside_point_names_the_raster_s_edges() {
         GeoTiffError::Outside {
             latitude_deg: 30.0,
             longitude_deg: 11.0,
-            south_deg: 19.25,
-            north_deg: 20.0,
-            west_deg: 10.0,
-            east_deg: 12.0
+            bounds: Bounds {
+                south_deg: 19.25,
+                north_deg: 20.0,
+                west_deg: 10.0,
+                east_deg: 12.0
+            }
         }
     );
-    assert!(e.to_string().contains("latitudes 19.25° to 20°"), "{e}");
+    assert!(
+        e.to_string().contains("latitudes 19.250000° to 20.000000°"),
+        "{e}"
+    );
 }
 
 #[test]
@@ -289,7 +301,7 @@ fn a_geodetic_crs_without_a_model_type_is_read() {
         None,
     );
     let raster = ElevationRaster::parse(&bytes).unwrap();
-    assert_eq!(raster.info().geographic_crs_epsg, Some(4269));
+    assert_eq!(raster.info().geographic_crs_epsg, 4269);
 }
 
 #[test]
@@ -574,14 +586,14 @@ proptest! {
             &tie(-107.0, 33.0, 1.0 / 3600.0, 1.0 / 3600.0), None, &data,
         );
         let raster = ElevationRaster::parse(&bytes).unwrap();
-        let (south, north, west, east) = raster.info().bounds_deg();
+        let Bounds { south_deg: south, north_deg: north, west_deg: west, east_deg: east } = raster.info().bounds();
         let points: Vec<(f64, f64)> = fractions
             .iter()
             .map(|&(a, b)| (south + a * (north - south), west + b * (east - west)))
             .collect();
-        let together = raster.values_at(&points).unwrap();
+        let together = raster.values_at(&points);
         for (&(lat, lon), read) in points.iter().zip(together) {
-            let (col, row) = raster.info().pixel_of(lat, lon).unwrap();
+            let Pixel { row, col } = raster.info().pixel_of(lat, lon).unwrap();
             let expected = Some(f64::from(row * width + col));
             prop_assert_eq!(raster.value_at(lat, lon).unwrap(), expected);
             prop_assert_eq!(read.unwrap(), expected);
@@ -594,11 +606,435 @@ proptest! {
 #[test]
 fn a_codec_left_out_is_refused_by_name() {
     let bytes = include_bytes!("../../tests/fixtures/geotiff/zstd-refused.tif");
-    // The tags read; the pixels do not.
-    let raster = ElevationRaster::parse(bytes).unwrap();
-    let e = raster.value_at(19.9, 10.2).unwrap_err();
+    let e = ElevationRaster::parse(bytes).unwrap_err();
     assert!(
-        matches!(&e, GeoTiffError::Tiff(text) if text.to_lowercase().contains("zstd")),
+        matches!(&e, GeoTiffError::Unsupported { what: "compression", value, .. }
+            if value == "50000 (zstd)"),
         "{e}"
     );
+}
+
+/// A little-endian classic TIFF, written by hand: one tiled image of `bits`-bit samples of
+/// `format` (1 unsigned, 2 signed, 3 float), uncompressed, each tile's bytes as given, WGS 84
+/// keys, its corner at 107° W, 33° N with one-arc-second pixels.
+fn tiled(
+    width: u32,
+    height: u32,
+    tile: (u32, u32),
+    bits: u16,
+    format: u16,
+    tiles: &[Vec<u8>],
+) -> Vec<u8> {
+    const SHORT: u16 = 3;
+    const LONG: u16 = 4;
+    const DOUBLE: u16 = 12;
+    let second = 1.0 / 3600.0;
+    let doubles = |v: &[f64]| v.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
+    let shorts = |v: &[u16]| v.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
+    let dir = directory(&WGS84);
+    // (tag, type, count, bytes): the bytes inline when 4 or fewer, else at an offset.
+    let mut entries: Vec<(u16, u16, u32, Vec<u8>)> = vec![
+        (256, LONG, 1, width.to_le_bytes().to_vec()),
+        (257, LONG, 1, height.to_le_bytes().to_vec()),
+        (258, SHORT, 1, shorts(&[bits])),
+        (259, SHORT, 1, shorts(&[1])),
+        (262, SHORT, 1, shorts(&[1])),
+        (277, SHORT, 1, shorts(&[1])),
+        (322, LONG, 1, tile.0.to_le_bytes().to_vec()),
+        (323, LONG, 1, tile.1.to_le_bytes().to_vec()),
+        (324, LONG, u32::try_from(tiles.len()).unwrap(), Vec::new()),
+        (325, LONG, u32::try_from(tiles.len()).unwrap(), Vec::new()),
+        (339, SHORT, 1, shorts(&[format])),
+        (33550, DOUBLE, 3, doubles(&[second, second, 0.0])),
+        (
+            33922,
+            DOUBLE,
+            6,
+            doubles(&[0.0, 0.0, 0.0, -107.0, 33.0, 0.0]),
+        ),
+        (
+            34735,
+            SHORT,
+            u32::try_from(dir.len()).unwrap(),
+            shorts(&dir),
+        ),
+    ];
+    let ifd_len = 2 + 12 * entries.len() + 4;
+    let mut data_at = 8 + ifd_len;
+    let mut tile_offsets = Vec::new();
+    for t in tiles {
+        tile_offsets.push(u32::try_from(data_at).unwrap());
+        data_at += t.len();
+    }
+    let longs = |v: &[u32]| v.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
+    let counts: Vec<u32> = tiles
+        .iter()
+        .map(|t| u32::try_from(t.len()).unwrap())
+        .collect();
+    entries[8].3 = longs(&tile_offsets);
+    entries[9].3 = longs(&counts);
+    let mut out = b"II\x2a\x00\x08\x00\x00\x00".to_vec();
+    let mut ifd = Vec::new();
+    let mut extra: Vec<u8> = Vec::new();
+    ifd.extend(u16::try_from(entries.len()).unwrap().to_le_bytes());
+    for (tag, kind, count, bytes) in &entries {
+        ifd.extend(tag.to_le_bytes());
+        ifd.extend(kind.to_le_bytes());
+        ifd.extend(count.to_le_bytes());
+        if bytes.len() <= 4 {
+            let mut inline = bytes.clone();
+            inline.resize(4, 0);
+            ifd.extend(inline);
+        } else {
+            let at = data_at + extra.len();
+            ifd.extend(u32::try_from(at).unwrap().to_le_bytes());
+            extra.extend(bytes);
+        }
+    }
+    ifd.extend(0_u32.to_le_bytes());
+    out.extend(ifd);
+    for t in tiles {
+        out.extend(t);
+    }
+    out.extend(extra);
+    out
+}
+
+/// An int32 raster, value `row·width + col`, in uncompressed tiles of `tile`.
+fn tiled_i32(width: u32, height: u32, tile: (u32, u32)) -> Vec<u8> {
+    let (tw, th) = tile;
+    let mut tiles = Vec::new();
+    for tr in 0..height.div_ceil(th) {
+        for tc in 0..width.div_ceil(tw) {
+            let mut bytes = Vec::new();
+            for r in 0..th {
+                for c in 0..tw {
+                    let (row, col) = (tr * th + r, tc * tw + c);
+                    let v = if row < height && col < width {
+                        i32::try_from(row * width + col).unwrap()
+                    } else {
+                        -1
+                    };
+                    bytes.extend(v.to_le_bytes());
+                }
+            }
+            tiles.push(bytes);
+        }
+    }
+    tiled(width, height, tile, 32, 2, &tiles)
+}
+
+#[test]
+fn a_hand_written_tiled_file_reads() {
+    let bytes = tiled_i32(40, 20, (32, 16));
+    let raster = ElevationRaster::parse(&bytes).unwrap();
+    let values = raster.values().unwrap();
+    assert!(values.iter().enumerate().all(|(i, &v)| v == i as f64));
+    // Row 17, column 35: in the last tile, past both paddings' starts.
+    let lat = 33.0 - 17.5 / 3600.0;
+    let lon = -107.0 + 35.5 / 3600.0;
+    assert_eq!(raster.value_at(lat, lon).unwrap(), Some(17.0 * 40.0 + 35.0));
+}
+
+#[test]
+fn a_tile_too_large_to_decode_is_refused() {
+    // A 1 by 1 float64 raster in one tile 2^32 − 1 pixels wide: 32 GiB once padded.
+    let bytes = tiled(1, 1, (u32::MAX, 1), 64, 3, &[vec![0; 8]]);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::TooLarge { size, limit: MAX_CHUNK_BYTES, .. }) if size == u64::from(u32::MAX) * 8
+    ));
+}
+
+#[test]
+fn a_large_raster_whose_tiles_do_not_decode_allocates_nothing_large() {
+    // It claims 16,384 by 16,384 float32 pixels (2^28, 2 GiB as f64) in 256-pixel tiles, and
+    // holds one byte of each.
+    let tiles = vec![vec![0_u8]; 64 * 64];
+    let bytes = tiled(16_384, 16_384, (256, 256), 32, 3, &tiles);
+    let raster = ElevationRaster::parse(&bytes).unwrap();
+    assert!(matches!(raster.values(), Err(GeoTiffError::Tiff(_))));
+    let one = raster.values_at(&[(32.99, -106.99), (32.99, -106.99)]);
+    assert!(
+        one.iter().all(|r| matches!(r, Err(GeoTiffError::Tiff(_)))),
+        "{one:?}"
+    );
+}
+
+#[test]
+fn a_negative_y_scale_is_refused() {
+    let bytes = small(&directory(&WGS84), &tie(10.0, 20.0, 0.5, -0.25), None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a negative ModelPixelScaleTag")
+    ));
+}
+
+#[test]
+fn a_pixel_scale_beside_a_matrix_is_refused() {
+    let mut buf = Cursor::new(Vec::new());
+    let mut tiff = TiffEncoder::new(&mut buf).unwrap();
+    let mut image = tiff.new_image::<colortype::GrayI32>(1, 1).unwrap();
+    let dir = directory(&WGS84);
+    let encoder = image.encoder();
+    encoder
+        .write_tag(Tag::GeoKeyDirectoryTag, &dir[..])
+        .unwrap();
+    encoder
+        .write_tag(Tag::ModelPixelScaleTag, &[0.5, 0.25, 0.0][..])
+        .unwrap();
+    encoder
+        .write_tag(Tag::ModelTiepointTag, &[0.0, 0.0, 0.0, 10.0, 20.0, 0.0][..])
+        .unwrap();
+    let m = [
+        0.5, 0.0, 0.0, 50.0, 0.0, -0.25, 0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+    ];
+    encoder
+        .write_tag(Tag::ModelTransformationTag, &m[..])
+        .unwrap();
+    image.write_data(&[1]).unwrap();
+    let bytes = buf.into_inner();
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Malformed { what: "the georeferencing", ref reason })
+            if reason.contains("together")
+    ));
+}
+
+#[test]
+fn a_datum_far_from_wgs84_is_refused() {
+    // NAD27 (4267), Tokyo (4301), a user-defined CRS, and none named.
+    for keys in [
+        vec![(1024, 2), (2048, 4267)],
+        vec![(1024, 2), (2048, 4301)],
+        vec![(1024, 2), (2048, 32767)],
+        vec![(1024, 2)],
+    ] {
+        let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+        let e = ElevationRaster::parse(&bytes).unwrap_err();
+        assert!(
+            matches!(
+                &e,
+                GeoTiffError::Unsupported {
+                    what: "a geographic CRS, EPSG",
+                    ..
+                }
+            ),
+            "{keys:?}: {e}"
+        );
+    }
+    let paris = [(1024, 2), (2048, 4326), (2051, 8903)];
+    let bytes = small(&directory(&paris), &tie(10.0, 20.0, 0.5, 0.25), None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what: "a prime meridian, EPSG", ref value, .. }) if value == "8903"
+    ));
+}
+
+#[test]
+fn an_internal_mask_is_refused() {
+    let mut buf = Cursor::new(Vec::new());
+    let mut tiff = TiffEncoder::new(&mut buf).unwrap();
+    let dir = directory(&WGS84);
+    let mut image = tiff.new_image::<colortype::GrayI32>(2, 1).unwrap();
+    let encoder = image.encoder();
+    encoder
+        .write_tag(Tag::GeoKeyDirectoryTag, &dir[..])
+        .unwrap();
+    encoder
+        .write_tag(Tag::ModelPixelScaleTag, &[0.5, 0.25, 0.0][..])
+        .unwrap();
+    encoder
+        .write_tag(Tag::ModelTiepointTag, &[0.0, 0.0, 0.0, 10.0, 20.0, 0.0][..])
+        .unwrap();
+    image.write_data(&[1, 2]).unwrap();
+    let mut mask = tiff.new_image::<colortype::Gray8>(2, 1).unwrap();
+    mask.encoder()
+        .write_tag(Tag::NewSubfileType, 4_u32)
+        .unwrap();
+    mask.write_data(&[255, 0]).unwrap();
+    let bytes = buf.into_inner();
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, ref value, .. })
+            if what.starts_with("an internal nodata mask") && value == "4"
+    ));
+}
+
+/// A WGS 84 file with a vertical CRS (NAVD88, 5703) and a pixel scale whose `S_z` and tiepoint
+/// heights are given.
+fn with_z(sz: f64, z0: f64, z: f64, metadata: Option<&str>) -> Vec<u8> {
+    let keys = [(1024, 2), (1025, 1), (2048, 4326), (4096, 5703)];
+    let georef = Georef::Tiepoint {
+        scale: [0.5, 0.25, sz],
+        tie: vec![0.0, 0.0, z0, 10.0, 20.0, z],
+    };
+    let data: Vec<i32> = (0..3)
+        .flat_map(|r| (0..4).map(move |c| 10 * r + c))
+        .collect();
+    let mut buf = Cursor::new(Vec::new());
+    let mut tiff = TiffEncoder::new(&mut buf).unwrap();
+    let mut image = tiff.new_image::<colortype::GrayI32>(4, 3).unwrap();
+    let dir = directory(&keys);
+    let encoder = image.encoder();
+    encoder
+        .write_tag(Tag::GeoKeyDirectoryTag, &dir[..])
+        .unwrap();
+    if let Georef::Tiepoint { scale, tie } = &georef {
+        encoder
+            .write_tag(Tag::ModelPixelScaleTag, &scale[..])
+            .unwrap();
+        encoder
+            .write_tag(Tag::ModelTiepointTag, tie.as_slice())
+            .unwrap();
+    }
+    if let Some(text) = metadata {
+        encoder
+            .write_tag(Tag::Unknown(GDAL_METADATA_TAG), text)
+            .unwrap();
+    }
+    image.write_data(&data).unwrap();
+    buf.into_inner()
+}
+
+#[test]
+fn a_pixel_scale_and_offset_apply_as_gdal_applies_them() {
+    // S_z 0.1, z₀ 0, Z₀ 1000: v·0.1 + 1000. Pixel (1, 2) holds 12.
+    let bytes = with_z(0.1, 0.0, 1000.0, None);
+    let raster = ElevationRaster::parse(&bytes).unwrap();
+    assert_eq!((raster.info().scale, raster.info().offset), (0.1, 1000.0));
+    assert_eq!(raster.value_at(19.6, 11.2).unwrap(), Some(12.0));
+    assert_eq!(
+        raster.height_at(19.6, 11.2).unwrap(),
+        Some(12.0 * 0.1 + 1000.0)
+    );
+    // z₀ shifts the offset: Z₀ − z₀·S_z.
+    let bytes = with_z(2.0, 5.0, 100.0, None);
+    let info = ElevationRaster::parse(&bytes).unwrap().info().clone();
+    assert_eq!((info.scale, info.offset), (2.0, 90.0));
+    // All three zero: no scale.
+    let bytes = with_z(0.0, 0.0, 0.0, None);
+    let info = ElevationRaster::parse(&bytes).unwrap().info().clone();
+    assert_eq!((info.scale, info.offset), (1.0, 0.0));
+    // Z₀ alone gives GDAL a scale of 0, which is refused.
+    let bytes = with_z(0.0, 0.0, 7.0, None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Malformed {
+            what: "the pixel scale and offset",
+            ..
+        })
+    ));
+    // Without a vertical CRS, S_z is not a scale.
+    let georef = Georef::Tiepoint {
+        scale: [0.5, 0.25, 0.1],
+        tie: vec![0.0, 0.0, 0.0, 10.0, 20.0, 1000.0],
+    };
+    let bytes = small(&directory(&WGS84), &georef, None);
+    let info = ElevationRaster::parse(&bytes).unwrap().info().clone();
+    assert_eq!((info.scale, info.offset), (1.0, 0.0));
+}
+
+#[test]
+fn gdal_metadata_gives_a_scale_and_offset() {
+    let xml = |scale: &str| {
+        format!(
+            "<GDALMetadata>\n  <Item name=\"OFFSET\" sample=\"0\" role=\"offset\">1395</Item>\n  \
+             <Item name=\"SCALE\" sample=\"0\" role=\"scale\">{scale}</Item>\n  \
+             <Item name=\"SCALE\" sample=\"1\" role=\"scale\">9</Item>\n</GDALMetadata>\n"
+        )
+    };
+    let bytes = with_z(0.0, 0.0, 0.0, Some(&xml("0.25")));
+    let raster = ElevationRaster::parse(&bytes).unwrap();
+    assert_eq!((raster.info().scale, raster.info().offset), (0.25, 1395.0));
+    assert_eq!(
+        raster.height_at(19.6, 11.2).unwrap(),
+        Some(12.0 * 0.25 + 1395.0)
+    );
+    // The same pair from the tags and the metadata is one pair.
+    let bytes = with_z(0.25, 0.0, 1395.0, Some(&xml("0.25")));
+    assert_eq!(ElevationRaster::parse(&bytes).unwrap().info().scale, 0.25);
+    // Two different pairs are refused.
+    let bytes = with_z(0.5, 0.0, 1395.0, Some(&xml("0.25")));
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a pixel scale and offset given twice")
+    ));
+    let bytes = with_z(0.0, 0.0, 0.0, Some(&xml("a quarter")));
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Malformed {
+            what: "GDAL_METADATA",
+            ..
+        })
+    ));
+    let bytes = with_z(0.0, 0.0, 0.0, Some("<GDALMetadata><Item"));
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Malformed {
+            what: "GDAL_METADATA",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn the_debug_form_does_not_print_the_file() {
+    let bytes = small_wgs84();
+    let raster = ElevationRaster::parse(&bytes).unwrap();
+    let shown = format!("{raster:?}");
+    assert!(
+        shown.contains(&format!("bytes: {}", bytes.len())),
+        "{shown}"
+    );
+}
+
+proptest! {
+    /// On any tile layout, square or not, a point reads the pixel `pixel_of` names, and `values`
+    /// lays the pixels out row by row.
+    #[test]
+    fn a_point_reads_its_pixel_on_any_tiles(
+        width in 1_u32..70,
+        height in 1_u32..70,
+        tw in prop::sample::select(vec![16_u32, 32, 48]),
+        th in prop::sample::select(vec![16_u32, 32, 48]),
+        fractions in proptest::collection::vec((0.0_f64..1.0, 0.0_f64..1.0), 1..20),
+    ) {
+        let bytes = tiled_i32(width, height, (tw, th));
+        let raster = ElevationRaster::parse(&bytes).unwrap();
+        let b = raster.info().bounds();
+        let points: Vec<(f64, f64)> = fractions
+            .iter()
+            .map(|&(a, c)| (b.south_deg + a * (b.north_deg - b.south_deg), b.west_deg + c * (b.east_deg - b.west_deg)))
+            .collect();
+        for (&(lat, lon), read) in points.iter().zip(raster.values_at(&points)) {
+            let Pixel { row, col } = raster.info().pixel_of(lat, lon).unwrap();
+            let expected = Some(f64::from(row * width + col));
+            prop_assert_eq!(raster.value_at(lat, lon).unwrap(), expected);
+            prop_assert_eq!(read.unwrap(), expected);
+        }
+        prop_assert!(raster.values().unwrap().iter().enumerate().all(|(i, &v)| v == i as f64));
+    }
+
+    /// A fixture with bytes changed reads or is refused, and never panics.
+    #[test]
+    fn a_damaged_file_never_panics(
+        which in 0_usize..3,
+        changes in proptest::collection::vec((any::<usize>(), any::<u8>()), 1..8),
+    ) {
+        let files: [&[u8]; 3] = [
+            include_bytes!("../../tests/fixtures/geotiff/usgs-f32-lzw-fp-tiles.tif"),
+            include_bytes!("../../tests/fixtures/geotiff/usgs-i16-deflate-strips-be.tif"),
+            include_bytes!("../../tests/fixtures/geotiff/usgs-u16-packbits-ftus-nodata.tif"),
+        ];
+        let mut bytes = files[which].to_vec();
+        for (at, byte) in changes {
+            let n = bytes.len();
+            bytes[at % n] = byte;
+        }
+        if let Ok(raster) = ElevationRaster::parse(&bytes) {
+            let _ = raster.value_at(32.99, -106.97);
+            let _ = raster.values_at(&[(32.99, -106.97), (32.985, -106.98)]);
+        }
+    }
 }
