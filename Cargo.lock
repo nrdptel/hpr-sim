@@ -739,6 +739,7 @@ dependencies = [
  "hpr-design",
  "hpr-motor",
  "hpr-sim",
+ "proptest",
  "rayon",
  "serde",
  "serde_json",

@@ -26,6 +26,16 @@ pub enum AnalysisError {
         /// Its limit.
         limit: usize,
     },
+    /// Too few of something for what was asked.
+    #[error("{what}: {count} given, at least {minimum} needed")]
+    TooFew {
+        /// What is counted.
+        what: &'static str,
+        /// The count.
+        count: usize,
+        /// The fewest that will do.
+        minimum: usize,
+    },
     /// A list of the wrong length.
     #[error("{what}: {length} given, {expected} expected")]
     Length {

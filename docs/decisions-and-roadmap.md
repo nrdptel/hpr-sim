@@ -365,7 +365,7 @@ missing or its status disagrees.
 | <a id="m5-5b"></a>[M5.5b][phase-2] | Catalogue parts in the builder, and a rocket of them flown: all 3,449 parts built and held to what OpenRocket builds, the departures counted with their causes ([ADR-133][adr-133], [parts from a catalogue](the-builder.md#parts-from-a-catalogue)) | done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity; split in four ([ADR-134][adr-134]) | not yet done |
 | <a id="m6-1a"></a>[M6.1a][phase-3] | Seeded dispersion of mass, centre of mass, drag, motor, wind, rail and recovery delays; each flight the same whatever the run's size or thread count; failed flights counted; the apogee's spread ([ADR-134][adr-134], [Monte Carlo dispersion](monte-carlo.md)) | done |
-| <a id="m6-1b"></a>[M6.1b][phase-3] | Landing ellipses at confidence levels, checked against normal spreads with known answers; the next flight's ellipse; the landings each holds counted ([ADR-135][adr-135], [Landing ellipses](monte-carlo.md#landing-ellipses)) | done |
+| <a id="m6-1b"></a>[M6.1b][phase-3] | Landing ellipses holding a chosen share of the landings, checked against normal spreads with known answers; the next flight's ellipse; the landings each holds counted ([ADR-135][adr-135], [Landing ellipses](monte-carlo.md#landing-ellipses)) | done |
 | <a id="m6-1c"></a>[M6.1c][phase-3] | Sensitivity analysis, Morris screening and Sobol indices, checked against functions with known answers | not yet done |
 | <a id="m6-1d"></a>[M6.1d][phase-3] | 10,000 flights of a Level 2 rocket (one on a J, K or L motor) in 10 s or less, timed and recorded | not yet done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |

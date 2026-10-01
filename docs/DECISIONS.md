@@ -11075,15 +11075,26 @@ normal.
 5. **The heading is reported clockwise from north in `[0, π)`**, as the rail's and the wind's are;
    a circle's is east's, `π/2`. Sums run over the points sorted by east then north, shifted by the
    first, as `Distribution`'s are, so an ellipse is the same however the samples were flown.
-6. **The tests use normal spreads whose answers are known**: the scale against NIST's chi-square
+6. **A scatter's axes are measured from its points** (`Scatter::principal_axes`): the heading from
+   the covariance, each variance as the mean square along or across it (a Rayleigh quotient,
+   wrong only by `δ²(λ₁ − λ₂)` for a heading error `δ`). A covariance's entries are each rounded
+   to about `ε λ₁`, so no formula on them keeps a spread narrower than that; a given
+   `Covariance`'s minor variance is `(ac − b²)/λ₁`, which keeps it along the axes. The covariance
+   of points on a line is cut to the Cauchy–Schwarz bound, so it passes its own checks, and
+   `Covariance::new` allows four units of rounding past it. A point on a flat ellipse's axis is
+   kept inside by a floor of `10⁻¹²` of its size and distance on each semi-axis.
+7. **The tests use normal spreads whose answers are known**: the scale against NIST's chi-square
    table and the closed forms; the axes of rotated covariances to 1e-14; the normal density
    integrated over its ellipse (along rays, in closed form per ray) to its level within 1e-12;
    100,000 seeded points giving back their covariance and their share inside within five standard
    errors; the prediction ellipse of 3, 5 and 20 points holding a new point at its level over
-   20,000 trials, and the normal ellipse visibly less.
+   20,000 trials, and the normal ellipse visibly less; a spread 10⁸ times longer than wide; any
+   2 to 20 points inside their own 99.99% ellipse (proptest, from the leverage bound
+   `(n − 1)²/n`).
 
 **Consequences.** M6.1b is met. The guide's example draws the 50% and 95% ellipses of its 200
 landings (48.0% and 94.5% inside). Hotelling (1931) and Chew (1966) were not read; the prediction
-formula rests on NIST's handbook and on the Monte Carlo test. Landings over uneven ground, and
+formula rests on NIST's handbook and on the Monte Carlo test. NIST's two pages are cited by URL,
+not pinned in `refs.lock.toml`: each fetch differs (a per-request script). Landings over uneven ground, and
 a landing ellipse in latitude and longitude, are not handled: the ellipse is in the pad's local
 east-north plane.

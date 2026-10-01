@@ -269,7 +269,7 @@ curves, listed under [The bundled motors](physics/motor.md#the-bundled-motors). 
 
 ## Covariance
 
-How two quantities vary together: positive when one tends to be high when the other is, negative when the other tends to be low, zero when neither says anything about the other. A spread of points on the ground has three numbers: the variance east (the square of the [standard deviation](#standard-deviation)), the variance north, and their covariance. Together they give the shape and the turn of a [landing ellipse](#landing-ellipse). See [Monte Carlo dispersion](monte-carlo.md#landing-ellipses).
+How two quantities vary together: positive when both tend to be high together, negative when one tends to be high while the other is low, zero when neither says anything about the other. For distances on the ground it is in square metres (m²). A spread of points on the ground has three numbers: the variance east (the square of the [standard deviation](#standard-deviation)), the variance north, and their covariance. Together they give the shape and the turn of a [landing ellipse](#landing-ellipse). See [Monte Carlo dispersion](monte-carlo.md#landing-ellipses).
 
 ## Crate
 
@@ -664,7 +664,7 @@ must be turned to east and north. See
 
 ## Landing ellipse
 
-An ellipse on the ground drawn around the landings of a [Monte Carlo](#monte-carlo) run so that it holds a chosen share of them, its *level*: a 95% ellipse holds about 19 landings in 20. It is centred on their mean, its axes lie along the directions the landings spread most and least, and its size comes from the [normal distribution](#normal-distribution). It is used to check that a rocket will come down inside a field. See [Monte Carlo dispersion](monte-carlo.md#landing-ellipses).
+An ellipse on the ground drawn around the landings of a [Monte Carlo](#monte-carlo) run so that it holds a chosen share of them, its *level*: a 95% ellipse holds about 19 landings in 20. It is centred on their mean, its axes lie along the directions the landings spread most and least, and its size comes from the [normal distribution](#normal-distribution). It is used to judge how likely a rocket is to come down inside a field. See [Monte Carlo dispersion](monte-carlo.md#landing-ellipses).
 
 ## Launch frame (ENU)
 

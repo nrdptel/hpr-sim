@@ -38,7 +38,9 @@
 //! a heading, clockwise from north: `π/2 − θ`, in `[0, π)`. A circle (`a = c`, `b = 0`) has no
 //! major axis; its heading is reported as east's, `π/2`.
 //!
-//! [`Scatter::ellipse`] puts the sample's mean and covariance in place of `μ` and `Σ`. The mean
+//! [`Scatter::ellipse`] puts the sample's mean and covariance in place of `μ` and `Σ`, its axes
+//! measured from the points themselves ([`Scatter::principal_axes`]) so that a very narrow spread
+//! keeps its width. The mean
 //! and covariance are taken on the points shifted by the first (sorted) one, the covariance with
 //! `n − 1` and two passes, as [`Distribution`](crate::statistics::Distribution)'s are (T. F.
 //! Chan, G. H. Golub and R. J. LeVeque, *The American Statistician* 37(3), 242–247, 1983).
@@ -56,8 +58,9 @@
 //! `x − x̄` being normal with covariance `(1 + 1/n) Σ` and independent of `S`, so
 //! `n/(n + 1) (x − x̄)ᵀ S⁻¹ (x − x̄)` is Hotelling's `T²` with `n − 1` degrees of freedom, which
 //! is `2(n − 1)/(n − 2)` times an `F` with 2 and `n − 2` (H. Hotelling, "The generalization of
-//! Student's ratio", *Annals of Mathematical Statistics* 2(3), 360–378, 1931, not read here). The
-//! NIST/SEMATECH *e-Handbook of Statistical Methods*, §6.5.4.3.4, gives the same limit,
+//! Student's ratio", *Annals of Mathematical Statistics* 2(3), 360–378, 1931, cited for the
+//! distribution and not consulted). The formula is checked against the NIST/SEMATECH
+//! *e-Handbook of Statistical Methods*, §6.5.4.3.4, which gives the same limit,
 //! `p(m + 1)(m − 1)/(m² − mp) F(p, m − p)` for `p` dimensions and `m` points, after T. P. Ryan,
 //! *Statistical Methods for Quality Improvement*, 2000, ch. 9
 //! (<https://www.itl.nist.gov/div898/handbook/pmc/section5/pmc5434.htm>). The `F` distribution
@@ -70,8 +73,12 @@
 //!
 //! Neither ellipse is right if the landings aren't normal, and they often aren't: a wind whose
 //! heading is uncertain spreads them along an arc. [`Scatter::share_inside`] counts the landings
-//! an ellipse really holds, with the samples that gave no landing as the bounds of a
-//! [`Share`]. If the share is far from the level, the ellipse is the wrong shape for this run.
+//! an ellipse really holds. A sample that gave no landing could have landed inside or outside,
+//! so the share is a [`Share`]: a lower bound counting it outside, an upper bound counting it
+//! inside. A share far from the level means the ellipse is the wrong shape for this run; a share
+//! close to it is consistent with normal landings, not proof of them. With few landings the share
+//! runs high, as the ellipse is fitted to the same points: three points are each exactly
+//! `√(4/3)` standard deviations out, so even the 50% ellipse holds all three.
 //!
 //! Every sum runs over the points sorted (east, then north), so an ellipse is bit for bit the same
 //! however the points were computed or ordered.
@@ -99,14 +106,14 @@ pub fn gaussian_scale(level: f64) -> Result<f64, AnalysisError> {
 /// # Errors
 ///
 /// - [`AnalysisError::Domain`] for a level outside `(0, 1)`.
-/// - [`AnalysisError::Count`] for fewer than 3 landings, which leave no degrees of freedom.
+/// - [`AnalysisError::TooFew`] for fewer than 3 landings, which leave no degrees of freedom.
 pub fn prediction_scale(level: f64, count: usize) -> Result<f64, AnalysisError> {
     check_level(level)?;
     if count < 3 {
-        return Err(AnalysisError::Count {
-            what: "landings for a prediction ellipse, at least",
+        return Err(AnalysisError::TooFew {
+            what: "landings for a prediction ellipse",
             count,
-            limit: 3,
+            minimum: 3,
         });
     }
     // Cast: a count of landings is far below 2⁵³.
@@ -173,8 +180,9 @@ impl Covariance {
     /// # Errors
     ///
     /// [`AnalysisError::Domain`] for an entry that isn't finite, a negative variance, or a
-    /// covariance larger than the variances allow (`east_north² > east · north`, so the matrix
-    /// isn't positive semi-definite).
+    /// covariance larger than the variances allow (`|east_north| > √east √north`, so the matrix
+    /// isn't positive semi-definite), beyond four units of rounding: a covariance of points on a
+    /// line, computed in floating point, can pass the bound by that much.
     pub fn new(east_m2: f64, north_m2: f64, east_north_m2: f64) -> Result<Self, AnalysisError> {
         for (what, value) in [
             ("east variance", east_m2),
@@ -190,7 +198,8 @@ impl Covariance {
                 return Err(AnalysisError::Domain { what, value });
             }
         }
-        if east_north_m2 * east_north_m2 > east_m2 * north_m2 {
+        // Square roots, not squares, so that large entries can't overflow.
+        if east_north_m2.abs() > (1.0 + 4.0 * f64::EPSILON) * east_m2.sqrt() * north_m2.sqrt() {
             return Err(AnalysisError::Domain {
                 what: "east-north covariance, against the variances",
                 value: east_north_m2,
@@ -219,18 +228,26 @@ impl Covariance {
     }
 
     /// The eigenvalues and the major axis's heading (the module's docs). The smaller eigenvalue is
-    /// cut at zero, since rounding can take it just below for points on a line.
+    /// taken as `(ac − b²)/λ₁`, the determinant over the larger, rather than
+    /// `(a + c)/2 − √(…)`, whose subtraction loses every digit of a spread much narrower than it
+    /// is long; it is cut at zero, since rounding can take the determinant just below for points
+    /// on a line.
     pub fn principal_axes(&self) -> PrincipalAxes {
         let (a, c, b) = (self.east_m2, self.north_m2, self.east_north_m2);
-        let middle = 0.5 * (a + c);
-        let radius = (0.5 * (a - c)).hypot(b);
-        // Counter-clockwise from east, in (−π/2, π/2].
+        let major = 0.5 * (a + c) + (0.5 * (a - c)).hypot(b);
+        let determinant = a.mul_add(c, -(b * b));
+        let minor = if major > 0.0 {
+            (determinant / major).max(0.0)
+        } else {
+            0.0
+        };
+        // Counter-clockwise from east, in [−π/2, π/2].
         let from_east = 0.5 * (2.0 * b).atan2(a - c);
         let heading = std::f64::consts::FRAC_PI_2 - from_east;
         PrincipalAxes {
-            major_variance_m2: middle + radius,
-            minor_variance_m2: (middle - radius).max(0.0),
-            // `π/2 − θ` lies in [0, π); π itself only by rounding, which is the heading 0.
+            major_variance_m2: major,
+            minor_variance_m2: minor,
+            // `π/2 − θ` lies in [0, π]; π is the same axis as 0 (θ = −π/2, from `atan2(−0, −x)`).
             major_heading_rad: if heading >= std::f64::consts::PI {
                 0.0
             } else {
@@ -240,10 +257,15 @@ impl Covariance {
     }
 }
 
-/// An ellipse on the ground, holding a share of the landings.
+/// An ellipse on the ground, holding a share of the landings. Built by [`Ellipse::gaussian`],
+/// [`Scatter::ellipse`] or [`Scatter::prediction_ellipse`]; it serializes as its fields and reads
+/// back through checks on each.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "EllipseData")]
+#[non_exhaustive]
 pub struct Ellipse {
-    /// The share of the landings it is drawn to hold, in `(0, 1)`.
+    /// Its level, in `(0, 1)`: the share of a normal spread it holds, or for a prediction
+    /// ellipse the probability that the next flight lands inside it.
     pub level: f64,
     /// Its scale `k`: the semi-axes are `k` standard deviations along each axis.
     pub scale: f64,
@@ -257,6 +279,66 @@ pub struct Ellipse {
     pub semi_minor_m: f64,
     /// Its long axis's heading, clockwise from north, in `[0, π)`.
     pub major_heading_rad: f64,
+}
+
+/// The serialized form of an [`Ellipse`].
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EllipseData {
+    level: f64,
+    scale: f64,
+    centre_east_m: f64,
+    centre_north_m: f64,
+    semi_major_m: f64,
+    semi_minor_m: f64,
+    major_heading_rad: f64,
+}
+
+impl TryFrom<EllipseData> for Ellipse {
+    type Error = AnalysisError;
+
+    fn try_from(data: EllipseData) -> Result<Self, AnalysisError> {
+        check_level(data.level)?;
+        for (what, value) in [
+            ("ellipse scale", data.scale),
+            ("ellipse centre east", data.centre_east_m),
+            ("ellipse centre north", data.centre_north_m),
+            ("ellipse semi-major axis", data.semi_major_m),
+            ("ellipse semi-minor axis", data.semi_minor_m),
+            ("ellipse heading", data.major_heading_rad),
+        ] {
+            if !value.is_finite() {
+                return Err(AnalysisError::Domain { what, value });
+            }
+        }
+        if data.scale < 0.0 {
+            return Err(AnalysisError::Domain {
+                what: "ellipse scale",
+                value: data.scale,
+            });
+        }
+        if !(0.0..=data.semi_major_m).contains(&data.semi_minor_m) {
+            return Err(AnalysisError::Domain {
+                what: "ellipse semi-minor axis, against zero and the semi-major",
+                value: data.semi_minor_m,
+            });
+        }
+        if !(0.0..std::f64::consts::PI).contains(&data.major_heading_rad) {
+            return Err(AnalysisError::Domain {
+                what: "ellipse heading",
+                value: data.major_heading_rad,
+            });
+        }
+        Ok(Self {
+            level: data.level,
+            scale: data.scale,
+            centre_east_m: data.centre_east_m,
+            centre_north_m: data.centre_north_m,
+            semi_major_m: data.semi_major_m,
+            semi_minor_m: data.semi_minor_m,
+            major_heading_rad: data.major_heading_rad,
+        })
+    }
 }
 
 impl Ellipse {
@@ -284,15 +366,14 @@ impl Ellipse {
         let scale = gaussian_scale(level)?;
         Ok(Self::scaled(
             [centre_east_m, centre_north_m],
-            covariance,
+            &covariance.principal_axes(),
             level,
             scale,
         ))
     }
 
-    /// The ellipse `scale` standard deviations out along `covariance`'s axes.
-    fn scaled(centre: [f64; 2], covariance: &Covariance, level: f64, scale: f64) -> Self {
-        let axes = covariance.principal_axes();
+    /// The ellipse `scale` standard deviations out along `axes`.
+    fn scaled(centre: [f64; 2], axes: &PrincipalAxes, level: f64, scale: f64) -> Self {
         Self {
             level,
             scale,
@@ -309,20 +390,27 @@ impl Ellipse {
         std::f64::consts::PI * self.semi_major_m * self.semi_minor_m
     }
 
-    /// Whether the point `east_m`, `north_m` (m from the pad) lies inside or on the ellipse. A
-    /// flat ellipse (a zero minor axis) holds only the points on its axis, which rounding can
-    /// miss unless the axis runs east or north.
+    /// Whether the point `east_m`, `north_m` (m from the pad) lies inside or on the ellipse.
+    ///
+    /// Neither semi-axis is taken below `10⁻¹²` of the ellipse's size and distance from the pad
+    /// (`a + |centre east| + |centre north|`). Rounding in the centre, the heading and this
+    /// test's rotation puts a point that lies on a flat ellipse's axis (a zero minor axis, from
+    /// landings on a line) a few units of rounding off it, and the floor keeps it inside. Against
+    /// any real spread the floor is far below a millimetre.
     pub fn contains(&self, east_m: f64, north_m: f64) -> bool {
         let (east, north) = (east_m - self.centre_east_m, north_m - self.centre_north_m);
         let (sin, cos) = self.major_heading_rad.sin_cos();
         // Along the major axis, whose direction is (sin, cos) in (east, north), and across it.
         let along = east * sin + north * cos;
         let across = east * cos - north * sin;
-        let (a, b) = (self.semi_major_m, self.semi_minor_m);
-        if b > 0.0 {
+        let floor =
+            1e-12 * (self.semi_major_m + self.centre_east_m.abs() + self.centre_north_m.abs());
+        let (a, b) = (self.semi_major_m.max(floor), self.semi_minor_m.max(floor));
+        if a > 0.0 && b > 0.0 {
             (along / a).powi(2) + (across / b).powi(2) <= 1.0
         } else {
-            across == 0.0 && along.abs() <= a
+            // An ellipse of no size at the pad holds the pad alone.
+            east == 0.0 && north == 0.0
         }
     }
 }
@@ -434,12 +522,14 @@ impl Scatter {
         }
         // Cast: a count of points is far below 2⁵³.
         let dof = (self.sorted.len() - 1) as f64;
-        // Unchecked: sums of squares are not negative, and the Cauchy–Schwarz bound on the
-        // cross term holds to rounding, which `principal_axes` absorbs.
+        let (east_m2, north_m2) = (ee / dof, nn / dof);
+        // The Cauchy–Schwarz bound holds to rounding, which can break it for points on a line
+        // (any two points): cut there, so the covariance passes `Covariance::new` and reads back.
+        let bound = east_m2.sqrt() * north_m2.sqrt();
         Some(Covariance {
-            east_m2: ee / dof,
-            north_m2: nn / dof,
-            east_north_m2: en / dof,
+            east_m2,
+            north_m2,
+            east_north_m2: (en / dof).clamp(-bound, bound),
         })
     }
 
@@ -474,8 +564,52 @@ impl Scatter {
     /// points.
     fn scaled(&self, level: f64, scale: f64) -> Option<Ellipse> {
         let centre = self.mean()?;
-        let covariance = self.covariance()?;
-        Some(Ellipse::scaled(centre, &covariance, level, scale))
+        let axes = self.principal_axes()?;
+        Some(Ellipse::scaled(centre, &axes, level, scale))
+    }
+
+    /// The scatter's axes: the heading of its [`Covariance::principal_axes`], and the variances
+    /// as the mean squares of the points' distances along and across that heading,
+    /// `Σ(uᵀdᵢ)²/(n − 1)` with `dᵢ` a point less the mean. With the heading exact these are the
+    /// eigenvalues, and an error `δ` in the heading moves them by only `δ² (λ₁ − λ₂)` (they are
+    /// Rayleigh quotients). So a spread far narrower than it is long keeps its width, which the
+    /// covariance's three entries, each rounded to about `ε λ₁`, can't carry. `None` with fewer
+    /// than two points.
+    pub fn principal_axes(&self) -> Option<PrincipalAxes> {
+        let heading = self.covariance()?.principal_axes().major_heading_rad;
+        let (sin, cos) = heading.sin_cos();
+        let shift = *self.sorted.first()?;
+        let mean = self.shifted_mean(shift);
+        let (mut along_squares, mut across_squares) = (0.0, 0.0);
+        for p in &self.sorted {
+            let east = (p[0] - shift[0]) - mean[0];
+            let north = (p[1] - shift[1]) - mean[1];
+            along_squares += (east * sin + north * cos).powi(2);
+            across_squares += (east * cos - north * sin).powi(2);
+        }
+        // Cast: a count of points is far below 2⁵³.
+        let dof = (self.sorted.len() - 1) as f64;
+        let (along, across) = (along_squares / dof, across_squares / dof);
+        // Near a circle the heading means nothing and rounding can leave the across spread the
+        // larger: then the axis across is the major one.
+        Some(if across > along {
+            let turned = heading + std::f64::consts::FRAC_PI_2;
+            PrincipalAxes {
+                major_variance_m2: across,
+                minor_variance_m2: along,
+                major_heading_rad: if turned >= std::f64::consts::PI {
+                    turned - std::f64::consts::PI
+                } else {
+                    turned
+                },
+            }
+        } else {
+            PrincipalAxes {
+                major_variance_m2: along,
+                minor_variance_m2: across,
+                major_heading_rad: heading,
+            }
+        })
     }
 
     /// Bounds on the share of the samples tried that landed inside or on `ellipse` ([`Share`]):
@@ -844,6 +978,153 @@ mod tests {
     }
 
     #[test]
+    fn a_narrow_spread_keeps_its_width() {
+        // A spread 10⁸ times longer than it is wide, at an odd heading: the minor variance is
+        // 10⁻¹² m², 10⁻¹⁶ of the major, below the rounding of the covariance's entries, from which
+        // any formula gave 0 and an ellipse holding almost none of the landings.
+        // The points are drawn along the axes, `μ + z₁ √λ₁ u + z₂ √λ₂ v`: a Cholesky factor's
+        // `√(c − l₂₁²)` would cancel to noise at this width.
+        let n = 10_000;
+        let (sin, cos) = 1.0_f64.sin_cos();
+        let mut rng = SeededRng::seed_from_u64(64);
+        let points = (0..n)
+            .map(|_| {
+                let (along, across) = (1e2 * rng.standard_normal(), 1e-6 * rng.standard_normal());
+                [
+                    300.0 + along * sin + across * cos,
+                    40.0 + along * cos - across * sin,
+                ]
+            })
+            .collect();
+        let scatter = Scatter::new(points, n).unwrap();
+        let axes = scatter.principal_axes().unwrap();
+        let error = |s: f64| s * (2.0 / (n - 1) as f64).sqrt();
+        assert!(
+            (axes.minor_variance_m2 - 1e-12).abs() < 5.0 * error(1e-12),
+            "{axes:?}"
+        );
+        for level in [0.5, 0.95] {
+            let binomial = (level * (1.0 - level) / n as f64).sqrt();
+            let ellipse = scatter.ellipse(level).unwrap().unwrap();
+            let share = scatter.share_inside(&ellipse).unwrap();
+            assert!(
+                (share.low - level).abs() < 5.0 * binomial,
+                "{level}: {share:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn two_landings_and_a_slanted_line() {
+        // Any two landings lie on a line. Their covariance must pass its own checks and read
+        // back, and their ellipses hold both: each is √½ standard deviations from the mean.
+        let mut rng = SeededRng::seed_from_u64(65);
+        for _ in 0..1000 {
+            let mut point = || {
+                [
+                    1000.0 * rng.uniform() - 500.0,
+                    1000.0 * rng.uniform() - 500.0,
+                ]
+            };
+            let points = vec![point(), point()];
+            let scatter = Scatter::new(points.clone(), 2).unwrap();
+            let covariance = scatter.covariance().unwrap();
+            let again = Covariance::new(
+                covariance.east_m2(),
+                covariance.north_m2(),
+                covariance.east_north_m2(),
+            )
+            .unwrap();
+            assert_eq!(again, covariance);
+            let json = serde_json::to_string(&covariance).unwrap();
+            assert_eq!(
+                serde_json::from_str::<Covariance>(&json).unwrap(),
+                covariance
+            );
+            let ellipse = scatter.ellipse(0.5).unwrap().unwrap();
+            for p in &points {
+                assert!(ellipse.contains(p[0], p[1]), "{points:?}: {ellipse:?}");
+            }
+            let json = serde_json::to_string(&ellipse).unwrap();
+            assert_eq!(serde_json::from_str::<Ellipse>(&json).unwrap(), ellipse);
+        }
+        // Fifty landings evenly along a line at 30° from north: the 95% ellipse holds every one,
+        // and nothing a micrometre off the line.
+        let (sin, cos) = (PI / 6.0).sin_cos();
+        let line: Vec<[f64; 2]> = (1..=50)
+            .map(|t| [f64::from(t) * 10.0 * sin, f64::from(t) * 10.0 * cos])
+            .collect();
+        let scatter = Scatter::new(line, 50).unwrap();
+        let ellipse = scatter.ellipse(0.95).unwrap().unwrap();
+        assert!(
+            same_axis(ellipse.major_heading_rad, PI / 6.0, 1e-14),
+            "{ellipse:?}"
+        );
+        assert_eq!(
+            scatter.share_inside(&ellipse).unwrap().low,
+            1.0,
+            "{ellipse:?}"
+        );
+        assert!(!ellipse.contains(250.0 * sin + 1e-6 * cos, 250.0 * cos - 1e-6 * sin));
+        // A rank-one covariance computed in floating point passes its checks at every heading.
+        for k in 0..24 {
+            let flat = rotated(9.0, 0.0, f64::from(k) * PI / 24.0 + 0.013);
+            Covariance::new(flat.east_m2, flat.north_m2, flat.east_north_m2).unwrap();
+        }
+    }
+
+    #[test]
+    fn an_ellipse_reads_back_through_its_checks() {
+        let sigma = Covariance::new(4.0, 1.0, 0.5).unwrap();
+        let ellipse = Ellipse::gaussian(10.0, -20.0, &sigma, 0.9).unwrap();
+        let json = serde_json::to_string(&ellipse).unwrap();
+        assert_eq!(serde_json::from_str::<Ellipse>(&json).unwrap(), ellipse);
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        for (field, bad, what) in [
+            ("level", 1.5, "ellipse level"),
+            ("scale", -1.0, "ellipse scale"),
+            (
+                "semi_minor_m",
+                1e3,
+                "ellipse semi-minor axis, against zero and the semi-major",
+            ),
+            (
+                "semi_minor_m",
+                -1.0,
+                "ellipse semi-minor axis, against zero and the semi-major",
+            ),
+            ("major_heading_rad", PI, "ellipse heading"),
+        ] {
+            let mut edited = value.clone();
+            edited[field] = serde_json::json!(bad);
+            let error = serde_json::from_value::<Ellipse>(edited).unwrap_err();
+            assert!(error.to_string().contains(what), "{field}: {error}");
+        }
+    }
+
+    proptest::proptest! {
+        /// Whatever the points: the covariance passes its own checks, the heading lies in
+        /// [0, π), and for 2 to 20 points the 99.99% ellipse holds every one of them. A sample
+        /// point is at most (n − 1)/√n standard deviations from the mean (its leverage is at most
+        /// 1), which for 20 points is √18.05, inside the 99.99% ellipse's √18.42.
+        #[test]
+        fn every_point_lies_in_its_own_wide_ellipse(
+            points in proptest::collection::vec((-1e4..1e4_f64, -1e4..1e4_f64), 2..=20),
+        ) {
+            let points: Vec<[f64; 2]> = points.into_iter().map(|(e, n)| [e, n]).collect();
+            let count = points.len();
+            let scatter = Scatter::new(points.clone(), count).unwrap();
+            let c = scatter.covariance().unwrap();
+            proptest::prop_assert!(Covariance::new(c.east_m2(), c.north_m2(), c.east_north_m2()).is_ok());
+            let ellipse = scatter.ellipse(0.9999).unwrap().unwrap();
+            proptest::prop_assert!((0.0..PI).contains(&ellipse.major_heading_rad));
+            for p in &points {
+                proptest::prop_assert!(ellipse.contains(p[0], p[1]), "{:?}: {:?}", p, ellipse);
+            }
+        }
+    }
+
+    #[test]
     fn landings_on_a_line_and_on_a_point() {
         // Due north of the pad: a flat ellipse holding its own line.
         let line = Scatter::new(vec![[0.0, 10.0], [0.0, 20.0], [0.0, 30.0]], 3).unwrap();
@@ -965,14 +1246,19 @@ mod tests {
                 ));
             }
         }
+        let error = prediction_scale(0.5, 2).unwrap_err();
         assert!(matches!(
-            prediction_scale(0.5, 2),
-            Err(AnalysisError::Count {
+            error,
+            AnalysisError::TooFew {
+                what: "landings for a prediction ellipse",
                 count: 2,
-                limit: 3,
-                ..
-            })
+                minimum: 3,
+            }
         ));
+        assert_eq!(
+            error.to_string(),
+            "landings for a prediction ellipse: 2 given, at least 3 needed"
+        );
         assert!(matches!(
             Covariance::new(-1.0, 1.0, 0.0),
             Err(AnalysisError::Domain { what: "east variance", value }) if value == -1.0

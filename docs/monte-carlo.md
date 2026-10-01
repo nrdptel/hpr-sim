@@ -4,7 +4,8 @@ No two flights of one rocket are the same. The motor burns a little hotter or co
 label, the rocket weighs a few grams more than the plan, the wind is not the forecast's. A
 [Monte Carlo](glossary.md#monte-carlo) run flies the rocket hundreds or thousands of times. Each
 time it draws the uncertain inputs afresh around their planned (nominal) values, and the run shows
-how far the apogee and the landing spread. This page runs one, says what each
+how far the apogee and the landing spread, and draws the ellipse the landings fall in. This page
+runs one, says what each
 [dispersion](glossary.md#dispersion) does to a flight, and how to choose the numbers. It needs some
 Rust and follows on from [The builder](the-builder.md).
 
@@ -62,7 +63,9 @@ let monte_carlo = MonteCarlo::new(launch.inputs()?, dispersion)?;
 let run = monte_carlo.run(2026, 200);          // seed 2026, 200 flights
 let apogee = run.apogee()?;                    // the apogees' spread
 let landing = run.landing()?;                  // where they landed
-let ellipse = landing.ellipse(0.95)?;          // the ellipse holding 95% of them
+let ellipse = landing
+    .prediction_ellipse(0.95)?                 // where the next flight lands, 95 times in 100
+    .ok_or("too few landings")?;
 ```
 
 It prints:
@@ -114,13 +117,21 @@ How to read it:
 A [landing ellipse](glossary.md#landing-ellipse) is the outline a range safety officer or a
 competition asks for: an area on the ground that the rocket lands inside, say, 95 times in 100.
 Comparing it with the field's boundary says whether the field is big enough for this rocket in this
-wind. hpr-sim draws it from the run's landing points ([`Run::landing`], then
-[`Scatter::ellipse`]) in three steps.
+wind. For that check, use the *next-flight* ellipse below ([`Scatter::prediction_ellipse`]).
+
+The ellipse assumes the landings follow a [normal
+distribution](glossary.md#normal-distribution), and it is only as good as the run's landings,
+which carry the flight models' errors and those of the dispersions you chose; neither has been
+compared with real flights yet. The section ends with how to tell when the landings aren't normal.
+
+hpr-sim draws the ellipse from the run's landing points ([`Run::landing`], then
+[`Scatter::ellipse`]) in three steps. Its *semi-major* and *semi-minor* axes are its half-lengths
+along its long and its short direction.
 
 1. **The centre** is the landings' mean: here 626 m east and 23 m south of the pad.
 2. **The axes.** The landings' [covariance](glossary.md#covariance) gives the direction they spread
    most, the *major axis*, and the direction across it, the *minor axis*, with a standard deviation
-   along each. Here those are about 215 m and 203 m. The spread is nearly round, because the wind's
+   along each. Here those are about 214.6 m and 203.0 m. The spread is nearly round, because the wind's
    uncertain heading (15°) spreads the landings sideways about as much as its uncertain speed (25%)
    spreads them downwind.
 3. **The size.** If the landings follow a two-dimensional [normal
@@ -132,7 +143,7 @@ wind. hpr-sim draws it from the run's landing points ([`Run::landing`], then
    |---|---|---|---|---|
    | Scale `k` | 1.177 | 2.146 | 2.448 | 3.035 |
 
-   The 95% ellipse's half-axes are 2.448 × 215 m = 525 m and 2.448 × 203 m = 497 m.
+   The 95% ellipse's semi-axes are 2.448 × 214.6 m = 525 m and 2.448 × 203.0 m = 497 m.
 
 In two dimensions it takes more standard deviations to hold 95% than in one (2.448 against 1.960),
 because a landing can stray in two directions at once.
@@ -145,14 +156,18 @@ reports 90°, east.
 **The next flight.** The mean and covariance of 200 flights are only estimates, so an ellipse
 drawn from them holds a little less than its level of the flights still to come. For normal
 landings [`Scatter::prediction_ellipse`] allows for that exactly. Its `k` comes from Hotelling's
-`T²` distribution instead: `k² = ((n² − 1)/n)((1 − p)^(−2/(n − 2)) − 1)` for `n` landings. With
+`T²` distribution, the one that accounts for the mean and the spread both being estimated from the
+same flights: `k² = ((n² − 1)/n)((1 − p)^(−2/(n − 2)) − 1)` for `n` landings. With
 200 landings its axes are 1.3% longer (532 m against 525 m); with 10 they would be 36% longer. Use
 it to answer "will my next flight land in the field?".
 
 **Landings inside** counts the run's landings each ellipse really holds
-([`Scatter::share_inside`]). Here they are 48.0%, 94.5% and 95.5%, within the sampling error of a
-run of 200 (about 3.5 percentage points at 50%, 1.5 at 95%), so a normal spread describes these
-landings well. If the share is far from the level, the landings aren't normal: an uncertain wind
+([`Scatter::share_inside`]). Here they are 48.0%, 94.5% and 95.5%. Those are within the
+[standard error](glossary.md#standard-error) of a share from a run of 200 (about 3.5 percentage
+points at 50%, 1.5 at 95%), so the landings are consistent with a normal spread, though that
+doesn't prove it. With few landings the shares run high, because the ellipse is fitted to the
+same points: with three landings, even the 50% ellipse holds all three. If the share is far from
+the level in a run of hundreds of flights, the landings aren't normal: an uncertain wind
 heading in a strong wind spreads them along an arc, and an ellipse is then the wrong shape. Look at
 the points themselves ([`Scatter::points`]). A failed flight has no landing; it counts as outside
 for the lower bound and inside for the upper ([Failed flights are counted](#failed-flights-are-counted)).
@@ -170,8 +185,7 @@ for the lower bound and inside for the upper ([Failed flights are counted](#fail
 > - A new point lands inside the next-flight ellipse of 3, 5 or 20 others at its level, within
 >   five standard errors, and inside the plain ellipse visibly less often.
 >
-> The ellipse is no better than the run's landings, which carry the flight models' errors and
-> those of the dispersions you chose.
+> The checks can fail: a long, narrow 95% ellipse turned 6° off its axes holds 90.6%.
 
 ## What each dispersion does
 

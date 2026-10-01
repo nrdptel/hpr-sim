@@ -142,12 +142,12 @@ out.
   ([`.ork` design files](format/ork.md)), but few of its motor configurations fly as written, as
   hpr has few motors' curves, and its recovery settings are not flown. `hpr sim --motor` flies one
   with a motor you give ([The command line](cli.md#hpr-sim)).
-- **Monte Carlo runs give the apogee's spread, not yet a landing ellipse.** A
+- **Monte Carlo runs give the apogee's spread and landing ellipses, from Rust only.** A
   [Monte Carlo](glossary.md#monte-carlo) run flies a rocket many times with its mass, drag, motor,
-  wind and rail scattered, seeded and reproducible ([Monte Carlo dispersion](monte-carlo.md));
-  from Rust only so far. Landing ellipses and sensitivity analysis come with
-  [M6.1](decisions-and-roadmap.md#m6-1). No optimization or app yet: they are on the
-  [roadmap][roadmap].
+  wind and rail scattered, seeded and reproducible ([Monte Carlo dispersion](monte-carlo.md)), and
+  draws the ellipse its landings fall in ([Landing ellipses](monte-carlo.md#landing-ellipses)).
+  Sensitivity analysis comes with [M6.1c](decisions-and-roadmap.md#m6-1c). No optimization or app
+  yet: they are on the [roadmap][roadmap].
 - **The flight-log analyzer reads one logger so far.** `hpr analyze` reads a PerfectFlite
   altimeter's `.pf2` log on its own, with no design file and no simulation, and prints liftoff,
   apogee, the top speed, landing and the descent, each saying where it came from, or withheld with
