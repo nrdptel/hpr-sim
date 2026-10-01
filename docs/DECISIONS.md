@@ -10488,9 +10488,10 @@ floating-point predictor included.
    vertical CRS from the short list of EPSG codes below, with no `VerticalDatumGeoKey` and a
    geographic CRS other than WGS 84 3D (GDAL's `gt_wkt_srs.cpp` drops the vertical CRS for a
    private datum code, for datum 6030 beside WGS 84, and with no model type and no unit key, and
-   the whole CRS beside WGS 84 3D). It is ignored, as GDAL ignores it, in a 1.0 directory (rasterio shows GDAL
+   the whole CRS beside WGS 84 3D). It is ignored, as GDAL ignores it, in a 1.0 directory
+   (rasterio shows GDAL
    dropping the vertical CRS there) and where no vertical key is present. Otherwise a file with
-   heights in its tags is refused, unless they are GDAL's own `S_z` 1 and `Z₀` 0 and
+   heights in its tags is refused, unless they give GDAL's own scale 1 and offset 0 and
    `GDAL_METADATA` gives no other scale. GDAL matches `GDAL_METADATA` with quirks
    (`gtiffdataset_read.cpp`: attribute names in any case, compared with their prefix; C's `atoi`
    for the sample; text only as an item's one child, CDATA a child of its own; only ASCII blanks
@@ -10507,9 +10508,12 @@ floating-point predictor included.
    (GDAL reports no unit), flagged by `vertical_unit_stated`. A vertical CRS off the list is
    refused, with or without a unit key: GDAL takes its unit from EPSG's registry, which hpr
    doesn't hold. A user-defined one (32767, reported as no code) is read with a unit key and
-   refused without. Vertical keys GDAL drops, unit and all, are refused, as hpr would read a unit
-   GDAL doesn't report: a private value (above 32767) in any of them, any beside WGS 84 3D, and a
-   vertical CRS with no model type and no unit key. The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
+   refused without. Vertical keys GDAL drops, unit and all, or reads by rules of its own, are
+   refused, as hpr would read a unit GDAL doesn't report: a private value (above 32767) in any of
+   them (dropped with a model type, read without one), any beside WGS 84 3D, datum 6030 beside
+   WGS 84 (GDAL makes it WGS 84 3D), and any with no model type and no unit key. A blank
+   `GDAL_METADATA` value written as a character reference, which GDAL reads as 0, is refused.
+   The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
    sample type (a value an integer can't hold matches nothing); NaN is no data too.
 5. **Bounded on a hostile file.** `height_at` decodes only the tile or strip holding the point;
    `parse` refuses a tile or strip over 256 MiB decoded (`MAX_CHUNK_BYTES`: the `tiff` crate's own

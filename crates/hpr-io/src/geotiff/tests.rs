@@ -1008,9 +1008,9 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
         vec![(4099, 9001)],
         vec![(4098, 5103)],
         vec![(4096, 32767), (4099, 9001)],
-        // A known vertical CRS beside a datum key GDAL may resolve away (6030 beside WGS 84,
-        // which GDAL turns into WGS 84 3D).
-        vec![(4096, 5703), (4098, 6030)],
+        // A known vertical CRS beside a datum key (6030 beside WGS 84, which GDAL turns into
+        // WGS 84 3D, is refused before: `vertical_keys_gdal_drops_are_refused`).
+        vec![(4096, 5703), (4098, 5103)],
     ] {
         let bytes = with_z_keys(&directory(&keys(&more)), 0.1, 0.0, 1000.0, None);
         assert!(
@@ -1055,8 +1055,9 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
 
 #[test]
 fn vertical_keys_gdal_drops_are_refused() {
-    // Measured through rasterio: GDAL reports no vertical unit for any of these, where this
-    // reader would read one.
+    // Measured through rasterio: GDAL reports no vertical unit for any of these (or, for a
+    // private value with no model type, reads it by rules of its own), where this reader would
+    // read one.
     for (keys, why) in [
         (
             vec![(1024, 2), (2048, 4326), (4096, 40_000), (4099, 9002)],
@@ -1080,22 +1081,38 @@ fn vertical_keys_gdal_drops_are_refused() {
             vec![(2048, 4326), (4096, 6360)],
             "no model type and no unit key",
         ),
+        (
+            vec![(2048, 4326), (4098, 5103)],
+            "no model type and no unit key",
+        ),
         (vec![(1024, 2), (2048, 4979), (4096, 6360)], "WGS 84 3D"),
+        (
+            vec![(1024, 2), (2048, 4326), (4098, 6030), (4099, 9002)],
+            "6030",
+        ),
+        (
+            vec![(1024, 2), (2048, 4326), (4096, 6360), (4098, 6030)],
+            "6030",
+        ),
     ] {
         let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
         assert!(
             matches!(
                 ElevationRaster::parse(&bytes),
-                Err(GeoTiffError::Unsupported { what: "vertical keys GDAL drops:", ref value, .. })
+                Err(GeoTiffError::Unsupported { what: "vertical keys GDAL drops or reads by rules of its own:", ref value, .. })
                     if value.contains(why)
             ),
             "{keys:?}"
         );
     }
-    // WGS 84 3D with no vertical key reads.
-    let keys = [(1024, 2), (2048, 4979)];
-    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
-    assert!(ElevationRaster::parse(&bytes).is_ok());
+    // WGS 84 3D with no vertical key reads, as does datum 6030 beside NAD83, which GDAL keeps.
+    for keys in [
+        vec![(1024, 2), (2048, 4979)],
+        vec![(1024, 2), (2048, 4269), (4098, 6030), (4099, 9002)],
+    ] {
+        let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+        assert!(ElevationRaster::parse(&bytes).is_ok(), "{keys:?}");
+    }
 }
 
 #[test]
@@ -1249,8 +1266,8 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
         ),
         Err(GeoTiffError::Malformed {
             what: "GDAL_METADATA",
-            ..
-        })
+            ref reason,
+        }) if reason.contains("is not a number")
     ));
     assert!(matches!(
         parse(
@@ -1259,10 +1276,29 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
         ),
         Err(GeoTiffError::Unsupported {
             what: "a GDAL_METADATA unit type",
+            ref value,
             ..
-        })
+        }) if value.contains(r"\u{a0}")
     ));
-    // ASCII blanks are skipped, as GDAL skips them.
+    // A blank written as a character reference, which GDAL reads as 0 or a blank unit, is
+    // refused; after a value, it would otherwise leave that value standing.
+    for blank in ["&#32;", "  &#32;  ", "\n&#10;\n", "\t&#13;"] {
+        for (role, first) in [("scale", "0.5"), ("offset", "10"), ("unittype", "ft")] {
+            let xml = format!(
+                "<GDALMetadata><Item name=\"A\" sample=\"0\" role=\"{role}\">{first}</Item>\
+                 <Item name=\"A\" sample=\"0\" role=\"{role}\">{blank}</Item></GDALMetadata>"
+            );
+            assert!(
+                matches!(
+                    parse(&wgs84, &xml),
+                    Err(GeoTiffError::Unsupported { what: "GDAL_METADATA", ref value, .. })
+                        if value.contains("blank character reference")
+                ),
+                "{xml}"
+            );
+        }
+    }
+    // Blanks typed as they are, around a value or alone, are skipped, as GDAL skips them.
     assert_eq!(
         parse(
             &wgs84,
