@@ -3,16 +3,24 @@
 //! [`Rocket::new`] starts an empty rocket of one body diameter. Body parts ([`Nose`], [`Tube`],
 //! [`Transition`]) stack from the nose tip in the order they are added. Attached parts ([`Fins`],
 //! [`MotorTube`], [`Mass`]) go on the last body tube added, where their [`Position`] puts them.
-//! [`Rocket::set_motor`] puts a [`Motor`] in the motor tube, and [`Rocket::add_parachute`] adds a
-//! recovery device. What the builder makes is an ordinary [`hpr_design::Rocket`], the same tree a
-//! design file holds ([`Rocket::design`]); a design you already have flies through
-//! [`Rocket::from_design`].
+//! [`Fitting`]s (couplers, centering rings, bulkheads, launch lugs, packed parachutes and
+//! streamers) go there too. [`Rocket::set_motor`] puts a [`Motor`] in the motor tube, and
+//! [`Rocket::add_parachute`] adds a recovery device. What the builder makes is an ordinary
+//! [`hpr_design::Rocket`], the same tree a design file holds ([`Rocket::design`]); a design you
+//! already have flies through [`Rocket::from_design`].
 //!
 //! Every part names its material. [`material`] finds a built-in one by id; the list, with each
 //! density's source, is [`hpr_design::materials`]. The builder has no default materials or wall
 //! thicknesses, because each one would be a guess at your rocket's mass. Every outer surface has
 //! the design's default finish, mass-production paint ([`hpr_design::Finish`]), which sets its
 //! skin friction; the builder can't change it yet.
+//!
+//! Parts can also come from a parts catalogue, such as the one OpenRocket ships
+//! ([`hpr_io::orc::bundled`]): [`Nose::from_catalog`], [`Tube::from_catalog`],
+//! [`Transition::from_catalog`], [`MotorTube::from_catalog`] and [`Fitting::from_catalog`] make
+//! each part as the catalogue gives it, its material and stated mass included. What a catalogue
+//! leaves unsaid is chosen as OpenRocket chooses it, but for a hollow part's shoulder wall
+//! ([`catalog`] lists each choice).
 
 use hpr_aero::{AeroModel, Flow};
 use hpr_design::checks::{check, has_errors};
@@ -29,6 +37,10 @@ use serde::{Deserialize, Serialize};
 use crate::error::{Error, Order, finite, non_negative, positive};
 use crate::motor::Motor;
 
+pub mod catalog;
+
+pub use catalog::Fitting;
+
 /// The built-in material with id `id`, such as `"abs"`, `"kraft_phenolic"` or
 /// `"birch_plywood"`. [`hpr_design::materials`] lists them all, each with its density's source.
 ///
@@ -41,15 +53,20 @@ pub fn material(id: &str) -> Result<Material, Error> {
         .ok_or_else(|| Error::UnknownMaterial(id.to_owned()))
 }
 
-/// A nose cone. Its base takes the rocket's diameter.
+/// A nose cone. Its base takes the rocket's diameter, unless it states its own, as a catalogue
+/// part does ([`Nose::from_catalog`]).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nose {
     shape: NoseShape,
     length_m: f64,
     wall: Wall,
+    /// The shoulder; an outer radius of zero takes the inner radius of the tube behind it.
     shoulder: Option<Shoulder>,
     material: Material,
     name: String,
+    /// The base diameter, m, where the nose states its own: a catalogue part's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    diameter_m: Option<f64>,
 }
 
 impl Nose {
@@ -65,6 +82,7 @@ impl Nose {
             shoulder: None,
             material,
             name: String::new(),
+            diameter_m: None,
         }
     }
 
@@ -161,6 +179,18 @@ pub struct Transition {
     wall: Wall,
     material: Material,
     name: String,
+    /// The fore diameter, m, where the transition states its own: a catalogue part's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    fore_diameter_m: Option<f64>,
+    /// Whether its profile is cut from a whole nose cone ([`hpr_design::Transition::clipped`]).
+    #[serde(default)]
+    clipped: bool,
+    /// The shoulder ahead of its fore end, its outer radius stated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    fore_shoulder: Option<Shoulder>,
+    /// The shoulder behind its aft end, its outer radius stated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    aft_shoulder: Option<Shoulder>,
 }
 
 impl Transition {
@@ -177,13 +207,28 @@ impl Transition {
             },
             material,
             name: String::new(),
+            fore_diameter_m: None,
+            clipped: false,
+            fore_shoulder: None,
+            aft_shoulder: None,
         }
     }
 
-    /// The same transition with the profile `shape` instead of a cone.
+    /// The same transition with the profile `shape` instead of a cone. It stays clipped, or
+    /// not, as it was ([`Transition::with_clipped`]).
     #[must_use]
     pub fn with_shape(mut self, shape: NoseShape) -> Self {
         self.shape = shape;
+        self
+    }
+
+    /// The same transition with its profile cut from a whole nose cone (`true`), or scaled
+    /// between its two radii (`false`, as [`Transition::conical`] makes it):
+    /// [`hpr_design::Transition::clipped`]. A conical or tangent-ogive transition is the same
+    /// either way.
+    #[must_use]
+    pub fn with_clipped(mut self, clipped: bool) -> Self {
+        self.clipped = clipped;
         self
     }
 
@@ -437,7 +482,8 @@ const STAGE_ID: &str = "sustainer";
 
 impl Rocket {
     /// An empty rocket called `name`, of outer body diameter `diameter_m`: the nose's base
-    /// diameter, and the first tube's unless it says otherwise. Its reference diameter, the one
+    /// diameter, and the first tube's, unless they say otherwise (a catalogue part states its
+    /// own). Its reference diameter, the one
     /// the stability margin is counted in, is its largest body diameter.
     ///
     /// # Errors
@@ -493,22 +539,28 @@ impl Rocket {
     ///
     /// - [`Error::Order`] if a body part is already in place, or the rocket was read from a
     ///   design.
-    /// - [`Error::Domain`] for a length, wall or shoulder dimension that isn't finite and
-    ///   positive; [`Error::Design`] for a shape whose parameter is out of its range.
+    /// - [`Error::Domain`] for a diameter, length, wall or shoulder dimension that isn't finite
+    ///   and positive, or a shoulder wall thicker than its stated radius; [`Error::Design`] for a
+    ///   shape whose parameter is out of its range.
     pub fn add_nose(&mut self, nose: Nose) -> Result<&mut Self, Error> {
         let build = self.build()?;
         if build.aft_radius_m.is_some() {
             return Err(Error::Order(Order::NoseNotFirst));
         }
-        let radius_m = 0.5 * build.diameter_m;
+        let radius_m = 0.5
+            * positive(
+                "nose diameter, m",
+                nose.diameter_m.unwrap_or(build.diameter_m),
+            )?;
         positive("nose length, m", nose.length_m)?;
         check_wall("nose wall, m", nose.wall)?;
         Profile::nose(nose.shape, nose.length_m, radius_m)?;
         let mut auto = Vec::new();
         if let Some(shoulder) = &nose.shoulder {
-            positive("nose shoulder length, m", shoulder.length_m)?;
-            positive("nose shoulder wall, m", shoulder.thickness_m)?;
-            auto.push(AutoDimension::ShoulderRadius);
+            check_shoulder(&NOSE_SHOULDER, shoulder)?;
+            if shoulder.outer_radius_m == 0.0 {
+                auto.push(AutoDimension::ShoulderRadius);
+            }
         }
         let part = Part::NoseCone(NoseCone {
             shape: nose.shape,
@@ -547,20 +599,26 @@ impl Rocket {
         Ok(self)
     }
 
-    /// Adds a transition behind the last body part, starting at its diameter.
+    /// Adds a transition behind the last body part, starting at its diameter unless it states its
+    /// own (a catalogue part does).
     ///
     /// # Errors
     ///
     /// - [`Error::Order`] if there is no body part before it, or the rocket was read from a
     ///   design.
-    /// - [`Error::Domain`] for a length or wall that isn't finite and positive, or an aft
-    ///   diameter that is negative or not finite; [`Error::Design`] for a shape whose parameter
-    ///   is out of its range.
+    /// - [`Error::Domain`] for a length, wall, stated fore diameter or shoulder dimension that
+    ///   isn't finite and positive, an aft diameter that is negative or not finite, or a
+    ///   shoulder wall thicker than its radius; [`Error::Design`] for a shape whose parameter is
+    ///   out of its range.
     pub fn add_transition(&mut self, transition: Transition) -> Result<&mut Self, Error> {
-        let fore_radius_m = self
+        let before_radius_m = self
             .build()?
             .aft_radius_m
             .ok_or(Error::Order(Order::NothingBeforeTransition))?;
+        let fore_radius_m = match transition.fore_diameter_m {
+            Some(diameter_m) => 0.5 * positive("transition fore diameter, m", diameter_m)?,
+            None => before_radius_m,
+        };
         positive("transition length, m", transition.length_m)?;
         check_wall("transition wall, m", transition.wall)?;
         let aft_radius_m =
@@ -570,17 +628,25 @@ impl Rocket {
             transition.length_m,
             fore_radius_m,
             aft_radius_m,
-            false,
+            transition.clipped,
         )?;
+        for shoulder in [&transition.fore_shoulder, &transition.aft_shoulder]
+            .into_iter()
+            .flatten()
+        {
+            // A transition's shoulders state their radius: the builder finds none for them.
+            positive("transition shoulder radius, m", shoulder.outer_radius_m)?;
+            check_shoulder(&TRANSITION_SHOULDER, shoulder)?;
+        }
         let part = Part::Transition(hpr_design::Transition {
             shape: transition.shape,
-            clipped: false,
+            clipped: transition.clipped,
             length_m: transition.length_m,
             fore_radius_m,
             aft_radius_m,
             wall: transition.wall,
-            fore_shoulder: None,
-            aft_shoulder: None,
+            fore_shoulder: transition.fore_shoulder,
+            aft_shoulder: transition.aft_shoulder,
             material: transition.material,
         });
         let component = self.component("transition", &transition.name, part, None);
@@ -670,6 +736,30 @@ impl Rocket {
         Ok(self)
     }
 
+    /// Adds a fitting to the last body tube: a coupler, a centering ring, a bulkhead, a launch
+    /// lug, or a packed parachute or streamer.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::Order`] if there is no body tube yet, the rocket was read from a design, or the
+    ///   fitting holds a part of another kind (one read from a file).
+    /// - [`Error::Design`] for a part the design can't weigh: a size that is negative or not
+    ///   finite, a ring whose bore reaches its rim, a wall thicker than its tube's radius, a
+    ///   material of the wrong kind. A tube with a wall of zero, or a parachute or streamer of
+    ///   no size, weighs nothing and is taken.
+    /// - [`Error::Domain`] for a position that isn't finite.
+    pub fn add_fitting(&mut self, fitting: Fitting) -> Result<&mut Self, Error> {
+        let id = fitting.id().ok_or(Error::Order(Order::NotAFitting))?;
+        let (part, position, name) = fitting.into_parts();
+        check_position(position)?;
+        // Weighed now, on the tube it goes on, so a part the design can't take is refused where
+        // it is added.
+        part.mass_properties(Some(self.tube_radius_m()?))?;
+        let component = self.component(id, &name, part, Some(position));
+        self.attach(component)?;
+        Ok(self)
+    }
+
     /// Puts `motor` in the motor tube, lit at launch, in place of any motor there before. The
     /// design's one configuration is named after its designation.
     ///
@@ -705,7 +795,7 @@ impl Rocket {
     /// [`Trigger::MotorDelay`](hpr_sim::Trigger::MotorDelay) with motor 0, the first motor, opens
     /// it at the motor's ejection charge, which needs the motor's delay set
     /// ([`Motor::with_delay_s`]). The device adds drag, not mass: add its mass with
-    /// [`Rocket::add_mass`].
+    /// [`Rocket::add_mass`], or a catalogue parachute's with [`Fitting::from_catalog`].
     pub fn add_parachute(&mut self, device: Device) -> &mut Self {
         self.recovery.push(device);
         self
@@ -864,6 +954,21 @@ impl Rocket {
         Ok(())
     }
 
+    /// The last body tube's outer radius, m.
+    fn tube_radius_m(&self) -> Result<f64, Error> {
+        let index = self.build()?.tube.ok_or(Error::Order(Order::NoTube))?;
+        match self
+            .design
+            .stages
+            .first()
+            .and_then(|stage| stage.components.get(index))
+            .map(|component| &component.part)
+        {
+            Some(Part::BodyTube(tube)) => Ok(tube.outer_radius_m),
+            _ => Err(Error::Order(Order::NoTube)),
+        }
+    }
+
     /// Attaches `component` to the last body tube.
     fn attach(&mut self, component: Component) -> Result<(), Error> {
         let index = self.build()?.tube.ok_or(Error::Order(Order::NoTube))?;
@@ -884,6 +989,41 @@ fn check_wall(what: &'static str, wall: Wall) -> Result<(), Error> {
     }
     Ok(())
 }
+
+/// A shoulder's length and wall, checked finite and positive, and, where its outer radius is
+/// stated (zero is the tube's, found later), that radius too, with the wall no thicker than it.
+/// `names` names those four numbers in an error: [`NOSE_SHOULDER`], [`TRANSITION_SHOULDER`].
+fn check_shoulder(names: &[&'static str; 4], shoulder: &Shoulder) -> Result<(), Error> {
+    let [length, wall, radius, past] = *names;
+    positive(length, shoulder.length_m)?;
+    positive(wall, shoulder.thickness_m)?;
+    if shoulder.outer_radius_m != 0.0 {
+        positive(radius, shoulder.outer_radius_m)?;
+        if shoulder.thickness_m > shoulder.outer_radius_m {
+            return Err(Error::Domain {
+                what: past,
+                value: shoulder.thickness_m,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// A nose shoulder's numbers, as [`check_shoulder`] names them.
+const NOSE_SHOULDER: [&str; 4] = [
+    "nose shoulder length, m",
+    "nose shoulder wall, m",
+    "nose shoulder radius, m",
+    "nose shoulder wall past its radius, m",
+];
+
+/// A transition shoulder's numbers, as [`check_shoulder`] names them.
+const TRANSITION_SHOULDER: [&str; 4] = [
+    "transition shoulder length, m",
+    "transition shoulder wall, m",
+    "transition shoulder radius, m",
+    "transition shoulder wall past its radius, m",
+];
 
 /// A position's offset or station, checked finite.
 fn check_position(position: Position) -> Result<(), Error> {

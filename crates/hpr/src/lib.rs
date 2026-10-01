@@ -81,7 +81,7 @@ pub mod ork;
 pub mod rocket;
 
 pub use environment::Environment;
-pub use error::{Error, Order};
+pub use error::{CatalogProblem, Error, Order};
 pub use flight::{Flight, FlightBuilder};
 pub use motor::Motor;
 pub use rocket::Rocket;

@@ -59,6 +59,14 @@ pub enum Error {
         first_error(.0)
     )]
     DesignChecks(Vec<Finding>),
+    /// A catalogue part the builder can't make into the part asked for.
+    #[error("catalogue part {part}: {problem}")]
+    Catalog {
+        /// The part: its maker and part number, and its file.
+        part: String,
+        /// What is wrong with it.
+        problem: CatalogProblem,
+    },
     /// From the design: its tree, parts and mass properties.
     #[error(transparent)]
     Design(#[from] DesignError),
@@ -98,9 +106,41 @@ pub enum Order {
     /// A motor with no motor tube to go in.
     #[error("a motor needs a motor tube to go in")]
     NoMotorTube,
+    /// A fitting holding a part that isn't one (one read from a file): a fitting is a coupler,
+    /// a centering ring, a bulkhead, a launch lug, a parachute or a streamer.
+    #[error("a fitting is a coupler, centering ring, bulkhead, launch lug, parachute or streamer")]
+    NotAFitting,
     /// A part added to a rocket read from a design, which the builder doesn't change.
     #[error("parts can't be added to a rocket read from a design")]
     ReadFromDesign,
+}
+
+/// Why a catalogue part ([`hpr_io::orc::Part`]) can't be made into a builder part.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum CatalogProblem {
+    /// A part of a kind the builder's part isn't, such as a body tube given to
+    /// `Nose::from_catalog`.
+    #[error("it is a {found}, which `{builder}` doesn't make")]
+    Kind {
+        /// The part's kind.
+        found: &'static str,
+        /// The function it was given to.
+        builder: &'static str,
+    },
+    /// A material its file names but doesn't define, so it has no density.
+    #[error("its file doesn't define its material `{0}`")]
+    UndefinedMaterial(String),
+    /// A nose cone or transition neither filled nor given a wall thickness.
+    #[error("it is neither filled nor given a wall thickness")]
+    NoWall,
+    /// A nose cone's or transition's shape the builder doesn't know.
+    #[error("its shape is one the builder doesn't know")]
+    Shape,
+    /// A part that states its mass but whose sizes give it no volume to hold it, so no density
+    /// gives it that mass.
+    #[error("it states a mass, but its sizes give it no volume to hold it")]
+    NoVolume,
 }
 
 /// `value` if it is finite and positive, [`Error::Domain`] otherwise.

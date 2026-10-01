@@ -1,0 +1,20 @@
+LOC 2.56 in from the catalogue, with motor H170M
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+part                                     mass (g)
+LOC Precision PNC-2.56                       87.7
+LOC Precision BT-2.56                       120.0
+LOC Precision BT-1.52, MMT-1.52              43.6
+LOC Precision CR-2.56-38mm                    4.2
+LOC Precision CR-2.56-38mm                    4.2
+fins                                         99.7
+LOC Precision LP-36-2022                     70.7
+structure                                   430.1
+
+At liftoff: 0.760 kg, centre of gravity 0.728 m from the nose,
+stability margin 1.07 calibres at Mach 0.3.
+
+Rail exit:  30.0 m/s
+Apogee:     1119.3 m above the pad, at 11.77 s
+Top speed:  302 m/s (Mach 0.91)
+Landing:    at 4.6 m/s, at 250.8 s

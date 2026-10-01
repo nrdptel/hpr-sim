@@ -44,6 +44,10 @@ adds a source.
   should be weighed. OpenRocket 24.12's reading of every part (and of each file with its stated
   masses removed), and of 37 probe files written by `validation/oracles/openrocket/orc_presets.py`,
   is recorded in `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (M5.5a, ADR-132).
+  The mass and centre of mass OpenRocket 24.12 gives each part, and 6 probe parts, applied to a
+  new component, with the dimensions it chose for what the file leaves unsaid, are recorded by
+  `validation/oracles/openrocket/orc_built.py` in `crates/hpr/tests/fixtures/orc/openrocket-built.json`
+  (M5.5b, ADR-133).
 
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
   motor dimensions and aerodynamic-surface dimensions of seven example rockets, taken from RocketPy's

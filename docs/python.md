@@ -475,4 +475,6 @@ The package covers the Rust builder, not the whole library. Not yet:
 - The library's built-in winds that change with height (power law, log law, layers) and weather
   files fly only from Rust. From Python you can write any of them as a wind function
   ([Drag and wind of your own](#drag-and-wind-of-your-own)).
+- Parts from a parts catalogue, which only Rust programs build with
+  ([Parts from a catalogue](the-builder.md#parts-from-a-catalogue)).
 - Type stubs, so an editor sees the docstrings but not the arguments' types.
