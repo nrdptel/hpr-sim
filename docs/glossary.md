@@ -1178,7 +1178,10 @@ thrust as zero from the last point on, and treats two points at the same time as
 
 A public database of motor thrust curves and data. hpr bundles 32 of its curves, and runs its
 statistics code to check its own. A file downloaded from it can be read and flown
-([A motor from a file](physics/motor.md#a-motor-from-a-file)). See [Solid motors](physics/motor.md).
+([A motor from a file](physics/motor.md#a-motor-from-a-file)); the library can search it and
+download a motor's files itself
+([Matching motors to ThrustCurve.org](motor-stock.md#matching-motors-to-thrustcurveorg)). See
+[Solid motors](physics/motor.md).
 
 ## Tip-off
 

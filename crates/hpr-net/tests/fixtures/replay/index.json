@@ -18,5 +18,10 @@
   "https://motor.fusionspace.co/api/v1/motors/aerotech/H128W.json": "motor-finder-aerotech-H128W.json",
   "https://motor.fusionspace.co/api/v1/motors/aerotech/F27R~L.json": "motor-finder-aerotech-F27R_L.json",
   "https://motor.fusionspace.co/api/v1/motors/cesaroni/3683L851-P.json": "motor-finder-cesaroni-3683L851-P.json",
-  "https://motor.fusionspace.co/api/v1/motors/loki/J-326-LR.json": "motor-finder-loki-J-326-LR.json"
+  "https://motor.fusionspace.co/api/v1/motors/loki/J-326-LR.json": "motor-finder-loki-J-326-LR.json",
+  "https://www.thrustcurve.org/api/v1/search.json?manufacturer=AeroTech&maxResults=5000": "thrustcurve-search-aerotech.json",
+  "https://www.thrustcurve.org/api/v1/search.json?manufacturer=Cesaroni%20Technology&maxResults=5000": "thrustcurve-search-cesaroni.json",
+  "https://www.thrustcurve.org/api/v1/search.json?manufacturer=Loki%20Research&maxResults=5000": "thrustcurve-search-loki.json",
+  "https://www.thrustcurve.org/api/v1/download.json?motorId=5f4294d2000231000000044f&format=RASP&data=file": "thrustcurve-download-J450DM.json",
+  "https://www.thrustcurve.org/api/v1/download.json?motorId=5f4294d200023100000001d4&format=RockSim&data=file": "thrustcurve-download-F27R_L-rocksim.json"
 }

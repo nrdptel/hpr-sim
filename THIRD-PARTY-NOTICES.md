@@ -124,6 +124,19 @@ adds a source.
   The example `crates/hpr/examples/motor_stock.rs` reads the build and in-stock files.
   `hpr_net::motor_finder` also fetches such answers at run time, when a program asks, and caches
   them on the user's disk; each answer carries the credit for the program to show.
+- **ThrustCurve.org API answers** (<https://www.thrustcurve.org/info/api.html>):
+  `crates/hpr-net/tests/fixtures/replay/thrustcurve-search-aerotech.json`,
+  `thrustcurve-search-cesaroni.json` and `thrustcurve-search-loki.json` are the API's search
+  answers for every AeroTech, Cesaroni Technology and Loki Research motor, and
+  `thrustcurve-download-J450DM.json` and `thrustcurve-download-F27R_L-rocksim.json` two download
+  answers, each holding one data file that ThrustCurve.org marks public domain (license `PD`), all
+  recorded unchanged on 2026-10-01 08:22 UTC. The API states no terms for its data; the records
+  are published motor statistics (factual values, used with attribution, as for the bundled
+  curves above). Data courtesy of ThrustCurve.org, https://www.thrustcurve.org/
+  ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01)).
+  The example `crates/hpr/examples/motor_stock.rs` reads the searches and the J450DM answer.
+  `hpr_net::thrustcurve` also fetches such answers at run time, when a program asks, and caches
+  them on the user's disk; each answer carries the credit for the program to show.
 - **University of Wyoming soundings** (<https://weather.uwyo.edu/upperair/sounding.shtml>):
   `crates/hpr-net/tests/fixtures/replay/wyoming-72364-fm35.csv`, `wyoming-72364-bufr.csv` and
   `wyoming-72572-fm35.csv` are three answers recorded unchanged on 2026-09-30 from the University

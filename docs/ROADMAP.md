@@ -432,10 +432,8 @@
   *Done when:* every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero
   errors; committed `insta` snapshots use only public files (the Loft demo fixtures and synthetic
   designs), and private-corpus results go to a gitignored `corpus-out/`, as counts only; the
-  RocketSerializer cross-check agrees on the key geometry. *Result:* met by M3.1a to M3.1d.
-
-  Split into M3.1a to M3.1d (ADR-051): the container and the document first, because everything
-  after it walks that tree.
+  RocketSerializer cross-check agrees on the key geometry. *Result:* met by M3.1a to M3.1d. Split
+  a to d (ADR-051): the container and the document first, as everything after it walks that tree.
   - [x] **M3.1a The container and the design document.** Sniff zip, gzip and raw XML; keep every
     archive entry and all the XML said; warn, never crash. Loft lesson L56. *Done when:* every
     `.ork` in the reference library and in the OpenRocket jar's example set either reads or is
@@ -805,9 +803,10 @@
     *Done when:* recorded-fixture tests read each endpoint's answer to the values in it, a second
     read works offline, and every answer carries the credit the API asks for. *Result:* met
     (ADR-129): 8 answers of one build, every value read back and offline; the credit on each.
-  - [ ] **M5.4b ThrustCurve.** `hpr_net::thrustcurve`: its search and a motor's curve, through the
+  - [x] **M5.4b ThrustCurve.** `hpr_net::thrustcurve`: its search and a motor's curve, through the
     cache. *Done when:* the designation to ThrustCurve id mapping covers at least 95% of in-stock
     motors, with a report of the misses; a mapped motor's recorded curve reads with `hpr_motor`.
+    *Result:* met (ADR-130): 282 of 282 mapped; J450DM's file reads, the bundled one to the byte.
   - [ ] **M5.4c `hpr motors search`.** *Done when:* `--in-stock --class L --max-price 150` lists
     from a recorded snapshot and offline from the cache, with the credit shown as the API asks.
 
