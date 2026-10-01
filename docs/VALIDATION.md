@@ -291,7 +291,12 @@ as heights instead, the mean is 6.63%.
   `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json`
   (`validation/oracles/openrocket/orc_presets.py`;
   [ADR-132](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-132-m55a-openrockets-orc-parts-catalogues-held-to-openrockets-reading-2026-10-01),
-  the departures and their causes).
+  the departures and their causes). What OpenRocket builds from each part (its mass, centre of
+  mass and the dimensions the file leaves unsaid) and from 6 probe parts is in
+  `crates/hpr/tests/fixtures/orc/openrocket-built.json`
+  (`validation/oracles/openrocket/orc_built.py`), which `crates/hpr/tests/catalog_openrocket.rs`
+  holds the builder's parts to
+  ([ADR-133](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-133-m55b-catalogue-parts-in-the-builder-weighed-as-openrocket-builds-them-2026-10-01)).
 - **US Standard Atmosphere 1976:**
   https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf. Python cross-checks:
   `ambiance` (Apache-2.0), `pyatmos` (MIT).

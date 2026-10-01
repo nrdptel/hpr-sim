@@ -59,6 +59,14 @@ pub enum Error {
         first_error(.0)
     )]
     DesignChecks(Vec<Finding>),
+    /// A catalogue part the builder can't make into the part asked for.
+    #[error("catalogue part {part}: {problem}")]
+    Catalog {
+        /// The part: its maker and part number, and its file.
+        part: String,
+        /// What is wrong with it.
+        problem: CatalogProblem,
+    },
     /// From the design: its tree, parts and mass properties.
     #[error(transparent)]
     Design(#[from] DesignError),
@@ -101,6 +109,30 @@ pub enum Order {
     /// A part added to a rocket read from a design, which the builder doesn't change.
     #[error("parts can't be added to a rocket read from a design")]
     ReadFromDesign,
+}
+
+/// Why a catalogue part ([`hpr_io::orc::Part`]) can't be made into a builder part.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum CatalogProblem {
+    /// A part of a kind the builder's part isn't, such as a body tube given to
+    /// `Nose::from_catalog`.
+    #[error("it is a {found}, which `{builder}` doesn't make")]
+    Kind {
+        /// The part's kind.
+        found: &'static str,
+        /// The function it was given to.
+        builder: &'static str,
+    },
+    /// A material its file names but doesn't define, so it has no density.
+    #[error("its file doesn't define its material `{0}`")]
+    UndefinedMaterial(String),
+    /// A nose cone or transition neither filled nor given a wall thickness.
+    #[error("it is neither filled nor given a wall thickness")]
+    NoWall,
+    /// A nose cone's or transition's shape the builder doesn't know.
+    #[error("its shape is one the builder doesn't know")]
+    Shape,
 }
 
 /// `value` if it is finite and positive, [`Error::Domain`] otherwise.

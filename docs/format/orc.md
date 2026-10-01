@@ -20,17 +20,10 @@ each has a known cause ([Where hpr and OpenRocket differ](#where-hpr-and-openroc
 part is only as right as its file, though. The database's README warns that its data may be
 wrong for your rocket and that you should weigh your real parts.
 
-**What it doesn't do yet.** The builder can't take a catalogue part yet; that is the next step,
-[M5.5b](../decisions-and-roadmap.md#m5-5b) (catalogue parts in the builder). Today a program reads
-a part's sizes and material, and builds the part itself from them, with
-[the builder](../the-builder.md) or as a design written part by part
-([your own rocket](../your-own-rocket.md)). Where a part states its mass, prefer it to the weight
-worked out from sizes and a material, which is only as good as the file's density. A design can
-set it as the part's mass [override](../physics/design.md#overrides), which keeps the part's
-computed centre of mass: write the design part by part
-([your own rocket](../your-own-rocket.md#what-else-a-design-can-hold)), or clone a builder rocket's
-`design()` and add one ([beyond the builder](../the-builder.md#beyond-the-builder)). The builder
-itself can't take one yet.
+**Building with it.** The builder makes a rocket's parts from catalogue parts, and weighs each
+one as OpenRocket does, with the few differences it names
+([Parts from a catalogue](../the-builder.md#parts-from-a-catalogue), written for
+[M5.5b](../decisions-and-roadmap.md#m5-5b)). A part that states its mass weighs that mass.
 
 Code: `hpr_io::orc` ([API reference](../api/hpr_io/orc/index.html)), written for
 [M5.5a](../decisions-and-roadmap.md#m5-5a), the parts reader. The decisions are in
@@ -250,8 +243,8 @@ every `<Mass>` taken out, and then OpenRocket's density equals hpr's on every pa
 included. On the 54 of them that are simple solids (7 body tubes, 4 bulkheads, and 43 filled
 conical parts: 34 nose cones and 9 transitions), the test also checks that OpenRocket's replaced density times the
 part's volume gives the stated mass, to 1 part in 10¹⁵.
-When the builder takes catalogue parts ([M5.5b](../decisions-and-roadmap.md#m5-5b)), a part that
-states its mass will weigh that mass.
+The builder ([Parts from a catalogue](../the-builder.md#parts-from-a-catalogue)) makes a part that
+states its mass weigh that mass, by the part's mass override, as OpenRocket does by its density.
 
 OpenRocket also rounds a few other imperial factors: pounds per cubic foot, ounces per square inch
 or foot, pounds per square foot, and ounces per foot. No built-in file uses them.

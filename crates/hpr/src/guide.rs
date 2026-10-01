@@ -261,6 +261,7 @@ pub mod examples {
     //! | [`build_and_fly`][build_and_fly] | a rocket built part by part, weighed, and flown in a wind under a parachute |
     //! | [`motor_choice`][motor_choice] | one rocket on each 29 mm motor in the catalog, with the best ejection delay |
     //! | [`fin_sizing`][fin_sizing] | fins of five spans: the margin, the apogee and the drift of each |
+    //! | [`catalog_rocket`][catalog_rocket] | a rocket built from a maker's catalogue parts, weighed part by part and flown |
     //! | [`custom_drag`][custom_drag] | drag models of your own in place of hpr's |
     //! | [`custom_wind`][custom_wind] | a wind model of your own, which turns with height |
     //! | [`ork_two_stage`][ork_two_stage] | a two-stage OpenRocket file flown through the crates beneath |
@@ -270,6 +271,7 @@ pub mod examples {
     //! [build_and_fly]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/build_and_fly.rs
     //! [motor_choice]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/motor_choice.rs
     //! [fin_sizing]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/fin_sizing.rs
+    //! [catalog_rocket]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/catalog_rocket.rs
     //! [custom_drag]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/custom_drag.rs
     //! [custom_wind]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/custom_wind.rs
     //! [ork_two_stage]: https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/ork_two_stage.rs

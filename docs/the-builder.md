@@ -3,7 +3,7 @@
 This page shows the shortest way to fly a rocket of your own with hpr-sim. The `hpr`
 [crate](glossary.md#crate) has four types for it: `Environment`, `Motor`, `Rocket` and `Flight`.
 You describe the rocket part by part from the nose back, put a motor in it, and fly it from a
-rail. The page runs three example programs and walks through them. It needs the setup from
+rail. The page runs four example programs and walks through them. It needs the setup from
 [Getting started](getting-started.md), and some Rust.
 
 > **How far to trust it.** The builder adds no physics. It writes the same
@@ -220,6 +220,121 @@ Because a rocket is a value built by a function, a design study is a loop. The e
 - **The landing** is closer with bigger fins, 114 m closer from the 45 mm to the 65 mm: the
   parachute opens further upwind, and lower, so it drifts for less time.
 
+## Parts from a catalogue
+
+A rocket can also be built from a maker's parts, as sold, from a parts catalogue. hpr-sim bundles
+the one OpenRocket ships: 3,449 parts from Estes, LOC Precision and a dozen more makers, read as
+the [`.orc` page](format/orc.md) explains. The fourth example finds LOC Precision's 2.56 in
+(65 mm) airframe parts in it by maker and part number, builds the rocket from them, and flies it on
+an AeroTech H170:
+
+```bash
+cargo run --example catalog_rocket -p hpr
+```
+
+<!-- quote: crates/hpr/examples/catalog_rocket.output.txt -->
+```text
+LOC 2.56 in from the catalogue, with motor H170M
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+part                                     mass (g)
+LOC Precision PNC-2.56                       87.7
+LOC Precision BT-2.56                       120.0
+LOC Precision BT-1.52, MMT-1.52              43.6
+LOC Precision CR-2.56-38mm                    4.2
+LOC Precision CR-2.56-38mm                    4.2
+fins                                         99.7
+LOC Precision LP-36-2022                     70.7
+structure                                   430.1
+
+At liftoff: 0.760 kg, centre of gravity 0.728 m from the nose,
+stability margin 1.07 calibres at Mach 0.3.
+
+Rail exit:  30.0 m/s
+Apogee:     1119.3 m above the pad, at 11.77 s
+Top speed:  302 m/s (Mach 0.91)
+Landing:    at 4.6 m/s, at 250.8 s
+```
+
+Each part is named by its maker and part number, as the design keeps it. The program's steps:
+
+- **Find the part.** `hpr_io::orc::bundled().find("LOC Precision", "PNC-2.56")` returns the
+  parts with that maker and number. Use the maker's name as the file writes it ("LOC
+  Precision", where OpenRocket shows "LOC/Precision").
+- **Make the builder's part from it.** `Nose::from_catalog(part)`, `Tube::from_catalog`,
+  `Transition::from_catalog` and `MotorTube::from_catalog` (a body tube used as the motor tube)
+  take the catalogue's sizes, material and density. A catalogue nose or transition states its own
+  diameters, so the tube behind it takes the nose's diameter, not the one given to
+  `Rocket::new`.
+- **Cut a tube.** Catalogue tubes are sold long (LOC's motor tube is 34 in). `with_length_m`
+  cuts one to length, and a stated mass is cut in proportion.
+- **Fittings.** A *fitting* is a part that goes in or on the last body tube: a coupler, an engine
+  block, a centering ring, a bulkhead, a launch lug, or a packed parachute or streamer.
+  `Fitting::from_catalog(part)` makes one from a catalogue part, and `Rocket::add_fitting` adds
+  it, flush with the tube's aft end unless `at` places it. `Fitting::centering_ring`,
+  `bulkhead`, `coupler` and `launch_lug` make one to your own sizes.
+- **A parachute is two things.** As a fitting it is its weight: canopy and shroud lines, at its
+  place in the tube. Its drag is a recovery device, as in the first example. The example gives
+  that device the catalogue's diameter.
+- **The fins** are made by hand: the catalogue has none.
+
+A part that states its mass in the catalogue weighs that mass. The mass is an override on the
+part, which scales its density, so its centre of mass stays where its shape puts it. 229 of the
+3,449 parts state a mass.
+
+### What the catalogue leaves unsaid
+
+A catalogue leaves some sizes out. The builder fills each one in the way OpenRocket 24.12 does
+when it builds the part, with one exception, a hollow part's shoulder:
+
+| Left unsaid | The builder's choice | OpenRocket's |
+|---|---|---|
+| An ogive's shape | tangent | the same |
+| A parabola's parameter `K′` | 1 | the same |
+| A Haack series' `C` | 0, the von Kármán | the same |
+| A power series' exponent | ½ | the same |
+| Whether a transition is clipped | yes for elliptical, Haack and power series | the same |
+| A solid part's shoulder | solid | the same |
+| **A hollow part's shoulder wall** | **the part's own wall** | **zero: it weighs nothing** |
+
+A *clipped* transition is cut from a whole nose cone ([Shapes](physics/shapes.md)). A molded
+plastic nose cone's shoulder is a tube of the same plastic, so a shoulder that weighs nothing
+would be wrong. On the 67 hollow parts with a shoulder and no stated mass, the builder's part is
+heavier than OpenRocket's by exactly that shoulder.
+
+### How far to trust it
+
+[`tests/catalog_openrocket.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/tests/catalog_openrocket.rs)
+builds every part in the catalogue with the builder. It holds each part's mass and centre of mass
+to what OpenRocket builds from it, as recorded by
+[`orc_built.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/orc_built.py).
+The tolerances were set before measuring:
+
+| Parts | Allowed | Largest difference found |
+|---|---|---|
+| Tubes, couplers, rings, bulkheads, lugs, parachutes, streamers (2,228) | 1e-12 of the mass; centre 1e-12 of the length | under 1e-14 of the mass; centre under 1e-13 of the length |
+| Nose cones and transitions (1,214, less the departures below) | 1e-3 of the mass; centre 1e-3 of the length | 6.3e-4 of the mass; centre 7.0e-5 of the length |
+
+The second row allows more because OpenRocket's volumes of nose cones and transitions are not
+exact. Even a cone, whose volume has a formula, differs by up to 6.8e-7. The test holds hpr's 85
+solid cones to that formula, so the difference is OpenRocket's. The test also counts each part
+that departs from OpenRocket, and checks why it does:
+
+- **67 hollow shoulders.** Each part weighs OpenRocket's mass plus its shoulder's closed-form
+  mass. 74 more hollow parts state a mass and weigh it; their centre is not compared.
+- **3 hollow ellipsoid nose cones** (short, blunt ones) weigh up to 0.48% more than OpenRocket's.
+  The test works out each wall's volume on its own, from the curve that runs one wall thickness
+  inside the ellipse. hpr's agrees with it to 1e-9 on all six hollow ellipsoids, so the
+  difference is OpenRocket's.
+- **185 masses stated in ounces** differ by OpenRocket's rounded ounce, 8.8e-10 of the mass.
+- **1 streamer** states its mass, and hpr uses it; OpenRocket ignores it.
+- **6 parts are refused.** Three name a material their file doesn't define, and three are tubes
+  or rings whose bore isn't narrower than their outside. OpenRocket weighs all six as nothing.
+
+What this checks is the mass of each part as the catalogue describes it. A catalogue's sizes and
+densities are the makers' or the database's, and none was weighed here. Glue, paint and
+hardware are still missing: weigh the finished parts when you can.
+
 ## Beyond the builder
 
 The builder covers a single-stage rocket with one motor. Two ways lead further, both into the
@@ -227,7 +342,7 @@ crates the builder is made of.
 
 - **Change the design.** A rocket's `design()` is its [design tree](physics/design.md), which a
   [design file](glossary.md#design-file) holds. Clone it, add what the builder can't with the
-  `hpr_design` crate (a cluster, pods, launch lugs, rail buttons, a stage), and make a rocket of
+  `hpr_design` crate (a cluster, pods, rail buttons, a stage), and make a rocket of
   it with `Rocket::from_design(tree, configuration)`, which names the configuration, the motors,
   to fly. `from_design` also takes a design file, or an OpenRocket file read as the
   [`.ork` page](format/ork.md) shows. A second stage also needs a separation, and a recovery
@@ -261,9 +376,9 @@ that guards against it here.
 
 - **One motor, one stage.** Clusters, staging and pods go through the design, as above; the
   [staging page](physics/staging.md) explains how they fly.
-- **Launch lugs and rail buttons** also go through the design. Without rail buttons the rocket
-  leaves the rail when its aft end passes the rail's top, and without a lug, a lug's drag is
-  missing.
+- **Rail buttons** go through the design. Without them the rocket leaves the rail when its aft
+  end passes the rail's top. A launch lug is a fitting (above); with one, the rocket leaves the
+  rail when the lug's aft edge passes the rail's top.
 - **The finish.** Every surface is painted, as above.
 
 ## Where next

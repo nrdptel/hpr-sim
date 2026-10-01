@@ -735,13 +735,10 @@
   - [x] **M4.3b RocketPy's example.**
   - [x] **M4.3c Python models.**
 
-- [x] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
-  dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
-  recorded fixtures (no live network in CI); offline mode never touches the network (asserted by
-  test). Split into a and b. Met: M5.1a an offline fetch never calls the transport (one that fails
-  if called) and serves a stale entry marked stale, in recorded-fixture tests, `tests/offline.rs`
-  (ADR-117); M5.1b a loopback server replaying a recorded fixture fills the cache, `cargo deny`
-  passes, `tests/http.rs` (ADR-118).
+- [x] **M5.1 Online layer and cache.** `hpr-net`: rustls HTTP, a TTL cache, offline mode,
+  attribution. Done when tests use recorded fixtures and offline never touches the network. Met:
+  a, an offline fetch never calls the transport (ADR-117); b, a loopback replay fills the cache
+  (ADR-118).
   - [x] **M5.1a Cache and offline mode** (TTLs, `Mode::Offline`, attribution).
   - [x] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
 
@@ -803,7 +800,7 @@
     from a recorded snapshot and offline from the cache, with the credit shown as the API asks.
     *Result:* met (ADR-131): none at $150 on the recording, the one on an edited copy; offline too.
 
-- [ ] **M5.5 Parts catalog.** Import the OpenRocket `.orc` component database (Apache-2.0, with
+- [x] **M5.5 Parts catalog.** Import the OpenRocket `.orc` component database (Apache-2.0, with
   notices). Lookup by vendor and part number; parts can be used from the design API.
 
   *Done when:* all `.orc` files parse, and a design built from catalog parts simulates.
@@ -813,8 +810,10 @@
     oracle) with each value equal to its reading bar named, counted departures; parts are found
     by maker and part number. *Result:* met (ADR-132): 3,449 parts; 17,911 of 18,306 numbers to
     the bit, the rest 185 ounces, 207 stated-mass densities, 3 undefined; 252 makers' names.
-  - [ ] **M5.5b Catalog parts in the builder.** *Done when:* a rocket built from catalog parts
+  - [x] **M5.5b Catalog parts in the builder.** *Done when:* a rocket built from catalog parts
     flies through the builder; each part's mass as built is held to OpenRocket's for its preset.
+    *Result:* met (ADR-133): all 3,449 built; 6.3e-4 at most on revolved parts, 1e-14 the rest;
+    67 hollow shoulders, 3 ellipsoid shells, 1 streamer, 6 refusals counted with causes.
 ## Phase 3: Uncertainty, optimization, challenges
 
 - [ ] **M6.1 Monte Carlo and sensitivity.**
