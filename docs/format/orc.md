@@ -23,7 +23,8 @@ wrong for your rocket and that you should weigh your real parts.
 **Building with it.** The builder makes a rocket's parts from catalogue parts, and weighs each
 one as OpenRocket does, with the few differences it names
 ([Parts from a catalogue](../the-builder.md#parts-from-a-catalogue), written for
-[M5.5b](../decisions-and-roadmap.md#m5-5b)). A part that states its mass weighs that mass.
+[M5.5b](../decisions-and-roadmap.md#m5-5b)). A part that states its mass weighs that mass: its
+density is scaled to give it.
 
 Code: `hpr_io::orc` ([API reference](../api/hpr_io/orc/index.html)), written for
 [M5.5a](../decisions-and-roadmap.md#m5-5a), the parts reader. The decisions are in
@@ -186,7 +187,9 @@ published schema. The fields and units below are the ones the database project d
 Any part may also state its `Mass`; 229 of the built-in parts do: 207 solid parts, and 22
 parachutes and streamers. Unlike a solid part's (see
 [Where hpr and OpenRocket differ](#where-hpr-and-openrocket-differ)), a parachute's or streamer's
-stated mass leaves its fabric's density as written, in hpr and in OpenRocket.
+stated mass leaves its fabric's density as written, in hpr's reading and in OpenRocket's. When
+the part goes into a rocket, OpenRocket gives a parachute its stated mass as an override and
+ignores a streamer's; the builder scales either one's density to give it.
 
 A centering ring's length is its thickness. A coupler with an inside diameter of zero is a solid nose block.
 
@@ -212,9 +215,12 @@ is 0.0254 m, the foot 0.3048 m, the pound 0.45359237 kg and the ounce a sixteent
   radius, a Haack series' C), but no `.orc` field can give it. OpenRocket uses its own default
   when the part goes into a design.
 - **A shoulder's wall.** A [shoulder](../glossary.md#shoulder) has a diameter and a length but no
-  wall thickness, and no end cap. For a hollow part, the database's own usage notes say OpenRocket
-  weighs it as having no wall (not checked here). For a filled part, OpenRocket weighs the shoulder
-  as a solid cylinder: the check of stated masses below uses that volume, and it agrees.
+  wall thickness, and no end cap. For a hollow part, OpenRocket gives it no wall, so it weighs
+  nothing, as the database's own usage notes say; the builder's test reads that wall from
+  OpenRocket, and the builder gives the shoulder the part's wall instead
+  ([What the catalogue leaves unsaid](../the-builder.md#what-the-catalogue-leaves-unsaid)). For a
+  filled part, OpenRocket weighs the shoulder as a solid cylinder: the check of stated masses
+  below uses that volume, and it agrees.
 - **A parachute's drag.** No field gives a drag coefficient.
 - **A filled part's walls.** `Filled` says a nose cone or transition is solid. Where it is absent,
   a `Thickness` gives the wall instead. Eight nose cones and two transitions give both, and all
@@ -244,7 +250,7 @@ included. On the 54 of them that are simple solids (7 body tubes, 4 bulkheads, a
 conical parts: 34 nose cones and 9 transitions), the test also checks that OpenRocket's replaced density times the
 part's volume gives the stated mass, to 1 part in 10¹⁵.
 The builder ([Parts from a catalogue](../the-builder.md#parts-from-a-catalogue)) makes a part that
-states its mass weigh that mass, by the part's mass override, as OpenRocket does by its density.
+states its mass weigh that mass by scaling its density, as OpenRocket does.
 
 OpenRocket also rounds a few other imperial factors: pounds per cubic foot, ounces per square inch
 or foot, pounds per square foot, and ounces per foot. No built-in file uses them.

@@ -11,32 +11,38 @@
 //! | tube coupler, engine block, centering ring, bulkhead, launch lug, parachute, streamer | [`Fitting::from_catalog`] |
 //!
 //! Each takes the catalogue's sizes, its material with the file's density, and its name, the
-//! maker and part number. A part that states its mass weighs that: the mass is the component's
-//! mass override ([`hpr_design::Overrides::mass_kg`]), which scales its density, so its centre
-//! of mass stays where its shape puts it. OpenRocket does the same for a solid part, by changing
-//! its density, and for a parachute, by overriding its mass; it leaves a streamer's stated mass
-//! unused, and the one streamer in its catalogue that states a mass weighs it here.
+//! maker and part number. A part that states its mass weighs that: its density is scaled so that
+//! the part as the catalogue sizes it weighs the stated mass, the way OpenRocket gives a rigid
+//! part (anything but a parachute or streamer) its stated mass. The material's name says so. A
+//! part changed afterwards, cut shorter or given another shape, keeps that density, so its mass
+//! follows the change. A parachute's canopy and lines are scaled alike. OpenRocket overrides a
+//! parachute's mass instead, which comes to the same for a part left as it is, and leaves a
+//! streamer's stated mass unused; the one streamer in its catalogue that states a mass weighs it
+//! here.
 //!
 //! A catalogue leaves some dimensions unsaid. Each is chosen as OpenRocket 24.12 chooses it when
-//! it builds the part, as measured by `validation/oracles/openrocket/orc_built.py`, but for one:
+//! it builds the part, as measured by `validation/oracles/openrocket/orc_built.py`, but for one.
+//! The shapes take these parameters ([`NoseShape`]):
 //!
-//! - a shape's parameter: a tangent ogive (`radius_ratio` 1), a parabola (`K′` 1), a von Kármán
-//!   Haack series (`C` 0) and a power series of exponent ½;
+//! - an ogive is a tangent ogive (`radius_ratio` 1), a parabolic series a whole parabola (`K′`
+//!   1), a Haack series the von Kármán (`C` 0), and a power series has the exponent ½;
 //! - a transition's profile is clipped (cut from a whole nose cone, [`hpr_design::shapes`]) for
 //!   the elliptical, Haack and power series, and not for the others;
 //! - a filled part's shoulders are solid;
-//! - **a hollow part's shoulders have its wall**, or are solid where the wall is thicker than
-//!   their radius. OpenRocket gives them a wall of zero, so they weigh nothing; a molded nose
-//!   cone's shoulder is a tube of the same plastic.
+//! - **a hollow part's shoulders have its wall**, or are solid where the wall is thicker than their
+//!   radius. OpenRocket gives them a wall of zero, so they weigh nothing; a molded nose cone's
+//!   shoulder is a tube of the same plastic.
 //!
-//! The builder refuses a part whose file names a material it doesn't define
+//! The builder refuses a part whose file names a material it doesn't define, for the part itself
 //! ([`CatalogProblem::UndefinedMaterial`]), where OpenRocket weighs it as zero. A parachute whose
-//! file names no line material has lines that weigh nothing, as in OpenRocket; the six in its
-//! catalogue state their mass.
+//! file names no line material, or one it doesn't define, has lines that weigh nothing, as in
+//! OpenRocket: there is no density to weigh them by. OpenRocket's catalogue has eight such
+//! parachutes; six of them state their own mass, which they weigh, and two weigh their canopy
+//! alone.
 
 use hpr_design::{
-    CenteringRing, InnerTube, LaunchLug, Material, NoseShape, Packing, Parachute, Part, Position,
-    Shoulder, Streamer, Wall,
+    BodyTube, CenteringRing, Density, InnerTube, LaunchLug, Material, NoseCone, NoseShape, Packing,
+    Parachute, Part, Position, Shoulder, Streamer, Wall,
 };
 use hpr_io::orc::{self, MaterialRef, PartKind, Shape};
 use serde::{Deserialize, Serialize};
@@ -56,9 +62,6 @@ pub struct Fitting {
     part: Part,
     position: Position,
     name: String,
-    /// The mass the part weighs, kg, where it states one: a catalogue part's.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    mass_kg: Option<f64>,
 }
 
 impl Fitting {
@@ -67,7 +70,6 @@ impl Fitting {
             part,
             position: Position::Bottom { aft_offset_m: 0.0 },
             name: String::new(),
-            mass_kg: None,
         }
     }
 
@@ -139,8 +141,9 @@ impl Fitting {
     ///
     /// # Errors
     ///
-    /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind, and
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define.
+    /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let built = match &part.kind {
             PartKind::TubeCoupler(tube) | PartKind::EngineBlock(tube) => Self::coupler(
@@ -167,11 +170,12 @@ impl Fitting {
                 material(part, &tube.material)?,
             ),
             PartKind::Parachute(chute) => {
-                let line_material = match &chute.line_material {
-                    Some(line) => material(part, line)?,
-                    // No line material named: lines that weigh nothing, as in OpenRocket.
-                    None => Material::line("none named", 0.0),
-                };
+                // Lines of no material, or of one the file doesn't define, weigh nothing.
+                let line_material = chute
+                    .line_material
+                    .as_ref()
+                    .and_then(MaterialRef::material)
+                    .unwrap_or_else(|| Material::line("none defined", 0.0));
                 Self::new(Part::Parachute(Parachute {
                     diameter_m: chute.diameter_m,
                     canopy_material: material(part, &chute.material)?,
@@ -189,11 +193,25 @@ impl Fitting {
             })),
             _ => return Err(wrong_kind(part, "Fitting::from_catalog")),
         };
-        Ok(Self {
+        let mut fitting = Self {
             name: label(part),
-            mass_kg: part.mass_kg,
             ..built
-        })
+        };
+        if let Some(factor) = stated(part, &fitting.part)? {
+            match &mut fitting.part {
+                Part::InnerTube(InnerTube { material, .. })
+                | Part::CenteringRing(CenteringRing { material, .. })
+                | Part::LaunchLug(LaunchLug { material, .. })
+                | Part::Streamer(Streamer { material, .. }) => scale(material, factor),
+                Part::Parachute(chute) => {
+                    scale(&mut chute.canopy_material, factor);
+                    scale(&mut chute.line_material, factor);
+                }
+                // Not made above.
+                _ => {}
+            }
+        }
+        Ok(fitting)
     }
 
     /// The same fitting at `position` along the body tube it is on.
@@ -211,22 +229,22 @@ impl Fitting {
     }
 
     /// The design's component id for the fitting's kind, before any number added to make it
-    /// unique.
-    pub(super) fn id(&self) -> &'static str {
-        match &self.part {
+    /// unique; `None` for a part that isn't a fitting (one read from a file).
+    pub(super) fn id(&self) -> Option<&'static str> {
+        Some(match &self.part {
             Part::InnerTube(_) => "coupler",
             Part::CenteringRing(ring) if ring.inner_radius_m == 0.0 => "bulkhead",
             Part::CenteringRing(_) => "ring",
             Part::LaunchLug(_) => "launch-lug",
             Part::Parachute(_) => "parachute",
             Part::Streamer(_) => "streamer",
-            _ => "fitting",
-        }
+            _ => return None,
+        })
     }
 
-    /// Its parts: the design's part, where it sits, its name and its stated mass.
-    pub(super) fn into_parts(self) -> (Part, Position, String, Option<f64>) {
-        (self.part, self.position, self.name, self.mass_kg)
+    /// Its parts: the design's part, where it sits, and its name.
+    pub(super) fn into_parts(self) -> (Part, Position, String) {
+        (self.part, self.position, self.name)
     }
 }
 
@@ -245,23 +263,38 @@ impl Nose {
     /// # Errors
     ///
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
-    /// [`CatalogProblem::NoWall`] for one neither filled nor given a wall, and
-    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know.
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
+    /// [`CatalogProblem::NoWall`] for one neither filled nor given a wall,
+    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know, and
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::NoseCone(nose) = &part.kind else {
             return Err(wrong_kind(part, "Nose::from_catalog"));
         };
-        let wall = wall(part, nose.filled, nose.thickness_m)?;
-        Ok(Self {
+        let cone = NoseCone {
             shape: shape(part, nose.shape)?,
             length_m: nose.length_m,
-            wall,
-            shoulder: shoulder(nose.shoulder_diameter_m, nose.shoulder_length_m, wall),
+            base_radius_m: 0.5 * nose.outer_diameter_m,
+            wall: wall(part, nose.filled, nose.thickness_m)?,
+            shoulder: None,
             material: material(part, &nose.material)?,
+        };
+        let cone = NoseCone {
+            shoulder: shoulder(nose.shoulder_diameter_m, nose.shoulder_length_m, cone.wall),
+            ..cone
+        };
+        let mut material = cone.material.clone();
+        if let Some(factor) = stated(part, &Part::NoseCone(cone.clone()))? {
+            scale(&mut material, factor);
+        }
+        Ok(Self {
+            shape: cone.shape,
+            length_m: cone.length_m,
+            wall: cone.wall,
+            shoulder: cone.shoulder,
+            material,
             name: label(part),
             diameter_m: Some(nose.outer_diameter_m),
-            mass_kg: part.mass_kg,
         })
     }
 }
@@ -273,29 +306,28 @@ impl Tube {
     ///
     /// # Errors
     ///
-    /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind, and
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define.
+    /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::BodyTube(tube) = &part.kind else {
             return Err(wrong_kind(part, "Tube::from_catalog"));
         };
         Ok(Self {
-            length_m: tube.length_m,
-            wall_m: tube.thickness_m(),
-            diameter_m: Some(tube.outer_diameter_m),
-            material: material(part, &tube.material)?,
             name: label(part),
-            mass_kg: part.mass_kg,
+            ..Self::new(
+                tube.length_m,
+                tube.thickness_m(),
+                tube_material(part, tube)?,
+            )
+            .with_diameter_m(tube.outer_diameter_m)
         })
     }
 
-    /// The same tube cut to `length_m`. A stated mass is cut in proportion, the tube being the
-    /// same all along.
+    /// The same tube cut to `length_m`. A catalogue tube that states its mass keeps the density
+    /// that gives it that mass, so a cut weighs its share.
     #[must_use]
     pub fn with_length_m(mut self, length_m: f64) -> Self {
-        self.mass_kg = self
-            .mass_kg
-            .map(|mass_kg| mass_kg * length_m / self.length_m);
         self.length_m = length_m;
         self
     }
@@ -308,31 +340,28 @@ impl MotorTube {
     ///
     /// # Errors
     ///
-    /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind, and
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define.
+    /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::BodyTube(tube) = &part.kind else {
             return Err(wrong_kind(part, "MotorTube::from_catalog"));
         };
         Ok(Self {
             name: label(part),
-            mass_kg: part.mass_kg,
             ..Self::new(
                 tube.length_m,
                 tube.inner_diameter_m,
                 tube.thickness_m(),
-                material(part, &tube.material)?,
+                tube_material(part, tube)?,
             )
         })
     }
 
-    /// The same tube cut to `length_m`. A stated mass is cut in proportion, the tube being the
-    /// same all along.
+    /// The same tube cut to `length_m`. A catalogue tube that states its mass keeps the density
+    /// that gives it that mass, so a cut weighs its share.
     #[must_use]
     pub fn with_length_m(mut self, length_m: f64) -> Self {
-        self.mass_kg = self
-            .mass_kg
-            .map(|mass_kg| mass_kg * length_m / self.length_m);
         self.length_m = length_m;
         self
     }
@@ -345,23 +374,22 @@ impl Transition {
     /// # Errors
     ///
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
-    /// [`CatalogProblem::NoWall`] for one neither filled nor given a wall, and
-    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know.
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
+    /// [`CatalogProblem::NoWall`] for one neither filled nor given a wall,
+    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know, and
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::Transition(transition) = &part.kind else {
             return Err(wrong_kind(part, "Transition::from_catalog"));
         };
         let wall = wall(part, transition.filled, transition.thickness_m)?;
-        Ok(Self {
+        let piece = hpr_design::Transition {
             shape: shape(part, transition.shape)?,
-            length_m: transition.length_m,
-            aft_diameter_m: transition.aft_outer_diameter_m,
-            wall,
-            material: material(part, &transition.material)?,
-            name: label(part),
-            fore_diameter_m: Some(transition.fore_outer_diameter_m),
             clipped: clipped(transition.shape),
+            length_m: transition.length_m,
+            fore_radius_m: 0.5 * transition.fore_outer_diameter_m,
+            aft_radius_m: 0.5 * transition.aft_outer_diameter_m,
+            wall,
             fore_shoulder: shoulder(
                 transition.fore_shoulder_diameter_m,
                 transition.fore_shoulder_length_m,
@@ -372,9 +400,75 @@ impl Transition {
                 transition.aft_shoulder_length_m,
                 wall,
             ),
-            mass_kg: part.mass_kg,
+            material: material(part, &transition.material)?,
+        };
+        let mut material = piece.material.clone();
+        if let Some(factor) = stated(part, &Part::Transition(piece.clone()))? {
+            scale(&mut material, factor);
+        }
+        Ok(Self {
+            shape: piece.shape,
+            length_m: piece.length_m,
+            aft_diameter_m: transition.aft_outer_diameter_m,
+            wall: piece.wall,
+            material,
+            name: label(part),
+            fore_diameter_m: Some(transition.fore_outer_diameter_m),
+            clipped: piece.clipped,
+            fore_shoulder: piece.fore_shoulder,
+            aft_shoulder: piece.aft_shoulder,
         })
     }
+}
+
+/// The factor that gives `design`, the part `part` makes, the mass `part` states, if it states
+/// one: the stated mass over the part's mass at the file's densities, by which every density of
+/// the part is scaled.
+fn stated(part: &orc::Part, design: &Part) -> Result<Option<f64>, Error> {
+    let Some(stated_kg) = part.mass_kg else {
+        return Ok(None);
+    };
+    // The body radius only places a launch lug; its mass is the same on any tube.
+    let weighed_kg = design.mass_properties(Some(1.0))?.mass_kg;
+    if weighed_kg > 0.0 && weighed_kg.is_finite() && stated_kg.is_finite() && stated_kg >= 0.0 {
+        Ok(Some(stated_kg / weighed_kg))
+    } else {
+        Err(catalog_error(part, CatalogProblem::NoVolume))
+    }
+}
+
+/// `material` with its density scaled by `factor`, named for why.
+fn scale(material: &mut Material, factor: f64) {
+    material.density = match material.density {
+        Density::Bulk { kg_m3 } => Density::Bulk {
+            kg_m3: kg_m3 * factor,
+        },
+        Density::Surface { kg_m2 } => Density::Surface {
+            kg_m2: kg_m2 * factor,
+        },
+        Density::Line { kg_m } => Density::Line {
+            kg_m: kg_m * factor,
+        },
+    };
+    material
+        .name
+        .push_str(", density set by the part's stated mass");
+}
+
+/// A catalogue body tube's material, its density scaled to the tube's stated mass if it states
+/// one.
+fn tube_material(part: &orc::Part, tube: &orc::Tube) -> Result<Material, Error> {
+    let mut material = material(part, &tube.material)?;
+    let body = Part::BodyTube(BodyTube {
+        length_m: tube.length_m,
+        outer_radius_m: 0.5 * tube.outer_diameter_m,
+        thickness_m: tube.thickness_m(),
+        material: material.clone(),
+    });
+    if let Some(factor) = stated(part, &body)? {
+        scale(&mut material, factor);
+    }
+    Ok(material)
 }
 
 /// A catalogue part's name in the design: its maker and part number.
@@ -503,27 +597,104 @@ mod tests {
             .expect("a body tube that states its mass");
         let stated_kg = part.mass_kg.unwrap();
         let tube = Tube::from_catalog(part).unwrap();
+        assert!(
+            tube.material
+                .name
+                .ends_with(", density set by the part's stated mass")
+        );
         let quarter_m = 0.25 * tube.length_m;
         let mut whole = Rocket::new("whole", 0.1).unwrap();
         whole.add_tube(tube.clone()).unwrap();
         let mut cut = Rocket::new("cut", 0.1).unwrap();
-        cut.add_tube(tube.with_length_m(quarter_m)).unwrap();
-        assert!((mass_kg(&whole, "tube") - stated_kg).abs() <= 1e-15 * stated_kg);
-        assert!((mass_kg(&cut, "tube") - 0.25 * stated_kg).abs() <= 1e-15 * stated_kg);
-
-        // A motor tube too, and one with no stated mass weighs its material's, cut or not.
-        let motor_tube = MotorTube::from_catalog(part)
+        cut.add_tube(tube.with_length_m(quarter_m))
             .unwrap()
-            .with_length_m(quarter_m);
-        assert!((motor_tube.mass_kg.unwrap() - 0.25 * stated_kg).abs() <= 1e-15 * stated_kg);
+            .add_motor_tube(
+                MotorTube::from_catalog(part)
+                    .unwrap()
+                    .with_length_m(quarter_m),
+            )
+            .unwrap();
+        assert!((mass_kg(&whole, "tube") - stated_kg).abs() <= 1e-14 * stated_kg);
+        assert!((mass_kg(&cut, "tube") - 0.25 * stated_kg).abs() <= 1e-14 * stated_kg);
+        // As the motor tube, the same annulus: the same share.
+        assert!((mass_kg(&cut, "motor-tube") - 0.25 * stated_kg).abs() <= 1e-14 * stated_kg);
+
+        // A tube that states no mass keeps its file's density, cut or not.
         let plain = find("LOC Precision", "BT-2.56");
-        assert_eq!(
-            Tube::from_catalog(plain)
-                .unwrap()
-                .with_length_m(0.3)
-                .mass_kg,
-            None
-        );
+        let PartKind::BodyTube(sizes) = &plain.kind else {
+            panic!("a body tube");
+        };
+        let mut rocket = Rocket::new("plain", 0.1).unwrap();
+        rocket
+            .add_tube(Tube::from_catalog(plain).unwrap().with_length_m(0.3))
+            .unwrap();
+        let annulus_kg = std::f64::consts::PI / 4.0
+            * (sizes.outer_diameter_m.powi(2) - sizes.inner_diameter_m.powi(2))
+            * 0.3
+            * sizes.material.density.unwrap();
+        assert!((mass_kg(&rocket, "tube") - annulus_kg).abs() <= 1e-14 * annulus_kg);
+    }
+
+    #[test]
+    fn a_stated_mass_is_a_density_that_follows_changes() {
+        // A filled nose stating its mass weighs it as the catalogue sizes it...
+        let part = find("SEMROC", "BNC-5RA");
+        let stated_kg = part.mass_kg.expect("BNC-5RA states its mass");
+        let nose = Nose::from_catalog(part).unwrap();
+        let mut rocket = Rocket::new("stated", 0.1).unwrap();
+        rocket.add_nose(nose.clone()).unwrap();
+        assert!((mass_kg(&rocket, "nose") - stated_kg).abs() <= 1e-14 * stated_kg);
+        // ...and more with a longer shoulder, its density kept, where a mass override would
+        // have kept the old mass.
+        let longer = Nose {
+            shoulder: nose.shoulder.map(|shoulder| Shoulder {
+                length_m: 2.0 * shoulder.length_m,
+                ..shoulder
+            }),
+            ..nose
+        };
+        let mut rocket = Rocket::new("longer", 0.1).unwrap();
+        rocket.add_nose(longer).unwrap();
+        assert!(mass_kg(&rocket, "nose") > 1.01 * stated_kg);
+
+        // A tube stating its mass, made wider, weighs more.
+        let part = bundled()
+            .parts
+            .iter()
+            .find(|part| matches!(part.kind, PartKind::BodyTube(_)) && part.mass_kg.is_some())
+            .expect("a body tube that states its mass");
+        let tube = Tube::from_catalog(part).unwrap();
+        let wider = 2.0 * tube.diameter_m.unwrap();
+        let mut rocket = Rocket::new("wider", 0.1).unwrap();
+        rocket.add_tube(tube.with_diameter_m(wider)).unwrap();
+        assert!(mass_kg(&rocket, "tube") > 1.5 * part.mass_kg.unwrap());
+
+        // A parachute's canopy and lines are scaled alike.
+        let chute = bundled()
+            .parts
+            .iter()
+            .find(|part| {
+                matches!(&part.kind, PartKind::Parachute(chute) if chute.line_material.is_some())
+                    && part.mass_kg.is_some()
+            })
+            .expect("a parachute with lines that states its mass");
+        let fitting = Fitting::from_catalog(chute).unwrap();
+        let Part::Parachute(built) = &fitting.part else {
+            panic!("a parachute");
+        };
+        let PartKind::Parachute(listed) = &chute.kind else {
+            panic!("a parachute");
+        };
+        let ratio = |material: &Material, listed: &MaterialRef| match material.density {
+            Density::Surface { kg_m2 } => kg_m2 / listed.density.unwrap(),
+            Density::Line { kg_m } => kg_m / listed.density.unwrap(),
+            Density::Bulk { .. } => panic!("no bulk material in a parachute"),
+        };
+        let canopy = ratio(&built.canopy_material, &listed.material);
+        let lines = ratio(&built.line_material, listed.line_material.as_ref().unwrap());
+        assert!((canopy - lines).abs() <= 1e-15 * canopy);
+        let stated_kg = chute.mass_kg.unwrap();
+        assert!((built.mass_kg().unwrap() - stated_kg).abs() <= 1e-14 * stated_kg);
     }
 
     #[test]
@@ -659,6 +830,28 @@ mod tests {
             * tube.length_m
             * tube.material.density.unwrap();
         assert!((mass_kg(&rocket, "ring") - annulus_kg).abs() <= 1e-15 * annulus_kg);
+    }
+
+    #[test]
+    fn a_fitting_read_with_another_part_is_refused() {
+        let wood = material("birch_plywood").unwrap();
+        let mut value = serde_json::to_value(Fitting::bulkhead(0.006, 0.06, wood.clone())).unwrap();
+        value["part"] = serde_json::to_value(Part::BodyTube(BodyTube {
+            length_m: 0.1,
+            outer_radius_m: 0.03,
+            thickness_m: 0.001,
+            material: wood,
+        }))
+        .unwrap();
+        let fitting: Fitting = serde_json::from_value(value).unwrap();
+        let mut rocket = Rocket::new("read", 0.07).unwrap();
+        rocket
+            .add_tube(Tube::new(0.3, 0.001, material("kraft_phenolic").unwrap()))
+            .unwrap();
+        let Err(Error::Order(Order::NotAFitting)) = rocket.add_fitting(fitting) else {
+            panic!("a body tube isn't a fitting");
+        };
+        assert!(rocket.design().stages[0].components[0].children.is_empty());
     }
 
     #[test]

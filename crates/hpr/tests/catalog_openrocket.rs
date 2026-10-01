@@ -7,15 +7,25 @@
 //! the dimensions the file leaves unsaid that OpenRocket chose. Each part is built here with its
 //! `from_catalog` and added to a rocket, and its mass and centre as laid out are held to
 //! OpenRocket's. The thresholds were set before measuring: a nose cone's or transition's mass
-//! within 1e-3 of OpenRocket's and its centre within 1e-3 of its length, OpenRocket integrating
-//! their volumes numerically; every other part within 1e-12, its sizes taken as they are.
+//! within 1e-3 of OpenRocket's and its centre within 1e-3 of its length; every other part within
+//! 1e-12.
 //!
 //! The departures `hpr::rocket::catalog` names are counted, each shown to have its cause:
-//! a hollow part's shoulders (OpenRocket's weigh nothing; here they have the part's wall, and the
-//! difference is their closed-form mass), the one streamer that states a mass (OpenRocket leaves
-//! it unused), masses stated in ounces (OpenRocket's ounce), and the parts the builder refuses (a
-//! material the file doesn't define; a tube or ring no narrower inside than out, which OpenRocket
-//! weighs as zero).
+//!
+//! - a hollow part's shoulders: OpenRocket's weigh nothing, hpr's have the part's wall. They are
+//!   taken out of hpr's mass and centre in closed form, and the rest held to OpenRocket's.
+//! - a hollow part's wall: hpr's is every point within its thickness of the surface, which the
+//!   test checks against integrals of its own for cones, tangent ogives and ellipsoids.
+//!   OpenRocket's masses and centres follow a wall whose inner radius at each station is
+//!   `r − t √(1 + r′²)`, which the test integrates on its own over the same outer profile. The
+//!   parts where the two walls differ by more than the threshold are counted.
+//! - the one streamer that states a mass (OpenRocket leaves it unused), masses stated in ounces
+//!   (OpenRocket's ounce), and the parts the builder refuses (a material the file doesn't define;
+//!   a tube or ring no narrower inside than out), which OpenRocket weighs as zero.
+//!
+//! It also measures what the catalogue says about the shoulder wall hpr chooses: on the hollow,
+//! shouldered parts that state their mass, whether the mass from the file's density is nearer the
+//! stated one with the wall or without it.
 
 #![allow(
     clippy::expect_used,
@@ -26,7 +36,7 @@
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
-use hpr::hpr_design::PlacedComponent;
+use hpr::hpr_design::{Density, DesignError, Part as DesignPart, PlacedComponent, Profile};
 use hpr::hpr_io::orc::{BUNDLED_FILES, Part, PartKind, Shape, read};
 use hpr::rocket::{Fitting, Nose, Transition, Tube, material};
 use hpr::{CatalogProblem, Error, Rocket};
@@ -40,6 +50,8 @@ const OUNCE_KG: f64 = 0.028_349_523_125;
 /// its centre.
 const REVOLVED: f64 = 1e-3;
 const EXACT: f64 = 1e-12;
+/// hpr's wall against an integral of its definition worked out here: the integrals' agreement.
+const INTEGRAL: f64 = 1e-9;
 
 fn fixture() -> Value {
     let text = include_str!("fixtures/orc/openrocket-built.json");
@@ -49,29 +61,45 @@ fn fixture() -> Value {
 /// Largest differences found and departures counted, by group.
 #[derive(Default, Debug)]
 struct Survey {
-    /// Parts built and held to OpenRocket, by kind.
+    /// Parts built and held to OpenRocket, by kind and by group.
     held: BTreeMap<&'static str, usize>,
-    /// Largest relative mass difference, by group (`revolved`, `exact`).
+    groups: BTreeMap<&'static str, usize>,
+    /// Largest relative mass difference, by group.
     mass: BTreeMap<&'static str, f64>,
     /// Largest centre difference as a fraction of length, by group.
     centre: BTreeMap<&'static str, f64>,
-    /// Hollow parts whose shoulders weigh their closed-form mass more than OpenRocket's.
+    /// Hollow parts whose OpenRocket mass and centre follow the station-wise wall, and the
+    /// largest relative difference in mass and in centre (of length).
+    wall_rule_checked: usize,
+    wall_rule_mass: f64,
+    wall_rule_centre: f64,
+    /// Hollow nose cones whose body hpr weighs as an integral of its own wall gives it, by
+    /// shape.
+    exact_walls: BTreeMap<&'static str, usize>,
+    /// Hollow parts whose wall differs from OpenRocket's by more than the threshold, and the
+    /// largest mass and centre differences among them.
+    wall_departures: usize,
+    wall_departure_mass: f64,
+    wall_departure_centre: f64,
+    /// Hollow parts with a shoulder, which hpr gives the part's wall; of them, those stating
+    /// their mass.
     hollow_shoulders: usize,
-    /// Hollow, shouldered parts stating their mass: the same mass, the centre not compared.
     hollow_shoulders_stated: usize,
+    /// Of those stating their mass: how many the file's density weighs nearer the stated mass
+    /// with the wall than without, and the stated mass over each.
+    wall_nearer: usize,
+    ratios_with_wall: Vec<f64>,
+    ratios_without: Vec<f64>,
     /// Streamers weighing their stated mass, where OpenRocket weighs their material.
     stated_streamers: usize,
     /// Stated masses that differ by OpenRocket's ounce alone.
     ounce_masses: usize,
     /// Parts refused for a material their file doesn't define.
     undefined_materials: usize,
+    /// Parachutes built with lines of a material their file doesn't define, weightless.
+    undefined_lines: usize,
     /// Tube-like parts refused for a bore not narrower than the outside.
     no_bore: usize,
-    /// Hollow elliptical nose cones whose wall hpr weighs as the ellipse's inner parallel curve
-    /// gives it, and OpenRocket more than the threshold lighter.
-    ellipsoid_shells: usize,
-    /// Hollow elliptical nose cones checked against the parallel curve, all of them.
-    ellipsoid_shells_checked: usize,
     /// Filled conical nose cones held to their closed-form mass.
     cones_closed_form: usize,
     /// Parts outside a threshold, each with its numbers.
@@ -144,44 +172,195 @@ fn length_m(part: &Part) -> f64 {
     }
 }
 
-/// A hollow part's shoulders' mass in closed form, kg: each a tube of the part's wall (or
-/// solid where that is thicker than its radius) and material. Zero for a filled part or one
-/// with no shoulder.
-fn hollow_shoulders_kg(part: &Part) -> f64 {
-    let (shoulders, filled, thickness_m, material) = match &part.kind {
-        PartKind::NoseCone(n) => (
-            vec![(n.shoulder_diameter_m, n.shoulder_length_m)],
-            n.filled,
-            n.thickness_m,
-            &n.material,
-        ),
-        PartKind::Transition(t) => (
-            vec![
-                (t.fore_shoulder_diameter_m, t.fore_shoulder_length_m),
-                (t.aft_shoulder_diameter_m, t.aft_shoulder_length_m),
-            ],
-            t.filled,
-            t.thickness_m,
-            &t.material,
-        ),
-        _ => return 0.0,
+/// A built revolved part's density, kg/m³: the file's, or scaled for a stated mass.
+fn built_density(built: &PlacedComponent) -> f64 {
+    let material = match &built.part {
+        DesignPart::NoseCone(n) => &n.material,
+        DesignPart::Transition(t) => &t.material,
+        _ => panic!("only revolved parts are asked"),
+    };
+    match material.density {
+        Density::Bulk { kg_m3 } => kg_m3,
+        _ => panic!("a bulk material"),
+    }
+}
+
+/// A hollow revolved part's wall thickness, m; `None` for a filled part or any other.
+fn hollow_wall_m(part: &Part) -> Option<f64> {
+    let (filled, thickness_m) = match &part.kind {
+        PartKind::NoseCone(n) => (n.filled, n.thickness_m),
+        PartKind::Transition(t) => (t.filled, t.thickness_m),
+        _ => return None,
     };
     if filled == Some(true) {
-        return 0.0;
+        None
+    } else {
+        thickness_m
     }
-    let wall = thickness_m.expect("a hollow part gives its wall");
-    let density = material
-        .density
-        .expect("a built part's material is defined");
+}
+
+/// A hollow part's shoulders, in closed form: each one's mass at `density`, kg, and its centre,
+/// m aft of the part's fore end. Each is a tube of the part's wall (or solid where that is
+/// thicker than its radius) open at its end. Empty for a filled part or one with no shoulder.
+fn hollow_shoulders(part: &Part, density: f64) -> Vec<(f64, f64)> {
+    let Some(wall) = hollow_wall_m(part) else {
+        return Vec::new();
+    };
+    // (diameter, length, centre aft of the fore end)
+    let shoulders = match &part.kind {
+        PartKind::NoseCone(n) => vec![(
+            n.shoulder_diameter_m,
+            n.shoulder_length_m,
+            n.length_m + 0.5 * n.shoulder_length_m,
+        )],
+        PartKind::Transition(t) => vec![
+            (
+                t.fore_shoulder_diameter_m,
+                t.fore_shoulder_length_m,
+                -0.5 * t.fore_shoulder_length_m,
+            ),
+            (
+                t.aft_shoulder_diameter_m,
+                t.aft_shoulder_length_m,
+                t.length_m + 0.5 * t.aft_shoulder_length_m,
+            ),
+        ],
+        _ => return Vec::new(),
+    };
     shoulders
         .into_iter()
-        .filter(|&(d, l)| d > 0.0 && l > 0.0)
-        .map(|(d, l)| {
+        .filter(|&(d, l, _)| d > 0.0 && l > 0.0)
+        .map(|(d, l, at)| {
             let r = 0.5 * d;
             let inner = r - wall.min(r);
-            PI * (r * r - inner * inner) * l * density
+            (PI * (r * r - inner * inner) * l * density, at)
         })
-        .sum()
+        .collect()
+}
+
+/// A revolved part's outer profile, as the builder made it.
+fn profile(built: &PlacedComponent) -> Profile {
+    match &built.part {
+        DesignPart::NoseCone(n) => Profile::nose(n.shape, n.length_m, n.base_radius_m),
+        DesignPart::Transition(t) => Profile::transition(
+            t.shape,
+            t.length_m,
+            t.fore_radius_m,
+            t.aft_radius_m,
+            t.clipped,
+        ),
+        _ => panic!("only revolved parts are asked"),
+    }
+    .expect("a built part's profile")
+}
+
+/// A hollow revolved part's body (shoulders aside) under the wall OpenRocket's masses follow:
+/// at each station `x` the wall's inner radius is `r − t √(1 + r′²)`, the wall's normal thickness
+/// taken across the station (or zero where that is past the axis). Its mass at `density`, kg,
+/// and centre, m aft of the fore end, by the midpoint rule over 20,000 slices of the outer
+/// profile hpr built.
+fn station_wall(built: &PlacedComponent, wall_m: f64, density: f64) -> (f64, f64) {
+    let profile = profile(built);
+    let steps = 20_000;
+    let dx = profile.length_m() / f64::from(steps);
+    let (mut volume, mut moment) = (0.0, 0.0);
+    for i in 0..steps {
+        let x = (f64::from(i) + 0.5) * dx;
+        let (r, slope) = profile.radius_and_slope(x);
+        let inner = (r - wall_m * (1.0 + slope * slope).sqrt()).max(0.0);
+        let area = PI * (r * r - inner * inner);
+        volume += area * dx;
+        moment += area * x * dx;
+    }
+    (volume * density, moment / volume)
+}
+
+/// A hollow nose cone's body (its shoulder aside) by an integral of hpr's wall, every point
+/// within the wall's thickness `t` of the surface, worked out here on its own: its volume, m³,
+/// for the shapes where that has a form of its own; `None` for the others.
+///
+/// - A cone of half-angle `α`: the wall's inner surface is the cone `t` inside it, its tip
+///   `t / sin α` aft of the tip and its base radius `R − t / cos α`; the wall is the difference
+///   of the two cones' volumes, `πR²L/3 − πR_i²L_i/3`.
+/// - A tangent ogive: an arc of radius `ρ = (R² + L²)/2R` about a centre at the base, `ρ − R`
+///   below the axis. The wall's inner surface is the arc of radius `ρ − t` about the same
+///   centre, up to where it meets the axis; both are integrated by Simpson's rule over 2,000
+///   intervals.
+/// - An ellipse with `L ≥ R` and `t` under its least radius of curvature `R²/L`: the region
+///   between it and its inner parallel curve, which runs from `(t, 0)` at the tip to
+///   `(L, R − t)` at the base. With the ellipse `x = L(1 − cos θ)`, `r = R sin θ`, the wall is
+///   the half ellipsoid's `2πR²L/3` less `π ∫ r_i² dx_i` along that curve, by Simpson's rule in
+///   `θ` over 20,000 intervals.
+fn exact_wall_volume(part: &Part) -> Option<(&'static str, f64)> {
+    let PartKind::NoseCone(nose) = &part.kind else {
+        return None;
+    };
+    let t = hollow_wall_m(part)?;
+    let (l, r) = (nose.length_m, 0.5 * nose.outer_diameter_m);
+    match nose.shape {
+        Shape::Conical => {
+            let alpha = r.atan2(l);
+            let inner_l = (l - t / alpha.sin()).max(0.0);
+            let inner_r = (r - t / alpha.cos()).max(0.0);
+            Some((
+                "cones",
+                PI / 3.0 * (r * r * l - inner_r * inner_r * inner_l),
+            ))
+        }
+        Shape::Ogive => {
+            let rho = (r * r + l * l) / (2.0 * r);
+            let below = rho - r;
+            let outer = simpson(0.0, l, 2_000, |x| {
+                let y = (rho * rho - (l - x) * (l - x)).max(0.0).sqrt() - below;
+                PI * y * y
+            });
+            let inner_rho = rho - t;
+            let reach = (inner_rho * inner_rho - below * below).max(0.0).sqrt();
+            let inner = simpson(l - reach, l, 2_000, |x| {
+                let y =
+                    ((inner_rho * inner_rho - (l - x) * (l - x)).max(0.0).sqrt() - below).max(0.0);
+                PI * y * y
+            });
+            Some(("tangent ogives", outer - inner))
+        }
+        Shape::Ellipsoid if l >= r && t < r * r / l => {
+            let cavity = simpson(0.0, 0.5 * PI, 20_000, |theta| {
+                let (s, c) = theta.sin_cos();
+                let n = (l * l * s * s + r * r * c * c).sqrt();
+                let dn = (l * l - r * r) * s * c / n;
+                // The inner curve's radius, and the rate of its station along θ.
+                let ri = r * s - t * l * s / n;
+                let dxi = l * s + t * r * (-s * n - c * dn) / (n * n);
+                PI * ri * ri * dxi
+            });
+            Some(("ellipsoids", 2.0 * PI * r * r * l / 3.0 - cavity))
+        }
+        _ => None,
+    }
+}
+
+/// Simpson's rule for `f` over `[a, b]` in `steps` (even) intervals.
+fn simpson(a: f64, b: f64, steps: u32, f: impl Fn(f64) -> f64) -> f64 {
+    let h = (b - a) / f64::from(steps);
+    let mut sum = f(a) + f(b);
+    for i in 1..steps {
+        sum += if i % 2 == 1 { 4.0 } else { 2.0 } * f(a + f64::from(i) * h);
+    }
+    sum * h / 3.0
+}
+
+/// A filled conical nose cone's mass, kg, from its closed-form volume, `πR²L/3` and its solid
+/// shoulder's `πr²l`, at `density`; `None` for any other part.
+fn filled_cone_kg(part: &Part, density: f64) -> Option<f64> {
+    let PartKind::NoseCone(nose) = &part.kind else {
+        return None;
+    };
+    if nose.shape != Shape::Conical || nose.filled != Some(true) {
+        return None;
+    }
+    let r = 0.5 * nose.outer_diameter_m;
+    let s = 0.5 * nose.shoulder_diameter_m;
+    Some(PI * (r * r * nose.length_m / 3.0 + s * s * nose.shoulder_length_m) * density)
 }
 
 /// A tube-like part whose bore is no narrower than its outside.
@@ -196,81 +375,36 @@ fn no_bore(part: &Part) -> bool {
     }
 }
 
-/// A hollow elliptical nose cone's body (its shoulder aside), kg, by the inner parallel curve of
-/// its ellipse; `None` for any other part.
-///
-/// The profile is the quarter ellipse `x = L(1 − cos θ)`, `r = R sin θ`, `θ` from the tip to the
-/// base, `x` aft of the tip. A wall of thickness `t` normal to it, with `t` under the ellipse's
-/// least radius of curvature `R²/L` (when `L ≥ R`), is the region between it and the curve `t`
-/// inside it along the normal, which runs from `(t, 0)` at the tip to `(L, R − t)` at the base.
-/// The wall's volume is the half ellipsoid's `2πR²L/3` less the volume that curve encloses,
-/// `π ∫ r_i² dx_i`, here by Simpson's rule in `θ` over 20,000 intervals.
-fn ellipsoid_shell_kg(part: &Part) -> Option<f64> {
-    let PartKind::NoseCone(nose) = &part.kind else {
-        return None;
-    };
-    if nose.shape != Shape::Ellipsoid || nose.filled == Some(true) {
-        return None;
-    }
-    let (l, r) = (nose.length_m, 0.5 * nose.outer_diameter_m);
-    let t = nose.thickness_m.expect("a hollow part gives its wall");
-    assert!(l >= r && t < r * r / l, "the parallel curve is regular");
-    let integrand = |theta: f64| {
-        let (s, c) = theta.sin_cos();
-        let n = (l * l * s * s + r * r * c * c).sqrt();
-        let dn = (l * l - r * r) * s * c / n;
-        // The inner curve and its rate along θ.
-        let ri = r * s - t * l * s / n;
-        let dxi = l * s + t * r * (-s * n - c * dn) / (n * n);
-        PI * ri * ri * dxi
-    };
-    let steps = 20_000;
-    let h = 0.5 * PI / f64::from(steps);
-    let mut sum = integrand(0.0) + integrand(0.5 * PI);
-    for i in 1..steps {
-        sum += if i % 2 == 1 { 4.0 } else { 2.0 } * integrand(f64::from(i) * h);
-    }
-    let cavity = sum * h / 3.0;
-    let density = nose
-        .material
-        .density
-        .expect("a built part's material is defined");
-    Some((2.0 * PI * r * r * l / 3.0 - cavity) * density)
-}
-
-/// A filled conical nose cone's mass, kg, from its closed-form volume, `πR²L/3` and its solid
-/// shoulder's `πr²l`; `None` for any other part.
-fn filled_cone_kg(part: &Part) -> Option<f64> {
-    let PartKind::NoseCone(nose) = &part.kind else {
-        return None;
-    };
-    if nose.shape != Shape::Conical || nose.filled != Some(true) {
-        return None;
-    }
-    let r = 0.5 * nose.outer_diameter_m;
-    let s = 0.5 * nose.shoulder_diameter_m;
-    let density = nose.material.density?;
-    Some(PI * (r * r * nose.length_m / 3.0 + s * s * nose.shoulder_length_m) * density)
-}
-
-fn is_conical(part: &Part) -> bool {
-    match &part.kind {
-        PartKind::NoseCone(n) => n.shape == Shape::Conical,
-        PartKind::Transition(t) => t.shape == Shape::Conical,
-        _ => false,
-    }
-}
-
 fn revolved(part: &Part) -> bool {
     matches!(part.kind, PartKind::NoseCone(_) | PartKind::Transition(_))
 }
 
+/// Records `value` as its group's largest, refusing a NaN.
 fn worst(map: &mut BTreeMap<&'static str, f64>, group: &'static str, value: f64) {
+    assert!(value.is_finite(), "{group}: {value}");
     let entry = map.entry(group).or_insert(0.0);
     *entry = entry.max(value);
 }
 
+/// Whether `value` is within `tolerance`; a NaN is not.
+fn within(value: f64, tolerance: f64) -> bool {
+    value <= tolerance
+}
+
+/// The relative difference of `ours` from `theirs`; for two zeros, none.
+fn apart(ours: f64, theirs: f64) -> f64 {
+    if ours == theirs {
+        0.0
+    } else {
+        (ours - theirs).abs() / theirs.abs()
+    }
+}
+
 /// Holds one part to OpenRocket's record of it, or counts its departure.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one part's comparison, in the order the departures are told apart"
+)]
 fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
     let theirs_kg = record
         .get("override_mass_kg")
@@ -281,50 +415,108 @@ fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
     let built = match build(part) {
         Ok(built) => built,
         Err(Error::Catalog {
-            problem: CatalogProblem::UndefinedMaterial(_),
+            problem: CatalogProblem::UndefinedMaterial(name),
             ..
         }) => {
-            // OpenRocket weighs the material as zero: the part's material, or a parachute's
-            // lines.
+            // OpenRocket finds no density for it, and weighs it as zero.
+            assert_eq!(theirs_kg, 0.0, "{at}: {name}");
             survey.undefined_materials += 1;
             return;
         }
-        Err(Error::Design(_)) if no_bore(part) => {
-            // OpenRocket weighs it as zero.
+        Err(Error::Design(error)) if no_bore(part) => {
+            // Refused for its bore, a tube's as a wall of no thickness, a ring's as a bore
+            // reaching its outside. OpenRocket weighs it as zero.
+            let for_bore = match &error {
+                DesignError::Domain { what, .. } => *what == "wall thickness",
+                DesignError::Geometry(why) => why.contains("bore"),
+                _ => false,
+            };
+            assert!(for_bore, "{at}: {error}");
             assert_eq!(theirs_kg, 0.0, "{at}");
             survey.no_bore += 1;
             return;
         }
         Err(error) => panic!("{at}: the builder refused it: {error}"),
     };
+    if let PartKind::Parachute(chute) = &part.kind
+        && chute
+            .line_material
+            .as_ref()
+            .is_some_and(|lines| lines.material().is_none())
+    {
+        survey.undefined_lines += 1;
+    }
     let ours_kg = built.own.mass_kg;
     // OpenRocket's centre is metres aft of the component's fore end; ours is a station.
     let ours_cg_m = -built.own.cg_m.z - built.fore_station_m;
-    let (group, tolerance) = if revolved(part) {
-        ("revolved", REVOLVED)
-    } else {
-        ("exact", EXACT)
-    };
     let length = length_m(part);
-    let shoulders_kg = hollow_shoulders_kg(part);
+    let wall = hollow_wall_m(part);
+    let group = match (revolved(part), wall) {
+        (true, Some(_)) => "hollow revolved",
+        (true, None) => "filled revolved",
+        (false, _) => "other",
+    };
+    let tolerance = if revolved(part) { REVOLVED } else { EXACT };
+
+    // A hollow part's shoulders, at the density it was built with, taken out of its mass and
+    // centre: what is left is its body, which OpenRocket's is.
+    let density = if revolved(part) {
+        built_density(&built)
+    } else {
+        0.0
+    };
+    let shoulders = hollow_shoulders(part, density);
+    let shoulders_kg: f64 = shoulders.iter().map(|(kg, _)| kg).sum();
+    let body_kg = ours_kg - shoulders_kg;
+    let body_cg_m =
+        (ours_kg * ours_cg_m - shoulders.iter().map(|(kg, x)| kg * x).sum::<f64>()) / body_kg;
+    if !shoulders.is_empty() {
+        assert!(body_kg > 0.0 && body_cg_m.is_finite(), "{at}");
+    }
+
+    let mass_off = if part.mass_kg.is_some() {
+        0.0
+    } else {
+        apart(body_kg, theirs_kg)
+    };
+    // Whether the part's wall, OpenRocket's or hpr's, puts it outside a threshold.
+    let mut departed = false;
+    if let Some(wall_m) = wall {
+        let wall = Wall {
+            built: &built,
+            wall_m,
+            density,
+            body_kg,
+            theirs_kg,
+            theirs_cg_m,
+            length_m: length,
+        };
+        hollow_wall(survey, part, &wall, at);
+        let off = (body_cg_m - theirs_cg_m).abs() / length;
+        if mass_off > tolerance || off > tolerance {
+            // OpenRocket's wall is its station-wise one and hpr's its own, each shown above:
+            // the difference is the two walls'.
+            departed = true;
+            survey.wall_departures += 1;
+            survey.wall_departure_mass = survey.wall_departure_mass.max(mass_off);
+            survey.wall_departure_centre = survey.wall_departure_centre.max(off);
+        }
+    }
 
     if let Some(stated_kg) = part.mass_kg {
-        // The stated mass is the component's override: it weighs that.
+        // The part weighs its stated mass, from the density that gives it.
         assert!(
-            (ours_kg - stated_kg).abs() <= EXACT * stated_kg,
+            apart(ours_kg, stated_kg) <= EXACT,
             "{at}: {ours_kg} kg built, {stated_kg} kg stated"
         );
-        if matches!(part.kind, PartKind::Streamer(_)) {
-            let PartKind::Streamer(streamer) = &part.kind else {
-                unreachable!()
-            };
+        if let PartKind::Streamer(streamer) = &part.kind {
             let density = streamer.material.density.expect("defined");
             let area_kg = density * streamer.length_m * streamer.width_m;
             assert!(
-                (theirs_kg - area_kg).abs() <= EXACT * area_kg,
+                apart(theirs_kg, area_kg) <= EXACT,
                 "{at}: OpenRocket weighs the material, {area_kg} kg; it has {theirs_kg} kg"
             );
-            assert!((ours_kg - theirs_kg).abs() > 1e-3 * theirs_kg);
+            assert!(apart(ours_kg, theirs_kg) > 1e-3, "{at}");
             survey.stated_streamers += 1;
             return;
         }
@@ -338,74 +530,108 @@ fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
             );
             survey.ounce_masses += 1;
         }
-        if shoulders_kg > 0.0 {
-            // The same mass spread over a heavier shoulder: the centre isn't OpenRocket's.
+        if !shoulders.is_empty() {
             survey.hollow_shoulders_stated += 1;
-            *survey.held.entry(kind_name(part)).or_default() += 1;
-            return;
+            // At the file's density, with the shoulders' wall and without it: which weighs
+            // nearer the stated mass?
+            let file_kg = ours_kg * file_density(part) / density;
+            let without_kg = file_kg - shoulders_kg * file_density(part) / density;
+            let (with, without) = (stated_kg / file_kg, stated_kg / without_kg);
+            survey.wall_nearer += usize::from((with - 1.0).abs() < (without - 1.0).abs());
+            survey.ratios_with_wall.push(with);
+            survey.ratios_without.push(without);
         }
     } else {
-        let relative = (ours_kg - shoulders_kg - theirs_kg).abs() / theirs_kg;
-        if let Some(shell_kg) = ellipsoid_shell_kg(part) {
-            // hpr's wall is every point within its thickness of the surface: for an ellipse,
-            // the region between it and its inner parallel curve, integrated here on its own.
-            let body_kg = ours_kg - shoulders_kg;
-            assert!(
-                (body_kg - shell_kg).abs() <= 1e-9 * shell_kg,
-                "{at}: {body_kg} kg here, {shell_kg} kg by the parallel curve"
-            );
-            survey.ellipsoid_shells_checked += 1;
+        let relative = mass_off;
+        assert!(relative.is_finite(), "{at}: {body_kg} kg, {theirs_kg} kg");
+        if !departed {
             if relative > tolerance {
-                assert!(
-                    theirs_kg < body_kg,
-                    "{at}: OpenRocket's shell is the lighter"
-                );
-                worst(&mut survey.mass, "ellipsoid shells", relative);
-                survey.ellipsoid_shells += 1;
-                if shoulders_kg > 0.0 {
-                    survey.hollow_shoulders += 1;
-                }
-                *survey.held.entry(kind_name(part)).or_default() += 1;
-                return;
+                survey.misses.push(format!(
+                    "{at}: {ours_kg} kg here less {shoulders_kg} kg of hollow shoulders, \
+                     {theirs_kg} kg in OpenRocket: {relative:e} apart"
+                ));
             }
+            worst(&mut survey.mass, group, relative);
         }
-        if relative > tolerance {
-            survey.misses.push(format!(
-                "{at}: {ours_kg} kg here less {shoulders_kg} kg of hollow shoulders, {theirs_kg} \
-                 kg in OpenRocket: {relative:e} apart"
-            ));
-        }
-        worst(&mut survey.mass, group, relative);
-        if revolved(part) && is_conical(part) && shoulders_kg == 0.0 {
-            worst(&mut survey.mass, "revolved cones", relative);
-        }
-        if let Some(cone_kg) = filled_cone_kg(part) {
+        if let Some(cone_kg) = filled_cone_kg(part, density) {
             // A cone's volume is closed-form: hpr's is it, so a difference is OpenRocket's.
             assert!(
-                (ours_kg - cone_kg).abs() <= EXACT * cone_kg,
+                apart(ours_kg, cone_kg) <= EXACT,
                 "{at}: {ours_kg} kg here, {cone_kg} kg by the cone's and cylinder's volumes"
             );
             survey.cones_closed_form += 1;
         }
-        if shoulders_kg > 0.0 {
-            assert!(ours_kg - theirs_kg > 0.5 * shoulders_kg, "{at}");
+        if !shoulders.is_empty() {
             survey.hollow_shoulders += 1;
-            *survey.held.entry(kind_name(part)).or_default() += 1;
-            return;
         }
     }
     // A parachute's or streamer's centre is where it is packed, not in the catalogue.
-    if !matches!(part.kind, PartKind::Parachute(_) | PartKind::Streamer(_)) {
-        let off = (ours_cg_m - theirs_cg_m).abs() / length;
-        if off > tolerance {
+    if !departed && !matches!(part.kind, PartKind::Parachute(_) | PartKind::Streamer(_)) {
+        let off = (body_cg_m - theirs_cg_m).abs() / length;
+        if !within(off, tolerance) {
             survey.misses.push(format!(
-                "{at}: centre {ours_cg_m} m here, {theirs_cg_m} m in OpenRocket: {off:e} of \
-                 {length} m"
+                "{at}: centre {body_cg_m} m here, shoulders aside, {theirs_cg_m} m in \
+                 OpenRocket: {off:e} of {length} m"
             ));
         }
         worst(&mut survey.centre, group, off);
     }
     *survey.held.entry(kind_name(part)).or_default() += 1;
+    *survey.groups.entry(group).or_default() += 1;
+}
+
+/// A hollow part's wall, each side held to its own definition: OpenRocket's mass and centre to
+/// the station-wise wall (`station_wall`), within the revolved parts' threshold; hpr's body to an
+/// integral of its own wall where there is one (`exact_wall_volume`).
+struct Wall<'a> {
+    built: &'a PlacedComponent,
+    wall_m: f64,
+    density: f64,
+    body_kg: f64,
+    theirs_kg: f64,
+    theirs_cg_m: f64,
+    length_m: f64,
+}
+
+fn hollow_wall(survey: &mut Survey, part: &Part, wall: &Wall<'_>, at: &str) {
+    let (rule_kg, rule_cg_m) = station_wall(wall.built, wall.wall_m, wall.density);
+    // A stated mass is OpenRocket's whatever its wall: only its centre tells the wall.
+    let mass = if part.mass_kg.is_some() {
+        0.0
+    } else {
+        apart(wall.theirs_kg, rule_kg)
+    };
+    let centre = (wall.theirs_cg_m - rule_cg_m).abs() / wall.length_m;
+    assert!(
+        within(mass, REVOLVED) && within(centre, REVOLVED),
+        "{at}: OpenRocket's {} kg at {} m, the station-wise wall's {rule_kg} kg at {rule_cg_m} m",
+        wall.theirs_kg,
+        wall.theirs_cg_m
+    );
+    survey.wall_rule_checked += 1;
+    survey.wall_rule_mass = survey.wall_rule_mass.max(mass);
+    survey.wall_rule_centre = survey.wall_rule_centre.max(centre);
+    if let Some((shape, volume_m3)) = exact_wall_volume(part)
+        && part.mass_kg.is_none()
+    {
+        let exact_kg = volume_m3 * wall.density;
+        assert!(
+            within(apart(wall.body_kg, exact_kg), INTEGRAL),
+            "{at}: {} kg here, {exact_kg} kg by its wall's own integral",
+            wall.body_kg
+        );
+        *survey.exact_walls.entry(shape).or_default() += 1;
+    }
+}
+
+/// The density of a revolved part's material as its file gives it, kg/m³.
+fn file_density(part: &Part) -> f64 {
+    let material = match &part.kind {
+        PartKind::NoseCone(n) => &n.material,
+        PartKind::Transition(t) => &t.material,
+        _ => panic!("only revolved parts are asked"),
+    };
+    material.density.expect("a defined material")
 }
 
 /// The dimensions OpenRocket chose for what the file leaves unsaid are the ones the builder
@@ -468,6 +694,19 @@ fn shoulder_diameters(part: &Part) -> Vec<(&'static str, f64)> {
     }
 }
 
+/// The median of `values`.
+fn median(values: &[f64]) -> f64 {
+    let mut sorted = values.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    let n = sorted.len();
+    assert!(n > 0, "a median of nothing");
+    if n % 2 == 1 {
+        sorted[n / 2]
+    } else {
+        0.5 * (sorted[n / 2 - 1] + sorted[n / 2])
+    }
+}
+
 #[test]
 fn every_catalogue_part_weighs_what_openrocket_builds() {
     let fixture = fixture();
@@ -498,7 +737,11 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
             stated += usize::from(part.mass_kg.is_some());
         }
     }
-    println!("{parts} parts: {survey:#?}");
+    let (with, without) = (
+        median(&survey.ratios_with_wall),
+        median(&survey.ratios_without),
+    );
+    println!("{parts} parts: {survey:#?}\nmedians: {with} with the wall, {without} without");
     let held: usize = survey.held.values().sum();
     assert_eq!(parts, 3_449);
     assert_eq!(stated, 229, "parts stating their mass");
@@ -507,33 +750,67 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
         parts
     );
     assert!(survey.misses.is_empty(), "{:#?}", survey.misses);
+    let groups: Vec<_> = survey.groups.iter().map(|(k, v)| (*k, *v)).collect();
+    assert_eq!(
+        groups,
+        [
+            ("filled revolved", 1_029),
+            ("hollow revolved", 185),
+            ("other", 2_230)
+        ],
+        "{survey:#?}"
+    );
     // The largest differences, as `docs/the-builder.md` and ADR-133 quote them: the revolved
     // parts' to two digits, the rest by a bound, their last bits being the platform's.
     let printed = |value: f64| format!("{value:.1e}");
-    assert_eq!(printed(survey.mass["revolved"]), "6.3e-4", "{survey:#?}");
-    assert_eq!(printed(survey.centre["revolved"]), "7.0e-5", "{survey:#?}");
+    let quoted = [
+        printed(survey.mass["filled revolved"]),
+        printed(survey.centre["filled revolved"]),
+        printed(survey.mass["hollow revolved"]),
+        printed(survey.centre["hollow revolved"]),
+        printed(survey.wall_rule_mass),
+        printed(survey.wall_rule_centre),
+        printed(survey.wall_departure_mass),
+        printed(survey.wall_departure_centre),
+    ];
     assert_eq!(
-        printed(survey.mass["ellipsoid shells"]),
-        "4.8e-3",
+        quoted,
+        [
+            "2.0e-4", "7.0e-5", "6.3e-4", "9.7e-4", "2.5e-4", "1.1e-4", "4.8e-3", "1.7e-3"
+        ],
         "{survey:#?}"
     );
-    assert_eq!(
-        printed(survey.mass["revolved cones"]),
-        "6.8e-7",
-        "{survey:#?}"
-    );
-    assert!(survey.mass["exact"] <= 1e-14, "{survey:#?}");
-    assert!(survey.centre["exact"] <= 1e-13, "{survey:#?}");
+    assert!(survey.mass["other"] <= 1e-14, "{survey:#?}");
+    assert!(survey.centre["other"] <= 1e-13, "{survey:#?}");
     assert!(survey.mass["stated"] <= 1e-15, "{survey:#?}");
-    assert_eq!(survey.ellipsoid_shells_checked, 6, "{survey:#?}");
-    assert_eq!(survey.cones_closed_form, 85, "{survey:#?}");
-    assert_eq!(survey.ellipsoid_shells, 3, "{survey:#?}");
-    assert_eq!(survey.hollow_shoulders, 67, "{survey:#?}");
-    assert_eq!(survey.hollow_shoulders_stated, 74, "{survey:#?}");
-    assert_eq!(survey.ounce_masses, 185, "{survey:#?}");
-    assert_eq!(survey.undefined_materials, 3, "{survey:#?}");
-    assert_eq!(survey.no_bore, 3, "{survey:#?}");
-    assert_eq!(survey.stated_streamers, 1, "{survey:#?}");
+    let counts = [
+        survey.wall_rule_checked,
+        survey.wall_departures,
+        survey.cones_closed_form,
+        survey.hollow_shoulders,
+        survey.hollow_shoulders_stated,
+        survey.wall_nearer,
+        survey.ounce_masses,
+        survey.undefined_materials,
+        survey.undefined_lines,
+        survey.no_bore,
+        survey.stated_streamers,
+    ];
+    assert_eq!(
+        counts,
+        [185, 4, 85, 67, 74, 46, 185, 1, 2, 3, 1],
+        "{survey:#?}"
+    );
+    let exact: Vec<_> = survey.exact_walls.iter().map(|(k, v)| (*k, *v)).collect();
+    assert_eq!(
+        exact,
+        [("cones", 12), ("ellipsoids", 6), ("tangent ogives", 60)],
+        "{survey:#?}"
+    );
+    assert_eq!(
+        (format!("{with:.2}"), format!("{without:.2}")),
+        ("0.97".into(), "1.30".into())
+    );
 }
 
 #[test]
@@ -553,6 +830,16 @@ fn probes_weigh_what_openrocket_builds() {
     }
     println!("{survey:#?}");
     assert_eq!(survey.held.values().sum::<usize>(), 6);
+    assert!(survey.misses.is_empty(), "{:#?}", survey.misses);
+    let printed = |value: f64| format!("{value:.1e}");
+    assert_eq!(
+        (
+            printed(survey.mass["filled revolved"]),
+            printed(survey.centre["filled revolved"])
+        ),
+        ("1.5e-4".into(), "4.2e-5".into()),
+        "{survey:#?}"
+    );
 }
 
 #[test]

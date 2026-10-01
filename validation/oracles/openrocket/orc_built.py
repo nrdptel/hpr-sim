@@ -193,6 +193,8 @@ def main():
 
     head = {
         "source": "validation/oracles/openrocket/orc_built.py",
+        "command": "refs/venv/bin/python validation/oracles/openrocket/orc_built.py "
+        "crates/hpr/tests/fixtures/orc/openrocket-built.json",
         "generated": GENERATED,
         "openrocket": str(BuildProperties.getVersion()),
         "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),

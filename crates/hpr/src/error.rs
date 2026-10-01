@@ -106,6 +106,10 @@ pub enum Order {
     /// A motor with no motor tube to go in.
     #[error("a motor needs a motor tube to go in")]
     NoMotorTube,
+    /// A fitting holding a part that isn't one (one read from a file): a fitting is a coupler,
+    /// a centering ring, a bulkhead, a launch lug, a parachute or a streamer.
+    #[error("a fitting is a coupler, centering ring, bulkhead, launch lug, parachute or streamer")]
+    NotAFitting,
     /// A part added to a rocket read from a design, which the builder doesn't change.
     #[error("parts can't be added to a rocket read from a design")]
     ReadFromDesign,
@@ -133,6 +137,10 @@ pub enum CatalogProblem {
     /// A nose cone's or transition's shape the builder doesn't know.
     #[error("its shape is one the builder doesn't know")]
     Shape,
+    /// A part that states its mass but whose sizes give it no volume to hold it, so no density
+    /// gives it that mass.
+    #[error("it states a mass, but its sizes give it no volume to hold it")]
+    NoVolume,
 }
 
 /// `value` if it is finite and positive, [`Error::Domain`] otherwise.

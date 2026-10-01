@@ -256,9 +256,26 @@ Top speed:  302 m/s (Mach 0.91)
 Landing:    at 4.6 m/s, at 250.8 s
 ```
 
-Each part is named by its maker and part number, as the design keeps it. The program's steps:
+Each part is named by its maker and its part number, as the design keeps it. LOC's numbers say
+what the part is and its size in inches: `PNC-2.56` is a plastic nose cone for the 2.56 in tube,
+`BT-2.56` the body tube, `MMT-1.52` the 1.52 in (38 mm) motor tube, `CR-2.56-38mm` a centering
+ring between the two, and `LP-36-2022` a 36 in parachute. *Structure* is all the parts together,
+without the motor.
 
-- **Find the part.** `hpr_io::orc::bundled().find("LOC Precision", "PNC-2.56")` returns the
+> **How far to trust these numbers.** Each part weighs what OpenRocket 24.12 weighs when it builds
+> the same catalogue part, to within 0.1%, and 0.5% on four blunt nose cones ("How far to trust
+> it" below has the measurements). The exception is a choice made on purpose, and this nose is
+> one: its shoulder, the short tube that slides into the body, has the nose's own plastic wall here
+> and weighs nothing in OpenRocket. The flight is the builder's, with the trust the top of this page gives it. The top
+> speed, Mach 0.91, is close to the speed of sound, where drag rises steeply and is least certain
+> ([Accuracy](accuracy.md)). The [stability margin](glossary.md#stability-margin), 1.07
+> [calibres](glossary.md#calibre-caliber), is at Mach 0.3, near the rail.
+
+The program is
+[`catalog_rocket.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/catalog_rocket.rs).
+Its steps:
+
+- **Find the part.** `hpr::hpr_io::orc::bundled().find("LOC Precision", "PNC-2.56")` returns the
   parts with that maker and number. Use the maker's name as the file writes it ("LOC
   Precision", where OpenRocket shows "LOC/Precision").
 - **Make the builder's part from it.** `Nose::from_catalog(part)`, `Tube::from_catalog`,
@@ -267,7 +284,7 @@ Each part is named by its maker and part number, as the design keeps it. The pro
   diameters, so the tube behind it takes the nose's diameter, not the one given to
   `Rocket::new`.
 - **Cut a tube.** Catalogue tubes are sold long (LOC's motor tube is 34 in). `with_length_m`
-  cuts one to length, and a stated mass is cut in proportion.
+  cuts one to length, and its mass follows.
 - **Fittings.** A *fitting* is a part that goes in or on the last body tube: a coupler, an engine
   block, a centering ring, a bulkhead, a launch lug, or a packed parachute or streamer.
   `Fitting::from_catalog(part)` makes one from a catalogue part, and `Rocket::add_fitting` adds
@@ -278,14 +295,17 @@ Each part is named by its maker and part number, as the design keeps it. The pro
   that device the catalogue's diameter.
 - **The fins** are made by hand: the catalogue has none.
 
-A part that states its mass in the catalogue weighs that mass. The mass is an override on the
-part, which scales its density, so its centre of mass stays where its shape puts it. 229 of the
-3,449 parts state a mass.
+229 of the 3,449 parts state their mass in the catalogue, and each weighs that mass. The builder
+sets the part's density so that the part, as the catalogue sizes it, weighs the stated mass, and
+the material's name says so. A part changed afterwards, such as a tube cut shorter, keeps that
+density, so its mass follows the change. OpenRocket gives a rigid part its stated mass the same
+way. It gives a parachute its stated mass as an [override](glossary.md#override), which comes to
+the same for a parachute left as it is. It ignores a streamer's.
 
 ### What the catalogue leaves unsaid
 
 A catalogue leaves some sizes out. The builder fills each one in the way OpenRocket 24.12 does
-when it builds the part, with one exception, a hollow part's shoulder:
+when it builds the part, with one exception, a hollow part's [shoulder](glossary.md#shoulder):
 
 | Left unsaid | The builder's choice | OpenRocket's |
 |---|---|---|
@@ -294,46 +314,58 @@ when it builds the part, with one exception, a hollow part's shoulder:
 | A Haack series' `C` | 0, the von Kármán | the same |
 | A power series' exponent | ½ | the same |
 | Whether a transition is clipped | yes for elliptical, Haack and power series | the same |
-| A solid part's shoulder | solid | the same |
+| A filled part's shoulder | solid | the same |
+| A parachute's line material, when the file names none or one it doesn't define | weightless lines | the same |
 | **A hollow part's shoulder wall** | **the part's own wall** | **zero: it weighs nothing** |
 
-A *clipped* transition is cut from a whole nose cone ([Shapes](physics/shapes.md)). A molded
-plastic nose cone's shoulder is a tube of the same plastic, so a shoulder that weighs nothing
-would be wrong. On the 67 hollow parts with a shoulder and no stated mass, the builder's part is
-heavier than OpenRocket's by exactly that shoulder.
+A *clipped* transition is cut from a whole nose cone, rather than stretched from one
+([Shapes](physics/shapes.md)). A molded plastic nose cone's shoulder is a tube of the same plastic,
+so a shoulder that weighs nothing would be wrong. The catalogue's stated masses agree: on the 74
+hollow parts with a shoulder that state their mass, the file's density weighs nearer the stated
+mass with the shoulder's wall than without it on 46. The median stated mass is 0.97 of the mass
+with the wall, and 1.30 of the mass without it.
 
 ### How far to trust it
 
 [`tests/catalog_openrocket.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/tests/catalog_openrocket.rs)
 builds every part in the catalogue with the builder. It holds each part's mass and centre of mass
-to what OpenRocket builds from it, as recorded by
+to what OpenRocket builds from it, run as an [oracle](glossary.md#oracle) and recorded by
 [`orc_built.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/openrocket/orc_built.py).
-The tolerances were set before measuring:
+The tolerances were set before measuring. Every part is in one row:
 
-| Parts | Allowed | Largest difference found |
-|---|---|---|
-| Tubes, couplers, rings, bulkheads, lugs, parachutes, streamers (2,228) | 1e-12 of the mass; centre 1e-12 of the length | under 1e-14 of the mass; centre under 1e-13 of the length |
-| Nose cones and transitions (1,214, less the departures below) | 1e-3 of the mass; centre 1e-3 of the length | 6.3e-4 of the mass; centre 7.0e-5 of the length |
+| Parts | Count | Allowed | Largest difference found |
+|---|---|---|---|
+| Tubes, couplers, rings, bulkheads, lugs, parachutes, streamers | 2,230 | 1e-12 of the mass; centre 1e-12 of the length | under 1e-14 of the mass; centre under 1e-13 of the length |
+| Filled nose cones and transitions | 1,029 | 1e-3 of the mass; centre 1e-3 of the length | 2.0e-4 of the mass; centre 7.0e-5 of the length |
+| Hollow nose cones and transitions, shoulders taken out | 181 | the same | 6.3e-4 of the mass; centre 9.7e-4 of the length |
+| Hollow ones whose wall differs | 4 | counted | 0.48% of the mass; centre 1.7e-3 of the length |
+| A streamer that states its mass | 1 | counted | hpr weighs the stated mass; OpenRocket ignores it |
+| Refused by the builder | 4 | counted | OpenRocket weighs each as nothing |
+| **All** | **3,449** | | |
 
-The second row allows more because OpenRocket's volumes of nose cones and transitions are not
-exact. Even a cone, whose volume has a formula, differs by up to 6.8e-7. The test holds hpr's 85
-solid cones to that formula, so the difference is OpenRocket's. The test also counts each part
-that departs from OpenRocket, and checks why it does:
+Where the masses differ, the test checks each cause:
 
-- **67 hollow shoulders.** Each part weighs OpenRocket's mass plus its shoulder's closed-form
-  mass. 74 more hollow parts state a mass and weigh it; their centre is not compared.
-- **3 hollow ellipsoid nose cones** (short, blunt ones) weigh up to 0.48% more than OpenRocket's.
-  The test works out each wall's volume on its own, from the curve that runs one wall thickness
-  inside the ellipse. hpr's agrees with it to 1e-9 on all six hollow ellipsoids, so the
-  difference is OpenRocket's.
+- **OpenRocket's volumes are close, not exact.** Even a cone, whose volume has a formula, differs a
+  little. The test holds hpr's 85 filled cones to that formula, so the difference is
+  OpenRocket's.
+- **Hollow shoulders.** A hollow part's shoulders are taken out of hpr's mass and centre, each
+  worked out on its own as a tube of the part's wall. That leaves the body, which is what
+  OpenRocket weighs.
+- **Two walls.** hpr's wall is every point within its thickness of the outer surface. OpenRocket's
+  masses follow a wall measured across each station instead, whose inner radius is
+  `r − t √(1 + r′²)` (`r` the radius, `t` the thickness, `r′` the slope). The test works out both on
+  its own: OpenRocket's 185 hollow parts agree with the station-wise wall to 2.5e-4 of the mass
+  and 1.1e-4 of the length, and hpr's 78 hollow conical, tangent-ogive and elliptical nose cones
+  that don't state a mass agree with integrals of its own wall to 1e-9. The two walls differ most
+  on short, blunt elliptical nose cones: on four, by more than the tolerance.
 - **185 masses stated in ounces** differ by OpenRocket's rounded ounce, 8.8e-10 of the mass.
-- **1 streamer** states its mass, and hpr uses it; OpenRocket ignores it.
-- **6 parts are refused.** Three name a material their file doesn't define, and three are tubes
-  or rings whose bore isn't narrower than their outside. OpenRocket weighs all six as nothing.
+- **The 4 refused parts.** One nose cone names a material its file doesn't define. Three tubes or
+  rings have a bore no narrower than their outside.
 
-What this checks is the mass of each part as the catalogue describes it. A catalogue's sizes and
-densities are the makers' or the database's, and none was weighed here. Glue, paint and
-hardware are still missing: weigh the finished parts when you can.
+The test compares mass and centre of mass, not the moments of inertia. What it checks is each part
+as the catalogue describes it. A catalogue's sizes and densities are the makers' or the
+database's, and none was weighed here. Glue, paint and hardware are still missing: weigh the
+finished parts when you can.
 
 ## Beyond the builder
 
@@ -372,13 +404,22 @@ One rocket in them has no fins at all: it flies, tumbling, to finite numbers. Th
 [Loft lesson](glossary.md#loft-lesson) is a mistake of the project before this one, with the test
 that guards against it here.
 
+A catalogue part is refused when the builder can't make it as the catalogue describes it: a part
+of another kind than the `from_catalog` it is given (a body tube given to `Nose::from_catalog`), a
+material its file names but doesn't define, a shape the builder doesn't have, a nose cone or
+transition the file neither fills nor gives a wall thickness, a tube or ring whose
+bore is no narrower than its outside, or a part stating a mass with no volume to give it. The
+error names the part by maker, number and file. `Rocket::add_fitting` also refuses a fitting before
+any body tube, and a part that isn't a fitting.
+
 ## What it can't do yet
 
 - **One motor, one stage.** Clusters, staging and pods go through the design, as above; the
   [staging page](physics/staging.md) explains how they fly.
 - **Rail buttons** go through the design. Without them the rocket leaves the rail when its aft
-  end passes the rail's top. A launch lug is a fitting (above); with one, the rocket leaves the
-  rail when the lug's aft edge passes the rail's top.
+  end passes the rail's top. A launch lug is a fitting (above), with its drag; without one, a
+  lug's drag is missing. With one, the rocket leaves the rail when the lug's aft edge passes the
+  rail's top.
 - **The finish.** Every surface is painted, as above.
 
 ## Where next
