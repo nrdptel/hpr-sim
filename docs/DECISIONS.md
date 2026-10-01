@@ -10484,23 +10484,28 @@ floating-point predictor included.
    any of the three is non-zero and GDAL reads a vertical CRS, else `GDAL_METADATA`'s first-band
    items, else 1 and 0; both sources disagreeing, or a scale of 0, are refused. Whether GDAL reads
    a vertical CRS turns on the directory's revision and on how GDAL and PROJ resolve the keys, so
-   `S_z` applies only where that is certain: a GeoTIFF 1.1 directory naming a vertical CRS from
-   the short list of EPSG codes below, with no `VerticalDatumGeoKey` and a geographic CRS other
-   than WGS 84 3D (GDAL's `gt_wkt_srs.cpp` drops the vertical CRS for a private datum code, for
-   datum 6030 beside WGS 84, and beside WGS 84 3D). It is ignored, as GDAL ignores it, in a 1.0
-   directory (rasterio shows GDAL dropping the vertical CRS there) and where no vertical key is
-   present. Otherwise a file with heights in its tags is refused, unless they are GDAL's own
-   `S_z` 1 and `Z₀` 0, which read the same either way. `GDAL_METADATA` items are matched as GDAL
-   3.12.2 matches them (`gtiffdataset_read.cpp`, each case measured through rasterio): element
-   names in either case, a name, a sample C's `atoi` reads as 0, any domain but
-   `IMAGE_STRUCTURE`, and some text.
+   `S_z` applies only where that is certain: a GeoTIFF 1.1 directory of model type 2 naming a
+   vertical CRS from the short list of EPSG codes below, with no `VerticalDatumGeoKey` and a
+   geographic CRS other than WGS 84 3D (GDAL's `gt_wkt_srs.cpp` drops the vertical CRS for a
+   private datum code, for datum 6030 beside WGS 84, and with no model type, and the whole CRS
+   beside WGS 84 3D). It is ignored, as GDAL ignores it, in a 1.0 directory (rasterio shows GDAL
+   dropping the vertical CRS there) and where no vertical key is present. Otherwise a file with
+   heights in its tags is refused, unless they are GDAL's own `S_z` 1 and `Z₀` 0 and
+   `GDAL_METADATA` gives no other scale. GDAL matches `GDAL_METADATA` with quirks
+   (`gtiffdataset_read.cpp`: attribute names in any case, C's `atoi` for the sample, text only as
+   an item's one child, prefixed names compared whole), so its scale, offset and `unittype` items
+   are read only in the form GDAL writes (`<Item name=".." sample="0" role="scale">`, plain
+   text, any domain but `IMAGE_STRUCTURE`) and refused in any other; the skips GDAL makes (no
+   name, no sample, another band, another root) were measured through rasterio and are made.
    The unit is `VerticalUnitsGeoKey` (metres, feet, US survey feet; refused if it disagrees with
-   a vertical CRS on the list, whose unit GDAL takes instead), else the unit of a vertical CRS
-   from a short list of EPSG codes (EGM2008, EGM96, EGM84, ODN, MSL, NAVD88 in metres, feet
+   the vertical CRS's, which GDAL takes instead), else the unit of a vertical CRS from a short
+   list of EPSG codes (`VERTICAL_CRS_UNITS`: EGM2008, EGM96, EGM84, ODN, MSL, NAVD88 in metres, feet
    and US survey feet), else `GDAL_METADATA`'s `unittype` (refused if it disagrees with the keys,
    or names another unit); a file naming none is read as metres, hpr's assumption, not GDAL's
-   (GDAL reports no unit), flagged by `vertical_unit_stated`. A vertical CRS off the list, or
-   a user-defined one (32767 and above, reported as no code), with no unit is refused. The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
+   (GDAL reports no unit), flagged by `vertical_unit_stated`. A vertical CRS off the list is
+   refused, with or without a unit key: GDAL takes its unit from EPSG's registry, which hpr
+   doesn't hold. A user-defined one (32767 and above, reported as no code) is read with a unit
+   key and refused without. The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
    sample type (a value an integer can't hold matches nothing); NaN is no data too.
 5. **Bounded on a hostile file.** `height_at` decodes only the tile or strip holding the point;
    `parse` refuses a tile or strip over 256 MiB decoded (`MAX_CHUNK_BYTES`: the `tiff` crate's own
@@ -10536,5 +10541,7 @@ an older datum, needs `gdalwarp` first. Review found the first draft's gaps: a t
 could ask for 32 GiB, GDAL's scale and offset unread (a decimetre file read 10× high), any datum
 accepted. A second round found a tile size that overflowed a u64, `S_z` applied where GDAL
 would not, JGD2000 in the near list and unbounded XML nesting; a third, GDAL's metadata matched
-more narrowly than GDAL matches it, and a unit key read where GDAL takes the vertical CRS's. All
-are fixed and tested above.
+more narrowly than GDAL matches it, and a unit key read where GDAL takes the vertical CRS's; a
+fourth, gaps of the same kinds (metadata quirks, an unlisted vertical CRS's unit, GDAL's own
+`S_z` 1 beside another metadata scale), answered by failing closed. All are fixed and tested
+above.

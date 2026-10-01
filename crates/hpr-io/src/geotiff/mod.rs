@@ -51,12 +51,13 @@
 //! tiepoint's heights; otherwise the `scale` and `offset` items of GDAL's `GDAL_METADATA` tag;
 //! otherwise 1 and 0. Heights in those tags with no vertical key are ignored, as GDAL ignores
 //! them; with other vertical keys, whether GDAL applies them turns on how it resolves the keys,
-//! and the file is refused. In a GeoTIFF 1.0 directory GDAL drops the vertical CRS, and with it
+//! and the file is refused. `GDAL_METADATA`'s scale, offset and unit are read only in the form
+//! GDAL writes them, and refused in any other, which GDAL may read differently. In a GeoTIFF 1.0 directory GDAL drops the vertical CRS, and with it
 //! those heights; this module does the same, and reports the CRS's code and unit. The unit is the
-//! vertical unit the file states
-//! (`VerticalUnitsGeoKey`: metres, international feet or US survey feet, refused if it disagrees
-//! with a vertical CRS this module knows, whose unit GDAL takes), the unit of such a CRS, or the `unittype` item of `GDAL_METADATA` (refused if it disagrees with
-//! the keys); a file that states none is read as metres, an assumption GDAL doesn't make (it
+//! vertical unit the file states (`VerticalUnitsGeoKey`: metres, international feet or US survey
+//! feet, refused if it disagrees with the vertical CRS's), the unit of a vertical CRS this module
+//! knows (any other is refused: GDAL takes its unit from EPSG's registry), or the `unittype` item
+//! of `GDAL_METADATA` (refused if it disagrees with the keys); a file that states none is read as metres, an assumption GDAL doesn't make (it
 //! reports no unit), flagged by [`RasterInfo::vertical_unit_stated`]. A file in feet that states
 //! no unit reads 3.28 times too high. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008,
 //! say) is reported, not applied. A value equal to the file's nodata value (GDAL's `GDAL_NODATA`
@@ -300,7 +301,7 @@ impl VerticalUnit {
 
 /// The vertical CRSs whose unit this reader knows when a file names one without stating its
 /// unit, from EPSG's registry: (code, unit). All are gravity-related heights, positive up.
-const VERTICAL_CRS_UNITS: [(u16, VerticalUnit); 8] = [
+pub const VERTICAL_CRS_UNITS: [(u16, VerticalUnit); 8] = [
     (3855, VerticalUnit::Metre),        // EGM2008 height
     (5701, VerticalUnit::Metre),        // ODN height
     (5703, VerticalUnit::Metre),        // NAVD88 height
@@ -541,6 +542,7 @@ impl<'a> ElevationRaster<'a> {
             lat0 -= lat_step * 0.5;
         }
         let heights = if keys.minor == 1
+            && keys.get(MODEL_TYPE_KEY)? == Some(2)
             && vertical_crs_epsg.is_some_and(|c| VERTICAL_CRS_UNITS.iter().any(|(v, _)| *v == c))
             && !keys.has(VERTICAL_DATUM_KEY)
             && geographic_crs_epsg != 4979
@@ -1121,6 +1123,13 @@ fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiff
             .map(|&(_, unit)| unit)
     });
     match (stated, from_crs, crs) {
+        // A vertical CRS this reader doesn't know: GDAL takes its unit from EPSG's registry,
+        // whatever `VerticalUnitsGeoKey` says, and its unit could be feet.
+        (_, None, Some(code)) => Err(GeoTiffError::Unsupported {
+            what: "a vertical CRS this reader doesn't know, EPSG",
+            value: code.to_string(),
+            hint: "; its unit is unknown here (`VERTICAL_CRS_UNITS` lists those known)",
+        }),
         // GDAL takes a known CRS's unit and ignores the key; the file's writer may have meant
         // the key. Neither reading is safe.
         (Some(key), Some(of_crs), Some(code)) if key != of_crs => Err(GeoTiffError::Unsupported {
@@ -1137,12 +1146,6 @@ fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiff
             hint: "; its unit is unknown here",
         }),
         (None, None, None) => Ok((None, VerticalUnit::Metre, false)),
-        // A vertical CRS this reader does not know, with no unit: its unit could be feet.
-        (None, None, Some(code)) => Err(GeoTiffError::Unsupported {
-            what: "a vertical CRS without VerticalUnitsGeoKey, EPSG",
-            value: code.to_string(),
-            hint: "; its unit is unknown here",
-        }),
     }
 }
 
@@ -1258,11 +1261,12 @@ fn transform<R: std::io::Read + std::io::Seek>(
 /// Whether GDAL takes a scale and offset from `S_z` and the tiepoint's heights. It does for one
 /// band when its CRS is vertical, which depends on the directory's revision and on how GDAL and
 /// PROJ resolve the vertical keys (GDAL 3.12.2's `gt_wkt_srs.cpp` drops the vertical CRS for a
-/// private key value, for `VerticalDatumGeoKey` 6030 beside WGS 84, and beside WGS 84 3D).
-/// Certain: applied for a GeoTIFF 1.1 directory naming a vertical CRS this reader knows, with no
-/// datum key, beside any geographic CRS but WGS 84 3D; ignored for a 1.0 directory (GDAL drops
-/// its vertical CRS, rasterio 1.5.2 shows) and for one with no vertical key. Anything between is
-/// refused, unless the tags hold GDAL's own `S_z` 1 and offset 0, which read the same either way.
+/// private key value, for `VerticalDatumGeoKey` 6030 beside WGS 84, and with no model type; it
+/// drops the whole CRS beside WGS 84 3D). Certain: applied for a GeoTIFF 1.1 directory of model
+/// type 2 naming a vertical CRS this reader knows, with no datum key, beside any geographic CRS
+/// but WGS 84 3D; ignored for a 1.0 directory (GDAL drops its vertical CRS, rasterio 1.5.2
+/// shows) and for one with no vertical key. Anything between is refused, unless the tags hold
+/// GDAL's own `S_z` 1 and offset 0 and `GDAL_METADATA` no other scale.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ZTerms {
     Applied,
@@ -1283,7 +1287,9 @@ fn scale_offset<R: std::io::Read + std::io::Seek>(
         Some([sz, z0, z]) if sz != 0.0 || z0 != 0.0 || z != 0.0 => match heights {
             ZTerms::Applied => Some((sz, z - z0 * sz)),
             ZTerms::Ignored => None,
-            ZTerms::Unknown if (sz, z - z0 * sz) == (1.0, 0.0) => None,
+            // GDAL's own pair, read the same applied or not: unless GDAL_METADATA gives another,
+            // which wins only where GDAL drops the vertical CRS, and is refused below.
+            ZTerms::Unknown if (sz, z - z0 * sz) == (1.0, 0.0) => Some((1.0, 0.0)),
             ZTerms::Unknown => {
                 return Err(GeoTiffError::Unsupported {
                     what: "heights in ModelPixelScaleTag or ModelTiepointTag,",
@@ -1379,28 +1385,70 @@ fn gdal_metadata<R: std::io::Read + std::io::Seek>(
     if !named(&root, "GDALMetadata") {
         return Ok(metadata);
     }
-    // As GDAL 3.12.2 matches them (`gtiffdataset_read.cpp`): an `Item`, either case, with a name,
-    // a sample that C's `atoi` reads as 0, any domain but IMAGE_STRUCTURE, and some text.
-    for item in root.children().filter(|n| {
-        named(n, "Item")
-            && n.attribute("name").is_some()
-            && !n
-                .attribute("domain")
-                .is_some_and(|d| d.eq_ignore_ascii_case("IMAGE_STRUCTURE"))
-            && n.attribute("sample").is_some_and(|s| atoi(s) == 0)
-    }) {
-        let text = item.text().unwrap_or("").trim();
+    let odd = |reason: &str| GeoTiffError::Unsupported {
+        what: "GDAL_METADATA",
+        value: reason.to_string(),
+        hint: ", not in the form GDAL writes, which GDAL may read differently",
+    };
+    if root.tag_name().namespace().is_some() {
+        return Err(odd("a GDALMetadata root in an XML namespace"));
+    }
+    // GDAL's matching has quirks (attribute names in any case, C's `atoi` for the sample, text
+    // only when it is an item's one child). An item with a role read here is read only in the
+    // form GDAL writes, `<Item name=".." sample="0" role="scale">0.25</Item>`, and refused in any
+    // other; GDAL's measured skips (no name, no sample, another band) are skipped.
+    for item in root.children().filter(|n| named(n, "Item")) {
+        let Some(role) = item
+            .attributes()
+            .find(|a| a.name().eq_ignore_ascii_case("role"))
+            .map(|a| a.value().to_ascii_lowercase())
+        else {
+            continue;
+        };
+        if !matches!(role.as_str(), "scale" | "offset" | "unittype") {
+            continue;
+        }
+        if item.tag_name().namespace().is_some()
+            || item.attributes().any(|a| {
+                a.namespace().is_some() || a.name().bytes().any(|b| b.is_ascii_uppercase())
+            })
+        {
+            return Err(odd(
+                "an item with a namespace or an attribute name in capitals",
+            ));
+        }
+        let (Some(_), Some(sample)) = (item.attribute("name"), item.attribute("sample")) else {
+            continue;
+        };
+        let band = (!sample.is_empty() && sample.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| sample.parse::<i32>().ok())
+            .flatten()
+            .ok_or_else(|| odd("an item whose sample is not a plain number"))?;
+        if band != 0 {
+            continue;
+        }
+        if item
+            .attribute("domain")
+            .is_some_and(|d| d.eq_ignore_ascii_case("IMAGE_STRUCTURE"))
+        {
+            return Err(odd("a scale, offset or unit in the IMAGE_STRUCTURE domain"));
+        }
+        let mut children = item.children();
+        let text = match (children.next(), children.next()) {
+            (None, _) => continue,
+            (Some(only), None) if only.is_text() => only.text().unwrap_or("").trim(),
+            _ => return Err(odd("an item whose value is not plain text")),
+        };
         if text.is_empty() {
             continue;
         }
-        let slot = match item.attribute("role") {
-            Some(role) if role.eq_ignore_ascii_case("scale") => &mut metadata.scale,
-            Some(role) if role.eq_ignore_ascii_case("offset") => &mut metadata.offset,
-            Some(role) if role.eq_ignore_ascii_case("unittype") => {
+        let slot = match role.as_str() {
+            "scale" => &mut metadata.scale,
+            "offset" => &mut metadata.offset,
+            _ => {
                 metadata.unit = unit_type(text)?;
                 continue;
             }
-            _ => continue,
         };
         *slot = Some(
             text.parse::<f64>()
@@ -1408,23 +1456,6 @@ fn gdal_metadata<R: std::io::Read + std::io::Seek>(
         );
     }
     Ok(metadata)
-}
-
-/// C's `atoi`: leading blanks, a sign, then digits as far as they go; 0 if there are none.
-fn atoi(text: &str) -> i64 {
-    let text = text.trim_start();
-    let (negative, digits) = match text.as_bytes().first() {
-        Some(b'-') => (true, &text[1..]),
-        Some(b'+') => (false, &text[1..]),
-        _ => (false, text),
-    };
-    let value = digits
-        .bytes()
-        .take_while(u8::is_ascii_digit)
-        .fold(0_i64, |v, d| {
-            v.saturating_mul(10).saturating_add(i64::from(d - b'0'))
-        });
-    if negative { -value } else { value }
 }
 
 fn nodata<R: std::io::Read + std::io::Seek>(

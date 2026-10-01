@@ -271,7 +271,7 @@ file.
 | the grid | latitude and longitude in degrees from Greenwich, on a datum within a few metres of [WGS 84](glossary.md#wgs-84): WGS 84 itself, NAD83 and its updates, ETRS89, GDA94, GDA2020, NZGD2000, JGD2011, SIRGAS 2000 and CGCS2000 (the [EPSG codes](glossary.md#epsg-code) are `NEAR_WGS84` in the API) | a map projection such as UTM, or an older datum such as NAD27, tens to hundreds of metres from WGS 84: the error names the code, and `gdalwarp -t_srs EPSG:4326 in.tif out.tif` converts the file |
 | the pixels | one band of 8-, 16- or 32-bit integers, or 32- or 64-bit floats; tiles or strips; uncompressed, LZW, Deflate or PackBits; either byte order; BigTIFF | several bands; zstd, JPEG and other compression (`gdal_translate -co COMPRESS=DEFLATE` rewrites the file); a separate mask of missing pixels |
 | where the pixels lie | one tiepoint (a pixel tied to a longitude and latitude) with a pixel size, or a matrix without rotation; *pixel is area* or *pixel is point* (whether the tiepoint names a pixel's corner or its centre); longitudes 0° to 360° as well as −180° to 180° | a rotated grid; several tiepoints (ground control points); a south-up pixel size, which GDAL and the standard read differently |
-| the heights | a scale and offset as GDAL applies them (from the file's pixel scale, or from GDAL's own metadata tag); metres, feet or US survey feet as the file states (in its keys or in GDAL's metadata tag), or as its [vertical datum](glossary.md#vertical-datum) implies; metres if it says nothing, with `vertical_unit_stated` then `false` | a vertical datum hpr doesn't know, with no unit stated; a height scale in the file's pixel-scale tag when the file names a vertical datum in a way GDAL may not apply (hpr can't tell what GDAL would do); a unit other than these, or two that disagree |
+| the heights | a scale and offset as GDAL applies them (from the file's pixel scale, or from GDAL's own metadata tag); metres, feet or US survey feet as the file states (in its keys or in GDAL's metadata tag), or as its [vertical datum](glossary.md#vertical-datum) implies; metres if it says nothing, with `vertical_unit_stated` then `false` | a vertical datum outside a short list hpr knows (`VERTICAL_CRS_UNITS` in the API: EGM2008, EGM96, NAVD88 and a few more), since its unit could be feet; a height scale in the file's pixel-scale tag when the file names a vertical datum in a way GDAL may not apply (hpr can't tell what GDAL would do); a scale, offset or unit in GDAL's metadata tag written in a form GDAL itself doesn't write; a unit other than these, or two that disagree |
 | no data | the file's nodata value, and NaN, read as `None` | |
 
 **Which height it is.** The height is above the file's own vertical datum. The reader reports the
@@ -284,10 +284,9 @@ Check two things in `info()`, the first one first:
   names none; the USGS's own description of its data says its heights are above NAVD88, the North
   American vertical datum. Check your publisher's description.
 
-EGM2008 is a model of the [geoid](#what-the-height-means). NAVD88 was set by levelling from a
-tide gauge, and the US National Geodetic Survey puts it about half a metre off the best geoid
-models, tilted by about a metre from coast to coast
-([NGS, new datums](https://geodesy.noaa.gov/datums/newdatums/index.shtml)). hpr takes a height above either as the `H` of
+EGM2008 is a model of the [geoid](#what-the-height-means). NAVD88 was defined by levelling, and
+the US National Geodetic Survey puts it about half a metre off the best geoid models, tilted by
+about a metre from coast to coast ([NGS, new datums](https://geodesy.noaa.gov/datums/newdatums/index.shtml)): a metre or two at most. hpr takes a height above either as the `H` of
 [What the height means](#what-the-height-means): the height above sea level the air is looked up
 by. A metre's difference changes the air's density by about 0.01%. That section also shows how to
 place a flight's site from `H` and the geoid undulation `N`.

@@ -1267,8 +1267,8 @@ source* (printed tables and worked examples), *another code*
 ## Vertical datum
 
 The surface heights are measured from. NAVD88, the North American Vertical Datum of 1988, and
-EGM2008, a worldwide model of the geoid, are both within about a metre of the geoid (NAVD88 was
-levelled from a tide gauge, and is about half a metre off and tilted about a metre coast to coast:
+EGM2008, a worldwide model of the geoid, are both within a metre or two of the geoid (NAVD88, set
+by levelling, is about half a metre off and tilted about a metre coast to coast:
 [NGS](https://geodesy.noaa.gov/datums/newdatums/index.shtml)), so hpr takes heights above them as
 [heights above sea level](#height-above-sea-level-msl); an
 [ellipsoidal height](#ellipsoidal-height) is measured from the ellipsoid instead. See

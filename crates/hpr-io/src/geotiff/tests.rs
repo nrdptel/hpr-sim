@@ -373,7 +373,7 @@ type Case = (&'static [(u16, u16)], Option<u16>, VerticalUnit, bool);
 
 #[test]
 fn vertical_units_convert_to_metres() {
-    let cases: [Case; 6] = [
+    let cases: [Case; 5] = [
         (&[], None, VerticalUnit::Metre, false),
         (&[(4099, 9001)], None, VerticalUnit::Metre, true),
         (&[(4099, 9002)], None, VerticalUnit::Foot, true),
@@ -384,14 +384,6 @@ fn vertical_units_convert_to_metres() {
             true,
         ),
         (&[(4096, 5703)], Some(5703), VerticalUnit::Metre, true),
-        // A CRS this reader doesn't know takes the stated unit (one disagreeing with a CRS it
-        // knows is refused: `a_unit_key_against_its_vertical_crs_is_refused`).
-        (
-            &[(4096, 5705), (4099, 9003)],
-            Some(5705),
-            VerticalUnit::UsSurveyFoot,
-            true,
-        ),
     ];
     for (extra, crs, unit, stated) in cases {
         let mut keys = WGS84.to_vec();
@@ -1016,7 +1008,6 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
         vec![(4099, 9001)],
         vec![(4098, 5103)],
         vec![(4096, 32767), (4099, 9001)],
-        vec![(4096, 5705), (4099, 9001)],
         // A known vertical CRS beside a datum key GDAL may resolve away (a private one, or 6030
         // beside WGS 84, which GDAL turns into WGS 84 3D).
         vec![(4096, 5703), (4098, 40_000)],
@@ -1037,12 +1028,36 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
             assert_eq!((info.scale, info.offset), (1.0, 0.0), "{more:?}");
         }
     }
-    // A vertical CRS beside WGS 84 3D: GDAL drops the vertical part.
-    let wgs84_3d = [(1024, 2), (1025, 1), (2048, 4979), (4096, 5703)];
-    let bytes = with_z_keys(&directory(&wgs84_3d), 0.1, 0.0, 1000.0, None);
+    // A vertical CRS beside WGS 84 3D (GDAL drops the whole CRS), or with no model type (GDAL
+    // drops the vertical CRS).
+    for keys in [
+        vec![(1024, 2), (1025, 1), (2048, 4979), (4096, 5703)],
+        vec![(1025, 1), (2048, 4326), (4096, 3855)],
+    ] {
+        let bytes = with_z_keys(&directory(&keys), 0.1, 0.0, 1000.0, None);
+        assert!(
+            matches!(
+                ElevationRaster::parse(&bytes),
+                Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("heights in ModelPixelScaleTag")
+            ),
+            "{keys:?}"
+        );
+    }
+    // GDAL's own S_z 1 and Z₀ 0 beside keys GDAL may resolve away, with another scale in
+    // GDAL_METADATA: GDAL reads S_z where it keeps the vertical CRS, the metadata where not.
+    let meta =
+        "<GDALMetadata><Item name=\"S\" sample=\"0\" role=\"scale\">0.25</Item></GDALMetadata>";
+    let keys = [
+        (1024, 2),
+        (1025, 1),
+        (2048, 4326),
+        (4096, 8228),
+        (4098, 5103),
+    ];
+    let bytes = with_z_keys(&directory(&keys), 1.0, 0.0, 0.0, Some(meta));
     assert!(matches!(
         ElevationRaster::parse(&bytes),
-        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("heights in ModelPixelScaleTag")
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a pixel scale and offset given twice")
     ));
 }
 
@@ -1112,14 +1127,10 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
             ..
         })
     ));
-    // As GDAL 3.12.2 reads them (each measured through rasterio): a sample by C's `atoi`, any
-    // domain but IMAGE_STRUCTURE, the element names in either case.
+    // Read as GDAL 3.12.2 reads them (each measured through rasterio): any domain but
+    // IMAGE_STRUCTURE, the element names in either case.
     let scale = |attributes: &str| item(attributes, "0.5");
     for read in [
-        scale(r#"name="S" sample=" 0" role="scale""#),
-        scale(r#"name="S" sample="0.0" role="scale""#),
-        scale(r#"name="S" sample="x" role="scale""#),
-        scale(r#"name="S" sample="" role="scale""#),
         scale(r#"name="S" sample="0" role="scale" domain="x""#),
         scale(r#"name="S" sample="0" role="scale" domain="""#),
         r#"<gdalmetadata><item name="S" sample="0" role="scale">0.5</item></gdalmetadata>"#
@@ -1127,13 +1138,11 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
     ] {
         assert_eq!(parse(&wgs84, &read).unwrap().scale, 0.5, "{read}");
     }
-    // Skipped: no name, no sample, another band, IMAGE_STRUCTURE, another root.
+    // Skipped, as GDAL skips them: no name, no sample, another band, another root.
     for skipped in [
         scale(r#"sample="0" role="scale""#),
         scale(r#"name="S" role="scale""#),
         scale(r#"name="S" sample="1" role="scale""#),
-        scale(r#"name="S" sample="-1" role="scale""#),
-        scale(r#"name="S" sample="0" role="scale" domain="image_structure""#),
         r#"<Other><Item name="S" sample="0" role="scale">0.5</Item></Other>"#.to_string(),
     ] {
         assert_eq!(parse(&wgs84, &skipped).unwrap().scale, 1.0, "{skipped}");
@@ -1145,20 +1154,33 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
         parse(&wgs84, two).unwrap().vertical_unit,
         VerticalUnit::Foot
     );
-}
-
-#[test]
-fn atoi_reads_as_c_does() {
-    for (text, value) in [
-        ("0", 0),
-        (" 12x", 12),
-        ("-3", -3),
-        ("+4", 4),
-        ("x", 0),
-        ("", 0),
-        ("0.9", 0),
+    // Refused: forms GDAL doesn't write, where its quirks (attribute names in any case, C's
+    // `atoi` for the sample, text only as an item's one child, prefixed names compared whole,
+    // IMAGE_STRUCTURE's own keys) could read another scale than hpr would.
+    for refused in [
+        scale(r#"NAME="S" SAMPLE="0" ROLE="scale""#),
+        scale(r#"name="S" sample="0" Role="scale""#),
+        scale(r#"name="S" sample=" 0" role="scale""#),
+        scale(r#"name="S" sample="0.0" role="scale""#),
+        scale(r#"name="S" sample="x" role="scale""#),
+        scale(r#"name="S" sample="" role="scale""#),
+        scale(r#"name="S" sample="-1" role="scale""#),
+        scale(r#"name="S" sample="4294967296" role="scale""#),
+        scale(r#"name="S" sample="0" role="scale" domain="image_structure""#),
+        item(r#"name="S" sample="0" role="scale""#, "0.5<!--c-->"),
+        item(r#"name="S" sample="0" role="scale""#, "0.5<b/>"),
+        r#"<GDALMetadata xmlns:x="u"><x:Item name="S" sample="0" role="scale">0.5</x:Item></GDALMetadata>"#
+            .to_string(),
+        r#"<x:GDALMetadata xmlns:x="u"><Item name="S" sample="0" role="scale">0.5</Item></x:GDALMetadata>"#
+            .to_string(),
     ] {
-        assert_eq!(atoi(text), value, "{text:?}");
+        assert!(
+            matches!(
+                parse(&wgs84, &refused),
+                Err(GeoTiffError::Unsupported { what: "GDAL_METADATA", .. })
+            ),
+            "{refused}"
+        );
     }
 }
 
@@ -1172,6 +1194,19 @@ fn a_unit_key_against_its_vertical_crs_is_refused() {
         ElevationRaster::parse(&bytes),
         Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a vertical unit given twice")
     ));
+    // A vertical CRS this reader doesn't know (5705, CGVD2013's 6647), whose unit GDAL takes
+    // from EPSG's registry whatever the key says.
+    for code in [5705, 6647] {
+        let keys = [(1024, 2), (2048, 4326), (4096, code), (4099, 9002)];
+        let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+        assert!(
+            matches!(
+                ElevationRaster::parse(&bytes),
+                Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a vertical CRS this reader doesn't know")
+            ),
+            "{code}"
+        );
+    }
     // Agreeing, it reads.
     let keys = [(1024, 2), (2048, 4326), (4096, 5703), (4099, 9001)];
     let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
