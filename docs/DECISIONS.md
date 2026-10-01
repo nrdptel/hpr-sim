@@ -10722,5 +10722,5 @@ another maker's record of the same designation leaves the match alone. Each refu
 one-field change to a recording. Review found an upper-case id accepted and then its answer
 refused, a record given twice making every motor a miss, a search of another maker accepted, one
 non-UTF-8 file refusing a motor's whole answer, and gaps in the refusal tests; all are fixed. The example `motor_stock` prints the join and J450DM's curve: 1,061.6 N·s,
-2.28 s and 541.4 N from the file, beside its record's certification figures of 1,055 N·s, 2.27 s
+2.28 s and 541.4 N from the file, beside its record's published figures of 1,055 N·s, 2.27 s
 and 558 N. M5.4c (`hpr motors search`) can now show a motor in stock with its curve.

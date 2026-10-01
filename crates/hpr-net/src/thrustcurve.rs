@@ -524,10 +524,9 @@ pub fn fetch_download<T: Transport>(
 ) -> Result<(DownloadAnswer, Fetched), ThrustCurveError> {
     let read = |body: &[u8]| {
         let answer = parse_download(body)?;
-        let other = answer
-            .results
-            .iter()
-            .find(|f| f.motor_id != download.motor_id || f.format != download.format);
+        let other = answer.results.iter().find(|f| {
+            !f.motor_id.eq_ignore_ascii_case(&download.motor_id) || f.format != download.format
+        });
         if let Some(file) = other {
             return Err(ThrustCurveError::OtherMotor {
                 asked: format!("{} ({})", download.motor_id, download.format.as_str()),
@@ -697,7 +696,10 @@ pub fn join(motors: &[motor_finder::Motor], records: &[MotorRecord]) -> Join {
         let same_name = by_name
             .entry((&r.manufacturer, &r.designation))
             .or_default();
-        if same_name.iter().all(|kept| kept.motor_id != r.motor_id) {
+        if same_name
+            .iter()
+            .all(|kept| !kept.motor_id.eq_ignore_ascii_case(&r.motor_id))
+        {
             same_name.push(r);
         }
     }

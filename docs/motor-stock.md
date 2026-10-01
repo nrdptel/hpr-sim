@@ -152,8 +152,8 @@ the file's format, and
 first motor's curve. Each file says who measured it (`cert`, a certification test; `mfr`, the
 maker; or `user`) and its licence: `PD` for public domain, `free` or `other`, or none given.
 ThrustCurve.org's API doesn't define `free` and `other`, and hpr doesn't interpret them; only
-`PD` files are recorded for the tests. A motor with no file in the format asked, or an unknown
-id, gives an empty list, not an error.
+`PD` files are recorded for the tests. An answer with no files gives an empty list, not an error;
+that is how the API answered an unknown id when tried by hand on 1 October 2026.
 
 **What hpr refuses.** A search or download is refused, and not saved, when:
 
