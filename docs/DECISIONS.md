@@ -10501,16 +10501,18 @@ floating-point predictor included.
    other domains read as GDAL reads them, and the skips GDAL makes (no name, no sample, another
    band, another root) were measured through rasterio and are made.
    The unit is `VerticalUnitsGeoKey` (metres, feet, US survey feet; refused if it disagrees with
-   the vertical CRS's, which GDAL takes instead), else the unit of a vertical CRS from a short
+   the vertical CRS's, which GDAL takes instead with model type 2), else the unit of a vertical CRS from a short
    list of EPSG codes (`VERTICAL_CRS_UNITS`: EGM2008, EGM96, EGM84, ODN, MSL, NAVD88 in metres, feet
    and US survey feet), else `GDAL_METADATA`'s `unittype` (refused if it disagrees with the keys,
-   or names another unit; read after trimming ASCII blanks, which GDAL keeps at its end); a file
+   or names another unit; read after trimming ASCII blanks, of which GDAL drops only leading ones
+   typed as they are); a file
    naming none is read as metres, flagged by `vertical_unit_stated` (GDAL reports no unit, except
    beside a vertical datum key alone, where it assumes metres too). A vertical CRS off the list is
-   refused, with or without a unit key: GDAL takes its unit from EPSG's registry, which hpr
-   doesn't hold. A user-defined one (32767, reported as no code) is read with a unit key and
+   refused, with or without a unit key: with model type 2 GDAL takes its unit from EPSG's
+   registry, which hpr doesn't hold. A user-defined one (32767, reported as no code) is read with a unit key and
    refused without. Vertical keys GDAL drops, unit and all, or reads by rules of its own, are
-   refused, as hpr would read a unit GDAL doesn't report: a private value (above 32767) in any of
+   refused (with model type 2, hpr would read a unit GDAL doesn't report; with none, GDAL reads
+   the unit key alone and the refusal is conservative): a private value (above 32767) in any of
    them (dropped with a model type, read without one), any beside WGS 84 3D, datum 6030 beside
    WGS 84 with model type 2 (GDAL makes it WGS 84 3D), and any with no model type and no unit
    key. A blank `GDAL_METADATA` value written as a character reference, which GDAL reads as 0 or

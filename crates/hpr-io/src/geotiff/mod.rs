@@ -71,8 +71,9 @@
 //! (dropped with a model type, read without one), any beside WGS 84 3D, `VerticalDatumGeoKey`
 //! 6030 beside WGS 84 with model type 2 (GDAL makes it WGS 84 3D), and any with no model type and
 //! no unit key. In a GeoTIFF 1.0 directory GDAL drops the vertical CRS but keeps its unit; this
-//! module reports both. A unit name is read after trimming ASCII blanks, which GDAL keeps at its
-//! end (`"ft "` is feet). A file that states no unit is read as metres, flagged by
+//! module reports both; with no model type GDAL's local CRS ignores `VerticalGeoKey`, which this
+//! module reports too. A unit name is read after trimming ASCII blanks; GDAL drops leading blanks
+//! typed as they are and keeps the rest (`"ft "` is feet here). A file that states no unit is read as metres, flagged by
 //! [`RasterInfo::vertical_unit_stated`]; GDAL reports no unit there, except beside a vertical
 //! datum key alone, where it assumes metres too; a file in feet that states none reads 3.28 times too
 //! high. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008, say) is reported, not applied.
@@ -1123,7 +1124,8 @@ fn geographic_crs(keys: &GeoKeys) -> Result<u16, GeoTiffError> {
 /// in any of them (dropped with a model type, read otherwise), any beside WGS 84 3D,
 /// `VerticalDatumGeoKey` 6030 beside WGS 84 with model type 2 (which GDAL turns into WGS 84 3D),
 /// and any with no model type and no unit key (GDAL drops the vertical CRS, or the whole CRS).
-/// This reader would read a unit there that GDAL doesn't report, or reports by other rules.
+/// With model type 2 this reader would read a unit there that GDAL doesn't report; with none,
+/// GDAL reads the unit key alone, and the refusal is conservative.
 fn vertical_kept_by_gdal(keys: &GeoKeys, geographic_crs_epsg: u16) -> Result<(), GeoTiffError> {
     let mut present = Vec::new();
     for key in [VERTICAL_CRS_KEY, VERTICAL_DATUM_KEY, VERTICAL_UNITS_KEY] {
@@ -1187,8 +1189,9 @@ fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiff
         (_, None, Some(4979)) => Err(GeoTiffError::Unsupported {
             what: "a vertical CRS this reader doesn't know, EPSG",
             value: "4979".to_string(),
-            hint: ": WGS 84 3D, as GDAL writes it, whose heights are above the ellipsoid; \
-                   `gdal_translate -a_srs EPSG:4326 in.tif out.tif` drops it",
+            hint: ": WGS 84 3D, whose heights are above the ellipsoid, not sea level; \
+                   `gdalwarp -t_srs EPSG:4326+3855 in.tif out.tif` converts them to EGM2008 \
+                   where PROJ has its geoid grid",
         }),
         (_, None, Some(code)) => Err(GeoTiffError::Unsupported {
             what: "a vertical CRS this reader doesn't know, EPSG",
