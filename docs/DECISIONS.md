@@ -11288,8 +11288,8 @@ result validated by re-simulation. That is more than one session.
    `C`, so steps of 10⁻⁴ and 10⁴ stopped a solvable run after one generation. Bounds are handled
    by drawing a candidate again from its own stream until it falls inside, the second of the
    tutorial's two methods for an optimum inside the feasible region (B.5), up to 1,000 draws
-   (`Stop::Bounds`, or `OutOfBounds` for the first generation); a non-finite candidate counts as
-   outside. No repair, which the tutorial advises against; an optimum on a bound is left to
+   (`Stop::Bounds`, or `OutOfBounds` for the first generation); a candidate that overflows ends
+   the run as ConditionCov. No repair, which the tutorial advises against; an optimum on a bound is left to
    M6.2b's constraint handling.
 4. **Ask and tell.** `Cmaes::start` draws a generation; `Run::tell(values)` takes the model's
    values in order. So the caller evaluates candidates however it likes, as the sensitivity

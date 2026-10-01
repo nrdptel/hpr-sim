@@ -11,4 +11,4 @@ Start: 0.300 kg of ballast, a 1.000 m body: apogee 3128.8 m
 Found: 0.991 kg of ballast, a 0.808 m body, in 78 flights (13 generations, stopped: Target)
 Flown again: apogee 3047.914 m (miss -0.086 m)
 Flown again, tolerances 100 times tighter: apogee 3047.916 m (miss -0.084 m)
-Static margin of the winner at launch (not constrained): 2.53 calibres
+Static margin of the winner at launch mass, Mach 0.3 (not constrained): 2.53 calibres

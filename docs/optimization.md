@@ -18,10 +18,11 @@ ballast and body length that send a rocket to 3,048 m. It needs some Rust.
 >   end in that function's known local minimum instead. An *evaluation* is one call of your model:
 >   here, one flight. Over the 20 seeds, the median number of evaluations is within 25% of
 >   pycma's, the method's author's own Python implementation run from the same starts. That 25% is
->   the test's bound; measured, they are within 5%. Every generation's update is also recomputed
->   by a separate implementation of the published formulas, and agrees to rounding
+>   the test's bound; measured, they are within 5%. Twelve generations of a three-variable run are
+>   also recomputed by a separate implementation of the published formulas, and agree to rounding
 >   ([`tests/optimize.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/optimize.rs)).
->   A run is repeated bit for bit from its [seed](glossary.md#seed).
+>   A run is repeated bit for bit from its [seed](glossary.md#seed) (`a_seed_fixes_the_run` in
+>   [`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
 > - **Checked by re-flying:** the rocket design the example finds is flown again from scratch,
 >   and again with the flight's numerical integration 100 times stricter
 >   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m.
@@ -93,7 +94,7 @@ A run stops at the first of these ([`Stop`]):
 | `TolX` | the cloud has shrunk below 10⁻¹² of each variable's step: the run has converged |
 | `TolFun` | the values have stopped changing by more than 10⁻¹², in your model's units |
 | `Condition` | the cloud is 10⁷ times longer than it is wide, too thin to keep accurate, or its numbers have overflowed |
-| `Bounds` | a design of a generation couldn't be drawn inside the bounds |
+| `Bounds` | a design of a generation couldn't be drawn inside the bounds (in the first generation, `start` returns an error instead) |
 
 Both tolerances can be changed or turned off (`with_tolerance_x`, `with_tolerance_value`).
 
@@ -149,8 +150,10 @@ run each function from 20 seeds and check:
 
 The tests catch real faults. Without the step that learns the cloud's shape from a generation's
 better half (the *rank-μ update*, μ being the size of that half), the ellipsoid takes a third more
-evaluations (7,875) and the pycma comparison fails. Three other faults a reviewer found it would
-miss fail the second implementation's check. These were one-off checks, recorded in
+evaluations (7,875) and the pycma comparison fails. A reviewer found three faults the pycma
+comparison misses: the shape's learning never paused, the pause's test off by one generation, and
+the mean's step not scaled back to the variable's units. Each fails the second implementation's
+check. These were one-off checks, recorded in
 [ADR-138](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-138-optimization-cma-es-first-held-to-test-functions-and-to-pycma-2026-10-01)
 (the decision record for this work), not run in CI.
 
@@ -213,7 +216,7 @@ Start: 0.300 kg of ballast, a 1.000 m body: apogee 3128.8 m
 Found: 0.991 kg of ballast, a 0.808 m body, in 78 flights (13 generations, stopped: Target)
 Flown again: apogee 3047.914 m (miss -0.086 m)
 Flown again, tolerances 100 times tighter: apogee 3047.916 m (miss -0.084 m)
-Static margin of the winner at launch (not constrained): 2.53 calibres
+Static margin of the winner at launch mass, Mach 0.3 (not constrained): 2.53 calibres
 ```
 
 The rocket started 81 m too high. The optimizer found a hit in 78 flights. It didn't find *the*
@@ -225,8 +228,8 @@ number you minimize: a small penalty on the ballast mass, say. Or fix one variab
 the other alone.
 
 Limits such as a minimum stability margin are not handled yet, so check the winner's margin
-yourself. The example prints it with `Rocket::static_margin_cal` (2.53
-[calibres](glossary.md#calibre-caliber) at launch).
+yourself. The example prints it with `Rocket::static_margin_cal`: 2.53
+[calibres](glossary.md#calibre-caliber) at launch mass, at Mach 0.3.
 
 ## Evaluating designs your own way
 

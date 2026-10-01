@@ -59,12 +59,12 @@
 //! up ([`Stop::Evaluations`]), the distribution's spread and its evolution path below a tolerance
 //! in every variable ([`Stop::TolX`]), the best values of the last `10 + ⌈30 n/λ⌉` generations
 //! and every value of the last one all within a tolerance ([`Stop::TolFun`]), the covariance's
-//! condition number above 10¹⁴ or a step size that has overflowed ([`Stop::Condition`]), or a
+//! condition number above 10¹⁴ or a step or candidate that has overflowed ([`Stop::Condition`]), or a
 //! candidate that can't be drawn inside the bounds ([`Stop::Bounds`]). These are the tutorial's
 //! TolX, TolFun and ConditionCov (B.3, pp. 33–34), with its suggested 10⁻¹² for both tolerances,
 //! TolX's taken in the scaled variables, so as a fraction of each one's step. Its NoEffectAxis,
-//! NoEffectCoord, Stagnation and TolXUp tests are left out: a run that diverges ends when its
-//! numbers overflow, or at the evaluation cap.
+//! NoEffectCoord, Stagnation and TolXUp tests are left out: a run that diverges ends at
+//! [`Stop::Condition`], or at the evaluation cap.
 //!
 //! # A run with no finite value
 //!
@@ -144,7 +144,8 @@ pub enum Stop {
     TolX,
     /// The values stopped changing by more than the tolerance: converged in the output.
     TolFun,
-    /// The covariance's condition number passed [`MAX_CONDITION`], or the step size overflowed.
+    /// The covariance's condition number passed [`MAX_CONDITION`], or the step size or a
+    /// candidate overflowed: the run has diverged, or its distribution has degenerated.
     Condition,
     /// A candidate of a generation didn't fall inside the bounds in [`MAX_DRAWS`] tries.
     Bounds,
@@ -156,7 +157,9 @@ pub enum Stop {
 pub struct Optimum {
     /// The best point evaluated, one value per variable, in the variables' order.
     pub point: Vec<f64>,
-    /// The model's value there: `+∞` if no candidate gave a finite value.
+    /// The model's value there: `+∞` if no candidate gave a finite value (serialized as `null`,
+    /// which reads back as `+∞`).
+    #[serde(deserialize_with = "null_as_infinity")]
     pub value: f64,
     /// Which evaluation found it, counted from 1.
     pub evaluation: usize,
@@ -167,10 +170,18 @@ pub struct Optimum {
     /// The distribution's final mean.
     pub mean: Vec<f64>,
     /// The distribution's largest standard deviation in any one variable, in that variable's
-    /// units: the largest `σ √Cᵢᵢ` times the variable's step.
+    /// units: the largest `σ √Cᵢᵢ` times the variable's step; `+∞` once the step size has
+    /// overflowed (serialized as `null`, which reads back as `+∞`).
+    #[serde(deserialize_with = "null_as_infinity")]
     pub spread: f64,
     /// Why it stopped.
     pub stop: Stop,
+}
+
+/// Reads a number written by `serde_json`, which writes `±∞` as `null`: `null` reads back as `+∞`,
+/// the only infinity an [`Optimum`] holds.
+fn null_as_infinity<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+    Ok(Option::<f64>::deserialize(deserializer)?.unwrap_or(f64::INFINITY))
 }
 
 impl Cmaes {
@@ -297,13 +308,18 @@ impl Cmaes {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::OutOfBounds`] if a first candidate can't be drawn inside the bounds.
+    /// [`AnalysisError::OutOfBounds`] if a first candidate can't be drawn inside the bounds, and
+    /// [`AnalysisError::Domain`] if one overflows (steps near `f64::MAX`).
     pub fn start(&self, seed: u64) -> Result<Run, AnalysisError> {
         let mut run = Run::new(self, seed);
-        if !run.draw() {
-            return Err(AnalysisError::OutOfBounds { draws: MAX_DRAWS });
+        match run.draw() {
+            None => Ok(run),
+            Some(Stop::Bounds) => Err(AnalysisError::OutOfBounds { draws: MAX_DRAWS }),
+            Some(_) => Err(AnalysisError::Domain {
+                what: "first candidate (not finite: the steps are too large)",
+                value: f64::INFINITY,
+            }),
         }
-        Ok(run)
     }
 
     /// Minimizes `model` from `seed`, evaluating each candidate in turn.
@@ -339,8 +355,9 @@ fn check_tolerance(what: &'static str, tolerance: f64) -> Result<f64, AnalysisEr
 }
 
 /// The strategy's parameters for `n` variables and population `λ`: the tutorial's Table 1 with
-/// the negative weights set to zero. [`Run::parameters`] gives a run's.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// the negative weights set to zero. [`Run::parameters`] gives a run's; they serialize, but
+/// aren't read back, as nothing takes them in.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct Parameters {
     /// `μ = ⌊λ/2⌋`, the candidates that move the mean.
@@ -556,8 +573,8 @@ impl Run {
         self.generation += 1;
         self.history.push(values[first]);
         self.stop = self.check_stop(values);
-        if self.stop.is_none() && !self.draw() {
-            self.stop = Some(Stop::Bounds);
+        if self.stop.is_none() {
+            self.stop = self.draw();
         }
         Ok(self.stop.map(|stop| self.optimum(stop)))
     }
@@ -636,9 +653,15 @@ impl Run {
         let d_max = self.d.iter().copied().fold(0.0, f64::max);
         let d_min = self.d.iter().copied().fold(f64::INFINITY, f64::min);
         // Written so that a NaN in D or σ stops the run too.
+        // And in the variables' own units, where a step above 1 overflows first.
+        let finite = (0..n).all(|i| {
+            (self.sigma * self.c[i * n + i].sqrt() * self.scale[i]).is_finite()
+                && self.mean[i].is_finite()
+        });
         if !(d_min > 0.0
             && d_max / d_min <= MAX_CONDITION.sqrt()
-            && (self.sigma * d_max).is_finite())
+            && (self.sigma * d_max).is_finite()
+            && finite)
         {
             return Some(Stop::Condition);
         }
@@ -666,9 +689,10 @@ impl Run {
         None
     }
 
-    /// Draws the next generation's candidates, each from its own stream; `false` if one can't be
-    /// drawn inside the bounds, or with finite values.
-    fn draw(&mut self) -> bool {
+    /// Draws the next generation's candidates, each from its own stream. Returns why the run must
+    /// stop instead: [`Stop::Bounds`] if one can't be drawn inside the bounds, [`Stop::Condition`]
+    /// if one overflows.
+    fn draw(&mut self) -> Option<Stop> {
         let n = self.n;
         self.candidates.clear();
         self.steps.clear();
@@ -685,7 +709,7 @@ impl Run {
         for k in 0..self.lambda {
             // Casts: a generation and a candidate's place are far below 2⁶⁴.
             let mut rng = SeededRng::for_stream(self.seed, &[self.generation as u64, k as u64]);
-            let mut inside = false;
+            let mut drawn = None;
             for _ in 0..MAX_DRAWS {
                 z.iter_mut().for_each(|zi| *zi = rng.standard_normal());
                 for (yi, row) in y.iter_mut().zip(bd.chunks_exact(n)) {
@@ -694,23 +718,25 @@ impl Run {
                 for i in 0..n {
                     x[i] = self.mean[i] + self.sigma * self.scale[i] * y[i];
                 }
-                if x.iter()
-                    .zip(&self.variables)
-                    .all(|(xi, v)| xi.is_finite() && v.contains(*xi))
-                {
-                    inside = true;
+                if !x.iter().all(|xi| xi.is_finite()) {
+                    drawn = Some(Stop::Condition);
                     break;
                 }
+                if x.iter().zip(&self.variables).all(|(xi, v)| v.contains(*xi)) {
+                    drawn = None;
+                    self.candidates.push(x.clone());
+                    self.steps.push(y.clone());
+                    break;
+                }
+                drawn = Some(Stop::Bounds);
             }
-            if !inside {
+            if drawn.is_some() {
                 self.candidates.clear();
                 self.steps.clear();
-                return false;
+                return drawn;
             }
-            self.candidates.push(x.clone());
-            self.steps.push(y.clone());
         }
-        true
+        None
     }
 
     /// What the run has found, stopped for `stop`.
@@ -718,8 +744,11 @@ impl Run {
         self.candidates.clear();
         self.steps.clear();
         let n = self.n;
+        // A NaN here can only come of an overflowed σ times a zero: count it as infinite, as
+        // `f64::max` would drop it.
         let spread = (0..n)
             .map(|i| self.sigma * self.c[i * n + i].sqrt() * self.scale[i])
+            .map(|t| if t.is_nan() { f64::INFINITY } else { t })
             .fold(0.0, f64::max);
         // A run is only told after a generation is evaluated, so there is a best point; the
         // default is never used.
@@ -964,5 +993,64 @@ mod tests {
             .minimize(1, |x| x[0] * x[0] + 1e16 * x[1] * x[1])
             .unwrap();
         assert_eq!(optimum.stop, Stop::Condition);
+    }
+
+    /// Steps 10⁸ apart, on a sphere scaled to match: the run works in the scaled variables, so it
+    /// converges (a run on the unscaled covariance stopped at its condition limit after one
+    /// generation), and the x tolerance is a fraction of each variable's own step.
+    #[test]
+    fn steps_far_apart_converge_alike() {
+        let steps = [1e-4, 1e4];
+        let vars = vec![
+            Variable::new("small", steps[0], steps[0]).unwrap(),
+            Variable::new("large", steps[1], steps[1]).unwrap(),
+        ];
+        let model = |x: &[f64]| (x[0] / 1e-4).powi(2) + (x[1] / 1e4).powi(2);
+        let cmaes = Cmaes::new(vars)
+            .unwrap()
+            .with_tolerance_x(1e-6)
+            .unwrap()
+            .with_tolerance_value(0.0)
+            .unwrap();
+        let mut run = cmaes.start(1).unwrap();
+        let optimum = loop {
+            let values: Vec<f64> = run.candidates().iter().map(|x| model(x)).collect();
+            if let Some(optimum) = run.tell(&values).unwrap() {
+                break optimum;
+            }
+        };
+        assert_eq!(optimum.stop, Stop::TolX);
+        assert!(optimum.value < 1e-10, "{}", optimum.value);
+        for i in 0..2 {
+            let sd = run.sigma() * run.covariance()[i * 2 + i].sqrt();
+            assert!(sd < 1e-6, "variable {i}: {sd} of its step");
+        }
+        assert!(optimum.spread < 1e-6 * steps[1]);
+    }
+
+    /// A run whose every value is `+∞`, and one that diverges, give infinities that read back.
+    #[test]
+    fn infinite_results_read_back() {
+        let cmaes = Cmaes::new(variables(1, 0.0, 1.0))
+            .unwrap()
+            .with_max_evaluations(50)
+            .unwrap();
+        let failed = cmaes.minimize(1, |_| f64::INFINITY).unwrap();
+        assert_eq!(failed.value, f64::INFINITY);
+        let json = serde_json::to_string(&failed).unwrap();
+        assert_eq!(serde_json::from_str::<Optimum>(&json).unwrap(), failed);
+        // Unbounded below and a step above 1: the variable's own units overflow first, and the
+        // run says so as `Condition`, not `Bounds`.
+        let vars = vec![Variable::new("x", 0.0, 1000.0).unwrap()];
+        let diverged = Cmaes::new(vars)
+            .unwrap()
+            .with_max_evaluations(1_000_000)
+            .unwrap()
+            .minimize(7, |x| x[0])
+            .unwrap();
+        assert_eq!(diverged.stop, Stop::Condition);
+        let json = serde_json::to_string(&diverged).unwrap();
+        let back = serde_json::from_str::<Optimum>(&json).unwrap();
+        assert_eq!(back.spread, diverged.spread);
     }
 }

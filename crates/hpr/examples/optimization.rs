@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 /// A test function of ten variables.
 type TestFunction = fn(&[f64]) -> f64;
 
-/// CMA-ES on the four test functions, ten variables each, to within 10⁻¹⁰ of their minima.
+/// CMA-ES on the four test functions, ten variables each, until the value is 10⁻¹⁰ or less.
 fn test_functions(seed: u64) -> Result<(), Box<dyn Error>> {
     println!("CMA-ES on four test functions, 10 variables, run to f ≤ 1e-10 (seed {seed})");
     println!("function            start   evaluations   best value   distance to the minimum");
@@ -197,7 +197,9 @@ fn hit_the_target(seed: u64) -> Result<(), Box<dyn Error>> {
     let margin = rocket(ballast_kg, body_m)?
         .static_margin_cal(0.0, 0.3)?
         .ok_or("no margin")?;
-    println!("Static margin of the winner at launch (not constrained): {margin:.2} calibres");
+    println!(
+        "Static margin of the winner at launch mass, Mach 0.3 (not constrained): {margin:.2} calibres"
+    );
     if (again - TARGET_M).powi(2) != optimum.value {
         return Err("the winner flown again doesn't give the optimizer's apogee".into());
     }
