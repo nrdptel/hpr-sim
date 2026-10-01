@@ -46,6 +46,14 @@ pub enum AnalysisError {
         /// The length it should have.
         expected: usize,
     },
+    /// A model's output that isn't a finite number, at the given point of a sensitivity design.
+    #[error("the output at point {index} is not finite: {value}")]
+    Output {
+        /// The point's index in the design's order.
+        index: usize,
+        /// The output.
+        value: f64,
+    },
     /// A rocket configuration the design doesn't have.
     #[error("no configuration {0:?} in the design")]
     NoConfiguration(String),

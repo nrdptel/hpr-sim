@@ -439,6 +439,10 @@ use a motor's delay as its trigger. See [Solid motors](physics/motor.md#delays) 
 [Recovery](physics/recovery.md#triggers-lag-and-release).
 
 
+## Elementary effect
+
+In [Morris's screening](#sensitivity-analysis), the change in a result when one input steps part of its range with the others held, scaled to the input's whole range. The mean of their sizes, `μ*`, ranks the inputs. See [Sensitivity analysis](sensitivity.md#morris-screening).
+
 ## Ellipsoidal height
 
 Height above the [WGS 84](#wgs-84) ellipsoid, measured along the ellipsoid's normal, in metres. It
@@ -1031,6 +1035,10 @@ Writing a very small or very large number as a power of ten, the way programs pr
 
 A number that starts a random-number generator. The same seed gives the same sequence of numbers, so a run that uses random numbers, such as [turbulence](#turbulence-dryden) or a [Monte Carlo](#monte-carlo) run, repeats exactly on the same platform (operating system and processor). The program that runs it chooses the seed. On another platform each random draw can differ in its last binary digit, and over a whole flight such differences can grow. See [Turbulence](physics/turbulence.md#generator).
 
+## Sensitivity analysis
+
+Finding which uncertain inputs move a result most, so you know which to measure carefully and which don't matter. hpr has Morris's screening, which ranks inputs from a few runs each through their [elementary effects](#elementary-effect), and [Sobol' indices](#sobol-index), which share out the result's variance. See [Sensitivity analysis](sensitivity.md).
+
 ## Separation
 
 A stack coming apart for recovery. At its trigger hpr splits the rocket into bodies (body 0 keeps
@@ -1067,6 +1075,10 @@ it, or rides in a boattail's wake; a nose too blunt for its cap); NASA's wind tu
 body lifting more past Mach 3. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
+
+## Sobol' index
+
+The share of a result's [variance](#variance) that one uncertain input causes: alone (its first-order index), or alone and together with the others (its total index). Named after I. M. Sobol', who defined them. See [Sensitivity analysis](sensitivity.md#sobol-indices).
 
 ## Sounding
 
@@ -1297,6 +1309,10 @@ source* (printed tables and worked examples), *another code*
 ([code-to-code comparison](#code-to-code-comparison)), and *real flights*. See
 [Accuracy](accuracy.md).
 
+
+## Variance
+
+The square of the [standard deviation](#standard-deviation): the mean squared distance of a quantity from its mean. Unlike standard deviations, the variances that independent causes contribute add up, which is why [Sobol' indices](#sobol-index) share out the variance. See [Sensitivity analysis](sensitivity.md#sobol-indices).
 
 ## Vertical datum
 

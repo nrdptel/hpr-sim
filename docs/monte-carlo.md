@@ -319,9 +319,9 @@ The edition in force today hasn't been checked.
 
 The run gives each flight's whole [`FlightSummary`](api/hpr_sim/metrics/struct.FlightSummary.html),
 so any number a flight reports can be spread with `run.distribution(...)`, as the example does for
-the landing. Still to come in [M6.1](decisions-and-roadmap.md#m6-1):
-sensitivity analysis, which input moves the apogee most ([M6.1c](decisions-and-roadmap.md#m6-1c));
-and 10,000 flights in seconds ([M6.1d](decisions-and-roadmap.md#m6-1d)).
+the landing. To find which input moves the apogee most, see
+[Sensitivity analysis](sensitivity.md). Still to come in [M6.1](decisions-and-roadmap.md#m6-1):
+10,000 flights in seconds ([M6.1d](decisions-and-roadmap.md#m6-1d)).
 
 The API reference is [`hpr_analysis::montecarlo`](api/hpr_analysis/montecarlo/index.html),
 [`hpr_analysis::statistics`](api/hpr_analysis/statistics/index.html) and

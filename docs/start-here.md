@@ -146,8 +146,9 @@ out.
   [Monte Carlo](glossary.md#monte-carlo) run flies a rocket many times with its mass, drag, motor,
   wind and rail scattered, seeded and reproducible ([Monte Carlo dispersion](monte-carlo.md)), and
   draws the ellipse its landings fall in ([Landing ellipses](monte-carlo.md#landing-ellipses)).
-  Sensitivity analysis comes with [M6.1c](decisions-and-roadmap.md#m6-1c). No optimization or app
-  yet: they are on the [roadmap][roadmap].
+  Morris screening and Sobol' indices rank which inputs matter most
+  ([Sensitivity analysis](sensitivity.md)). No optimization or app yet: they are on the
+  [roadmap][roadmap].
 - **The flight-log analyzer reads one logger so far.** `hpr analyze` reads a PerfectFlite
   altimeter's `.pf2` log on its own, with no design file and no simulation, and prints liftoff,
   apogee, the top speed, landing and the descent, each saying where it came from, or withheld with

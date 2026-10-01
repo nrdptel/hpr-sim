@@ -16,6 +16,8 @@
 
 [Monte Carlo dispersion](monte-carlo.md)
 
+[Sensitivity analysis](sensitivity.md)
+
 [The command line](cli.md)
 
 [Online data and the cache](online-data.md)
