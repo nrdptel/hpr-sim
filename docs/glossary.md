@@ -820,8 +820,8 @@ OpenRocket milestone: its mass comparison is done
 An independent program run to produce [reference values](#reference-value-and-fixture) for hpr's
 tests. Usually it is another simulator: RocketPy 1.13.0, and OpenRocket 24.12, so far for mass and
 the reading of `.ork` files. Scripts that
-evaluate a published formula in high precision, and ThrustCurve.org's own statistics code, serve as
-oracles too; all of them live under `validation/oracles/`. See
+evaluate a published formula in high precision, ThrustCurve.org's own statistics code, and GDAL
+(through rasterio) for elevation files, serve as oracles too; all of them live under `validation/oracles/`. See
 [Recovery](physics/recovery.md#against-rocketpy) and the [list of simulator oracles][oracles].
 
 
@@ -1267,8 +1267,10 @@ source* (printed tables and worked examples), *another code*
 ## Vertical datum
 
 The surface heights are measured from. NAVD88, the North American Vertical Datum of 1988, and
-EGM2008, a worldwide model of the geoid, are both models of sea level, so hpr takes heights above
-them as [heights above sea level](#height-above-sea-level-msl); an
+EGM2008, a worldwide model of the geoid, are both within about a metre of the geoid (NAVD88 was
+levelled from a tide gauge, and is about half a metre off and tilted about a metre coast to coast:
+[NGS](https://geodesy.noaa.gov/datums/newdatums/index.shtml)), so hpr takes heights above them as
+[heights above sea level](#height-above-sea-level-msl); an
 [ellipsoidal height](#ellipsoidal-height) is measured from the ellipsoid instead. See
 [A launch site's elevation](elevation.md#what-the-height-means).
 

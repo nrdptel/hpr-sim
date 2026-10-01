@@ -384,10 +384,11 @@ fn vertical_units_convert_to_metres() {
             true,
         ),
         (&[(4096, 5703)], Some(5703), VerticalUnit::Metre, true),
-        // The stated unit wins over the CRS's.
+        // A CRS this reader doesn't know takes the stated unit (one disagreeing with a CRS it
+        // knows is refused: `a_unit_key_against_its_vertical_crs_is_refused`).
         (
-            &[(4096, 5703), (4099, 9003)],
-            Some(5703),
+            &[(4096, 5705), (4099, 9003)],
+            Some(5705),
             VerticalUnit::UsSurveyFoot,
             true,
         ),
@@ -1016,6 +1017,10 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
         vec![(4098, 5103)],
         vec![(4096, 32767), (4099, 9001)],
         vec![(4096, 5705), (4099, 9001)],
+        // A known vertical CRS beside a datum key GDAL may resolve away (a private one, or 6030
+        // beside WGS 84, which GDAL turns into WGS 84 3D).
+        vec![(4096, 5703), (4098, 40_000)],
+        vec![(4096, 5703), (4098, 6030)],
     ] {
         let bytes = with_z_keys(&directory(&keys(&more)), 0.1, 0.0, 1000.0, None);
         assert!(
@@ -1025,10 +1030,20 @@ fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
             ),
             "{more:?}"
         );
-        // With no heights in the tags, the same keys read.
-        let bytes = with_z_keys(&directory(&keys(&more)), 0.0, 0.0, 0.0, None);
-        assert!(ElevationRaster::parse(&bytes).is_ok(), "{more:?}");
+        // With no heights in the tags, or GDAL's own S_z 1 and Z₀ 0, the same keys read.
+        for z in [(0.0, 0.0), (1.0, 0.0)] {
+            let bytes = with_z_keys(&directory(&keys(&more)), z.0, 0.0, z.1, None);
+            let info = ElevationRaster::parse(&bytes).unwrap().info().clone();
+            assert_eq!((info.scale, info.offset), (1.0, 0.0), "{more:?}");
+        }
     }
+    // A vertical CRS beside WGS 84 3D: GDAL drops the vertical part.
+    let wgs84_3d = [(1024, 2), (1025, 1), (2048, 4979), (4096, 5703)];
+    let bytes = with_z_keys(&directory(&wgs84_3d), 0.1, 0.0, 1000.0, None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("heights in ModelPixelScaleTag")
+    ));
 }
 
 #[test]
@@ -1097,23 +1112,94 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
             ..
         })
     ));
-    // GDAL reads a sample as an integer, and skips an item with a domain or without a name, and
-    // a root that is not GDALMetadata.
+    // As GDAL 3.12.2 reads them (each measured through rasterio): a sample by C's `atoi`, any
+    // domain but IMAGE_STRUCTURE, the element names in either case.
     let scale = |attributes: &str| item(attributes, "0.5");
-    assert_eq!(
-        parse(&wgs84, &scale(r#"name="S" sample=" 0" role="scale""#))
-            .unwrap()
-            .scale,
-        0.5
-    );
-    for skipped in [
+    for read in [
+        scale(r#"name="S" sample=" 0" role="scale""#),
+        scale(r#"name="S" sample="0.0" role="scale""#),
+        scale(r#"name="S" sample="x" role="scale""#),
+        scale(r#"name="S" sample="" role="scale""#),
         scale(r#"name="S" sample="0" role="scale" domain="x""#),
+        scale(r#"name="S" sample="0" role="scale" domain="""#),
+        r#"<gdalmetadata><item name="S" sample="0" role="scale">0.5</item></gdalmetadata>"#
+            .to_string(),
+    ] {
+        assert_eq!(parse(&wgs84, &read).unwrap().scale, 0.5, "{read}");
+    }
+    // Skipped: no name, no sample, another band, IMAGE_STRUCTURE, another root.
+    for skipped in [
         scale(r#"sample="0" role="scale""#),
+        scale(r#"name="S" role="scale""#),
         scale(r#"name="S" sample="1" role="scale""#),
+        scale(r#"name="S" sample="-1" role="scale""#),
+        scale(r#"name="S" sample="0" role="scale" domain="image_structure""#),
         r#"<Other><Item name="S" sample="0" role="scale">0.5</Item></Other>"#.to_string(),
     ] {
         assert_eq!(parse(&wgs84, &skipped).unwrap().scale, 1.0, "{skipped}");
     }
+    // An empty item is skipped, so it doesn't undo the unit before it.
+    let two = "<GDALMetadata><Item name=\"U\" sample=\"0\" role=\"unittype\">ft</Item>\
+               <Item name=\"U\" sample=\"0\" role=\"unittype\"></Item></GDALMetadata>";
+    assert_eq!(
+        parse(&wgs84, two).unwrap().vertical_unit,
+        VerticalUnit::Foot
+    );
+}
+
+#[test]
+fn atoi_reads_as_c_does() {
+    for (text, value) in [
+        ("0", 0),
+        (" 12x", 12),
+        ("-3", -3),
+        ("+4", 4),
+        ("x", 0),
+        ("", 0),
+        ("0.9", 0),
+    ] {
+        assert_eq!(atoi(text), value, "{text:?}");
+    }
+}
+
+#[test]
+fn a_unit_key_against_its_vertical_crs_is_refused() {
+    // NAVD88 in metres (5703) with US survey feet (9003): GDAL takes metres, a writer may mean
+    // feet.
+    let keys = [(1024, 2), (2048, 4326), (4096, 5703), (4099, 9003)];
+    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a vertical unit given twice")
+    ));
+    // Agreeing, it reads.
+    let keys = [(1024, 2), (2048, 4326), (4096, 5703), (4099, 9001)];
+    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+    assert!(ElevationRaster::parse(&bytes).is_ok());
+}
+
+#[test]
+fn a_later_image_the_decoder_cannot_read_is_not_a_mask() {
+    // A second directory holding only ImageWidth: not an image, so not a mask GDAL would apply.
+    let mut bytes = small_wgs84();
+    let first = usize::try_from(u32::from_le_bytes(bytes[4..8].try_into().unwrap())).unwrap();
+    let entries = usize::from(u16::from_le_bytes(
+        bytes[first..first + 2].try_into().unwrap(),
+    ));
+    let next = first + 2 + 12 * entries;
+    if bytes.len() % 2 == 1 {
+        bytes.push(0);
+    }
+    let second = u32::try_from(bytes.len()).unwrap();
+    bytes[next..next + 4].copy_from_slice(&second.to_le_bytes());
+    bytes.extend(1_u16.to_le_bytes());
+    bytes.extend(256_u16.to_le_bytes());
+    bytes.extend(4_u16.to_le_bytes());
+    bytes.extend(1_u32.to_le_bytes());
+    bytes.extend(2_u32.to_le_bytes());
+    bytes.extend(0_u32.to_le_bytes());
+    let raster = ElevationRaster::parse(&bytes).unwrap();
+    assert_eq!(raster.value_at(19.6, 11.2).unwrap(), Some(12.0));
 }
 
 #[test]
