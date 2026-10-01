@@ -648,6 +648,60 @@ dest = "refs/sources/wmm2025/WMM2025_TEST_VALUES.txt"
 license = "public domain"
 mode = "fetched"
 
+[[file]]
+name = "nfpa-1125-2021-first-revisions"
+title = "NFPA 1125, Code for the Manufacture of Model Rocket and High Power Rocket Motors, revision cycle A2021: First Draft Report, First Revisions (FR-7, FR-8: §8.1.7 and §8.2.7)"
+url = "https://docinfofiles.nfpa.org/files/AboutTheCodes/1125/1125_A2021_PYR_AAA_FD_FRStatements.pdf"
+sha256 = "7b271e35d7b0998792957d579d56f23488a3c8dbf49b77a7ccb2fbdd19f057b8"
+dest = "refs/papers/nfpa-1125-2021-first-revisions.pdf"
+license = "NFPA copyright"
+mode = "fetched"
+
+[[file]]
+name = "nfpa-1125-2019-public-inputs"
+title = "NFPA 1125, revision cycle A2021: First Draft Report, Public Input Responses (PI-4 and PI-5 quote the 2019 edition's §8.2.7 and §8.1.7)"
+url = "https://docinfofiles.nfpa.org/files/AboutTheCodes/1125/1125_A2021_PYR_AAA_FD_PIResponses.pdf"
+sha256 = "398489b37016ba749027e457760136e6b07a92f76bd723d6eb587229d56e7582"
+dest = "refs/papers/nfpa-1125-2019-public-inputs.pdf"
+license = "NFPA copyright"
+mode = "fetched"
+
+[[file]]
+name = "nar-cert-estes-c6"
+title = "NAR Standards and Testing, certification data sheet: Estes C6, 1995"
+url = "https://www.thrustcurve.org/motors/cert/62e14a0ad917b20004b6c840/C6.pdf"
+sha256 = "230823963094404b17699e894859858eb415b79a8790b9c9b50ee25521558b6e"
+dest = "refs/papers/nar-cert-estes-c6.pdf"
+license = "NAR copyright"
+mode = "fetched"
+
+[[file]]
+name = "nar-cert-estes-d12"
+title = "NAR Standards and Testing, certification data sheet: Estes D12, 1994"
+url = "https://www.thrustcurve.org/motors/cert/62e14acfd917b20004b6c844/D12.pdf"
+sha256 = "5cbfb275eb5ba38919918480c2e6caefcb650b828071ac60d21d24731908e6f2"
+dest = "refs/papers/nar-cert-estes-d12.pdf"
+license = "NAR copyright"
+mode = "fetched"
+
+[[file]]
+name = "nar-cert-estes-e12"
+title = "NAR Standards and Testing, certification data sheet: Estes E12, 2011"
+url = "https://www.thrustcurve.org/motors/cert/60c63bfcb5bc370004713e93/E12.pdf"
+sha256 = "6737bde2d40cf0d790d6bf7cb67d0d5e98d18aa1dcfc1dacc2bb38ec1a5580af"
+dest = "refs/papers/nar-cert-estes-e12.pdf"
+license = "NAR copyright"
+mode = "fetched"
+
+[[file]]
+name = "nar-cert-aerotech-g80"
+title = "NAR Standards and Testing, certification data sheet: AeroTech G80T, 2007"
+url = "https://www.thrustcurve.org/motors/cert/60c63bfcb5bc370004713e8f/G80-20071207.pdf"
+sha256 = "3a438d86b738e75003f2215b4ac8c5e6f6580afd371ef518d3d02538bb9ba62a"
+dest = "refs/papers/nar-cert-aerotech-g80.pdf"
+license = "NAR copyright"
+mode = "fetched"
+
 # Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor
 # finder hourly), so a fresh fetch elsewhere may not reproduce these bytes: fetch then fails and
 # keeps the new capture aside, and `fetch --adopt-snapshots` repins to it.

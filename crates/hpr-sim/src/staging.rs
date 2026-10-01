@@ -739,6 +739,49 @@ mod tests {
     }
 
     #[test]
+    fn a_drag_scale_holds_through_a_powered_separation() {
+        // A drag scale isn't the whole stack's, as a table is: the sustainer lit after the
+        // separation keeps it. Across the separation the axial coefficient steps from the stack's
+        // to the sustainer's, a few milliseconds apart at one Mach number. Scaled on both sides,
+        // the step is the unscaled flight's; dropped at the separation, it would be smaller by
+        // the scale: −4.5% here, with the scale left off the sustainer. The two flights reach
+        // the separation at Mach 1.037 and 1.009, which moves the step by 0.25%.
+        let rocket = two_stage(Ignition::Burnout {
+            mount: BOOSTER_MOUNT.to_owned(),
+            delay_s: 1.0,
+        });
+        let step = |scale: f64| {
+            let sim = staged(&rocket, |sim| {
+                Separation::new(
+                    Trigger::Burnout {
+                        motor: motor_index(sim, BOOSTER_MOUNT),
+                        delay_s: 0.5,
+                    },
+                    0,
+                )
+            })
+            .with_drag_scale(scale)
+            .unwrap();
+            let mut starts = StepStarts::default();
+            let result = sim.run(&mut starts).unwrap();
+            let separated_s = time_of(&result, EventKind::Separation);
+            let before = starts.0.iter().rfind(|s| s.time_s < separated_s).unwrap();
+            let after = starts.0.iter().find(|s| s.time_s > separated_s).unwrap();
+            (
+                after.axial_coefficient / before.axial_coefficient,
+                before.mach,
+            )
+        };
+        let (plain, plain_mach) = step(1.0);
+        let (scaled, scaled_mach) = step(1.05);
+        let change = scaled / plain - 1.0;
+        assert!(
+            change.abs() < 0.005,
+            "{change}: {plain} {scaled} at Mach {plain_mach} and {scaled_mach}"
+        );
+    }
+
+    #[test]
     fn staging_refuses_what_it_cannot_fly() {
         // A drag table or drag model is the whole stack's; the sustainer would fly it on the
         // wrong shape.

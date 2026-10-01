@@ -16,4 +16,20 @@ workspace = true
 wasm = true
 
 [dependencies]
+hpr-aero.workspace = true
+hpr-atmos.workspace = true
+hpr-core.workspace = true
+hpr-design.workspace = true
+hpr-motor.workspace = true
 hpr-sim.workspace = true
+rayon = { workspace = true, optional = true }
+serde.workspace = true
+thiserror.workspace = true
+
+[features]
+# `MonteCarlo::run_parallel`: samples on worker threads (rayon). Off by default and never built
+# for wasm32 (`cargo xtask wasm-check` builds default features).
+parallel = ["dep:rayon"]
+
+[dev-dependencies]
+serde_json.workspace = true

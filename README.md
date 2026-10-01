@@ -31,7 +31,9 @@ Planned:
   [motor.fusionspace.co](https://motor.fusionspace.co), matched to ThrustCurve.org's thrust
   curves (in the library today; `hpr motors search` lists the stock and prices),
   all optional. Everything works offline on macOS, Windows and Linux.
-- Monte Carlo dispersion, sensitivity analysis, and optimization for competition challenges.
+- [Monte Carlo dispersion](https://nrdptel.github.io/hpr-sim/monte-carlo.html) (seeded and
+  reproducible, in the library today), sensitivity analysis, and optimization for competition
+  challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.
 - Later: a modern desktop/web/mobile UI with 3D flight replay.
 

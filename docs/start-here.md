@@ -49,6 +49,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
 | Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads the whole design: the stages and body components, the tubes, rings, fins, lugs and recovery gear on and inside them, the motor configurations, when parachutes open, and the simulations OpenRocket stored. The airframe's shape is cross-checked against a second reader and OpenRocket itself (positions against OpenRocket alone; mass and centre of gravity in [Mass properties](physics/mass.md#checked-against-openrocket)). Pods are read, weighed and flown, but no pod with bodies or fins has been checked against OpenRocket yet ([Pods](physics/aero.md#pods)), parallel stages are kept but not modelled, a part hpr cannot shape honestly is left out with a warning, and only a configuration whose motors all light at launch and have a thrust curve flies: 4 of the 170 in the reference library with the files' own curves and hpr's bundled catalog. A design is written back out as a `.ork` that reads back as the same design ([writing a `.ork`](format/ork.md#writing-a-ork-back-out)), and `hpr convert` or a Rust program can keep it as a `.hpr`, hpr's own format, and write the `.ork` back from that. TypeScript and Python programs can read a `.hpr` with generated types ([The hpr design format](format/hpr.md)). OpenRocket's parts catalogue, the 16 `.orc` files it ships with 3,449 makers' parts, is built in and read as OpenRocket reads it; a program can look a part up, and the builder makes a rocket of the parts, each weighing what OpenRocket weighs it at but for a few departures the builder's page names ([Parts from a catalogue](the-builder.md#parts-from-a-catalogue), [`.orc` parts catalogues](format/orc.md)) | [`.ork` design files](format/ork.md), [The hpr design format](format/hpr.md), [`.orc` parts catalogues](format/orc.md) |
 | Flight logs | Reads a PerfectFlite altimeter's `.pf2` log on its own, with no design file, and takes liftoff, apogee, the top speed, landing and the descent from it, each saying where it came from or why the log can't support it | [Reading a flight log](reading-a-flight-log.md), [Flight-log readings](physics/log-readings.md), [`.pf2` files](format/pf2.md) |
+| Monte Carlo | One rocket flown many times with its mass, drag, motor, wind, rail and recovery delays scattered, seeded so a run repeats exactly; the spread of the apogee, the landing or any number a flight reports, with failed flights counted. From Rust; staged flights can't be scattered yet | [Monte Carlo dispersion](monte-carlo.md) |
 | Python | The `hpr` package: the builder's rocket, motor, site and flight from Python, with the recording as NumPy arrays and a design read from a file. Built from source, not on PyPI; no staging; a design read from a file flies without its stored parachutes, and most `.ork` configurations are refused as they don't fly as written | [Python](python.md) |
 
 ## What doesn't work yet
@@ -141,8 +142,12 @@ out.
   ([`.ork` design files](format/ork.md)), but few of its motor configurations fly as written, as
   hpr has few motors' curves, and its recovery settings are not flown. `hpr sim --motor` flies one
   with a motor you give ([The command line](cli.md#hpr-sim)).
-- **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization or
-  app.** They are on the [roadmap][roadmap].
+- **Monte Carlo runs give the apogee's spread, not yet a landing ellipse.** A
+  [Monte Carlo](glossary.md#monte-carlo) run flies a rocket many times with its mass, drag, motor,
+  wind and rail scattered, seeded and reproducible ([Monte Carlo dispersion](monte-carlo.md));
+  from Rust only so far. Landing ellipses and sensitivity analysis come with
+  [M6.1](decisions-and-roadmap.md#m6-1). No optimization or app yet: they are on the
+  [roadmap][roadmap].
 - **The flight-log analyzer reads one logger so far.** `hpr analyze` reads a PerfectFlite
   altimeter's `.pf2` log on its own, with no design file and no simulation, and prints liftoff,
   apogee, the top speed, landing and the descent, each saying where it came from, or withheld with

@@ -30,7 +30,12 @@ const SPLITMIX64_GAMMA: u64 = 0x9e37_79b9_7f4a_7c15;
 /// public-domain reference at <https://prng.di.unimi.it/splitmix64.c>).
 fn splitmix64(state: &mut u64) -> u64 {
     *state = state.wrapping_add(SPLITMIX64_GAMMA);
-    let mut z = *state;
+    mix64(*state)
+}
+
+/// SplitMix64's output function: a bijection on 64-bit words that scrambles every input bit into
+/// every output bit.
+fn mix64(mut z: u64) -> u64 {
     z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
     z ^ (z >> 31)
@@ -121,6 +126,25 @@ impl SeededRng {
         }
     }
 
+    /// A generator for one stream of a seeded run, keyed by `keys`: a Monte Carlo sample's index
+    /// and the variable it draws, say. The stream depends only on `seed` and `keys`, so a sample
+    /// draws the same numbers whatever else the run draws, however many samples it has and
+    /// however they are shared among threads: the counter-based idea of J. K. Salmon, M. A.
+    /// Moraes, R. O. Dror and D. E. Shaw, "Parallel random numbers: as easy as 1, 2, 3", *Proc.
+    /// SC11* (2011), <https://doi.org/10.1145/2063384.2063405>.
+    ///
+    /// The key folds into one word with SplitMix64's output function `mix`, a bijection on 64-bit
+    /// words: `h₀ = seed`, `hᵢ = mix(hᵢ₋₁ ⊕ mix(kᵢ + γ))` with `γ` SplitMix64's increment, and the
+    /// generator is [`SeededRng::seed_from_u64`]`(hₙ)`. Two different keys give the same `hₙ` only
+    /// by a collision of 64-bit hashes, about one chance in 2⁶⁴ for a pair of streams; with no
+    /// keys the stream is `seed_from_u64(seed)`'s.
+    pub fn for_stream(seed: u64, keys: &[u64]) -> Self {
+        let hash = keys.iter().fold(seed, |h, &key| {
+            mix64(h ^ mix64(key.wrapping_add(SPLITMIX64_GAMMA)))
+        });
+        Self::seed_from_u64(hash)
+    }
+
     /// The next 64 random bits (the xoshiro256++ output function and state transition).
     pub fn next_u64(&mut self) -> u64 {
         let s = &mut self.state;
@@ -193,6 +217,59 @@ mod tests {
         for _ in 0..100 {
             assert_eq!(splitmix64(&mut sm), theirs.next_u64());
         }
+    }
+
+    #[test]
+    fn a_stream_depends_only_on_its_seed_and_keys() {
+        // No keys: the seed's own stream.
+        assert_eq!(SeededRng::for_stream(42, &[]), SeededRng::seed_from_u64(42));
+        // The fold, written out: one key is mix(seed ^ mix(key + γ)), seeded by SplitMix64.
+        let mut sm = 7_u64;
+        let inner = splitmix64(&mut sm);
+        let mut outer = (42 ^ inner).wrapping_sub(SPLITMIX64_GAMMA);
+        assert_eq!(
+            SeededRng::for_stream(42, &[7]),
+            SeededRng::seed_from_u64(splitmix64(&mut outer))
+        );
+        // Repeatable, and different for a different seed, key, key order or key count.
+        let mut first = SeededRng::for_stream(1, &[3, 5]);
+        let mut again = SeededRng::for_stream(1, &[3, 5]);
+        let a: Vec<u64> = (0..4).map(|_| first.next_u64()).collect();
+        let b: Vec<u64> = (0..4).map(|_| again.next_u64()).collect();
+        assert_eq!(a, b);
+        let others = [
+            SeededRng::for_stream(2, &[3, 5]),
+            SeededRng::for_stream(1, &[3, 6]),
+            SeededRng::for_stream(1, &[5, 3]),
+            SeededRng::for_stream(1, &[3]),
+            SeededRng::for_stream(1, &[3, 5, 0]),
+        ];
+        for mut other in others {
+            assert_ne!(other.next_u64(), a[0]);
+        }
+    }
+
+    #[test]
+    fn neighbouring_streams_are_uncorrelated() {
+        // The first uniform of 20,000 streams keyed 0, 1, 2…: the mean and the lag-one
+        // correlation of independent uniforms, within four standard errors.
+        let n = 20_000_u64;
+        let u: Vec<f64> = (0..n)
+            .map(|k| SeededRng::for_stream(2026, &[k]).uniform())
+            .collect();
+        let count = n as f64;
+        let mean = u.iter().sum::<f64>() / count;
+        assert!(
+            (mean - 0.5).abs() < 4.0 * (1.0 / 12.0 / count).sqrt(),
+            "{mean}"
+        );
+        let lag: f64 = u
+            .windows(2)
+            .map(|w| (w[0] - 0.5) * (w[1] - 0.5))
+            .sum::<f64>()
+            / (count - 1.0)
+            * 12.0;
+        assert!(lag.abs() < 4.0 / (count - 1.0).sqrt(), "{lag}");
     }
 
     #[test]

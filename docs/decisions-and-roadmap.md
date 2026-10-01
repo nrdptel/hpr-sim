@@ -363,7 +363,11 @@ missing or its status disagrees.
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts: OpenRocket's parts files, looked up by maker and part number, and parts from them in a design; split in two ([ADR-132][adr-132]) | done |
 | <a id="m5-5a"></a>[M5.5a][phase-2] | The 16 `.orc` parts files OpenRocket ships, bundled and read, every part held to OpenRocket's own reading: 3,449 parts, 17,911 values to the bit, the rest counted with their causes ([ADR-132][adr-132], [OpenRocket `.orc` parts catalogues](format/orc.md)) | done |
 | <a id="m5-5b"></a>[M5.5b][phase-2] | Catalogue parts in the builder, and a rocket of them flown: all 3,449 parts built and held to what OpenRocket builds, the departures counted with their causes ([ADR-133][adr-133], [parts from a catalogue](the-builder.md#parts-from-a-catalogue)) | done |
-| <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
+| <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity; split in four ([ADR-134][adr-134]) | not yet done |
+| <a id="m6-1a"></a>[M6.1a][phase-3] | Seeded dispersion of mass, centre of mass, drag, motor, wind, rail and recovery delays; each flight the same whatever the run's size or thread count; failed flights counted; the apogee's spread ([ADR-134][adr-134], [Monte Carlo dispersion](monte-carlo.md)) | done |
+| <a id="m6-1b"></a>[M6.1b][phase-3] | Landing ellipses at confidence levels, checked against analytic Gaussians | not yet done |
+| <a id="m6-1c"></a>[M6.1c][phase-3] | Sensitivity analysis, Morris screening and Sobol indices, checked against functions with known answers | not yet done |
+| <a id="m6-1d"></a>[M6.1d][phase-3] | 10,000 flights of a Level 2 rocket (one on a J, K or L motor) in 10 s or less, timed and recorded | not yet done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
 | <a id="m6-4"></a>[M6.4][phase-3] | Airbrakes, with a controller that aims for a target apogee | not yet done |
@@ -611,6 +615,7 @@ is the milestone that added or will add that test.
 [adr-131]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-131-m54c-hpr-motors-search-stock-and-prices-at-the-command-line-2026-10-01
 [adr-132]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-132-m55a-openrockets-orc-parts-catalogues-held-to-openrockets-reading-2026-10-01
 [adr-133]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-133-m55b-catalogue-parts-in-the-builder-weighed-as-openrocket-builds-them-2026-10-01
+[adr-134]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-134-monte-carlo-dispersion-independent-normals-one-stream-per-sample-and-input-2026-10-01
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

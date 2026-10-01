@@ -956,6 +956,33 @@ pub struct AeroModel {
     /// Whether the aft base keeps its whole drag while a motor burns
     /// ([`AeroModel::with_full_base_drag_under_power`]).
     full_base_drag_under_power: bool,
+    /// The factor on every zero-lift drag coefficient this model gives
+    /// ([`AeroModel::with_drag_scale`]); left out when it is 1.
+    #[serde(skip_serializing_if = "is_one")]
+    drag_scale: f64,
+}
+
+/// Whether a drag scale is 1, the factor that changes nothing (by reference, as serde's
+/// `skip_serializing_if` asks).
+fn is_one(scale: &f64) -> bool {
+    *scale == 1.0
+}
+
+/// `drag` with its zero-lift coefficient and its four parts multiplied by `scale`
+/// ([`AeroModel::with_drag_scale`]).
+fn scaled(mut drag: Drag, scale: f64) -> Drag {
+    if scale != 1.0 {
+        for part in [
+            &mut drag.zero_lift_coefficient,
+            &mut drag.friction,
+            &mut drag.pressure,
+            &mut drag.base,
+            &mut drag.parasitic,
+        ] {
+            *part *= scale;
+        }
+    }
+    drag
 }
 
 /// `drag` with its axial coefficient at an angle of attack whose factor is `factor`
@@ -1478,6 +1505,7 @@ impl AeroModel {
             drag_model: None,
             normal_force_table: None,
             full_base_drag_under_power: false,
+            drag_scale: 1.0,
         })
     }
 
@@ -1539,6 +1567,34 @@ impl AeroModel {
     /// ([`AeroModel::with_full_base_drag_under_power`]).
     pub fn full_base_drag_under_power(&self) -> bool {
         self.full_base_drag_under_power
+    }
+
+    /// Multiplies every zero-lift drag coefficient [`AeroModel::drag`] gives by `scale`: the
+    /// buildup's (each of its four parts too), an override table's or a drag model's. A Monte
+    /// Carlo run disperses drag this way, as RocketPy's `power_off_drag_factor` and
+    /// `power_on_drag_factor` do (`rocketpy/stochastic/stochastic_rocket.py:745-746`); the angle of
+    /// attack's factor, the normal force and the moments are not scaled. A table's
+    /// [`Drag::table`] lookup stays the table's own value, and [`AeroModel::buildup_drag`], what a
+    /// drag model is given to adjust, stays unscaled.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Domain`] for a scale that is negative or not finite.
+    pub fn with_drag_scale(mut self, scale: f64) -> Result<Self, AeroError> {
+        if !(scale.is_finite() && scale >= 0.0) {
+            return Err(AeroError::Domain {
+                what: "drag scale",
+                value: scale,
+            });
+        }
+        self.drag_scale = scale;
+        Ok(self)
+    }
+
+    /// The factor on every zero-lift drag coefficient ([`AeroModel::with_drag_scale`]); 1 unless
+    /// set.
+    pub fn drag_scale(&self) -> f64 {
+        self.drag_scale
     }
 
     /// `conditions` as this model reads them: with no motor area under power when the base keeps
@@ -1673,7 +1729,7 @@ impl AeroModel {
         } else {
             self.buildup_sum(flow, conditions)?
         };
-        with_axial(drag, factor)
+        with_axial(scaled(drag, self.drag_scale), factor)
     }
 
     /// The drag buildup's drag at `flow` and `conditions`, whatever override the model has: the

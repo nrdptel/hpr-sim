@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use hpr_aero::{DragModel, DragTable};
+use hpr_analysis::montecarlo::{DragOverride, FlightInputs};
 use hpr_sim::metrics::{FlightMetrics, FlightSummary, Landing};
 use hpr_sim::{FlightResult, FlightSettings, Observer, Rail, Simulation};
 use serde::{Deserialize, Serialize};
@@ -188,6 +189,19 @@ impl FlightBuilder<'_> {
     ///   rail that isn't positive in length, a design with errors in it
     ///   ([`hpr_design::checks`]), a recovery device the flight can't fly.
     pub fn simulation(&self) -> Result<Simulation, Error> {
+        Ok(self.inputs()?.simulation()?)
+    }
+
+    /// Everything the flight is flown from, as [`hpr_analysis::montecarlo::FlightInputs`]: what a
+    /// Monte Carlo run disperses ([`hpr_analysis::montecarlo`]).
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::NoMotor`] for a rocket with no motor.
+    /// - [`Error::Domain`] for an inclination outside `(0°, 90°]` or a heading that isn't
+    ///   finite.
+    /// - [`Error::Sim`] for a rail that isn't positive in length or whose friction is negative.
+    pub fn inputs(&self) -> Result<FlightInputs, Error> {
         let configuration_id = self.rocket.configuration_id().ok_or(Error::NoMotor)?;
         let mut rail = self.rail;
         if let Some(inclination_deg) = self.inclination_deg {
@@ -203,24 +217,22 @@ impl FlightBuilder<'_> {
             rail.azimuth_rad = finite("rail heading, degrees", heading_deg)?.to_radians();
         }
         rail.validate()?;
-        let mut simulation = Simulation::new(
-            self.rocket.design(),
+        let mut inputs = FlightInputs::new(
+            self.rocket.design().clone(),
             configuration_id,
             self.environment.sim().clone(),
             rail,
-            self.settings,
-        )?;
+        );
+        inputs.settings = self.settings;
+        inputs.recovery = self.rocket.recovery().to_vec();
+        // A builder holds one or neither: each setter clears the other.
         if let Some(model) = &self.drag_model {
-            simulation = simulation.with_shared_drag_model(Arc::clone(model));
+            inputs.drag = Some(DragOverride::Model(Arc::clone(model)));
         }
         if let Some(table) = &self.drag_table {
-            simulation = simulation.with_drag_table(table.clone());
+            inputs.drag = Some(DragOverride::Table(table.clone()));
         }
-        if self.rocket.recovery().is_empty() {
-            Ok(simulation)
-        } else {
-            Ok(simulation.with_recovery(self.rocket.recovery().to_vec())?)
-        }
+        Ok(inputs)
     }
 
     /// Flies the rocket from the rail to the ground.
