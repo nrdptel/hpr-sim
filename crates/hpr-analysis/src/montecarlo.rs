@@ -416,7 +416,8 @@ impl Run {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::Domain`] for a coordinate that isn't finite.
+    /// [`AnalysisError::Domain`] for a coordinate that isn't finite, or is more than
+    /// [`Scatter::MAX_COORDINATE_M`] from the pad.
     pub fn landing(&self) -> Result<Scatter, AnalysisError> {
         let points = self
             .samples

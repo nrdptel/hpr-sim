@@ -349,7 +349,8 @@ impl Ellipse {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::Domain`] for a level outside `(0, 1)` or a centre that isn't finite.
+    /// [`AnalysisError::Domain`] for a level outside `(0, 1)`, a centre that isn't finite, or a
+    /// covariance so large that an axis overflows.
     pub fn gaussian(
         centre_east_m: f64,
         centre_north_m: f64,
@@ -365,12 +366,19 @@ impl Ellipse {
             }
         }
         let scale = gaussian_scale(level)?;
-        Ok(Self::scaled(
+        let ellipse = Self::scaled(
             [centre_east_m, centre_north_m],
             &covariance.principal_axes(),
             level,
             scale,
-        ))
+        );
+        if !ellipse.semi_major_m.is_finite() {
+            return Err(AnalysisError::Domain {
+                what: "ellipse semi-major axis",
+                value: ellipse.semi_major_m,
+            });
+        }
+        Ok(ellipse)
     }
 
     /// The ellipse `scale` standard deviations out along `axes`.
@@ -1260,7 +1268,21 @@ mod tests {
             Err(AnalysisError::Domain { what: "point in a scatter", value }) if value == 1e200
         ));
         let far = Scatter::new(vec![[1e9, -1e9], [-1e9, 1e9], [1e9, 1e9]], 3).unwrap();
-        assert!(far.ellipse(0.5).unwrap().is_some());
+        for ellipse in [
+            far.ellipse(0.99).unwrap().unwrap(),
+            far.prediction_ellipse(0.99).unwrap().unwrap(),
+        ] {
+            let json = serde_json::to_string(&ellipse).unwrap();
+            assert_eq!(serde_json::from_str::<Ellipse>(&json).unwrap(), ellipse);
+        }
+        let huge = Covariance::new(f64::MAX, f64::MAX, f64::MAX).unwrap();
+        assert!(matches!(
+            Ellipse::gaussian(0.0, 0.0, &huge, 0.5),
+            Err(AnalysisError::Domain {
+                what: "ellipse semi-major axis",
+                ..
+            })
+        ));
         assert!(matches!(
             Scatter::new(vec![[1.0, 2.0], [3.0, 4.0]], 1),
             Err(AnalysisError::Count {
