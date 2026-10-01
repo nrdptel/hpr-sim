@@ -157,9 +157,9 @@ pub enum Stop {
 pub struct Optimum {
     /// The best point evaluated, one value per variable, in the variables' order.
     pub point: Vec<f64>,
-    /// The model's value there: `+∞` if no candidate gave a finite value (serialized as `null`,
-    /// which reads back as `+∞`).
-    #[serde(deserialize_with = "null_as_infinity")]
+    /// The model's value there: `+∞` if no candidate gave a finite value (serialized as none, a
+    /// JSON `null`).
+    #[serde(with = "infinity_as_none")]
     pub value: f64,
     /// Which evaluation found it, counted from 1.
     pub evaluation: usize,
@@ -171,17 +171,26 @@ pub struct Optimum {
     pub mean: Vec<f64>,
     /// The distribution's largest standard deviation in any one variable, in that variable's
     /// units: the largest `σ √Cᵢᵢ` times the variable's step; `+∞` once the step size has
-    /// overflowed (serialized as `null`, which reads back as `+∞`).
-    #[serde(deserialize_with = "null_as_infinity")]
+    /// overflowed (serialized as none, a JSON `null`).
+    #[serde(with = "infinity_as_none")]
     pub spread: f64,
     /// Why it stopped.
     pub stop: Stop,
 }
 
-/// Reads a number written by `serde_json`, which writes `±∞` as `null`: `null` reads back as `+∞`,
-/// the only infinity an [`Optimum`] holds.
-fn null_as_infinity<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
-    Ok(Option::<f64>::deserialize(deserializer)?.unwrap_or(f64::INFINITY))
+/// The serialized form of a number that is finite or `+∞`, the only infinity an [`Optimum`]
+/// holds: an option, none for `+∞`, as JSON has no infinity.
+mod infinity_as_none {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub(super) fn serialize<S: Serializer>(x: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+        let value = (*x != f64::INFINITY).then_some(*x);
+        value.serialize(serializer)
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+        Ok(Option::<f64>::deserialize(deserializer)?.unwrap_or(f64::INFINITY))
+    }
 }
 
 impl Cmaes {
@@ -1028,7 +1037,8 @@ mod tests {
         assert!(optimum.spread < 1e-6 * steps[1]);
     }
 
-    /// A run whose every value is `+∞`, and one that diverges, give infinities that read back.
+    /// A run whose every value is `+∞` gives an infinity that reads back; so does an infinite
+    /// spread. A run that diverges stops as `Condition`.
     #[test]
     fn infinite_results_read_back() {
         let cmaes = Cmaes::new(variables(1, 0.0, 1.0))
@@ -1038,9 +1048,17 @@ mod tests {
         let failed = cmaes.minimize(1, |_| f64::INFINITY).unwrap();
         assert_eq!(failed.value, f64::INFINITY);
         let json = serde_json::to_string(&failed).unwrap();
+        assert!(json.contains("\"value\":null"), "{json}");
         assert_eq!(serde_json::from_str::<Optimum>(&json).unwrap(), failed);
-        // Unbounded below and a step above 1: the variable's own units overflow first, and the
-        // run says so as `Condition`, not `Bounds`.
+        let overflowed = Optimum {
+            spread: f64::INFINITY,
+            ..failed.clone()
+        };
+        let json = serde_json::to_string(&overflowed).unwrap();
+        assert!(json.contains("\"spread\":null"), "{json}");
+        assert_eq!(serde_json::from_str::<Optimum>(&json).unwrap(), overflowed);
+        // Unbounded below and a step above 1: a candidate overflows before σ does, and the run
+        // says so as `Condition`, not `Bounds`.
         let vars = vec![Variable::new("x", 0.0, 1000.0).unwrap()];
         let diverged = Cmaes::new(vars)
             .unwrap()
@@ -1049,8 +1067,16 @@ mod tests {
             .minimize(7, |x| x[0])
             .unwrap();
         assert_eq!(diverged.stop, Stop::Condition);
-        let json = serde_json::to_string(&diverged).unwrap();
-        let back = serde_json::from_str::<Optimum>(&json).unwrap();
-        assert_eq!(back.spread, diverged.spread);
+    }
+
+    /// Steps so large that a first candidate overflows are refused.
+    #[test]
+    fn overflowing_first_candidates_are_refused() {
+        let vars = vec![Variable::new("x", 0.0, 1e308).unwrap()];
+        let error = Cmaes::new(vars).unwrap().start(1).unwrap_err();
+        assert!(matches!(
+            error,
+            AnalysisError::Domain { what, .. } if what.starts_with("first candidate")
+        ));
     }
 }
