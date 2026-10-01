@@ -161,6 +161,14 @@ adds a source.
   under a three-line header naming the source: every 500th line, 1,000 of its 500,000 WGS 84
   geodesics, unchanged; and its 21 mirror lines, each unchanged after its line number. Karney dedicates the set to the public domain under CC0 1.0
   (<https://creativecommons.org/publicdomain/zero/1.0/>); the whole file stays in `refs/`.
+- **USGS terrain cut into GeoTIFF fixtures** (`crates/hpr-io/tests/fixtures/geotiff/usgs-*.tif`):
+  70 by 50 pixels around Spaceport America from the USGS 3D Elevation Program's 1-arc-second tile
+  `USGS_1_n33w107.tif`, written in seven encodings (and some pixels blanked as nodata) by
+  `validation/oracles/geotiff/dem.py cut` with rasterio. USGS data is a work of the United States
+  government, in the public domain (17 U.S.C. § 105); the USGS asks to be credited as its
+  source. `utm13n-refused.tif` and `zstd-refused.tif` beside them hold invented values. `rasterio.json` is rasterio
+  1.5.2's (GDAL 3.12.2's) reading of them and of the whole tile, written by `dem.py read`; rasterio
+  is run as an outside reader and none of its code is ported.
 
 ## Ported
 
@@ -251,6 +259,7 @@ adds a source.
 | `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-cli`, `hpr-motor`, `hpr-sim` (JSON and GeoJSON exports); `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
 | `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-cli`, `hpr-core`, `hpr-atmos`, `hpr-motor` | derives the `validation/refs.lock.toml` types and the public data types |
 | `thiserror` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` | library error types |
+| `tiff` | MIT | `hpr-io` | decodes a user's GeoTIFF elevation file (`hpr_io::geotiff`): image-rs's TIFF decoder, pure Rust, with only its LZW and Deflate codecs, so no JPEG, fax or zstd (C) code (ADR-128) |
 | `sha2` | MIT OR Apache-2.0 | `xtask`; `hpr-motor` (tests only) | SHA-256 of fetched references and of the bundled motor curves |
 | `toml` | MIT OR Apache-2.0 | `xtask` | reads `validation/refs.lock.toml` |
 | `tempfile` | MIT OR Apache-2.0 | `xtask`, `hpr-cli` (tests only) | temporary directories for the `refs` tests and `hpr motors show`'s files |
@@ -341,6 +350,8 @@ same license and mode.
 | `karney-2011-geodesics` | C. F. F. Karney, Geodesics on an ellipsoid of revolution, arXiv:1102.1215v1, 2011 | arXiv non-exclusive license | fetched | appendix B cited for the ECEF-to-geodetic conversion (M1.1); no text copied |
 | `karney-2013-algorithms-for-geodesics` | C. F. F. Karney, Algorithms for geodesics, J. Geodesy 87 (2013) 43-55, arXiv:1109.4448v2 | arXiv non-exclusive license | fetched | cited for the geodesics' method and their 15 nm bound (M5.3c1); no text copied |
 | `karney-geodtest` | C. F. F. Karney, Test set for geodesics, GeodTest.dat, Zenodo, doi:10.5281/zenodo.32156 | CC0 1.0 | fetched | the oracle for `hpr_core::geodesic` (M5.3c1); every 500th line and the 21 mirror lines are committed, and the whole set is checked where fetched |
+| `ogc-19-008r4-geotiff` | OGC GeoTIFF Standard, version 1.1, OGC 19-008r4, E. Devys, T. Habermann, C. Heazel, R. Lott, E. Rouault (eds.), 2019 | OGC Document License | fetched | cited for the GeoKeys and the raster-to-model tags `hpr_io::geotiff` reads (M5.3c2); no text copied |
+| `usgs-3dep-1-n33w107` | USGS 3D Elevation Program, 1 arc-second DEM tile n33w107 (32-33 N, 107-106 W), GeoTIFF, published 2024-04-22 | public domain | fetched | the source of the GeoTIFF fixtures, and read whole against rasterio where fetched (M5.3c2); the USGS replaces a `current` tile when it republishes one, so a new hash means a new tile |
 | `sola-2017-quaternion-kinematics` | J. Solà, Quaternion kinematics for the error-state Kalman filter, arXiv:1711.02508v1, 2017 | CC BY-NC-SA 4.0 | fetched | cited for the attitude kinematics (M1.1); no text copied |
 | `mil-f-8785c` | MIL-F-8785C, Military Specification: Flying Qualities of Piloted Airplanes, 5 November 1980 | US government work | fetched | cited for the Dryden spectra, turbulence parameters and log wind law (M1.2); no text copied |
 | `nasa-tm-2008-215633` | D. L. Johnson (ed.), Terrestrial Environment (Climatic) Criteria Guidelines for Use in Aerospace Vehicle Development, 2008 Revision, NASA/TM-2008-215633 | US government work | fetched | cited for the power-law wind profile and roughness lengths (M1.2); no text copied |
@@ -385,6 +396,7 @@ Nothing here is bundled.
 | `ambiance` 1.3.1 | Apache-2.0 | run-only | an independent 1976 standard atmosphere, cross-checking the transcribed tables (`validation/oracles/ussa76/`) |
 | `netCDF4` 1.7.4 | MIT | run-only | the Unidata netCDF C library's Python interface: writes the reader's test files and records its reading (`validation/oracles/netcdf/`) |
 | `xarray` 2026.7.0 | Apache-2.0 | run-only | runs the guide's conversion of a netCDF-4 ERA5 file to the classic format (`validation/oracles/netcdf/era5.py`) |
+| `rasterio` 1.5.2 | BSD-3-Clause; its wheel bundles GDAL 3.12.2 (MIT) and the libraries GDAL links | run-only | writes the GeoTIFF fixtures and records the reading `hpr_io::geotiff` is checked against (`validation/oracles/geotiff/`) |
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
 | a Java 17 runtime (for example `brew install openjdk@17`) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 

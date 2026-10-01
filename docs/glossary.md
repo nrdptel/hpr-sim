@@ -274,6 +274,15 @@ crates, such as `hpr-core` for the maths and the Earth and `hpr-sim` for the fli
 takes only the ones it needs. See [The API reference](api.md#the-crates).
 
 
+## CRS (coordinate reference system)
+
+The definition that turns a file's coordinates into places on Earth: an ellipsoid and its datum
+(where the ellipsoid sits), and either latitude and longitude or a map projection such as UTM.
+Most have an [EPSG code](#epsg-code). hpr's elevation-file reader takes latitude and longitude on a
+datum within a few metres of [WGS 84](#wgs-84). See
+[A launch site's elevation](elevation.md#what-it-reads).
+
+
 ## Decision record (ADR)
 
 A short record of a significant choice, the alternatives considered and why one was picked,
@@ -287,6 +296,13 @@ The angle from true north to the north a compass shows, positive when magnetic n
 true north. A compass bearing becomes a true one by adding it: at Spaceport America in 2026 it is
 about +7.75°. hpr computes it from the [World Magnetic Model](#world-magnetic-model-wmm). See
 [The magnetic field](physics/magnetic.md#what-declination-is).
+
+
+## DEM (digital elevation model)
+
+A grid of ground heights, one per cell, such as the US Geological Survey's (USGS) 1-arc-second map of the United States,
+whose cells are about 30 m across. Most are published as [GeoTIFF](#geotiff) files. See
+[A launch site's elevation](elevation.md#from-an-elevation-file-of-your-own).
 
 
 ## Deployment
@@ -423,6 +439,14 @@ is hpr's internal height, and it is not
 [Frames](physics/frames.md#earth-centred-earth-fixed-ecef).
 
 
+## EPSG code
+
+A number naming a [CRS](#crs-coordinate-reference-system), a datum or a unit in the EPSG Geodetic
+Parameter Dataset, which most mapping software shares: 4326 is latitude and longitude on
+[WGS 84](#wgs-84), 4269 on NAD83, 5703 heights above NAVD88 in metres, 9001 the metre. See
+[A launch site's elevation](elevation.md#what-it-reads).
+
+
 ## ERA5
 
 The European Centre for Medium-Range Weather Forecasts' [reanalysis](#reanalysis) of the whole
@@ -555,6 +579,13 @@ gravity is stronger than `g₀`, a geopotential metre is a little shorter than a
 into height above sea level with the site's own gravity. See
 [Atmosphere](physics/atmosphere.md#sounding-and-forecast-profiles) and
 [ERA5 weather files](format/era5.md#how-hpr-reads-it).
+
+
+## GeoTIFF
+
+A TIFF image whose tags say where on Earth its pixels lie (the OGC GeoTIFF Standard 1.1). In a
+[DEM](#dem-digital-elevation-model) each pixel is a height. See
+[A launch site's elevation](elevation.md#from-an-elevation-file-of-your-own).
 
 
 ## GRIB2
@@ -789,8 +820,8 @@ OpenRocket milestone: its mass comparison is done
 An independent program run to produce [reference values](#reference-value-and-fixture) for hpr's
 tests. Usually it is another simulator: RocketPy 1.13.0, and OpenRocket 24.12, so far for mass and
 the reading of `.ork` files. Scripts that
-evaluate a published formula in high precision, and ThrustCurve.org's own statistics code, serve as
-oracles too; all of them live under `validation/oracles/`. See
+evaluate a published formula in high precision, ThrustCurve.org's own statistics code, and GDAL
+(through rasterio) for elevation files, serve as oracles too; all of them live under `validation/oracles/`. See
 [Recovery](physics/recovery.md#against-rocketpy) and the [list of simulator oracles][oracles].
 
 
@@ -1231,6 +1262,17 @@ evidence in [four kinds][levels], named as on Accuracy: *analytic* (exact answer
 source* (printed tables and worked examples), *another code*
 ([code-to-code comparison](#code-to-code-comparison)), and *real flights*. See
 [Accuracy](accuracy.md).
+
+
+## Vertical datum
+
+The surface heights are measured from. NAVD88, the North American Vertical Datum of 1988, and
+EGM2008, a worldwide model of the geoid, are both within a metre or two of the geoid (NAVD88, set
+by levelling, is about half a metre off and tilted about a metre coast to coast:
+[NGS](https://geodesy.noaa.gov/datums/newdatums/index.shtml)), so hpr takes heights above them as
+[heights above sea level](#height-above-sea-level-msl); an
+[ellipsoidal height](#ellipsoidal-height) is measured from the ellipsoid instead. See
+[A launch site's elevation](elevation.md#what-the-height-means).
 
 
 ## Virtual temperature

@@ -30,6 +30,10 @@ dependencies = [
     # library's binary build, which reports version 2.49.0. It has no Windows build.
     "eccodes==2.48.0; sys_platform != 'win32'",
     "eccodeslib==2.49.0.30; sys_platform != 'win32'",
+    # GDAL's raster reader through its Python interface (BSD-3-Clause; the wheel bundles GDAL,
+    # MIT): writes the GeoTIFF fixtures and reads the heights `hpr_io::geotiff` is checked
+    # against (`validation/oracles/geotiff/dem.py`).
+    "rasterio==1.5.2",
 ]
 
 [tool.uv]

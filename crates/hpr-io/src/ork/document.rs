@@ -342,7 +342,7 @@ fn read_element(
 /// counts start tags against end tags. It can only ever return more nesting than a parser will
 /// find — XML forbids a raw `<` inside an attribute value, so every element start it sees is one —
 /// which is what makes it safe to use as a guard.
-pub(super) fn deepest_nesting(text: &str) -> usize {
+pub(crate) fn deepest_nesting(text: &str) -> usize {
     let bytes = text.as_bytes();
     let mut index = 0;
     let mut depth = 0usize;

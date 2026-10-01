@@ -275,6 +275,11 @@ as heights instead, the mean is 6.63%.
   C. F. F. Karney, *Algorithms for geodesics*, arXiv:1109.4448v2, and his CC0 *Test set for
   geodesics*, doi:10.5281/zenodo.32156, 500,000 WGS 84 geodesics; every 500th line and the 21
   mirror lines are committed, and `validation/reports/geodesics.md` holds the whole set's errors.
+- **GeoTIFF elevation** (pinned as `ogc-19-008r4-geotiff` and `usgs-3dep-1-n33w107`): the OGC
+  GeoTIFF Standard 1.1, and the USGS 3DEP 1-arc-second tile n33w107 (public domain), whose
+  fixtures and whole-tile reading by rasterio 1.5.2 (GDAL 3.12.2), the outside reader, are in
+  `crates/hpr-io/tests/fixtures/geotiff/` (`validation/oracles/geotiff/dem.py`;
+  [ADR-128](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30), the reader's design).
 - **US Standard Atmosphere 1976:**
   https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf. Python cross-checks:
   `ambiance` (Apache-2.0), `pyatmos` (MIT).
