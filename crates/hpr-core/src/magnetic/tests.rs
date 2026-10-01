@@ -26,17 +26,25 @@ fn at(year: f64, height_km: f64, lat_deg: f64, lon_deg: f64) -> MagneticField {
 }
 
 /// Worst `|computed − printed|` over named columns, with the row it came from, less 64 units in
-/// the last place of the printed value: both sides are f64 sums of up to 90 terms, each a few
-/// units from exact, and libm's `sin` and `cos` differ by a unit between platforms. The allowance
-/// is 7e-10 nT on a 50,000 nT field, 700 times below the finest printed digit.
+/// the last place of the row's total field `F`. Both sides are f64 sums of up to 90 terms as large
+/// as the field, so their rounding scales with `F`, not with the component (a 30-digit evaluation
+/// in review put this code's own error at up to 4.2e-10 nT, on an `X` of 255 nT); libm's `sin`
+/// and `cos` also differ by a unit between platforms. The allowance is 7e-10 nT on a 50,000 nT
+/// field, 700 times below the finest printed digit. A value that is not finite fails.
 #[derive(Debug, Default)]
 struct Worst {
     by_column: Vec<(&'static str, f64, f64)>,
+    /// The current row's total field, nT.
+    scale: f64,
 }
 
 impl Worst {
     fn check(&mut self, column: &'static str, computed: f64, printed: f64, row: f64) {
-        let error = ((computed - printed).abs() - 64.0 * f64::EPSILON * printed.abs()).max(0.0);
+        assert!(
+            computed.is_finite() && printed.is_finite(),
+            "{column}, row {row}: {computed} against {printed}"
+        );
+        let error = ((computed - printed).abs() - 64.0 * f64::EPSILON * self.scale).max(0.0);
         match self
             .by_column
             .iter_mut()
@@ -84,24 +92,72 @@ fn the_table_is_the_coefficient_file() {
     assert_eq!(count, 90);
 }
 
+/// `Σₙ (a/r)ⁿ⁺² Σₘ (gₙᵐ cos mλ + hₙᵐ sin mλ) P̆ₙᵐ(sin φ′)`, the potential's sum divided by `r`, at
+/// fixed `r` and `λ`: its derivative in `φ′` is `−X′` (report, eq. 10).
+fn potential_sum(
+    latitude_prime: f64,
+    radius: f64,
+    longitude: f64,
+    g: &[[f64; DEGREE + 1]; DEGREE + 1],
+    h: &[[f64; DEGREE + 1]; DEGREE + 1],
+) -> f64 {
+    let harmonics = Harmonics::new(latitude_prime, radius, longitude);
+    (1..=DEGREE)
+        .map(|n| {
+            harmonics.radial[n]
+                * (0..=n)
+                    .map(|m| {
+                        (g[n][m] * harmonics.cos_m[m] + h[n][m] * harmonics.sin_m[m])
+                            * harmonics.p[n][m]
+                    })
+                    .sum::<f64>()
+        })
+        .sum()
+}
+
+/// `X′` as the potential's derivative in `φ′`, by a five-point difference with a step of 1e-4 rad:
+/// independent of the code's Legendre derivative. Its own error is about 1e-7 nT.
+fn x_prime_by_differences(
+    latitude_prime: f64,
+    radius: f64,
+    longitude: f64,
+    g: &[[f64; DEGREE + 1]; DEGREE + 1],
+    h: &[[f64; DEGREE + 1]; DEGREE + 1],
+) -> f64 {
+    let step = 1e-4;
+    let at = |k: f64| potential_sum(latitude_prime + k * step, radius, longitude, g, h);
+    -(at(-2.0) - 8.0 * at(-1.0) + 8.0 * at(1.0) - at(2.0)) / (12.0 * step)
+}
+
 /// NCEI's 100 test values print the components and their rates to 1e-6 nT, and declination,
-/// inclination and their rates to 0.01° and 1e-6° per year.
+/// inclination and their rates to 0.01° and 1e-6° per year. Rows are counted from 0.
 ///
 /// `Y`, `D`, `I` and the rates of `Y`, `Z`, `D` and `I` are reproduced to half the last printed
-/// digit. `X` is not: the file's differs from ours by up to 7.2e-4 nT (3e-8 of the field), and `Z`,
-/// `H`, `F` with it. The residue lies wholly in the geocentric `X′` (the latitude derivative):
-/// turned into the geodetic frame by `φ′ − φ`, one residue in `X′` explains the file's `X` and
-/// `Z` together, to its printing. The report's own ten-decimal example (Table 3b, below) agrees
-/// with this code's `X′` to 5e-11 nT, so the file is held to the measured residue, not to its
+/// digit. `X` is not: the file's differs from ours at 97 of the 100 points, by up to 7.18e-4 nT
+/// (row 35), at most 2.11e-8 of the total field; `H` and `F` follow it, and `Z` moves by up to
+/// 2.2e-6 nT with it. The residue lies wholly in the geocentric `X′` (the latitude derivative):
+///
+/// - one residue `e` in `X′` moves `X` by `e cos(φ′ − φ)` and `Z` by `e sin(φ′ − φ)`; taking `e`
+///   from `X` brings the file's `Z` to its printing;
+/// - this code's `X′` is the potential's derivative, taken by differences, to 1e-6 nT at every
+///   point, and the report's ten-decimal `X′` (Table 3b) to 5e-11 nT.
+///
+/// The rate of `X` differs too, by up to 9.5e-7 nT a year, a second, smaller residue whose cause is
+/// not known; this code's `Ẋ′` is likewise the derivative of the rates' potential to 1e-6. The rates
+/// of `H` and `F` follow `X` and its rate. The file is held to these measured residues, not to its
 /// printing (ADR-125).
 #[test]
 fn ncei_high_precision_test_values() {
     let rows = rows(PRECISE);
     assert_eq!(rows.len(), 100);
     let mut worst = Worst::default();
+    let (mut outside_printing, mut rate_outside_printing) = (0, 0);
+    // The largest residue in X′, nT, and as a share of the total field.
+    let (mut residue_max, mut share_max) = (0.0_f64, 0.0_f64);
     for (index, row) in rows.iter().enumerate() {
         let f = at(row[0], row[1], row[2], row[3]);
         let index = index as f64;
+        worst.scale = row[10];
         worst.check("D", f.declination_rad.to_degrees(), row[4], index);
         worst.check("I", f.inclination_rad.to_degrees(), row[5], index);
         worst.check("H", f.horizontal_nt, row[6], index);
@@ -126,29 +182,81 @@ fn ncei_high_precision_test_values() {
         worst.check("dY", f.east_rate_nt_per_year, row[15], index);
         worst.check("dZ", f.down_rate_nt_per_year, row[16], index);
         worst.check("dF", f.total_rate_nt_per_year, row[17], index);
+        if (f.north_nt - row[7]).abs() > 5e-7 {
+            outside_printing += 1;
+        }
+        if (f.north_rate_nt_per_year - row[14]).abs() > 5e-7 {
+            rate_outside_printing += 1;
+        }
+        // The file's rates of H and F follow from its own X, Y, Z and their rates (eq. 20).
+        let (x, y, z, h, total) = (row[7], row[8], row[9], row[6], row[10]);
+        let (x_dot, y_dot, z_dot) = (row[14], row[15], row[16]);
+        worst.check(
+            "dH from the file",
+            (x * x_dot + y * y_dot) / h,
+            row[13],
+            index,
+        );
+        worst.check(
+            "dF from the file",
+            (x * x_dot + y * y_dot + z * z_dot) / total,
+            row[17],
+            index,
+        );
 
         // One residue `e` in X′ moves X by e cos(φ′ − φ) and Z by e sin(φ′ − φ).
         let point = Geodetic::from_degrees(row[2], row[3], row[1] * 1000.0).unwrap();
-        let (latitude_prime, _) = geocentric(point);
+        let (latitude_prime, radius) = geocentric(point);
         let (sin_turn, cos_turn) = (latitude_prime - point.latitude_rad).sin_cos();
         let residue = (row[7] - f.north_nt) / cos_turn;
-        worst.check("X' residue", residue, 0.0, index);
+        residue_max = residue_max.max(residue.abs());
+        share_max = share_max.max((residue / row[10]).abs());
         worst.check(
             "Z after X' residue",
             f.down_nt + residue * sin_turn,
             row[9],
             index,
         );
+
+        // This code's X′ and Ẋ′ against the potential's derivative, taken by differences.
+        let longitude = point.longitude_rad.rem_euclid(std::f64::consts::TAU);
+        let (g, h, g_dot, h_dot) = WMM2025.coefficients_at(row[0]);
+        let harmonics = Harmonics::new(latitude_prime, radius, longitude);
+        worst.check(
+            "X' by differences",
+            harmonics.sum(&g, &h).north,
+            x_prime_by_differences(latitude_prime, radius, longitude, &g, &h),
+            index,
+        );
+        worst.check(
+            "dX' by differences",
+            harmonics.sum(&g_dot, &h_dot).north,
+            x_prime_by_differences(latitude_prime, radius, longitude, &g_dot, &h_dot),
+            index,
+        );
     }
-    println!("{worst:?}");
+    println!(
+        "{worst:?}, X outside its printing at {outside_printing} points, its rate at \
+         {rate_outside_printing}, residue in X' {residue_max:e} nT, {share_max:e} of F"
+    );
+    assert_eq!((outside_printing, rate_outside_printing), (97, 24));
+    // Products of values each rounded to 1e-6: within 1e-6 of the printed rates.
+    for column in ["dH from the file", "dF from the file"] {
+        assert!(worst.get(column) <= 1e-6, "{column}: {worst:?}");
+    }
     for column in ["D", "I"] {
         assert!(worst.get(column) <= 0.005, "{column}: {worst:?}");
     }
     for column in ["Y", "dD", "dI", "dY", "dZ", "Z after X' residue"] {
         assert!(worst.get(column) <= 5e-7, "{column}: {worst:?}");
     }
-    // The measured residue, 7.19e-4 nT at row 35, and what it moves.
-    for column in ["X' residue", "X", "H", "F"] {
+    for column in ["X' by differences", "dX' by differences"] {
+        assert!(worst.get(column) <= 1e-6, "{column}: {worst:?}");
+    }
+    // The measured residue, 7.18e-4 nT at row 35, and what it moves.
+    assert!(residue_max <= 7.2e-4, "{residue_max}");
+    assert!(share_max <= 2.11e-8, "{share_max}");
+    for column in ["X", "H", "F"] {
         assert!(worst.get(column) <= 7.2e-4, "{column}: {worst:?}");
     }
     assert!(worst.get("Z") <= 2.2e-6, "Z: {worst:?}");
@@ -167,6 +275,7 @@ fn report_table_6_test_values() {
     for (index, row) in rows.iter().enumerate() {
         let f = at(row[0], row[1], row[2], row[3]);
         let index = index as f64;
+        worst.scale = row[8];
         worst.check("X", f.north_nt, row[4], index);
         worst.check("Y", f.east_nt, row[5], index);
         worst.check("Z", f.down_nt, row[6], index);
@@ -174,9 +283,10 @@ fn report_table_6_test_values() {
         worst.check("F", f.total_nt, row[8], index);
         worst.check("I", f.inclination_rad.to_degrees(), row[9], index);
         worst.check("D", f.declination_rad.to_degrees(), row[10], index);
-        match f.grid_variation_rad {
-            Some(gv) => worst.check("GV", gv.to_degrees(), row[11], index),
-            None => assert!(row[11].is_nan(), "row {index}: no grid variation computed"),
+        match (f.grid_variation_rad, row[11].is_nan()) {
+            (Some(gv), false) => worst.check("GV", gv.to_degrees(), row[11], index),
+            (None, true) => {}
+            (gv, _) => panic!("row {index}: grid variation {gv:?} against {}", row[11]),
         }
         worst.check("Xdot", f.north_rate_nt_per_year, row[12], index);
         worst.check("Ydot", f.east_rate_nt_per_year, row[13], index);
@@ -303,6 +413,62 @@ fn report_pole_values() {
     }
 }
 
+/// North of 55° the grid variation is `D − λ`: at NCEI's 89° N, 121° W point, whose declination is
+/// printed as −99.77°, it is 21.23°. (Table 6's northern points are all at λ = 0.)
+#[test]
+fn northern_grid_variation_subtracts_the_longitude() {
+    let f = at(2025.0, 28.0, 89.0, -121.0);
+    let gv = f.grid_variation_rad.unwrap().to_degrees();
+    assert!((gv - 21.23).abs() <= 0.005, "{gv}");
+}
+
+/// Any finite longitude gives the field of that longitude reduced to a turn, and NaN anywhere
+/// in the field puts it in the blackout zone.
+#[test]
+fn huge_longitudes_and_nan_fail_safe() {
+    let reduced = 1e308_f64.rem_euclid(std::f64::consts::TAU);
+    let huge = WMM2025
+        .field(
+            Geodetic::new(70_f64.to_radians(), 1e308, 0.0).unwrap(),
+            2026.0,
+        )
+        .unwrap();
+    let plain = WMM2025
+        .field(
+            Geodetic::new(70_f64.to_radians(), reduced, 0.0).unwrap(),
+            2026.0,
+        )
+        .unwrap();
+    assert_eq!(huge, plain);
+    assert!(huge.declination_rad.is_finite());
+    let gv = huge.grid_variation_rad.unwrap();
+    assert!(gv > -std::f64::consts::PI && gv <= std::f64::consts::PI);
+    for angle in [-1e18, 1e17, 1e300] {
+        let wrapped = wrap_pi(angle);
+        assert!(wrapped > -std::f64::consts::PI && wrapped <= std::f64::consts::PI);
+    }
+    let nan = MagneticField {
+        horizontal_nt: f64::NAN,
+        ..plain
+    };
+    assert_eq!(nan.compass_zone(), CompassZone::Blackout);
+}
+
+/// The model's surface minimum of `F` lies below the report's Table 1 floor of 23,000 nT: about
+/// 21,900 nT over South America by 2030.
+#[test]
+fn the_surface_field_dips_below_table_1() {
+    let f = at(2030.0, 0.0, -26.0, -61.0);
+    assert!((21_900.0..22_000.0).contains(&f.total_nt), "{}", f.total_nt);
+}
+
+#[test]
+fn enu_components_are_the_launch_frames() {
+    let f = at(2026.0, 1.4, 32.99, -106.97);
+    assert_eq!(f.enu_nt(), DVec3::new(f.east_nt, f.north_nt, -f.down_nt));
+    assert!(f.enu_nt().z < 0.0, "the field points down in the north");
+}
+
 /// The field at a pole is the limit of the field approaching it along the same meridian.
 #[test]
 fn the_field_is_continuous_at_the_poles() {
@@ -358,6 +524,35 @@ fn legendre_functions_match_the_reports_forms() {
                     (harmonics.dp[n][m] - expected).abs() < 1e-11,
                     "dP({n},{m}) at {latitude_deg}°: {} against {expected}",
                     harmonics.dp[n][m]
+                );
+            }
+        }
+    }
+}
+
+/// Every `dP̆ₙᵐ/dφ′` to degree 12 is the derivative of `P̆ₙᵐ(sin φ′)`, taken by a five-point
+/// difference, and `m P̆ₙᵐ / cos φ′` is that quotient, away from the poles.
+#[test]
+fn legendre_derivatives_match_differences() {
+    let step = 1e-4;
+    for latitude_deg in [-89.5_f64, -60.0, -12.5, 0.0, 33.0, 71.0, 89.9] {
+        let phi = latitude_deg.to_radians();
+        let at = |k: f64| Harmonics::new(phi + k * step, REFERENCE_RADIUS_M, 0.0);
+        let (m2, m1, p1, p2) = (at(-2.0), at(-1.0), at(1.0), at(2.0));
+        let here = at(0.0);
+        for n in 1..=DEGREE {
+            for m in 0..=n {
+                let by_differences =
+                    (m2.p[n][m] - 8.0 * m1.p[n][m] + 8.0 * p1.p[n][m] - p2.p[n][m]) / (12.0 * step);
+                assert!(
+                    (here.dp[n][m] - by_differences).abs() < 1e-8,
+                    "dP({n},{m}) at {latitude_deg}°: {} against {by_differences}",
+                    here.dp[n][m]
+                );
+                let quotient = m as f64 * here.p[n][m] / phi.cos();
+                assert!(
+                    (here.p_over_cos[n][m] - quotient).abs() < 1e-9 * quotient.abs().max(1.0),
+                    "mP/cos({n},{m}) at {latitude_deg}°"
                 );
             }
         }
@@ -440,16 +635,24 @@ fn declination_uncertainty_follows_equation_43() {
     };
     let strongest = with(41_875.0).declination_uncertainty_rad().to_degrees();
     assert!((strongest - 0.29).abs() < 0.005, "{strongest}");
-    let weak = with(500.0).declination_uncertainty_rad().to_degrees();
-    assert!((weak - (0.26_f64.powi(2) + (5_417.0_f64 / 500.0).powi(2)).sqrt()).abs() < 1e-12);
-    assert!(weak > 10.0);
+    // Near a pole it behaves like 5417 nT / H (report, section 3.4, point 2).
+    let weak = with(100.0).declination_uncertainty_rad().to_degrees();
+    assert!((weak / (5_417.0 / 100.0) - 1.0).abs() < 1e-4, "{weak}");
 }
 
 #[test]
 fn a_magnetic_bearing_turns_by_the_declination() {
     let f = at(2026.0, 1.6, 40.0, -105.0);
+    assert!(f.declination_rad > 0.0);
     assert_eq!(f.true_from_magnetic_rad(0.0), f.declination_rad);
     assert_eq!(f.true_from_magnetic_rad(1.0), 1.0 + f.declination_rad);
+    // A bearing past north wraps into [0, 2π).
+    let tau = std::f64::consts::TAU;
+    let wrapped = f.true_from_magnetic_rad(tau - 0.01);
+    assert!(
+        (wrapped - (f.declination_rad - 0.01)).abs() < 1e-15,
+        "{wrapped}"
+    );
 }
 
 #[test]

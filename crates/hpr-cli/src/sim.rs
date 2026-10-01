@@ -83,7 +83,7 @@ pub struct SimArgs {
     /// The rail's angle above the horizon, degrees [default: 90, vertical]
     #[arg(long, value_name = "DEG")]
     pub inclination: Option<f64>,
-    /// The direction the rail leans toward, degrees clockwise from north [default: 0]
+    /// The direction the rail leans toward, degrees clockwise from true north [default: 0]
     #[arg(long, value_name = "DEG", allow_negative_numbers = true)]
     pub heading: Option<f64>,
     /// A wind of this speed at every height, m/s [default: calm]

@@ -1,29 +1,35 @@
-# The Earth's magnetic field and declination
+# The magnetic field and declination
 
 ## In short
 
 - **What it models:** the Earth's main magnetic field at any place and time from 2025.0 to
   2030.0, from the World Magnetic Model (WMM2025). Its most useful output is the
-  **declination**: the angle between true north and the north a compass shows. Use it to turn a
-  compass bearing (a launch rail's heading, say) into a true one, or back.
+  **declination**: the angle between true north and the north a compass shows. Nothing in hpr
+  applies it for you: a rail's heading (`hpr sim --heading`, the builder's `heading_deg`) is a
+  true bearing, so add the declination to a compass reading first ([A worked
+  example](#a-worked-example) shows how).
 - **Sources:** A. Chulliat, W. Brown, M. Nair and others, *The US/UK World Magnetic Model for
   2025–2030: Technical Report*, NOAA NCEI (2025), with NCEI's coefficient file `WMM2025.COF`,
   which NCEI places in the public domain.
 - **How well it is validated:** hpr reproduces all 12 of the report's test points (its Table 6)
-  to their last printed digit, declination to 0.005°. Of NCEI's 100 high-precision points, the
-  declination, the inclination and the east component match to their last printed digit; the
-  north component matches to 7.2e-4 nT, 3 parts in 100 million of the field (see
-  [The test values](#the-test-values)). That shows the model is computed correctly. The model
-  itself is only as good as the Earth allows: its own error estimate for declination is 0.29° at
-  best and 0.35° to 0.56° at the example's sites ([A worked example](#a-worked-example)), more
-  near the magnetic poles. Each result carries that estimate.
+  to their last printed digit, declination to 0.005°. NCEI's file of 100 points, printed to 1e-6
+  nT and angles to 0.01°, matches to its last digit in declination, inclination, the east
+  component and four rates. Its north component differs at 97 points, by up to 7.18e-4 nT (2.11e-8
+  of the total field), and the horizontal and total intensities with it; an independent check
+  in the tests places that difference in NCEI's file, not in hpr ([The test values](#the-test-values)).
+  That shows the model is computed correctly. The model itself is only as good as the Earth
+  allows: its own error estimate for declination is 0.29° at best and 0.35° to 0.56° at the
+  example's sites, more near the magnetic poles. Each result carries that estimate.
 - **What it leaves out:** local magnetic rocks, magnetic storms and the steel near a compass.
   Dates outside 2025.0 to 2030.0 are refused, and so are heights below −1 km or above 850 km
   ([Limits](#limits)).
 
 ## Sources
 
-Code: `hpr_core::magnetic`. Conventions: [Frames](frames.md) and [Geodesy](geodesy.md).
+Code: [`hpr_core::magnetic`](../api/hpr_core/magnetic/index.html). Conventions:
+[Frames](frames.md) and [Geodesy](geodesy.md). Each source below is pinned by its checksum in the
+reference library ([`validation/refs.lock.toml`](https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml)),
+under the name given.
 
 - **[WMM]** A. Chulliat, W. Brown, M. Nair, N. Gomez Perez, L.-Y. Young, C. Watson, N. Boneh,
   C. Beggan, B. Meyer and M. Paniccia, *The US/UK World Magnetic Model for 2025–2030: Technical
@@ -54,24 +60,29 @@ At Spaceport America in mid-2026, `D` is +7.75°: a rail aimed at a compass's no
 east of true north. hpr's flight engine takes headings as true bearings (clockwise from true north,
 see [Frames](frames.md)), so a heading measured with a compass needs this correction first.
 
-The field also dips into the ground. The **inclination** `I` is that dip, positive downward: about
-60° across the southern United States, and 90° at a magnetic pole, where a compass has nothing
-horizontal to follow.
+The field also dips into the ground. The field's **inclination** `I` (not the rail's inclination)
+is that dip, positive downward: about 60° across the southern United States, and 90° at a
+magnetic pole, where a compass has nothing horizontal to follow.
+
+Field strengths are in nanoteslas (nT). The Earth's field is 20,000 to 70,000 nT at the surface.
 
 ## The model
 
-The WMM writes the field's potential as a sum of spherical harmonics, 90 of them up to degree 12,
-each with a coefficient in nanoteslas (nT; the Earth's field is 20,000 to 70,000 nT). Each
-coefficient changes linearly in time from its 2025.0 value ([WMM] eq. 9):
+The WMM writes the field as a sum of **spherical harmonics**: patterns over the globe that get
+finer as their **degree** `n` rises, from 1 (one north and one south pole, like a bar magnet) to
+12, each split into **orders** `m` from 0 to `n`. That makes 90 terms. Each has two **Gauss
+coefficients**, `g` and `h` in nT (`h` is zero where `m = 0`), which set how strong the pattern
+is. Each coefficient changes linearly in time from its 2025.0 value, at the rate `ġ` or `ḣ`
+([WMM] eq. 9):
 
 ```text
 g(t) = g(2025.0) + (t − 2025.0) ġ
 ```
 
-where `t` is the decimal year. hpr computes the field the way [WMM] section 1.2 sets out:
+where `t` is the decimal year (2026.5 is the middle of 2026). hpr computes the field the way [WMM] section 1.2 sets out:
 
 1. **To geocentric coordinates** (eqs. 7, 8): the site's latitude `φ`, longitude `λ` and height
-   `h` above the WGS 84 ellipsoid become a radius `r` and a geocentric latitude `φ′`, the angle seen
+   above the WGS 84 ellipsoid become a radius `r` and a geocentric latitude `φ′`, the angle seen
    from the Earth's centre.
 2. **The field's three parts there** (eqs. 10 to 12), north `X′`, east `Y′` and down `Z′`, as sums
    over degree `n` and order `m`, with `a = 6,371,200 m`:
@@ -88,8 +99,8 @@ where `t` is the decimal year. hpr computes the field the way [WMM] section 1.2 
 4. **The elements** (eq. 19): horizontal intensity `H = √(X² + Y²)`, total intensity
    `F = √(H² + Z²)`, inclination `I = atan2(Z, H)` and declination `D = atan2(Y, X)`.
 
-The same sums over the coefficients' rates give how fast each part changes per year (eqs. 13 to
-15, 18 and 20).
+The same sums over the coefficients' rates `ġ` and `ḣ` give how fast each part changes per year
+(eqs. 13 to 15, 18 and 20), written with a dot: `Ẋ`, `Ḋ` and so on (`dD` in the example).
 
 Two details differ from the report's printed text, and NOAA's test values settle both:
 
@@ -103,14 +114,18 @@ Two details differ from the report's printed text, and NOAA's test values settle
 ### Grid variation
 
 Near the geographic poles, declination swings with every step east or west, so polar navigators
-use **grid variation** instead ([WMM] eq. 1): `D − λ` north of 55° N, and `D + λ` south of 55° S.
-Elsewhere hpr gives none (`None`), as the test values print `NaN`.
+use **grid variation** instead ([WMM] eq. 1): the angle from a map grid's north, that of the polar
+stereographic grid (Table 6's note), to magnetic north. It is `D − λ` north of 55° N, and `D + λ`
+south of 55° S. Elsewhere hpr gives none (`None`), as the test values print `NaN`.
 
 ### How far a compass can be trusted
 
 The report marks a **blackout zone** around each magnetic pole, where the horizontal intensity `H`
 is under 2,000 nT and declination can be wrong by up to 180°, and a **caution zone** around it,
-under 6,000 nT ([WMM] section 1.8). `MagneticField::compass_zone` says which applies.
+under 6,000 nT, where declination errors exceed 1° ([WMM] section 1.8).
+`MagneticField::compass_zone` says which applies: `Reliable`, `Caution` or `Blackout`. The report
+draws the zones on the ground; hpr uses the field at the height asked, which is a little weaker
+higher up, so its zones there are a little wider.
 
 The report's error model ([WMM] eq. 43) gives the declination's expected error, one standard
 deviation, in degrees:
@@ -159,23 +174,38 @@ falls by about 0.08° a year, so it moves well under a degree over the model's f
 | the report's Table 3b | 1 | `φ′`, `r`, the coefficients, `X′`, `Y′`, `Z′`, `X` … `Ḋ`, printed to 10 decimals | 5.0e-11 nT on `X′` | half the last digit, plus 8 units in the last place |
 | the report's poles (section 1.4) | 2 | `X`, `Y`, `Z` over each pole at `r = a` | inside 0.05 nT | 0.05 nT |
 | NCEI's high-precision file | 100 | `Y`, `D`, `I`, and the rates of `Y`, `Z`, `D`, `I` | half the last digit | 5e-7 nT, 0.005° |
-| the same file | 100 | `X`, `H`, `F` | 7.19e-4 nT | 7.2e-4 nT |
-| the same file | 100 | `Z`; the rates of `X`, `H`, `F` | 2.2e-6 nT; 1.5e-6 nT/yr | as measured |
+| the same file | 100 | `X`, `H`, `F` | 7.18e-4 nT | 7.2e-4 nT, the measured worst |
+| the same file | 100 | `Z`; the rates of `X`, `H`, `F` | 2.2e-6 nT; 1.5e-6 nT/yr | the measured worst |
+| the potential, by differences | 100 | hpr's `X′` and `Ẋ′` | 1.3e-7 nT | 1e-6 nT |
 
-The north component `X` in NCEI's high-precision file differs from hpr's by up to 7.19e-4 nT
-(at 2026.5, 12 km, 33° N, 145° W). The difference lies entirely in the geocentric north part `X′`:
-one residue there explains the file's `X` and `Z` together, and once it is taken out `Z` agrees to
-the file's last digit. The report's own ten-decimal worked example (Table 3b) agrees with hpr's
-`X′` to 5e-11 nT. A second, independent implementation, pygeomag 1.1.0 (MIT), run once by hand,
-gives hpr's `X` to 7e-7 nT and the same residue. So the file is held to its measured residue rather
-than to its printing. The residue's cause in NCEI's program is not known. It is 3 parts in 100
-million of the field, and 140 times smaller than the 0.1 nT the report allows for single
-precision. [ADR-125][adr-125] records the decision.
+Rows are counted from 0. The north component `X` in NCEI's file differs from hpr's at 97 of its
+100 points, by up to 7.18e-4 nT (row 35: 2026.5, 12 km, 33° N, 145° W). That is at most 2.11e-8
+of the total field, and 140 times smaller than the 0.1 nT the report allows for single precision
+(the note under its Table 6).
+
+The tests show where the difference comes from:
+
+- **It lies in one quantity, the geocentric `X′`.** If the file's `X′` is off by an amount `e`,
+  its `X` moves by `e cos(φ′ − φ)` and its `Z` by `e sin(φ′ − φ)`. Taking `e` from each point's `X`
+  and applying it to `Z` brings the file's `Z` to within 4.9e-7 nT of hpr's, inside its printing.
+- **hpr's `X′` is right.** The tests take the potential's derivative in latitude by differences,
+  independently of hpr's formula for it: hpr's `X′` matches to 1.3e-7 nT at all 100 points. The
+  report's own ten-decimal `X′` (Table 3b) matches to 5e-11 nT.
+- **A second program agrees with hpr.** pygeomag 1.1.0 (MIT), a port of NOAA's own `geomag`
+  program, run once by hand on two of the points (rows 3 and 35, not in CI), gives hpr's `X` to
+  7e-7 nT, so it differs from the file by the same amount.
+
+The rate of `X` differs too, by up to 9.5e-7 nT a year at 24 points: a second, smaller residue
+whose cause is not known. hpr's `Ẋ′` passes the same derivative check. The rates of `H` and `F`
+follow from `X` and its rate.
+
+So the file's `X`, `H`, `F` and `Z`, and the rates of `X`, `H` and `F`, are held to the measured
+differences, not to the file's printing. [ADR-125][adr-125] records the decision.
 
 A property test also checks, at random places and times, that `H`, `F`, `I` and `D` agree with
 `X`, `Y`, `Z` by their definitions, and that `F` lies between 20,000 and 70,000 nT. The report's
 Table 1 rounds the surface range to 23,000 to 67,000 nT, but the model itself falls to about
-21,900 nT over South America by 2030.
+21,900 nT over South America by 2030, which a test pins at 26° S, 61° W.
 
 ## Limits
 
@@ -184,11 +214,12 @@ Table 1 rounds the surface range to 23,000 to 67,000 nT, but the model itself fa
 - **Heights from −1 km to 850 km.** The model is specified from 1 km below the WGS 84 ellipsoid
   to 850 km above it ([WMM] section 3); outside that, a height is refused.
 - **Height above the ellipsoid.** Heights are above WGS 84, as `Geodetic` holds them. A site's
-  height above sea level differs by the geoid, up to about 100 m; the report puts that effect at
-  about 1 nT, far below the model's error.
+  height above sea level (from a map, a GPS or an altimeter) differs by the geoid, up to about
+  100 m; the report puts that effect at about 1 nT or less, far below the model's error, so a
+  height above sea level can be used as it is.
 - **The main field only.** The WMM leaves out the crust's local fields, which can move a compass
-  by degrees near iron ore or volcanic rock, and the fields of magnetic storms. Both are inside
-  the error estimate on average, not at any one place.
+  by degrees near iron ore or volcanic rock, and the fields of magnetic storms. The error
+  estimate allows for them as a worldwide average; at any one site they can be larger.
 - **Nothing in a flight uses it yet.** Converting a compass heading is the caller's step, with
   `MagneticField::true_from_magnetic_rad`.
 

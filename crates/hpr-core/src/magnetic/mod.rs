@@ -28,6 +28,7 @@ mod coefficients;
 #[cfg(test)]
 mod tests;
 
+use glam::DVec3;
 use serde::{Deserialize, Serialize};
 
 use crate::error::CoreError;
@@ -75,8 +76,13 @@ pub const CAUTION_HORIZONTAL_NT: f64 = 6_000.0;
 pub const BLACKOUT_HORIZONTAL_NT: f64 = 2_000.0;
 
 /// How far a compass, and so the declination, can be trusted at a place (report, section 1.8).
+///
+/// The report draws the zones on the ellipsoid's surface; at height the horizontal intensity
+/// weakens (to about 0.7 of the surface's at 850 km), so the zones there are wider than the
+/// report's. At a rocket's heights the difference is negligible.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum CompassZone {
     /// Horizontal intensity of at least 6,000 nT.
     Reliable,
@@ -90,9 +96,11 @@ pub enum CompassZone {
 
 /// The magnetic elements at one place and time, and their rates of change.
 ///
-/// Components are in the local geodetic north-east-down frame of the WGS 84 ellipsoid; angles are
-/// in radians; rates are per year.
+/// Components are in the local geodetic north-east-down frame of the WGS 84 ellipsoid, as the
+/// report gives them (hpr's launch frame is east-north-up: see [`MagneticField::enu_nt`]); angles
+/// are in radians; rates are per year.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct MagneticField {
     /// `X`, the northward component, nT.
     pub north_nt: f64,
@@ -128,10 +136,19 @@ pub struct MagneticField {
 }
 
 impl MagneticField {
-    /// The compass zone at this place, from the horizontal intensity (report, section 1.8).
+    /// The field as east, north and up components, nT: `(Y, X, −Z)`, the axes of hpr's launch
+    /// frame (`docs/physics/frames.md`).
+    #[must_use]
+    pub fn enu_nt(&self) -> DVec3 {
+        DVec3::new(self.east_nt, self.north_nt, -self.down_nt)
+    }
+
+    /// The compass zone at this place, from the horizontal intensity (report, section 1.8). A
+    /// horizontal intensity that is not a number counts as the blackout zone.
     #[must_use]
     pub fn compass_zone(&self) -> CompassZone {
-        if self.horizontal_nt < BLACKOUT_HORIZONTAL_NT {
+        // Written so that NaN fails closed, into the blackout zone.
+        if !(self.horizontal_nt >= BLACKOUT_HORIZONTAL_NT) {
             CompassZone::Blackout
         } else if self.horizontal_nt < CAUTION_HORIZONTAL_NT {
             CompassZone::Caution
@@ -149,16 +166,18 @@ impl MagneticField {
     ///
     /// About 0.29° where the field is strongest and growing without bound toward a magnetic pole.
     /// It covers the coefficients' and the forecast's errors, the crust's local fields the model
-    /// leaves out, and magnetic storms; a steel rail or car beside a compass adds its own.
+    /// leaves out, and magnetic storms; a steel rail or car beside a compass adds its own. The
+    /// report fits it on the ellipsoid's surface; at height it uses that height's `H`, which is
+    /// weaker, so the estimate grows a little (negligibly at a rocket's heights).
     #[must_use]
     pub fn declination_uncertainty_rad(&self) -> f64 {
         0.26_f64.hypot(5_417.0 / self.horizontal_nt).to_radians()
     }
 
-    /// A true bearing from a magnetic one: `true = magnetic + D`, rad.
+    /// A true bearing from a magnetic one: `true = magnetic + D`, rad, in `[0, 2π)`.
     #[must_use]
     pub fn true_from_magnetic_rad(&self, magnetic_bearing_rad: f64) -> f64 {
-        magnetic_bearing_rad + self.declination_rad
+        (magnetic_bearing_rad + self.declination_rad).rem_euclid(std::f64::consts::TAU)
     }
 }
 
@@ -302,12 +321,11 @@ fn geocentric(point: Geodetic) -> (f64, f64) {
     ((z / r).asin(), r)
 }
 
-/// Wraps an angle into `(−π, π]`.
+/// Wraps an angle into `(−π, π]`. `rem_euclid` is exact for any finite angle.
 fn wrap_pi(angle_rad: f64) -> f64 {
-    let tau = std::f64::consts::TAU;
-    let wrapped = angle_rad - tau * (angle_rad / tau).round();
-    if wrapped <= -std::f64::consts::PI {
-        wrapped + tau
+    let wrapped = angle_rad.rem_euclid(std::f64::consts::TAU);
+    if wrapped > std::f64::consts::PI {
+        wrapped - std::f64::consts::TAU
     } else {
         wrapped
     }
@@ -404,8 +422,10 @@ impl MagneticModel {
             });
         }
 
+        // Any finite longitude is accepted; reduce it exactly first, so that `m λ` stays small.
+        let longitude = point.longitude_rad.rem_euclid(std::f64::consts::TAU);
         let (latitude_prime, radius) = geocentric(point);
-        let harmonics = Harmonics::new(latitude_prime, radius, point.longitude_rad);
+        let harmonics = Harmonics::new(latitude_prime, radius, longitude);
         let (g, h, g_dot, h_dot) = self.coefficients_at(decimal_year);
         let field = harmonics.sum(&g, &h);
         let rate = harmonics.sum(&g_dot, &h_dot);
@@ -427,9 +447,9 @@ impl MagneticModel {
         let horizontal_rate = (x * x_dot + y * y_dot) / horizontal;
         let latitude_deg = point.latitude_rad.to_degrees();
         let grid_variation = if latitude_deg > 55.0 {
-            Some(wrap_pi(declination - point.longitude_rad))
+            Some(wrap_pi(declination - longitude))
         } else if latitude_deg < -55.0 {
-            Some(wrap_pi(declination + point.longitude_rad))
+            Some(wrap_pi(declination + longitude))
         } else {
             None
         };
@@ -456,8 +476,9 @@ impl MagneticModel {
 }
 
 /// A calendar date as a decimal year: `year + (d − 1) / L`, where `d` is the day of the year
-/// (1 for January 1) and `L` is 365 or 366. This is the start of the day; within a day the
-/// WMM's declination changes by well under 0.001°.
+/// (1 for January 1) and `L` is 365 or 366. This is the start of the day. Outside the blackout
+/// zones around the magnetic poles ([`CompassZone`]), the declination changes within a day by a
+/// few thousandths of a degree at most, far below the model's own error.
 ///
 /// # Errors
 ///

@@ -792,7 +792,8 @@
   - Elevation lookups are cached and work offline after the first fetch.
   Split a to c (ADR-125).
   - [x] **M5.3a WMM2025.** *Done when:* the WMM matches NOAA's test values (the report's Table 6
-    and NCEI's 100 points). *Result:* met (ADR-125): Table 6 to its printing; NCEI's `X` to 7.2e-4 nT.
+    and NCEI's 100 points). *Result:* met (ADR-125): Table 6 to its printing; NCEI's `X` off by
+    up to 7.18e-4 nT at 97 points, a residue a test places in the file's `X′`.
   - [ ] **M5.3b Elevation.** Open-Meteo's elevation API through the cache. *Done when:* a recorded
     lookup's height is the answer's, and a second lookup works offline from the cache.
   - [ ] **M5.3c Geodetic helpers and a user's elevation file.** Distance and bearing between two

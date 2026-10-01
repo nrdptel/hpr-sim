@@ -122,7 +122,8 @@ grains, which sets how its centre of mass and inertia change as it burns. See
 A direction on the ground, measured clockwise from true north: 0° is north, 90° east, 180° south
 and 270° west. [Getting started](getting-started.md#what-it-printed) gives the landing point as a
 distance and a bearing from the pad. A [wind direction](#wind-direction) is a bearing too: the one
-the wind blows from.
+the wind blows from. A compass gives a magnetic bearing; add the
+[declination](#declination-magnetic) to make it true.
 
 
 ## Boattail

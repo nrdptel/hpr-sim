@@ -198,7 +198,7 @@ is.
 | `--elevation M` | the site's height above sea level, m | 0 |
 | `--rail-length M` | the rail's length, from the rocket's aft end to the rail's top, m | 1.5 |
 | `--inclination DEG` | the rail's angle above the horizon, degrees: 90 is vertical | 90 |
-| `--heading DEG` | the direction the rail leans toward, clockwise from north, degrees | 0 |
+| `--heading DEG` | the direction the rail leans toward, clockwise from true north, degrees (add the [declination](physics/magnetic.md) to a compass reading) | 0 |
 | `--wind M_S` | a wind of this speed at every height, m/s | calm |
 | `--wind-from DEG` | where the wind blows from, clockwise from north, degrees: 270 is a west wind | 0 |
 
