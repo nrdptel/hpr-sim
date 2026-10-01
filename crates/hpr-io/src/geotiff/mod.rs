@@ -69,10 +69,12 @@
 //! its unit from EPSG's registry, whatever the key says). Vertical keys GDAL drops with their unit,
 //! or reads by rules of its own, are refused: a private value (above 32767) in any of them
 //! (dropped with a model type, read without one), any beside WGS 84 3D, `VerticalDatumGeoKey`
-//! 6030 beside WGS 84 (GDAL makes it WGS 84 3D), and any with no model type and no unit key. In a GeoTIFF 1.0 directory GDAL drops
-//! the vertical CRS but keeps its unit; this module reports both. A file that states no unit is
-//! read as metres, an assumption GDAL doesn't make (it reports no unit), flagged by
-//! [`RasterInfo::vertical_unit_stated`]; a file in feet that states none reads 3.28 times too
+//! 6030 beside WGS 84 with model type 2 (GDAL makes it WGS 84 3D), and any with no model type and
+//! no unit key. In a GeoTIFF 1.0 directory GDAL drops the vertical CRS but keeps its unit; this
+//! module reports both. A unit name is read after trimming ASCII blanks, which GDAL keeps at its
+//! end (`"ft "` is feet). A file that states no unit is read as metres, flagged by
+//! [`RasterInfo::vertical_unit_stated`]; GDAL reports no unit there, except beside a vertical
+//! datum key alone, where it assumes metres too; a file in feet that states none reads 3.28 times too
 //! high. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008, say) is reported, not applied.
 //! A value equal to the file's nodata value (GDAL's `GDAL_NODATA` tag) or a NaN reads as no
 //! height; a nodata value the sample type can't hold exactly, such as 12.5 on integers, matches
@@ -1119,8 +1121,9 @@ fn geographic_crs(keys: &GeoKeys) -> Result<u16, GeoTiffError> {
 /// Refuses vertical keys GDAL 3.12.2 drops, unit and all, or reads by rules of its own
 /// (`gt_wkt_srs.cpp`, each case measured through rasterio 1.5.2): a private value (above 32767)
 /// in any of them (dropped with a model type, read otherwise), any beside WGS 84 3D,
-/// `VerticalDatumGeoKey` 6030 beside WGS 84 (which GDAL turns into WGS 84 3D), and any with no
-/// model type and no unit key. This reader would read a unit there that GDAL doesn't report.
+/// `VerticalDatumGeoKey` 6030 beside WGS 84 with model type 2 (which GDAL turns into WGS 84 3D),
+/// and any with no model type and no unit key (GDAL drops the vertical CRS, or the whole CRS).
+/// This reader would read a unit there that GDAL doesn't report, or reports by other rules.
 fn vertical_kept_by_gdal(keys: &GeoKeys, geographic_crs_epsg: u16) -> Result<(), GeoTiffError> {
     let mut present = Vec::new();
     for key in [VERTICAL_CRS_KEY, VERTICAL_DATUM_KEY, VERTICAL_UNITS_KEY] {
@@ -1141,9 +1144,12 @@ fn vertical_kept_by_gdal(keys: &GeoKeys, geographic_crs_epsg: u16) -> Result<(),
     if !present.is_empty() && geographic_crs_epsg == 4979 {
         return Err(dropped("vertical keys beside WGS 84 3D (EPSG:4979)"));
     }
-    if geographic_crs_epsg == 4326 && keys.get(VERTICAL_DATUM_KEY)? == Some(6030) {
+    if geographic_crs_epsg == 4326
+        && keys.get(MODEL_TYPE_KEY)? == Some(2)
+        && keys.get(VERTICAL_DATUM_KEY)? == Some(6030)
+    {
         return Err(dropped(
-            "VerticalDatumGeoKey 6030 beside WGS 84, which GDAL reads as WGS 84 3D",
+            "VerticalDatumGeoKey 6030 beside WGS 84 with model type 2, which GDAL reads as WGS 84 3D",
         ));
     }
     if keys.get(MODEL_TYPE_KEY)?.is_none() && !present.is_empty() && !keys.has(VERTICAL_UNITS_KEY) {
@@ -1178,6 +1184,12 @@ fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiff
     match (stated, from_crs, crs) {
         // A vertical CRS this reader doesn't know: GDAL takes its unit from EPSG's registry,
         // whatever `VerticalUnitsGeoKey` says, and its unit could be feet.
+        (_, None, Some(4979)) => Err(GeoTiffError::Unsupported {
+            what: "a vertical CRS this reader doesn't know, EPSG",
+            value: "4979".to_string(),
+            hint: ": WGS 84 3D, as GDAL writes it, whose heights are above the ellipsoid; \
+                   `gdal_translate -a_srs EPSG:4326 in.tif out.tif` drops it",
+        }),
         (_, None, Some(code)) => Err(GeoTiffError::Unsupported {
             what: "a vertical CRS this reader doesn't know, EPSG",
             value: code.to_string(),
@@ -1313,13 +1325,14 @@ fn transform<R: std::io::Read + std::io::Seek>(
 
 /// Whether GDAL takes a scale and offset from `S_z` and the tiepoint's heights. It does for one
 /// band when its CRS is vertical, which depends on the directory's revision and on how GDAL and
-/// PROJ resolve the vertical keys (GDAL 3.12.2's `gt_wkt_srs.cpp` drops the vertical CRS for a
-/// private key value, for `VerticalDatumGeoKey` 6030 beside WGS 84, and with no model type and
-/// no unit key; it drops the whole CRS beside WGS 84 3D). Certain: applied for a GeoTIFF 1.1 directory of model
-/// type 2 naming a vertical CRS this reader knows, with no datum key, beside any geographic CRS
-/// but WGS 84 3D; ignored for a 1.0 directory (GDAL drops its vertical CRS, rasterio 1.5.2
-/// shows) and for one with no vertical key. Anything between is refused, unless the tags hold
-/// GDAL's own `S_z` 1 and offset 0 and `GDAL_METADATA` no other scale.
+/// PROJ resolve the vertical keys (GDAL 3.12.2's `gt_wkt_srs.cpp`, with model type 2, drops the
+/// vertical CRS for a private key value and for `VerticalDatumGeoKey` 6030 beside WGS 84, and the
+/// whole CRS beside WGS 84 3D; with no model type it builds a local CRS, with a vertical part only
+/// when there is a unit key). Certain: applied for a GeoTIFF 1.1 directory of model type 2 naming
+/// a vertical CRS this reader knows, with no datum key, beside any geographic CRS but WGS 84 3D;
+/// ignored for a 1.0 directory (GDAL drops its vertical CRS, rasterio 1.5.2 shows) and for one
+/// with no vertical key. Anything between is refused, unless the tags give GDAL's own scale 1 and
+/// offset 0 and `GDAL_METADATA` no other scale.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ZTerms {
     Applied,

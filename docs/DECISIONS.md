@@ -10486,11 +10486,11 @@ floating-point predictor included.
    a vertical CRS turns on the directory's revision and on how GDAL and PROJ resolve the keys, so
    `S_z` applies only where that is certain: a GeoTIFF 1.1 directory of model type 2 naming a
    vertical CRS from the short list of EPSG codes below, with no `VerticalDatumGeoKey` and a
-   geographic CRS other than WGS 84 3D (GDAL's `gt_wkt_srs.cpp` drops the vertical CRS for a
-   private datum code, for datum 6030 beside WGS 84, and with no model type and no unit key, and
-   the whole CRS beside WGS 84 3D). It is ignored, as GDAL ignores it, in a 1.0 directory
-   (rasterio shows GDAL
-   dropping the vertical CRS there) and where no vertical key is present. Otherwise a file with
+   geographic CRS other than WGS 84 3D (GDAL's `gt_wkt_srs.cpp`, with model type 2, drops the
+   vertical CRS for a private key value and for datum 6030 beside WGS 84, and the whole CRS
+   beside WGS 84 3D; with no model type it builds a local CRS, with a vertical part only when
+   there is a unit key). It is ignored, as GDAL ignores it, in a 1.0 directory (rasterio shows
+   GDAL dropping the vertical CRS there) and where no vertical key is present. Otherwise a file with
    heights in its tags is refused, unless they give GDAL's own scale 1 and offset 0 and
    `GDAL_METADATA` gives no other scale. GDAL matches `GDAL_METADATA` with quirks
    (`gtiffdataset_read.cpp`: attribute names in any case, compared with their prefix; C's `atoi`
@@ -10504,15 +10504,17 @@ floating-point predictor included.
    the vertical CRS's, which GDAL takes instead), else the unit of a vertical CRS from a short
    list of EPSG codes (`VERTICAL_CRS_UNITS`: EGM2008, EGM96, EGM84, ODN, MSL, NAVD88 in metres, feet
    and US survey feet), else `GDAL_METADATA`'s `unittype` (refused if it disagrees with the keys,
-   or names another unit); a file naming none is read as metres, hpr's assumption, not GDAL's
-   (GDAL reports no unit), flagged by `vertical_unit_stated`. A vertical CRS off the list is
+   or names another unit; read after trimming ASCII blanks, which GDAL keeps at its end); a file
+   naming none is read as metres, flagged by `vertical_unit_stated` (GDAL reports no unit, except
+   beside a vertical datum key alone, where it assumes metres too). A vertical CRS off the list is
    refused, with or without a unit key: GDAL takes its unit from EPSG's registry, which hpr
    doesn't hold. A user-defined one (32767, reported as no code) is read with a unit key and
    refused without. Vertical keys GDAL drops, unit and all, or reads by rules of its own, are
    refused, as hpr would read a unit GDAL doesn't report: a private value (above 32767) in any of
    them (dropped with a model type, read without one), any beside WGS 84 3D, datum 6030 beside
-   WGS 84 (GDAL makes it WGS 84 3D), and any with no model type and no unit key. A blank
-   `GDAL_METADATA` value written as a character reference, which GDAL reads as 0, is refused.
+   WGS 84 with model type 2 (GDAL makes it WGS 84 3D), and any with no model type and no unit
+   key. A blank `GDAL_METADATA` value written as a character reference, which GDAL reads as 0 or
+   a blank unit, is refused.
    The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
    sample type (a value an integer can't hold matches nothing); NaN is no data too.
 5. **Bounded on a hostile file.** `height_at` decodes only the tile or strip holding the point;

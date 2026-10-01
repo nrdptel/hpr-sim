@@ -1105,14 +1105,35 @@ fn vertical_keys_gdal_drops_are_refused() {
             "{keys:?}"
         );
     }
-    // WGS 84 3D with no vertical key reads, as does datum 6030 beside NAD83, which GDAL keeps.
+    // WGS 84 3D with no vertical key reads, as does datum 6030 beside NAD83, or beside WGS 84 with
+    // no model type (GDAL then builds a local CRS and reads the unit key: feet, measured).
     for keys in [
         vec![(1024, 2), (2048, 4979)],
         vec![(1024, 2), (2048, 4269), (4098, 6030), (4099, 9002)],
+        vec![(2048, 4326), (4098, 6030), (4099, 9002)],
     ] {
         let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
-        assert!(ElevationRaster::parse(&bytes).is_ok(), "{keys:?}");
+        let info = ElevationRaster::parse(&bytes)
+            .unwrap_or_else(|e| panic!("{keys:?}: {e}"))
+            .info()
+            .clone();
+        assert_eq!(
+            info.vertical_unit,
+            if keys.len() > 2 {
+                VerticalUnit::Foot
+            } else {
+                VerticalUnit::Metre
+            },
+            "{keys:?}"
+        );
     }
+    // WGS 84 3D as GDAL writes it, as a vertical CRS: refused, saying what it is.
+    let keys = [(1024, 2), (2048, 4326), (4096, 4979)];
+    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { ref value, hint, .. }) if value == "4979" && hint.contains("WGS 84 3D")
+    ));
 }
 
 #[test]
@@ -1298,7 +1319,7 @@ fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
             );
         }
     }
-    // Blanks typed as they are, around a value or alone, are skipped, as GDAL skips them.
+    // Blanks typed as they are, around a number or alone, are skipped, as GDAL skips them.
     assert_eq!(
         parse(
             &wgs84,
