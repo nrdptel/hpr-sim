@@ -3,6 +3,67 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Ten thousand flights (M6.1d)
+
+- **What this is.** How long 10,000 dispersed flights of a Level 2 rocket take, which
+  [M6.1d](decisions-and-roadmap.md#m6-1d) holds to 10 s. A Level 2 rocket is one on a J, K or L
+  motor, the classes a Level 2 certification allows.
+- **Benchmark:** `cargo bench -p hpr --features parallel --bench ten_thousand`
+  (`crates/hpr/benches/ten_thousand.rs`), release profile. It takes about a minute after it
+  compiles. Each run is `MonteCarlo::new` and then 10,000 flights through `run_parallel`, with one
+  worker thread per core. The program times three runs and prints the fastest. Then, on one
+  thread, it prints where a flight's time goes.
+- **When and where:** 2026-10-01 on an Apple M5 with 10 cores (4 fast performance cores, 6 slower
+  efficiency cores) and rustc 1.98.1, in an unattended session with nothing else building.
+- **Inputs:** two rockets. Each flies from a 3 m rail at 85° heading west into a 5 m/s west wind
+  at Spaceport America, and each runs to the ground under a 0.6 m drogue at apogee and a 2.4 m main
+  at 150 m, as under [Recovery](#recovery-m17a) below. Ten inputs are dispersed: the nine of
+  [the guide's example](monte-carlo.md#a-run-of-200-flights), with the same standard deviations,
+  plus a standard deviation of 0.2 s on each parachute's deployment lag.
+  - **Valetudo** (`rocketpy-valetudo.json`), 9.7 kg on an AeroTech K400C. Apogee 762 m on
+    average, peak Mach 0.29 to 0.40.
+  - **A 66 mm rocket with a 54 mm motor mount on a Cesaroni K940**, built in the program: 3.4 kg
+    on the pad, fibreglass. Apogee 3,688 m on average, peak Mach 1.58 to 1.97, so every flight
+    needs the supersonic table.
+- No flight failed in any run.
+
+| measurement | before M6.1d | after |
+|---|---|---|
+| Valetudo: 10,000 flights on 10 threads | 4.59 s | **3.00 s** |
+| Valetudo: a flight on one thread | 2.76 ms | 1.91 ms |
+| K940: 10,000 flights on 10 threads | 264 s | **9.43 s** |
+| K940: a flight on one thread | 193 ms | 5.71 ms |
+| laying a flight's design out, either rocket | 0.40 to 0.46 ms, twice | 0.001 to 0.002 ms |
+| building the K940's supersonic table | in every flight | once a run, 198 ms |
+
+- **The budget** is 10 s. Valetudo takes 3 s, under a third of it. The supersonic rocket takes
+  9.4 s, about 6% inside it; [#285](https://github.com/nrdptel/hpr-sim/issues/285) lists where
+  its remaining time goes. The program was run three times while the last small changes went
+  in, each run printing its fastest of three: 2.91 to 3.00 s and 9.33 to 9.47 s. The table is
+  the last run, on the finished code. On a busy or slower machine the supersonic run will take
+  more than 10 s. Other machines and operating systems haven't been timed.
+- **Before** is the same program, run on 5c7f3d2 (the commit before M6.1d) in the same session,
+  minus the lines of its one-thread breakdown that time steps the old code didn't have. The
+  layout row's "before" is the new program's time to lay a design out alone, which the old code
+  did twice per flight; the old program couldn't time it on its own.
+- **The flights are unchanged.** Both columns give the same apogee and Mach statistics, to the
+  digits printed. The unit test `samples_share_the_nominal_table_and_fly_as_alone`
+  (`crates/hpr-analysis/src/montecarlo.rs`) holds a supersonic sample to the same inputs flown
+  alone, bit for bit, on one, two and five threads.
+- **What changed:**
+  - **One supersonic table a run.** Before, each flight built its own table on its first pass of
+    Mach 1.2: most of its 193 ms. A dispersion changes masses, motors, drag and weather,
+    never the rocket's shape, and the table follows from the shape alone. So a run's flights
+    share the nominal design's table (`AeroModel::share_supersonic_table`). The first flight that
+    needs it builds it, and the others wait for it.
+  - **One layout a run.** Building a flight laid its design out twice, once for its checks and
+    once to assemble it. Now a flight takes the nominal design's layout and redoes only its
+    stages' masses (`LaidOut::relay`).
+  - **No copy of each evaluation.** The integrator asked for the state's evaluation, a few
+    hundred bytes, by copying it out of a cache; now it borrows it.
+- **Threads.** Ten threads fly 6.0 times as fast as one on the supersonic rocket, and 6.4 times
+  on Valetudo, not 10 times, because six of the ten cores are the slower efficiency cores.
+
 ## Build memory during an unattended run
 
 - **Benchmark:** `scripts/build-memory.sh`, which builds into an empty `CARGO_TARGET_DIR` and sums
@@ -64,9 +125,10 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
   the body ahead of the flare for the flow at its corner and then lays out and marches a second
   body with the flare drawn. Both are one-time costs behind the table's `OnceLock`, paid only once
   a flow passes Mach 1.2 and shared by a model's clones. A Monte Carlo run
-  ([M6.1a](decisions-and-roadmap.md#m6-1a)) doesn't share them yet: each of its flights builds
-  its own model, so a supersonic design pays them every flight, until
-  [M6.1d](decisions-and-roadmap.md#m6-1d). Two obvious savings are left on the table for a later milestone: reading the flow at an
+  ([M6.1a](decisions-and-roadmap.md#m6-1a)) builds a model per flight, and since
+  [M6.1d](decisions-and-roadmap.md#m6-1d) its flights share the nominal flight's table, so a
+  supersonic design pays for it once a run (Ten thousand flights, above). Two obvious savings are
+  left on the table for a later milestone: reading the flow at an
   interior station instead of marching the fore body again, and swapping the last segment of one
   body instead of rebuilding it.
 

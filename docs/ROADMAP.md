@@ -800,7 +800,7 @@
     with its cause: hollow shoulders (OR's weigh nothing), two wall definitions, ounces, a streamer.
 ## Phase 3: Uncertainty, optimization, challenges
 
-- [ ] **M6.1 Monte Carlo and sensitivity.**
+- [x] **M6.1 Monte Carlo and sensitivity.**
   - Seeded, parallel dispersion over: mass/CG, Cd scale, motor impulse and timing (certification
     tolerances), wind, launch angle, deployment delays.
   - Landing ellipses at confidence levels; apogee distribution.
@@ -822,8 +822,9 @@
   - [x] **M6.1c Sensitivity:** Morris screening and Sobol indices. *Done when:* both match the
     known indices of test functions with closed forms (Ishigami, Sobol's g) within sampling error.
     *Result:* met (ADR-136): within 4 standard errors, calibrated on 500 to 1,000 seeds.
-  - [ ] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on
-    the dev machine, recorded in `docs/perf.md`.
+  - [x] **M6.1d 10,000 flights.** *Done when:* 10,000 flights of an L2 design finish in ≤10 s on
+    the dev machine, recorded in `docs/perf.md`. *Result:* met (ADR-137): Valetudo 3.00 s; a
+    supersonic K940 rocket 9.43 s (264 s before): one layout and one supersonic table a run.
 
 - [ ] **M6.2 Optimization engine.**
   - Continuous and discrete design variables, including motor choice and catalog parts.

@@ -13,7 +13,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::Configuration;
+use crate::config::{Configuration, LaidOut};
 use crate::error::DesignError;
 use crate::tree::{LENGTH_TOLERANCE_M, Layout, Part, PlacedComponent, Rocket};
 
@@ -182,10 +182,25 @@ impl Finding {
 /// design that doesn't resolve can't be checked.
 pub fn check(rocket: &Rocket) -> Result<Vec<Finding>, DesignError> {
     rocket.check_configuration_ids()?;
-    let layout = rocket.layout()?;
-    let mut findings = check_layout(&layout);
+    check_on(rocket, &rocket.layout()?)
+}
+
+impl LaidOut {
+    /// As [`check`], on this layout.
+    ///
+    /// # Errors
+    ///
+    /// As [`Layout::place_motors`].
+    pub fn check(&self) -> Result<Vec<Finding>, DesignError> {
+        check_on(self.rocket(), self.layout())
+    }
+}
+
+/// Every check on `rocket`, whose layout is `layout`.
+fn check_on(rocket: &Rocket, layout: &Layout) -> Result<Vec<Finding>, DesignError> {
+    let mut findings = check_layout(layout);
     for configuration in &rocket.configurations {
-        findings.extend(check_configuration(&layout, configuration)?);
+        findings.extend(check_configuration(layout, configuration)?);
     }
     Ok(findings)
 }

@@ -51,6 +51,20 @@
 //! instead, since a charge can't fire before its event and a wind can't blow at less than calm: a
 //! normal tail past zero becomes zero.
 //!
+//! # Speed
+//!
+//! Every sample flies a simulation of its own, built from its draw. None of the dispersed inputs
+//! changes the rocket's shape, so the samples share two things with the nominal design, and a run
+//! flies the same either way, bit for bit:
+//!
+//! - its parts as laid out ([`hpr_design::LaidOut::relay`]): a sample lays out only its stages
+//!   again, with their dispersed masses;
+//! - its supersonic table ([`hpr_aero::AeroModel::share_supersonic_table`]): a design that flies
+//!   past Mach 1.2 builds it once for the run, not once a flight.
+//!
+//! [`MonteCarlo::fly`] shares them too, for draws made by hand; [`FlightInputs::fly`] builds its
+//! own every time. A sustainer lit at a powered separation builds its own table in every flight.
+//!
 //! # Left out
 //!
 //! Dispersions are independent normals: no correlations between inputs, no other
@@ -67,12 +81,12 @@
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::sync::Arc;
 
-use hpr_aero::DragModel;
 use hpr_aero::table::DragTable;
+use hpr_aero::{AeroModel, DragModel};
 use hpr_atmos::{AtmosError, Wind, WindSample};
 use hpr_core::DVec3;
 use hpr_core::random::SeededRng;
-use hpr_design::Rocket;
+use hpr_design::{LaidOut, Rocket};
 use hpr_motor::motor::{Propellant, PropellantColumn};
 use hpr_motor::{BatesGrains, Delay, SolidMotor, ThrustCurve};
 use hpr_sim::{
@@ -145,8 +159,13 @@ impl FlightInputs {
     /// As [`Simulation::new`], [`Simulation::with_drag_scale`] (a scale that is negative or not
     /// finite) and [`Simulation::with_recovery`].
     pub fn simulation(&self) -> Result<Simulation, SimError> {
-        let mut simulation = Simulation::new(
-            &self.rocket,
+        self.simulation_on(self.rocket.lay_out()?)
+    }
+
+    /// As [`FlightInputs::simulation`], on `laid_out`, which is this design laid out.
+    fn simulation_on(&self, laid_out: LaidOut) -> Result<Simulation, SimError> {
+        let mut simulation = Simulation::from_laid_out(
+            laid_out,
             &self.configuration_id,
             self.environment.clone(),
             self.rail,
@@ -178,11 +197,36 @@ impl FlightInputs {
     /// As [`FlightInputs::simulation`], [`Simulation::run`] and
     /// [`FlightMetrics::summary`].
     pub fn fly(&self) -> Result<FlightSummary, SimError> {
-        let simulation = self.simulation()?;
+        self.fly_on(self.simulation()?)
+    }
+
+    /// As [`FlightInputs::fly`], on what a run's flights share with its nominal one, when it has
+    /// it: the design laid out from the nominal's ([`LaidOut::relay`]) and the nominal's
+    /// supersonic table ([`Simulation::share_supersonic_table`]). The flight is the same, bit for
+    /// bit.
+    fn fly_sharing(&self, shared: Option<&Shared>) -> Result<FlightSummary, SimError> {
+        let Some(shared) = shared else {
+            return self.fly();
+        };
+        let mut simulation = self.simulation_on(shared.laid_out.relay(self.rocket.clone())?)?;
+        simulation.share_supersonic_table(&shared.tables);
+        self.fly_on(simulation)
+    }
+
+    /// Flies `simulation`, built from these inputs, to the ground and gives its metrics.
+    fn fly_on(&self, simulation: Simulation) -> Result<FlightSummary, SimError> {
         let mut metrics = FlightMetrics::new();
         let result = simulation.run(&mut metrics)?;
         metrics.summary(&result, &self.environment)
     }
+}
+
+/// What a run's flights share with its nominal flight: the nominal design laid out, which each
+/// flight's layout starts from, and its aerodynamic model, whose supersonic table they fly on.
+#[derive(Debug, Clone)]
+struct Shared {
+    laid_out: LaidOut,
+    tables: AeroModel,
 }
 
 /// The standard deviation of each dispersed input; zero, the default, leaves an input at its
@@ -444,6 +488,9 @@ pub struct MonteCarlo {
     dispersion: Dispersion,
     stages: Vec<StageMass>,
     configuration: usize,
+    /// What the samples share with the nominal flight; `None` when the nominal design can't be
+    /// laid out or its aerodynamic model built, and then every sample fails on its own.
+    shared: Option<Shared>,
 }
 
 impl MonteCarlo {
@@ -464,9 +511,8 @@ impl MonteCarlo {
             .iter()
             .position(|c| c.id == nominal.configuration_id)
             .ok_or_else(|| AnalysisError::NoConfiguration(nominal.configuration_id.clone()))?;
-        let stages = nominal
-            .rocket
-            .layout()?
+        let layout = nominal.rocket.layout()?;
+        let stages = layout
             .stages
             .iter()
             .map(|stage| StageMass {
@@ -480,11 +526,16 @@ impl MonteCarlo {
                 dispersed_motor(&mounted.motor, 1.0, 1.0)?;
             }
         }
+        let shared = nominal.rocket.lay_out().ok().and_then(|laid_out| {
+            let tables = AeroModel::new(laid_out.layout()).ok()?;
+            Some(Shared { laid_out, tables })
+        });
         Ok(Self {
             nominal,
             dispersion,
             stages,
             configuration,
+            shared,
         })
     }
 
@@ -695,6 +746,19 @@ impl MonteCarlo {
         Ok(())
     }
 
+    /// Flies `draw` ([`MonteCarlo::inputs`]) to the ground and gives its metrics, on what the
+    /// run's flights share (the module's *Speed*): as [`FlightInputs::fly`] on the same inputs,
+    /// bit for bit, but without laying out the parts or building a supersonic table again. For
+    /// flights drawn by hand, as a sensitivity analysis's ([`crate::sensitivity`]).
+    ///
+    /// # Errors
+    ///
+    /// As [`MonteCarlo::inputs`], and [`AnalysisError::Sim`] around the errors of
+    /// [`FlightInputs::fly`].
+    pub fn fly(&self, draw: &Draw) -> Result<FlightSummary, AnalysisError> {
+        Ok(self.inputs(draw)?.fly_sharing(self.shared.as_ref())?)
+    }
+
     /// Draws and flies sample `index` of a run seeded with `seed`. A draw that makes an input
     /// impossible, or a flight that stops with an error, is a failed sample, not an error.
     pub fn sample(&self, seed: u64, index: u64) -> Sample {
@@ -704,7 +768,7 @@ impl MonteCarlo {
                 at: FailedAt::Inputs,
                 reason: error.to_string(),
             },
-            Ok(inputs) => match inputs.fly() {
+            Ok(inputs) => match inputs.fly_sharing(self.shared.as_ref()) {
                 Ok(summary) => Outcome::Flown {
                     summary: Box::new(summary),
                 },
@@ -1187,6 +1251,54 @@ mod tests {
         assert_eq!(first, dispersed.run(SEED, 2));
         let json = serde_json::to_string(&first).unwrap();
         assert_eq!(serde_json::from_str::<Run>(&json).unwrap(), first);
+    }
+
+    /// Valetudo's motor at four times its impulse in a quarter of its time takes it past Mach
+    /// 1.2, where its flights need the supersonic table: the samples build the nominal's and
+    /// share it, and each flies as the same inputs flown alone, on a table of their own, bit for
+    /// bit.
+    #[test]
+    fn samples_share_the_nominal_table_and_fly_as_alone() {
+        let mut inputs = nominal();
+        let mounted = &mut inputs.rocket.configurations[0].motors[0];
+        mounted.motor = dispersed_motor(&mounted.motor, 4.0, 0.25).unwrap();
+        let monte_carlo = MonteCarlo::new(inputs, every_dispersion()).unwrap();
+        let tables = &monte_carlo.shared.as_ref().unwrap().tables;
+        assert!(!tables.supersonic_table_built());
+        assert!(monte_carlo.sample(SEED, 0).summary().is_some());
+        // The sample built the nominal's table.
+        assert!(tables.supersonic_table_built());
+        let table = tables.supersonic_body().unwrap();
+        for index in 0..2 {
+            let draw = monte_carlo.draw(SEED, index);
+            let alone = monte_carlo.inputs(&draw).unwrap();
+            assert!(alone.simulation().unwrap().share_supersonic_table(tables));
+            let flight = alone.fly().unwrap();
+            // The table carries the flow at the flight's peak, so it shapes the flight.
+            let max_mach = flight.max_mach.as_ref().unwrap().value;
+            assert!(table.weight(max_mach) > 0.0, "Mach {max_mach}");
+            assert_eq!(monte_carlo.sample(SEED, index).summary(), Some(&flight));
+            assert_eq!(monte_carlo.fly(&draw).unwrap(), flight);
+        }
+        // A fresh run on two and five threads, whose flights build the shared table on whichever
+        // thread first needs it, is the run flown on one.
+        #[cfg(feature = "parallel")]
+        {
+            let run = monte_carlo.run(SEED, 3);
+            for threads in [2, 5] {
+                let fresh =
+                    MonteCarlo::new(monte_carlo.nominal().clone(), every_dispersion()).unwrap();
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                assert_eq!(
+                    pool.install(|| fresh.run_parallel(SEED, 3)),
+                    run,
+                    "{threads}"
+                );
+            }
+        }
     }
 
     #[test]

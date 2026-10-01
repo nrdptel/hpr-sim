@@ -193,7 +193,7 @@ fn rocket_screening(seed: u64) -> Result<(), Box<dyn Error>> {
         draw.wind_speed_scale = x[3] / 4.0;
         draw.wind_turn_rad = x[4].to_radians();
         draw.rail_elevation_offset_rad = (x[5] - 85.0).to_radians();
-        let flight = monte_carlo.inputs(&draw)?.fly()?;
+        let flight = monte_carlo.fly(&draw)?;
         let apogee = flight.apogee.as_ref().ok_or("no apogee")?;
         apogees.push(apogee.height_above_ground_m);
         distances.push(flight.landing.as_ref().ok_or("no landing")?.distance_m);

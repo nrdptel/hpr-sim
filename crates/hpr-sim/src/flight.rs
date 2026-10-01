@@ -38,8 +38,8 @@ use std::sync::Arc;
 
 use hpr_aero::{AeroModel, DragModel, DragTable, NormalForceTable};
 use hpr_core::DVec3;
-use hpr_design::Rocket;
-use hpr_design::checks::{check, has_errors};
+use hpr_design::checks::has_errors;
+use hpr_design::{LaidOut, Rocket};
 use serde::{Deserialize, Serialize};
 
 use crate::dynamics::{Conditions, Evaluation, Phase, Vehicle};
@@ -354,7 +354,31 @@ impl Simulation {
         rail: Rail,
         settings: FlightSettings,
     ) -> Result<Self, SimError> {
-        let findings = check(rocket)?;
+        Self::from_laid_out(
+            rocket.lay_out()?,
+            configuration_id,
+            environment,
+            rail,
+            settings,
+        )
+    }
+
+    /// As [`Simulation::new`], on a design laid out already ([`hpr_design::LaidOut`]). The checks
+    /// and the assembly share its layout, which is most of the cost of building a simulation; a
+    /// Monte Carlo run lays out each flight from the nominal one's
+    /// ([`hpr_design::LaidOut::relay`]).
+    ///
+    /// # Errors
+    ///
+    /// As [`Simulation::new`].
+    pub fn from_laid_out(
+        laid_out: LaidOut,
+        configuration_id: &str,
+        environment: Environment,
+        rail: Rail,
+        settings: FlightSettings,
+    ) -> Result<Self, SimError> {
+        let findings = laid_out.check()?;
         if has_errors(&findings) && !settings.accept_design_errors {
             return Err(SimError::DesignChecks(findings));
         }
@@ -366,7 +390,7 @@ impl Simulation {
             });
         }
         rail.validate()?;
-        let assembly = rocket.assemble(configuration_id)?;
+        let (rocket, assembly) = laid_out.into_assembly(configuration_id)?;
         let aero = AeroModel::new(&assembly.layout)?;
         // No separation yet, so a motor lit by one has no time.
         let ignition_s = assembly.ignition_times_s(|_| None);
@@ -395,7 +419,7 @@ impl Simulation {
             releases: Vec::new(),
             release_parts: Releases::default(),
             release_times_s: Vec::new(),
-            rocket: rocket.clone(),
+            rocket,
             configuration_id: configuration_id.to_owned(),
             aero_overridden: false,
             recovery_held: false,
@@ -1051,6 +1075,16 @@ impl Simulation {
     #[must_use]
     pub fn aero(&self) -> &AeroModel {
         &self.vehicle.aero
+    }
+
+    /// Takes `other`'s supersonic table for this flight's aerodynamic model where the two would
+    /// build the same table ([`AeroModel::share_supersonic_table`]), so that it is built once for
+    /// both: for many flights of one airframe, as a Monte Carlo run's. `other` is usually
+    /// another simulation's [`Simulation::aero`]. The flight is unchanged, bit for bit. A
+    /// sustainer's model, built at a powered separation, still builds its own table every
+    /// flight. Returns `true` if the table is now shared.
+    pub fn share_supersonic_table(&mut self, other: &AeroModel) -> bool {
+        self.vehicle.aero.share_supersonic_table(other)
     }
 
     /// The rail guides.
@@ -3068,22 +3102,28 @@ struct PhaseSystem<'a> {
 }
 
 impl PhaseSystem<'_> {
-    fn evaluation(&mut self, t: f64, y: &[f64; STATE_LEN]) -> Result<Evaluation, SimError> {
-        if let Some((ct, cy, evaluation)) = &self.cache
-            && *ct == t
-            && cy == y
-        {
-            return Ok(*evaluation);
+    /// The evaluation at `(t, y)`, from the cache when it holds that state. A reference, not a
+    /// copy: an evaluation is a few hundred bytes, and the integrator asks for one at every
+    /// stage and event check.
+    fn evaluation(&mut self, t: f64, y: &[f64; STATE_LEN]) -> Result<&Evaluation, SimError> {
+        if !matches!(&self.cache, Some((ct, cy, _)) if *ct == t && cy == y) {
+            self.cache = None;
         }
-        let evaluation = self.simulation.evaluate(
-            self.vehicle,
-            self.phase,
-            self.window,
-            t,
-            y,
-            self.canopies.drag_area_m2(t),
-        )?;
-        self.cache = Some((t, *y, evaluation));
+        let (_, _, evaluation) = match &mut self.cache {
+            Some(entry) => entry,
+            slot @ None => slot.insert((
+                t,
+                *y,
+                self.simulation.evaluate(
+                    self.vehicle,
+                    self.phase,
+                    self.window,
+                    t,
+                    y,
+                    self.canopies.drag_area_m2(t),
+                )?,
+            )),
+        };
         Ok(evaluation)
     }
 
@@ -3193,9 +3233,8 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                 self.or_fail(value)
             }
             Watch::User(user) => {
-                let value = self
-                    .evaluation(t_s, y)
-                    .map(|e| sample_of(self.phase, t_s, y, &e));
+                let phase = self.phase;
+                let value = self.evaluation(t_s, y).map(|e| sample_of(phase, t_s, y, e));
                 match value {
                     Ok(sample) => self
                         .simulation

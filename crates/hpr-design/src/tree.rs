@@ -788,6 +788,18 @@ pub struct PlacedStage {
     pub centre_overridden: bool,
 }
 
+/// Each stage's masses before its overrides, as [`Rocket::layout`] combines them, and where it
+/// starts and ends: what a layout's stages are made from.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct StageMasses {
+    /// Each stage's top-level components' masses, with their children, fore to aft.
+    masses: Vec<Vec<MassProperties>>,
+    /// Each stage's fore and aft stations, m.
+    ends: Vec<Option<(f64, f64)>>,
+    /// The rocket's length, m.
+    length_m: f64,
+}
+
 /// A design resolved into placed parts, with its structural mass properties (no motors).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Layout {
@@ -871,6 +883,15 @@ impl Rocket {
     /// - Any part's geometry, material or numerical error, a custom finish's negative or
     ///   non-finite roughness, and override errors.
     pub fn layout(&self) -> Result<Layout, DesignError> {
+        let (components, masses) = self.placed_components()?;
+        self.staged_layout(components, &masses)
+    }
+
+    /// The body components placed, with their children, and each stage's masses before its
+    /// overrides: all of [`Rocket::layout`] but the stages.
+    pub(crate) fn placed_components(
+        &self,
+    ) -> Result<(Vec<PlacedComponent>, StageMasses), DesignError> {
         if self.stages.is_empty() {
             return Err(DesignError::Tree {
                 id: self.name.clone(),
@@ -931,9 +952,26 @@ impl Rocket {
             ends.1 = station + length;
             station += length;
         }
+        Ok((
+            components,
+            StageMasses {
+                masses: stage_masses,
+                ends: stage_ends,
+                length_m: station,
+            },
+        ))
+    }
 
+    /// The layout of `components`, placed by [`Rocket::placed_components`] from this design or
+    /// from one with the same stage components, with this design's stage overrides applied to
+    /// `masses`: the rest of [`Rocket::layout`].
+    pub(crate) fn staged_layout(
+        &self,
+        components: Vec<PlacedComponent>,
+        masses: &StageMasses,
+    ) -> Result<Layout, DesignError> {
         let mut stages = Vec::with_capacity(self.stages.len());
-        for ((stage, masses), ends) in self.stages.iter().zip(&stage_masses).zip(&stage_ends) {
+        for ((stage, masses), ends) in self.stages.iter().zip(&masses.masses).zip(&masses.ends) {
             let (fore, aft) = ends.unwrap_or((0.0, 0.0));
             let mass = stage
                 .overrides
@@ -952,7 +990,7 @@ impl Rocket {
         Ok(Layout {
             components,
             stages,
-            length_m: station,
+            length_m: masses.length_m,
             reference_diameter_m,
             structure,
         })

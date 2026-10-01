@@ -41,6 +41,8 @@ parquet = ["hpr-sim/parquet"]
 parallel = ["hpr-analysis/parallel"]
 
 [dev-dependencies]
+# The ten_thousand bench prints the threads of rayon's pool.
+rayon.workspace = true
 serde_json.workspace = true
 
 [[example]]
@@ -62,3 +64,8 @@ required-features = ["net"]
 [[example]]
 name = "wyoming_sounding"
 required-features = ["net"]
+
+[[bench]]
+name = "ten_thousand"
+harness = false
+required-features = ["parallel"]
