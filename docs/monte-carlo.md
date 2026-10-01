@@ -299,7 +299,8 @@ alone, bit for bit; a unit test holds a supersonic flight to that, on one, two a
 Before this speed-up ([M6.1d](decisions-and-roadmap.md#m6-1d), October 2026), each flight built
 its own table, and the supersonic run above took 264 s. To fly draws of your own, as a
 [sensitivity analysis](sensitivity.md) does, use `monte_carlo.fly(&draw)`, which shares the same
-work; `inputs.fly()` on a draw's inputs builds its own. A two-stage rocket's sustainer, built
+work. Flying a draw's inputs yourself, `monte_carlo.inputs(&draw)?.fly()`, builds its own
+table and layout. A two-stage rocket's sustainer, built
 when the stages separate, still builds its own table in every flight. Issue
 [#285](https://github.com/nrdptel/hpr-sim/issues/285) is about making each flight itself faster.
 

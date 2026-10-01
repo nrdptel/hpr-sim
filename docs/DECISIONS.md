@@ -11247,7 +11247,7 @@ changing a flight.
 **Consequences.** M6.1d is met.
 
 - Valetudo's 10,000 flights take 3.00 s and the K940 rocket's 9.43 s (2.91 to 3.00 s and 9.33 to
-  9.47 s over three runs), with the same apogee and Mach statistics as before.
+  9.47 s over three runs of the program during the last changes), with the same apogee and Mach statistics as before.
 - The supersonic run is about 6% inside the budget. A profile, taken before item 3, puts 11% of its
   busy time in `atan2`
   (flow angles, the geodetic conversion, gravity) and 8% in `pow` (drag terms, the atmosphere).

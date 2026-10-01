@@ -279,9 +279,10 @@ support; a factor's effect grows with its range.
   by less than a couple of errors aren't ranked yet.
 - **Rows:** a Sobol' analysis needs about 8,000 rows, each `k + 2` runs, to pin an index to about
   ±0.01 to ±0.015 (one standard error). Use Morris first to find the few factors that matter, then
-  Sobol' on those if you need the shares or the order of two close ones. - **Normal inputs:** give
-  each one the same multiple of its standard deviation, such as ±2, so they are compared alike. A
-  range spreads the input evenly, which weighs its ends more than a normal spread does.
+  Sobol' on those if you need the shares or the order of two close ones.
+- **Normal inputs:** give each one the same multiple of its standard deviation, such as ±2, so
+  they are compared alike. A range spreads the input evenly, which weighs its ends more than a
+  normal spread does.
 
 ## Left out
 

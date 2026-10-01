@@ -38,14 +38,14 @@ the command, so a later run can be compared like for like.
 
 - **The budget** is 10 s. Valetudo takes 3 s, under a third of it. The supersonic rocket takes
   9.4 s, about 6% inside it; [#285](https://github.com/nrdptel/hpr-sim/issues/285) lists where
-  its remaining time goes. Three runs of the program over the last changes, the last on the
-  finished code, gave 2.91 to 3.00 s and 9.33 to 9.47 s; the table is the last. On a busy or
-  slower machine the supersonic run will take more than 10 s. Other machines and operating
-  systems haven't been timed.
-- **Before** is the same program, without the per-flight split's newer lines, run on the commit
-  before M6.1d (5c7f3d2) in the same session. The layout row's "before" is the new program's
-  time to lay a design out alone, which the old code did twice per flight; the old program
-  couldn't time it on its own.
+  its remaining time goes. The program was run three times while the last small changes went
+  in, each run printing its fastest of three: 2.91 to 3.00 s and 9.33 to 9.47 s. The table is
+  the last run, on the finished code. On a busy or slower machine the supersonic run will take
+  more than 10 s. Other machines and operating systems haven't been timed.
+- **Before** is the same program, run on 5c7f3d2 (the commit before M6.1d) in the same session,
+  minus the lines of its one-thread breakdown that time steps the old code didn't have. The
+  layout row's "before" is the new program's time to lay a design out alone, which the old code
+  did twice per flight; the old program couldn't time it on its own.
 - **The flights are unchanged.** Both columns give the same apogee and Mach statistics, to the
   digits printed. The unit test `samples_share_the_nominal_table_and_fly_as_alone`
   (`crates/hpr-analysis/src/montecarlo.rs`) holds a supersonic sample to the same inputs flown
