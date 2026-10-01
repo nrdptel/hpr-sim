@@ -10461,9 +10461,11 @@ floating-point predictor included.
    georeferencing and GDAL's tags are read here.
 2. **Geographic CRSs near WGS 84 only.** `GTModelTypeGeoKey` 2, or a geodetic CRS key with no
    model type (GeoTIFF 1.0 writers), in degrees from Greenwich, and an EPSG code in
-   `NEAR_WGS84`: WGS 84, NAD83 and its realisations, ETRS89, GDA94, GDA2020, NZGD2000, JGD2000,
-   JGD2011, SIRGAS 2000, CGCS2000, all within a few metres of WGS 84 (plate motion since each was
-   fixed). A point's WGS 84 coordinates are read in the file's datum unchanged. Anything else (a
+   `NEAR_WGS84`: WGS 84, NAD83 and its realisations, ETRS89, GDA94, GDA2020, NZGD2000, JGD2011,
+   SIRGAS 2000, CGCS2000, all within a few metres of WGS 84 (plate motion since each was fixed),
+   except near the epicentres of large earthquakes since (Chile 2010 for SIRGAS 2000, Kaikōura
+   2016 for NZGD2000: several metres). JGD2000 is out: Japan's 2011 earthquake moved its
+   north-east more than 5 m, and JGD2011 replaced it. A point's WGS 84 coordinates are read in the file's datum unchanged. Anything else (a
    projection such as UTM, NAD27 at about 55 m in New Mexico, Tokyo at hundreds) is refused naming
    its code, with the `gdalwarp -t_srs EPSG:4326` that converts it; datum shifts and projections
    would be models of their own, for later if users ask.
@@ -10479,18 +10481,27 @@ floating-point predictor included.
    rotation, ground control points, and an internal mask image (GDAL's nodata mask).
 4. **Heights: GDAL's scale and offset, then the file's unit.** A raw value `v` is
    `(v·scale + offset)·unit` metres. The scale and offset are GDAL's: `S_z` and `Z₀ − z₀·S_z` when
-   the file has a vertical CRS and any of the three is non-zero, else `GDAL_METADATA`'s first-band
-   items, else 1 and 0; both sources disagreeing, or a scale of 0, are refused. The unit is
-   `VerticalUnitsGeoKey` (metres, feet, US survey feet), else the unit of a vertical CRS from a
-   short table of EPSG codes (EGM2008, EGM96, EGM84, ODN, MSL, NAVD88 in metres, feet and US survey
-   feet); a file naming neither is read as metres, hpr's assumption, not GDAL's (GDAL reports no
-   unit), flagged by `vertical_unit_stated`. A vertical CRS outside the table with no unit is
-   refused. The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
+   any of the three is non-zero and GDAL reads a vertical CRS, else `GDAL_METADATA`'s first-band
+   items, else 1 and 0; both sources disagreeing, or a scale of 0, are refused. Whether GDAL reads
+   a vertical CRS turns on the directory's revision and on how GDAL and PROJ resolve the keys, so
+   `S_z` applies only where that is certain: a GeoTIFF 1.1 directory naming a vertical CRS in the
+   table below. It is ignored, as GDAL ignores it, in a 1.0 directory (rasterio shows GDAL
+   dropping the vertical CRS there and keeping its unit) and where no vertical key is present;
+   any other vertical keys beside heights in the tags are refused. `GDAL_METADATA` items are
+   matched as GDAL matches them: under a `GDALMetadata` root, with a name, no domain and sample 0.
+   The unit is `VerticalUnitsGeoKey` (metres, feet, US survey feet), else the unit of a vertical
+   CRS from a short table of EPSG codes (EGM2008, EGM96, EGM84, ODN, MSL, NAVD88 in metres, feet
+   and US survey feet), else `GDAL_METADATA`'s `unittype` (refused if it disagrees with the keys,
+   or names another unit); a file naming none is read as metres, hpr's assumption, not GDAL's
+   (GDAL reports no unit), flagged by `vertical_unit_stated`. A vertical CRS outside the table, or
+   a user-defined one (32767 and above, reported as no code), with no unit is refused. The vertical datum is reported, not applied. Nodata is `GDAL_NODATA` rounded to the
    sample type (a value an integer can't hold matches nothing); NaN is no data too.
 5. **Bounded on a hostile file.** `height_at` decodes only the tile or strip holding the point;
    `parse` refuses a tile or strip over 256 MiB decoded (`MAX_CHUNK_BYTES`: the `tiff` crate's own
    chunk limit, which its padding of a floating-point tile bypasses) and a chunk count past a u32.
-   `values` decodes a first tile before allocating, and allocates fallibly, up to 2²⁸ pixels.
+   The tile size is multiplied in u128, as a u64 product can overflow. `values` grows its output
+   fallibly a row of tiles at a time, as they decode, up to 2²⁸ pixels. `GDAL_METADATA` nested
+   past 16 deep is refused before its XML is parsed.
    `values_at` decodes each needed chunk once and fails only the points in a tile that won't
    decode. The `tiff` crate prints one `dbg!` line to standard error when a tag's value passes its
    1 MiB limit; that is its code, left as it is.
@@ -10499,9 +10510,9 @@ floating-point predictor included.
    LZW with the floating-point predictor on 16-pixel tiles; int16 Deflate with the horizontal
    predictor in 7-row big-endian strips; float64 uncompressed BigTIFF, pixel is point; uint16
    PackBits in NAVD88 US survey feet with nodata holes; uint32 centimetres with a scale and offset
-   in `S_z` and EGM2008; uint8 with a scale and offset in `GDAL_METADATA`; int32 LZW on 32-pixel
+   in `S_z` and EGM2008; uint8 quarter feet with a scale, offset and unit in `GDAL_METADATA`; int32 LZW on 32-pixel
    tiles with longitudes past 180°. It records rasterio's reading: the transform, the CRS, the
-   vertical CRS and unit, the scale and offset, the nodata value, `math.fsum` of every value and
+   vertical CRS and unit, the scale, offset and band unit, the nodata value, `math.fsum` of every value and
    of each value times its index, and 400 seeded points per file (the site, the rest random, some
    off the raster) with rasterio's pixel and value, each value checked against rasterio's own
    `sample`. The whole tile gets the same with 2,000 points. `tests/geotiff_rasterio.rs` holds hpr
@@ -10517,4 +10528,5 @@ above NAVD88; Open-Meteo's answer there (ADR-126) is 1,400 m. M5.3 is complete. 
 command for a site's height yet, and no flight reads one from a file; a projected file, or one on
 an older datum, needs `gdalwarp` first. Review found the first draft's gaps: a tile header that
 could ask for 32 GiB, GDAL's scale and offset unread (a decimetre file read 10× high), any datum
-accepted; all are fixed and tested above.
+accepted. A second round found a tile size that overflowed a u64, `S_z` applied where GDAL
+would not, JGD2000 in the near list and unbounded XML nesting. All are fixed and tested above.

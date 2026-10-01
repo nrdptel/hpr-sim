@@ -10,13 +10,14 @@ rasterio 1.5.2 (BSD-3-Clause) is run as the outside reader, with the GDAL 3.12 i
 `cut` writes small fixtures cut from that tile to `crates/hpr-io/tests/fixtures/geotiff/`, each in
 a different encoding a DEM can arrive in (sample type, codec, predictor, tiles or strips, byte
 order, classic or BigTIFF, pixel-is-area or pixel-is-point, compound vertical units, a scale and
-offset in the pixel scale or in GDAL's metadata, nodata, longitudes past 180), plus a projected one and a Zstandard-compressed one the reader must
-refuse. `read` writes rasterio's
+offset in the pixel scale or in GDAL's metadata, a unit in GDAL's metadata, nodata, longitudes
+past 180), plus a projected one and a Zstandard-compressed one the reader must refuse. `read`
+writes rasterio's
 reading of every fixture, and of the whole tile, to `rasterio.json` beside them:
 
 - the raster's size, its affine transform, its area-or-point flag, its nodata value, its CRS
   (the horizontal EPSG code, and the vertical CRS's code and unit's length in metres where it has
-  one), and the band's scale and offset as GDAL sets them;
+  one), and the band's scale, offset and unit as GDAL sets them;
 - the correctly rounded sums (Python's `math.fsum`) of its values and of each value times its
   pixel's row-major index plus one, over the pixels that are not nodata, and the nodata count;
 - at seeded random points (some outside the raster) the pixel rasterio's `index` puts them in
@@ -112,12 +113,13 @@ def fixtures(a):
             CRS.from_user_input("EPSG:4326+3855"),
             "Area",
         ),
-        # uint8 quarter metres above 1,395 m, with no vertical CRS: GDAL writes the scale and
-        # offset into its GDAL_METADATA tag.
+        # uint8 quarter feet above 4,585 ft, with no vertical CRS: GDAL writes the scale, the
+        # offset and the unit into its GDAL_METADATA tag.
         (
             "usgs-u8-metadata-scaled.tif",
-            np.round((a.astype(np.float64) - 1395.0) * 4.0).astype("uint8"),
-            dict(dtype="uint8", compress="lzw", scales=(0.25,), offsets=(1395.0,)),
+            np.round((a.astype(np.float64) / 0.3048 - 4585.0) * 4.0).astype("uint8"),
+            dict(dtype="uint8", compress="lzw", scales=(0.25,), offsets=(4585.0,),
+                 units=("ft",)),
             CRS.from_epsg(4326),
             "Area",
         ),
@@ -142,6 +144,7 @@ def cut():
         extra = dict(extra)
         scales = extra.pop("scales", None)
         offsets = extra.pop("offsets", None)
+        units = extra.pop("units", None)
         t = transform
         if extra.pop("lon360", False):
             t = Affine(t.a, t.b, t.c + 360.0, t.d, t.e, t.f)
@@ -153,6 +156,8 @@ def cut():
             if scales is not None:
                 dst.scales = scales
                 dst.offsets = offsets
+            if units is not None:
+                dst.units = units
             dst.write(values, 1)
     # A projected file (UTM zone 13 N), which the reader refuses: 8 by 8 pixels of 30 m.
     t = Affine(30.0, 0.0, 309000.0, 0.0, -30.0, 3652000.0)
@@ -273,6 +278,7 @@ def reading(path, n_points, seed):
             "vertical_epsg": vertical_epsg(ds.crs),
             "scale": ds.scales[0],
             "offset": ds.offsets[0],
+            "units": ds.units[0] or None,
             "sum": total,
             "weighted_sum": weighted,
             "nodata_count": int((~valid).sum()),

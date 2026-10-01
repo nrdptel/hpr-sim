@@ -21,10 +21,10 @@ The tests replay two saved answers and never contact Open-Meteo. The live servic
 by hand, over an encrypted (HTTPS) connection, to record them. So a change in Open-Meteo's answers
 would show only when a program runs, as a refused answer.
 
-**How far to trust it, from a file.** hpr reads the same value at a place that GDAL, the library
-most mapping programs read terrain with, reads there. That is checked at 2,800 places in seven
-small files, in CI, and at 2,000 places in a whole USGS tile, where it has been downloaded
-([how](#how-the-file-reader-is-checked)). Only files on a latitude and longitude grid are read. How
+**How far to trust it, from a file.** At a given place, hpr reads the same stored value as GDAL,
+the library most mapping programs read terrain with. That is checked at 2,800 places in seven
+small files, in CI, and at 2,000 places in a whole tile from the US Geological Survey (USGS),
+where it has been downloaded ([how](#how-the-file-reader-is-checked)). Only files on a latitude and longitude grid are read. How
 accurate the height itself is depends on who made the file; hpr gives back what is stored.
 
 Code:
@@ -226,20 +226,23 @@ Geological Survey (USGS) publishes the United States this way, free and in the p
 through its [3D Elevation Program](https://www.usgs.gov/3d-elevation-program):
 
 - Its 1-arc-second tiles (about 30 m) are what hpr is tested on. Its 1/3- and 1/9-arc-second
-  tiles use the same latitude and longitude grid.
+  tiles use the same latitude and longitude grid, but none has been tried.
 - Its 1 m files are on a map projection (UTM) and are refused; GDAL's free `gdalwarp` tool
   converts them first, as the table below says.
 - Copernicus and NASA publish the world as GeoTIFFs too; no file of theirs has been tried.
 
 ### Reading your own file
 
-1. Read the whole file into memory: `let bytes = std::fs::read(path)?;`.
-2. `ElevationRaster::parse(&bytes)` reads its tags. `info()` then holds what they say: the size,
-   the corner and pixel size in degrees, the CRS, the sample type, the unit, the scale and the
-   nodata value.
-3. `height_at(latitude_deg, longitude_deg)`, in degrees, gives
+1. Bring the reader in: `use hpr::hpr_io::geotiff::ElevationRaster;`.
+2. Read the whole file into memory: `let bytes = std::fs::read(path)?;`.
+3. `ElevationRaster::parse(&bytes)` reads its tags. `info()` then holds what they say: the size,
+   the corner and pixel size in degrees, the [CRS](glossary.md#crs-coordinate-reference-system),
+   the sample type, the unit, the scale and the nodata value.
+4. `height_at(latitude_deg, longitude_deg)`, in degrees, gives
    `Result<Option<f64>, GeoTiffError>`: `Ok(Some(height))` in metres, `Ok(None)` where the file
-   has no data, or an error from the table below. `values_at` reads many places at once.
+   has no data, or an error from the table below.
+5. For many places, `values_at` reads them in one pass. It gives each place's raw stored value,
+   not metres: `info().metres(value)` applies the scale, offset and unit.
 
 The [API reference](api/hpr_io/geotiff/index.html) shows the same steps as a short program that CI
 compiles and runs. The height is the value of the pixel the place falls in, as GDAL gives it.
@@ -247,13 +250,14 @@ There is no smoothing between pixels, so on a 1-arc-second grid it is the ground
 of the site. A lookup decodes only the tile or strip of the file that holds the place, so it adds
 about one tile's memory to the file's.
 
-| error | means |
-|---|---|
-| `Outside` | the place is off the file; the message names the file's edges |
-| `Unsupported` | the file uses something hpr doesn't read (the table below); the message names it and, where there is one, the GDAL command that converts it |
-| `Location` | the latitude is past ±90° or a number is not finite |
-| `Missing`, `Malformed` | the file lacks a tag a GeoTIFF needs, or holds one the standard doesn't allow |
-| `Tiff`, `TooLarge` | the image itself can't be decoded, or a tile is larger than 256 MiB (for `values`, which reads every pixel, the whole raster past 2²⁸ pixels) |
+| error | from | means |
+|---|---|---|
+| `Outside` | a lookup | the place is off the file; the message names the file's edges |
+| `Location` | a lookup | the latitude is past ±90° or a number is not finite |
+| `Unsupported` | `parse` | the file uses something hpr doesn't read (the table below); the message names it and, where there is one, the GDAL command that converts it |
+| `Missing`, `Malformed` | `parse` | the file lacks a tag a GeoTIFF needs, or holds one the standard doesn't allow |
+| `TooLarge` | `parse`, `values` | a tile is larger than 256 MiB decoded; for `values`, which reads every pixel, the whole raster is past 2²⁸ pixels |
+| `Tiff` | any | the image itself can't be decoded |
 
 ### What it reads
 
@@ -262,19 +266,26 @@ file.
 
 | what | read | refused |
 |---|---|---|
-| the grid | latitude and longitude in degrees from Greenwich, on a datum within a few metres of [WGS 84](glossary.md#wgs-84): WGS 84 itself, NAD83 and its updates, ETRS89, GDA94, GDA2020, NZGD2000, JGD2000, JGD2011, SIRGAS 2000 and CGCS2000 (the [EPSG codes](glossary.md#epsg-code) are `NEAR_WGS84` in the API) | a map projection such as UTM, or an older datum such as NAD27, tens to hundreds of metres from WGS 84: the error names the code, and `gdalwarp -t_srs EPSG:4326 in.tif out.tif` converts the file |
+| the grid | latitude and longitude in degrees from Greenwich, on a datum within a few metres of [WGS 84](glossary.md#wgs-84): WGS 84 itself, NAD83 and its updates, ETRS89, GDA94, GDA2020, NZGD2000, JGD2011, SIRGAS 2000 and CGCS2000 (the [EPSG codes](glossary.md#epsg-code) are `NEAR_WGS84` in the API) | a map projection such as UTM, or an older datum such as NAD27, tens to hundreds of metres from WGS 84: the error names the code, and `gdalwarp -t_srs EPSG:4326 in.tif out.tif` converts the file |
 | the pixels | one band of 8-, 16- or 32-bit integers, or 32- or 64-bit floats; tiles or strips; uncompressed, LZW, Deflate or PackBits; either byte order; BigTIFF | several bands; zstd, JPEG and other compression (`gdal_translate -co COMPRESS=DEFLATE` rewrites the file); a separate mask of missing pixels |
 | where the pixels lie | one tiepoint (a pixel tied to a longitude and latitude) with a pixel size, or a matrix without rotation; *pixel is area* or *pixel is point* (whether the tiepoint names a pixel's corner or its centre); longitudes 0° to 360° as well as −180° to 180° | a rotated grid; several tiepoints (ground control points); a south-up pixel size, which GDAL and the standard read differently |
-| the heights | a scale and offset as GDAL applies them (from the file's pixel scale, or from GDAL's own metadata tag); metres, feet or US survey feet as the file states, or as its [vertical datum](glossary.md#vertical-datum) implies; metres if it says nothing, with `vertical_unit_stated` then `false` | a vertical datum hpr doesn't know, with no unit stated |
+| the heights | a scale and offset as GDAL applies them (from the file's pixel scale, or from GDAL's own metadata tag); metres, feet or US survey feet as the file states (in its keys or in GDAL's metadata tag), or as its [vertical datum](glossary.md#vertical-datum) implies; metres if it says nothing, with `vertical_unit_stated` then `false` | a vertical datum hpr doesn't know, with no unit stated; a scale in the pixel scale beside vertical keys GDAL may not read as a datum; a unit other than these, or two that disagree |
 | no data | the file's nodata value, and NaN, read as `None` | |
 
-**Which height it is.** The height is above the file's own vertical datum. The reader reports it
-(`vertical_crs_epsg`) when the file names one, and doesn't change it. Many files name none: the
-USGS tile in the example below states neither datum nor unit, and the USGS's own description of
-its data says the heights are metres above NAVD88. If your file prints `stated: false`, check its
-publisher's description. NAVD88 and EGM2008, the usual datums, are both within a metre or two of
-mean sea level, so a flight's site takes them as heights above sea level, as the
-[section above](#what-the-height-means) explains.
+**Which height it is.** The height is above the file's own vertical datum. The reader reports the
+datum's EPSG code (`vertical_crs_epsg`) when the file names one, and doesn't change the height.
+Check two things in `info()`:
+
+- **`vertical_crs_epsg` is `None`:** the file names no datum. The USGS tile in the example below
+  names none; the USGS's own description of its data says its heights are above NAVD88, the North
+  American vertical datum. Check your publisher's description.
+- **`vertical_unit_stated` is `false`:** the file states no unit, and hpr took metres. A file in
+  feet read as metres gives heights 3.28 times too high, so check this one first.
+
+NAVD88 and EGM2008 are both measured from a model of the
+[geoid](#what-the-height-means), so a height above either is the `H` that section uses: the
+height above sea level the air is looked up by. It also says how to place a flight's site with
+`H` and the geoid undulation `N`.
 
 ### An example with a file
 
@@ -312,12 +323,12 @@ at 1400.7 m: 855.95 hPa, density 0.872 of sea level's
 
 The runway reads 1,400.691 m. Open-Meteo's answer for the same place, [above](#an-example), is
 1,400 m, from a different terrain model whose cells are 90 m across, above EGM2008. The feet file
-stores 4,595 ftUS, which is 1,400.559 m, 0.132 m from the metres file: rounding to whole feet moves
+stores 4,595 US survey feet, which is 1,400.559 m, 0.132 m from the metres file: rounding to whole feet moves
 a height by up to 0.152 m.
 
 ### How the file reader is checked
 
-The oracle is GDAL 3.12.2, run through rasterio 1.5.2, its Python interface. A script,
+The [oracle](glossary.md#oracle), the outside program hpr is held to, is GDAL 3.12.2, run through rasterio 1.5.2, its Python interface. A script,
 [`validation/oracles/geotiff/dem.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/geotiff/dem.py),
 cut 70 by 50 pixels around Spaceport America from the USGS's 1-arc-second tile `n33w107` and wrote
 them in seven encodings:
@@ -329,14 +340,19 @@ them in seven encodings:
 | `usgs-f64-raw-bigtiff-point.tif` | 64-bit floats, uncompressed | BigTIFF | WGS 84, pixel is point |
 | `usgs-u16-packbits-ftus-nodata.tif` | 16-bit unsigned, PackBits | strips | NAD83 with NAVD88 in US survey feet, nodata holes |
 | `usgs-u32-cm-scaled-egm2008.tif` | 32-bit unsigned, Deflate | strips | WGS 84 with EGM2008; centimetres above 1,000 m by the pixel scale |
-| `usgs-u8-metadata-scaled.tif` | 8-bit unsigned, LZW | strips | WGS 84; quarter metres above 1,395 m by GDAL's metadata |
+| `usgs-u8-metadata-scaled.tif` | 8-bit unsigned, LZW | strips | WGS 84; quarter feet above 4,585 ft, scale, offset and unit all by GDAL's metadata |
 | `usgs-i32-lzw-tiles-lon360.tif` | 32-bit integers, LZW, horizontal predictor | 32-pixel tiles | WGS 84, longitudes past 180° |
 
-The script recorded what rasterio reads from each, and from the whole 3,612 by 3,612 tile: the
-corner, the pixel size, the CRS, the vertical datum and unit, the scale and offset, and the nodata
-value; the exactly rounded sum of every value, and of each value times its index (row × width +
-column), so a swapped pair of pixels would show; and, at 400 places in each small file and 2,000
-in the tile (some off the edge), which pixel rasterio puts the place in and its value. The tests in
+The script recorded what rasterio reads from each, and from the whole 3,612 by 3,612 tile:
+
+- the corner, the pixel size, the CRS, the vertical datum and unit, the scale and offset, and the
+  nodata value;
+- the exactly rounded sum of every value, and of each value times its index (row × width +
+  column), so a swapped pair of pixels would show;
+- at 400 places in each small file and 2,000 in the tile (some off the edge), which pixel rasterio
+  puts the place in, and its value.
+
+The tests in
 [`crates/hpr-io/tests/geotiff_rasterio.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-io/tests/geotiff_rasterio.rs)
 hold hpr to all of it exactly:
 
@@ -346,6 +362,7 @@ hold hpr to all of it exactly:
 | the two sums over every pixel | exact, 13 million pixels in the tile |
 | places in the seven files | 2,800: the same pixel and value at all 2,368 on a file (9 of them nodata), and "outside" at the other 432 |
 | places in the tile | 2,000: the same pixel and value at all 1,696 on it, and "outside" at the other 304 |
+| unit | GDAL's wherever GDAL reports one, and `vertical_unit_stated` false wherever it reports none |
 | heights | at every 97th place, hpr's height is GDAL's scale and offset applied to the value, in the file's unit |
 
 CI checks the seven small files; the whole tile (45 MB, fetched by `cargo xtask refs fetch`) is
@@ -354,9 +371,9 @@ the table above, the half-pixel move of pixel is point, the units, the scale and
 nodata. Property tests check, on random strip and tile layouts, that every place reads the pixel it
 is placed in, and that a file with bytes changed is read or refused without a crash.
 
-The places are random, so none sits exactly on a pixel's edge. A place within about 10⁻¹³ of a
-pixel's width of an edge can fall on either side, in hpr and in GDAL, by rounding; no typed
-coordinate comes that close.
+The places are random, so none sits exactly on a pixel's edge. Rounding can put a place on either
+side of an edge, in hpr and in GDAL, if it is closer to the edge than about 10⁻¹³ of a pixel's
+width. A coordinate typed to a few decimals never comes that close.
 
 ### What the file reader leaves out
 
@@ -364,7 +381,9 @@ coordinate comes that close.
 - **No smoothing.** A place reads its pixel's value; on a slope the next pixel can be metres
   higher.
 - **No datum changes.** A datum within a few metres of WGS 84 is taken as WGS 84, and the vertical
-  datum is reported, not converted.
+  datum is reported, not converted. Near the epicentres of large earthquakes since a datum was
+  fixed (Chile, 2010, for SIRGAS 2000; Kaikōura, New Zealand, 2016, for NZGD2000) the ground has
+  moved further, by several metres.
 - **The file's accuracy is the file's.** The reader gives back what is stored; the USGS and other
   publishers state their own accuracy.
 - **No command.** As for the online lookup, a program calls the library.

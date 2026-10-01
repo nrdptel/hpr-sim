@@ -744,6 +744,21 @@ fn a_tile_too_large_to_decode_is_refused() {
         ElevationRaster::parse(&bytes),
         Err(GeoTiffError::TooLarge { size, limit: MAX_CHUNK_BYTES, .. }) if size == u64::from(u32::MAX) * 8
     ));
+    // Tiles whose size in bytes passes a u64: 2^31 by 2^30 by 8 is 2^64, and the largest.
+    for tile in [(1 << 31, 1 << 30), (u32::MAX, u32::MAX)] {
+        let bytes = tiled(1, 1, tile, 64, 3, &[vec![0; 8]]);
+        assert!(
+            matches!(
+                ElevationRaster::parse(&bytes),
+                Err(GeoTiffError::TooLarge {
+                    size: u64::MAX,
+                    limit: MAX_CHUNK_BYTES,
+                    ..
+                })
+            ),
+            "{tile:?}"
+        );
+    }
 }
 
 #[test]
@@ -803,10 +818,11 @@ fn a_pixel_scale_beside_a_matrix_is_refused() {
 
 #[test]
 fn a_datum_far_from_wgs84_is_refused() {
-    // NAD27 (4267), Tokyo (4301), a user-defined CRS, and none named.
+    // NAD27 (4267), Tokyo (4301), JGD2000 (4612), a user-defined CRS, and none named.
     for keys in [
         vec![(1024, 2), (2048, 4267)],
         vec![(1024, 2), (2048, 4301)],
+        vec![(1024, 2), (2048, 4612)],
         vec![(1024, 2), (2048, 32767)],
         vec![(1024, 2)],
     ] {
@@ -865,6 +881,11 @@ fn an_internal_mask_is_refused() {
 /// heights are given.
 fn with_z(sz: f64, z0: f64, z: f64, metadata: Option<&str>) -> Vec<u8> {
     let keys = [(1024, 2), (1025, 1), (2048, 4326), (4096, 5703)];
+    with_z_keys(&directory(&keys), sz, z0, z, metadata)
+}
+
+/// [`with_z`] with its own GeoKey directory.
+fn with_z_keys(dir: &[u16], sz: f64, z0: f64, z: f64, metadata: Option<&str>) -> Vec<u8> {
     let georef = Georef::Tiepoint {
         scale: [0.5, 0.25, sz],
         tie: vec![0.0, 0.0, z0, 10.0, 20.0, z],
@@ -875,11 +896,8 @@ fn with_z(sz: f64, z0: f64, z: f64, metadata: Option<&str>) -> Vec<u8> {
     let mut buf = Cursor::new(Vec::new());
     let mut tiff = TiffEncoder::new(&mut buf).unwrap();
     let mut image = tiff.new_image::<colortype::GrayI32>(4, 3).unwrap();
-    let dir = directory(&keys);
     let encoder = image.encoder();
-    encoder
-        .write_tag(Tag::GeoKeyDirectoryTag, &dir[..])
-        .unwrap();
+    encoder.write_tag(Tag::GeoKeyDirectoryTag, dir).unwrap();
     if let Georef::Tiepoint { scale, tie } = &georef {
         encoder
             .write_tag(Tag::ModelPixelScaleTag, &scale[..])
@@ -975,6 +993,136 @@ fn gdal_metadata_gives_a_scale_and_offset() {
             what: "GDAL_METADATA",
             ..
         })
+    ));
+}
+
+#[test]
+fn heights_in_the_tags_apply_only_where_gdal_reads_a_vertical_crs() {
+    let base = [(1024, 2), (1025, 1), (2048, 4326)];
+    let keys = |more: &[(u16, u16)]| [&base[..], more].concat();
+    // A GeoTIFF 1.0 directory: GDAL drops the vertical CRS and the heights with it.
+    let mut dir = directory(&keys(&[(4096, 5703)]));
+    dir[2] = 0;
+    let info = ElevationRaster::parse(&with_z_keys(&dir, 0.1, 0.0, 1000.0, None))
+        .unwrap()
+        .info()
+        .clone();
+    assert_eq!((info.scale, info.offset), (1.0, 0.0));
+    assert_eq!(info.vertical_crs_epsg, Some(5703));
+    // Vertical keys GDAL may or may not resolve to a vertical CRS: a unit alone, a datum alone,
+    // a user-defined CRS with a unit, a vertical CRS this reader doesn't know with a unit.
+    for more in [
+        vec![(4099, 9001)],
+        vec![(4098, 5103)],
+        vec![(4096, 32767), (4099, 9001)],
+        vec![(4096, 5705), (4099, 9001)],
+    ] {
+        let bytes = with_z_keys(&directory(&keys(&more)), 0.1, 0.0, 1000.0, None);
+        assert!(
+            matches!(
+                ElevationRaster::parse(&bytes),
+                Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("heights in ModelPixelScaleTag")
+            ),
+            "{more:?}"
+        );
+        // With no heights in the tags, the same keys read.
+        let bytes = with_z_keys(&directory(&keys(&more)), 0.0, 0.0, 0.0, None);
+        assert!(ElevationRaster::parse(&bytes).is_ok(), "{more:?}");
+    }
+}
+
+#[test]
+fn a_user_defined_vertical_crs_is_no_epsg_code() {
+    let keys = [(1024, 2), (2048, 4326), (4096, 32767), (4099, 9002)];
+    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+    let info = ElevationRaster::parse(&bytes).unwrap().info().clone();
+    assert_eq!(info.vertical_crs_epsg, None);
+    assert_eq!(
+        (info.vertical_unit, info.vertical_unit_stated),
+        (VerticalUnit::Foot, true)
+    );
+    // Without a unit, its unit is unknown.
+    let keys = [(1024, 2), (2048, 4326), (4096, 40_000)];
+    let bytes = small(&directory(&keys), &tie(10.0, 20.0, 0.5, 0.25), None);
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a user-defined vertical CRS")
+    ));
+}
+
+#[test]
+fn gdal_metadata_gives_a_unit_and_is_matched_as_gdal_matches_it() {
+    let item = |attributes: &str, text: &str| {
+        format!("<GDALMetadata><Item {attributes}>{text}</Item></GDALMetadata>")
+    };
+    let wgs84 = directory(&[(1024, 2), (1025, 1), (2048, 4326)]);
+    let parse = |dir: &[u16], xml: &str| {
+        ElevationRaster::parse(&with_z_keys(dir, 0.0, 0.0, 0.0, Some(xml)))
+            .map(|r| r.info().clone())
+    };
+    let unit = item(r#"name="UNITTYPE" sample="0" role="unittype""#, "ft");
+    let info = parse(&wgs84, &unit).unwrap();
+    assert_eq!(
+        (info.vertical_unit, info.vertical_unit_stated),
+        (VerticalUnit::Foot, true)
+    );
+    let info = parse(
+        &wgs84,
+        &item(r#"name="U" sample="0" role="unittype""#, "US survey foot"),
+    )
+    .unwrap();
+    assert_eq!(info.vertical_unit, VerticalUnit::UsSurveyFoot);
+    // Feet in the metadata, metres by NAVD88's code: refused.
+    let navd88 = directory(&[(1024, 2), (1025, 1), (2048, 4326), (4096, 5703)]);
+    assert!(matches!(
+        parse(&navd88, &unit),
+        Err(GeoTiffError::Unsupported { what, .. }) if what.starts_with("a vertical unit given twice")
+    ));
+    assert_eq!(
+        parse(
+            &navd88,
+            &item(r#"name="U" sample="0" role="unittype""#, "metre")
+        )
+        .unwrap()
+        .vertical_unit,
+        VerticalUnit::Metre
+    );
+    assert!(matches!(
+        parse(
+            &wgs84,
+            &item(r#"name="U" sample="0" role="unittype""#, "furlong")
+        ),
+        Err(GeoTiffError::Unsupported {
+            what: "a GDAL_METADATA unit type",
+            ..
+        })
+    ));
+    // GDAL reads a sample as an integer, and skips an item with a domain or without a name, and
+    // a root that is not GDALMetadata.
+    let scale = |attributes: &str| item(attributes, "0.5");
+    assert_eq!(
+        parse(&wgs84, &scale(r#"name="S" sample=" 0" role="scale""#))
+            .unwrap()
+            .scale,
+        0.5
+    );
+    for skipped in [
+        scale(r#"name="S" sample="0" role="scale" domain="x""#),
+        scale(r#"sample="0" role="scale""#),
+        scale(r#"name="S" sample="1" role="scale""#),
+        r#"<Other><Item name="S" sample="0" role="scale">0.5</Item></Other>"#.to_string(),
+    ] {
+        assert_eq!(parse(&wgs84, &skipped).unwrap().scale, 1.0, "{skipped}");
+    }
+}
+
+#[test]
+fn deeply_nested_gdal_metadata_is_refused_before_it_is_parsed() {
+    let xml = format!("{}{}", "<a>".repeat(10_000), "</a>".repeat(10_000));
+    let bytes = with_z(0.0, 0.0, 0.0, Some(&xml));
+    assert!(matches!(
+        ElevationRaster::parse(&bytes),
+        Err(GeoTiffError::Malformed { what: "GDAL_METADATA", ref reason }) if reason.starts_with("nested 10000 deep")
     ));
 }
 

@@ -2,8 +2,8 @@
 //!
 //! `validation/oracles/geotiff/dem.py` cut the fixtures from a public-domain USGS 3DEP tile and
 //! wrote rasterio's reading of them, and of the whole tile, to `fixtures/geotiff/rasterio.json`.
-//! Every fixture must read to the same size, corner, pixel size, raster type, CRS, vertical unit
-//! and nodata value; to the same correctly rounded sums over every pixel; and, at each sampled
+//! Every fixture must read to the same size, corner, pixel size, raster type, CRS, scale, offset,
+//! vertical unit and nodata value; to the same correctly rounded sums over every pixel; and, at each sampled
 //! point, to the same pixel and the same value. The whole tile is checked where `refs/` has it.
 
 #![allow(
@@ -44,6 +44,8 @@ struct Reading {
     vertical_epsg: Option<u16>,
     scale: f64,
     offset: f64,
+    /// The band's unit type as GDAL reports it: a vertical CRS's unit, or GDAL_METADATA's.
+    units: Option<String>,
     sum: f64,
     weighted_sum: f64,
     nodata_count: usize,
@@ -157,20 +159,29 @@ fn check(bytes: &[u8], reading: &Reading) -> (usize, usize, usize) {
         (reading.scale, reading.offset),
         "{name}"
     );
-    match reading.vertical_unit_m {
+    let unit = info.vertical_unit.metres();
+    if let Some(m) = reading.vertical_unit_m {
         // The WKT prints the unit to 15 significant digits.
-        Some(m) => {
-            assert!(info.vertical_unit_stated, "{name}");
-            let unit = info.vertical_unit.metres();
-            assert!(
-                (unit - m).abs() <= 1e-15 * m,
-                "{name}: {unit} m against {m} m"
-            );
-        }
-        None => {
-            assert!(!info.vertical_unit_stated, "{name}");
-            assert_eq!(info.vertical_unit.metres(), 1.0, "{name}");
-        }
+        assert!(
+            (unit - m).abs() <= 1e-15 * m,
+            "{name}: {unit} m against {m} m"
+        );
+    }
+    // GDAL's names for the units, exactly: the international foot is 0.3048 m, the US survey
+    // foot 1200/3937 m.
+    let units = reading.units.as_deref().map(|u| match u {
+        "metre" => 1.0,
+        "ft" => 0.3048,
+        "US survey foot" => 1200.0 / 3937.0,
+        other => panic!("{name}: GDAL's unit {other:?} is not one the test knows"),
+    });
+    if let Some(m) = units {
+        assert_eq!(unit, m, "{name}");
+    }
+    let stated = reading.vertical_unit_m.is_some() || units.is_some();
+    assert_eq!(info.vertical_unit_stated, stated, "{name}");
+    if !stated {
+        assert_eq!(unit, 1.0, "{name}");
     }
     assert_eq!(info.nodata, reading.nodata, "{name}");
 
@@ -229,10 +240,8 @@ fn check(bytes: &[u8], reading: &Reading) -> (usize, usize, usize) {
         let read = read.unwrap_or_else(|e| panic!("{at}: {e}"));
         assert_eq!(read, value.as_f64(), "{at}");
         if k % 97 == 0 {
-            // GDAL's scale and offset, then the unit (the WKT's, or metres where it has none).
-            let unit = reading
-                .vertical_unit_m
-                .map_or(1.0, |_| info.vertical_unit.metres());
+            // GDAL's scale and offset, then the unit (held to GDAL's above, metres where it has
+            // none).
             let height = raster.height_at(lat, lon).unwrap();
             let theirs = read.map(|v| (v * reading.scale + reading.offset) * unit);
             assert_eq!(height, theirs, "{at}");

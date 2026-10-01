@@ -40,25 +40,33 @@
 //! The first image in the file is the one read (later ones are a cloud-optimized GeoTIFF's
 //! overviews). The CRS must be geographic (`GTModelTypeGeoKey` 2) in degrees from Greenwich, and
 //! one of [`NEAR_WGS84`]: datums within a few metres of WGS 84, where a point's WGS 84 latitude
-//! and longitude read the right pixel to within a few metres. Its EPSG code is reported. Any
+//! and longitude read the right pixel to within a few metres (more near the epicentres of large
+//! earthquakes since the datum was fixed; the list says where). Its EPSG code is reported. Any
 //! other, and a projected file (UTM, say), is refused with [`GeoTiffError::Unsupported`] naming
 //! its code; `gdalwarp -t_srs EPSG:4326 in.tif out.tif` turns it into one this reads.
 //!
 //! **Heights.** A pixel's raw value `v` becomes a height in metres as
-//! `(v·scale + offset)·unit`. The scale and offset are GDAL's: for a file with a vertical CRS,
-//! `S_z` from `ModelPixelScaleTag` and `Z₀ − z₀·S_z` from the tiepoint's heights; otherwise the
-//! `scale` and `offset` items of GDAL's `GDAL_METADATA` tag; otherwise 1 and 0. The unit is the
-//! vertical unit the file states (`VerticalUnitsGeoKey`: metres, international feet or US survey
-//! feet), or the unit of a vertical CRS this module knows; a file that states neither is read as
-//! metres, an assumption GDAL doesn't make (it reports no unit), flagged by
-//! [`RasterInfo::vertical_unit_stated`]. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008,
+//! `(v·scale + offset)·unit`. The scale and offset are GDAL's: for a GeoTIFF 1.1 file naming a
+//! vertical CRS this module knows, `S_z` from `ModelPixelScaleTag` and `Z₀ − z₀·S_z` from the
+//! tiepoint's heights; otherwise the `scale` and `offset` items of GDAL's `GDAL_METADATA` tag;
+//! otherwise 1 and 0. Heights in those tags with no vertical key are ignored, as GDAL ignores
+//! them; with other vertical keys, whether GDAL applies them turns on how it resolves the keys,
+//! and the file is refused. In a GeoTIFF 1.0 directory GDAL drops the vertical CRS, and with it
+//! those heights, but keeps its unit; this module does the same, and reports the CRS's code. The
+//! unit is the vertical unit the file states
+//! (`VerticalUnitsGeoKey`: metres, international feet or US survey feet), the unit of a vertical
+//! CRS this module knows, or the `unittype` item of `GDAL_METADATA` (refused if it disagrees with
+//! the keys); a file that states none is read as metres, an assumption GDAL doesn't make (it
+//! reports no unit), flagged by [`RasterInfo::vertical_unit_stated`]. A file in feet that states
+//! no unit reads 3.28 times too high. The vertical datum (`VerticalGeoKey`, NAVD88 or EGM2008,
 //! say) is reported, not applied. A value equal to the file's nodata value (GDAL's `GDAL_NODATA`
 //! tag) or a NaN reads as no height; a nodata value the sample type can't hold exactly, such as
 //! 12.5 on integers, matches nothing.
 //!
 //! **Bounds on a hostile file.** A tile or strip larger than [`MAX_CHUNK_BYTES`] decoded is
-//! refused at [`ElevationRaster::parse`], and [`ElevationRaster::values`] decodes a first tile
-//! before it allocates the whole raster, which it asks for fallibly. The `tiff` crate prints one
+//! refused at [`ElevationRaster::parse`], and [`ElevationRaster::values`] grows the raster
+//! fallibly, a row of tiles at a time as they decode. `GDAL_METADATA` nested more than 16 deep
+//! is refused before it is parsed. The `tiff` crate prints one
 //! debug line to standard error when a tag's value passes its 1 MiB limit (its own `dbg!`).
 //!
 //! **Guide:** [A launch site's elevation][guide] walks through an example and says how the reader
@@ -101,6 +109,7 @@ const ANGULAR_UNITS_KEY: u16 = 2054;
 const PROJECTED_CRS_KEY: u16 = 3072;
 /// `VerticalGeoKey` (§7.4.4), `VerticalCSTypeGeoKey` in GeoTIFF 1.0.
 const VERTICAL_CRS_KEY: u16 = 4096;
+const VERTICAL_DATUM_KEY: u16 = 4098;
 /// `VerticalUnitsGeoKey` (§7.5.1).
 const VERTICAL_UNITS_KEY: u16 = 4099;
 /// GDAL's `GDAL_METADATA` TIFF tag: an XML list of items, a band's scale and offset among them.
@@ -121,9 +130,12 @@ pub const MAX_VALUES_PIXELS: u64 = 1 << 28;
 pub const MAX_CHUNK_BYTES: u64 = 256 << 20;
 
 /// The geographic CRSs read, by EPSG code: datums whose latitude and longitude lie within a few
-/// metres of WGS 84's (plate motion since each was fixed), so a point given in WGS 84 reads the
-/// right pixel, or its neighbour on a grid finer than a few metres.
-pub const NEAR_WGS84: [(u16, &str); 15] = [
+/// metres of WGS 84's, so a point given in WGS 84 reads the right pixel, or its neighbour on a
+/// grid finer than a few metres. They part by plate motion since each was fixed, and by
+/// earthquakes: near the epicentres of Chile's 2010 and New Zealand's 2016 earthquakes the ground
+/// moved several metres in SIRGAS 2000 and NZGD2000. JGD2000 is left out: Japan's 2011
+/// earthquake moved its north-east by more than 5 m, and JGD2011 replaced it.
+pub const NEAR_WGS84: [(u16, &str); 14] = [
     (4326, "WGS 84"),
     (4979, "WGS 84, 3D"),
     (4269, "NAD83"),
@@ -135,7 +147,6 @@ pub const NEAR_WGS84: [(u16, &str); 15] = [
     (4283, "GDA94"),
     (7844, "GDA2020"),
     (4167, "NZGD2000"),
-    (4612, "JGD2000"),
     (6668, "JGD2011"),
     (4674, "SIRGAS 2000"),
     (4490, "CGCS2000"),
@@ -373,12 +384,13 @@ pub struct RasterInfo {
     pub raster_type: RasterType,
     /// The geographic CRS's EPSG code, one of [`NEAR_WGS84`].
     pub geographic_crs_epsg: u16,
-    /// The vertical CRS's EPSG code, if the file names one.
+    /// The vertical CRS's EPSG code, if the file names one (a user-defined or private code,
+    /// 32767 and above, is not one).
     pub vertical_crs_epsg: Option<u16>,
     /// The unit pixel values are in, after the scale and offset.
     pub vertical_unit: VerticalUnit,
-    /// Whether the file states that unit (by `VerticalUnitsGeoKey` or a vertical CRS this reader
-    /// knows); `false` means metres were assumed.
+    /// Whether the file states that unit (by `VerticalUnitsGeoKey`, a vertical CRS this reader
+    /// knows, or a unit type in GDAL's `GDAL_METADATA`); `false` means metres were assumed.
     pub vertical_unit_stated: bool,
     /// The pixels' scale: a raw value `v` stands for `v·scale + offset` in the vertical unit.
     pub scale: f64,
@@ -527,7 +539,31 @@ impl<'a> ElevationRaster<'a> {
             lon0 -= lon_step * 0.5;
             lat0 -= lat_step * 0.5;
         }
-        let (scale, offset) = scale_offset(&mut decoder, &georef, vertical_crs_epsg.is_some())?;
+        let heights = if keys.minor == 1
+            && vertical_crs_epsg.is_some_and(|c| VERTICAL_CRS_UNITS.iter().any(|(v, _)| *v == c))
+        {
+            ZTerms::Applied
+        } else if keys.minor == 0
+            || [VERTICAL_CRS_KEY, VERTICAL_DATUM_KEY, VERTICAL_UNITS_KEY]
+                .iter()
+                .all(|&k| !keys.has(k))
+        {
+            ZTerms::Ignored
+        } else {
+            ZTerms::Unknown
+        };
+        let (scale, offset, unit) = scale_offset(&mut decoder, &georef, heights)?;
+        let (vertical_unit, vertical_unit_stated) = match unit {
+            Some(unit) if vertical_unit_stated && unit != vertical_unit => {
+                return Err(GeoTiffError::Unsupported {
+                    what: "a vertical unit given twice, differently:",
+                    value: format!("{vertical_unit:?} by the GeoKeys, {unit:?} by GDAL_METADATA"),
+                    hint: "",
+                });
+            }
+            Some(unit) => (unit, true),
+            None => (vertical_unit, vertical_unit_stated),
+        };
         let nodata = nodata(&mut decoder)?.and_then(|v| sample.round_nodata(v));
         let chunk_type = decoder.get_chunk_type();
         // The decoder has validated its tile or strip attributes; this cannot fail after `new`.
@@ -543,11 +579,13 @@ impl<'a> ElevationRaster<'a> {
             ChunkType::Strip => chunk_height.min(height),
             ChunkType::Tile => chunk_height,
         };
-        let chunk_bytes = u64::from(chunk_width) * u64::from(rows) * sample.bytes();
-        if chunk_bytes > MAX_CHUNK_BYTES {
+        // In u128: a tile's width and length are each up to 2³² − 1, so their product times
+        // 8 bytes can pass a u64.
+        let chunk_bytes = u128::from(chunk_width) * u128::from(rows) * u128::from(sample.bytes());
+        if chunk_bytes > u128::from(MAX_CHUNK_BYTES) {
             return Err(GeoTiffError::TooLarge {
                 what: "a tile or strip, in bytes,",
-                size: chunk_bytes,
+                size: u64::try_from(chunk_bytes).unwrap_or(u64::MAX),
                 limit: MAX_CHUNK_BYTES,
             });
         }
@@ -753,12 +791,7 @@ impl<'a> ElevationRaster<'a> {
             return Err(too_large());
         }
         let mut decoder = Decoder::new(Cursor::new(self.bytes))?;
-        // A file that claims a large raster must decode a tile before the raster is allocated.
-        let mut first = Some(decoder.read_chunk(0)?);
-        let n = usize::try_from(pixels).map_err(|_| too_large())?;
         let mut out = Vec::new();
-        out.try_reserve_exact(n).map_err(|_| too_large())?;
-        out.resize(n, f64::NAN);
         let (across, down) = match self.chunk_type {
             ChunkType::Strip => (1, height.div_ceil(self.chunk_height)),
             ChunkType::Tile => (
@@ -773,21 +806,27 @@ impl<'a> ElevationRaster<'a> {
         for chunk_row in 0..down {
             for chunk_col in 0..across {
                 let index = chunk_row * across + chunk_col;
-                let chunk = match first.take() {
-                    Some(chunk) => chunk,
-                    None => decoder.read_chunk(index)?,
-                };
+                let chunk = decoder.read_chunk(index)?;
                 let col0 = chunk_col * chunk_width;
                 let row0 = chunk_row * self.chunk_height;
                 let data_width = chunk_width.min(width - col0);
                 let data_height = self.chunk_height.min(height - row0);
+                if chunk_col == 0 {
+                    // The raster grows by a row of tiles once the row's first tile decodes, so a
+                    // file that only claims a large raster costs no more than it holds.
+                    let rows = u64::from(row0 + data_height) * u64::from(width);
+                    let rows = usize::try_from(rows).map_err(|_| too_large())?;
+                    out.try_reserve_exact(rows - out.len())
+                        .map_err(|_| too_large())?;
+                    out.resize(rows, f64::NAN);
+                }
                 for r in 0..data_height {
                     for c in 0..data_width {
                         let at = u64::from(r) * u64::from(data_width) + u64::from(c);
                         let at = usize::try_from(at).unwrap_or(usize::MAX);
                         let value = chunk_sample(&chunk, index, at)?;
                         let to = u64::from(row0 + r) * u64::from(width) + u64::from(col0 + c);
-                        // Within `pixels`, which fits a usize (above).
+                        // Within the rows grown above.
                         if let Some(slot) = usize::try_from(to).ok().and_then(|to| out.get_mut(to))
                         {
                             *slot = self.unless_nodata(value).unwrap_or(f64::NAN);
@@ -866,13 +905,20 @@ fn no_mask<R: std::io::Read + std::io::Seek>(decoder: &mut Decoder<R>) -> Result
         if !decoder.more_images() {
             return Ok(());
         }
-        decoder.next_image()?;
-        let kind: u32 = decoder.find_tag_unsigned(Tag::NewSubfileType)?.unwrap_or(0);
+        // A later image the decoder can't read is no mask GDAL would apply either: the walk
+        // stops there, the first image being the one read.
+        if decoder.next_image().is_err() {
+            return Ok(());
+        }
+        let Ok(kind) = decoder.find_tag_unsigned::<u32>(Tag::NewSubfileType) else {
+            return Ok(());
+        };
+        let kind = kind.unwrap_or(0);
         if kind & 4 != 0 {
             return Err(GeoTiffError::Unsupported {
                 what: "an internal nodata mask, NewSubfileType",
                 value: kind.to_string(),
-                hint: "; `gdal_translate -a_nodata <value> in.tif out.tif` turns it into a nodata value",
+                hint: "; `gdalwarp -dstnodata <value> in.tif out.tif` turns it into a nodata value",
             });
         }
     }
@@ -912,6 +958,8 @@ fn sample_type<R: std::io::Read + std::io::Seek>(
 
 /// The GeoKey directory's SHORT keys (OGC 19-008r4 §7.1.2): those stored in the directory itself.
 struct GeoKeys {
+    /// The directory's minor revision: 0 for GeoTIFF 1.0, 1 for 1.1.
+    minor: u16,
     /// (key, location, value): location 0 means `value` is the key's value.
     entries: Vec<(u16, u16, u16)>,
 }
@@ -929,7 +977,7 @@ impl GeoKeys {
             what: "GeoKeyDirectoryTag",
             reason,
         };
-        let [version, revision, _minor, count, ..] = dir[..] else {
+        let [version, revision, minor, count, ..] = dir[..] else {
             return Err(malformed(format!(
                 "{} values, under the header's 4",
                 dir.len()
@@ -953,7 +1001,12 @@ impl GeoKeys {
             .iter()
             .map(|e| (e[0], e[1], e[3]))
             .collect();
-        Ok(GeoKeys { entries })
+        Ok(GeoKeys { minor, entries })
+    }
+
+    /// Whether the directory holds `key` at all.
+    fn has(&self, key: u16) -> bool {
+        self.entries.iter().any(|e| e.0 == key)
     }
 
     /// A SHORT key's value, `None` if absent. A key repeated is refused.
@@ -1038,7 +1091,11 @@ fn geographic_crs(keys: &GeoKeys) -> Result<u16, GeoTiffError> {
 }
 
 fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiffError> {
-    let crs = keys.get(VERTICAL_CRS_KEY)?;
+    // 0 is "undefined", 32767 "user-defined" and those above private: none is an EPSG code.
+    let crs = keys
+        .get(VERTICAL_CRS_KEY)?
+        .filter(|c| (1..32767).contains(c));
+    let user_defined = keys.get(VERTICAL_CRS_KEY)?.is_some_and(|c| c >= 32767);
     let stated = match keys.get(VERTICAL_UNITS_KEY)? {
         Some(code) => Some(
             VerticalUnit::from_epsg(code).ok_or(GeoTiffError::Unsupported {
@@ -1057,6 +1114,11 @@ fn vertical(keys: &GeoKeys) -> Result<(Option<u16>, VerticalUnit, bool), GeoTiff
     });
     match (stated, from_crs, crs) {
         (Some(unit), _, _) | (None, Some(unit), _) => Ok((crs, unit, true)),
+        (None, None, None) if user_defined => Err(GeoTiffError::Unsupported {
+            what: "a user-defined vertical CRS without VerticalUnitsGeoKey",
+            value: "VerticalGeoKey 32767 or above".to_string(),
+            hint: "; its unit is unknown here",
+        }),
         (None, None, None) => Ok((None, VerticalUnit::Metre, false)),
         // A vertical CRS this reader does not know, with no unit: its unit could be feet.
         (None, None, Some(code)) => Err(GeoTiffError::Unsupported {
@@ -1178,19 +1240,46 @@ fn transform<R: std::io::Read + std::io::Seek>(
 
 /// The pixels' scale and offset as GDAL sets them (the module docs): from the pixel scale's `S_z`
 /// and the tiepoint's heights for a file with a vertical CRS, otherwise from `GDAL_METADATA`.
+/// Whether GDAL takes a scale and offset from `S_z` and the tiepoint's heights. It does for one
+/// band when its CRS is vertical, which depends on the directory's revision and on how GDAL and
+/// PROJ resolve the vertical keys. Certain: applied for a GeoTIFF 1.1 directory naming a
+/// vertical CRS this reader knows; ignored for a 1.0 directory (GDAL drops its vertical CRS,
+/// rasterio 1.5.2 shows) and for one with no vertical key. Anything between is refused.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ZTerms {
+    Applied,
+    Ignored,
+    Unknown,
+}
+
+/// The scale, the offset and the GDAL_METADATA unit, if it gives one.
 fn scale_offset<R: std::io::Read + std::io::Seek>(
     decoder: &mut Decoder<R>,
     georef: &Georef,
-    has_vertical: bool,
-) -> Result<(f64, f64), GeoTiffError> {
+    heights: ZTerms,
+) -> Result<(f64, f64, Option<VerticalUnit>), GeoTiffError> {
     let from_tags = match georef.z {
         // GDAL's rule: one band, a vertical CRS, and any of S_z, z₀, Z₀ non-zero.
-        Some([sz, z0, z]) if has_vertical && (sz != 0.0 || z0 != 0.0 || z != 0.0) => {
-            Some((sz, z - z0 * sz))
-        }
+        Some([sz, z0, z]) if sz != 0.0 || z0 != 0.0 || z != 0.0 => match heights {
+            ZTerms::Applied => Some((sz, z - z0 * sz)),
+            ZTerms::Ignored => None,
+            ZTerms::Unknown => {
+                return Err(GeoTiffError::Unsupported {
+                    what: "heights in ModelPixelScaleTag or ModelTiepointTag,",
+                    value: format!("S_z {sz}, z₀ {z0}, Z₀ {z}"),
+                    hint: ", with vertical keys GDAL may or may not read as a vertical CRS",
+                });
+            }
+        },
         _ => None,
     };
-    let from_metadata = gdal_metadata(decoder)?;
+    let metadata = gdal_metadata(decoder)?;
+    let from_metadata = (metadata.scale.is_some() || metadata.offset.is_some()).then(|| {
+        (
+            metadata.scale.unwrap_or(1.0),
+            metadata.offset.unwrap_or(0.0),
+        )
+    });
     let (scale, offset) = match (from_tags, from_metadata) {
         (Some(tags), Some(meta)) if tags != meta => {
             return Err(GeoTiffError::Unsupported {
@@ -1208,16 +1297,45 @@ fn scale_offset<R: std::io::Read + std::io::Seek>(
             reason: format!("scale {scale}, offset {offset}"),
         });
     }
-    Ok((scale, offset))
+    Ok((scale, offset, metadata.unit))
+}
+
+/// What GDAL's `GDAL_METADATA` tag says of band 1.
+#[derive(Default)]
+struct Metadata {
+    scale: Option<f64>,
+    offset: Option<f64>,
+    unit: Option<VerticalUnit>,
+}
+
+/// The deepest nesting `GDAL_METADATA` may have: GDAL writes a root and its items, two levels.
+const MAX_METADATA_DEPTH: usize = 16;
+
+/// A unit as GDAL's `unittype` item names it; `None` for an empty name.
+fn unit_type(name: &str) -> Result<Option<VerticalUnit>, GeoTiffError> {
+    let lower = name.trim().to_ascii_lowercase();
+    Ok(Some(match lower.as_str() {
+        "" => return Ok(None),
+        "m" | "metre" | "meter" | "metres" | "meters" => VerticalUnit::Metre,
+        "ft" | "foot" | "feet" | "international foot" => VerticalUnit::Foot,
+        "us survey foot" | "us survey feet" | "ftus" | "us-ft" => VerticalUnit::UsSurveyFoot,
+        _ => {
+            return Err(GeoTiffError::Unsupported {
+                what: "a GDAL_METADATA unit type",
+                value: format!("{name:?}"),
+                hint: "; metres, feet and US survey feet are read",
+            });
+        }
+    }))
 }
 
 /// The first band's `scale` and `offset` items in GDAL's `GDAL_METADATA` XML, if it has either;
 /// the one absent is 1 or 0.
 fn gdal_metadata<R: std::io::Read + std::io::Seek>(
     decoder: &mut Decoder<R>,
-) -> Result<Option<(f64, f64)>, GeoTiffError> {
+) -> Result<Metadata, GeoTiffError> {
     let Some(value) = decoder.find_tag(Tag::Unknown(GDAL_METADATA_TAG))? else {
-        return Ok(None);
+        return Ok(Metadata::default());
     };
     let malformed = |reason: String| GeoTiffError::Malformed {
         what: "GDAL_METADATA",
@@ -1225,28 +1343,43 @@ fn gdal_metadata<R: std::io::Read + std::io::Seek>(
     };
     let text = value.into_string().map_err(|e| malformed(e.to_string()))?;
     let text = text.trim_matches(|c: char| c == '\0' || c.is_whitespace());
+    // roxmltree recurses on nesting; the tag is the file's, so its depth is bounded first.
+    let depth = crate::ork::document::deepest_nesting(text);
+    if depth > MAX_METADATA_DEPTH {
+        return Err(malformed(format!(
+            "nested {depth} deep, past {MAX_METADATA_DEPTH}"
+        )));
+    }
     let document = roxmltree::Document::parse(text).map_err(|e| malformed(e.to_string()))?;
-    let (mut scale, mut offset) = (None, None);
-    for item in document
-        .root_element()
-        .children()
-        .filter(|n| n.has_tag_name("Item") && n.attribute("sample") == Some("0"))
-    {
+    let mut metadata = Metadata::default();
+    let root = document.root_element();
+    if !root.has_tag_name("GDALMetadata") {
+        return Ok(metadata);
+    }
+    // As GDAL matches them: an `Item` with a name, no domain, and band 1's sample, 0.
+    for item in root.children().filter(|n| {
+        n.has_tag_name("Item")
+            && n.attribute("name").is_some()
+            && n.attribute("domain").is_none()
+            && n.attribute("sample")
+                .is_some_and(|s| s.trim().parse::<i64>() == Ok(0))
+    }) {
+        let text = item.text().unwrap_or("").trim();
         let slot = match item.attribute("role") {
-            Some(role) if role.eq_ignore_ascii_case("scale") => &mut scale,
-            Some(role) if role.eq_ignore_ascii_case("offset") => &mut offset,
+            Some(role) if role.eq_ignore_ascii_case("scale") => &mut metadata.scale,
+            Some(role) if role.eq_ignore_ascii_case("offset") => &mut metadata.offset,
+            Some(role) if role.eq_ignore_ascii_case("unittype") => {
+                metadata.unit = unit_type(text)?;
+                continue;
+            }
             _ => continue,
         };
-        let text = item.text().unwrap_or("").trim();
         *slot = Some(
             text.parse::<f64>()
                 .map_err(|_| malformed(format!("{text:?} is not a number")))?,
         );
     }
-    Ok(
-        (scale.is_some() || offset.is_some())
-            .then(|| (scale.unwrap_or(1.0), offset.unwrap_or(0.0))),
-    )
+    Ok(metadata)
 }
 
 fn nodata<R: std::io::Read + std::io::Seek>(

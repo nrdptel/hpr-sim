@@ -278,7 +278,7 @@ takes only the ones it needs. See [The API reference](api.md#the-crates).
 
 The definition that turns a file's coordinates into places on Earth: an ellipsoid and its datum
 (where the ellipsoid sits), and either latitude and longitude or a map projection such as UTM.
-Each has an [EPSG code](#epsg-code). hpr's elevation-file reader takes latitude and longitude on a
+Most have an [EPSG code](#epsg-code). hpr's elevation-file reader takes latitude and longitude on a
 datum within a few metres of [WGS 84](#wgs-84). See
 [A launch site's elevation](elevation.md#what-it-reads).
 
@@ -300,7 +300,7 @@ about +7.75°. hpr computes it from the [World Magnetic Model](#world-magnetic-m
 
 ## DEM (digital elevation model)
 
-A grid of ground heights, one per cell, such as the USGS's 1-arc-second map of the United States,
+A grid of ground heights, one per cell, such as the US Geological Survey's (USGS) 1-arc-second map of the United States,
 whose cells are about 30 m across. Most are published as [GeoTIFF](#geotiff) files. See
 [A launch site's elevation](elevation.md#from-an-elevation-file-of-your-own).
 
@@ -1267,9 +1267,9 @@ source* (printed tables and worked examples), *another code*
 ## Vertical datum
 
 The surface heights are measured from. NAVD88, the North American Vertical Datum of 1988, and
-EGM2008, a worldwide model of the geoid, are both within a metre or two of mean sea level, so
-heights above them are [heights above sea level](#height-above-sea-level-msl) to that accuracy;
-an [ellipsoidal height](#ellipsoidal-height) is measured from the ellipsoid instead. See
+EGM2008, a worldwide model of the geoid, are both models of sea level, so hpr takes heights above
+them as [heights above sea level](#height-above-sea-level-msl); an
+[ellipsoidal height](#ellipsoidal-height) is measured from the ellipsoid instead. See
 [A launch site's elevation](elevation.md#what-the-height-means).
 
 
