@@ -1,7 +1,7 @@
 # Motor stock and prices
 
-This page covers where hpr gets motor stock and prices: [motor.fusionspace.co](https://motor.fusionspace.co),
-a free site that reads a dozen U.S. vendors' public listings every hour and publishes, for every
+This page covers where hpr gets motor stock and prices: [motor.fusionspace.co](https://motor.fusionspace.co)
+(the *motor finder*), a free site that reads a dozen U.S. vendors' public listings every hour and publishes, for every
 AeroTech, Cesaroni and Loki motor of [impulse class](glossary.md#impulse-class) D and up that they
 carry, who has it in stock and at what price. hpr reads the site's public data API (its
 machine-readable files) and saves each answer, so the same list works later with no network. It
@@ -30,7 +30,7 @@ uploaded to ThrustCurve.org, read by the same readers as a motor file on your di
 
 The tests replay saved answers, and CI never contacts either live site. Both were contacted by
 hand, over an encrypted (HTTPS) connection, to record them. If a site changes its format, you will
-find out when your program gets a refused answer, not from a failing test.
+find out when your program, or `hpr motors search`, gets a refused answer, not from a failing test.
 
 Code: `hpr_net::motor_finder` ([API reference](api/hpr_net/motor_finder/index.html)), written for
 [M5.4a](decisions-and-roadmap.md#m5-4a), the first motor-stock increment, and
@@ -252,8 +252,8 @@ The site's terms: "Free to use; attribution to motor.fusionspace.co is appreciat
 gathered from public vendor listings and from ThrustCurve.org, and comes as is, with no warranty.
 hpr puts its credit line, `motor_finder::ATTRIBUTION`, on every answer, fetched or saved; the
 example above prints it first, and `hpr motors search` prints it at the top of every list, in
-text and in JSON, with ThrustCurve.org's below it. The site asks programs to use its files rather than read the
-vendors' pages themselves, and to keep a copy rather than fetch on every use: hpr's saved copy
+text and in JSON, with ThrustCurve.org's below it. The site asks programs to use its files rather
+than read the vendors' pages themselves, and to keep a copy rather than fetch on every use: hpr's saved copy
 counts as fresh for an hour, as often as the site rebuilds.
 
 ### ThrustCurve.org
@@ -319,6 +319,11 @@ check that:
 - a download of another motor or format, a search cut short and a search holding another
   maker's records are refused and not saved; a file that isn't plain text is that file's error
   alone.
+
+`hpr motors search` is checked by
+[`crates/hpr-cli/tests/motors_search.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-cli/tests/motors_search.rs),
+which runs the command on the recorded lists, from the file and offline from the cache
+([how far to trust it](cli.md#motors-you-can-buy)).
 
 ## What it leaves out
 

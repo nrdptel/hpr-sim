@@ -251,10 +251,18 @@ fn the_example_lists_from_a_recorded_snapshot() {
     assert_eq!(cheapest, ("AeroTech".to_owned(), "L1520T".to_owned()));
     assert!(
         printed.ends_with(
-            "None costs $150.00 or less: of the 20 motors the other filters pass, the cheapest \
-             is AeroTech L1520T at $260.99.\n"
+            "None costs $150.00 or less: of the 20 motors in stock the other filters pass, the \
+             cheapest is AeroTech L1520T at $260.99.\n"
         ),
         "{printed}"
+    );
+    // The same from the whole list: `--max-price` keeps only motors in stock either way.
+    let whole = motors_file();
+    let mut from_whole = EXAMPLE[1..].to_vec();
+    from_whole.extend(["--from", &whole]);
+    assert_eq!(
+        text(&from_whole, scratch.path()).lines().last(),
+        printed.lines().last()
     );
 
     // L1520T's cheapest offer and its listing at $149.99 a motor, in a copy.
@@ -353,6 +361,26 @@ fn listed_motors_are_the_recordings() {
             },
             0,
         ),
+        // The recording's diameters are whole millimetres: 75 mm leaves out its 13 motors of
+        // 76 mm, and 75.5 mm, on the edge, keeps both.
+        (
+            motors_file(),
+            vec!["--diameter", "75"],
+            Expect {
+                diameter_mm: Some(75.0),
+                ..Expect::default()
+            },
+            81,
+        ),
+        (
+            motors_file(),
+            vec!["--diameter", "75.5"],
+            Expect {
+                diameter_mm: Some(75.5),
+                ..Expect::default()
+            },
+            94,
+        ),
         (
             motors_file(),
             vec!["--manufacturer", "Cesaroni Technology", "--diameter", "38"],
@@ -391,14 +419,18 @@ fn listed_motors_are_the_recordings() {
     }
 }
 
-/// Fills `dir` with both lists, fetched as `hpr motors search` asks for them, through a client
-/// over the replay: the cache a user has after searching online.
-fn fill_cache(dir: &Path, now_s: u64) {
+/// Fills `dir` with the lists asked for, fetched as `hpr motors search` asks for them, through a
+/// client over the replay: the cache a user has after searching online.
+fn fill_cache(dir: &Path, now_s: u64, in_stock: bool, all: bool) {
     let replay = Replay::open(root().join("crates/hpr-net/tests/fixtures/replay")).unwrap();
     let client = Client::new(&replay, Cache::new(dir), Mode::Online);
-    motor_finder::fetch_in_stock(&client, now_s).unwrap();
-    motor_finder::fetch_motors(&client, now_s).unwrap();
-    assert_eq!(replay.calls(), 2);
+    if in_stock {
+        motor_finder::fetch_in_stock(&client, now_s).unwrap();
+    }
+    if all {
+        motor_finder::fetch_motors(&client, now_s).unwrap();
+    }
+    assert_eq!(replay.calls(), usize::from(in_stock) + usize::from(all));
 }
 
 fn now_s() -> u64 {
@@ -414,7 +446,7 @@ fn now_s() -> u64 {
 fn offline_from_the_cache() {
     let cache = tempfile::tempdir().unwrap();
     let filled_s = now_s();
-    fill_cache(cache.path(), filled_s);
+    fill_cache(cache.path(), filled_s, true, true);
     for (args, file) in [
         (
             vec!["--in-stock", "--class", "L", "--max-price", "300"],
@@ -449,6 +481,138 @@ fn offline_from_the_cache() {
             "{printed}"
         );
     }
+}
+
+/// Offline, a search that keeps only motors in stock (`--in-stock`, or `--max-price`) reads the
+/// in-stock list's copy, and the whole list's when that is the only one saved.
+#[test]
+fn offline_reads_whichever_list_answers() {
+    let file = in_stock_file();
+    for (in_stock, all, args) in [
+        (true, false, vec!["--class", "L", "--max-price", "300"]),
+        (
+            false,
+            true,
+            vec!["--in-stock", "--class", "L", "--max-price", "300"],
+        ),
+        (false, true, vec!["--class", "L", "--max-price", "300"]),
+    ] {
+        let cache = tempfile::tempdir().unwrap();
+        fill_cache(cache.path(), now_s(), in_stock, all);
+        let mut offline = args.clone();
+        offline.push("--offline");
+        let document = search(&offline, cache.path());
+        let mut from = args.clone();
+        from.extend(["--from", &file]);
+        assert_eq!(
+            document["motors"],
+            search(&from, cache.path())["motors"],
+            "{args:?}"
+        );
+        assert_eq!(document["motors"].as_array().unwrap().len(), 4);
+    }
+    // Only the in-stock list saved: a search of every motor has no copy to read.
+    let cache = tempfile::tempdir().unwrap();
+    fill_cache(cache.path(), now_s(), true, false);
+    let document = json(&["--offline"], cache.path(), 1, "error.schema.json");
+    let message = document["error"]["message"].as_str().unwrap();
+    assert!(message.contains(&Endpoint::Motors.url()), "{message}");
+}
+
+/// An offer in another currency, or with no price, has no price in dollars: `--max-price` never
+/// keeps it, it comes after the priced motors, and the text says what it is.
+#[test]
+fn offers_without_a_dollar_price() {
+    let scratch = tempfile::tempdir().unwrap();
+    let mut edited = raw(&in_stock_file());
+    for motor in edited["motors"].as_array_mut().unwrap() {
+        let designation = motor["designation"].clone();
+        let offer = &mut motor["cheapest_in_stock"];
+        if designation == "L850W" {
+            offer["currency"] = "CAD".into();
+        } else if designation == "3419L645-P" {
+            offer["unit_price_cents"] = Value::Null;
+            offer["price_cents"] = Value::Null;
+        }
+    }
+    let copy = scratch.path().join("in-stock.json");
+    std::fs::write(&copy, serde_json::to_vec(&edited).unwrap()).unwrap();
+    let copy = copy.to_string_lossy().into_owned();
+    let listed = |args: &[&str]| -> Vec<(String, String)> {
+        let mut all = args.to_vec();
+        all.extend(["--from", &copy]);
+        search(&all, scratch.path())["motors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(name)
+            .collect()
+    };
+    let named = |pairs: &[(&str, &str)]| -> Vec<(String, String)> {
+        pairs
+            .iter()
+            .map(|&(maker, designation)| (maker.to_owned(), designation.to_owned()))
+            .collect()
+    };
+    assert_eq!(
+        listed(&["--class", "L", "--max-price", "300"]),
+        named(&[
+            ("AeroTech", "L1520T"),
+            ("Cesaroni Technology", "3683L851-P")
+        ])
+    );
+    let every_l = listed(&["--class", "L"]);
+    assert_eq!(
+        every_l,
+        Expect {
+            class: Some("L"),
+            ..Expect::default()
+        }
+        .names(&edited)
+    );
+    assert_eq!(
+        every_l[18..],
+        named(&[("AeroTech", "L850W"), ("Cesaroni Technology", "3419L645-P")])
+    );
+    let printed = text(&["--class", "L", "--from", &copy], scratch.path());
+    let row = |designation: &str| {
+        printed
+            .lines()
+            .find(|line| line.starts_with(&format!("{designation} ")))
+            .unwrap()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    assert!(
+        row("L850W").contains(" 282.74 CAD 1 Sirius Rocketry"),
+        "{printed}"
+    );
+    assert!(
+        row("3419L645-P").ends_with(" - 1 Performance Hobbies"),
+        "{printed}"
+    );
+
+    // Every L offer in another currency: the hint's other wording.
+    for motor in edited["motors"].as_array_mut().unwrap() {
+        if motor["impulse_class"] == "L" {
+            motor["cheapest_in_stock"]["currency"] = "CAD".into();
+        }
+    }
+    let copy = scratch.path().join("cad.json");
+    std::fs::write(&copy, serde_json::to_vec(&edited).unwrap()).unwrap();
+    let copy = copy.to_string_lossy().into_owned();
+    let printed = text(
+        &["--class", "L", "--max-price", "1000", "--from", &copy],
+        scratch.path(),
+    );
+    assert!(
+        printed.ends_with(
+            "None costs $1000.00 or less: of the 20 motors in stock the other filters pass, none \
+             has a price in U.S. dollars.\n"
+        ),
+        "{printed}"
+    );
 }
 
 /// Offline with nothing cached, the search is refused and names what it would have fetched.
@@ -510,7 +674,13 @@ fn bad_filters_and_files_are_refused() {
     let document = json(&["--from", &meta], scratch.path(), 1, "error.schema.json");
     let message = document["error"]["message"].as_str().unwrap();
     assert!(message.starts_with(&format!("{meta}: ")), "{message}");
-    // `--from` and `--offline` together are a usage error.
-    let output = hpr(&["--from", &file, "--offline"], scratch.path());
-    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    // `--from` and `--offline` together are a usage error, and so is `--max-price` with no
+    // value before the next option.
+    for args in [
+        vec!["--from", &file, "--offline"],
+        vec!["--max-price", "--in-stock", "--from", &file],
+    ] {
+        let output = hpr(&args, scratch.path());
+        assert_eq!(output.status.code(), Some(2), "{args:?}: {output:?}");
+    }
 }

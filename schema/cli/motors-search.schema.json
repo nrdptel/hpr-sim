@@ -55,7 +55,7 @@
           "format": "double"
         },
         "cheapest_in_stock": {
-          "description": "The vendor with it in stock at the lowest price of one motor; `None` when out of stock.",
+          "description": "The vendor with it in stock at the lowest price of one motor; null when out of stock.",
           "anyOf": [
             {
               "$ref": "#/$defs/FoundOffer"

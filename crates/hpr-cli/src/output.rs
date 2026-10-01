@@ -119,7 +119,7 @@ pub struct FoundMotor {
     pub in_stock: bool,
     /// How many vendors have it in stock.
     pub in_stock_vendor_count: u32,
-    /// The vendor with it in stock at the lowest price of one motor; `None` when out of stock.
+    /// The vendor with it in stock at the lowest price of one motor; null when out of stock.
     pub cheapest_in_stock: Option<FoundOffer>,
 }
 

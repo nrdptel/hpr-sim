@@ -9,8 +9,8 @@
 
 use std::cmp::Ordering;
 
-use hpr::hpr_net::motor_finder::{self, MANUFACTURERS, Motor, MotorType};
-use hpr::hpr_net::thrustcurve;
+use hpr::hpr_net::motor_finder::{self, MANUFACTURERS, Motor, MotorFinderError, MotorType};
+use hpr::hpr_net::{NetError, thrustcurve};
 
 use crate::motors::class_label;
 use crate::output::{FoundMotor, FoundOffer, MotorKind, MotorSearch, ReadFrom};
@@ -37,7 +37,7 @@ pub struct SearchArgs {
     pub manufacturer: Option<String>,
     /// Only motors in stock whose price for one motor, at the cheapest vendor, is at most this
     /// many U.S. dollars, such as 150 or 149.99
-    #[arg(long, value_name = "DOLLARS", allow_hyphen_values = true)]
+    #[arg(long, value_name = "DOLLARS", allow_negative_numbers = true)]
     pub max_price: Option<String>,
     /// Read a list saved earlier, motor.fusionspace.co's motors.json or in-stock.json, instead of
     /// fetching it
@@ -79,6 +79,12 @@ impl Filters {
             manufacturer,
             max_price_cents,
         })
+    }
+
+    /// Whether only motors in stock can pass: `--in-stock`, or `--max-price`, whose price is
+    /// the cheapest in-stock offer's.
+    fn only_in_stock(&self) -> bool {
+        self.in_stock || self.max_price_cents.is_some()
     }
 
     fn keep(&self, motor: &Motor) -> bool {
@@ -130,12 +136,21 @@ pub(crate) fn run(args: &SearchArgs, to: &mut Out<'_>) -> Result<(), Failure> {
             ReadFrom::File { path: path.clone() },
         ),
         None => {
-            // In-stock motors have a file of their own, under two-thirds the size of the whole.
+            // In-stock motors have a file of their own, under two-thirds the size of the whole;
+            // `--max-price` keeps only motors in stock, so it needs no more.
             let client = client(args.offline, "hpr motors search")?;
-            let (list, fetched) = if args.in_stock {
-                motor_finder::fetch_in_stock(&client, now_s())
+            let now = now_s();
+            let (list, fetched) = if filters.only_in_stock() {
+                match motor_finder::fetch_in_stock(&client, now) {
+                    // Offline with no copy of the in-stock list, the whole list's copy answers
+                    // the same search; with neither, the refusal names the one asked for.
+                    Err(not_cached @ MotorFinderError::Net(NetError::NotCached { .. })) => {
+                        motor_finder::fetch_motors(&client, now).map_err(|_| not_cached)
+                    }
+                    other => other,
+                }
             } else {
-                motor_finder::fetch_motors(&client, now_s())
+                motor_finder::fetch_motors(&client, now)
             }
             .map_err(|error| Failure::Input(format!("motor.fusionspace.co: {error}")))?;
             (list, read_from(&fetched))
@@ -171,15 +186,18 @@ pub(crate) fn run(args: &SearchArgs, to: &mut Out<'_>) -> Result<(), Failure> {
 /// cheapest of them, so the example `--in-stock --class L --max-price 150` says what an L costs.
 fn priced_out(filters: &Filters, motors: &[Motor]) -> Option<String> {
     let most = filters.max_price_cents?;
+    // In stock, as `--max-price` keeps only motors in stock: the count is the same whichever
+    // list was read.
     let others = Filters {
+        in_stock: true,
         max_price_cents: None,
         ..filters.clone()
     };
     let passing: Vec<&Motor> = motors.iter().filter(|m| others.keep(m)).collect();
     let count = match passing.len() {
         0 => return None,
-        1 => "the 1 motor".to_owned(),
-        n => format!("the {n} motors"),
+        1 => "the 1 motor in stock".to_owned(),
+        n => format!("the {n} motors in stock"),
     };
     let cheapest = passing
         .iter()
@@ -190,13 +208,13 @@ fn priced_out(filters: &Filters, motors: &[Motor]) -> Option<String> {
             "None costs ${} or less: of {count} the other filters pass, the cheapest is {} {} at \
              ${}.",
             money(most),
-            motor.manufacturer,
-            motor.designation,
+            printable(&motor.manufacturer),
+            printable(&motor.designation),
             money(cents)
         ),
         None => format!(
-            "None costs ${} or less: of {count} the other filters pass, none is in stock with a \
-             price in U.S. dollars.",
+            "None costs ${} or less: of {count} the other filters pass, none has a price in U.S. \
+             dollars.",
             money(most)
         ),
     })
@@ -240,6 +258,14 @@ fn cents(text: &str) -> Result<u64, Failure> {
         .checked_mul(100)
         .and_then(|c| c.checked_add(fraction))
         .ok_or_else(refused)
+}
+
+/// `text` with each control character, such as an escape that would reach the terminal from a
+/// vendor's page, shown as `?`.
+fn printable(text: &str) -> String {
+    text.chars()
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect()
 }
 
 /// Cents as dollars and cents: `26099` as `260.99`.
@@ -355,22 +381,20 @@ fn text_lines(document: &MotorSearch, filters: &[String]) -> Vec<String> {
                     match (offer.unit_price_cents, offer.currency.as_str()) {
                         (None, _) => "-".to_owned(),
                         (Some(cents), DOLLARS) => money(cents),
-                        (Some(cents), currency) => format!("{} {currency}", money(cents)),
+                        (Some(cents), currency) => {
+                            format!("{} {}", money(cents), printable(currency))
+                        }
                     },
                     offer.pack_size.to_string(),
-                    offer.vendor.clone(),
+                    printable(&offer.vendor),
                 ),
                 None => ("-".to_owned(), "-".to_owned(), "out of stock".to_owned()),
             };
             [
-                m.designation.clone(),
+                printable(&m.designation),
                 // The maker's first word, as `hpr motors list` names them: `Cesaroni`.
-                m.manufacturer
-                    .split(' ')
-                    .next()
-                    .unwrap_or(&m.manufacturer)
-                    .to_owned(),
-                m.impulse_class.clone(),
+                printable(m.manufacturer.split(' ').next().unwrap_or(&m.manufacturer)),
+                printable(&m.impulse_class),
                 format!("{}", m.diameter_mm),
                 figure(m.total_impulse_ns, 1),
                 figure(m.average_thrust_n, 1),
@@ -431,6 +455,15 @@ mod tests {
         assert_eq!(money(26_099), "260.99");
         assert_eq!(money(5), "0.05");
         assert_eq!(money(cents("149.99").ok().unwrap_or_default()), "149.99");
+    }
+
+    #[test]
+    fn control_characters_never_reach_the_terminal() {
+        assert_eq!(printable("Shop\u{1b}]0;x\u{7}\n"), "Shop?]0;x??");
+        assert_eq!(
+            printable("Chris' Rocket Supplies"),
+            "Chris' Rocket Supplies"
+        );
     }
 
     #[test]
