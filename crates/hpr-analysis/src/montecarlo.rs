@@ -54,8 +54,9 @@
 //!
 //! Dispersions are independent normals: no correlations between inputs, no other
 //! distributions. The rail's elevation is dispersed in the plane of its heading, so a vertical
-//! rail with only its elevation dispersed leans along one line (as in RocketPy); a draw past
-//! vertical leans it the other way, so its [`Draw`] entry is not then the elevation flown. A cluster's motors are dispersed as one. Moving a stage's centre of mass keeps
+//! rail with only its elevation dispersed leans along one line, as RocketPy's does (an inclination
+//! and a heading, `rocketpy/stochastic/stochastic_flight.py:21-24`); a draw past vertical leans
+//! it the other way, so its [`Draw`] entry is not then the elevation flown. A cluster's motors are dispersed as one. Moving a stage's centre of mass keeps
 //! its inertia about the centre. The drag scale multiplies the zero-lift drag only, not the
 //! normal force or the moments. A thrust curve stretched in time keeps its shape. Nothing is
 //! dispersed in the atmosphere's temperature or pressure, a motor's ignition time, a recovery
@@ -431,8 +432,7 @@ impl MonteCarlo {
     ///
     /// - As [`Dispersion::validate`].
     /// - [`AnalysisError::NoConfiguration`] if the design has no configuration of that id.
-    /// - [`AnalysisError::Design`] if the design can't be laid out, with the mass or centre
-    ///   dispersed.
+    /// - [`AnalysisError::Design`] if the design can't be laid out.
     /// - [`AnalysisError::Unsupported`] for a dispersed impulse or burn time on a motor whose
     ///   propellant model [`dispersed_motor`] doesn't know.
     pub fn new(nominal: FlightInputs, dispersion: Dispersion) -> Result<Self, AnalysisError> {
@@ -644,10 +644,10 @@ impl MonteCarlo {
         ];
         for (what, list, count) in lists {
             if list.len() != count {
-                return Err(AnalysisError::Count {
+                return Err(AnalysisError::Length {
                     what,
-                    count: list.len(),
-                    limit: count,
+                    length: list.len(),
+                    expected: count,
                 });
             }
             if let Some(&bad) = list.iter().find(|v| !v.is_finite()) {
@@ -1056,11 +1056,35 @@ mod tests {
         }
         let apogee = run.apogee().unwrap();
         assert_eq!(apogee.attempted(), 16);
+        let failed_count = failed.len();
         assert_eq!(apogee.missing(), failed.len());
         // A share over every sample tried, bounded by the failures both ways.
         let share = apogee.share_at_least(0.0).unwrap().unwrap();
-        assert_eq!(share.low, (16 - failed.len()) as f64 / 16.0);
+        assert_eq!(share.low, (16 - failed_count) as f64 / 16.0);
         assert_eq!(share.high, 1.0);
+        // A draw that leaves a motor with no impulse fails before it flies.
+        let run = MonteCarlo::new(
+            nominal(),
+            Dispersion {
+                impulse_sd_fraction: 1.0,
+                ..Dispersion::default()
+            },
+        )
+        .unwrap()
+        .run(SEED, 16);
+        let failed: Vec<&Sample> = run.failed().collect();
+        assert!(
+            !failed.is_empty(),
+            "no impulse factor at or below zero in 16"
+        );
+        for sample in failed {
+            assert!(sample.draw.impulse_scale[0] <= 0.0, "{sample:?}");
+            assert!(
+                matches!(&sample.outcome, Outcome::Failed { at: FailedAt::Inputs, reason }
+                    if reason.contains("impulse factor")),
+                "{sample:?}"
+            );
+        }
     }
 
     /// Loft lesson L55: Loft drew wind and rail bearings uniformly at random, throwing the
@@ -1295,32 +1319,36 @@ mod tests {
     #[test]
     fn a_draw_is_checked_and_flown_as_written() {
         let run = MonteCarlo::new(nominal(), Dispersion::default()).unwrap();
-        let mut draw = run.draw(SEED, 0);
-        let good = draw.clone();
-        draw.impulse_scale.clear();
-        assert!(matches!(
-            run.inputs(&draw),
-            Err(AnalysisError::Count {
-                count: 0,
-                limit: 1,
-                ..
-            })
-        ));
+        let good = run.draw(SEED, 0);
+        // Every list is checked against the rocket: one stage, one motor, one recovery device.
+        type Field = fn(&mut Draw) -> &mut Vec<f64>;
+        let fields: [Field; 6] = [
+            |d| &mut d.dry_mass_scale,
+            |d| &mut d.cg_shift_m,
+            |d| &mut d.impulse_scale,
+            |d| &mut d.burn_time_scale,
+            |d| &mut d.ejection_delay_offset_s,
+            |d| &mut d.deployment_lag_offset_s,
+        ];
+        for field in fields {
+            for length in [0, 2] {
+                let mut draw = good.clone();
+                field(&mut draw).resize(length, 0.0);
+                assert!(
+                    matches!(
+                        run.inputs(&draw),
+                        Err(AnalysisError::Length { length: l, expected: 1, .. }) if l == length
+                    ),
+                    "{draw:?}"
+                );
+            }
+        }
+        // An entry that isn't a number is refused before it reaches a model that might not.
         let mut draw = good.clone();
-        draw.deployment_lag_offset_s.push(0.0);
+        draw.rail_elevation_offset_rad = f64::NAN;
         assert!(matches!(
             run.inputs(&draw),
-            Err(AnalysisError::Count {
-                count: 2,
-                limit: 1,
-                ..
-            })
-        ));
-        let mut draw = good.clone();
-        draw.wind_turn_rad = f64::NAN;
-        assert!(matches!(
-            run.inputs(&draw),
-            Err(AnalysisError::Domain { .. })
+            Err(AnalysisError::Domain { what: "entry of a draw", value }) if value.is_nan()
         ));
         // No dispersion asked for, but the draw says 20% more drag and a calm wind (a factor
         // below zero is cut to calm).

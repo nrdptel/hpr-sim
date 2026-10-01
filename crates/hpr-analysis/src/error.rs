@@ -26,6 +26,16 @@ pub enum AnalysisError {
         /// Its limit.
         limit: usize,
     },
+    /// A list of the wrong length.
+    #[error("{what}: {length} given, {expected} expected")]
+    Length {
+        /// What the list is, and what it is counted against.
+        what: &'static str,
+        /// Its length.
+        length: usize,
+        /// The length it should have.
+        expected: usize,
+    },
     /// A rocket configuration the design doesn't have.
     #[error("no configuration {0:?} in the design")]
     NoConfiguration(String),

@@ -84,12 +84,12 @@ How to read it:
 - **Nominal** is the one flight with every input at its planned value.
 - **Landing distance** is how far from the pad the rocket lands; **landing east** is the eastward,
   downwind, part of it. The nominal flight lands due east, so the two are equal. In the run the
-  wind's heading varies by 15°, which pushes some flights north or south, so the mean landing east
+  wind's heading has a standard deviation of 15°, which pushes some flights north or south, so the mean landing east
   is smaller than the mean distance.
 - **Std dev** is the [standard deviation](glossary.md#standard-deviation). If the spread is normal,
   about two values in three lie within one standard deviation of the mean. **5%** and **95%** are
   [percentiles](glossary.md#percentile): one flight in twenty went lower than the 5% value, one in
-  twenty higher than the 95% value. So nine flights in ten reached between 1,040 and 1,199 m.
+  twenty higher than the 95% value. So nine flights in ten reached between about 1,040 and 1,200 m.
 - **The mean is not the nominal flight.** The mean apogee is 6.5 m above the nominal one. With 200
   flights the mean itself is uncertain by about 47.4 / √200 = 3.4 m (its
   [standard error](glossary.md#standard-error)), so 6.5 m is 1.9 standard errors: chance can
@@ -104,8 +104,9 @@ How to read it:
 
 Each dispersion is a standard deviation: zero, the default, leaves its input at the nominal value.
 For each flight hpr-sim draws a standard normal number `z` (mean 0, standard deviation 1) for each
-input and moves the input by `σ z`, with `σ` the standard deviation you gave. A rocket with two
-stages draws for each stage; two motors, for each motor; two parachutes, for each parachute.
+input and moves the input by `σ z`, with `σ` the standard deviation you gave. A rocket built of
+more than one stage, flown together and never separated, gets a draw for each stage; each motor
+and each parachute gets its own draw too.
 
 | Field | What each flight flies |
 |---|---|
@@ -132,8 +133,9 @@ Three cases need a word:
   with several tubes, so all its motors get the same impulse and burn time.
 - **A vertical rail leans along one line.** The elevation is dispersed in the plane of the rail's
   heading, so on a vertical rail with only its elevation dispersed every flight leans towards or
-  away from that heading, never sideways, as in RocketPy. Disperse the heading too for leans in
-  every direction.
+  away from that heading, never sideways. RocketPy disperses its rail the same way, an inclination
+  and a heading (`rocketpy/stochastic/stochastic_flight.py:21-24`, version 1.13.0). Disperse the
+  heading too for leans in every direction.
 
 ## Failed flights are counted
 
@@ -161,18 +163,25 @@ seed, the flight's number in the run and the input it is for. So:
   [`run_parallel`]);
 - turning a dispersion on or off doesn't change what the other inputs draw.
 
-To fly on several threads, turn on the `parallel` feature where you depend on hpr
-(`hpr = { version = "0.1", features = ["parallel"] }`) and call `run_parallel` instead of `run`.
+To fly on several threads, turn on the `parallel` feature where your program depends on hpr, as
+[Using it from your own program](api.md#using-it-from-your-own-program) describes, and call
+`run_parallel` instead of `run`:
+
+```toml
+[dependencies]
+hpr = { git = "https://github.com/nrdptel/hpr-sim", rev = "<commit>", features = ["parallel"] }
+```
 
 On another platform (operating system and processor) a draw can differ in its last binary digit,
 because the normal numbers use the platform's logarithm; a run then agrees to many digits, not to
 the bit. The decision record is [ADR-134](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-134-monte-carlo-dispersion-independent-normals-one-stream-per-sample-and-input-2026-10-01).
 
-**Run time.** Each flight takes a few milliseconds for a rocket like this one, but each builds its
-own aerodynamic model, and a rocket that passes Mach 1.2 builds supersonic tables that take 0.3 to
-0.7 s ([Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md)). So 1,000 flights
-of a supersonic rocket can take several minutes until
-[M6.1d](decisions-and-roadmap.md#m6-1d) shares that work between flights.
+**Run time.** A subsonic Level 2 flight takes about 1 ms in a release build in hpr-sim's
+benchmarks ([Performance](https://github.com/nrdptel/hpr-sim/blob/main/docs/perf.md)). But each
+flight of a run builds its own aerodynamic model, and a rocket that passes Mach 1.2 builds
+supersonic tables that take 0.3 to 0.7 s. So 1,000 flights of a supersonic rocket can take several
+minutes on one thread, until [M6.1d](decisions-and-roadmap.md#m6-1d) shares that work between
+flights.
 
 ## Choosing the numbers
 
