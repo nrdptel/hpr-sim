@@ -173,7 +173,7 @@ falls by about 0.08° a year, so it moves well under a degree over the model's f
 | the report's Table 6 | 12 | `X`, `Y`, `Z`, `H`, `F`, their rates; `I`, `D`, grid variation, their rates | half the last digit | 0.05 nT, 0.005° |
 | the report's Table 3b | 1 | `φ′`, `r`, the coefficients, `X′`, `Y′`, `Z′`, `X` … `Ḋ`, printed to 10 decimals | 5.0e-11 nT on `X′` | half the last digit, plus 8 units in the last place |
 | the report's poles (section 1.4) | 2 | `X`, `Y`, `Z` over each pole at `r = a` | inside 0.05 nT | 0.05 nT |
-| NCEI's high-precision file | 100 | `Y`, `D`, `I`, and the rates of `Y`, `Z`, `D`, `I` | half the last digit | 5e-7 nT, 0.005° |
+| NCEI's high-precision file, printed to 1e-6 nT and angles to 0.01° | 100 | `Y`, `D`, `I`, and the rates of `Y`, `Z`, `D`, `I` | half the last digit | 5e-7 nT, 0.005° |
 | the same file | 100 | `X`, `H`, `F` | 7.18e-4 nT | 7.2e-4 nT, the measured worst |
 | the same file | 100 | `Z`; the rates of `X`, `H`, `F` | 2.2e-6 nT; 1.5e-6 nT/yr | the measured worst |
 | the potential, by differences | 100 | hpr's `X′` and `Ẋ′` | 1.3e-7 nT | 1e-6 nT |

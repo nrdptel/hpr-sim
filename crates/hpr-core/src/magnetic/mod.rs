@@ -147,8 +147,8 @@ impl MagneticField {
     /// horizontal intensity that is not a number counts as the blackout zone.
     #[must_use]
     pub fn compass_zone(&self) -> CompassZone {
-        // Written so that NaN fails closed, into the blackout zone.
-        if !(self.horizontal_nt >= BLACKOUT_HORIZONTAL_NT) {
+        // NaN fails closed, into the blackout zone.
+        if self.horizontal_nt.is_nan() || self.horizontal_nt < BLACKOUT_HORIZONTAL_NT {
             CompassZone::Blackout
         } else if self.horizontal_nt < CAUTION_HORIZONTAL_NT {
             CompassZone::Caution
