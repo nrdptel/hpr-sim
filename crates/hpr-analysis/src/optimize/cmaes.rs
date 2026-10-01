@@ -50,8 +50,16 @@
 //! candidate of a generation is still outside after [`MAX_DRAWS`] tries, the run ends
 //! ([`Stop::Bounds`]). The chance that a draw falls inside halves with each variable whose mean
 //! sits on a bound, so with many variables near their bounds this comes soon. A best point *on* a
-//! bound is reached only slowly this way; bounds that bind are left to the constraint handling of
-//! a later increment.
+//! bound is reached only slowly this way; for a bound that binds, leave the variable unbounded on
+//! that side and write the bound as a constraint.
+//!
+//! # Constraints
+//!
+//! Other constraints go through [`Run::tell_constrained`], which ranks candidates by Deb's
+//! feasibility rules ([`Evaluation`]): any candidate that keeps every constraint ranks ahead of
+//! any that doesn't, and those that don't rank by how far they break them. Infeasible candidates
+//! are evaluated and ranked, not drawn again, so the distribution can sit across a constraint's
+//! edge and close in on a minimum that lies on it.
 //!
 //! # Stopping
 //!
@@ -70,14 +78,15 @@
 //!
 //! If every candidate so far has given `+∞` (every flight failed, say), the run goes on, ranking
 //! them in their order, and its [`Optimum`]'s value is `+∞`. Check [`Optimum::value`] before
-//! using the point.
+//! using the point; under constraints, check [`Optimum::violation`] too, which is above zero if
+//! no candidate kept them all.
 
 use serde::{Deserialize, Serialize};
 
 use hpr_core::random::SeededRng;
 
 use super::eigen::symmetric_eigen;
-use super::{Variable, check_variables};
+use super::{Evaluation, Variable, check_variables};
 use crate::error::AnalysisError;
 
 /// The most times one candidate is drawn again to fall inside the bounds.
@@ -161,6 +170,11 @@ pub struct Optimum {
     /// JSON `null`).
     #[serde(with = "infinity_as_none")]
     pub value: f64,
+    /// Its constraint violation ([`Evaluation::violation`]): zero if it keeps every constraint,
+    /// and always zero for a run told plain values; `+∞` if every candidate failed (serialized as
+    /// none).
+    #[serde(default, with = "infinity_as_none")]
+    pub violation: f64,
     /// Which evaluation found it, counted from 1.
     pub evaluation: usize,
     /// How many evaluations the run made.
@@ -179,16 +193,21 @@ pub struct Optimum {
 }
 
 /// The serialized form of a number that is finite or `+∞`, the only infinity an [`Optimum`]
-/// holds: an option, none for `+∞`, as JSON has no infinity.
-mod infinity_as_none {
+/// holds: an option, none for `+∞`, as JSON has no infinity. A NaN or `−∞` is refused, as
+/// it would read back as `+∞`.
+pub(crate) mod infinity_as_none {
+    use serde::ser::Error as _;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub(super) fn serialize<S: Serializer>(x: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+    pub(crate) fn serialize<S: Serializer>(x: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+        if x.is_nan() || *x == f64::NEG_INFINITY {
+            return Err(S::Error::custom(format!("{x} is neither finite nor +∞")));
+        }
         let value = (*x != f64::INFINITY).then_some(*x);
         value.serialize(serializer)
     }
 
-    pub(super) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
         Ok(Option::<f64>::deserialize(deserializer)?.unwrap_or(f64::INFINITY))
     }
 }
@@ -331,6 +350,28 @@ impl Cmaes {
         }
     }
 
+    /// Minimizes `model` under constraints from `seed`, evaluating each candidate in turn: the
+    /// model gives each candidate's [`Evaluation`], and [`Run::tell_constrained`] ranks them.
+    /// If no candidate keeps every constraint, the optimum's [`violation`](Optimum::violation)
+    /// is above zero: check it before using the point.
+    ///
+    /// # Errors
+    ///
+    /// [`Cmaes::start`]'s and [`Run::tell_constrained`]'s.
+    pub fn minimize_constrained(
+        &self,
+        seed: u64,
+        mut model: impl FnMut(&[f64]) -> Evaluation,
+    ) -> Result<Optimum, AnalysisError> {
+        let mut run = self.start(seed)?;
+        loop {
+            let evaluations: Vec<Evaluation> = run.candidates().iter().map(|x| model(x)).collect();
+            if let Some(optimum) = run.tell_constrained(&evaluations)? {
+                return Ok(optimum);
+            }
+        }
+    }
+
     /// Minimizes `model` from `seed`, evaluating each candidate in turn.
     ///
     /// # Errors
@@ -454,9 +495,9 @@ pub struct Run {
     candidates: Vec<Vec<f64>>,
     /// Each candidate's step `y = B D z`, in the scaled variables.
     steps: Vec<Vec<f64>>,
-    best: Option<(Vec<f64>, f64, usize)>,
-    /// The best value of each generation, oldest first.
-    history: Vec<f64>,
+    best: Option<(Vec<f64>, Evaluation, usize)>,
+    /// The best evaluation of each generation, oldest first.
+    history: Vec<Evaluation>,
     stop: Option<Stop>,
 }
 
@@ -545,11 +586,42 @@ impl Run {
     /// [`AnalysisError::Output`] for a NaN or `−∞`, with the index of its evaluation in the run.
     /// Telling a stopped run is [`AnalysisError::Length`] too, as it has no candidates.
     pub fn tell(&mut self, values: &[f64]) -> Result<Option<Optimum>, AnalysisError> {
+        let evaluations: Vec<Evaluation> =
+            values.iter().map(|&v| Evaluation::feasible(v)).collect();
+        self.tell_constrained(&evaluations)
+    }
+
+    /// [`Run::tell`] with each candidate's constraint violation: candidates are ranked by Deb's
+    /// feasibility rules ([`Evaluation::rank`]), the best point is the best by the same rules,
+    /// and a target counts only for a point that keeps every constraint. The stop on values
+    /// ([`Stop::TolFun`]) looks only at generations whose best keeps them, and at the values of
+    /// this generation's candidates that keep them.
+    ///
+    /// Told only violations of zero, a run is bit for bit [`Run::tell`]'s.
+    ///
+    /// # Errors
+    ///
+    /// [`Run::tell`]'s, and [`AnalysisError::Domain`] for a violation that is negative or NaN
+    /// (`+∞` is a failed candidate's, [`Evaluation::failed`]).
+    pub fn tell_constrained(
+        &mut self,
+        evaluations: &[Evaluation],
+    ) -> Result<Option<Optimum>, AnalysisError> {
+        let values: Vec<f64> = evaluations.iter().map(|e| e.value).collect();
         if values.len() != self.candidates.len() || self.candidates.is_empty() {
             return Err(AnalysisError::Length {
                 what: "values, against the generation's candidates",
                 length: values.len(),
                 expected: self.candidates.len(),
+            });
+        }
+        if let Some(e) = evaluations
+            .iter()
+            .find(|e| e.violation.is_nan() || e.violation < 0.0)
+        {
+            return Err(AnalysisError::Domain {
+                what: "constraint violation (must not be negative or NaN)",
+                value: e.violation,
             });
         }
         if let Some((k, &value)) = values
@@ -564,24 +636,29 @@ impl Run {
         }
         // Rank: a stable sort, so ties keep the candidates' order.
         let mut order: Vec<usize> = (0..self.lambda).collect();
-        order.sort_by(|&i, &j| values[i].total_cmp(&values[j]));
+        order.sort_by(|&i, &j| evaluations[i].rank(&evaluations[j]));
         let first = order[0];
         if self
             .best
             .as_ref()
-            .is_none_or(|(_, v, _)| values[first] < *v)
+            .is_none_or(|(_, e, _)| evaluations[first].beats(e))
         {
             self.best = Some((
                 self.candidates[first].clone(),
-                values[first],
+                evaluations[first],
                 self.evaluations + first + 1,
             ));
         }
         self.evaluations += self.lambda;
         self.update(&order);
         self.generation += 1;
-        self.history.push(values[first]);
-        self.stop = self.check_stop(values);
+        self.history.push(evaluations[first]);
+        let feasible: Vec<f64> = evaluations
+            .iter()
+            .filter(|e| e.is_feasible())
+            .map(|e| e.value)
+            .collect();
+        self.stop = self.check_stop(&feasible);
         if self.stop.is_none() {
             self.stop = self.draw();
         }
@@ -648,11 +725,12 @@ impl Run {
         self.d = values.iter().map(|v| v.max(0.0).sqrt()).collect();
     }
 
-    /// Why the run should stop now, if it should.
+    /// Why the run should stop now, if it should; `values` are this generation's feasible ones.
     fn check_stop(&self, values: &[f64]) -> Option<Stop> {
         let n = self.n;
         if let (Some(target), Some((_, best, _))) = (self.target, &self.best)
-            && *best <= target
+            && best.is_feasible()
+            && best.value <= target
         {
             return Some(Stop::Target);
         }
@@ -684,10 +762,12 @@ impl Run {
         }
         // Cast: ⌈30 n/λ⌉ is small; n ≤ 200 and λ ≥ 2.
         let window = 10 + (30.0 * n as f64 / self.lambda as f64).ceil() as usize;
-        if self.history.len() >= window {
-            let recent = self.history[self.history.len() - window..]
-                .iter()
-                .chain(values);
+        if self.history.len() >= window && !values.is_empty() {
+            let bests = &self.history[self.history.len() - window..];
+            if !bests.iter().all(Evaluation::is_feasible) {
+                return None;
+            }
+            let recent = bests.iter().map(|e| &e.value).chain(values);
             let (low, high) = recent.fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &v| {
                 (lo.min(v), hi.max(v))
             });
@@ -761,10 +841,14 @@ impl Run {
             .fold(0.0, f64::max);
         // A run is only told after a generation is evaluated, so there is a best point; the
         // default is never used.
-        let (point, value, evaluation) = self.best.clone().unwrap_or_default();
+        let (point, best, evaluation) =
+            self.best
+                .clone()
+                .unwrap_or((Vec::new(), Evaluation::feasible(f64::INFINITY), 0));
         Optimum {
             point,
-            value,
+            value: best.value,
+            violation: best.violation,
             evaluation,
             evaluations: self.evaluations,
             generations: self.generation,
@@ -778,7 +862,107 @@ impl Run {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::optimize::benchmark::constrained::sphere_above;
     use crate::optimize::benchmark::sphere;
+
+    /// Told violations of zero, a constrained run is the plain one, bit for bit. (`tell` goes
+    /// through `tell_constrained`; `tests/optimize.rs` pins that path to pycma and to a dense
+    /// recomputation.)
+    #[test]
+    fn zero_violations_change_nothing() {
+        let cmaes = Cmaes::new(variables(5, 1.0, 0.5)).unwrap();
+        let plain = cmaes.minimize(7, sphere).unwrap();
+        let constrained = cmaes
+            .minimize_constrained(7, |x| Evaluation::feasible(sphere(x)))
+            .unwrap();
+        assert_eq!(plain, constrained);
+    }
+
+    #[test]
+    fn violations_must_not_be_negative_or_nan() {
+        let cmaes = Cmaes::new(variables(2, 1.0, 0.5)).unwrap();
+        for bad in [-1e-300, f64::NAN, f64::NEG_INFINITY] {
+            let mut run = cmaes.start(1).unwrap();
+            let told: Vec<Evaluation> = run
+                .candidates()
+                .iter()
+                .map(|_| Evaluation {
+                    value: 1.0,
+                    violation: bad,
+                })
+                .collect();
+            match run.tell_constrained(&told) {
+                Err(AnalysisError::Domain { what, value }) => {
+                    assert!(what.starts_with("constraint violation"));
+                    assert!(value.total_cmp(&bad).is_eq());
+                }
+                other => panic!("{bad}: {other:?}"),
+            }
+        }
+    }
+
+    /// A NaN or −∞ isn't written as JSON's `null`, which reads back as a failure's `+∞`.
+    #[test]
+    fn json_refuses_what_would_read_back_as_a_failure() {
+        for bad in [f64::NAN, f64::NEG_INFINITY] {
+            let e = Evaluation {
+                value: 1.0,
+                violation: bad,
+            };
+            assert!(serde_json::to_string(&e).is_err(), "{bad}");
+            assert!(
+                serde_json::to_string(&Evaluation::feasible(bad)).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
+    /// Failed candidates rank last: a run where every one fails reports `+∞` for both, and
+    /// survives JSON; a run where some fail finds the minimum among the rest.
+    #[test]
+    fn failed_candidates_rank_last() {
+        let cmaes = Cmaes::new(variables(3, 3.0, 1.0))
+            .unwrap()
+            .with_max_evaluations(300)
+            .unwrap();
+        let none = cmaes
+            .minimize_constrained(5, |_| Evaluation::failed())
+            .unwrap();
+        assert_eq!((none.value, none.violation), (f64::INFINITY, f64::INFINITY));
+        let json = serde_json::to_string(&none).unwrap();
+        assert_eq!(serde_json::from_str::<Optimum>(&json).unwrap(), none);
+        // Every candidate with x₁ < 0 fails; the minimum (1, 0, 0) is on that edge.
+        let cmaes = Cmaes::new(variables(3, 3.0, 1.0))
+            .unwrap()
+            .with_max_evaluations(20_000)
+            .unwrap();
+        let some = cmaes
+            .minimize_constrained(5, |x| {
+                if x[1] < 0.0 {
+                    Evaluation::failed()
+                } else {
+                    sphere_above(x)
+                }
+            })
+            .unwrap();
+        assert_eq!(some.violation, 0.0);
+        assert!(some.point[1] >= 0.0);
+        assert!((some.value - 1.0).abs() < 1e-8, "{}", some.value);
+    }
+
+    /// A target counts only for a point that keeps the constraints: an infeasible candidate
+    /// far below the target doesn't stop the run.
+    #[test]
+    fn a_target_needs_a_feasible_point() {
+        let cmaes = Cmaes::new(variables(3, 0.0, 1.0))
+            .unwrap()
+            .with_target(1.5)
+            .unwrap();
+        let optimum = cmaes.minimize_constrained(3, sphere_above).unwrap();
+        assert_eq!(optimum.stop, Stop::Target);
+        assert_eq!(optimum.violation, 0.0);
+        assert!(optimum.value <= 1.5 && optimum.point[0] >= 1.0);
+    }
 
     fn variables(n: usize, start: f64, step: f64) -> Vec<Variable> {
         (0..n)

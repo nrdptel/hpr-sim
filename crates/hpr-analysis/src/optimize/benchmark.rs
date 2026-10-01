@@ -13,6 +13,8 @@
 //! | [`ellipsoid`] | coefficients from 1 to 10⁶, so the distribution must grow 1,000 times longer one way than the other | 0 at `x = 0` |
 //! | [`rotated_ellipsoid`] | the same along axes that aren't the variables' | 0 at `x = 0` |
 //! | [`rosenbrock`] | following a long, curved valley | 0 at `x = 1` |
+//!
+//! [`constrained`] holds three problems whose minima lie on their constraints' edges.
 
 /// The ellipsoid's condition number: the ratio of its largest curvature to its smallest.
 pub const ELLIPSOID_CONDITION: f64 = 1e6;
@@ -114,5 +116,61 @@ mod tests {
             .map(|(i, xi)| xi - 2.0 * vx / vv * (i + 1) as f64)
             .collect();
         assert!((sphere(&hx) - sphere(&x)).abs() <= 1e-14);
+    }
+}
+
+/// Constrained test problems with known minima on their constraints' edges, for
+/// [`Run::tell_constrained`](super::cmaes::Run::tell_constrained). Each gives an
+/// [`Evaluation`](super::Evaluation) with constraints written `g(x) ≤ 0`.
+///
+/// | Problem | Constraint | Minimum |
+/// |---|---|---|
+/// | [`constrained::sphere_above`] | `x₀ ≥ 1` | 1 at `x = (1, 0, …, 0)` |
+/// | [`constrained::tangent`] | `Σ xᵢ ≥ n` | `n` at `x = 1` |
+/// | [`constrained::g06`] | two circles | `(x₀* − 10)³ + (x₁* − 20)³` at their crossing |
+pub mod constrained {
+    use crate::optimize::Evaluation;
+
+    /// The sphere `Σ xᵢ²` with `x₀ ≥ 1`, as `g = 1 − x₀ ≤ 0`. Its minimum is 1, at
+    /// `x = (1, 0, …, 0)`: the constraint binds, as the sphere's own minimum breaks it.
+    pub fn sphere_above(x: &[f64]) -> Evaluation {
+        let g = 1.0 - x.first().copied().unwrap_or(0.0);
+        Evaluation::constrained(super::sphere(x), &[g])
+    }
+
+    /// The tangent problem: the sphere with `Σ xᵢ ≥ n`, as `g = n − Σ xᵢ ≤ 0`, a constraint along
+    /// no variable's axis. By symmetry and Lagrange's condition `2 xᵢ = λ`, the minimum is `n`, at
+    /// `x = 1`.
+    pub fn tangent(x: &[f64]) -> Evaluation {
+        let n = x.len() as f64;
+        let g = n - x.iter().sum::<f64>();
+        Evaluation::constrained(super::sphere(x), &[g])
+    }
+
+    /// Problem g06 of the CEC 2006 constrained benchmark (J. J. Liang et al., "Problem
+    /// definitions and evaluation criteria for the CEC 2006 special session on constrained
+    /// real-parameter optimization", Nanyang Technological University (2006)), two variables:
+    /// `f = (x₀ − 10)³ + (x₁ − 20)³`, with `g₁ = 100 − (x₀ − 5)² − (x₁ − 5)² ≤ 0` (outside one
+    /// circle) and `g₂ = (x₀ − 6)² + (x₁ − 5)² − 82.81 ≤ 0` (inside another), and bounds
+    /// `13 ≤ x₀ ≤ 100`, `0 ≤ x₁ ≤ 100` for the caller to set. The minimum is where the circles
+    /// cross: subtracting the two edges gives `2 x₀ − 11 = 17.19`, so [`G06_X0`], and
+    /// [`g06_x1`] below the centres.
+    pub fn g06(x: &[f64]) -> Evaluation {
+        let (a, b) = (
+            x.first().copied().unwrap_or(0.0),
+            x.get(1).copied().unwrap_or(0.0),
+        );
+        let f = (a - 10.0).powi(3) + (b - 20.0).powi(3);
+        let g1 = 100.0 - (a - 5.0).powi(2) - (b - 5.0).powi(2);
+        let g2 = (a - 6.0).powi(2) + (b - 5.0).powi(2) - 82.81;
+        Evaluation::constrained(f, &[g1, g2])
+    }
+
+    /// g06's minimum's first coordinate, `x₀* = 14.095`.
+    pub const G06_X0: f64 = 14.095;
+
+    /// g06's minimum's second coordinate, `x₁* = 5 − √(100 − (x₀* − 5)²)`.
+    pub fn g06_x1() -> f64 {
+        5.0 - (100.0 - (G06_X0 - 5.0).powi(2)).sqrt()
     }
 }

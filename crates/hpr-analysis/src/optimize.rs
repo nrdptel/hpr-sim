@@ -12,6 +12,8 @@
 //!   candidates around a mean, keeps the better half, and learns from them which way, and how
 //!   far, to step next. It needs only the output's ranking, no derivatives, so it suits flights,
 //!   whose outputs are noisy in their last digits.
+//! - [`Evaluation`]: a value and a constraint violation, for a model with constraints, ranked
+//!   by Deb's feasibility rules ([`cmaes::Run::tell_constrained`]).
 //! - [`benchmark`]: test functions with known minima, which the tests hold the optimizer to.
 //!
 //! A model is minimized; to maximize an output, minimize its negative. To hit a target, minimize
@@ -26,9 +28,8 @@
 //!
 //! # Left out
 //!
-//! Variables are continuous. Discrete choices (a motor, a catalogue part), constraints other than
-//! bounds, several objectives at once, Bayesian optimization and optimizing a Monte Carlo run's
-//! statistics are later increments of [M6.2, the optimization milestone][roadmap].
+//! Variables are continuous. Discrete choices (a motor, a catalogue part), several objectives at
+//! once, Bayesian optimization and optimizing a Monte Carlo run's statistics are later increments of [M6.2, the optimization milestone][roadmap].
 //!
 //! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 
@@ -185,6 +186,87 @@ impl Variable {
     }
 }
 
+/// What a model gives for one candidate under constraints: its value, and by how much it breaks
+/// the constraints, zero if it keeps them all.
+///
+/// Candidates are ranked by K. Deb's feasibility rules ("An efficient constraint handling method
+/// for genetic algorithms", *Computer Methods in Applied Mechanics and Engineering* 186(2–4),
+/// 311–338 (2000), <https://doi.org/10.1016/S0045-7825(99)00389-8>, §3): a candidate that keeps
+/// every constraint beats one that doesn't; of two that keep them, the smaller value wins; of
+/// two that don't, the smaller violation wins (here ties in violation go to the smaller value).
+/// No penalty weight is needed, as values and violations are never compared with each other.
+/// The rules rank, and CMA-ES uses only ranks.
+///
+/// A candidate the model can't evaluate (a flight that fails) is `value` and `violation` both
+/// `+∞`: it ranks behind every other. Both serialize `+∞` as none, a JSON `null`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Evaluation {
+    /// The model's value.
+    #[serde(with = "cmaes::infinity_as_none")]
+    pub value: f64,
+    /// The total violation, `Σ max(0, gⱼ)` over constraints written `gⱼ ≤ 0`: zero if the
+    /// candidate keeps them all.
+    #[serde(with = "cmaes::infinity_as_none")]
+    pub violation: f64,
+}
+
+impl Evaluation {
+    /// A value with no constraints to break.
+    pub const fn feasible(value: f64) -> Self {
+        Self {
+            value,
+            violation: 0.0,
+        }
+    }
+
+    /// A candidate the model can't evaluate: value and violation both `+∞`, behind every other.
+    pub const fn failed() -> Self {
+        Self {
+            value: f64::INFINITY,
+            violation: f64::INFINITY,
+        }
+    }
+
+    /// A value under constraints `gⱼ(x) ≤ 0`, given as the numbers `gⱼ`: the violation is
+    /// `Σ max(0, gⱼ)`, Deb's (2000) overall violation. Deb divides each constraint by a constant
+    /// so that they count alike (a margin in calibers and a speed in m/s, say); do the same before
+    /// passing them in. A NaN `gⱼ` gives a NaN violation, which [`cmaes::Run::tell_constrained`]
+    /// refuses.
+    pub fn constrained(value: f64, constraints: &[f64]) -> Self {
+        // Folded from +0: an empty f64 sum is −0, which `total_cmp` would rank first.
+        let violation = constraints
+            .iter()
+            .map(|&g| if g.is_nan() || g > 0.0 { g } else { 0.0 })
+            .fold(0.0, |total, g| total + g);
+        Self { value, violation }
+    }
+
+    /// Whether the candidate keeps every constraint.
+    pub fn is_feasible(&self) -> bool {
+        self.violation == 0.0
+    }
+
+    /// Deb's rules as an ordering: [`Less`](std::cmp::Ordering::Less) if `self` ranks ahead of
+    /// `other`. Violation first, with `−0` equal to `0`, then value by [`f64::total_cmp`]
+    /// (CMA-ES's own ranking of plain values).
+    pub fn rank(&self, other: &Self) -> std::cmp::Ordering {
+        let violation = if self.violation == other.violation {
+            std::cmp::Ordering::Equal
+        } else {
+            self.violation.total_cmp(&other.violation)
+        };
+        violation.then(self.value.total_cmp(&other.value))
+    }
+
+    /// Whether `self` is strictly better than `other` by Deb's rules, comparing as `<` does, so
+    /// `−0` and `0` tie.
+    pub(crate) fn beats(&self, other: &Self) -> bool {
+        self.violation < other.violation
+            || (self.violation == other.violation && self.value < other.value)
+    }
+}
+
 /// Checks that there are between one and [`MAX_VARIABLES`] variables, and no two share a name.
 fn check_variables(variables: &[Variable]) -> Result<(), AnalysisError> {
     if variables.is_empty() {
@@ -227,6 +309,39 @@ mod tests {
         assert!(x.clone().within(f64::INFINITY, f64::INFINITY).is_err());
         let x = x.within(0.0, f64::INFINITY).unwrap();
         assert!(x.contains(0.0) && x.contains(1e300) && !x.contains(-1e-300));
+    }
+
+    #[test]
+    fn evaluations_rank_by_deb_rules() {
+        use std::cmp::Ordering::{Greater, Less};
+        let e = Evaluation::constrained(5.0, &[-1.0, 0.0, -3.0]);
+        assert!(e.is_feasible());
+        let broken = Evaluation::constrained(-100.0, &[0.25, -1.0, 0.5]);
+        assert_eq!(broken.violation, 0.75);
+        // Feasible beats infeasible, whatever the values.
+        assert_eq!(e.rank(&broken), Less);
+        // Two infeasible: the smaller violation, whatever the values.
+        assert_eq!(broken.rank(&Evaluation::constrained(-1e9, &[1.0])), Less);
+        // Two feasible: the smaller value.
+        assert_eq!(e.rank(&Evaluation::feasible(4.0)), Greater);
+        assert!(Evaluation::constrained(0.0, &[f64::NAN]).violation.is_nan());
+        // No constraints is +0, not the −0 of an empty sum, so values decide.
+        let none = Evaluation::constrained(10.0, &[]);
+        assert!(none.violation.is_sign_positive());
+        assert_eq!(none.rank(&Evaluation::feasible(1.0)), Greater);
+        let negative_zero = Evaluation {
+            value: 10.0,
+            violation: -0.0,
+        };
+        assert_eq!(negative_zero.rank(&Evaluation::feasible(1.0)), Greater);
+        // A failure ranks behind everything, and reads back from JSON.
+        assert_eq!(broken.rank(&Evaluation::failed()), Less);
+        let json = serde_json::to_string(&Evaluation::failed()).unwrap();
+        assert_eq!(json, r#"{"value":null,"violation":null}"#);
+        assert_eq!(
+            serde_json::from_str::<Evaluation>(&json).unwrap(),
+            Evaluation::failed()
+        );
     }
 
     #[test]
