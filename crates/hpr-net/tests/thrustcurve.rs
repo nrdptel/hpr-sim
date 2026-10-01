@@ -266,7 +266,7 @@ fn the_in_stock_motors_map_to_thrustcurve_ids_with_a_report_of_the_misses() {
             (
                 m.manufacturer.clone(),
                 m.designation.clone(),
-                m.motor_id.clone(),
+                m.record.motor_id.clone(),
             )
         })
         .collect();
@@ -276,7 +276,29 @@ fn the_in_stock_motors_map_to_thrustcurve_ids_with_a_report_of_the_misses() {
     let (hits, total) = join.coverage();
     assert_eq!((hits, total), (282, 282));
     assert!(hits * 100 >= total * 95, "{hits} of {total}");
-    assert!(join.mapped.iter().all(|m| m.data_files >= Some(1)));
+    assert!(join.mapped.iter().all(|m| m.record.data_files >= Some(1)));
+    // The finder copies ThrustCurve's figures as well as its names, so each match is the right
+    // motor by more than its name: diameter, total impulse, average thrust and burn time agree.
+    for m in &join.mapped {
+        let motor = &in_stock.motors[m.finder_index];
+        assert_eq!(
+            (motor.manufacturer.as_str(), motor.designation.as_str()),
+            (m.manufacturer.as_str(), m.designation.as_str())
+        );
+        let figures = [
+            (Some(motor.diameter_mm), m.record.diameter_mm),
+            (motor.total_impulse_ns, m.record.total_impulse_ns),
+            (motor.avg_thrust_n, m.record.avg_thrust_n),
+            (motor.burn_time_s, m.record.burn_time_s),
+        ];
+        for (finder, record) in figures {
+            assert!(
+                finder.is_some() && finder == record,
+                "{}: {figures:?}",
+                m.designation
+            );
+        }
+    }
 
     let path = root().join("validation/reports/thrustcurve-join.md");
     let report = std::fs::read_to_string(&path).unwrap();
@@ -312,7 +334,7 @@ fn a_mapped_motors_recorded_curve_reads_with_hpr_motor() {
         .find(|m| m.designation == "J450DM")
         .unwrap();
     assert_eq!(
-        (j450.manufacturer.as_str(), j450.motor_id.as_str()),
+        (j450.manufacturer.as_str(), j450.record.motor_id.as_str()),
         ("AeroTech", J450DM_ID)
     );
 
@@ -428,9 +450,48 @@ fn a_miss_is_reported_with_its_reason() {
         .position(|m| m.designation == "E26W")
         .unwrap();
     in_stock.motors[lower].designation = "e26w".to_owned();
+    // A record given twice, as two overlapping searches would, is one record.
+    let again = records
+        .iter()
+        .find(|r| r.designation == "26E31-15A")
+        .unwrap()
+        .clone();
+    records.push(again);
+    // One record listing no data file, one leaving the count out: both counted in the report.
+    let no_files = records
+        .iter_mut()
+        .find(|r| r.designation == "D13W")
+        .unwrap();
+    no_files.data_files = Some(0);
+    let unstated = records
+        .iter_mut()
+        .find(|r| r.designation == "26E31-15A")
+        .unwrap();
+    unstated.data_files = None;
+
+    // Another maker's record of the same designation is another motor: K400C still maps to
+    // AeroTech's.
+    let k400 = records
+        .iter()
+        .find(|r| r.designation == "K400C")
+        .unwrap()
+        .clone();
+    let mut namesake = k400.clone();
+    namesake.manufacturer = "Loki Research".to_owned();
+    namesake.motor_id = "000000000000000000000002".to_owned();
+    records.push(namesake);
 
     let join = thrustcurve::join(&in_stock.motors, &records);
     assert_eq!(join.coverage(), (279, 282));
+    let k400_mapped = join
+        .mapped
+        .iter()
+        .find(|m| m.designation == "K400C")
+        .unwrap();
+    assert_eq!(
+        (k400_mapped.manufacturer.as_str(), &k400_mapped.record),
+        ("AeroTech", &k400)
+    );
     let misses: Vec<_> = join
         .misses
         .iter()
@@ -449,6 +510,13 @@ fn a_miss_is_reported_with_its_reason() {
     }
     let report = join.report();
     assert!(report.starts_with("279 of 282 motors mapped"), "{report}");
+    for row in [
+        "| AeroTech | 153 | 151 | 1 | 2 |",
+        "| Cesaroni Technology | 99 | 99 | 1 | 0 |",
+        "| Loki Research | 30 | 29 | 0 | 1 |",
+    ] {
+        assert!(report.contains(row), "{row} in {report}");
+    }
     assert!(
         report.contains("| AeroTech | `J450-DM` | no record of that name |"),
         "{report}"
@@ -473,12 +541,13 @@ fn each_rule_refuses_an_answer_that_breaks_it() {
         thrustcurve::parse_search(&api_error),
         Err(ThrustCurveError::Api(e)) if e == "Invalid manufacturer value."
     ));
+    // On the second criterion, so a check of the first alone would miss it.
     let criterion_error = edited(search, |v| {
-        v["criteria"][0]["error"] = "Invalid manufacturer value \"Nope\".".into();
+        v["criteria"][1]["error"] = "Invalid maxResults value \"x\".".into();
     });
     assert!(matches!(
         thrustcurve::parse_search(&criterion_error),
-        Err(ThrustCurveError::Api(e)) if e == "manufacturer: Invalid manufacturer value \"Nope\"."
+        Err(ThrustCurveError::Api(e)) if e == "maxResults: Invalid maxResults value \"x\"."
     ));
     let too_many = edited(search, |v| v["matches"] = 59.into());
     assert!(matches!(
@@ -497,8 +566,10 @@ fn each_rule_refuses_an_answer_that_breaks_it() {
         "diameter",
         "length",
         "avgThrustN",
+        "maxThrustN",
         "totImpulseNs",
         "burnTimeS",
+        "totalWeightG",
         "propWeightG",
     ] {
         let negative = edited(search, |v| v["results"][7][name] = (-1.5).into());
@@ -544,10 +615,19 @@ fn each_rule_refuses_an_answer_that_breaks_it() {
         thrustcurve::parse_download(&not_base64),
         Err(ThrustCurveError::Field { field, .. }) if field == "results[0].data"
     ));
-    let not_utf8 = edited(J450DM_FILE, |v| v["results"][0]["data"] = "/w==".into());
+    // A file that decodes but isn't UTF-8 text is that file's error, not the answer's: the
+    // motor's other files stay readable.
+    let not_utf8 = edited(J450DM_FILE, |v| {
+        let mut second = v["results"][0].clone();
+        second["data"] = "/w==".into();
+        second["simfileId"] = "000000000000000000000001".into();
+        v["results"].as_array_mut().unwrap().push(second);
+    });
+    let answer = thrustcurve::parse_download(&not_utf8).unwrap();
+    assert!(answer.results[0].read().is_ok());
     assert!(matches!(
-        thrustcurve::parse_download(&not_utf8),
-        Err(ThrustCurveError::Field { field, .. }) if field == "results[0].data"
+        answer.results[1].text(),
+        Err(ThrustCurveError::Field { field, .. }) if field == "000000000000000000000001.data"
     ));
     let other_format = edited(J450DM_FILE, |v| v["results"][0]["format"] = "ANG".into());
     assert!(matches!(
@@ -619,6 +699,27 @@ fn an_answer_for_something_else_is_refused_and_not_cached() {
     };
     assert!(
         reason.contains("matches 307 motors but returns only 20"),
+        "{reason}"
+    );
+    assert!(matches!(
+        thrustcurve::fetch_search(&offline, &Search::manufacturer("AeroTech"), NOW_S),
+        Err(ThrustCurveError::Net(NetError::NotCached { .. }))
+    ));
+
+    // Loki's whole answer, served for AeroTech's search: another maker's records.
+    let online = Client::new(
+        Always(fixture(SEARCHES[2].1)),
+        Cache::new(dir.path()),
+        Mode::Online,
+    );
+    let err = thrustcurve::fetch_finder_records(&online, NOW_S).unwrap_err();
+    let ThrustCurveError::Net(NetError::Refused { reason, .. }) = &err else {
+        panic!("{err}");
+    };
+    assert!(
+        reason.contains(
+            "asked ThrustCurve for AeroTech's motors, but the answer holds one of Loki Research's"
+        ),
         "{reason}"
     );
     assert!(matches!(

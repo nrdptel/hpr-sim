@@ -28,7 +28,8 @@ Planned:
   [a site's elevation](https://nrdptel.github.io/hpr-sim/elevation.html) (Open-Meteo's, or from a
   GeoTIFF terrain file of your own, in the library today) and
   [live motor stock and prices](https://nrdptel.github.io/hpr-sim/motor-stock.html) from
-  [motor.fusionspace.co](https://motor.fusionspace.co) (in the library today),
+  [motor.fusionspace.co](https://motor.fusionspace.co), matched to ThrustCurve.org's thrust
+  curves (in the library today),
   all optional. Everything works offline on macOS, Windows and Linux.
 - Monte Carlo dispersion, sensitivity analysis, and optimization for competition challenges.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.

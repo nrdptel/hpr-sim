@@ -280,6 +280,11 @@ as heights instead, the mean is 6.63%.
   fixtures and whole-tile reading by rasterio 1.5.2 (GDAL 3.12.2), the outside reader, are in
   `crates/hpr-io/tests/fixtures/geotiff/` (`validation/oracles/geotiff/dem.py`;
   [ADR-128](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30), the reader's design).
+- **ThrustCurve.org's API** (<https://www.thrustcurve.org/info/api.html>): three makers' searches
+  and two public-domain curve files, recorded 2026-10-01, in `crates/hpr-net/tests/fixtures/replay/`;
+  `validation/reports/thrustcurve-join.md` holds the in-stock motors' match to its records
+  ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01),
+  why the match is by name only).
 - **US Standard Atmosphere 1976:**
   https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf. Python cross-checks:
   `ambiance` (Apache-2.0), `pyatmos` (MIT).

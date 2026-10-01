@@ -10669,22 +10669,29 @@ whether the maker was named in full or by its abbreviation.
    JSON field for field and write back to it; every record field but `motorId`, `manufacturer` and
    `designation` is optional, as the spec allows. The motor type, availability, source and licence
    stay the API's words (strings: the response schema types them as open strings); the format is
-   an enum of the two the request takes, and the answer must hold the one asked.
+   an enum of the two the request takes, and the answer must hold the one asked. A request's motor
+   id is taken in either case and kept in lower case, as the API writes ids, so one motor has one
+   cache key and its answer matches the request.
 2. **Refused:** an answer or criterion carrying `error`; a search returning more records than
    `matches`; a `motorId` not of 24 hex digits; a size, thrust, impulse, burn time or weight below
-   zero; a file that isn't base64 or UTF-8 (`hpr motors` reads motor files as UTF-8 too); a
-   download holding another motor's file or format. A request's motor id is checked before the
-   client is asked. Files that `hpr_motor` refuses are an error of `DataFile::read`, not of the
-   parser: the answer is still ThrustCurve's.
+   zero; a file's data that isn't base64; a download holding another motor's file or format. A
+   request's motor id is checked before the client is asked. A file that decodes but isn't UTF-8
+   (`hpr motors` reads motor files as UTF-8 too), or that `hpr_motor` refuses, is an error of
+   `DataFile::text` or `DataFile::read` for that file alone, not of the parser: the answer is
+   still ThrustCurve's, and the motor's other files stay readable.
 3. **The join by name only.** `join` maps a finder motor to the one record whose `manufacturer`
    (full name) and `designation` equal the motor's, byte for byte; none or several is a `Miss` with
-   its reason, and `Join::report` lists counts by maker and every miss. No fallback on case,
+   its reason, and `Join::report` lists counts by maker and every miss. A record given twice (the
+   same `motorId`, as from overlapping searches) counts once. A `Mapped` carries the finder
+   motor's index and the whole record, for M5.4c to show price beside curve. No fallback on case,
    punctuation, impulse or diameter: the finder copies ThrustCurve's spellings (ADR-129), and a
-   guessed match could hand a flier the wrong curve, where a miss only costs a lookup.
+   guessed match could hand a flier the wrong curve, where a miss only costs a lookup. As the
+   finder copies ThrustCurve's figures too, a full match was expected on the recording (ADR-129
+   found 598 of 598 exact); the join is there to catch drift.
 4. **Whole searches for the join.** `fetch_finder_records` runs one search per maker the finder
    reads (`motor_finder::MANUFACTURERS`, by full name), each asking `maxResults=5000`, and refuses
-   (and doesn't cache) one that matches more records than it returns, so a join never runs on part
-   of a maker.
+   (and doesn't cache) one that matches more records than it returns, or holds another maker's
+   record, so a join never runs on part of a maker.
 5. **A day's TTL.** Records and curves change seldom; offline or with the site down, the cached
    copy is served stale, as every source does (ADR-117).
 6. **The credit.** The API asks for none. `ATTRIBUTION`, "Motor data and thrust curves courtesy of
@@ -10703,12 +10710,17 @@ whether the maker was named in full or by its abbreviation.
 
 **Consequences.** M5.4b is met: on the recorded in-stock list (282 motors, the finder's build of
 07:07:29 UTC) and the three searches (663 records), 282 of 282 motors map to exactly one record,
-each listing a data file, against the 95% asked; the test works the expected mapping out from the
-recordings' JSON, not through `join`. J450DM, mapped and in stock, has its recorded RASP file read
+each listing a data file, against the 95% asked. The test builds its own name-to-id table from the
+recordings' JSON, not through `join` (the same rule, so it shows the code keeps the rule), and,
+independently of the rule, checks that every match's diameter, total impulse, average thrust and
+burn time equal the finder motor's: they do for all 282. J450DM, mapped and in stock, has its recorded RASP file read
 by `hpr_motor::eng` to the 36 points in its lines, and the file is byte for byte the public-domain
 one `hpr_motor` bundles (`5f4294d20002e9000000086b.eng`, downloaded 2026-09-17); F27R/L's RockSim
 file reads by `hpr_motor::rse` to the points in its XML. A renamed motor, a doubled record and a
-designation in another case are misses with their reasons. Each refusal is tested by a one-field
-change to a recording. The example `motor_stock` prints the join and J450DM's curve: 1,061.6 N·s,
+designation in another case are misses with their reasons; a record given twice counts once, and
+another maker's record of the same designation leaves the match alone. Each refusal is tested by a
+one-field change to a recording. Review found an upper-case id accepted and then its answer
+refused, a record given twice making every motor a miss, a search of another maker accepted, one
+non-UTF-8 file refusing a motor's whole answer, and gaps in the refusal tests; all are fixed. The example `motor_stock` prints the join and J450DM's curve: 1,061.6 N·s,
 2.28 s and 541.4 N from the file, beside its record's certification figures of 1,055 N·s, 2.27 s
 and 558 N. M5.4c (`hpr motors search`) can now show a motor in stock with its curve.

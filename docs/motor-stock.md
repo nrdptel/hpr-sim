@@ -9,17 +9,21 @@ is for anyone choosing a motor they can actually buy: "which L motors are in sto
 one cost?" hpr then matches each motor in stock to its record on
 [ThrustCurve.org](glossary.md#thrustcurveorg), the public database of motor data, and can download
 that record's [thrust curve](glossary.md#thrust-curve), so a motor you can buy is a motor you can
-fly. There is no `hpr` command for it yet: a Rust program calls the library.
+fly ([A motor from a file](physics/motor.md#a-motor-from-a-file)). There is no `hpr` command for
+it yet: a Rust program calls the library.
 
 **How far to trust it.** hpr gives back the site's values unchanged, and the saved copy gives them
-back offline. That is checked on eight recorded answers, below. Whether a vendor really has a motor,
+back offline. That is checked on thirteen recorded answers, below: eight from
+motor.fusionspace.co and five from ThrustCurve.org. Whether a vendor really has a motor,
 at that price, is the vendor's to say. The site's data is up to about an hour old when it is built,
 and hpr counts its saved copy as fresh for another hour, so a fresh answer can be two hours behind
-the vendor's page; a stale copy is as old as its date says. The site's terms ask you to check stock
+the vendor's page; a stale copy is as old as its date says. (ThrustCurve.org's answers count as
+fresh for a day.) The site's terms ask you to check stock
 and price on the vendor's own page before relying on them. Prices are in U.S. dollars.
 
 The match is by name. On the recorded answers, all 282 motors in stock matched exactly one
-ThrustCurve.org record ([below](#matching-motors-to-thrustcurveorg)). A curve is the file someone
+ThrustCurve.org record ([below](#matching-motors-to-thrustcurveorg)), and each matched record's
+size, impulse, average thrust and burn time equal the motor finder's. A curve is the file someone
 uploaded to ThrustCurve.org, read by the same readers as a motor file on your disk.
 
 The tests replay saved answers, and CI never contacts either live site. Both were contacted by
@@ -101,22 +105,23 @@ error naming the address, and doesn't save it. The makers can be named in full o
 
 ## Matching motors to ThrustCurve.org
 
-The motor finder carries no thrust curves, and no ThrustCurve.org id. ThrustCurve.org has both: a
-record for every certified motor, each with its own id (24 hexadecimal digits, such as
+The motor finder carries no thrust curves, and no ThrustCurve.org id. ThrustCurve.org has both: it
+aims to hold a record for every certified motor, each with its own id (24 hexadecimal digits, such as
 `5f4294d2000231000000044f`), and the simulator files people have uploaded for it. hpr asks its
 [public API](https://www.thrustcurve.org/info/api.html) two things:
 
 | Request | What it gives | hpr's call |
 |---|---|---|
 | a *search* | motor records: id, maker, designation, class, diameter, impulse, burn time, delays, how many data files | `thrustcurve::fetch_search` |
-| a *download* | one motor's data files in one format, RASP (`.eng`) or RockSim (`.rse`), each with who measured it and its licence | `thrustcurve::fetch_download` |
+| a *download* | one motor's data files in one format, [RASP (`.eng`) or RockSim (`.rse`)](glossary.md#rasp-and-rocksim-files), each with who measured it and its licence | `thrustcurve::fetch_download` |
 
 **The match.** The finder spells each designation exactly as ThrustCurve.org does. So hpr matches a
 motor in stock to the record whose maker (full name, such as `Cesaroni Technology`) and
 designation are the same, character for character. If no record has that name, or more than one
-does, the motor is a *miss*, and the match's report lists it with the reason. hpr doesn't guess:
-it doesn't compare impulse or diameter, or try other spellings. A motor ThrustCurve.org spells
-differently is reported as a miss, never matched wrongly. `thrustcurve::fetch_finder_records`
+does, the motor is a *miss*, and the match's report (`Join::report()`) lists it with the reason.
+hpr doesn't guess: it doesn't compare impulse or diameter, or try other spellings. A motor
+ThrustCurve.org spells differently is reported as a miss, never matched by a guess. (The report
+and the code call a matched motor *mapped*.) `thrustcurve::fetch_finder_records`
 fetches the records the match needs, one search for each of the three makers the finder reads,
 and `thrustcurve::join` matches them.
 
@@ -129,25 +134,42 @@ On the recorded answers, every motor in stock matched:
 | Loki Research | 30 | 30 | 0 | 60 |
 | **All** | **282** | **282** | **0** | **663** |
 
-Every matched record lists at least one data file. The table is written by the tests into
+Every matched record lists at least one data file, in some format. The motor finder copies
+ThrustCurve.org's names and figures, so a full match is expected; the match is there to catch
+drift. The tests also check that for every match, the diameter, total impulse, average thrust and
+burn time are the same on both sides, so each match is the right motor by more than its name.
+The table is written by the tests into
 [`validation/reports/thrustcurve-join.md`](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/thrustcurve-join.md),
-and checked against the match on every run. The target was 95% of the motors in stock.
+and checked against the match on every run. The milestone's goal
+([M5.4b](decisions-and-roadmap.md#m5-4b)) was 95% of the motors in stock; the test asserts that
+too.
 
 **The curve.** A download's file is read by the same readers as a motor file on your disk
 ([Solid motors](physics/motor.md)): `.eng` by `hpr_motor::eng`, `.rse` by `hpr_motor::rse`.
-`DataFile::read()` picks the reader by the file's format, and `Curve::thrust_curve()` gives the
+[`DataFile::read()`](api/hpr_net/thrustcurve/struct.DataFile.html#method.read) picks the reader by
+the file's format, and
+[`Curve::thrust_curve()`](api/hpr_net/thrustcurve/enum.Curve.html#method.thrust_curve) gives the
 first motor's curve. Each file says who measured it (`cert`, a certification test; `mfr`, the
-maker; or `user`) and its licence (`PD` for public domain, `free` or `other`, or none given).
+maker; or `user`) and its licence: `PD` for public domain, `free` or `other`, or none given.
+ThrustCurve.org's API doesn't define `free` and `other`, and hpr doesn't interpret them; only
+`PD` files are recorded for the tests. A motor with no file in the format asked, or an unknown
+id, gives an empty list, not an error.
 
-**What hpr refuses.** A search or download is refused, and not saved, when it carries the API's
-error message; when a search returns more motors than it says match; when an id isn't 24
-hexadecimal digits; when a size, thrust, impulse, burn time or weight is below zero; when a file
-isn't base64 (the encoding the API sends files in) or isn't UTF-8 text; and when a download holds
-a file of another motor or format than asked. A search for the match that returns fewer motors
-than match (cut short by its limit, 5,000) is refused too, so a match never runs on part of a
-maker's records. Records may leave out any field but the id, maker and designation: the API sends
-only the fields that have values. Saved answers stay fresh for a day, since motor records and
-curves change seldom.
+**What hpr refuses.** A search or download is refused, and not saved, when:
+
+- it carries the API's error message, on the answer or on one of the search's terms;
+- a search returns more motors than it says match;
+- an id isn't 24 hexadecimal digits;
+- a size, thrust, impulse, burn time or weight is below zero;
+- a file isn't base64 (the encoding the API sends files in);
+- a download holds a file of another motor or format than asked;
+- a search for the match was cut short: it says more motors match than it returned (it asks for up
+  to 5,000), so a match never runs on part of a maker's records;
+- a search for the match holds another maker's record.
+
+Records may leave out any field but the id, maker and designation: the API sends only the fields
+that have values. A file that decodes but isn't plain text (UTF-8) is not refused: reading that
+one file is an error, and the motor's other files stay readable.
 
 ## An example
 
@@ -170,7 +192,8 @@ and reads one curve. It makes these calls:
 5. `thrustcurve::fetch_finder_records(&client, now)` fetches ThrustCurve.org's records of the
    three makers, and `thrustcurve::join(&in_stock.motors, &records)` matches the motors in stock.
 6. `Download::new(id, Format::Rasp)` and `thrustcurve::fetch_download` fetch AeroTech J450DM's
-   `.eng` file by its matched id, and `read()?.thrust_curve()?` reads it.
+   `.eng` file by its matched id, and `read()?.thrust_curve()?` reads it. It uses J450DM because
+   the tests record only public-domain files, and this is one hpr already carries.
 
 Run it from a copy of the repository with
 `cargo run --example motor_stock -p hpr --features net`. It prints:
@@ -191,8 +214,9 @@ AeroTech             L1150R              75         3517.0     $324.99  Animal M
 
 Motor data and thrust curves courtesy of ThrustCurve.org, https://www.thrustcurve.org/
 663 records of the three makers; 282 of 282 motors in stock matched to one each, 0 missed
-AeroTech J450DM: id 5f4294d2000231000000044f, a RASP file, licence PD, 37 points from ignition
-total impulse 1061.6 N·s, burn time 2.28 s, peak thrust 541.4 N
+AeroTech J450DM: id 5f4294d2000231000000044f, a RASP file from source cert, licence PD, 37 points from ignition
+the file:  total impulse   1061.6 N·s, burn time  2.28 s, peak thrust  541.4 N
+record:    total impulse     1055 N·s, burn time  2.27 s, peak thrust    558 N
 ```
 
 CI checks that it still prints this (`cargo xtask examples --check`). The first line is the credit
@@ -202,11 +226,19 @@ the site asks for, with its caution; show it wherever a price or stock is shown.
 vendors had the motor in stock. On that morning no L motor in stock cost $150 or less: the
 cheapest was $260.99.
 
-The last lines come from ThrustCurve.org, under its own credit line. J450DM's curve starts at
-zero thrust at ignition, then follows the file's 36 points. Its figures are worked out from those
-points, so they differ a little from the ones in its ThrustCurve.org record (1,055 N·s, 2.27 s and
-558 N), which come from the certification test. This file is public domain, and the very file hpr
-already carries for J450DM ([Solid motors](physics/motor.md)).
+The last lines come from ThrustCurve.org, under its own credit line. J450DM's file is the
+certification test's curve (`source cert`), public domain, and the very file hpr already carries
+for J450DM ([Solid motors](physics/motor.md)). Its curve starts at zero thrust at ignition, then
+follows the file's 36 points. hpr works its figures out from those points, so they differ from
+the published figures on the ThrustCurve.org record:
+
+| | from the file | on the record | difference |
+|---|---:|---:|---:|
+| total impulse | 1,061.6 N·s | 1,055 N·s | +0.6% |
+| burn time | 2.28 s | 2.27 s | +0.4% |
+| peak thrust | 541.4 N | 558 N | −3.0% |
+
+541.4 N is the file's highest sampled point.
 
 ## Credit and terms
 
@@ -225,7 +257,8 @@ ThrustCurve.org's API states no terms for its data, and asks for no particular c
 `thrustcurve::ATTRIBUTION`, "Motor data and thrust curves courtesy of ThrustCurve.org", on every
 answer, as it credits the 32 curves it carries. Each data file has its own licence, set by whoever
 uploaded it: check it before passing a file on. hpr's saved copy counts as fresh for a day, so a
-program that asks again within the day doesn't ask the site again.
+program that asks again within the day doesn't ask the site again, since motor records and
+curves change seldom.
 
 ## How it is checked
 
@@ -267,16 +300,20 @@ check that:
 - each answer, read and written back out, holds exactly the recording's fields and values, carries
   ThrustCurve.org's credit, comes from the saved copy on a second read, and works offline, fresh
   for a day and stale after;
-- the match gives each motor in stock the id worked out in the test from the recordings' own JSON,
-  282 of 282, and its report is the committed one;
-- a motor renamed, a record doubled, or a designation in another case is a miss with its reason,
-  and the report lists it;
+- the test builds its own name-to-id table straight from the recorded JSON, and the match agrees
+  for all 282 motors; each match's diameter, impulse, average thrust and burn time equal the
+  finder's; and the report is the committed one;
+- a motor renamed, two records of one name, or a designation in another case is a miss with its
+  reason, and the report lists it with its counts; the same record given twice counts once, and
+  another maker's record of the same designation doesn't disturb the match;
 - J450DM, a matched motor in stock, has its downloaded file read by `hpr_motor` to the points in
   its lines, and the file is byte for byte the one hpr carries; F27R/L's `.rse` file reads to the
   points in its XML;
 - each refusal above refuses an answer changed to break it, naming the field, and a record with
   only an id, maker and designation reads;
-- a download of another motor or format, and a search cut short, are refused and not saved.
+- a download of another motor or format, a search cut short and a search holding another
+  maker's records are refused and not saved; a file that isn't plain text is that file's error
+  alone.
 
 ## What it leaves out
 

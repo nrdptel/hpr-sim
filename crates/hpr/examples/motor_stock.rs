@@ -173,29 +173,41 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // 5. One matched motor's thrust curve, downloaded as a RASP (.eng) file and read by hpr_motor.
+    //    J450DM, because its file is public domain: the tests record only such files.
     let j450 = join
         .mapped
         .iter()
         .find(|m| m.designation == "J450DM")
         .ok_or("J450DM did not match")?;
-    let request = Download::new(&j450.motor_id, Format::Rasp)?;
+    let record = &j450.record;
+    let request = Download::new(&record.motor_id, Format::Rasp)?;
     let (files, _) = thrustcurve::fetch_download(&online, &request, now_s)?;
     let file = files.results.first().ok_or("no RASP file")?;
     let curve = file.read()?.thrust_curve()?;
     println!(
-        "{} {}: id {}, a {} file, licence {}, {} points from ignition",
+        "{} {}: id {}, a {} file from source {}, licence {}, {} points from ignition",
         j450.manufacturer,
         j450.designation,
-        j450.motor_id,
+        record.motor_id,
         file.format.as_str(),
-        file.license.as_deref().unwrap_or("no"),
+        file.source.as_deref().unwrap_or("unstated"),
+        file.license.as_deref().unwrap_or("unstated"),
         curve.times_s().len()
     );
+    let figure = |value: Option<f64>| value.map_or_else(|| "?".to_owned(), |v| v.to_string());
     println!(
-        "total impulse {:.1} N·s, burn time {:.2} s, peak thrust {:.1} N",
-        curve.total_impulse_ns(),
-        curve.burn_time_s(),
-        curve.peak_thrust_n()
+        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, peak thrust {:>6} N",
+        "the file:",
+        format!("{:.1}", curve.total_impulse_ns()),
+        format!("{:.2}", curve.burn_time_s()),
+        format!("{:.1}", curve.peak_thrust_n())
+    );
+    println!(
+        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, peak thrust {:>6} N",
+        "record:",
+        figure(record.total_impulse_ns),
+        figure(record.burn_time_s),
+        figure(record.max_thrust_n)
     );
     std::fs::remove_dir_all(&folder).ok();
     Ok(())

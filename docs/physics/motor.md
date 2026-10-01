@@ -33,7 +33,8 @@ A flight needs a motor in the rocket's motor mount. There are two ways to get on
 
 - take one of the 32 motors that come with hpr-sim, or
 - read a thrust-curve file, such as one downloaded from
-  [ThrustCurve.org](../glossary.md#thrustcurveorg).
+  [ThrustCurve.org](../glossary.md#thrustcurveorg), by hand or through the library
+  ([Matching motors to ThrustCurve.org](../motor-stock.md#matching-motors-to-thrustcurveorg)).
 
 Either way, the motor then goes into one of the rocket design's configurations. A short program,
 [`crates/hpr-sim/examples/motors.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/motors.rs),

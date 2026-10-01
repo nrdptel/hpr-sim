@@ -1,8 +1,8 @@
 //! Motor records and thrust curves from [ThrustCurve.org](https://www.thrustcurve.org)'s API, and
 //! the join that gives a motor in stock its curve.
 //!
-//! ThrustCurve.org holds every certified hobby motor's published figures and the simulator files
-//! (thrust curves) people have contributed for them. Its [API][api] answers two questions here: a
+//! ThrustCurve.org aims to hold every certified hobby motor's published figures and the simulator
+//! files (thrust curves) people have contributed for them. Its [API][api] answers two questions: a
 //! *search* ([`Search`], read by [`parse_search`]), which lists motor records, each with
 //! ThrustCurve's own id, its `motorId`; and a *download* ([`Download`], read by
 //! [`parse_download`]), which gives a motor's data files, each a RASP (`.eng`) or RockSim (`.rse`)
@@ -66,7 +66,9 @@ pub const MAX_RESULTS: u32 = 5_000;
 pub const ATTRIBUTION: &str = "Motor data and thrust curves courtesy of ThrustCurve.org, \
                                https://www.thrustcurve.org/";
 
-/// A motor search. Every field set narrows it; the API joins them with "and".
+/// A motor search. Every field set narrows it; the API joins them with "and". Start from
+/// [`Search::manufacturer`] or `Search::default()` and set the fields wanted: more may be added.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Search {
     /// The manufacturer's name or abbreviation (`AeroTech`, `Cesaroni Technology`, `Loki`).
@@ -93,7 +95,7 @@ impl Search {
     }
 
     /// The search's URL under [`BASE_URL`]: its fields as query parameters, in the order of the
-    /// struct, each value percent-encoded.
+    /// struct, each value percent-encoded; no query at all when no field is set.
     #[must_use]
     pub fn url(&self) -> String {
         let max_results = self.max_results.map(|n| n.to_string());
@@ -108,11 +110,15 @@ impl Search {
             .iter()
             .filter_map(|(name, value)| Some(format!("{name}={}", encode(value.as_ref()?))))
             .collect();
+        if query.is_empty() {
+            return format!("{BASE_URL}/search.json");
+        }
         format!("{BASE_URL}/search.json?{}", query.join("&"))
     }
 }
 
 /// A data file's format, as the API names it.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Format {
     /// RASP, a `.eng` file.
@@ -143,7 +149,8 @@ pub struct Download {
 }
 
 impl Download {
-    /// A motor's data files in `format`, by its ThrustCurve id.
+    /// A motor's data files in `format`, by its ThrustCurve id, in either case: it is kept in
+    /// lower case, as the API writes ids, so one motor has one URL and its answer matches.
     ///
     /// # Errors
     /// [`ThrustCurveError::Request`] for an id that isn't 24 hexadecimal digits, the form the
@@ -156,12 +163,12 @@ impl Download {
             });
         }
         Ok(Self {
-            motor_id: motor_id.to_owned(),
+            motor_id: motor_id.to_ascii_lowercase(),
             format,
         })
     }
 
-    /// The motor's ThrustCurve id.
+    /// The motor's ThrustCurve id, in lower case.
     #[must_use]
     pub fn motor_id(&self) -> &str {
         &self.motor_id
@@ -356,6 +363,7 @@ pub struct DataFile {
 }
 
 /// A data file read by `hpr_motor`.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Curve {
     /// A RASP file, read by [`hpr_motor::eng::parse`].
@@ -392,8 +400,9 @@ impl DataFile {
     /// The file's text: its data decoded from base64, as UTF-8.
     ///
     /// # Errors
-    /// [`ThrustCurveError::Field`] when the data isn't base64 or the file isn't UTF-8 (the parser
-    /// refuses such an answer, so a parsed file's text always decodes).
+    /// [`ThrustCurveError::Field`] when the file isn't UTF-8, or (only in a file not read by
+    /// [`parse_download`], which refuses that) its data isn't base64. One file that isn't UTF-8
+    /// doesn't refuse the answer: the motor's other files stay readable.
     pub fn text(&self) -> Result<String, ThrustCurveError> {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(&self.data)
@@ -462,7 +471,8 @@ pub fn parse_search(body: &[u8]) -> Result<SearchAnswer, ThrustCurveError> {
 /// # Errors
 /// [`ThrustCurveError::Json`] when the body is not JSON of this shape; [`ThrustCurveError::Api`]
 /// when it carries the API's `error`; [`ThrustCurveError::Field`] for a motor id that isn't 24
-/// hexadecimal digits, or a file that isn't base64 or isn't UTF-8.
+/// hexadecimal digits, or a file's data that isn't base64. A file that decodes but isn't UTF-8
+/// text is kept: [`DataFile::text`] reports it, for that file alone.
 pub fn parse_download(body: &[u8]) -> Result<DownloadAnswer, ThrustCurveError> {
     #[derive(Deserialize)]
     struct Errors {
@@ -476,8 +486,9 @@ pub fn parse_download(body: &[u8]) -> Result<DownloadAnswer, ThrustCurveError> {
         if !is_motor_id(&file.motor_id) {
             return Err(field(format!("results[{i}].motorId"), &file.motor_id));
         }
-        file.text()
-            .map_err(|_| field(format!("results[{i}].data"), "not base64 of UTF-8 text"))?;
+        base64::engine::general_purpose::STANDARD
+            .decode(&file.data)
+            .map_err(|e| field(format!("results[{i}].data"), e))?;
     }
     Ok(answer)
 }
@@ -504,8 +515,8 @@ pub fn fetch_search<T: Transport>(
 /// another motor's file, or a file in another format, is refused and never cached.
 ///
 /// # Errors
-/// As [`fetch_search`], and [`ThrustCurveError::OtherMotor`] for a file of another motor or
-/// format than asked.
+/// As [`fetch_search`]; with [`NetError::Refused`] naming [`ThrustCurveError::OtherMotor`] for a
+/// file of another motor or format than asked.
 pub fn fetch_download<T: Transport>(
     client: &Client<T>,
     download: &Download,
@@ -530,29 +541,35 @@ pub fn fetch_download<T: Transport>(
 
 /// Fetches every record of the makers the motor finder reads ([`MANUFACTURERS`]), one complete
 /// search each, as [`fetch_search`] does: the records [`join`] needs. A search that matches more
-/// motors than it returns is refused and never cached, so a join never runs on part of a maker's
-/// records.
+/// motors than it returns, or holds another maker's record, is refused and never cached, so a
+/// join never runs on part of a maker's records.
 ///
 /// # Errors
 /// As [`fetch_search`]; with [`NetError::Refused`] naming [`ThrustCurveError::Incomplete`] for a
-/// search cut short.
+/// search cut short, or [`ThrustCurveError::OtherManufacturer`] for another maker's record.
 pub fn fetch_finder_records<T: Transport>(
     client: &Client<T>,
     now_s: u64,
 ) -> Result<(Vec<MotorRecord>, Vec<Fetched>), ThrustCurveError> {
-    let read = |body: &[u8]| {
-        let answer = parse_search(body)?;
-        if !answer.is_complete() {
-            return Err(ThrustCurveError::Incomplete {
-                matches: answer.matches,
-                found: answer.results.len(),
-            });
-        }
-        Ok(answer)
-    };
     let mut records = Vec::new();
     let mut fetched = Vec::new();
-    for (name, _) in MANUFACTURERS {
+    for &(name, _) in MANUFACTURERS {
+        let read = |body: &[u8]| {
+            let answer = parse_search(body)?;
+            if !answer.is_complete() {
+                return Err(ThrustCurveError::Incomplete {
+                    matches: answer.matches,
+                    found: answer.results.len(),
+                });
+            }
+            if let Some(other) = answer.results.iter().find(|r| r.manufacturer != name) {
+                return Err(ThrustCurveError::OtherManufacturer {
+                    asked: name.to_owned(),
+                    found: other.manufacturer.clone(),
+                });
+            }
+            Ok(answer)
+        };
         let (answer, f) = fetch(client, &Search::manufacturer(name).url(), now_s, read)?;
         records.extend(answer.results);
         fetched.push(f);
@@ -578,10 +595,10 @@ pub struct Mapped {
     pub manufacturer: String,
     /// The designation.
     pub designation: String,
-    /// The record's ThrustCurve id.
-    pub motor_id: String,
-    /// How many data files the record says it has.
-    pub data_files: Option<u32>,
+    /// Where the motor is in the list given to [`join`].
+    pub finder_index: usize,
+    /// The record: its `motor_id` is what a [`Download`] names.
+    pub record: MotorRecord,
 }
 
 /// A finder motor that didn't map, and why.
@@ -613,8 +630,9 @@ impl Join {
         (self.mapped.len(), self.mapped.len() + self.misses.len())
     }
 
-    /// The join as Markdown: counts by manufacturer, the mapped motors with no data file, and
-    /// every miss with its reason.
+    /// The join as Markdown: counts by manufacturer, among them the mapped motors whose record
+    /// lists no data file (`dataFiles` 0, or left out, as the API leaves out a field with no
+    /// value), and every miss with its reason.
     #[must_use]
     pub fn report(&self) -> String {
         let mut by_maker: BTreeMap<&str, (usize, usize, usize)> = BTreeMap::new();
@@ -622,7 +640,7 @@ impl Join {
             let row = by_maker.entry(&m.manufacturer).or_default();
             row.0 += 1;
             row.1 += 1;
-            if m.data_files.unwrap_or(0) == 0 {
+            if m.record.data_files.unwrap_or(0) == 0 {
                 row.2 += 1;
             }
         }
@@ -638,7 +656,7 @@ impl Join {
         );
         let _ = writeln!(
             out,
-            "| Manufacturer | Motors | Mapped | Mapped, no data file | Missed |"
+            "| Manufacturer | Motors | Mapped | Mapped, no data file listed | Missed |"
         );
         let _ = writeln!(out, "|---|---:|---:|---:|---:|");
         for (maker, (mapped, total, no_file)) in &by_maker {
@@ -670,21 +688,24 @@ impl Join {
 
 /// Maps each finder motor to the one ThrustCurve record whose manufacturer (its full name) and
 /// designation equal the motor's, character for character. A motor with no such record, or
-/// several, is a [`Miss`].
+/// several, is a [`Miss`]. A record given twice (the same `motor_id`, as when two searches
+/// overlap) counts once: the first copy is kept.
 #[must_use]
 pub fn join(motors: &[motor_finder::Motor], records: &[MotorRecord]) -> Join {
     let mut by_name: BTreeMap<(&str, &str), Vec<&MotorRecord>> = BTreeMap::new();
     for r in records {
-        by_name
+        let same_name = by_name
             .entry((&r.manufacturer, &r.designation))
-            .or_default()
-            .push(r);
+            .or_default();
+        if same_name.iter().all(|kept| kept.motor_id != r.motor_id) {
+            same_name.push(r);
+        }
     }
     let mut join = Join {
         mapped: Vec::new(),
         misses: Vec::new(),
     };
-    for m in motors {
+    for (finder_index, m) in motors.iter().enumerate() {
         let found = by_name
             .get(&(m.manufacturer.as_str(), m.designation.as_str()))
             .map_or(&[][..], Vec::as_slice);
@@ -697,8 +718,8 @@ pub fn join(motors: &[motor_finder::Motor], records: &[MotorRecord]) -> Join {
             [record] => join.mapped.push(Mapped {
                 manufacturer: m.manufacturer.clone(),
                 designation: m.designation.clone(),
-                motor_id: record.motor_id.clone(),
-                data_files: record.data_files,
+                finder_index,
+                record: (*record).clone(),
             }),
             [] => join.misses.push(miss(MissReason::NoRecord)),
             several => join.misses.push(miss(MissReason::SeveralRecords(
@@ -822,6 +843,14 @@ pub enum ThrustCurveError {
         /// Its value.
         value: String,
     },
+    /// A maker's search holds another maker's record.
+    #[error("asked ThrustCurve for {asked}'s motors, but the answer holds one of {found}'s")]
+    OtherManufacturer {
+        /// The maker asked for.
+        asked: String,
+        /// The maker found.
+        found: String,
+    },
     /// A download holds a file of another motor or format than asked.
     #[error("asked ThrustCurve for {asked}'s files, but the answer holds {found}'s")]
     OtherMotor {
@@ -854,6 +883,10 @@ mod tests {
             search.url(),
             "https://www.thrustcurve.org/api/v1/search.json?designation=F27R%2FL&impulseClass=F"
         );
+        assert_eq!(
+            Search::default().url(),
+            "https://www.thrustcurve.org/api/v1/search.json"
+        );
         let download = Download::new("5f4294d2000231000000044f", Format::Rasp).unwrap();
         assert_eq!(
             download.url(),
@@ -876,7 +909,9 @@ mod tests {
                 "{bad}: {err}"
             );
         }
-        assert!(Download::new("5F4294D2000231000000044F", Format::RockSim).is_ok());
+        let upper = Download::new("5F4294D2000231000000044F", Format::RockSim).unwrap();
+        assert_eq!(upper.motor_id(), "5f4294d2000231000000044f");
+        assert!(upper.url().contains("motorId=5f4294d2000231000000044f&"));
     }
 
     #[test]
