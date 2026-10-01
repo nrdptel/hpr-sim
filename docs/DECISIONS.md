@@ -10410,18 +10410,20 @@ can't see that, both halves sharing the series.
    inverse's `|s₁₂|` error; where the direct problem from point 1 with the inverse's `α₁` and
    `s₁₂` lands, from point 2; the inverse's azimuth errors times `|m₁₂|` (the reduced length, so
    the sideways miss an azimuth error stands for at the other end), not measured on the
-   "between vertices" kind, whose `|m₁₂|` is under 1e-13 m; the direct's end-point miss in ECEF;
+   "between vertices" kind, whose `|m₁₂|` is at most 1e-13 m; the direct's end-point miss in ECEF;
    and the direct's heading at the end, compared as a direction in ECEF (near a pole an azimuth
    turns through large angles as its point moves by nanometres; the heading does not) times `a`.
    Every per-line value is asserted finite.
-4. **Mirror lines take either pair.** When `φ₂ = −φ₁` exactly, two geodesics of the same length
-   join the points, the second with `α₁` and `α₂` swapped (GeographicLib's `GeodSolve` manual,
-   *Multiple solutions*). 21 lines of the set are such once read as `f64`; on 4, GeographicLib
-   returns the other pair (2 of them were first misread as an ill-conditioned excess of 75 nm).
-   The test takes the smaller error of the two pairs on those lines only; with it every line is
-   within 15 nm.
+4. **Mirror lines take either pair.** When `φ₂ = −φ₁` exactly and `α₁ ≠ α₂`, two geodesics of
+   the same length join the points, the second with `α₁` and `α₂` swapped (GeographicLib's
+   `GeodSolve` manual, *Multiple solutions*); where `α₁ = α₂` (the 50,000 between-vertices
+   lines) the geodesic is unique. 21 lines of the set are mirror lines once read as `f64`, all
+   nearly antipodal with `m₁₂` under a centimetre, so their azimuths are nearly undetermined; on
+   4 the answer is nearer the swapped pair (2 of them were first misread as an ill-conditioned
+   excess of 75 nm). The test takes the smaller error of the two pairs on those lines only; with
+   it every line is within 15 nm.
 5. **Where it runs.** Every 500th line (1,000) and the 21 mirror lines are committed and checked
-   in CI; the whole file is pinned in `refs.lock.toml` and checked where fetched. The committed
+   in CI; the whole file is pinned in `validation/refs.lock.toml` and checked where fetched. The committed
    table, `validation/reports/geodesics.md` (rewritten by `HPR_WRITE_GEODESICS=1`), is compared
    only on the build that wrote it, a debug build on macOS aarch64: its cells are a few ulps of
    ECEF coordinates and a release build moves three by up to 1.8 nm. Elsewhere only the bound is

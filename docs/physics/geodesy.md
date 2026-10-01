@@ -15,12 +15,13 @@
   one of the 500,000 lines of Karney's published test set is matched within 15 nanometres (nm,
   billionths of a metre): distance within 11.18 nm, the far point within 14.02 nm, and the
   bearings within 15 nm of sideways miss ([below](#distance-and-bearing-geodesics)). CI checks
-  every 500th line and 21 more; the whole set is checked where it has been downloaded.
+  every 500th line and the 21 mirror lines; the whole set is checked on macOS where it has been
+  downloaded.
 - **What it leaves out:** height above sea level, which needs the geoid, up to about 100 m from
   the ellipsoid ([Frames](frames.md#earth-centred-earth-fixed-ecef)). hpr has no geoid model; a
   flight takes that difference at the site as an input. Nothing in a flight uses distance and
-  bearing yet: the landing distance and bearing `hpr` prints come from flat east and north offsets
-  from the pad, and there is no command for them.
+  bearing yet: the landing distance `hpr` prints is measured on a flat map from the pad's east and
+  north offsets, and there is no command for geodesics.
 
 ## Sources
 
@@ -153,7 +154,7 @@ sometimes fails to converge (§7).
 | azimuth on arrival `α₂` | 31.571° |
 
 The other way round, 2 km from the same pad on a bearing of 60° reaches 32.999415° N,
-106.956466° W, heading 60.010°. At recovery ranges a flat map gives the same distance, if it uses
+106.956466° W, heading 60.010°. At this range a flat map gives the same distance, if it uses
 the ellipsoid's curvature at the middle latitude: 1,249.614 m again, to under a millimetre. The
 geodesic matters over long paths, where a flat map's error grows. A unit test,
 `the_guides_worked_example`, holds these numbers.
@@ -177,24 +178,28 @@ ways and measures five errors, each held to Karney's 15 nm on every line:
 | direct heading × `a` | the angle between the computed and the set's direction of travel at the end, as directions in space, times the Earth's radius `a` | 13.99 nm |
 
 The inverse's azimuths can't be checked on the 50,000 "between vertices" lines: there `m₁₂` is
-below 1e-13 m, so any azimuth error reads as no miss. Their distance and landing are checked.
+at most 1e-13 m, so any azimuth error reads as no miss. Their distance and landing are checked.
 
-**Two paths of the same length.** When the second place's latitude is exactly the first's
-negated (`φ₂ = −φ₁`), two geodesics of the same length join them, one the mirror of the other,
-and the second has `α₁` and `α₂` swapped (GeographicLib's `GeodSolve` manual, *Multiple
-solutions*). Either answer is right. The set has 21 such lines once its numbers are read into
-`f64`; on 4 of them hpr returns the other pair. The test accepts either pair on those lines, and
-both are within 15 nm. All 21 are committed and checked in CI.
+**Mirror lines: two paths of the same length.** When the second place's latitude is exactly the
+first's negated (`φ₂ = −φ₁`) and the two azimuths differ (`α₁ ≠ α₂`), two geodesics of the same
+length join the places, one the mirror of the other, and the second has `α₁` and `α₂` swapped
+(GeographicLib's `GeodSolve` manual, *Multiple solutions*). Either answer is right. Where
+`α₁ = α₂`, as on the between-vertices lines, the geodesic is unique. The set has 21 mirror lines
+once its numbers are read as `f64` (the 64-bit floating-point numbers hpr computes in). They are
+all nearly antipodal, with `m₁₂` under a centimetre, so their azimuths are nearly undetermined.
+On these lines the test scores hpr's answer against whichever pair it is nearer to, and that
+error is within 15 nm on all 21; on 4 the nearer pair is the swapped one.
 
-Every 500th line (1,000 of them) and the 21 two-path lines are committed and checked in CI. The
+CI checks every 500th line (1,000 of them) and the 21 mirror lines, which are committed. The
 whole set is checked where `cargo xtask refs fetch` has downloaded it, against the committed
-report. The report's table was written by a debug build on macOS; elsewhere the cells move by a
-few nanometres, and the test holds only the 15 nm bound.
+report. The whole set has been measured only on macOS, by the debug build that wrote the report's
+table; a release build there moves three cells by up to 1.83 nm, and on any other build the test
+holds the 15 nm bound without comparing the table.
 
 **What it leaves out.** Heights: two places at 3,000 m are as far apart as the same places at
 sea level. Only WGS 84 is measured; on any other ellipsoid up to a flattening of 1/150, the
 accuracy is Karney's claim, not something hpr has measured. A distance of many trips round the
-Earth carries its own rounding, one step of `f64` in the distance (15 nm at 67,000 km). Nothing
+Earth carries its own rounding, one step of `f64` in the distance (15 nm past 67,109 km). Nothing
 in a flight uses geodesics yet, and `hpr` has no command for them.
 
 [Karney2013]: https://arxiv.org/abs/1109.4448

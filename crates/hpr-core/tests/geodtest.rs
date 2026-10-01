@@ -190,7 +190,9 @@ fn measure(cases: &[Case]) -> Vec<Errors> {
         let pair_error = |azi1: f64, azi2: f64| {
             let da1 = azimuth_difference(inverse.initial_azimuth_rad, azi1.to_radians()).abs();
             let da2 = azimuth_difference(inverse.final_azimuth_rad, azi2.to_radians()).abs();
-            finite(da1.max(da2) * c.m12.abs(), "an inverse azimuth", c)
+            let da1 = finite(da1, "the inverse's first azimuth", c);
+            let da2 = finite(da2, "the inverse's second azimuth", c);
+            da1.max(da2) * c.m12.abs()
         };
         let mut azimuth_miss = pair_error(c.azi1, c.azi2);
         if is_mirror(c) {

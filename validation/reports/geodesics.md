@@ -14,9 +14,9 @@ Karney's 15 nm (*Algorithms for geodesics*, 2013, §7):
   `s₁₂`, lands from point 2.
 - **Inverse azimuth × `m₁₂`:** the larger azimuth error times the reduced length `m₁₂`, the
   sideways miss it stands for at the other end. Not measured where every `m₁₂` is about zero.
-- **Mirror lines (swapped):** lines with `φ₂ = −φ₁` exactly once read as `f64`, where two
-  geodesics of the same length have `α₁` and `α₂` swapped; either pair is accepted, and the
-  bracket counts the lines answered with the set's other pair.
+- **Mirror lines (swapped):** lines with `φ₂ = −φ₁` exactly once read as `f64` and `α₁ ≠ α₂`,
+  where two geodesics of the same length have `α₁` and `α₂` swapped; the azimuths are scored
+  against whichever pair is nearer, and the bracket counts the lines nearer the swapped pair.
 - **Direct position:** the far place's miss, in Earth-centred coordinates.
 - **Direct heading × `a`:** the angle between the computed and the set's direction of travel at
   the far place, as directions in space, times the equatorial radius `a`.

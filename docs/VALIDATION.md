@@ -271,6 +271,10 @@ as heights instead, the mean is 6.63%.
   `https://github.com/openrocket/openrocket/releases/download/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520.pdf`
 - **OpenRocket technical documentation v13.05** (CC BY-SA):
   `https://github.com/openrocket/openrocket/releases/download/OpenRocket_technical_documentation-v13.05/OpenRocket_technical_documentation-v13.05.pdf`
+- **Karney's geodesics** (pinned as `karney-2013-algorithms-for-geodesics` and `karney-geodtest`):
+  C. F. F. Karney, *Algorithms for geodesics*, arXiv:1109.4448v2, and his CC0 *Test set for
+  geodesics*, doi:10.5281/zenodo.32156, 500,000 WGS 84 geodesics; every 500th line and the 21
+  mirror lines are committed, and `validation/reports/geodesics.md` holds the whole set's errors.
 - **US Standard Atmosphere 1976:**
   https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf. Python cross-checks:
   `ambiance` (Apache-2.0), `pyatmos` (MIT).

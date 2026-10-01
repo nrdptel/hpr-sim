@@ -153,7 +153,7 @@ impl Ellipsoid {
     /// (clockwise from north), with the azimuth there (Karney 2013 §2). `from`'s height is
     /// ignored. A negative distance runs backwards along the same geodesic. Karney's accuracy is
     /// shown up to half a meridian (20,004 km); a distance of many circuits also carries its own
-    /// rounding, one ulp of `distance_m` (15 nm at 67,000 km).
+    /// rounding, one ulp of `distance_m` (15 nm past 2²⁶ m, 67,109 km).
     ///
     /// ```
     /// use hpr_core::geodesy::{Ellipsoid, Geodetic};
@@ -197,6 +197,13 @@ impl Ellipsoid {
             degrees(azimuth_rad),
             distance_m,
         );
+        if !(lat2_deg.is_finite() && lon2_deg.is_finite() && azi2_deg.is_finite()) {
+            // Not seen for any finite input; kept so that a NaN can't leave as a place.
+            return Err(CoreError::Domain {
+                what: "geodesic distance (m)",
+                value: distance_m,
+            });
+        }
         Ok(GeodesicDirect {
             latitude_rad: lat2_deg.to_radians(),
             longitude_rad: lon2_deg.to_radians(),
@@ -343,17 +350,19 @@ mod tests {
         let b = point(-35.0, 140.0);
         let edge = Ellipsoid::from_flattening(6.4e6, GEODESIC_MAX_FLATTENING).expect("valid");
         assert!(edge.geodesic_inverse(a, b).is_ok());
-        let past = Ellipsoid::from_flattening(6.4e6, 0.2).expect("a valid ellipsoid");
-        for result in [
-            past.geodesic_inverse(a, b).map(|_| ()),
-            past.geodesic_direct(a, 1.0, 1e6).map(|_| ()),
-        ] {
-            match result {
-                Err(CoreError::Domain { what, value }) => {
-                    assert_eq!(what, "flattening for geodesics (at most 1/150)");
-                    assert_eq!(value, 0.2);
+        for f in [GEODESIC_MAX_FLATTENING.next_up(), 0.2] {
+            let past = Ellipsoid::from_flattening(6.4e6, f).expect("a valid ellipsoid");
+            for result in [
+                past.geodesic_inverse(a, b).map(|_| ()),
+                past.geodesic_direct(a, 1.0, 1e6).map(|_| ()),
+            ] {
+                match result {
+                    Err(CoreError::Domain { what, value }) => {
+                        assert_eq!(what, "flattening for geodesics (at most 1/150)");
+                        assert_eq!(value, f);
+                    }
+                    other => panic!("{other:?}"),
                 }
-                other => panic!("{other:?}"),
             }
         }
     }
@@ -391,7 +400,7 @@ mod tests {
         assert!(g.distance_m.is_finite() && g.initial_azimuth_rad.is_finite());
         let d = WGS84.geodesic_direct(far, 1e300, 1_000.0).expect("finite");
         assert!(d.longitude_rad.is_finite() && d.final_azimuth_rad.is_finite());
-        // Within a turn the reduction is not applied: 3π/2 east is π/2 west.
+        // Within a turn the reduction changes nothing: 3π/2 east is π/2 west.
         let east = Geodetic::new(0.0, 1.5 * PI, 0.0).expect("a valid point");
         let west = Geodetic::new(0.0, -0.5 * PI, 0.0).expect("a valid point");
         let to = point(10.0, 0.0);
