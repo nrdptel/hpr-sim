@@ -350,7 +350,10 @@ missing or its status disagrees.
 | <a id="m5-2d1"></a>[M5.2d1][phase-2] | `hpr weather`: a launch site's profile from Open-Meteo, a Wyoming sounding, GFS, RAP or an ERA5 file, fetched, from the cache, or from a saved answer ([ADR-122][adr-122], [The command line](cli.md#hpr-weather)) | done |
 | <a id="m5-2d2"></a>[M5.2d2][phase-2] | NOAA's whole GRIB2 files: complex packing, checked against ecCodes on every value of a whole GFS file ([ADR-123][adr-123], [A whole GFS file](nomads.md#a-whole-gfs-file)) | done |
 | <a id="m5-2d3"></a>[M5.2d3][phase-2] | NOAA's whole GRIB2 files: JPEG 2000, checked against ecCodes on four public RAP fields ([ADR-124][adr-124], [Files in JPEG 2000](nomads.md#files-in-jpeg-2000)) | done |
-| <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
+| <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: magnetic declination in [M5.3a](#m5-3a), ground elevation in [M5.3b](#m5-3b), distances between places and a user's elevation file in [M5.3c](#m5-3c) | not yet done |
+| <a id="m5-3a"></a>[M5.3a][phase-2] | Magnetic declination from the World Magnetic Model, WMM2025, checked against NOAA's test values ([ADR-125][adr-125], [The magnetic field](physics/magnetic.md)) | done |
+| <a id="m5-3b"></a>[M5.3b][phase-2] | A launch site's ground elevation from Open-Meteo, cached so it works offline after the first lookup | not yet done |
+| <a id="m5-3c"></a>[M5.3c][phase-2] | Distance and bearing between two places on the WGS 84 ellipsoid, and a site's elevation from a GeoTIFF file the user gives | not yet done |
 | <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
@@ -592,6 +595,7 @@ is the milestone that added or will add that test.
 [adr-121]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-121-gfs-and-rap-from-nomads-grib-filter-read-by-an-in-house-grib2-decoder-2026-09-30
 [adr-123]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-123-complex-packing-and-a-whole-gfs-file-2026-09-30
 [adr-124]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-124-jpeg-2000-packing-through-hayro-jpeg2000-2026-09-30
+[adr-125]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-125-site-data-split-and-wmm2025-in-hpr-core-2026-09-30
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20

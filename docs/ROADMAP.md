@@ -729,33 +729,24 @@
   simulated apogee for the result matches the original import's to within 1e-9 relative; (2) schema
   validation runs in tests; (3) the spec includes a comparison table against `.ork`, `.rkt`, `.CDX1`
   and `.rpy`; (4) an ADR records the file extensions and versioning policy.
-  Split into a to c (ADR-111).
-  - [x] **M3.3a The document.** `DesignFile` as canonical JSON (`.hpr`), its schema in `schema/format/`.
-    *Done when:* (1), (2) and (4) above. *Result:* met (ADR-111): 73 of 73 round-trip, 109
-    configurations fly three ways to the same apogee; 17 public designs, schema-checked, in CI.
-  - [x] **M3.3b The container, migrations and the comparison.** *Done when:* a `.hprz` zip holds a
-    design and its attachments and reads back the same; a migration test takes a document from an
-    older version to the current one; (3) above; `hpr convert` writes and `hpr sim`
-    reads `.hpr`. *Result:* met (ADR-112): a `.hprz` reads back byte for byte; a committed 0.1
-    document migrates to 0.2, as do 73 of 73 corpus documents; the table in `hpr.md`; both commands.
-  - [x] **M3.3c Generated types.** *Done when:* TypeScript and Python types are generated from the
-    schema, a check fails when they are stale, and each reads a public document. *Result:* met
-    (ADR-113): each language's reader reads 18 public documents and agrees with the schema on 4,892
-    mutations; `tsc` and mypy take the 18 typed as `DesignFile`.
+  Split into a to c (ADR-111). Met, bars kept: M3.3a `.hpr`, 73 of 73 round-trip, 109
+  configurations to one apogee, 17 public designs schema-checked in CI (ADR-111); M3.3b `.hprz`
+  byte for byte, a 0.1 document and 73 corpus ones migrate, the table in `hpr.md` (ADR-112);
+  M3.3c TypeScript and Python readers agree with the schema on 4,892 mutations (ADR-113).
+  - [x] **M3.3a The document.**
+  - [x] **M3.3b The container, migrations and the comparison.**
+  - [x] **M3.3c Generated types.**
 
 - [x] **M4.3 Python bindings.** `hpr-py` (PyO3 abi3 + maturin) with numpy outputs, a RocketPy-like
   API, and Python callbacks for custom models. pytest suite; CI builds wheels on 3 operating
   systems (no publishing). *Done when:* pytest passes in CI; a notebook-style example reproduces
-  a RocketPy example flight via hpr within the M2.1 tolerance. Split into a to c (ADR-114).
-  - [x] **M4.3a The package.** `hpr` over the builder, NumPy recordings, designs from files. Met: pytest
-    in CI on three OSes against a wheel built there; the Rust example's print; the guide's page runs.
-  - [x] **M4.3b RocketPy's example.** *Done when:* a flight takes a drag table (`C_D0` by Mach,
-    power on and off); a notebook-style example flies RocketPy's Calisto from Python within M2.1's
-    3% on every scored metric, run in CI. *Result:* met (ADR-115): `DragTable`; `calisto.py`, run by
-    pytest in CI, is within 3% on all 14 metrics scored in % (largest: landing drift, +1.257%).
-  - [x] **M4.3c Python models.** *Done when:* a drag and a wind written as Python functions fly,
-    their exceptions reach Python, and a flight with Python's constant drag equals a table's.
-    *Result:* met (ADR-116): `drag=f(mach, thrusting)`, `wind=f(height_m)`; `test_models.py`.
+  a RocketPy example flight via hpr within the M2.1 tolerance. Split into a to c (ADR-114). Met:
+  M4.3a pytest on three OSes against a wheel built there; M4.3b `DragTable`, `calisto.py` within
+  3% on all 14 metrics scored in % (largest: landing drift, +1.257%) (ADR-115); M4.3c drag and
+  wind as Python functions, their exceptions raised in Python (ADR-116).
+  - [x] **M4.3a The package.**
+  - [x] **M4.3b RocketPy's example.**
+  - [x] **M4.3c Python models.**
 
 - [x] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
@@ -799,6 +790,14 @@
   *Done when:*
   - WMM matches NOAA test values.
   - Elevation lookups are cached and work offline after the first fetch.
+  Split a to c (ADR-125).
+  - [x] **M5.3a WMM2025.** *Done when:* the WMM matches NOAA's test values (the report's Table 6
+    and NCEI's 100 points). *Result:* met (ADR-125): Table 6 to its printing; NCEI's `X` to 7.2e-4 nT.
+  - [ ] **M5.3b Elevation.** Open-Meteo's elevation API through the cache. *Done when:* a recorded
+    lookup's height is the answer's, and a second lookup works offline from the cache.
+  - [ ] **M5.3c Geodetic helpers and a user's elevation file.** Distance and bearing between two
+    places on WGS 84; a site's height from a GeoTIFF the user gives. *Done when:* distances and
+    bearings match a published geodesic test set, and a GeoTIFF's height matches a reader's.
 
 - [ ] **M5.4 Motor stock and prices.**
   - motor.fusionspace.co client (`meta`, `motors`, `in-stock`, `vendors`, and per-motor

@@ -1,6 +1,6 @@
 [package]
 name = "hpr-core"
-description = "Core math, units, frames, Earth and gravity models, interpolation tables and shared error types."
+description = "Core math, units, frames, Earth, gravity and magnetic-field models, interpolation tables and shared error types."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

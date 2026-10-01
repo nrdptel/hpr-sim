@@ -177,6 +177,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Frames](physics/frames.md) | ✓ | — | ✓ RocketPy | — |
 | [Geodesy](physics/geodesy.md) | ✓ | ✓ | — | — |
 | [Gravity](physics/gravity.md) | ✓ | ✓ | ✓ RocketPy | — |
+| [The magnetic field](physics/magnetic.md) | — | ✓ | — | — |
 | [Atmosphere](physics/atmosphere.md) | ✓ | ✓ | ✓ RocketPy, in the descents only | partial: its pressure altitude against two altimeters' readings of their own pressure, to 0.195 m and 1.321 m ([report][real-report]) |
 | [Wind](physics/wind.md) | ✓ | — | ✓ RocketPy, in the descents only | — |
 | [Turbulence](physics/turbulence.md) | ✓ | — | — | — |
@@ -211,6 +212,7 @@ may be from its reference and still pass.
 | [Geodesy](physics/geodesy.md) | round trips at random points from −10 km to +1000 km: latitude, longitude and height to Earth-centred x, y, z, and back | latitude within 1e-14 rad, height within 2e-8 m |
 | [Gravity](physics/gravity.md) | the WGS 84 formulas, worked to 40 digits by a separate script, at 11 points from the equator to both poles and up to 200 km high | gravity's strength within 2e-14 relative |
 | [Gravity](physics/gravity.md) | RocketPy's gravity formula, at 8 points | under 1e-12 relative |
+| [The magnetic field](physics/magnetic.md) | NOAA's test values for WMM2025: the report's 12 test points and NCEI's 100 high-precision points | the 12 to their last printed digit; the 100 to their last digit, bar the north component, within 7.2e-4 nT |
 | [Atmosphere](physics/atmosphere.md) | the tables of the 1976 [standard atmosphere](glossary.md#standard-atmosphere), at 32 heights from −2 to 86 km | every value within 0.1% |
 | [Atmosphere](physics/atmosphere.md) | CIPM-2007 (Picard et al., 2008), a published reference formula for the density of humid air that treats air as a real gas, from 15 to 27 °C | humid-air density within 0.047% |
 | [Atmosphere](physics/atmosphere.md) | RocketPy's air density, at the 23 heights its descents sample ([Recovery](physics/recovery.md#against-rocketpy)) | within 3.7e-4 relative |

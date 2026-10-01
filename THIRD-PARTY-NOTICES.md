@@ -24,6 +24,17 @@ adds a source.
   used with attribution). Data courtesy of ThrustCurve.org, https://www.thrustcurve.org/. Curves
   marked "free", "other" or with no license are never bundled (ADR-005).
 
+- **World Magnetic Model WMM2025** (`crates/hpr-core/data/wmm2025/`, its coefficients compiled
+  into `hpr-core` as `hpr_core::magnetic::WMM2025`): `WMM2025.COF` and `WMM2025_TestValues.txt`
+  from NCEI's `WMM2025COF.zip` (2024-12-17), and the report's Table 6 test values
+  `WMM2025_TEST_VALUES.txt`, all unchanged. The World Magnetic Model is produced by the U.S.
+  National Oceanic and Atmospheric Administration's National Centers for Environmental Information
+  (NOAA NCEI) and the British Geological Survey for the U.S. National Geospatial-Intelligence
+  Agency and the U.K. Defence Geographic Centre. NCEI states that the WMM is in the public domain
+  and not licensed or under copyright, and may be used freely by the public. As 17 U.S.C. § 403
+  requires, this notice identifies that U.S. Government material, which is not subject to
+  copyright protection. <https://www.ncei.noaa.gov/products/world-magnetic-model>
+
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
   motor dimensions and aerodynamic-surface dimensions of seven example rockets, taken from RocketPy's
   notebooks and test code (never from its data files). They are recorded
@@ -317,6 +328,9 @@ same license and mode.
 | `wmo-no8-vol1-2023` | WMO-No. 8, Guide to Instruments and Methods of Observation, Volume I: Measurement of Meteorological Variables, 2023 edition | WMO copyright; short extracts with full citation | fetched | cited for saturation vapour pressure, virtual temperature and geopotential height (M1.2); formulas cited, not redistributed |
 | `picard-2008-cipm-2007` | A. Picard, R. S. Davis, M. Gläser and K. Fujii, Revised formula for the density of moist air (CIPM-2007), Metrologia 45 (2008) 149-155 | BIPM and IOP Publishing copyright | fetched | its equation is evaluated by `validation/oracles/atmosphere/moist_air.py` to check humid-air density (M1.2); not redistributed |
 | `iapws-r12-08` | IAPWS R12-08, Release on the IAPWS Formulation 2008 for the Viscosity of Ordinary Water Substance | IAPWS: publication allowed with attribution | fetched | its dilute-gas viscosity (eq. 11) is evaluated by `validation/oracles/atmosphere/moist_air.py` to size humidity's effect on viscosity (M1.2) |
+| `wmm2025-report` | A. Chulliat, W. Brown, M. Nair et al., The US/UK World Magnetic Model for 2025-2030: Technical Report, NCEI, NOAA, 2025, doi:10.25923/prbc-s316 | US government work | fetched | cited for the equations, pole values, blackout zones and error model in `hpr_core::magnetic` (M5.3a); Tables 3b and 6 and the section 1.4 pole values are checked by its tests; no text copied |
+| `wmm2025-coefficients` | NCEI, WMM2025COF.zip: the WMM2025 coefficient file and high-precision test values, 2024-12-17 | public domain | fetched | `WMM2025.COF` and `WMM2025_TestValues.txt` are bundled unchanged (see Bundled) |
+| `wmm2025-test-values` | NCEI, WMM2025_TEST_VALUES.txt: the WMM2025 report's Table 6 test values, 2025-02 | public domain | fetched | bundled unchanged as a test fixture (see Bundled) |
 | `rocksim-rse-spec` | RockSim Engine File Format (.rse) specification, as hosted by ThrustCurve.org | unknown terms | fetched | read to write the `.rse` reader (M1.3); not redistributed |
 | `nasa-sp-8039` | NASA SP-8039, Solid Rocket Motor Performance Analysis and Prediction, 1971 | US government work | fetched | cited for the thrust equation and effective exhaust velocity (M1.3); no text copied |
 | `nar-standard-motor-codes` | National Association of Rocketry, Standard Motor Codes (nar.org/NARmotors.html, archived 2014-02-05) | unclear terms | fetched | cited for the impulse-class limits (M1.3); not redistributed |
@@ -372,4 +386,3 @@ installed with `--no-deps` from that file (M3.1d2, ADR-059). Nothing in it is co
 |---|---|---|---|
 | `openrocket/motor-database` | GPL-3.0 | run-only reference | not bundled |
 | ThrustCurve.org thrust-curve files | per file: public domain, free, other, or none | fetched and cached (M5) | 32 public-domain curves are bundled (M1.3, above); the rest are fetched and cached, never bundled |
-| WMM2025 | public domain | may be bundled (M5.3) | |

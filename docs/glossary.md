@@ -280,6 +280,14 @@ labelled like [ADR-011][adr-011] (the rigid-body flight decision). All of them a
 [decision log][decisions]. See [Decisions and the roadmap](decisions-and-roadmap.md).
 
 
+## Declination (magnetic)
+
+The angle from true north to the north a compass shows, positive when magnetic north lies east of
+true north. A compass bearing becomes a true one by adding it: at Spaceport America in 2026 it is
+about +7.75°. hpr computes it from the [World Magnetic Model](#world-magnetic-model-wmm). See
+[The magnetic field](physics/magnetic.md#what-declination-is).
+
+
 ## Deployment
 
 The moment a recovery device, such as a parachute, comes out to its full line length (line stretch)
@@ -1261,6 +1269,15 @@ hpr gives the wind's direction the meteorological way: where it blows *from*, cl
 north, so a wind from the west (3π/2 rad, 270°) blows toward the east. RocketPy's wind heading is
 where it blows *toward*, 180° from this. The wind itself is the air's velocity in the
 [launch frame](#launch-frame-enu)'s east and north axes. See [Wind](physics/wind.md#conventions).
+
+
+## World Magnetic Model (WMM)
+
+The model of the Earth's main magnetic field that NOAA and the British Geological Survey publish
+every five years, used by GPS receivers and phones to give compass headings. hpr bundles WMM2025,
+valid from 2025.0 to 2030.0, and gives the field's strength, dip and
+[declination](#declination-magnetic) anywhere in that time. See
+[The magnetic field](physics/magnetic.md).
 
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
