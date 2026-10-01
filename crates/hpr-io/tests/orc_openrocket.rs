@@ -150,12 +150,11 @@ fn material(
     departures.derived_densities += 1;
     if let Some(volume) = volume_m3 {
         // Against OpenRocket's own reading of the mass, in its ounce where stated in one. The
-        // largest gap measured is 2.2e-15 of the mass,
-        // ten steps of the last digit: the volume's terms add in another order.
+        // largest gap measured is 5.9e-16 of the mass, a few steps of the last digit.
         let theirs_kg = density * volume;
         let stated = number(record, "Mass");
         assert!(
-            ((theirs_kg - stated) / stated).abs() < 4e-15,
+            ((theirs_kg - stated) / stated).abs() < 1e-15,
             "{at}: {theirs_kg} kg against {stated} kg"
         );
         departures.derived_checked += 1;
@@ -295,7 +294,8 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
         (None, None) => {}
         (Some(ours), Some(theirs)) if ours == theirs => departures.equal += 1,
         (Some(ours), Some(theirs)) => {
-            // Stated in ounces: the same number of OpenRocket's ounces.
+            // Stated in ounces: the same number of OpenRocket's ounces. The largest gap measured
+            // is 2.0e-16.
             let ounces = ours / OUNCE_KG;
             assert!(
                 ((ounces * OPENROCKET_OUNCE_KG - theirs) / theirs).abs() < 1e-15,
@@ -336,8 +336,10 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             );
             same(departures, record, "Length", tube.length_m, at);
             same(departures, record, "Thickness", tube.thickness_m(), at);
-            let volume = cylinder(tube.outer_diameter_m, tube.length_m)
-                - cylinder(tube.inner_diameter_m, tube.length_m);
+            // π/4 (D² − d²) L, the squares' difference taken first: two cylinders' difference
+            // loses digits on a thin wall.
+            let (outer, inner) = (tube.outer_diameter_m, tube.inner_diameter_m);
+            let volume = PI / 4.0 * (outer * outer - inner * inner) * tube.length_m;
             let material_ref = &tube.material;
             material(
                 departures,
@@ -532,10 +534,10 @@ enum Probe {
     /// The same parts and values, to the bit.
     Same,
     /// The same, but for one value in a unit whose factor OpenRocket rounds: hpr's is the exact
-    /// definition, within 1e-8 of OpenRocket's and not equal to it.
+    /// definition, within 2e-9 of OpenRocket's and not equal to it.
     Rounded(&'static str),
     /// OpenRocket reads the one part (`in/64` as inches, `ten` as zero, a material of the wrong
-    /// kind with a density of zero); hpr leaves it out with a warning.
+    /// kind with a density of zero, `BT<b>-</b>20` as `20`); hpr leaves it out with a warning.
     LeftOut,
     /// OpenRocket refuses the whole file; hpr leaves the one part out with a warning.
     Refused,
@@ -582,6 +584,10 @@ fn probes_read_as_openrocket_reads_them() {
         ("no length", Probe::Refused),
         ("unreadable length", Probe::LeftOut),
         ("unknown shape", Probe::Refused),
+        ("material twice", Probe::Same),
+        ("second components", Probe::Same),
+        ("second materials", Probe::Same),
+        ("element in number", Probe::LeftOut),
     ];
     let probes = fixture["probes"].as_array().expect("probes");
     let names: Vec<_> = probes.iter().map(|probe| probe["probe"].as_str()).collect();
@@ -596,7 +602,7 @@ fn probes_read_as_openrocket_reads_them() {
             tally(|probe| matches!(probe, Probe::Refused | Probe::MaterialRefused)),
             tally(|probe| matches!(probe, Probe::LeftOut)),
         ],
-        [20, 6, 4, 3]
+        [23, 6, 4, 4]
     );
     for (probe, (name, expectation)) in probes.iter().zip(&expected) {
         let text = probe["text"].as_str().expect("a probe's text");
@@ -610,13 +616,15 @@ fn probes_read_as_openrocket_reads_them() {
                 for (part, record) in read.catalog.parts.iter().zip(theirs) {
                     compare(&mut departures, part, record, name);
                 }
+                // Reading only the last `<Materials>`, both leave the first's material undefined.
+                let undefined = usize::from(*name == "second materials");
                 assert_eq!(
                     (
                         departures.ounce_masses,
                         departures.derived_densities,
                         departures.undefined
                     ),
-                    (0, 0, 0),
+                    (0, 0, undefined),
                     "{name}"
                 );
                 assert!(departures.makers.is_empty(), "{name}");
@@ -674,6 +682,25 @@ fn probes_read_as_openrocket_reads_them() {
                 match *name {
                     "length in/64" => assert_eq!(length, Some(3.0 * 0.0254), "{name}"),
                     "unreadable length" => assert_eq!(length, Some(0.0), "{name}"),
+                    "wrong kind" => {
+                        let material = theirs.and_then(|parts| parts.first()).map(|part| {
+                            (
+                                part["Material"]["kind"].clone(),
+                                part["Material"]["density"].clone(),
+                            )
+                        });
+                        assert_eq!(
+                            material,
+                            Some((Value::from("SURFACE"), Value::from(0.0))),
+                            "{name}"
+                        );
+                    }
+                    "element in number" => {
+                        let number = theirs
+                            .and_then(|parts| parts.first())
+                            .map(|part| &part["PartNo"]);
+                        assert_eq!(number, Some(&Value::from("20")), "{name}");
+                    }
                     _ => {}
                 }
                 match expectation {

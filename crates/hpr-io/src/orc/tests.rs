@@ -57,9 +57,10 @@ fn every_bundled_file_reads_with_only_the_known_warnings() {
     assert_eq!(bundled().parts.len(), 3449);
     // The warnings are the database's own slips, each counted: 37 nose cones state an inside
     // diameter (no nose cone field), three parts state their description twice, three name a
-    // material their file doesn't define, three tube-like parts are wider inside than out, and
-    // six ripstop nylons are labelled `g/m2` (five in `generic_materials.orc`, which no part
-    // uses, and Giant Leap's, whose six canopies state their mass).
+    // material their file doesn't define, three tube-like parts are wider inside than out, three
+    // solids are lighter than air (a paper in two files that no part stating a mass uses, and an
+    // elastic), and six ripstop nylons are labelled `g/m2` (five in `generic_materials.orc`,
+    // which no part uses, and Giant Leap's, whose six canopies state their mass).
     let count = |kind: WarningKind, needle: &str| {
         warnings
             .iter()
@@ -105,11 +106,27 @@ fn every_bundled_file_reads_with_only_the_known_warnings() {
         walls,
         ["Quest CR2924, Q14022", "SEMROC HTC-11", "SEMROC RA-55-70"]
     );
-    assert_eq!(warnings.len(), 37 + 3 + 3 + 3 + 6, "{warnings:#?}");
+    let solids: Vec<_> = warnings
+        .iter()
+        .filter(|(_, warning)| warning.message.contains("lighter than air"))
+        .map(|(name, warning)| (*name, warning.at.as_str()))
+        .collect();
+    assert_eq!(
+        solids,
+        [
+            ("BMS.ORC", "Materials: Paper, bulk"),
+            ("ROCKETARIUM.ORC", "Materials: Paper, bulk"),
+            (
+                "generic_materials.orc",
+                "Materials: Elastic, flat, 3/8 in. width"
+            ),
+        ]
+    );
+    assert_eq!(warnings.len(), 37 + 3 + 3 + 3 + 3 + 6, "{warnings:#?}");
     let undefined: Vec<_> = bundled()
         .parts
         .iter()
-        .flat_map(|part| kind_materials(&part.kind))
+        .flat_map(|part| part.kind.materials())
         .filter(|material| material.density.is_none())
         .map(|material| material.name.as_str())
         .collect();
@@ -562,6 +579,45 @@ fn materials_that_cant_be_read_are_left_out() {
             "<Stuff> is not a material; it was left out",
         ]
     );
+    // A density too large to hold once in SI, one below zero, and a name holding an element.
+    let materials = [
+        bulk("Huge", "1e306", "g/cm3"),
+        bulk("Negative", "-1", "kg/m3"),
+        bulk("A<b/>B", "800", "kg/m3"),
+    ]
+    .concat();
+    let read = read_ok(&file(&materials, ""));
+    assert!(read.materials.is_empty());
+    let messages: Vec<_> = read.warnings.iter().map(|w| w.message.as_str()).collect();
+    assert_eq!(
+        messages,
+        [
+            "its density, 1e306 g/cm3, is not one a material has; it was left out",
+            "its density, -1 kg/m3, is not one a material has; it was left out",
+            "<Name> holds an element, not a value; it was left out",
+        ]
+    );
+}
+
+#[test]
+fn text_holding_an_element_or_a_size_below_zero_leaves_the_part_out() {
+    // OpenRocket would read `BT<b>-</b>20` as `20` (the oracle's `element in number` probe).
+    for (field, from, to) in [
+        ("Manufacturer", ">Acme<", ">Ac<b/>me<"),
+        ("PartNumber", ">1<", ">BT<b>-</b>20<"),
+        ("Description", ">A tube<", ">A <i>tube</i><"),
+    ] {
+        let message = left_out(&body_tube("1", "Kraft", "").replace(from, to));
+        assert_eq!(
+            message,
+            format!("<{field}> holds an element, not a value; the part was left out")
+        );
+    }
+    let message = left_out(&body_tube("1", "Kraft", "").replace(">10<", ">-10<"));
+    assert_eq!(
+        message,
+        "<Length> is -10, less than zero; the part was left out"
+    );
 }
 
 #[test]
@@ -660,7 +716,7 @@ fn an_element_inside_a_value_leaves_the_part_out() {
 }
 
 #[test]
-fn lists_beside_the_first_are_ignored_with_a_warning() {
+fn a_list_stated_twice_keeps_the_last_and_anything_else_is_ignored() {
     let text = format!(
         "<OpenRocketComponent><Version>0.1</Version><Materials>{}</Materials>\
          <Components>{}</Components><Components>{}</Components><Extra/></OpenRocketComponent>",
@@ -675,12 +731,25 @@ fn lists_beside_the_first_are_ignored_with_a_warning() {
         .iter()
         .map(|part| part.part_number.as_str())
         .collect();
-    assert_eq!(numbers, ["1"]);
-    assert_eq!(read.warnings.len(), 1);
-    assert_eq!(read.warnings[0].kind, WarningKind::Ignored);
+    // The last list, as OpenRocket 24.12 reads it (the oracle's `second components` probe).
+    assert_eq!(numbers, ["2"]);
+    let warnings: Vec<_> = read
+        .warnings
+        .iter()
+        .map(|warning| (warning.kind, warning.message.as_str()))
+        .collect();
     assert_eq!(
-        read.warnings[0].message,
-        "a second <Components>, <Extra> beside the catalogue's lists were ignored"
+        warnings,
+        [
+            (
+                WarningKind::Repeated,
+                "<Components> is stated 2 times; the last was read, as OpenRocket reads it"
+            ),
+            (
+                WarningKind::Ignored,
+                "<Extra> beside the catalogue's lists was ignored"
+            ),
+        ]
     );
 }
 
@@ -730,6 +799,16 @@ fn implausible_values_are_read_as_written_with_a_warning() {
         "",
     );
     assert!(read_ok(&text).warnings.is_empty());
+    // A solid lighter than air; 1 kg/m³ and up reads with no warning.
+    let read = read_ok(&file(&bulk("Paper", "0.0011", "kg/m3"), ""));
+    assert_eq!(read.materials[0].density, 0.0011);
+    assert_eq!(read.warnings.len(), 1);
+    assert_eq!(read.warnings[0].kind, WarningKind::Implausible);
+    assert!(
+        read_ok(&file(&bulk("Foam", "1", "kg/m3"), ""))
+            .warnings
+            .is_empty()
+    );
     // A ring wider inside than out: its wall is negative.
     let ring = body_tube("1", "Kraft", "").replace(">1.0<", ">1.2<");
     let read = read_ok(&file(&bulk("Kraft", "800", "kg/m3"), &ring));

@@ -287,7 +287,8 @@ as heights instead, the mean is 6.63%.
   why the match is by name only).
 - **OpenRocket's parts catalogue** (pinned as `openrocket-database`, Apache-2.0): its 16 `.orc`
   files, bundled in `crates/hpr-io/data/openrocket-database/`, and OpenRocket 24.12's reading of
-  every part (and of each file with its stated masses removed) and of 33 probe files, in `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json`
+  every part (and of each file with its stated masses removed) and of 37 probe files, in
+  `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json`
   (`validation/oracles/openrocket/orc_presets.py`;
   [ADR-132](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-132-m55a-openrockets-orc-parts-catalogues-held-to-openrockets-reading-2026-10-01),
   the departures and their causes).

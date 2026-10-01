@@ -45,7 +45,8 @@
 //!
 //! **Warnings.** A part or material that can't be read is left out with a [`Warning`] saying why,
 //! rather than failing the file; so are fields ignored or repeated, and values read as written but
-//! implausible (a wall thicker than its tube, a fabric under 1 g/m²). The bundled files give 52.
+//! implausible (an inside diameter not less than the outside, a solid lighter than air, a fabric
+//! under 1 g/m²). The bundled files give 55.
 
 mod bundled;
 #[cfg(test)]
@@ -357,7 +358,7 @@ impl Shape {
 }
 
 /// The kind of density a material has.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum MaterialKind {
@@ -481,8 +482,8 @@ impl Catalog {
 /// `<OpenRocketComponent>` is refused. A part this can't read (a missing or unreadable size, a
 /// unit or shape it doesn't take, a material of the wrong kind, an element that isn't a kind of
 /// part) is left out with a warning, where OpenRocket 24.12 refuses the whole file for most of
-/// these. Fields a part's kind doesn't have are ignored with a warning, as are a second
-/// `<Materials>` or `<Components>` list and anything else beside them.
+/// these. Fields a part's kind doesn't have are ignored with a warning, as is anything beside the
+/// three lists; a list stated twice keeps the last, as OpenRocket does, with a warning.
 ///
 /// # Errors
 ///
@@ -506,23 +507,36 @@ pub fn read(text: &str, file: &str) -> Result<CatalogFile, OrcError> {
     }
     let mut warnings = Warnings::default();
     let mut ignored: Vec<String> = Vec::new();
-    let mut lists = (0, 0, 0);
+    // Each list by name, the last of a repeated one kept: OpenRocket 24.12 reads only the last
+    // `<Materials>` and the last `<Components>` (the oracle's `second materials` and `second
+    // components` probes).
+    let mut lists: [(&str, Option<roxmltree::Node<'_, '_>>, usize); 3] = [
+        ("Version", None, 0),
+        ("Materials", None, 0),
+        ("Components", None, 0),
+    ];
     for element in root.children().filter(roxmltree::Node::is_element) {
         let name = element.tag_name().name();
-        let count = match name {
-            "Version" => &mut lists.0,
-            "Materials" => &mut lists.1,
-            "Components" => &mut lists.2,
-            _ => {
-                ignored.push(format!("<{}>", quote(name)));
-                continue;
+        match lists.iter_mut().find(|(list, _, _)| *list == name) {
+            Some((_, last, count)) => {
+                *last = Some(element);
+                *count += 1;
             }
-        };
-        *count += 1;
-        if *count == 2 {
-            ignored.push(format!("a second <{name}>"));
+            None => ignored.push(format!("<{}>", quote(name))),
         }
     }
+    for (name, _, count) in &lists {
+        if *count > 1 {
+            warnings.push(
+                file,
+                WarningKind::Repeated,
+                format!(
+                    "<{name}> is stated {count} times; the last was read, as OpenRocket reads it"
+                ),
+            );
+        }
+    }
+    let [(_, version, _), (_, materials, _), (_, components, _)] = lists;
     if !ignored.is_empty() {
         warnings.push(
             file,
@@ -534,14 +548,20 @@ pub fn read(text: &str, file: &str) -> Result<CatalogFile, OrcError> {
             ),
         );
     }
-    let version = child(root, "Version").map(text_of);
-    let materials = child(root, "Materials")
+    let version = version.and_then(|node| match value_text(node, "Version") {
+        Ok(text) => Some(text),
+        Err(why) => {
+            warnings.push(file, WarningKind::Ignored, format!("{why}; ignored"));
+            None
+        }
+    });
+    let (materials, index) = materials
         .map(|list| read_materials(list, &mut warnings))
         .unwrap_or_default();
     let mut parts = Vec::new();
-    if let Some(list) = child(root, "Components") {
+    if let Some(list) = components {
         for element in list.children().filter(roxmltree::Node::is_element) {
-            if let Some(part) = read_part(element, file, &materials, &mut warnings) {
+            if let Some(part) = read_part(element, file, &materials, &index, &mut warnings) {
                 parts.push(part);
             }
         }
@@ -693,11 +713,15 @@ fn density_factor(kind: MaterialKind, unit: &str) -> Option<f64> {
     })
 }
 
-/// The lightest fabric this reads without a warning, kg/m²: 1 g/m². The lightest in the bundled
-/// files is 0.3 mil polyethylene film at 7.05 g/m²; a canopy under 1 g/m² is a unit written
+/// The lightest fabric this reads without a warning, kg/m²: 1 g/m². The lightest correctly labelled
+/// in the bundled files is 0.3 mil polyethylene film at 7.05 g/m²; a canopy under 1 g/m² is a unit written
 /// wrong, as the six `g/m2` ripstop nylons of the bundled files are (0.067 g/m² for a fabric of
 /// about 67 g/m²).
 const LIGHTEST_FABRIC_KG_M2: f64 = 0.001;
+
+/// The lightest solid this reads without a warning, kg/m³: 1 kg/m³, below air at sea level
+/// (1.225 kg/m³). Two bundled files give a paper `0.0011` kg/m³, likely g/cm³ written as kg/m³.
+const LIGHTEST_SOLID_KG_M3: f64 = 1.0;
 
 impl MaterialKind {
     /// The kind's name, for messages.
@@ -712,8 +736,12 @@ impl MaterialKind {
 
 /// The `<Materials>` list. A material that can't be read is left out with a warning, so parts
 /// naming it read with no density.
-fn read_materials(list: roxmltree::Node<'_, '_>, warnings: &mut Warnings) -> Vec<CatalogMaterial> {
+fn read_materials(
+    list: roxmltree::Node<'_, '_>,
+    warnings: &mut Warnings,
+) -> (Vec<CatalogMaterial>, MaterialIndex) {
     let mut materials: Vec<CatalogMaterial> = Vec::new();
+    let mut index = MaterialIndex::new();
     for element in list.children().filter(roxmltree::Node::is_element) {
         let name = child(element, "Name").map(text_of).unwrap_or_default();
         let at = format!("Materials: {}", quote(&name));
@@ -729,6 +757,14 @@ fn read_materials(list: roxmltree::Node<'_, '_>, warnings: &mut Warnings) -> Vec
             left_out(warnings, why);
             continue;
         }
+        if let Some(why) = ["Name", "Type"]
+            .into_iter()
+            .filter_map(|field| child(element, field).map(|node| (field, node)))
+            .find_map(|(field, node)| value_text(node, field).err())
+        {
+            left_out(warnings, why);
+            continue;
+        }
         let Some(kind) = child(element, "Type")
             .map(text_of)
             .and_then(|word| MaterialKind::parse(word.trim()))
@@ -739,9 +775,9 @@ fn read_materials(list: roxmltree::Node<'_, '_>, warnings: &mut Warnings) -> Vec
             );
             continue;
         };
-        let Some(value) = child(element, "Density")
+        let Some((written, value)) = child(element, "Density")
             .and_then(|node| value_text(node, "Density").ok())
-            .and_then(|text| number(&text))
+            .and_then(|text| number(&text).map(|value| (text, value)))
         else {
             left_out(
                 warnings,
@@ -766,9 +802,18 @@ fn read_materials(list: roxmltree::Node<'_, '_>, warnings: &mut Warnings) -> Vec
             continue;
         };
         let density = value * factor;
-        if let Some(first) = materials
-            .iter()
-            .find(|material| material.kind == kind && material.name == name)
+        if !density.is_finite() || density < 0.0 {
+            let why = format!(
+                "its density, {} {}, is not one a material has",
+                quote(written.trim()),
+                quote(unit)
+            );
+            left_out(warnings, why);
+            continue;
+        }
+        if let Some(first) = index
+            .get(&(kind, name.clone()))
+            .and_then(|&first| materials.get(first))
             && first.density != density
         {
             warnings.push(
@@ -792,14 +837,29 @@ fn read_materials(list: roxmltree::Node<'_, '_>, warnings: &mut Warnings) -> Vec
                 ),
             );
         }
+        if kind == MaterialKind::Bulk && density < LIGHTEST_SOLID_KG_M3 {
+            warnings.push(
+                &at,
+                WarningKind::Implausible,
+                format!(
+                    "{value} {} is {density} kg/m³, lighter than air: the value or its unit is \
+                     likely wrong; it was read as written, as OpenRocket reads it",
+                    quote(unit)
+                ),
+            );
+        }
+        index.entry((kind, name.clone())).or_insert(materials.len());
         materials.push(CatalogMaterial {
             name,
             kind,
             density,
         });
     }
-    materials
+    (materials, index)
 }
+
+/// Where each material is in a file's list, by kind and name: the first of a name and kind.
+type MaterialIndex = std::collections::BTreeMap<(MaterialKind, String), usize>;
 
 /// Why a part was left out.
 struct Skip(String);
@@ -818,6 +878,7 @@ fn read_part(
     element: roxmltree::Node<'_, '_>,
     file: &str,
     materials: &[CatalogMaterial],
+    index: &MaterialIndex,
     warnings: &mut Warnings,
 ) -> Option<Part> {
     let tag = element.tag_name().name();
@@ -871,9 +932,9 @@ fn read_part(
         }
     }
     let get = |name: &str| fields.get(name).map(|(node, _)| *node);
-    match part(tag, &get, materials) {
+    match part(tag, &get, materials, index) {
         Ok((kind, mass_kg)) => {
-            for material in kind_materials(&kind) {
+            for material in kind.materials() {
                 if material.density.is_none() {
                     warnings.push(
                         &at,
@@ -997,22 +1058,25 @@ impl PartKind {
     }
 }
 
-/// The materials a part names.
-fn kind_materials(kind: &PartKind) -> Vec<&MaterialRef> {
-    kind.materials()
-}
-
 /// A part's kind and stated mass; `get` finds a field by name.
 fn part<'a, 'input: 'a>(
     tag: &str,
     get: &dyn Fn(&str) -> Option<roxmltree::Node<'a, 'input>>,
     materials: &[CatalogMaterial],
+    index: &MaterialIndex,
 ) -> Result<(PartKind, Option<f64>), Skip> {
     if get("Manufacturer").is_none() {
         return Err(Skip("it names no <Manufacturer>".to_owned()));
     }
     if get("PartNumber").is_none() {
         return Err(Skip("it has no <PartNumber>".to_owned()));
+    }
+    // OpenRocket reads only the text after the last element inside a value (the oracle's
+    // `element in number` probe: `BT<b>-</b>20` is `20`); such a value is not read here.
+    for name in ["Manufacturer", "PartNumber", "Description"] {
+        if let Some(node) = get(name) {
+            value_text(node, name).map_err(Skip)?;
+        }
     }
     let mass_kg = get("Mass")
         .map(|node| measure(node, "Mass", mass_factor))
@@ -1028,7 +1092,7 @@ fn part<'a, 'input: 'a>(
     };
     let material = |name: &str, want: MaterialKind| -> Result<MaterialRef, Skip> {
         let node = get(name).ok_or_else(|| Skip(format!("it names no <{name}>")))?;
-        material_ref(node, name, want, materials)
+        material_ref(node, name, want, materials, index)
     };
     let word = |name: &str| -> Result<Option<String>, Skip> {
         get(name)
@@ -1115,7 +1179,9 @@ fn part<'a, 'input: 'a>(
             line_length_m: length("LineLength")?,
             material: material("Material", MaterialKind::Surface)?,
             line_material: get("LineMaterial")
-                .map(|node| material_ref(node, "LineMaterial", MaterialKind::Line, materials))
+                .map(|node| {
+                    material_ref(node, "LineMaterial", MaterialKind::Line, materials, index)
+                })
                 .transpose()?,
         }),
         "Streamer" => PartKind::Streamer(Streamer {
@@ -1140,6 +1206,9 @@ fn measure(
     let text = value_text(node, name).map_err(Skip)?;
     let value = number(&text)
         .ok_or_else(|| Skip(format!("<{name}> is `{}`, not a number", quote(&text))))?;
+    if value < 0.0 {
+        return Err(Skip(format!("<{name}> is {value}, less than zero")));
+    }
     let scale = match node.attribute("Unit") {
         None => 1.0,
         Some(unit) => factor(unit).ok_or_else(|| {
@@ -1160,6 +1229,7 @@ fn material_ref(
     name: &str,
     want: MaterialKind,
     materials: &[CatalogMaterial],
+    index: &MaterialIndex,
 ) -> Result<MaterialRef, Skip> {
     let kind = node
         .attribute("Type")
@@ -1171,9 +1241,9 @@ fn material_ref(
         )));
     }
     let material_name = value_text(node, name).map_err(Skip)?;
-    let density = materials
-        .iter()
-        .find(|material| material.kind == kind && material.name == material_name)
+    let density = index
+        .get(&(kind, material_name.clone()))
+        .and_then(|&first| materials.get(first))
         .map(|material| material.density);
     Ok(MaterialRef {
         name: material_name,

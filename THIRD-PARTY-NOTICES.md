@@ -41,10 +41,9 @@ adds a source.
   unchanged, with the project's `LICENSE` beside them. Licensed under the Apache License 2.0; the
   project has no `NOTICE` file. Created by Dave Cook and maintained by the OpenRocket team. Their
   part data is the makers'; the project's README warns that it may be wrong and that real parts
-  should be weighed. OpenRocket 24.12's reading of every part (and of each file with its stated masses removed), and
-  of 33 probe files written by
-  `validation/oracles/openrocket/orc_presets.py`, is recorded in
-  `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (M5.5a, ADR-132).
+  should be weighed. OpenRocket 24.12's reading of every part (and of each file with its stated
+  masses removed), and of 37 probe files written by `validation/oracles/openrocket/orc_presets.py`,
+  is recorded in `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (M5.5a, ADR-132).
 
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
   motor dimensions and aerodynamic-surface dimensions of seven example rockets, taken from RocketPy's

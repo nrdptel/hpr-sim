@@ -812,7 +812,7 @@
     *Done when:* every bundled file reads, every part OpenRocket's preset loader returns (the
     oracle) with each value equal to its reading bar named, counted departures; parts are found
     by maker and part number. *Result:* met (ADR-132): 3,449 parts; 17,911 of 18,306 numbers to
-    the bit, the rest 185 ounces, 207 densities from a stated mass, 3 undefined materials.
+    the bit, the rest 185 ounces, 207 stated-mass densities, 3 undefined; 252 makers' names.
   - [ ] **M5.5b Catalog parts in the builder.** *Done when:* a rocket built from catalog parts
     flies through the builder; each part's mass as built is held to OpenRocket's for its preset.
 ## Phase 3: Uncertainty, optimization, challenges

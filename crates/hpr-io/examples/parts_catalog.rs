@@ -39,7 +39,8 @@ fn main() {
                 nose.length_m * 1e3,
                 nose.outer_diameter_m * 1e3,
             );
-            // A nose is hollow with a wall, or filled; the file may say either.
+            // A nose is hollow with a wall, or filled. The file may give `Filled`, a wall or both;
+            // the ten built-in parts that give both say `Filled` is false.
             match (nose.filled, nose.thickness_m) {
                 (Some(true), _) => println!("  filled"),
                 (_, Some(wall_m)) => println!("  wall {:.2} mm", wall_m * 1e3),

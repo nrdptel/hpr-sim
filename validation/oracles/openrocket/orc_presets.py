@@ -122,6 +122,15 @@ def probes():
         "<ShoulderLength>0</ShoulderLength><Length>0.1</Length></NoseCone>"
     )
     found.append(("unknown shape", probe(bulk, nose)))
+    twice = material("M", "BULK", "kg/m3", "3") + material("M", "BULK", "kg/m3", "5")
+    found.append(("material twice", probe(twice, tube("material twice"))))
+    end = "</OpenRocketComponent>"
+    second = f"<Components>{tube('second')}</Components>{end}"
+    found.append(("second components", probe(bulk, tube("first")).replace(end, second)))
+    second = f"<Materials>{material('N', 'BULK', 'kg/m3')}</Materials>{end}"
+    both = tube("first") + tube("second", material_name="N")
+    found.append(("second materials", probe(bulk, both).replace(end, second)))
+    found.append(("element in number", probe(bulk, tube("BT<b>-</b>20"))))
     return found
 
 
@@ -227,6 +236,7 @@ def main():
         "openrocket": str(BuildProperties.getVersion()),
         "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),
         "java": str(System.getProperty("java.version")),
+        "pinned_copies_compared": PINNED.is_dir(),
     }
     probe_readings = []
     for name, text in probes():

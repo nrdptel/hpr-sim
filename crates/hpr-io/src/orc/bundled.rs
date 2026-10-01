@@ -77,7 +77,7 @@ pub const BUNDLED_FILES: &[(&str, &str)] = &[
 ];
 
 /// Every part of [`BUNDLED_FILES`], file by file in their order: 3,449 parts. Read once, on the
-/// first call. The files' 52 warnings are dropped here; [`read`] each of [`BUNDLED_FILES`] to see
+/// first call. The files' 55 warnings are dropped here; [`read`] each of [`BUNDLED_FILES`] to see
 /// them.
 #[must_use]
 pub fn bundled() -> &'static Catalog {

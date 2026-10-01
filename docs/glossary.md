@@ -818,8 +818,8 @@ OpenRocket milestone: its mass comparison is done
 ## Oracle
 
 An independent program run to produce [reference values](#reference-value-and-fixture) for hpr's
-tests. Usually it is another simulator: RocketPy 1.13.0, and OpenRocket 24.12, so far for mass and
-the reading of `.ork` files. Scripts that
+tests. Usually it is another simulator: RocketPy 1.13.0, and OpenRocket 24.12, so far for mass,
+flights, and the reading of `.ork` design files and `.orc` parts catalogues. Scripts that
 evaluate a published formula in high precision, ThrustCurve.org's own statistics code, and GDAL
 (through rasterio) for elevation files, serve as oracles too; all of them live under `validation/oracles/`. See
 [Recovery](physics/recovery.md#against-rocketpy) and the [list of simulator oracles][oracles].
@@ -873,7 +873,8 @@ after such a turn as the upper limit of a boattail's [wave drag](#wave-drag). Se
 
 A small design made only to ask an [oracle](#oracle) one question, such as "what radius does
 OpenRocket give four tubes written `auto`?". It is usually a single body tube carrying the one part
-being asked about. hpr's probe designs for OpenRocket are written by scripts under
+being asked about. A probe can be a small file of another kind too: the
+[parts catalogue](format/orc.md#checked-against-openrocket) probes are one-part `.orc` files. hpr's probe designs for OpenRocket are written by scripts under
 `validation/oracles/openrocket/`, and OpenRocket's answers are committed under
 `validation/fixtures/ork/`, where tests hold hpr to them. See
 [`.ork` design files](format/ork.md#tube-fins-sized-from-the-body) for one set of them.

@@ -1,7 +1,7 @@
 # OpenRocket `.orc` parts catalogues
 
-A `.orc` file is a parts catalogue for OpenRocket, which calls its parts *component presets*. It
-lists nose cones, body tubes, couplers,
+A `.orc` file is a parts catalogue for OpenRocket, which calls its parts *component presets*.
+It lists nose cones, body tubes, couplers,
 centering rings, bulkheads, transitions, launch lugs, parachutes and streamers, as their makers
 sell them, each under its maker and part number, with its sizes and its material. OpenRocket 24.12
 ships 16 of them, from the `openrocket-database` project: 3,449 parts from Estes, LOC Precision,
@@ -13,17 +13,21 @@ and where hpr's reading differs from OpenRocket's.
 
 **How far to trust it.** OpenRocket's own reader was run on the same files as an
 [oracle](../glossary.md#oracle), a program whose answers hpr is checked against. hpr reads every
-part OpenRocket reads, in the same order. Of the 18,306 numbers compared, 17,911 come out equal to
-the last bit. The other 395 that differ are counted, and
+part OpenRocket reads, in the same order. Of the 18,306 sizes, masses and densities compared,
+17,911 come out equal to the last bit. The other 395 (185 masses in ounces, 207 densities and 3
+undefined materials) are counted, and so are the 252 parts whose maker OpenRocket names otherwise;
 each has a known cause ([Where hpr and OpenRocket differ](#where-hpr-and-openrocket-differ)). A
 part is only as right as its file, though. The database's README warns that its data may be
 wrong for your rocket and that you should weigh your real parts.
 
 **What it doesn't do yet.** The builder can't take a catalogue part yet; that is the next step,
 [M5.5b](../decisions-and-roadmap.md#m5-5b) (catalogue parts in the builder). Today a program reads
-a part's sizes and material, and builds the part itself from them with
-[the builder](../the-builder.md). Where a part states its mass, trust that over the weight the
-builder works out from sizes and a material: it is what the maker weighed.
+a part's sizes and material, and builds the part itself from them, with
+[the builder](../the-builder.md) or as a design written part by part
+([your own rocket](../your-own-rocket.md)). Where a part states its mass, prefer it to the weight
+worked out from sizes and a material, which is only as good as the file's density. A design written
+part by part can set it as the part's mass [override](../physics/design.md#overrides); the builder
+can't take one yet.
 
 Code: `hpr_io::orc` ([API reference](../api/hpr_io/orc/index.html)), written for
 [M5.5a](../decisions-and-roadmap.md#m5-5a), the parts reader. The decisions are in
@@ -78,7 +82,8 @@ fn main() {
                 nose.length_m * 1e3,
                 nose.outer_diameter_m * 1e3,
             );
-            // A nose is hollow with a wall, or filled; the file may say either.
+            // A nose is hollow with a wall, or filled. The file may give `Filled`, a wall or both;
+            // the ten built-in parts that give both say `Filled` is false.
             match (nose.filled, nose.thickness_m) {
                 (Some(true), _) => println!("  filled"),
                 (_, Some(wall_m)) => println!("  wall {:.2} mm", wall_m * 1e3),
@@ -183,8 +188,8 @@ published schema. The fields and units below are the ones the database project d
 | `Streamer` | length, width, thickness | 46 |
 
 Any part may also state its `Mass`; 229 of the built-in parts do: 207 solid parts, and 22
-parachutes and streamers. A centering ring's length is its
-thickness. A coupler with an inside diameter of zero is a solid nose block.
+parachutes and streamers. A parachute's or streamer's stated mass leaves its fabric's density
+alone, in hpr and in OpenRocket. A centering ring's length is its thickness. A coupler with an inside diameter of zero is a solid nose block.
 
 The units read are the ones OpenRocket 24.12 reads:
 
@@ -209,13 +214,13 @@ is 0.0254 m, the foot 0.3048 m, the pound 0.45359237 kg and the ounce a sixteent
   when the part goes into a design.
 - **A shoulder's wall.** A [shoulder](../glossary.md#shoulder) has a diameter and a length but no
   wall thickness, and no end cap. For a hollow part, the database's own usage notes say OpenRocket
-  weighs it as having no wall. For a filled part, OpenRocket weighs the shoulder as a solid
-  cylinder: the check of stated masses below uses that volume, and it agrees.
+  weighs it as having no wall (not checked here). For a filled part, OpenRocket weighs the shoulder
+  as a solid cylinder: the check of stated masses below uses that volume, and it agrees.
 - **A parachute's drag.** No field gives a drag coefficient.
 - **A filled part's walls.** `Filled` says a nose cone or transition is solid. Where it is absent,
-  a `Thickness` gives the wall instead. Eight nose cones and two transitions give both. hpr keeps
-  both, as OpenRocket's reading does; which one a built part follows is for
-  [M5.5b](../decisions-and-roadmap.md#m5-5b) to measure.
+  a `Thickness` gives the wall instead. Eight nose cones and two transitions give both, and all
+  ten say `Filled` is false, so they agree: a hollow part with that wall. A file that said filled
+  with a wall would leave which one counts open; hpr keeps both, as OpenRocket's reading does.
 
 ## Where hpr and OpenRocket differ
 
@@ -236,9 +241,9 @@ hpr keeps both numbers.
 
 The test shows that a stated mass is the cause on all 207. The oracle also reads each file with
 every `<Mass>` taken out, and then OpenRocket's density equals hpr's on every part, these 207
-included. On the 54 of them that are simple solids (tubes, rings, bulkheads, and filled conical
-nose cones and transitions), the test also checks that OpenRocket's replaced density times the
-part's volume gives the stated mass, to 4 parts in 10¹⁵.
+included. On the 54 of them that are simple solids (7 body tubes, 4 bulkheads, and 34 filled conical
+nose cones and 9 transitions), the test also checks that OpenRocket's replaced density times the
+part's volume gives the stated mass, to 1 part in 10¹⁵.
 When the builder takes catalogue parts ([M5.5b](../decisions-and-roadmap.md#m5-5b)), a part that
 states its mass will weigh that mass.
 
@@ -247,29 +252,37 @@ or foot, pounds per square foot, and ounces per foot. No built-in file uses them
 
 ## Warnings, not failures
 
-Only text that isn't XML, or whose top element isn't `<OpenRocketComponent>`, is refused. Anything
-else that can't be read is left out with a warning, and reading goes on:
+Only three things make hpr refuse a whole file: text that isn't XML, a top element that isn't
+`<OpenRocketComponent>`, and elements nested more than 16 deep, which no catalogue needs and which
+is refused before the XML is read. Anything else that can't be read is left out with a warning,
+and reading goes on:
 
-- **A part** with a missing or unreadable size, a unit or shape the format doesn't have, a
-  material of the wrong kind, or an element that isn't a kind of part. OpenRocket 24.12 refuses
-  the whole file for most of these.
-- **A material** with an unknown unit or kind, or no density. Parts that name it read with no
-  density.
+- **A part** with a missing, unreadable or negative size, a unit or shape the format doesn't have,
+  a material of the wrong kind, a value with an element inside it, or an element that isn't a kind
+  of part. OpenRocket 24.12 refuses the whole file for three of these: a missing size, an unknown
+  unit and an unknown shape. It reads an unreadable size as zero, a material of the wrong kind
+  with a density of zero, and `BT<b>-</b>20` as `20`, and it skips an element that isn't a part.
+- **A material** with an unknown unit or kind, no density, a density below zero or too large to
+  hold, or an element inside its name. Parts that name it read with no density.
 - **A field** a part's kind doesn't have is ignored, with a warning. The 37 built-in nose cones
   that state an inside diameter read this way.
 - **A field stated twice** keeps the last, as OpenRocket does. Three built-in parts state two
   descriptions.
-- **A material defined twice** with two densities: parts take the first.
-- **A second `<Materials>` or `<Components>` list**, or anything else beside them, is ignored.
-- **A value that is read as written but looks wrong**: a tube whose inside diameter is not less
-  than its outside diameter, or a fabric lighter than 1 g/m², which is likely a density written in g/m² that means kg/m².
+- **A material defined twice** with two densities: parts take the first, as OpenRocket's do.
+- **A list stated twice**: the last `<Materials>` and the last `<Components>` are read, as
+  OpenRocket reads them. Anything else beside the lists is ignored.
+- **A value that is read as written but looks wrong**:
+  - a tube whose inside diameter is not less than its outside diameter;
+  - a solid lighter than air (under 1 kg/m³);
+  - a fabric lighter than 1 g/m². Ripstop nylon is about 40 to 70 g/m², so this is almost
+    certainly a kg/m² value labelled `g/m2`, 1,000 times too light.
 
 A file with more than 1,000 warnings lists the first 1,000 and then says how many more there were.
 
 `in/64` (sixty-fourths of an inch), which the project's notes list as a length unit, is refused,
 because OpenRocket reads it as whole inches: `3` in `in/64` would come out as 3 inches.
 
-On the built-in files there are 52 warnings, all of kinds listed above:
+On the built-in files there are 55 warnings, all of kinds listed above:
 
 | warning | count |
 |---|---|
@@ -277,9 +290,13 @@ On the built-in files there are 52 warnings, all of kinds listed above:
 | a description stated twice | 3 |
 | a material not defined (`Carpet Thread` twice in `mpc.orc`, and a balsa in `semroc.orc`) | 3 |
 | a tube-like part no narrower inside than out (one Quest, two SEMROC) | 3 |
+| a solid lighter than air (`Paper, bulk` at 0.0011 kg/m³ in `BMS.ORC` and `ROCKETARIUM.ORC`, an elastic in `generic_materials.orc`) | 3 |
 | a fabric under 1 g/m² (five in `generic_materials.orc`, one in `giantleaprocketry.orc`) | 6 |
 
-Nothing is changed on account of them: each such part reads as written.
+Nothing is changed on account of them: each such part reads as written, as OpenRocket reads it.
+The 18 parts made of that paper (centering rings and engine blocks) would weigh about a millionth
+of a real one. The six Giant Leap parachutes on the light fabric all state their mass, so use
+that. `bundled()` drops these warnings; `read` each of `BUNDLED_FILES` to see them.
 
 ## Checked against OpenRocket
 
@@ -290,18 +307,20 @@ copy of each file is byte for byte the one built into hpr. It records every valu
 one part to a line, and each part's densities as OpenRocket reads the file with its masses taken
 out.
 
-It also has OpenRocket read 33 small [probe](../glossary.md#probe-design) files, each asking one question: every unit above,
-values with no units, and a part or a file OpenRocket can't read. The same test reads each probe:
+It also has OpenRocket read 37 small `.orc` [probe](../glossary.md#probe-design) files, each asking
+one question: every unit above, values with no units, a part or a file OpenRocket can't read, and
+what it does with a material or a list stated twice. The probe test in the same file reads each
+probe:
 
 | probes | result |
 |---|---|
-| 20 | read as OpenRocket reads them, to the bit |
+| 23 | read as OpenRocket reads them, to the bit |
 | 6 | in a unit whose factor OpenRocket rounds: within 2 parts in 10⁹, by hpr's exact factor |
-| 4 | OpenRocket refuses the file; hpr leaves the part out (for `oz/in` it leaves the material out and reads the part without the cord's density) |
-| 3 | OpenRocket reads the part (`in/64` as inches, a length of `ten` as zero, a material of the wrong kind with a density of zero); hpr leaves it out |
+| 4 | OpenRocket refuses the file; hpr leaves the part out (for `oz/in`, ounces per inch, a cord density neither reads, hpr leaves the material out and reads the part without the cord's density) |
+| 4 | OpenRocket reads the part (`in/64` as inches, a length of `ten` as zero, a material of the wrong kind with a density of zero, `BT<b>-</b>20` as `20`); hpr leaves it out |
 
-Moving hpr's inch to the next number a 64-bit float can hold above 0.0254 makes both tests fail,
-so they check what they say they do.
+As a check that the tests can fail, moving hpr's inch to the next number a 64-bit float can hold
+above 0.0254 was tried by hand: both the catalogue comparison and the probe test failed.
 
 ## Sources and licence
 
