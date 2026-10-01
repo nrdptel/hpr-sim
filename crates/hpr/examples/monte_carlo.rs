@@ -134,7 +134,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let east = run.distribution(|flight| flight.landing.as_ref().map(|l| l.east_m))?;
     row("landing east (m)", nominal_landing.east_m, &east)?;
     println!();
-    let share = apogee.share_at_least(1100.0);
+    let share = apogee.share_at_least(1100.0)?.ok_or("no flights")?;
     println!("Reached 1,100 m: {:.1}% of the flights", 100.0 * share.low);
+    // Why the mean apogee isn't the nominal one: the nominal flight with 5% less and 5% more
+    // drag.
+    let height = |drag_scale: f64| -> Result<f64, Box<dyn Error>> {
+        let mut inputs = monte_carlo.nominal().clone();
+        inputs.drag_scale = drag_scale;
+        let flight = inputs.fly()?;
+        Ok(flight.apogee.ok_or("no apogee")?.height_above_ground_m)
+    };
+    let nominal_m = nominal_apogee.height_above_ground_m;
+    println!(
+        "Apogee with 5% less drag: {:+.0} m; with 5% more: {:+.0} m",
+        height(0.95)? - nominal_m,
+        height(1.05)? - nominal_m
+    );
     Ok(())
 }

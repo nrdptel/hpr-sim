@@ -41,7 +41,4 @@ pub enum AnalysisError {
     /// From a flight.
     #[error(transparent)]
     Sim(#[from] SimError),
-    /// The worker threads could not be started.
-    #[error("thread pool: {0}")]
-    Threads(String),
 }

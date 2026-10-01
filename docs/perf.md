@@ -63,8 +63,10 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
   a flare whose corner needs drawing out costs roughly twice a plain one, because each row marches
   the body ahead of the flare for the flow at its corner and then lays out and marches a second
   body with the flare drawn. Both are one-time costs behind the table's `OnceLock`, paid only once
-  a flow passes Mach 1.2 and shared by a model's clones, so a Monte Carlo of one design pays them
-  once. Two obvious savings are left on the table for a later milestone: reading the flow at an
+  a flow passes Mach 1.2 and shared by a model's clones. A Monte Carlo run
+  ([M6.1a](decisions-and-roadmap.md#m6-1a)) doesn't share them yet: each of its flights builds its
+  own model, so a supersonic design pays them every flight, until
+  [M6.1d](decisions-and-roadmap.md#m6-1d). Two obvious savings are left on the table for a later milestone: reading the flow at an
   interior station instead of marching the fore body again, and swapping the last segment of one
   body instead of rebuilding it.
 

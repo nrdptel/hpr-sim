@@ -9,7 +9,7 @@
 //! A [`MonteCarlo`] holds the nominal flight ([`FlightInputs`]) and a [`Dispersion`]: a standard
 //! deviation for each uncertain input. Each sample draws every dispersed input from a normal
 //! distribution about its nominal value, as RocketPy's stochastic classes do by default
-//! (`rocketpy/stochastic/stochastic_model.py:190-199`, a `(nominal, standard deviation)` pair is a normal
+//! (RocketPy 1.13.0's `rocketpy/stochastic/stochastic_model.py:190-199`, a `(nominal, standard deviation)` pair is a normal
 //! distribution), flies the flight, and keeps what it drew and what the flight came to
 //! ([`Sample`]). A [`Run`] is the samples in order; [`Run::apogee`] is the spread of their
 //! apogees, with the samples that failed counted, not dropped.
@@ -19,7 +19,7 @@
 //! Every number a sample draws comes from its own stream, keyed by the run's seed, the sample's
 //! index, the input and, for an input with several copies, which copy
 //! ([`SeededRng::for_stream`]). So sample `k` is the same flight whatever the number of samples,
-//! however they are spread over threads ([`MonteCarlo::run_parallel`], with the `parallel`
+//! however they are spread over threads (`MonteCarlo::run_parallel`, with the `parallel`
 //! feature), and whichever other inputs are dispersed: turning on a drag dispersion doesn't
 //! change the wind a sample flies. On one platform a run is bit for bit the same every time.
 //!
@@ -37,7 +37,7 @@
 //! | `impulse_sd_fraction` | each motor's thrust and propellant mass both times `1 + σ z`, so its specific impulse is kept ([`dispersed_motor`]) |
 //! | `burn_time_sd_fraction` | each motor's thrust curve stretched in time by `1 + σ z`, its thrust divided by the same, so its impulse is kept |
 //! | `ejection_delay_sd_s` | each motor's ejection delay plus `σ z` seconds, not below zero |
-//! | `wind_speed_sd_fraction` | the wind at every height times `1 + σ z` ([`DispersedWind`]) |
+//! | `wind_speed_sd_fraction` | the wind at every height times `1 + σ z`, calm below zero ([`DispersedWind`]) |
 //! | `wind_heading_sd_rad` | the wind at every height turned `σ z` clockwise, about the nominal (forecast) direction |
 //! | `rail_elevation_sd_rad` | the rail's angle above the horizon plus `σ z`; past vertical it leans the other way |
 //! | `rail_azimuth_sd_rad` | the rail's heading plus `σ z`, about the nominal heading |
@@ -46,13 +46,16 @@
 //! `z` is a standard normal deviate drawn for that sample, input and copy: a stage, a motor in the
 //! flown configuration (a cluster's motors share one), or a recovery device. A draw that leaves
 //! an input impossible (a negative mass, a rail below the horizon) fails that sample, which is
-//! counted in the run ([`Outcome::Failed`]). The two delays are cut at zero instead, since a
-//! charge can't fire before its event: a normal tail past zero becomes zero.
+//! counted in the run ([`Outcome::Failed`]). The two delays and the wind's speed are cut at zero
+//! instead, since a charge can't fire before its event and a wind can't blow at less than calm: a
+//! normal tail past zero becomes zero.
 //!
 //! # Left out
 //!
 //! Dispersions are independent normals: no correlations between inputs, no other
-//! distributions. A cluster's motors are dispersed as one. Moving a stage's centre of mass keeps
+//! distributions. The rail's elevation is dispersed in the plane of its heading, so a vertical
+//! rail with only its elevation dispersed leans along one line (as in RocketPy); a draw past
+//! vertical leans it the other way, so its [`Draw`] entry is not then the elevation flown. A cluster's motors are dispersed as one. Moving a stage's centre of mass keeps
 //! its inertia about the centre. The drag scale multiplies the zero-lift drag only, not the
 //! normal force or the moments. A thrust curve stretched in time keeps its shape. Nothing is
 //! dispersed in the atmosphere's temperature or pressure, a motor's ignition time, a recovery
@@ -81,6 +84,7 @@ use crate::statistics::Distribution;
 /// A drag override for the whole flight, in place of hpr's drag buildup: another tool's table or
 /// a model of your own ([`Simulation::with_drag_table`], [`Simulation::with_shared_drag_model`]).
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum DragOverride {
     /// A `C_D0(M)` table.
     Table(DragTable),
@@ -274,7 +278,8 @@ enum Input {
 
 /// What one sample drew: the factor or offset for each dispersed input, and its nominal value
 /// (1 or 0) for one left alone. The lists run over the design's stages, the flown
-/// configuration's motors and the recovery devices, in order.
+/// configuration's motors and the recovery devices, in order. [`MonteCarlo::inputs`] turns a
+/// draw into the flight it flies.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Draw {
     /// Each stage's mass factor.
@@ -289,7 +294,7 @@ pub struct Draw {
     pub burn_time_scale: Vec<f64>,
     /// Each motor's ejection-delay offset, s, before the cut at zero.
     pub ejection_delay_offset_s: Vec<f64>,
-    /// The wind-speed factor.
+    /// The wind-speed factor, before the cut at zero.
     pub wind_speed_scale: f64,
     /// The wind's turn, rad clockwise.
     pub wind_turn_rad: f64,
@@ -312,9 +317,23 @@ pub enum Outcome {
     },
     /// Its inputs were refused or the flight stopped with an error.
     Failed {
+        /// Where: making its inputs from the draw, or flying them.
+        at: FailedAt,
         /// The error.
         reason: String,
     },
+}
+
+/// Where a sample failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FailedAt {
+    /// Making its inputs: the draw left one impossible, such as a motor with no impulse
+    /// ([`MonteCarlo::inputs`]).
+    Inputs,
+    /// Flying them: the flight refused them, such as a negative mass or a rail below the
+    /// horizon, or stopped with an error ([`FlightInputs::fly`]).
+    Flight,
 }
 
 /// One sample of a run: its index, what it drew, and its outcome.
@@ -424,21 +443,17 @@ impl MonteCarlo {
             .iter()
             .position(|c| c.id == nominal.configuration_id)
             .ok_or_else(|| AnalysisError::NoConfiguration(nominal.configuration_id.clone()))?;
-        let stages = if dispersion.dry_mass_sd_fraction > 0.0 || dispersion.cg_sd_m > 0.0 {
-            nominal
-                .rocket
-                .layout()?
-                .stages
-                .iter()
-                .map(|stage| StageMass {
-                    mass_kg: stage.mass.mass_kg,
-                    // Stations run aft from the nose; body z runs forward ([`hpr_design::Overrides`]).
-                    cg_aft_m: -stage.mass.cg_m.z - stage.fore_station_m,
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let stages = nominal
+            .rocket
+            .layout()?
+            .stages
+            .iter()
+            .map(|stage| StageMass {
+                mass_kg: stage.mass.mass_kg,
+                // Stations run aft from the nose; body z runs forward ([`hpr_design::Overrides`]).
+                cg_aft_m: -stage.mass.cg_m.z - stage.fore_station_m,
+            })
+            .collect();
         if dispersion.impulse_sd_fraction > 0.0 || dispersion.burn_time_sd_fraction > 0.0 {
             for mounted in &nominal.rocket.configurations[configuration].motors {
                 dispersed_motor(&mounted.motor, 1.0, 1.0)?;
@@ -499,106 +514,183 @@ impl MonteCarlo {
         }
     }
 
-    /// The flight inputs `draw` gives: the nominal ones with every dispersed input changed as
-    /// the module's docs say. An input whose dispersion is zero is left as it is.
+    /// The flight inputs `draw` gives: the nominal ones, with each input whose entry isn't its
+    /// nominal value (a factor of 1, an offset of 0) changed as the module's docs say. An entry at
+    /// its nominal value leaves its input as it is, so a draw with no dispersion flies the
+    /// nominal flight bit for bit; any other entry is applied, whatever the dispersion, so a
+    /// draw read back or written by hand flies as it says.
     ///
     /// # Errors
     ///
-    /// - [`AnalysisError::Motor`] for a motor the draw leaves impossible (a factor at or below
-    ///   zero), and [`AnalysisError::Unsupported`] for a propellant model [`dispersed_motor`]
-    ///   doesn't know.
-    /// - [`AnalysisError::Domain`] for a wind-speed factor below zero.
+    /// - [`AnalysisError::Count`] for a list whose length isn't the design's number of stages,
+    ///   the configuration's number of motors or the number of recovery devices.
+    /// - [`AnalysisError::Domain`] for an entry that isn't finite, and from
+    ///   [`dispersed_motor`] for an impulse or burn-time factor at or below zero.
+    /// - [`AnalysisError::Unsupported`] and [`AnalysisError::Motor`] as [`dispersed_motor`].
     pub fn inputs(&self, draw: &Draw) -> Result<FlightInputs, AnalysisError> {
-        let d = &self.dispersion;
+        self.check(draw)?;
         let mut inputs = self.nominal.clone();
-        if d.dry_mass_sd_fraction > 0.0 || d.cg_sd_m > 0.0 {
-            for (index, (stage, nominal)) in inputs
-                .rocket
-                .stages
-                .iter_mut()
-                .zip(&self.stages)
-                .enumerate()
-            {
-                if d.dry_mass_sd_fraction > 0.0 {
-                    let scale = draw.dry_mass_scale[index];
-                    stage.overrides.mass_kg = Some(nominal.mass_kg * scale);
-                    // An inertia the design sets replaces the scaled one, so it scales too.
-                    if let Some(inertia) = &mut stage.overrides.inertia {
-                        for value in [
-                            &mut inertia.xx_kg_m2,
-                            &mut inertia.yy_kg_m2,
-                            &mut inertia.zz_kg_m2,
-                            &mut inertia.xy_kg_m2,
-                            &mut inertia.xz_kg_m2,
-                            &mut inertia.yz_kg_m2,
-                        ] {
-                            *value *= scale;
-                        }
+        for ((stage, nominal), (&scale, &shift)) in inputs
+            .rocket
+            .stages
+            .iter_mut()
+            .zip(&self.stages)
+            .zip(draw.dry_mass_scale.iter().zip(&draw.cg_shift_m))
+        {
+            if scale != 1.0 {
+                stage.overrides.mass_kg = Some(nominal.mass_kg * scale);
+                // An inertia the design sets replaces the scaled one, so it scales too.
+                if let Some(inertia) = &mut stage.overrides.inertia {
+                    for value in [
+                        &mut inertia.xx_kg_m2,
+                        &mut inertia.yy_kg_m2,
+                        &mut inertia.zz_kg_m2,
+                        &mut inertia.xy_kg_m2,
+                        &mut inertia.xz_kg_m2,
+                        &mut inertia.yz_kg_m2,
+                    ] {
+                        *value *= scale;
                     }
                 }
-                if d.cg_sd_m > 0.0 {
-                    stage.overrides.cg_aft_m = Some(nominal.cg_aft_m + draw.cg_shift_m[index]);
-                }
+            }
+            if shift != 0.0 {
+                stage.overrides.cg_aft_m = Some(nominal.cg_aft_m + shift);
             }
         }
         let motors = &mut inputs.rocket.configurations[self.configuration].motors;
-        for (index, mounted) in motors.iter_mut().enumerate() {
-            if d.impulse_sd_fraction > 0.0 || d.burn_time_sd_fraction > 0.0 {
-                mounted.motor = dispersed_motor(
-                    &mounted.motor,
-                    draw.impulse_scale[index],
-                    draw.burn_time_scale[index],
-                )?;
+        for (mounted, ((&impulse, &burn), &delay)) in motors.iter_mut().zip(
+            draw.impulse_scale
+                .iter()
+                .zip(&draw.burn_time_scale)
+                .zip(&draw.ejection_delay_offset_s),
+        ) {
+            if impulse != 1.0 || burn != 1.0 {
+                mounted.motor = dispersed_motor(&mounted.motor, impulse, burn)?;
             }
-            if d.ejection_delay_sd_s > 0.0
+            if delay != 0.0
                 && let Some(Delay::Seconds(delay_s)) = mounted.delay
             {
-                let offset = draw.ejection_delay_offset_s[index];
-                mounted.delay = Some(Delay::Seconds((delay_s + offset).max(0.0)));
+                mounted.delay = Some(Delay::Seconds((delay_s + delay).max(0.0)));
             }
         }
-        if d.drag_sd_fraction > 0.0 {
+        if draw.drag_scale != 1.0 {
             inputs.drag_scale *= draw.drag_scale;
         }
-        if d.wind_speed_sd_fraction > 0.0 || d.wind_heading_sd_rad > 0.0 {
+        if draw.wind_speed_scale != 1.0 || draw.wind_turn_rad != 0.0 {
             inputs.environment.wind = Arc::new(DispersedWind::new(
                 Arc::clone(&inputs.environment.wind),
-                draw.wind_speed_scale,
+                draw.wind_speed_scale.max(0.0),
                 draw.wind_turn_rad,
             )?);
         }
-        if d.rail_elevation_sd_rad > 0.0 || d.rail_azimuth_sd_rad > 0.0 {
+        if draw.rail_elevation_offset_rad != 0.0 || draw.rail_azimuth_offset_rad != 0.0 {
             inputs.rail = tilted(
                 inputs.rail,
                 draw.rail_elevation_offset_rad,
                 draw.rail_azimuth_offset_rad,
             );
         }
-        if d.deployment_lag_sd_s > 0.0 {
-            for (device, offset) in inputs
-                .recovery
-                .iter_mut()
-                .zip(&draw.deployment_lag_offset_s)
-            {
+        for (device, &offset) in inputs
+            .recovery
+            .iter_mut()
+            .zip(&draw.deployment_lag_offset_s)
+        {
+            if offset != 0.0 {
                 device.lag_s = (device.lag_s + offset).max(0.0);
             }
         }
         Ok(inputs)
     }
 
-    /// Draws and flies sample `index` of a run seeded with `seed`. A draw the flight refuses, or
-    /// a flight that stops with an error, is a failed sample, not an error.
+    /// Checks that `draw` has an entry for each stage, motor and recovery device, and that every
+    /// entry is finite.
+    fn check(&self, draw: &Draw) -> Result<(), AnalysisError> {
+        let stages = self.nominal.rocket.stages.len();
+        let motors = self.nominal.rocket.configurations[self.configuration]
+            .motors
+            .len();
+        let devices = self.nominal.recovery.len();
+        let lists: [(&'static str, &[f64], usize); 6] = [
+            (
+                "dry-mass factors, against the stages",
+                &draw.dry_mass_scale,
+                stages,
+            ),
+            (
+                "centre-of-mass shifts, against the stages",
+                &draw.cg_shift_m,
+                stages,
+            ),
+            (
+                "impulse factors, against the motors",
+                &draw.impulse_scale,
+                motors,
+            ),
+            (
+                "burn-time factors, against the motors",
+                &draw.burn_time_scale,
+                motors,
+            ),
+            (
+                "ejection-delay offsets, against the motors",
+                &draw.ejection_delay_offset_s,
+                motors,
+            ),
+            (
+                "deployment-lag offsets, against the recovery devices",
+                &draw.deployment_lag_offset_s,
+                devices,
+            ),
+        ];
+        for (what, list, count) in lists {
+            if list.len() != count {
+                return Err(AnalysisError::Count {
+                    what,
+                    count: list.len(),
+                    limit: count,
+                });
+            }
+            if let Some(&bad) = list.iter().find(|v| !v.is_finite()) {
+                return Err(AnalysisError::Domain {
+                    what: "entry of a draw",
+                    value: bad,
+                });
+            }
+        }
+        for value in [
+            draw.drag_scale,
+            draw.wind_speed_scale,
+            draw.wind_turn_rad,
+            draw.rail_elevation_offset_rad,
+            draw.rail_azimuth_offset_rad,
+        ] {
+            if !value.is_finite() {
+                return Err(AnalysisError::Domain {
+                    what: "entry of a draw",
+                    value,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    /// Draws and flies sample `index` of a run seeded with `seed`. A draw that makes an input
+    /// impossible, or a flight that stops with an error, is a failed sample, not an error.
     pub fn sample(&self, seed: u64, index: u64) -> Sample {
         let draw = self.draw(seed, index);
-        let outcome = match self
-            .inputs(&draw)
-            .and_then(|inputs| inputs.fly().map_err(AnalysisError::from))
-        {
-            Ok(summary) => Outcome::Flown {
-                summary: Box::new(summary),
-            },
+        let outcome = match self.inputs(&draw) {
             Err(error) => Outcome::Failed {
+                at: FailedAt::Inputs,
                 reason: error.to_string(),
+            },
+            Ok(inputs) => match inputs.fly() {
+                Ok(summary) => Outcome::Flown {
+                    summary: Box::new(summary),
+                },
+                Err(error) => Outcome::Failed {
+                    at: FailedAt::Flight,
+                    reason: error.to_string(),
+                },
             },
         };
         Sample {
@@ -616,31 +708,19 @@ impl MonteCarlo {
         }
     }
 
-    /// As [`MonteCarlo::run`], on `threads` worker threads (0 for one per processor). The run is
-    /// the same, bit for bit, whatever the number of threads.
-    ///
-    /// # Errors
-    ///
-    /// [`AnalysisError::Threads`] if the threads can't be started.
+    /// As [`MonteCarlo::run`], with the samples spread over the threads of the current rayon
+    /// pool: the global one, or one a caller's `rayon::ThreadPool::install` sets up to choose
+    /// how many. The run is the same, bit for bit, whatever the number of threads.
     #[cfg(feature = "parallel")]
-    pub fn run_parallel(
-        &self,
-        seed: u64,
-        count: u64,
-        threads: usize,
-    ) -> Result<Run, AnalysisError> {
+    pub fn run_parallel(&self, seed: u64, count: u64) -> Run {
         use rayon::prelude::*;
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .build()
-            .map_err(|error| AnalysisError::Threads(error.to_string()))?;
-        let samples = pool.install(|| {
-            (0..count)
+        Run {
+            seed,
+            samples: (0..count)
                 .into_par_iter()
                 .map(|index| self.sample(seed, index))
-                .collect()
-        });
-        Ok(Run { seed, samples })
+                .collect(),
+        }
     }
 }
 
@@ -783,6 +863,13 @@ mod tests {
     use super::*;
 
     const SEED: u64 = 20_261_001;
+    /// `SeededRng::for_stream(42, &[7]).next_u64()`.
+    const GOLDEN_STREAM: u64 = 2_627_254_379_500_910_771;
+    /// Sample 0's drag and impulse factors with `every_dispersion()` and `SEED`, as macOS
+    /// computes them: a normal deviate takes a logarithm, which another platform's library may
+    /// round differently in the last bit, so these are held to 1e-14.
+    const GOLDEN_DRAG: f64 = 1.012_497_722_244_850_1;
+    const GOLDEN_IMPULSE: f64 = 1.020_485_907_939_679_7;
 
     fn valetudo() -> Rocket {
         serde_json::from_str(include_str!(
@@ -859,8 +946,22 @@ mod tests {
             let flown_exhaust =
                 flown.curve().total_impulse_ns() / flown.propellant_initial_mass_kg();
             assert!((flown_exhaust / exhaust - 1.0).abs() < 1e-14);
-            assert_ne!(draw.impulse_scale[0], 1.0);
+            // Each factor where it belongs: swapped, `I/m_p` would still hold.
+            let flown_impulse = flown.curve().total_impulse_ns() / impulse;
+            let flown_burn = flown.curve().burn_time_s() / burn;
+            assert!((flown_impulse - draw.impulse_scale[0]).abs() < 1e-14);
+            assert!((flown_burn - draw.burn_time_scale[0]).abs() < 1e-12);
+            assert_ne!(draw.impulse_scale[0], draw.burn_time_scale[0]);
         }
+        // A motor known only by its envelope holds its propellant as a column; its mass scales.
+        let column =
+            SolidMotor::from_envelope(motor.curve().clone(), 0.075, 0.6, 2.0, 3.5).unwrap();
+        assert!(matches!(column.propellant(), Propellant::Column(_)));
+        let heavier = dispersed_motor(&column, 1.2, 0.9).unwrap();
+        assert!((heavier.propellant_initial_mass_kg() / 2.0 - 1.2).abs() < 1e-15);
+        assert_eq!(heavier.dry(), column.dry());
+        let ratio = |m: &SolidMotor| m.curve().total_impulse_ns() / m.propellant_initial_mass_kg();
+        assert!((ratio(&heavier) / ratio(&column) - 1.0).abs() < 1e-14);
         // A factor at or below zero is refused.
         for bad in [0.0, -0.1, f64::NAN] {
             assert!(matches!(
@@ -911,10 +1012,17 @@ mod tests {
             },
             some
         );
+        // The run's first samples are a shorter run's, but one shared stream would give that
+        // too: what a shared stream can't give is sample 4 flown on its own, above, or the same
+        // draws with the drag dispersion off.
         #[cfg(feature = "parallel")]
         for threads in [1, 2, 5] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
             assert_eq!(
-                run.run_parallel(SEED, 6, threads).unwrap(),
+                pool.install(|| run.run_parallel(SEED, 6)),
                 long,
                 "{threads}"
             );
@@ -940,16 +1048,17 @@ mod tests {
         assert!(!failed.is_empty() && failed.len() < 16, "{}", failed.len());
         for sample in &failed {
             assert!(sample.draw.dry_mass_scale[0] < 0.0, "{sample:?}");
-            let Outcome::Failed { reason } = &sample.outcome else {
+            let Outcome::Failed { at, reason } = &sample.outcome else {
                 unreachable!("filtered on failure")
             };
+            assert_eq!(*at, FailedAt::Flight);
             assert!(reason.contains("mass"), "{reason}");
         }
         let apogee = run.apogee().unwrap();
         assert_eq!(apogee.attempted(), 16);
         assert_eq!(apogee.missing(), failed.len());
         // A share over every sample tried, bounded by the failures both ways.
-        let share = apogee.share_at_least(0.0);
+        let share = apogee.share_at_least(0.0).unwrap().unwrap();
         assert_eq!(share.low, (16 - failed.len()) as f64 / 16.0);
         assert_eq!(share.high, 1.0);
     }
@@ -1148,6 +1257,100 @@ mod tests {
                 DispersedWind::new(Arc::new(ConstantWind::calm()), scale, turn),
                 Err(AnalysisError::Domain { .. })
             ));
+        }
+    }
+
+    /// The drag scale reaches the flight: `FlightInputs` flies it as
+    /// `Simulation::with_drag_scale` does, and a sample's factor multiplies a nominal scale.
+    #[test]
+    fn the_drag_scale_is_flown() {
+        let mut scaled = nominal();
+        scaled.drag_scale = 1.1;
+        let by_hand = {
+            let simulation = nominal()
+                .simulation()
+                .unwrap()
+                .with_drag_scale(1.1)
+                .unwrap();
+            let mut metrics = FlightMetrics::new();
+            let result = simulation.run(&mut metrics).unwrap();
+            metrics.summary(&result, &scaled.environment).unwrap()
+        };
+        assert_eq!(scaled.fly().unwrap(), by_hand);
+        assert_ne!(nominal().fly().unwrap(), by_hand);
+        let run = MonteCarlo::new(
+            scaled,
+            Dispersion {
+                drag_sd_fraction: 0.05,
+                ..Dispersion::default()
+            },
+        )
+        .unwrap();
+        let draw = run.draw(SEED, 0);
+        assert_eq!(run.inputs(&draw).unwrap().drag_scale, 1.1 * draw.drag_scale);
+    }
+
+    /// A draw is checked against the rocket before it flies, and every entry that isn't at its
+    /// nominal value is flown, whatever the dispersion: a draw written by hand flies as it says.
+    #[test]
+    fn a_draw_is_checked_and_flown_as_written() {
+        let run = MonteCarlo::new(nominal(), Dispersion::default()).unwrap();
+        let mut draw = run.draw(SEED, 0);
+        let good = draw.clone();
+        draw.impulse_scale.clear();
+        assert!(matches!(
+            run.inputs(&draw),
+            Err(AnalysisError::Count {
+                count: 0,
+                limit: 1,
+                ..
+            })
+        ));
+        let mut draw = good.clone();
+        draw.deployment_lag_offset_s.push(0.0);
+        assert!(matches!(
+            run.inputs(&draw),
+            Err(AnalysisError::Count {
+                count: 2,
+                limit: 1,
+                ..
+            })
+        ));
+        let mut draw = good.clone();
+        draw.wind_turn_rad = f64::NAN;
+        assert!(matches!(
+            run.inputs(&draw),
+            Err(AnalysisError::Domain { .. })
+        ));
+        // No dispersion asked for, but the draw says 20% more drag and a calm wind (a factor
+        // below zero is cut to calm).
+        let mut draw = good;
+        draw.drag_scale = 1.2;
+        draw.wind_speed_scale = -0.3;
+        let inputs = run.inputs(&draw).unwrap();
+        assert_eq!(inputs.drag_scale, 1.2);
+        let wind = inputs
+            .environment
+            .wind
+            .wind(1500.0)
+            .unwrap()
+            .velocity_enu_m_s;
+        assert_eq!(wind.length(), 0.0);
+    }
+
+    /// The numbers a seed gives are part of every seeded result: these pin the stream key's fold
+    /// and the order of a draw's inputs, so a change to either shows here first.
+    #[test]
+    fn a_seed_s_draws_are_pinned() {
+        assert_eq!(SeededRng::for_stream(42, &[7]).next_u64(), GOLDEN_STREAM);
+        let draw = MonteCarlo::new(nominal(), every_dispersion())
+            .unwrap()
+            .draw(SEED, 0);
+        for (drawn, golden) in [
+            (draw.drag_scale, GOLDEN_DRAG),
+            (draw.impulse_scale[0], GOLDEN_IMPULSE),
+        ] {
+            assert!((drawn - golden).abs() < 1e-14, "{drawn:?}");
         }
     }
 

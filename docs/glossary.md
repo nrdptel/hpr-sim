@@ -778,6 +778,10 @@ default parachute coefficient of 1.4 is on a different area, so the two can't be
 See [Recovery](physics/recovery.md#drag-area).
 
 
+## Normal distribution
+
+The bell-shaped spread of a quantity that is the sum of many small, independent effects, described by its mean and its [standard deviation](#standard-deviation). A standard normal number has mean 0 and standard deviation 1; hpr's [Monte Carlo](#monte-carlo) runs scatter each uncertain input by a standard deviation times such a number. Not to be confused with the [normal force](#normal-force). See [Monte Carlo dispersion](monte-carlo.md#what-each-dispersion-does).
+
 ## Normal force
 
 The sideways aerodynamic force on a rocket flying at an [angle of attack](#angle-of-attack), square
@@ -1017,7 +1021,7 @@ Writing a very small or very large number as a power of ten, the way programs pr
 
 ## Seed
 
-A number that starts a random-number generator. The same seed gives the same sequence of numbers, so a run that uses random numbers, such as [turbulence](#turbulence-dryden), repeats exactly on the same platform (operating system and processor). The program that runs it chooses the seed. On another platform each random draw can differ in its last binary digit, and over a whole flight such differences can grow. See [Turbulence](physics/turbulence.md#generator).
+A number that starts a random-number generator. The same seed gives the same sequence of numbers, so a run that uses random numbers, such as [turbulence](#turbulence-dryden) or a [Monte Carlo](#monte-carlo) run, repeats exactly on the same platform (operating system and processor). The program that runs it chooses the seed. On another platform each random draw can differ in its last binary digit, and over a whole flight such differences can grow. See [Turbulence](physics/turbulence.md#generator).
 
 ## Separation
 

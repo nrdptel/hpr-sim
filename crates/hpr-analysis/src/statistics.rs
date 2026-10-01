@@ -24,11 +24,29 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AnalysisError;
 
-/// The values a sample of runs gave, sorted, and how many runs were tried.
+/// The values a sample of runs gave, sorted, and how many runs were tried. It serializes as
+/// those two, and reads back through [`Distribution::new`]'s checks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "DistributionData")]
 pub struct Distribution {
     attempted: usize,
     sorted: Vec<f64>,
+}
+
+/// The serialized form of a [`Distribution`].
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DistributionData {
+    attempted: usize,
+    sorted: Vec<f64>,
+}
+
+impl TryFrom<DistributionData> for Distribution {
+    type Error = AnalysisError;
+
+    fn try_from(data: DistributionData) -> Result<Self, AnalysisError> {
+        Self::new(data.sorted, data.attempted)
+    }
 }
 
 /// The usual numbers of a [`Distribution`], for a report.
@@ -181,22 +199,30 @@ impl Distribution {
         Ok(Some(low + (h - below) * (above - low)))
     }
 
-    /// Bounds on the share of the runs tried whose value is at least `threshold` ([`Share`]).
-    /// With no runs tried, both bounds are zero.
-    pub fn share_at_least(&self, threshold: f64) -> Share {
+    /// Bounds on the share of the runs tried whose value is at least `threshold` ([`Share`]);
+    /// `None` with no runs tried, when there is no share to bound. An infinite threshold is
+    /// allowed.
+    ///
+    /// # Errors
+    ///
+    /// [`AnalysisError::Domain`] for a threshold that is not a number.
+    pub fn share_at_least(&self, threshold: f64) -> Result<Option<Share>, AnalysisError> {
+        if threshold.is_nan() {
+            return Err(AnalysisError::Domain {
+                what: "threshold of a share",
+                value: threshold,
+            });
+        }
         if self.attempted == 0 {
-            return Share {
-                low: 0.0,
-                high: 0.0,
-            };
+            return Ok(None);
         }
         let passed = self.sorted.len() - self.sorted.partition_point(|&x| x < threshold);
         // Cast: counts far below 2⁵³.
         let attempted = self.attempted as f64;
-        Share {
+        Ok(Some(Share {
             low: passed as f64 / attempted,
             high: (passed + self.missing()) as f64 / attempted,
-        }
+        }))
     }
 
     /// The usual numbers, for a report: [`Summary`].
@@ -254,14 +280,25 @@ mod tests {
     fn a_share_is_bounded_by_the_runs_with_no_value() {
         // Two of six runs gave nothing: at least 2/6 and at most 4/6 reached 3.
         let d = Distribution::new(vec![1.0, 2.0, 3.0, 4.0], 6).unwrap();
-        let share = d.share_at_least(3.0);
+        let share = d.share_at_least(3.0).unwrap().unwrap();
         assert_eq!((share.low, share.high), (2.0 / 6.0, 4.0 / 6.0));
-        let all = Distribution::new(vec![1.0, 2.0], 2)
-            .unwrap()
-            .share_at_least(1.0);
-        assert_eq!((all.low, all.high), (1.0, 1.0));
-        let none = Distribution::new(vec![], 0).unwrap().share_at_least(1.0);
-        assert_eq!((none.low, none.high), (0.0, 0.0));
+        let all = Distribution::new(vec![1.0, 2.0], 2).unwrap();
+        let share = all.share_at_least(1.0).unwrap().unwrap();
+        assert_eq!((share.low, share.high), (1.0, 1.0));
+        let share = all.share_at_least(f64::INFINITY).unwrap().unwrap();
+        assert_eq!((share.low, share.high), (0.0, 0.0));
+        let share = all.share_at_least(f64::NEG_INFINITY).unwrap().unwrap();
+        assert_eq!((share.low, share.high), (1.0, 1.0));
+        // No runs, no share; a threshold that isn't a number is refused.
+        let none = Distribution::new(vec![], 0).unwrap();
+        assert_eq!(none.share_at_least(1.0).unwrap(), None);
+        assert!(matches!(
+            all.share_at_least(f64::NAN),
+            Err(AnalysisError::Domain {
+                what: "threshold of a share",
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -274,6 +311,21 @@ mod tests {
         assert_eq!(one.mean(), Some(2.0));
         assert_eq!(one.standard_deviation(), None);
         assert_eq!(one.quantile(0.3).unwrap(), Some(2.0));
+    }
+
+    #[test]
+    fn a_distribution_reads_back_through_its_checks() {
+        let d = Distribution::new(vec![3.0, 1.0, 2.0], 4).unwrap();
+        let json = serde_json::to_string(&d).unwrap();
+        assert_eq!(json, r#"{"attempted":4,"sorted":[1.0,2.0,3.0]}"#);
+        assert_eq!(serde_json::from_str::<Distribution>(&json).unwrap(), d);
+        // Unsorted values are sorted on the way in; more values than runs are refused.
+        let unsorted: Distribution =
+            serde_json::from_str(r#"{"attempted":3,"sorted":[3.0,1.0,2.0]}"#).unwrap();
+        assert_eq!(unsorted.sorted(), &[1.0, 2.0, 3.0]);
+        let error = serde_json::from_str::<Distribution>(r#"{"attempted":1,"sorted":[3.0,1.0]}"#)
+            .unwrap_err();
+        assert!(error.to_string().contains("more than 1"), "{error}");
     }
 
     #[test]

@@ -8,3 +8,4 @@ landing distance (m)     662.4    660.3    208.9    329.3    670.5    996.5
 landing east (m)         662.4    626.1    209.6    274.9    635.5    957.7
 
 Reached 1,100 m: 65.5% of the flights
+Apogee with 5% less drag: +29 m; with 5% more: -27 m

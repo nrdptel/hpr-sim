@@ -650,10 +650,19 @@ mode = "fetched"
 
 [[file]]
 name = "nfpa-1125-2021-first-revisions"
-title = "NFPA 1125, Code for the Manufacture of Model Rocket and High Power Rocket Motors, 2021 edition: First Draft Report, First Revisions (FR-7, FR-8: §8.1.7 and §8.2.7)"
+title = "NFPA 1125, Code for the Manufacture of Model Rocket and High Power Rocket Motors, revision cycle A2021: First Draft Report, First Revisions (FR-7, FR-8: §8.1.7 and §8.2.7)"
 url = "https://docinfofiles.nfpa.org/files/AboutTheCodes/1125/1125_A2021_PYR_AAA_FD_FRStatements.pdf"
 sha256 = "7b271e35d7b0998792957d579d56f23488a3c8dbf49b77a7ccb2fbdd19f057b8"
 dest = "refs/papers/nfpa-1125-2021-first-revisions.pdf"
+license = "NFPA copyright"
+mode = "fetched"
+
+[[file]]
+name = "nfpa-1125-2019-public-inputs"
+title = "NFPA 1125, revision cycle A2021: First Draft Report, Public Input Responses (PI-4 and PI-5 quote the 2019 edition's §8.2.7 and §8.1.7)"
+url = "https://docinfofiles.nfpa.org/files/AboutTheCodes/1125/1125_A2021_PYR_AAA_FD_PIResponses.pdf"
+sha256 = "398489b37016ba749027e457760136e6b07a92f76bd723d6eb587229d56e7582"
+dest = "refs/papers/nfpa-1125-2019-public-inputs.pdf"
 license = "NFPA copyright"
 mode = "fetched"
 
