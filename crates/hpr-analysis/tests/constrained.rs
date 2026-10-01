@@ -35,7 +35,13 @@ fn ten() -> Vec<Variable> {
         .collect()
 }
 
-fn assert_minimum(name: &str, runs: &[Optimum], minimum: f64, point: &[f64]) {
+fn assert_minimum(
+    name: &str,
+    f: fn(&[f64]) -> Evaluation,
+    runs: &[Optimum],
+    minimum: f64,
+    point: &[f64],
+) {
     for (seed, run) in SEEDS.zip(runs) {
         assert_eq!(
             run.violation, 0.0,
@@ -59,11 +65,7 @@ fn assert_minimum(name: &str, runs: &[Optimum], minimum: f64, point: &[f64]) {
             "{name}, seed {seed}: {distance:.1e} from the minimum"
         );
         // Re-evaluated, the winner gives what the run reported.
-        let again = match name {
-            "sphere_above" => sphere_above(&run.point),
-            "tangent" => tangent(&run.point),
-            _ => g06(&run.point),
-        };
+        let again = f(&run.point);
         assert_eq!(again.value, run.value);
         assert!(again.is_feasible());
     }
@@ -73,13 +75,19 @@ fn assert_minimum(name: &str, runs: &[Optimum], minimum: f64, point: &[f64]) {
 fn sphere_above_reaches_its_minimum_on_the_constraint() {
     let mut point = vec![0.0; N];
     point[0] = 1.0;
-    assert_minimum("sphere_above", &runs(ten(), sphere_above), 1.0, &point);
+    assert_minimum(
+        "sphere_above",
+        sphere_above,
+        &runs(ten(), sphere_above),
+        1.0,
+        &point,
+    );
 }
 
 #[test]
 fn tangent_problem_reaches_its_minimum_on_a_slanted_constraint() {
     let point = vec![1.0; N];
-    assert_minimum("tangent", &runs(ten(), tangent), N as f64, &point);
+    assert_minimum("tangent", tangent, &runs(ten(), tangent), N as f64, &point);
 }
 
 #[test]
@@ -97,8 +105,8 @@ fn g06_reaches_the_circles_crossing() {
     let point = [G06_X0, g06_x1()];
     let minimum = g06(&point).value;
     // CEC 2006's published minimum, to the digits it gives.
-    assert!((minimum - -6961.813_875_580_15).abs() < 1e-6, "{minimum}");
-    assert_minimum("g06", &runs(variables, g06), minimum, &point);
+    assert!((minimum - -6_961.813_875_580_15).abs() < 1e-6, "{minimum}");
+    assert_minimum("g06", g06, &runs(variables, g06), minimum, &point);
 }
 
 /// The infeasible start: from x = 0, every candidate of the first generations breaks
@@ -110,5 +118,11 @@ fn a_run_started_outside_finds_the_feasible_side() {
         .collect();
     let mut point = vec![0.0; N];
     point[0] = 1.0;
-    assert_minimum("sphere_above", &runs(variables, sphere_above), 1.0, &point);
+    assert_minimum(
+        "sphere_above",
+        sphere_above,
+        &runs(variables, sphere_above),
+        1.0,
+        &point,
+    );
 }

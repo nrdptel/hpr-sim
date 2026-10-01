@@ -282,7 +282,10 @@ Candidates that break a limit are kept and ranked, not redrawn, so a run can clo
 answer that sits right on a limit, as most good designs do. Only a point that keeps every limit
 counts as reaching a target; the [`Optimum`] reports its `violation`, zero when it keeps them all.
 For a bound that the answer will sit on, leave the variable unbounded on that side and write the
-bound as a limit.
+bound as a limit; clamp the value you fly (no negative ballast), and work the limit out from the
+unclamped one. A design that can't be flown at all returns `Evaluation::failed()`, which ranks
+behind every other, and a run that never keeps every limit says so: its `violation` is above
+zero.
 
 The tests hold this to three problems whose answers on their limits are known exactly:
 

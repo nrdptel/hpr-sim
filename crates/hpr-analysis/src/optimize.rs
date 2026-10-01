@@ -196,12 +196,18 @@ impl Variable {
 /// two that don't, the smaller violation wins (here ties in violation go to the smaller value).
 /// No penalty weight is needed, as values and violations are never compared with each other.
 /// The rules rank, and CMA-ES uses only ranks.
+///
+/// A candidate the model can't evaluate (a flight that fails) is `value` and `violation` both
+/// `+∞`: it ranks behind every other. Both serialize `+∞` as none, a JSON `null`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Evaluation {
-    /// The model's value: `+∞` for a candidate it can't evaluate.
+    /// The model's value.
+    #[serde(with = "cmaes::infinity_as_none")]
     pub value: f64,
     /// The total violation, `Σ max(0, gⱼ)` over constraints written `gⱼ ≤ 0`: zero if the
     /// candidate keeps them all.
+    #[serde(with = "cmaes::infinity_as_none")]
     pub violation: f64,
 }
 
@@ -214,16 +220,25 @@ impl Evaluation {
         }
     }
 
+    /// A candidate the model can't evaluate: value and violation both `+∞`, behind every other.
+    pub const fn failed() -> Self {
+        Self {
+            value: f64::INFINITY,
+            violation: f64::INFINITY,
+        }
+    }
+
     /// A value under constraints `gⱼ(x) ≤ 0`, given as the numbers `gⱼ`: the violation is
     /// `Σ max(0, gⱼ)`, Deb's (2000) overall violation. Deb divides each constraint by a constant
     /// so that they count alike (a margin in calibers and a speed in m/s, say); do the same before
     /// passing them in. A NaN `gⱼ` gives a NaN violation, which [`cmaes::Run::tell_constrained`]
     /// refuses.
     pub fn constrained(value: f64, constraints: &[f64]) -> Self {
+        // Folded from +0: an empty f64 sum is −0, which `total_cmp` would rank first.
         let violation = constraints
             .iter()
             .map(|&g| if g.is_nan() || g > 0.0 { g } else { 0.0 })
-            .sum();
+            .fold(0.0, |total, g| total + g);
         Self { value, violation }
     }
 
@@ -233,11 +248,22 @@ impl Evaluation {
     }
 
     /// Deb's rules as an ordering: [`Less`](std::cmp::Ordering::Less) if `self` ranks ahead of
-    /// `other`. Violation first, then value; both by [`f64::total_cmp`].
+    /// `other`. Violation first, with `−0` equal to `0`, then value by [`f64::total_cmp`]
+    /// (CMA-ES's own ranking of plain values).
     pub fn rank(&self, other: &Self) -> std::cmp::Ordering {
-        self.violation
-            .total_cmp(&other.violation)
-            .then(self.value.total_cmp(&other.value))
+        let violation = if self.violation == other.violation {
+            std::cmp::Ordering::Equal
+        } else {
+            self.violation.total_cmp(&other.violation)
+        };
+        violation.then(self.value.total_cmp(&other.value))
+    }
+
+    /// Whether `self` is strictly better than `other` by Deb's rules, comparing as `<` does, so
+    /// `−0` and `0` tie.
+    pub(crate) fn beats(&self, other: &Self) -> bool {
+        self.violation < other.violation
+            || (self.violation == other.violation && self.value < other.value)
     }
 }
 
@@ -299,6 +325,23 @@ mod tests {
         // Two feasible: the smaller value.
         assert_eq!(e.rank(&Evaluation::feasible(4.0)), Greater);
         assert!(Evaluation::constrained(0.0, &[f64::NAN]).violation.is_nan());
+        // No constraints is +0, not the −0 of an empty sum, so values decide.
+        let none = Evaluation::constrained(10.0, &[]);
+        assert!(none.violation.is_sign_positive());
+        assert_eq!(none.rank(&Evaluation::feasible(1.0)), Greater);
+        let negative_zero = Evaluation {
+            value: 10.0,
+            violation: -0.0,
+        };
+        assert_eq!(negative_zero.rank(&Evaluation::feasible(1.0)), Greater);
+        // A failure ranks behind everything, and reads back from JSON.
+        assert_eq!(broken.rank(&Evaluation::failed()), Less);
+        let json = serde_json::to_string(&Evaluation::failed()).unwrap();
+        assert_eq!(json, r#"{"value":null,"violation":null}"#);
+        assert_eq!(
+            serde_json::from_str::<Evaluation>(&json).unwrap(),
+            Evaluation::failed()
+        );
     }
 
     #[test]

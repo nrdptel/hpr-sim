@@ -78,7 +78,8 @@
 //!
 //! If every candidate so far has given `+∞` (every flight failed, say), the run goes on, ranking
 //! them in their order, and its [`Optimum`]'s value is `+∞`. Check [`Optimum::value`] before
-//! using the point.
+//! using the point; under constraints, check [`Optimum::violation`] too, which is above zero if
+//! no candidate kept them all.
 
 use serde::{Deserialize, Serialize};
 
@@ -170,8 +171,9 @@ pub struct Optimum {
     #[serde(with = "infinity_as_none")]
     pub value: f64,
     /// Its constraint violation ([`Evaluation::violation`]): zero if it keeps every constraint,
-    /// and always zero for a run told plain values.
-    #[serde(default)]
+    /// and always zero for a run told plain values; `+∞` if every candidate failed (serialized as
+    /// none).
+    #[serde(default, with = "infinity_as_none")]
     pub violation: f64,
     /// Which evaluation found it, counted from 1.
     pub evaluation: usize,
@@ -192,15 +194,15 @@ pub struct Optimum {
 
 /// The serialized form of a number that is finite or `+∞`, the only infinity an [`Optimum`]
 /// holds: an option, none for `+∞`, as JSON has no infinity.
-mod infinity_as_none {
+pub(crate) mod infinity_as_none {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub(super) fn serialize<S: Serializer>(x: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+    pub(crate) fn serialize<S: Serializer>(x: &f64, serializer: S) -> Result<S::Ok, S::Error> {
         let value = (*x != f64::INFINITY).then_some(*x);
         value.serialize(serializer)
     }
 
-    pub(super) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
         Ok(Option::<f64>::deserialize(deserializer)?.unwrap_or(f64::INFINITY))
     }
 }
@@ -345,6 +347,8 @@ impl Cmaes {
 
     /// Minimizes `model` under constraints from `seed`, evaluating each candidate in turn: the
     /// model gives each candidate's [`Evaluation`], and [`Run::tell_constrained`] ranks them.
+    /// If no candidate keeps every constraint, the optimum's [`violation`](Optimum::violation)
+    /// is above zero: check it before using the point.
     ///
     /// # Errors
     ///
@@ -592,27 +596,27 @@ impl Run {
     ///
     /// # Errors
     ///
-    /// [`Run::tell`]'s, and [`AnalysisError::Domain`] for a violation that is negative or not
-    /// finite.
+    /// [`Run::tell`]'s, and [`AnalysisError::Domain`] for a violation that is negative or NaN
+    /// (`+∞` is a failed candidate's, [`Evaluation::failed`]).
     pub fn tell_constrained(
         &mut self,
         evaluations: &[Evaluation],
     ) -> Result<Option<Optimum>, AnalysisError> {
-        if let Some(e) = evaluations
-            .iter()
-            .find(|e| !(e.violation.is_finite() && e.violation >= 0.0))
-        {
-            return Err(AnalysisError::Domain {
-                what: "constraint violation (must be finite and not negative)",
-                value: e.violation,
-            });
-        }
         let values: Vec<f64> = evaluations.iter().map(|e| e.value).collect();
         if values.len() != self.candidates.len() || self.candidates.is_empty() {
             return Err(AnalysisError::Length {
                 what: "values, against the generation's candidates",
                 length: values.len(),
                 expected: self.candidates.len(),
+            });
+        }
+        if let Some(e) = evaluations
+            .iter()
+            .find(|e| e.violation.is_nan() || e.violation < 0.0)
+        {
+            return Err(AnalysisError::Domain {
+                what: "constraint violation (must not be negative or NaN)",
+                value: e.violation,
             });
         }
         if let Some((k, &value)) = values
@@ -632,7 +636,7 @@ impl Run {
         if self
             .best
             .as_ref()
-            .is_none_or(|(_, e, _)| evaluations[first].rank(e).is_lt())
+            .is_none_or(|(_, e, _)| evaluations[first].beats(e))
         {
             self.best = Some((
                 self.candidates[first].clone(),
@@ -856,7 +860,9 @@ mod tests {
     use crate::optimize::benchmark::constrained::sphere_above;
     use crate::optimize::benchmark::sphere;
 
-    /// Told violations of zero, a constrained run is the plain one, bit for bit.
+    /// Told violations of zero, a constrained run is the plain one, bit for bit. (`tell` goes
+    /// through `tell_constrained`; `tests/optimize.rs` pins that path to pycma and to a dense
+    /// recomputation.)
     #[test]
     fn zero_violations_change_nothing() {
         let cmaes = Cmaes::new(variables(5, 1.0, 0.5)).unwrap();
@@ -870,7 +876,7 @@ mod tests {
     #[test]
     fn violations_must_be_finite_and_not_negative() {
         let cmaes = Cmaes::new(variables(2, 1.0, 0.5)).unwrap();
-        for bad in [-1e-300, f64::NAN, f64::INFINITY] {
+        for bad in [-1e-300, f64::NAN, f64::NEG_INFINITY] {
             let mut run = cmaes.start(1).unwrap();
             let told: Vec<Evaluation> = run
                 .candidates()

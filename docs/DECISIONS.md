@@ -11363,8 +11363,8 @@ needed by the rocket problem whichever way the discrete choices go.
    in 10 variables, and CEC 2006's g06 (J. J. Liang et al., 2006), whose minimum is the crossing
    of its two circles, `x₀ = 14.095` exactly; the test also checks the published −6961.81387558015.
    Every one of 20 seeds reaches the minimum to 10⁻¹⁰ relative and within 10⁻⁴ of the point,
-   also from an infeasible start. Measured on seeds 0 to 19: errors about 10⁻¹², median
-   evaluations 1,890 (g06) to 11,550 (tangent).
+   also from an infeasible start. A violation is folded from `+0` (an empty `f64` sum is `−0`,
+   which `total_cmp` ranks first), and a failed candidate is `Evaluation::failed()`, both `+∞`.
 
 **Consequences.** A user scales each constraint (Deb normalizes them) so they count alike; the
 guide says so. Not done: equality constraints (write `|h| − ε ≤ 0`), the adaptive penalty or

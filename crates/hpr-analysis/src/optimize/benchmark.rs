@@ -13,6 +13,8 @@
 //! | [`ellipsoid`] | coefficients from 1 to 10⁶, so the distribution must grow 1,000 times longer one way than the other | 0 at `x = 0` |
 //! | [`rotated_ellipsoid`] | the same along axes that aren't the variables' | 0 at `x = 0` |
 //! | [`rosenbrock`] | following a long, curved valley | 0 at `x = 1` |
+//!
+//! [`constrained`] holds three problems whose minima lie on their constraints' edges.
 
 /// The ellipsoid's condition number: the ratio of its largest curvature to its smallest.
 pub const ELLIPSOID_CONDITION: f64 = 1e6;
