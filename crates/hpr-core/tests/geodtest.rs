@@ -134,7 +134,7 @@ struct Errors {
     inverse_azimuth_m: f64,
     /// The largest `|m₁₂|` in the kind.
     largest_m12_m: f64,
-    /// Mirror lines, and how many of them the inverse answered with the swapped pair.
+    /// Mirror lines, and on how many the inverse's azimuths are nearer the swapped pair.
     mirror_lines: usize,
     mirror_swapped: usize,
     /// Direct: the end point's distance from the reference's.
@@ -288,7 +288,7 @@ fn every_500th_line_is_within_karneys_bound() {
     }
 }
 
-/// The 21 mirror lines, committed: either pair of azimuths, and 4 answered with the swapped pair.
+/// The 21 mirror lines, committed: either pair of azimuths, 4 nearer the swapped pair.
 #[test]
 fn the_mirror_lines_are_within_karneys_bound() {
     let cases = parse(include_str!("fixtures/geodtest-mirror-lines.dat"), |_| {
@@ -303,8 +303,8 @@ fn the_mirror_lines_are_within_karneys_bound() {
 }
 
 /// The build that wrote the committed table. The cells are a few ulps of Earth-centred
-/// coordinates and rest on the platform's `sin` and `cos`: a release build or another platform
-/// moves some by a few nanometres, so there the test holds only the 15 nm bound.
+/// coordinates and rest on the platform's `sin` and `cos`: a release build on macOS moves three by
+/// up to 1.83 nm, and other platforms are unmeasured, so there the test holds only the 15 nm bound.
 const REPORT_BUILD: &str = "a debug build on macos aarch64";
 
 fn this_build() -> String {

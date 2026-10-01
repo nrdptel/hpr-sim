@@ -15,8 +15,8 @@
   one of the 500,000 lines of Karney's published test set is matched within 15 nanometres (nm,
   billionths of a metre): distance within 11.18 nm, the far point within 14.02 nm, and the
   bearings within 15 nm of sideways miss ([below](#distance-and-bearing-geodesics)). CI checks
-  every 500th line and the 21 mirror lines; the whole set is checked on macOS where it has been
-  downloaded.
+  every 500th line and the 21 mirror lines; the whole set is checked where it has been
+  downloaded, and has been measured on macOS.
 - **What it leaves out:** height above sea level, which needs the geoid, up to about 100 m from
   the ellipsoid ([Frames](frames.md#earth-centred-earth-fixed-ecef)). hpr has no geoid model; a
   flight takes that difference at the site as an input. Nothing in a flight uses distance and
@@ -199,7 +199,7 @@ holds the 15 nm bound without comparing the table.
 **What it leaves out.** Heights: two places at 3,000 m are as far apart as the same places at
 sea level. Only WGS 84 is measured; on any other ellipsoid up to a flattening of 1/150, the
 accuracy is Karney's claim, not something hpr has measured. A distance of many trips round the
-Earth carries its own rounding, one step of `f64` in the distance (15 nm past 67,109 km). Nothing
+Earth carries its own rounding, one step of `f64` in the distance (at least 15 nm past 67,109 km). Nothing
 in a flight uses geodesics yet, and `hpr` has no command for them.
 
 [Karney2013]: https://arxiv.org/abs/1109.4448

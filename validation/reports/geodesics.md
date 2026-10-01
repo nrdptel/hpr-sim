@@ -24,7 +24,7 @@ Karney's 15 nm (*Algorithms for geodesics*, 2013, §7):
 The kinds start at lines 1, 100,001, 150,001 and every 50,000 after. The table is written by a
 debug build on macOS aarch64 (`crates/hpr-core/tests/geodtest.rs` with `HPR_WRITE_GEODESICS=1`,
 where `refs/sources/geodtest/GeodTest.dat` is fetched) and checked by the same build; other builds
-move some cells by a few nanometres and are held to the 15 nm bound only. CI, without `refs/`,
+are held to the 15 nm bound only (a release build on macOS moves three cells by up to 1.83 nm). CI, without `refs/`,
 checks every 500th line and the 21 mirror lines.
 
 <!-- table: written by crates/hpr-core/tests/geodtest.rs -->

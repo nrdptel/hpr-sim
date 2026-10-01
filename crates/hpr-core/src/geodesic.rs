@@ -153,7 +153,7 @@ impl Ellipsoid {
     /// (clockwise from north), with the azimuth there (Karney 2013 §2). `from`'s height is
     /// ignored. A negative distance runs backwards along the same geodesic. Karney's accuracy is
     /// shown up to half a meridian (20,004 km); a distance of many circuits also carries its own
-    /// rounding, one ulp of `distance_m` (15 nm past 2²⁶ m, 67,109 km).
+    /// rounding, one ulp of `distance_m` (at least 15 nm past 2²⁶ m, 67,109 km).
     ///
     /// ```
     /// use hpr_core::geodesy::{Ellipsoid, Geodetic};
