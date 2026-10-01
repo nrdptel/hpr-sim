@@ -5,9 +5,10 @@
 //! [`ElevationRaster::parse`] reads the tags; [`ElevationRaster::height_at`] finds the pixel a
 //! latitude and longitude fall in and decodes only the tile or strip that holds it, so a lookup in
 //! a large file costs one tile's memory. The TIFF itself (codecs, predictors, tiles, strips, byte
-//! order, BigTIFF) is decoded by image-rs's [`tiff`] crate; this module reads the geographic tags
-//! as the OGC GeoTIFF Standard 1.1 (OGC 19-008r4, 2019) defines them, and places points in pixels
-//! the way GDAL does, so a height read here is the value GDAL's readers return for the same point.
+//! order, BigTIFF) is decoded by image-rs's `tiff` crate ([docs.rs][tiff]); this module reads the
+//! geographic tags as the OGC GeoTIFF Standard 1.1 (OGC 19-008r4, 2019) defines them, and places
+//! points in pixels the way GDAL does, so a height read here is the value GDAL's readers return
+//! for the same point.
 //!
 //! **Where a pixel lies.** The file ties raster coordinates to longitude and latitude with a
 //! tiepoint `(I, J) ↦ (X, Y)` and a pixel size `(S_x, S_y)` (`ModelTiepointTag`,
@@ -43,10 +44,12 @@
 //! NaN reads as no height.
 //!
 //! **Guide:** [A launch site's elevation][guide] walks through an example and says how the reader
-//! is checked: against GDAL's reading, through rasterio, of five files and a whole USGS tile
-//! (ADR-128).
+//! is checked: against GDAL's reading, through rasterio, of five files and a whole USGS tile.
+//! The choices are in [ADR-128, a site's height from a user's GeoTIFF][adr].
 //!
 //! [guide]: https://nrdptel.github.io/hpr-sim/elevation.html#from-an-elevation-file-of-your-own
+//! [adr]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30
+//! [tiff]: https://docs.rs/tiff/0.11.3/tiff/
 
 use std::io::Cursor;
 
