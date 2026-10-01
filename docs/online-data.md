@@ -3,11 +3,12 @@
 This page covers `hpr-net`, the one crate that uses the network, and the cache that makes its
 answers work offline. It is for anyone who will pull weather, elevation or motor data into a
 flight. **Today the crate holds the cache, the offline rule and an HTTP client**
-([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **and four data sources: Open-Meteo's
+([M5.1, the online layer](decisions-and-roadmap.md#m5-1)), **and five data sources: Open-Meteo's
 weather** ([Launch-day weather](weather.md)), **weather-balloon soundings from the University
 of Wyoming** ([Weather-balloon soundings](soundings.md)), **NOAA's GFS and RAP forecasts**
-([NOAA forecasts: GFS and RAP](nomads.md)) **and Open-Meteo's ground elevation**
-([A launch site's elevation](elevation.md)). Its tests replay a small hand-written
+([NOAA forecasts: GFS and RAP](nomads.md)), **Open-Meteo's ground elevation**
+([A launch site's elevation](elevation.md)) **and motor.fusionspace.co's motor stock and prices**
+([Motor stock and prices](motor-stock.md)). Its tests replay a small hand-written
 sample response and answers recorded from each, from a folder and from a test web server on the
 machine running the tests, never the live network. Those tests speak plain HTTP only: encrypted
 HTTPS was checked by hand, against Open-Meteo and then through the command line's
@@ -123,7 +124,9 @@ replay a hand-written sample from a folder instead of using the network:
   forecasts refuse, and don't save, a file for another run or hour than the one asked for
   ([NOAA forecasts: GFS and RAP](nomads.md#how-it-is-checked)). The elevation source refuses an
   answer with no heights, and a lookup made once works offline
-  ([A launch site's elevation](elevation.md#how-it-is-checked)).
+  ([A launch site's elevation](elevation.md#how-it-is-checked)). The motor-stock source refuses,
+  and doesn't save, a motor's page that holds another motor
+  ([Motor stock and prices](motor-stock.md#how-it-is-checked)).
 
 The cache's own tests check that a saved body reads back, and that another URL's entry in the same
 file reads as a miss. They also check that the hash that names each file (FNV-1a, a standard 64-bit

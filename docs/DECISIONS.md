@@ -134,6 +134,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-126 | M5.3b: Open-Meteo's elevation in `hpr_net::elevation`, up to 100 places a request, coordinates to 5 decimals in the URL, a year's TTL, heights refused outside −1,000 to 9,000 m, a surface model above the EGM2008 geoid with `N` left to the caller; no command yet | accepted |
 | ADR-127 | M5.3c split c1, c2; geodesics in `hpr_core::geodesic` through `geographiclib-rs`, flattening past 1/150 refused; Karney's 500,000-line test set within his 15 nm on five measures, either azimuth pair on its 21 mirror lines | accepted |
 | ADR-128 | M5.3c2: a user's GeoTIFF in `hpr_io::geotiff` over the `tiff` crate; geographic CRSs within a few metres of WGS 84 only, projections and far datums refused; the containing pixel placed as GDAL places it; GDAL's scale and offset, units the file states, else metres; held to rasterio 1.5.2 on seven fixtures and a whole USGS tile | accepted |
+| ADR-129 | M5.4 split a to c; M5.4a: motor.fusionspace.co's five files in `hpr_net::motor_finder` through the cache, an hour's TTL, its structural rules refused and its derived ones pinned on the recording; eight answers of one build committed as fixtures; the credit with the site's caution on every answer | accepted |
 
 ---
 
@@ -10558,3 +10559,76 @@ fourth and fifth, gaps of the same kinds (metadata quirks, an unlisted vertical 
 GDAL's own `S_z` 1 beside another metadata scale, vertical keys GDAL drops), answered by failing
 closed. All are fixed and tested
 above.
+
+## ADR-129: M5.4 split, and M5.4a, the motor finder's API through the cache (2026-10-01)
+
+**Context.** M5.4 asks for a motor.fusionspace.co client (`meta`, `motors`, `in-stock`,
+`vendors` and per-motor endpoints) joined with ThrustCurve's curves, an offline snapshot, and
+`hpr motors search --in-stock --class L --max-price 150`; done when recorded-fixture tests pass,
+the designation to ThrustCurve id mapping covers 95% of in-stock motors with a report of the
+misses, and attribution is displayed as the API asks. That is three pieces of work: a client, a
+second client and a join, and a command. The site's API (documented in the public MIT repository
+`nrdptel/Hobby-Rocket-Motor-Finder`, `docs/api.md`) is static JSON on a CDN, rebuilt about
+hourly, with no key, rate limit or query parameters; `cache-control: public, max-age=600`. Every
+file carries `schema_version` 1 and `generated_at`; a breaking change ships under `/api/v2/`.
+One motor's file is `motors/{aerotech|cesaroni|loki}/{designation}.json`, a `/` in the
+designation written `~`; an unknown one is a 404 HTML page. Its terms: "Free to use; attribution
+to motor.fusionspace.co is appreciated. The data is aggregated from public vendor listings and
+ThrustCurve; it's provided as-is, with no warranty — verify stock and price on the vendor's own
+page before relying on it." Motors carry the finder's own `id`, not ThrustCurve's, but its
+designations are "verbatim as ThrustCurve spells them": on 2026-10-01 all 598 listed motors
+match exactly one ThrustCurve record on (manufacturer, designation), as all 598 did on
+2026-09-17's snapshot.
+
+**Decision.**
+
+1. **Split a to c.** M5.4a, the finder's five files through the cache; M5.4b, ThrustCurve's
+   search and a motor's curve through the cache, and the join with its report of misses; M5.4c,
+   `hpr motors search`, from the network, a recorded snapshot or the cache, showing the credit.
+   The parent's done-when is unchanged and met by the three.
+2. **`hpr_net::motor_finder`,** shaped as the other sources: `Endpoint` builds each URL; pure
+   parsers `parse_meta`, `parse_motors`, `parse_in_stock`, `parse_vendors` and `parse_motor`; and
+   `fetch_*` through `Client::fetch_checked`, so an answer that doesn't parse is never cached. The
+   types mirror the API's JSON field for field (prices `u64` cents, impulse and thrust `f64`, the
+   listing status, motor type and hazmat as enums), so a value read is the answer's and writes
+   back to it. Unknown fields are ignored (the API may add some under v1); an unknown enum value
+   is refused, and online a stale good copy is served in its place.
+3. **Refused: the structural rules; pinned: the derived ones.** The parser refuses another schema
+   version, a build time that isn't UTC ISO 8601, a list whose `count` disagrees, an impulse
+   class that isn't one capital letter, a diameter not above zero, a negative impulse, thrust or
+   burn time, a `listing_count` other than the listings', a cheapest offer on a motor out of stock
+   or none on one in stock, a pack of zero, a unit price over its sticker price, a motor out of
+   stock in `in-stock.json`, and a page holding another motor than asked. The rules the site
+   derives (the unit price is the sticker over the pack, rounded half up; the cheapest offer is
+   the lowest-priced in-stock listing; in stock exactly when a listing is; distinct-vendor counts;
+   each motor's `path`) are tested on the recording, not enforced: a change in how the site
+   computes them would otherwise refuse the whole catalogue.
+4. **A manufacturer and designation.** `Endpoint::motor` takes the API's three manufacturers by
+   name or slug, any case, and a designation of ASCII letters, digits, `-`, `_`, `.` and `/` (the
+   characters ThrustCurve's designations use), not empty and not all dots, so no request leaves
+   the API's `motors/` folder; anything else is refused before the client is asked.
+5. **An hour's TTL,** the site's rebuild interval; offline, or with the site down, the cached copy
+   is served stale, as every source does (ADR-117).
+6. **The credit.** `ATTRIBUTION` names motor.fusionspace.co, its two sources and its caution to
+   check the vendor's page; it is on every `Fetched`, and the guide page and the example print
+   it first. The API asks for credit but says nothing on where; M5.4c will print it with every
+   listing, in text and JSON.
+7. **Fixtures.** Eight answers of one build (2026-10-01 07:07:29 UTC) are committed under
+   `crates/hpr-net/tests/fixtures/replay/`: the four lists (`motors.json` 1.6 MB, `in-stock.json`
+   0.96 MB) and four motors' pages, one per manufacturer and one with a `/` (`F27R~L.json`,
+   stored as `F27R_L` for file systems). The site is Neer's own, its terms say free to use, and
+   its listings are public vendor pages; the motor figures in them are ThrustCurve's published
+   values, which the bundled catalogue already copies with attribution (ADR-005). Recorded under
+   "Needs Neer" as no action if fine.
+
+**Consequences.** M5.4a is met: `tests/motor_finder.rs` reads each of the eight answers, writes it
+back and finds exactly the recording's keys and values; reads it again from the cache without a
+fetch, and offline, through a transport that fails if called, fresh for the hour and stale after;
+and finds `ATTRIBUTION` on every answer. The files agree with each other (`in-stock.json` is
+`motors.json`'s 282 motors in stock, value for value; `meta.json` counts 598, 282 and 12), each
+refusal above is tested by a one-field change to a recording, and the derived rules hold on all
+598 motors and 3,685 listings. On that build, 20 L motors were in stock and none sold for $150
+or less a motor (the cheapest, $260.99), so M5.4c's example command lists nothing on the
+recording; its test will need a price that does. The join (M5.4b) starts from the exact match
+above, with ThrustCurve's whole `search.json` (1,156 motors, 0.93 MB, its terms unstated) kept
+under `refs/` unless a smaller recorded answer can carry the test.
