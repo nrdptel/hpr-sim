@@ -28,9 +28,9 @@
 //!
 //! Variables are continuous. Discrete choices (a motor, a catalogue part), constraints other than
 //! bounds, several objectives at once, Bayesian optimization and optimizing a Monte Carlo run's
-//! statistics are later increments of the [roadmap's M6.2][roadmap].
+//! statistics are later increments of [M6.2, the optimization milestone][roadmap].
 //!
-//! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
+//! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 
 pub mod benchmark;
 pub mod cmaes;

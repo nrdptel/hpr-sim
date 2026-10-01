@@ -10,7 +10,7 @@
 //! | Function | What it tests | Minimum |
 //! |---|---|---|
 //! | [`sphere`] | the step size alone | 0 at `x = 0` |
-//! | [`ellipsoid`] | learning scales that differ by 1,000 between the first variable and the last | 0 at `x = 0` |
+//! | [`ellipsoid`] | coefficients from 1 to 10⁶, so the distribution must grow 1,000 times longer one way than the other | 0 at `x = 0` |
 //! | [`rotated_ellipsoid`] | the same along axes that aren't the variables' | 0 at `x = 0` |
 //! | [`rosenbrock`] | following a long, curved valley | 0 at `x = 1` |
 
@@ -58,8 +58,8 @@ pub fn rotated_ellipsoid(x: &[f64]) -> f64 {
 }
 
 /// Rosenbrock's function, `f(x) = Σ [100 (xᵢ² − xᵢ₊₁)² + (1 − xᵢ)²]` for `i = 0 … n − 2`. Its
-/// global minimum is 0 at `x = 1`. "For higher dimension, even [it] has a local minimum near
-/// y = (−1, 1, …, 1)ᵀ" (N. Hansen and A. Ostermeier, *Evolutionary Computation* 9(2), 159–195,
+/// global minimum is 0 at `x = 1`. "For higher dimension, even function 8 f_Rosen has a local
+/// minimum near y = (−1, 1, …, 1)ᵀ" (N. Hansen and A. Ostermeier, *Evolutionary Computation* 9(2), 159–195,
 /// 2001, <https://doi.org/10.1162/106365601750190398>, footnote 18), and CMA-ES sometimes misses
 /// the global one: in 1 to 3 of 20 runs at 4 to 16 variables in S. Kern, N. Hansen and
 /// P. Koumoutsakos, "Local meta-models for optimization using evolution strategies", *PPSN IX*

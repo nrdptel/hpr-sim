@@ -12,15 +12,19 @@ ballast and body length that send a rocket to 3,048 m. It needs some Rust.
 > reference implementation by its author. On a rocket, its answer is only as good as hpr-sim's
 > flight models, which are not yet validated against real flights ([Accuracy](accuracy.md)).
 >
-> - **Tested:** on four standard test functions of ten variables, every run from 20 seeds reaches
->   the known minimum to within 10⁻¹⁰, except 3 of 20 on Rosenbrock's function, which end in its
->   known local minimum. The number of evaluations each run takes is within 5% of pycma's, the
->   author's own Python implementation, run from the same starting points. A run is repeated bit
->   for bit from its [seed](glossary.md#seed)
+> - **Tested:** four standard test functions of ten variables are run from 20 seeds each. Every
+>   run reaches a value of 10⁻¹⁰ or less, which puts its best point within 10⁻⁵ of the known
+>   minimum (10⁻⁴ for Rosenbrock's function). The exception is 3 of the 20 Rosenbrock runs, which
+>   end in that function's known local minimum instead. An *evaluation* is one call of your model:
+>   here, one flight. Over the 20 seeds, the median number of evaluations is within 25% of
+>   pycma's, the method's author's own Python implementation run from the same starts. That 25% is
+>   the test's bound; measured, they are within 5%. Every generation's update is also recomputed
+>   by a separate implementation of the published formulas, and agrees to rounding
 >   ([`tests/optimize.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/optimize.rs)).
+>   A run is repeated bit for bit from its [seed](glossary.md#seed).
 > - **Checked by re-flying:** the rocket design the example finds is flown again from scratch,
->   and again with the flight's numerical integration 100 times stricter. Both land within 0.1 m
->   of the 3,048 m target.
+>   and again with the flight's numerical integration 100 times stricter
+>   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m.
 > - **Left out, for now:** discrete choices (which motor, which catalogue part), limits other than
 >   each variable's range (a minimum stability margin, say), several goals at once, and optimizing
 >   a [Monte Carlo](glossary.md#monte-carlo) run's statistics. They are the next steps of
@@ -62,17 +66,21 @@ another, or on a combination of them, the cloud stretches to match. No derivativ
 which suits flights: their outputs wobble slightly in the last digits as the integrator's steps
 change, which would spoil a slope.
 
-The formulas and default settings are the tutorial's (Appendix A and Table 1). There is one
-difference: like the tutorial's own code, hpr-sim gives the worse half of each generation no
-weight. The newer *active* variant pushes the cloud away from them.
+The formulas and default settings are the tutorial's (Appendix A and Table 1). Table 1 also gives
+the worse half of each generation negative weights, which push the cloud away from them: the
+*active* variant. hpr-sim gives them zero weight, as the tutorial's own code does.
+
+The cloud is shaped in each variable divided by its step, so variables in metres and in
+kilograms start on an equal footing, as the tutorial advises.
 [`hpr_analysis::optimize::cmaes`](api/hpr_analysis/optimize/cmaes/index.html) lists every equation.
 
 ### Bounds
 
 A sampled design outside a variable's bounds is thrown away and drawn again, the tutorial's
 simplest way of handling bounds. It works well while the answer lies inside the range. If it
-lies on a bound, the run slows down near it. If no design of a generation falls inside the range
-in 1,000 tries, the run stops and says so.
+lies on a bound, the run slows down near it. If any one design of a generation is still outside
+after 1,000 tries, the run stops and says so. With many variables near their bounds this comes
+soon: each such variable halves the chance that a draw falls inside.
 
 ### When a run stops
 
@@ -82,13 +90,16 @@ A run stops at the first of these ([`Stop`]):
 |---|---|
 | `Target` | a value at or below the target you set: a miss small enough |
 | `Evaluations` | the number of evaluations you allowed is used up (10,000 by default) |
-| `TolX` | the cloud has shrunk below a tolerance in every variable: the run has converged |
-| `TolFun` | the values have stopped changing by more than a tolerance |
-| `Condition` | the cloud is 10⁷ times longer than it is wide, too thin to keep accurate |
-| `Bounds` | no design of a generation fell inside the bounds |
+| `TolX` | the cloud has shrunk below 10⁻¹² of each variable's step: the run has converged |
+| `TolFun` | the values have stopped changing by more than 10⁻¹², in your model's units |
+| `Condition` | the cloud is 10⁷ times longer than it is wide, too thin to keep accurate, or its numbers have overflowed |
+| `Bounds` | a design of a generation couldn't be drawn inside the bounds |
+
+Both tolerances can be changed or turned off (`with_tolerance_x`, `with_tolerance_value`).
 
 The result ([`Optimum`]) gives the best design found, its value, how many evaluations the run made,
-and why it stopped.
+and why it stopped. If every design so far failed (your model returned infinity for each), the
+value is infinite: check it before using the design.
 
 ## Checked against
 
@@ -99,12 +110,12 @@ Four test functions from CMA-ES's authors (N. Hansen, S. D. Müller and P. Koumo
 | Function | What it tests | Minimum |
 |---|---|---|
 | sphere, `Σ xᵢ²` | the step size alone | 0 at `x = 0` |
-| ellipsoid | stretching the cloud: one variable matters a million times more than another | 0 at `x = 0` |
+| ellipsoid | stretching the cloud: coefficients from 1 to 10⁶, so the cloud must grow 1,000 times longer one way than the other | 0 at `x = 0` |
 | rotated ellipsoid | the same, tilted so that no single variable lines up with it | 0 at `x = 0` |
 | Rosenbrock's function | following a long, curved valley | 0 at `x = 1` |
 
-Each run starts with steps of 0.5 and goes until the value is 10⁻¹⁰ or less, the stopping value
-of the 2003 paper. The tests in
+Each run starts with every variable at 1 (at 0 for Rosenbrock's function) and steps of 0.5, and
+goes until the value is 10⁻¹⁰ or less, the stopping value of the 2003 paper. The tests in
 [`tests/optimize.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/optimize.rs)
 run each function from 20 seeds and check:
 
@@ -113,7 +124,9 @@ run each function from 20 seeds and check:
 - 17 of 20 Rosenbrock runs reach the minimum at `x = 1`. The other 3 end in the function's local
   minimum near `(−1, 1, …, 1)`. The test requires at least 17. CMA-ES's authors note that local
   minimum, and report 1 to 3 runs of 20 missing the global one at 4 to 16 variables (Kern, Hansen
-  and Koumoutsakos, 2006). pycma ends in the local minimum in 1 of 20.
+  and Koumoutsakos, 2006). pycma ends in the local minimum in 1 of 20. Measured once over seeds
+  1 to 300, hpr-sim reaches the global minimum in 290 (97%), so 17 of 20 is at the low end of what
+  chance gives.
 - The median number of evaluations is within 25% of pycma's from the same starts (the test's
   bound). Measured, they are within 5%:
 
@@ -125,13 +138,21 @@ run each function from 20 seeds and check:
 | Rosenbrock | 6,445 | 6,195 |
 
 - Tilting the ellipsoid changes the count by under 10%: the cloud learns the tilt.
+- Every generation's mean, cloud size and shape, over twelve generations with steps that differ
+  200-fold, match a second, separate implementation of the tutorial's formulas to rounding. It
+  takes the cloud's inverse square root by a different method (the Denman–Beavers iteration), and
+  passes through both branches of the step that pauses the shape's learning when the cloud
+  grows fast.
 - The default settings that pycma also takes from the tutorial's Table 1 match its values to
   rounding. pycma departs from the table in a few places by its author's choice, such as how fast
   the cloud's size adapts. That is why the counts differ a little.
 
-Without the step that learns the cloud's shape from a whole generation (the *rank-μ update*), the
-ellipsoid takes a third more evaluations (7,875) and the test fails. So the comparison catches a
-real fault.
+The tests catch real faults. Without the step that learns the cloud's shape from a generation's
+better half (the *rank-μ update*, μ being the size of that half), the ellipsoid takes a third more
+evaluations (7,875) and the pycma comparison fails. Three other faults a reviewer found it would
+miss fail the second implementation's check. These were one-off checks, recorded in
+[ADR-138](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-138-optimization-cma-es-first-held-to-test-functions-and-to-pycma-2026-10-01)
+(the decision record for this work), not run in CI.
 
 pycma is run by
 [`validation/oracles/cmaes/pycma_runs.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/cmaes/pycma_runs.py),
@@ -149,7 +170,7 @@ rail at 85°, into 5 m/s of wind. Run it from a copy of the repository with:
 cargo run --example optimization -p hpr
 ```
 
-The heart of it:
+The heart of it, abridged from the example:
 
 ```rust,ignore
 let variables = vec![
@@ -174,7 +195,8 @@ returns infinity, which ranks below every real flight. Then the example flies th
 more: once from a fresh build, which must give the optimizer's apogee to the last bit, and once
 with the integrator's tolerances 100 times tighter, which must still hit within 0.1 m.
 
-It prints:
+The first table is one run of each function, from seed 2026; "start" is where every variable
+starts. The medians above are over seeds 1 to 20, so they differ a little. It prints:
 
 <!-- quote: crates/hpr/examples/optimization.output.txt -->
 ```text
@@ -188,28 +210,41 @@ Rosenbrock            0.0          6430      7.1e-11                    2.4e-6
 Hit 3,048 m with a 66 mm rocket on a J760 by its nose ballast and body length
 Not yet validated: see the Accuracy page before trusting these numbers.
 Start: 0.300 kg of ballast, a 1.000 m body: apogee 3128.8 m
-Found: 0.995 kg of ballast, a 0.806 m body, in 162 flights (27 generations, stopped: Target)
-Flown again: apogee 3048.017 m (miss +0.017 m)
-Flown again, tolerances 100 times tighter: apogee 3048.014 m (miss +0.014 m)
+Found: 0.991 kg of ballast, a 0.808 m body, in 78 flights (13 generations, stopped: Target)
+Flown again: apogee 3047.914 m (miss -0.086 m)
+Flown again, tolerances 100 times tighter: apogee 3047.916 m (miss -0.084 m)
+Static margin of the winner at launch (not constrained): 2.53 calibres
 ```
 
-The rocket started 81 m too high. The optimizer found a hit in 162 flights, about 8 s in a
-debug build. It didn't find *the* answer, because there is a whole curve of them. More ballast
-and a shorter body cancel out, and two variables against one target leave one degree of freedom.
-The run stops at the first hit it finds, which here is near the heavy end of the ballast's range.
-To choose among the hits, add a second wish to the number you minimize: a small penalty on the
-ballast mass, say. Or fix one variable and optimize the other alone. Limits such as a minimum
-stability margin are not handled yet, so check the winner's margin yourself.
+The rocket started 81 m too high. The optimizer found a hit in 78 flights. It didn't find *the*
+answer, because there is a whole curve of them. More ballast and a shorter body cancel out, and
+two variables against one target leave one degree of freedom. The run stops at the first hit it
+finds. Here that is 0.991 kg of ballast, almost on the 1 kg bound, so a run that strays toward the
+bound slows down there (see [Bounds](#bounds)). To choose among the hits, add a second wish to the
+number you minimize: a small penalty on the ballast mass, say. Or fix one variable and optimize
+the other alone.
+
+Limits such as a minimum stability margin are not handled yet, so check the winner's margin
+yourself. The example prints it with `Rocket::static_margin_cal` (2.53
+[calibres](glossary.md#calibre-caliber) at launch).
+
+## Evaluating designs your own way
+
+`minimize` flies one design after another. To fly a generation's designs on several threads or
+machines, use the run's steps yourself ([`Run`]): `Cmaes::start` draws the first generation,
+`candidates` lists its designs, and `tell` takes their values, in the same order, and draws the
+next. It returns the result once the run stops.
 
 ## Choosing the numbers
 
-- **Steps:** about a quarter to a third of the range the answer is likely in. Give the variables
-  units that make their steps similar in size: the tutorial warns against steps that differ by
-  several orders of magnitude.
+- **Steps:** about a quarter to a third of the range the answer is likely in, in the variable's
+  own units. Steps of very different sizes are fine: the run works in each variable divided by its
+  step.
 - **Target:** for a target apogee, the squared miss you accept: `0.1 * 0.1` for 0.1 m. Without a
   target, a run goes on until it converges, which can take many more flights than a hit needs.
-- **Evaluations:** a cap on flights. Two variables usually need 100 to 300 flights to converge;
-  ten need thousands.
+- **Evaluations:** a cap on flights, 10,000 by default. The example's two variables needed 78
+  flights to hit within 0.1 m; the ten-variable test functions take 1,600 to 6,500 evaluations to
+  converge.
 - **Population:** leave it at the default unless the output has many local minima. Then a larger
   population ([`Cmaes::with_population`]) searches more widely, at more flights per generation.
 - **Seed:** a different seed gives a different run. Rerun with two or three seeds if the answer
@@ -218,13 +253,12 @@ stability margin are not handled yet, so check the winner's margin yourself.
 ## Left out
 
 - Variables are continuous. Discrete choices (a motor, a catalogue part) come next, in
-  [M6.2](decisions-and-roadmap.md#m6-2).
+  [M6.2b](decisions-and-roadmap.md#m6-2b). Until then, run the optimizer once for each motor you
+  are considering and compare the results.
 - No limits other than a variable's range, and an answer on a bound is reached only slowly.
 - One goal at a time: no trade-offs between two goals (a Pareto front).
 - No optimizing of a Monte Carlo run's statistics, such as the chance of landing within a
   distance.
-- The run evaluates its designs one after another; [`Run`] (start, then `tell`) lets you evaluate
-  a generation's designs any way you like, on several threads, say.
 - No command-line or Python front end yet.
 
 The API reference is

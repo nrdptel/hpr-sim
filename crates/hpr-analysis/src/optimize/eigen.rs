@@ -11,9 +11,9 @@
 //! <https://doi.org/10.1137/0613074>: on a positive definite matrix it keeps each eigenvalue
 //! accurate relative to itself, even the smallest of an ill-conditioned covariance.
 
-/// The most sweeps over the off-diagonal pairs. Jacobi's method converges quadratically, so a
-/// covariance of a few dozen rows takes under ten; the limit only stops a matrix of non-finite
-/// numbers from turning forever.
+/// The most sweeps over the off-diagonal pairs. Jacobi's method converges quadratically: a
+/// covariance of 20 to 30 rows and a condition number up to 10¹⁶ takes about 12 to 19. The limit
+/// only stops a matrix of non-finite numbers from turning forever.
 const MAX_SWEEPS: usize = 64;
 
 /// The eigen-decomposition of the symmetric `n × n` matrix `a` (row-major; only the symmetric

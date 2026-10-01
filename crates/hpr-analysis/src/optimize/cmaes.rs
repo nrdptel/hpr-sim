@@ -30,26 +30,28 @@
 //! with `δ(h_σ) = (1 − h_σ) c_c (2 − c_c)` and `E‖N(0, I)‖ ≈ √n (1 − 1/(4n) + 1/(21n²))`.
 //! `C = B D² Bᵀ` is decomposed every generation, by Jacobi's method; the tutorial allows putting
 //! it off for up to `1/(10 n (c₁ + c_μ))` generations (B.2, p. 33), which is under one for up to
-//! about 25 variables at the default population.
+//! about 85 variables at the default population.
 //!
 //! # Starting point and scaling
 //!
-//! The run starts at each [`Variable`]'s start, with `σ = 1` and `C` diagonal, its entries the
-//! squares of the variables' steps: "different search intervals ∆sᵢ for different variables can
-//! be reflected by a different initialization of C, in that the diagonal elements of C obey
-//! cᵢᵢ = (∆sᵢ)²" (the tutorial, Figure 6's footnote, p. 29). It is the tutorial's `C = I` in
-//! variables divided by their steps, so a variable in metres and another in kilograms each start
-//! with the steps the caller gave them. The tutorial adds that the steps "should not disagree by
-//! several orders of magnitude"; give the variables units that keep them comparable.
+//! The strategy works in each [`Variable`] divided by its step. There it starts as the tutorial's
+//! Figure 6 does, with `σ = 1`, `C = I` and both paths zero, at the variables' starts. So a
+//! variable in metres and another in kilograms each start with the steps the caller gave them,
+//! and the condition number the run stops at is the tutorial's. This is the tutorial's advice for
+//! variables whose search intervals differ: "a scaling of the variables should be applied"
+//! (Figure 6's footnote, p. 29). [`Run::covariance`] is `C` in these scaled variables.
 //!
 //! # Bounds
 //!
 //! A candidate outside its variables' bounds is drawn again, from its own stream, until it falls
 //! inside: the second of the two methods the tutorial gives for a best point strictly inside the
 //! feasible region ("re-sampling any infeasible solution x until it become feasible", B.5,
-//! p. 34). It does not repair a candidate onto a bound, which the tutorial advises against. A generation that can't draw a candidate inside in [`MAX_DRAWS`] tries ends
-//! the run ([`Stop::Bounds`]). A best point *on* a bound is reached only slowly this way; bounds
-//! that bind are left to the constraint handling of a later increment.
+//! p. 34). No candidate is repaired onto a bound, which the tutorial advises against. If any one
+//! candidate of a generation is still outside after [`MAX_DRAWS`] tries, the run ends
+//! ([`Stop::Bounds`]). The chance that a draw falls inside halves with each variable whose mean
+//! sits on a bound, so with many variables near their bounds this comes soon. A best point *on* a
+//! bound is reached only slowly this way; bounds that bind are left to the constraint handling of
+//! a later increment.
 //!
 //! # Stopping
 //!
@@ -57,9 +59,18 @@
 //! up ([`Stop::Evaluations`]), the distribution's spread and its evolution path below a tolerance
 //! in every variable ([`Stop::TolX`]), the best values of the last `10 + ⌈30 n/λ⌉` generations
 //! and every value of the last one all within a tolerance ([`Stop::TolFun`]), the covariance's
-//! condition number above 10¹⁴ ([`Stop::Condition`]), or no candidate inside the bounds
-//! ([`Stop::Bounds`]). These are the tutorial's TolX, TolFun and ConditionCov (B.3, pp. 33–34),
-//! with its suggested 10⁻¹² for both tolerances, TolX's taken relative to the initial steps.
+//! condition number above 10¹⁴ or a step size that has overflowed ([`Stop::Condition`]), or a
+//! candidate that can't be drawn inside the bounds ([`Stop::Bounds`]). These are the tutorial's
+//! TolX, TolFun and ConditionCov (B.3, pp. 33–34), with its suggested 10⁻¹² for both tolerances,
+//! TolX's taken in the scaled variables, so as a fraction of each one's step. Its NoEffectAxis,
+//! NoEffectCoord, Stagnation and TolXUp tests are left out: a run that diverges ends when its
+//! numbers overflow, or at the evaluation cap.
+//!
+//! # A run with no finite value
+//!
+//! If every candidate so far has given `+∞` (every flight failed, say), the run goes on, ranking
+//! them in their order, and its [`Optimum`]'s value is `+∞`. Check [`Optimum::value`] before
+//! using the point.
 
 use serde::{Deserialize, Serialize};
 
@@ -79,8 +90,10 @@ pub const MAX_POPULATION: usize = 1 << 16;
 /// by 10⁷, about where rounding in `f64` starts to blur the shortest.
 pub const MAX_CONDITION: f64 = 1e14;
 
-/// The optimizer's settings: the variables, the population, and when to stop.
+/// The optimizer's settings: the variables, the population, and when to stop. It serializes as
+/// its fields, and reads back through the same checks as [`Cmaes::new`] and its `with_` methods.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "CmaesData")]
 pub struct Cmaes {
     variables: Vec<Variable>,
     population: usize,
@@ -88,6 +101,34 @@ pub struct Cmaes {
     target: Option<f64>,
     tolerance_x: f64,
     tolerance_value: f64,
+}
+
+/// The serialized form of a [`Cmaes`].
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CmaesData {
+    variables: Vec<Variable>,
+    population: usize,
+    max_evaluations: usize,
+    target: Option<f64>,
+    tolerance_x: f64,
+    tolerance_value: f64,
+}
+
+impl TryFrom<CmaesData> for Cmaes {
+    type Error = AnalysisError;
+
+    fn try_from(data: CmaesData) -> Result<Self, AnalysisError> {
+        let cmaes = Cmaes::new(data.variables)?
+            .with_population(data.population)?
+            .with_max_evaluations(data.max_evaluations)?
+            .with_tolerance_x(data.tolerance_x)?
+            .with_tolerance_value(data.tolerance_value)?;
+        match data.target {
+            Some(target) => cmaes.with_target(target),
+            None => Ok(cmaes),
+        }
+    }
 }
 
 /// Why a run stopped.
@@ -103,9 +144,9 @@ pub enum Stop {
     TolX,
     /// The values stopped changing by more than the tolerance: converged in the output.
     TolFun,
-    /// The covariance's condition number passed [`MAX_CONDITION`].
+    /// The covariance's condition number passed [`MAX_CONDITION`], or the step size overflowed.
     Condition,
-    /// No candidate of a generation fell inside the bounds in [`MAX_DRAWS`] tries.
+    /// A candidate of a generation didn't fall inside the bounds in [`MAX_DRAWS`] tries.
     Bounds,
 }
 
@@ -115,7 +156,7 @@ pub enum Stop {
 pub struct Optimum {
     /// The best point evaluated, one value per variable, in the variables' order.
     pub point: Vec<f64>,
-    /// The model's value there.
+    /// The model's value there: `+∞` if no candidate gave a finite value.
     pub value: f64,
     /// Which evaluation found it, counted from 1.
     pub evaluation: usize,
@@ -125,8 +166,8 @@ pub struct Optimum {
     pub generations: usize,
     /// The distribution's final mean.
     pub mean: Vec<f64>,
-    /// The final step size, times the square root of the covariance's largest eigenvalue: the
-    /// distribution's largest standard deviation, in the variables' units.
+    /// The distribution's largest standard deviation in any one variable, in that variable's
+    /// units: the largest `σ √Cᵢᵢ` times the variable's step.
     pub spread: f64,
     /// Why it stopped.
     pub stop: Stop,
@@ -205,11 +246,12 @@ impl Cmaes {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::Domain`] for a NaN target.
+    /// [`AnalysisError::Domain`] for a target that isn't finite: an infinite one would be met by
+    /// a generation whose every candidate failed.
     pub fn with_target(mut self, target: f64) -> Result<Self, AnalysisError> {
-        if target.is_nan() {
+        if !target.is_finite() {
             return Err(AnalysisError::Domain {
-                what: "target",
+                what: "target (finite)",
                 value: target,
             });
         }
@@ -217,20 +259,26 @@ impl Cmaes {
         Ok(self)
     }
 
-    /// The same, with the tolerances that end a converged run: `x`, as a fraction of each
-    /// variable's step, and `value`, in the output's units. Zero turns a test off.
+    /// The same, ending a run once the distribution's spread, and its evolution path, are below
+    /// `tolerance` times each variable's step in every variable ([`Stop::TolX`]). Zero turns the
+    /// test off.
     ///
     /// # Errors
     ///
     /// [`AnalysisError::Domain`] for a tolerance that is negative or not finite.
-    pub fn with_tolerances(mut self, x: f64, value: f64) -> Result<Self, AnalysisError> {
-        for (what, t) in [("x tolerance", x), ("value tolerance", value)] {
-            if !(t.is_finite() && t >= 0.0) {
-                return Err(AnalysisError::Domain { what, value: t });
-            }
-        }
-        self.tolerance_x = x;
-        self.tolerance_value = value;
+    pub fn with_tolerance_x(mut self, tolerance: f64) -> Result<Self, AnalysisError> {
+        self.tolerance_x = check_tolerance("x tolerance", tolerance)?;
+        Ok(self)
+    }
+
+    /// The same, ending a run once its recent values all lie within `tolerance` of each other, in
+    /// the output's units ([`Stop::TolFun`]). Zero turns the test off.
+    ///
+    /// # Errors
+    ///
+    /// [`AnalysisError::Domain`] for a tolerance that is negative or not finite.
+    pub fn with_tolerance_value(mut self, tolerance: f64) -> Result<Self, AnalysisError> {
+        self.tolerance_value = check_tolerance("value tolerance", tolerance)?;
         Ok(self)
     }
 
@@ -278,9 +326,22 @@ impl Cmaes {
     }
 }
 
+/// A tolerance, checked to be finite and not negative.
+fn check_tolerance(what: &'static str, tolerance: f64) -> Result<f64, AnalysisError> {
+    if tolerance.is_finite() && tolerance >= 0.0 {
+        Ok(tolerance)
+    } else {
+        Err(AnalysisError::Domain {
+            what,
+            value: tolerance,
+        })
+    }
+}
+
 /// The strategy's parameters for `n` variables and population `λ`: the tutorial's Table 1 with
-/// the negative weights set to zero.
-#[derive(Debug, Clone, PartialEq)]
+/// the negative weights set to zero. [`Run::parameters`] gives a run's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Parameters {
     /// `μ = ⌊λ/2⌋`, the candidates that move the mean.
     pub mu: usize,
@@ -303,8 +364,9 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    /// The parameters for `n` variables and `lambda` candidates a generation.
-    pub fn new(n: usize, lambda: usize) -> Self {
+    /// The parameters for `n ≥ 1` variables and `lambda ≥ 2` candidates a generation, as
+    /// [`Cmaes`] checks them.
+    pub(crate) fn new(n: usize, lambda: usize) -> Self {
         let nf = n as f64;
         let mu = lambda / 2;
         let half = (lambda as f64 + 1.0) / 2.0;
@@ -348,11 +410,14 @@ pub struct Run {
     tolerance_value: f64,
     p: Parameters,
     n: usize,
+    /// Each variable's step: the strategy works in the variables divided by these.
+    scale: Vec<f64>,
+    /// The mean, in the variables' own units.
     mean: Vec<f64>,
     sigma: f64,
     p_sigma: Vec<f64>,
     p_c: Vec<f64>,
-    /// `C`, row-major.
+    /// `C`, row-major, in the scaled variables.
     c: Vec<f64>,
     /// `B`, the eigenvectors of `C` as columns, row-major.
     b: Vec<f64>,
@@ -361,7 +426,7 @@ pub struct Run {
     generation: usize,
     evaluations: usize,
     candidates: Vec<Vec<f64>>,
-    /// Each candidate's step `y = B D z`.
+    /// Each candidate's step `y = B D z`, in the scaled variables.
     steps: Vec<Vec<f64>>,
     best: Option<(Vec<f64>, f64, usize)>,
     /// The best value of each generation, oldest first.
@@ -372,11 +437,9 @@ pub struct Run {
 impl Run {
     fn new(cmaes: &Cmaes, seed: u64) -> Self {
         let n = cmaes.variables.len();
-        let mut c = vec![0.0; n * n];
-        let mut b = vec![0.0; n * n];
-        for (i, v) in cmaes.variables.iter().enumerate() {
-            c[i * n + i] = v.step() * v.step();
-            b[i * n + i] = 1.0;
+        let mut identity = vec![0.0; n * n];
+        for i in 0..n {
+            identity[i * n + i] = 1.0;
         }
         Self {
             seed,
@@ -387,13 +450,14 @@ impl Run {
             tolerance_value: cmaes.tolerance_value,
             p: Parameters::new(n, cmaes.population),
             n,
+            scale: cmaes.variables.iter().map(Variable::step).collect(),
             mean: cmaes.variables.iter().map(Variable::start).collect(),
             sigma: 1.0,
             p_sigma: vec![0.0; n],
             p_c: vec![0.0; n],
-            c,
-            b,
-            d: cmaes.variables.iter().map(Variable::step).collect(),
+            c: identity.clone(),
+            b: identity,
+            d: vec![1.0; n],
             generation: 0,
             evaluations: 0,
             candidates: Vec::new(),
@@ -431,7 +495,8 @@ impl Run {
         self.sigma
     }
 
-    /// The covariance `C`, row-major.
+    /// The covariance `C`, row-major, of the variables divided by their steps: the distribution
+    /// of candidates about the mean has covariance `σ² S C S`, with `S` the steps on a diagonal.
     pub fn covariance(&self) -> &[f64] {
         &self.c
     }
@@ -508,9 +573,9 @@ impl Run {
                 *a += w * yi;
             }
         }
-        // c_m = 1.
-        for (m, y) in self.mean.iter_mut().zip(&y_w) {
-            *m += self.sigma * y;
+        // c_m = 1; the step is scaled back to the variables' units.
+        for ((m, y), s) in self.mean.iter_mut().zip(&y_w).zip(&self.scale) {
+            *m += self.sigma * s * y;
         }
         // C^(−1/2) ⟨y⟩ = B D⁻¹ Bᵀ ⟨y⟩.
         let bt_y: Vec<f64> = (0..n)
@@ -571,13 +636,16 @@ impl Run {
         let d_max = self.d.iter().copied().fold(0.0, f64::max);
         let d_min = self.d.iter().copied().fold(f64::INFINITY, f64::min);
         // Written so that a NaN in D or σ stops the run too.
-        if !(d_min > 0.0 && d_max / d_min <= MAX_CONDITION.sqrt() && self.sigma.is_finite()) {
+        if !(d_min > 0.0
+            && d_max / d_min <= MAX_CONDITION.sqrt()
+            && (self.sigma * d_max).is_finite())
+        {
             return Some(Stop::Condition);
         }
+        // In the scaled variables, so the tolerance is a fraction of each variable's step.
         let converged_x = (0..n).all(|i| {
-            let tolerance = self.tolerance_x * self.variables[i].step();
-            self.sigma * self.c[i * n + i].sqrt() < tolerance
-                && self.sigma * self.p_c[i].abs() < tolerance
+            self.sigma * self.c[i * n + i].sqrt() < self.tolerance_x
+                && self.sigma * self.p_c[i].abs() < self.tolerance_x
         });
         if converged_x {
             return Some(Stop::TolX);
@@ -599,38 +667,48 @@ impl Run {
     }
 
     /// Draws the next generation's candidates, each from its own stream; `false` if one can't be
-    /// drawn inside the bounds.
+    /// drawn inside the bounds, or with finite values.
     fn draw(&mut self) -> bool {
         let n = self.n;
         self.candidates.clear();
         self.steps.clear();
+        // B D, once a generation.
+        let mut bd = self.b.clone();
+        for row in bd.chunks_exact_mut(n) {
+            for (x, d) in row.iter_mut().zip(&self.d) {
+                *x *= d;
+            }
+        }
+        let mut z = vec![0.0; n];
+        let mut y = vec![0.0; n];
+        let mut x = vec![0.0; n];
         for k in 0..self.lambda {
             // Casts: a generation and a candidate's place are far below 2⁶⁴.
             let mut rng = SeededRng::for_stream(self.seed, &[self.generation as u64, k as u64]);
-            let mut drawn = None;
+            let mut inside = false;
             for _ in 0..MAX_DRAWS {
-                let z: Vec<f64> = (0..n).map(|_| rng.standard_normal()).collect();
-                let y: Vec<f64> = (0..n)
-                    .map(|i| (0..n).map(|j| self.b[i * n + j] * self.d[j] * z[j]).sum())
-                    .collect();
-                let x: Vec<f64> = self
-                    .mean
-                    .iter()
-                    .zip(&y)
-                    .map(|(m, yi)| m + self.sigma * yi)
-                    .collect();
-                if x.iter().zip(&self.variables).all(|(xi, v)| v.contains(*xi)) {
-                    drawn = Some((x, y));
+                z.iter_mut().for_each(|zi| *zi = rng.standard_normal());
+                for (yi, row) in y.iter_mut().zip(bd.chunks_exact(n)) {
+                    *yi = row.iter().zip(&z).map(|(a, b)| a * b).sum();
+                }
+                for i in 0..n {
+                    x[i] = self.mean[i] + self.sigma * self.scale[i] * y[i];
+                }
+                if x.iter()
+                    .zip(&self.variables)
+                    .all(|(xi, v)| xi.is_finite() && v.contains(*xi))
+                {
+                    inside = true;
                     break;
                 }
             }
-            let Some((x, y)) = drawn else {
+            if !inside {
                 self.candidates.clear();
                 self.steps.clear();
                 return false;
-            };
-            self.candidates.push(x);
-            self.steps.push(y);
+            }
+            self.candidates.push(x.clone());
+            self.steps.push(y.clone());
         }
         true
     }
@@ -639,8 +717,12 @@ impl Run {
     fn optimum(&mut self, stop: Stop) -> Optimum {
         self.candidates.clear();
         self.steps.clear();
-        let d_max = self.d.iter().copied().fold(0.0, f64::max);
-        // A run is only told after a generation is evaluated, so there is a best point.
+        let n = self.n;
+        let spread = (0..n)
+            .map(|i| self.sigma * self.c[i * n + i].sqrt() * self.scale[i])
+            .fold(0.0, f64::max);
+        // A run is only told after a generation is evaluated, so there is a best point; the
+        // default is never used.
         let (point, value, evaluation) = self.best.clone().unwrap_or_default();
         Optimum {
             point,
@@ -649,7 +731,7 @@ impl Run {
             evaluations: self.evaluations,
             generations: self.generation,
             mean: self.mean.clone(),
-            spread: self.sigma * d_max,
+            spread,
             stop,
         }
     }
@@ -801,12 +883,15 @@ mod tests {
         assert_eq!(short.stop, Stop::Evaluations);
         assert_eq!(short.evaluations, 30);
         let converged = cmaes
-            .with_tolerances(1e-6, 0.0)
+            .with_tolerance_x(1e-6)
+            .unwrap()
+            .with_tolerance_value(0.0)
             .unwrap()
             .minimize(1, sphere)
             .unwrap();
         assert_eq!(converged.stop, Stop::TolX);
-        assert!(converged.spread < 1e-6 * 0.5 * 10.0);
+        // σ √Cᵢᵢ below 10⁻⁶ in the scaled variables: 10⁻⁶ times the step, 0.5.
+        assert!(converged.spread < 1e-6 * 0.5);
     }
 
     /// Settings are checked.
@@ -818,8 +903,66 @@ mod tests {
         assert!(cmaes.clone().with_population(MAX_POPULATION + 1).is_err());
         assert!(cmaes.clone().with_max_evaluations(0).is_err());
         assert!(cmaes.clone().with_target(f64::NAN).is_err());
-        assert!(cmaes.clone().with_tolerances(-1.0, 0.0).is_err());
-        assert!(cmaes.clone().with_tolerances(0.0, f64::INFINITY).is_err());
+        assert!(cmaes.clone().with_target(f64::INFINITY).is_err());
+        assert!(cmaes.clone().with_tolerance_x(-1.0).is_err());
+        assert!(cmaes.clone().with_tolerance_value(f64::INFINITY).is_err());
         assert!(Cmaes::new(Vec::new()).is_err());
+    }
+
+    /// Settings read back through their checks: a round trip, and refusals.
+    #[test]
+    fn settings_serialize_and_are_checked_on_reading() {
+        let cmaes = Cmaes::new(variables(2, 0.0, 1.0))
+            .unwrap()
+            .with_target(0.5)
+            .unwrap();
+        let json = serde_json::to_string(&cmaes).unwrap();
+        assert_eq!(serde_json::from_str::<Cmaes>(&json).unwrap(), cmaes);
+        for (field, bad) in [
+            ("\"population\":6", "\"population\":1"),
+            ("\"max_evaluations\":10000", "\"max_evaluations\":0"),
+            ("\"tolerance_x\":1e-12", "\"tolerance_x\":-1.0"),
+        ] {
+            assert!(json.contains(field), "{json}");
+            let edited = json.replace(field, bad);
+            assert!(serde_json::from_str::<Cmaes>(&edited).is_err(), "{edited}");
+        }
+        let empty = json.replace(
+            &json[json.find('[').unwrap()..=json.find(']').unwrap()],
+            "[]",
+        );
+        assert!(serde_json::from_str::<Cmaes>(&empty).is_err(), "{empty}");
+        let extra = json.replacen('{', "{\"extra\":1,", 1);
+        assert!(serde_json::from_str::<Cmaes>(&extra).is_err());
+    }
+
+    /// The smallest populations, `λ` = 2 and 3 (`μ` = 1), still converge on the sphere.
+    #[test]
+    fn smallest_populations_run() {
+        for lambda in [2, 3] {
+            let optimum = Cmaes::new(variables(2, 1.0, 0.5))
+                .unwrap()
+                .with_population(lambda)
+                .unwrap()
+                .with_target(1e-10)
+                .unwrap()
+                .minimize(1, sphere)
+                .unwrap();
+            assert_eq!(optimum.stop, Stop::Target, "λ = {lambda}");
+        }
+    }
+
+    /// A covariance stretched past 10¹⁴ ends the run: an ellipse whose curvatures differ by 10¹⁶.
+    #[test]
+    fn stops_at_the_condition_limit() {
+        let optimum = Cmaes::new(variables(2, 1.0, 0.5))
+            .unwrap()
+            .with_tolerance_x(0.0)
+            .unwrap()
+            .with_tolerance_value(0.0)
+            .unwrap()
+            .minimize(1, |x| x[0] * x[0] + 1e16 * x[1] * x[1])
+            .unwrap();
+        assert_eq!(optimum.stop, Stop::Condition);
     }
 }

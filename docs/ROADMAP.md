@@ -827,7 +827,7 @@
     ellipsoid, rotated ellipsoid and Rosenbrock (10 variables) reach their minima to 1e-10 from 20
     seeds (Rosenbrock from ≥17, the rest in its local minimum), median evaluations within 25% of
     pycma's; a "hit 3,048 m" problem is solved, the winner re-flown within 0.1 m. *Result:* met
-    (ADR-138): within 5% of pycma; Rosenbrock 17 of 20; 3,048.017 m in 162 flights, re-flown alike.
+    (ADR-138): within 5% of pycma; Rosenbrock 17 of 20; 3,047.914 m in 78 flights, re-flown alike.
   - [ ] **M6.2b Discrete variables and constraints.** *Done when:* a catalogue motor and part are
     chosen with continuous variables under stability-margin and rail-exit constraints; "hit
     3,048 m" with the motor free, each constraint re-checked on the winner by re-simulation.

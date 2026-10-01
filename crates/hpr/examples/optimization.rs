@@ -193,6 +193,11 @@ fn hit_the_target(seed: u64) -> Result<(), Box<dyn Error>> {
         "Flown again, tolerances 100 times tighter: apogee {tighter:.3} m (miss {:+.3} m)",
         tighter - TARGET_M
     );
+    // Nothing held the stability margin: check it. At launch, Mach 0.3.
+    let margin = rocket(ballast_kg, body_m)?
+        .static_margin_cal(0.0, 0.3)?
+        .ok_or("no margin")?;
+    println!("Static margin of the winner at launch (not constrained): {margin:.2} calibres");
     if (again - TARGET_M).powi(2) != optimum.value {
         return Err("the winner flown again doesn't give the optimizer's apogee".into());
     }
