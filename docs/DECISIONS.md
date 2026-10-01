@@ -10947,17 +10947,19 @@ part in one count: 2,230 tubes, couplers, blocks, rings, bulkheads, lugs, parach
 within 1e-14 of OpenRocket's mass and their centres within 1e-13 of their length; 1,029 filled
 nose cones and transitions within 2.0e-4 in mass and 7.0e-5 of their length in centre; 181 hollow
 ones, their hollow shoulders taken out in closed form, within 6.3e-4 and 9.7e-4; 4 hollow ones
-whose walls differ (below); 1 streamer's stated mass; and 4 refused, which OpenRocket weighs as
+whose walls differ (below); in each group, masses stated in ounces apart by OpenRocket's rounded
+ounce instead (185); 1 streamer's stated mass; and 4 refused, which OpenRocket weighs as
 zero (1 undefined material, 3 tube-like parts with no bore). hpr's 85 filled conical noses equal
 the closed form to 1e-12, so their differences are OpenRocket's volumes. The hollow parts' gap is
 the two codes' walls, each checked on its own: OpenRocket's 185 hollow parts follow a wall whose
-inner radius at each station is `r − t √(1 + r′²)`, integrated in the test, to 2.5e-4 in mass and
-1.1e-4 of their length in centre; hpr's wall, every point within `t` of the surface, equals
-integrals worked out in the test on 78 hollow nose cones (12 cones, 60 tangent ogives, 6
-ellipsoids) to 1e-9. Dropping the slope term from the station-wise wall fails the test. The 4
-whose walls differ by more than the threshold are short, blunt elliptical nose cones, up to 0.48%
-heavier and 1.7e-3 of their length apart in centre. 185 stated masses in ounces are apart by
-OpenRocket's rounded ounce. Two mutations, ellipsoid transitions not clipped and a parabola's `K′`
+inner radius at each station is `r − t √(1 + r′²)`, integrated in the test, to 1.1e-4 of their
+length in centre, and the 111 stating no mass to 2.5e-4 in mass; hpr's wall, every point within
+`t` of the surface, equals integrals worked out in the test, in volume and centre, on 113 hollow
+nose cones (16 cones, 87 tangent ogives, 10 ellipsoids) to 1e-9. Dropping the slope term from the
+station-wise wall fails the test, and so does moving a cone's centre. The 4 whose walls differ by
+more than the threshold are short, blunt elliptical nose cones, each with hpr's wall checked:
+three up to 0.48% heavier here (the test asserts hpr's is the heavier), one stating its mass
+1.0e-3 of its length apart in centre; the largest centre gap is 1.7e-3. Two mutations, ellipsoid transitions not clipped and a parabola's `K′`
 of 0.75, each fail the test. `crates/hpr/examples/catalog_rocket.rs` builds LOC Precision's
 2.56 in airframe from the catalogue, its fins by hand, and flies it on an AeroTech H170 to
 1,119 m. A nominal 29 mm motor doesn't fit LOC's 29 mm motor tube (bore 28.956 mm) under the

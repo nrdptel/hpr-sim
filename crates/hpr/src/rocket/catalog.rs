@@ -142,8 +142,11 @@ impl Fitting {
     /// # Errors
     ///
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
-    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it;
+    /// [`Error::Domain`] for a stated mass that is negative or not finite; and [`Error::Design`]
+    /// for one that states a mass but whose sizes can't be weighed, such as a bore no narrower
+    /// than its outside (a part that states no mass is refused for that when it is added).
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let built = match &part.kind {
             PartKind::TubeCoupler(tube) | PartKind::EngineBlock(tube) => Self::coupler(
@@ -265,8 +268,11 @@ impl Nose {
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
     /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
     /// [`CatalogProblem::NoWall`] for one neither filled nor given a wall,
-    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know, and
-    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
+    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know,
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it;
+    /// [`Error::Domain`] for a stated mass that is negative or not finite; and [`Error::Design`]
+    /// for one that states a mass but whose sizes can't be weighed, such as a bore no narrower
+    /// than its outside (a part that states no mass is refused for that when it is added).
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::NoseCone(nose) = &part.kind else {
             return Err(wrong_kind(part, "Nose::from_catalog"));
@@ -307,8 +313,11 @@ impl Tube {
     /// # Errors
     ///
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
-    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it;
+    /// [`Error::Domain`] for a stated mass that is negative or not finite; and [`Error::Design`]
+    /// for one that states a mass but whose sizes can't be weighed, such as a bore no narrower
+    /// than its outside (a part that states no mass is refused for that when it is added).
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::BodyTube(tube) = &part.kind else {
             return Err(wrong_kind(part, "Tube::from_catalog"));
@@ -341,8 +350,11 @@ impl MotorTube {
     /// # Errors
     ///
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
-    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define, and
-    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
+    /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it;
+    /// [`Error::Domain`] for a stated mass that is negative or not finite; and [`Error::Design`]
+    /// for one that states a mass but whose sizes can't be weighed, such as a bore no narrower
+    /// than its outside (a part that states no mass is refused for that when it is added).
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::BodyTube(tube) = &part.kind else {
             return Err(wrong_kind(part, "MotorTube::from_catalog"));
@@ -376,8 +388,11 @@ impl Transition {
     /// [`Error::Catalog`]: [`CatalogProblem::Kind`] for a part of another kind,
     /// [`CatalogProblem::UndefinedMaterial`] for one whose material its file doesn't define,
     /// [`CatalogProblem::NoWall`] for one neither filled nor given a wall,
-    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know, and
-    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it.
+    /// [`CatalogProblem::Shape`] for a shape the builder doesn't know,
+    /// [`CatalogProblem::NoVolume`] for one that states a mass but has no volume to hold it;
+    /// [`Error::Domain`] for a stated mass that is negative or not finite; and [`Error::Design`]
+    /// for one that states a mass but whose sizes can't be weighed, such as a bore no narrower
+    /// than its outside (a part that states no mass is refused for that when it is added).
     pub fn from_catalog(part: &orc::Part) -> Result<Self, Error> {
         let PartKind::Transition(transition) = &part.kind else {
             return Err(wrong_kind(part, "Transition::from_catalog"));
@@ -428,10 +443,17 @@ fn stated(part: &orc::Part, design: &Part) -> Result<Option<f64>, Error> {
     let Some(stated_kg) = part.mass_kg else {
         return Ok(None);
     };
+    if !(stated_kg.is_finite() && stated_kg >= 0.0) {
+        return Err(Error::Domain {
+            what: "catalogue part's stated mass, kg",
+            value: stated_kg,
+        });
+    }
     // The body radius only places a launch lug; its mass is the same on any tube.
     let weighed_kg = design.mass_properties(Some(1.0))?.mass_kg;
-    if weighed_kg > 0.0 && weighed_kg.is_finite() && stated_kg.is_finite() && stated_kg >= 0.0 {
-        Ok(Some(stated_kg / weighed_kg))
+    let factor = stated_kg / weighed_kg;
+    if weighed_kg > 0.0 && factor.is_finite() {
+        Ok(Some(factor))
     } else {
         Err(catalog_error(part, CatalogProblem::NoVolume))
     }
@@ -439,6 +461,15 @@ fn stated(part: &orc::Part, design: &Part) -> Result<Option<f64>, Error> {
 
 /// `material` with its density scaled by `factor`, named for why.
 fn scale(material: &mut Material, factor: f64) {
+    // A weightless material (a parachute's lines of no density) stays as it is, and as named.
+    if matches!(
+        material.density,
+        Density::Bulk { kg_m3: 0.0 }
+            | Density::Surface { kg_m2: 0.0 }
+            | Density::Line { kg_m: 0.0 }
+    ) {
+        return;
+    }
     material.density = match material.density {
         Density::Bulk { kg_m3 } => Density::Bulk {
             kg_m3: kg_m3 * factor,
@@ -912,5 +943,87 @@ mod tests {
             panic!("a nose cone isn't a fitting");
         };
         assert_eq!((found, builder), ("nose cone", "Fitting::from_catalog"));
+    }
+
+    #[test]
+    fn a_stated_mass_needs_a_volume_and_a_number() {
+        let tube = bundled()
+            .parts
+            .iter()
+            .find(|part| matches!(part.kind, PartKind::BodyTube(_)) && part.mass_kg.is_some())
+            .expect("a body tube that states its mass");
+        // A material of no density gives the part no mass to scale.
+        let mut weightless = tube.clone();
+        let PartKind::BodyTube(sizes) = &mut weightless.kind else {
+            unreachable!("found as a body tube")
+        };
+        sizes.material.density = Some(0.0);
+        assert!(matches!(
+            Tube::from_catalog(&weightless),
+            Err(Error::Catalog {
+                problem: CatalogProblem::NoVolume,
+                ..
+            })
+        ));
+        for bad in [-1.0, f64::NAN, f64::INFINITY] {
+            let mut part = tube.clone();
+            part.mass_kg = Some(bad);
+            let Err(Error::Domain { what, .. }) = Tube::from_catalog(&part) else {
+                panic!("a stated mass of {bad} kg is refused")
+            };
+            assert_eq!(what, "catalogue part's stated mass, kg");
+        }
+    }
+
+    #[test]
+    fn a_clipped_transition_weighs_as_its_profile() {
+        let kraft = material("kraft_phenolic").unwrap();
+        let weigh = |clipped: bool| {
+            let mut rocket = Rocket::new("clipped", 0.1).unwrap();
+            rocket
+                .add_tube(Tube::new(0.1, 0.001, kraft.clone()))
+                .unwrap()
+                .add_transition(
+                    Transition::conical(0.1, 0.05, 0.002, kraft.clone())
+                        .with_shape(NoseShape::Elliptical {})
+                        .with_clipped(clipped),
+                )
+                .unwrap();
+            let layout = rocket.design().layout().unwrap();
+            let placed = &layout.components[layout.components.len() - 1];
+            let Part::Transition(built) = &placed.part else {
+                panic!("the last part is the transition")
+            };
+            assert_eq!(built.clipped, clipped);
+            placed.own.mass_kg
+        };
+        let (clipped, stretched) = (weigh(true), weigh(false));
+        assert!((clipped - stretched).abs() > 1e-3 * stretched);
+    }
+
+    #[test]
+    fn weightless_lines_are_not_scaled_or_renamed() {
+        let chute = bundled()
+            .parts
+            .iter()
+            .find(|part| {
+                matches!(&part.kind, PartKind::Parachute(chute) if chute.line_material.is_none())
+                    && part.mass_kg.is_some()
+            })
+            .expect("a parachute naming no line material that states its mass");
+        let fitting = Fitting::from_catalog(chute).unwrap();
+        let Part::Parachute(built) = &fitting.part else {
+            panic!("a parachute")
+        };
+        assert_eq!(built.line_material.name, "none defined");
+        assert!(
+            built
+                .canopy_material
+                .name
+                .ends_with(", density set by the part's stated mass")
+        );
+        let weighed = fitting.part.mass_properties(Some(1.0)).unwrap().mass_kg;
+        let stated = chute.mass_kg.unwrap();
+        assert!((weighed - stated).abs() <= 1e-14 * stated);
     }
 }

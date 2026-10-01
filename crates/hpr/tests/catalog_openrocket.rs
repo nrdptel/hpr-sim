@@ -71,6 +71,7 @@ struct Survey {
     /// Hollow parts whose OpenRocket mass and centre follow the station-wise wall, and the
     /// largest relative difference in mass and in centre (of length).
     wall_rule_checked: usize,
+    wall_rule_mass_checked: usize,
     wall_rule_mass: f64,
     wall_rule_centre: f64,
     /// Hollow nose cones whose body hpr weighs as an integral of its own wall gives it, by
@@ -96,8 +97,10 @@ struct Survey {
     ounce_masses: usize,
     /// Parts refused for a material their file doesn't define.
     undefined_materials: usize,
-    /// Parachutes built with lines of a material their file doesn't define, weightless.
+    /// Parachutes built with lines of a material their file doesn't define, or of none,
+    /// weightless.
     undefined_lines: usize,
+    no_lines: usize,
     /// Tube-like parts refused for a bore not narrower than the outside.
     no_bore: usize,
     /// Filled conical nose cones held to their closed-form mass.
@@ -277,21 +280,24 @@ fn station_wall(built: &PlacedComponent, wall_m: f64, density: f64) -> (f64, f64
 
 /// A hollow nose cone's body (its shoulder aside) by an integral of hpr's wall, every point
 /// within the wall's thickness `t` of the surface, worked out here on its own: its volume, m³,
-/// for the shapes where that has a form of its own; `None` for the others.
+/// and its first moment about the tip, m⁴, for the shapes where that has a form of its own;
+/// `None` for the others.
 ///
 /// - A cone of half-angle `α`: the wall's inner surface is the cone `t` inside it, its tip
-///   `t / sin α` aft of the tip and its base radius `R − t / cos α`; the wall is the difference
-///   of the two cones' volumes, `πR²L/3 − πR_i²L_i/3`.
+///   `a = t / sin α` aft of the tip and its base radius `R − t / cos α`; the wall is the
+///   difference of the two cones, each of volume `πR²L/3` with its centre `3L/4` from its tip.
 /// - A tangent ogive: an arc of radius `ρ = (R² + L²)/2R` about a centre at the base, `ρ − R`
 ///   below the axis. The wall's inner surface is the arc of radius `ρ − t` about the same
 ///   centre, up to where it meets the axis; both are integrated by Simpson's rule over 2,000
 ///   intervals.
 /// - An ellipse with `L ≥ R` and `t` under its least radius of curvature `R²/L`: the region
 ///   between it and its inner parallel curve, which runs from `(t, 0)` at the tip to
-///   `(L, R − t)` at the base. With the ellipse `x = L(1 − cos θ)`, `r = R sin θ`, the wall is
-///   the half ellipsoid's `2πR²L/3` less `π ∫ r_i² dx_i` along that curve, by Simpson's rule in
-///   `θ` over 20,000 intervals.
-fn exact_wall_volume(part: &Part) -> Option<(&'static str, f64)> {
+///   `(L, R − t)` at the base. With the ellipse `x = L(1 − cos θ)`, `r = R sin θ` and `n` the
+///   length of its normal `(R cos θ, L sin θ)`, the inner curve is `x + tR cos θ / n`,
+///   `r − tL sin θ / n`. The wall is the half ellipsoid (volume `2πR²L/3`, centre `5L/8` from
+///   the tip) less the volume that curve encloses, by Simpson's rule in `θ` over 20,000
+///   intervals.
+fn exact_wall(part: &Part) -> Option<(&'static str, f64, f64)> {
     let PartKind::NoseCone(nose) = &part.kind else {
         return None;
     };
@@ -300,40 +306,49 @@ fn exact_wall_volume(part: &Part) -> Option<(&'static str, f64)> {
     match nose.shape {
         Shape::Conical => {
             let alpha = r.atan2(l);
-            let inner_l = (l - t / alpha.sin()).max(0.0);
+            let tip = t / alpha.sin();
+            let inner_l = (l - tip).max(0.0);
             let inner_r = (r - t / alpha.cos()).max(0.0);
-            Some((
-                "cones",
-                PI / 3.0 * (r * r * l - inner_r * inner_r * inner_l),
-            ))
+            let outer = PI * r * r * l / 3.0;
+            let inner = PI * inner_r * inner_r * inner_l / 3.0;
+            let moment = outer * 0.75 * l - inner * (tip + 0.75 * inner_l);
+            Some(("cones", outer - inner, moment))
         }
         Shape::Ogive => {
             let rho = (r * r + l * l) / (2.0 * r);
             let below = rho - r;
-            let outer = simpson(0.0, l, 2_000, |x| {
-                let y = (rho * rho - (l - x) * (l - x)).max(0.0).sqrt() - below;
-                PI * y * y
-            });
+            let arc = |radius: f64, x: f64| {
+                ((radius * radius - (l - x) * (l - x)).max(0.0).sqrt() - below).max(0.0)
+            };
+            let area = |radius: f64| move |x: f64| PI * arc(radius, x) * arc(radius, x);
             let inner_rho = rho - t;
             let reach = (inner_rho * inner_rho - below * below).max(0.0).sqrt();
-            let inner = simpson(l - reach, l, 2_000, |x| {
-                let y =
-                    ((inner_rho * inner_rho - (l - x) * (l - x)).max(0.0).sqrt() - below).max(0.0);
-                PI * y * y
-            });
-            Some(("tangent ogives", outer - inner))
+            let volume =
+                simpson(0.0, l, 2_000, area(rho)) - simpson(l - reach, l, 2_000, area(inner_rho));
+            let moment = simpson(0.0, l, 2_000, |x| x * area(rho)(x))
+                - simpson(l - reach, l, 2_000, |x| x * area(inner_rho)(x));
+            Some(("tangent ogives", volume, moment))
         }
         Shape::Ellipsoid if l >= r && t < r * r / l => {
-            let cavity = simpson(0.0, 0.5 * PI, 20_000, |theta| {
+            // The inner curve's station, radius and the rate of its station along θ.
+            let inner = |theta: f64| {
                 let (s, c) = theta.sin_cos();
                 let n = (l * l * s * s + r * r * c * c).sqrt();
                 let dn = (l * l - r * r) * s * c / n;
-                // The inner curve's radius, and the rate of its station along θ.
-                let ri = r * s - t * l * s / n;
-                let dxi = l * s + t * r * (-s * n - c * dn) / (n * n);
-                PI * ri * ri * dxi
-            });
-            Some(("ellipsoids", 2.0 * PI * r * r * l / 3.0 - cavity))
+                let x = l * (1.0 - c) + t * r * c / n;
+                let radius = r * s - t * l * s / n;
+                let rate = l * s + t * r * (-s * n - c * dn) / (n * n);
+                (x, radius, rate)
+            };
+            let cavity = |power: i32| {
+                simpson(0.0, 0.5 * PI, 20_000, |theta| {
+                    let (x, radius, rate) = inner(theta);
+                    PI * radius * radius * rate * x.powi(power)
+                })
+            };
+            let volume = 2.0 * PI * r * r * l / 3.0 - cavity(0);
+            let moment = 5.0 * PI * r * r * l * l / 12.0 - cavity(1);
+            Some(("ellipsoids", volume, moment))
         }
         _ => None,
     }
@@ -446,6 +461,11 @@ fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
     {
         survey.undefined_lines += 1;
     }
+    if let PartKind::Parachute(chute) = &part.kind
+        && chute.line_material.is_none()
+    {
+        survey.no_lines += 1;
+    }
     let ours_kg = built.own.mass_kg;
     // OpenRocket's centre is metres aft of the component's fore end; ours is a station.
     let ours_cg_m = -built.own.cg_m.z - built.fore_station_m;
@@ -487,15 +507,22 @@ fn compare(survey: &mut Survey, part: &Part, record: &Value, at: &str) {
             wall_m,
             density,
             body_kg,
+            body_cg_m,
             theirs_kg,
             theirs_cg_m,
             length_m: length,
         };
-        hollow_wall(survey, part, &wall, at);
+        let checked = hollow_wall(survey, part, &wall, at);
         let off = (body_cg_m - theirs_cg_m).abs() / length;
         if mass_off > tolerance || off > tolerance {
             // OpenRocket's wall is its station-wise one and hpr's its own, each shown above:
-            // the difference is the two walls'.
+            // the difference is the two walls'. Where the mass departs, hpr's is the heavier:
+            // checked, so a departure the other way shows.
+            assert!(checked, "{at}: a departure with hpr's wall unchecked");
+            assert!(
+                mass_off <= tolerance || body_kg > theirs_kg,
+                "{at}: OpenRocket's wall is the heavier"
+            );
             departed = true;
             survey.wall_departures += 1;
             survey.wall_departure_mass = survey.wall_departure_mass.max(mass_off);
@@ -588,12 +615,14 @@ struct Wall<'a> {
     wall_m: f64,
     density: f64,
     body_kg: f64,
+    body_cg_m: f64,
     theirs_kg: f64,
     theirs_cg_m: f64,
     length_m: f64,
 }
 
-fn hollow_wall(survey: &mut Survey, part: &Part, wall: &Wall<'_>, at: &str) {
+/// Whether hpr's side was checked.
+fn hollow_wall(survey: &mut Survey, part: &Part, wall: &Wall<'_>, at: &str) -> bool {
     let (rule_kg, rule_cg_m) = station_wall(wall.built, wall.wall_m, wall.density);
     // A stated mass is OpenRocket's whatever its wall: only its centre tells the wall.
     let mass = if part.mass_kg.is_some() {
@@ -609,18 +638,28 @@ fn hollow_wall(survey: &mut Survey, part: &Part, wall: &Wall<'_>, at: &str) {
         wall.theirs_cg_m
     );
     survey.wall_rule_checked += 1;
+    survey.wall_rule_mass_checked += usize::from(part.mass_kg.is_none());
     survey.wall_rule_mass = survey.wall_rule_mass.max(mass);
     survey.wall_rule_centre = survey.wall_rule_centre.max(centre);
-    if let Some((shape, volume_m3)) = exact_wall_volume(part)
-        && part.mass_kg.is_none()
-    {
+    if let Some((shape, volume_m3, moment_m4)) = exact_wall(part) {
+        // At the density hpr built with, stated mass or not.
         let exact_kg = volume_m3 * wall.density;
+        let exact_cg_m = moment_m4 / volume_m3;
         assert!(
-            within(apart(wall.body_kg, exact_kg), INTEGRAL),
-            "{at}: {} kg here, {exact_kg} kg by its wall's own integral",
-            wall.body_kg
+            within(apart(wall.body_kg, exact_kg), INTEGRAL)
+                && within(
+                    (wall.body_cg_m - exact_cg_m).abs() / wall.length_m,
+                    INTEGRAL
+                ),
+            "{at}: {} kg at {} m here, {exact_kg} kg at {exact_cg_m} m by its wall's own \
+             integral",
+            wall.body_kg,
+            wall.body_cg_m
         );
         *survey.exact_walls.entry(shape).or_default() += 1;
+        true
+    } else {
+        false
     }
 }
 
@@ -785,6 +824,7 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
     assert!(survey.mass["stated"] <= 1e-15, "{survey:#?}");
     let counts = [
         survey.wall_rule_checked,
+        survey.wall_rule_mass_checked,
         survey.wall_departures,
         survey.cones_closed_form,
         survey.hollow_shoulders,
@@ -793,18 +833,19 @@ fn every_catalogue_part_weighs_what_openrocket_builds() {
         survey.ounce_masses,
         survey.undefined_materials,
         survey.undefined_lines,
+        survey.no_lines,
         survey.no_bore,
         survey.stated_streamers,
     ];
     assert_eq!(
         counts,
-        [185, 4, 85, 67, 74, 46, 185, 1, 2, 3, 1],
+        [185, 111, 4, 85, 67, 74, 46, 185, 1, 2, 6, 3, 1],
         "{survey:#?}"
     );
     let exact: Vec<_> = survey.exact_walls.iter().map(|(k, v)| (*k, *v)).collect();
     assert_eq!(
         exact,
-        [("cones", 12), ("ellipsoids", 6), ("tangent ogives", 60)],
+        [("cones", 16), ("ellipsoids", 10), ("tangent ogives", 87)],
         "{survey:#?}"
     );
     assert_eq!(

@@ -216,8 +216,8 @@ is 0.0254 m, the foot 0.3048 m, the pound 0.45359237 kg and the ounce a sixteent
   when the part goes into a design.
 - **A shoulder's wall.** A [shoulder](../glossary.md#shoulder) has a diameter and a length but no
   wall thickness, and no end cap. For a hollow part, OpenRocket gives it no wall, so it weighs
-  nothing, as the database's own usage notes say; the builder's test reads that wall from
-  OpenRocket, and the builder gives the shoulder the part's wall instead
+  nothing, as the database's own usage notes say and the builder's test confirms from
+  OpenRocket's own output. The builder gives the shoulder the part's wall instead
   ([What the catalogue leaves unsaid](../the-builder.md#what-the-catalogue-leaves-unsaid)). For a
   filled part, OpenRocket weighs the shoulder as a solid cylinder: the check of stated masses
   below uses that volume, and it agrees.
@@ -250,7 +250,7 @@ included. On the 54 of them that are simple solids (7 body tubes, 4 bulkheads, a
 conical parts: 34 nose cones and 9 transitions), the test also checks that OpenRocket's replaced density times the
 part's volume gives the stated mass, to 1 part in 10¹⁵.
 The builder ([Parts from a catalogue](../the-builder.md#parts-from-a-catalogue)) makes a part that
-states its mass weigh that mass by scaling its density, as OpenRocket does.
+states its mass weigh that mass by scaling its density, as OpenRocket does for rigid parts.
 
 OpenRocket also rounds a few other imperial factors: pounds per cubic foot, ounces per square inch
 or foot, pounds per square foot, and ounces per foot. No built-in file uses them.
