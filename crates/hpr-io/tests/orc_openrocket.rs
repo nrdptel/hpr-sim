@@ -1,12 +1,15 @@
 //! The bundled `.orc` catalogue against OpenRocket 24.12's own reading of it.
 //!
 //! `tests/fixtures/orc/openrocket-presets.json` is every part OpenRocket's preset loader returns
-//! for each bundled file, every value it holds (`validation/oracles/openrocket/orc_presets.py`).
-//! hpr must read the same parts in the same order, with every value equal to the bit, except for
-//! the three departures `hpr_io::orc`'s documentation names, each counted here and each shown to
-//! have the cause it is given: OpenRocket's ounce, its display names for two makers, and the
-//! density it derives from a solid part's stated mass. Three materials the files name but don't
-//! define are `None` here and zero there.
+//! for each bundled file, every value it holds (`validation/oracles/openrocket/orc_presets.py`),
+//! and each part's material densities as OpenRocket reads the file with every stated mass taken
+//! out. hpr must read the same parts in the same order, with every value equal to the bit, except
+//! for the departures `hpr_io::orc`'s documentation names, each counted here and each shown to
+//! have its cause: OpenRocket's ounce (the same count of OpenRocket's ounces), its display names
+//! for two makers, the density it derives from a solid part's stated mass (hpr's equals
+//! OpenRocket's once the mass is taken out, on all 207; on the 54 parts of a simple solid, the
+//! derived density times the volume is the mass), and three materials the files name but don't
+//! define (`None` here, zero there).
 
 #![allow(
     clippy::expect_used,
@@ -19,6 +22,7 @@ use std::f64::consts::PI;
 
 use hpr_io::orc::{BUNDLED_FILES, MaterialKind, MaterialRef, Part, PartKind, Shape, read};
 use serde_json::Value;
+use sha2::Digest;
 
 /// OpenRocket's ounce, kg, as its readings show it: 0.0283495231, against the exact
 /// 0.028349523125.
@@ -33,13 +37,22 @@ struct Departures {
     makers: BTreeMap<(String, String), usize>,
     /// Bulk parts stating a mass whose density OpenRocket replaced.
     derived_densities: usize,
-    /// Of those, the tube-like parts and bulkheads whose replaced density times the part's volume
-    /// was checked to give the stated mass.
+    /// Of those, the parts of a simple solid (tube-like parts, bulkheads, filled conical nose
+    /// cones and transitions) whose replaced density times the part's volume is the stated mass.
     derived_checked: usize,
     /// Materials named but not defined: `None` here, zero in OpenRocket.
     undefined: usize,
-    /// Values compared and equal.
+    /// Numbers compared and equal to the bit.
     equal: usize,
+    /// Defined materials whose density equals OpenRocket's once stated masses are taken out.
+    unweighed_equal: usize,
+}
+
+impl Departures {
+    /// Every number compared: equal, or a counted departure.
+    fn numbers(&self) -> usize {
+        self.equal + self.ounce_masses + self.derived_densities + self.undefined
+    }
 }
 
 fn number(record: &Value, key: &str) -> f64 {
@@ -61,6 +74,7 @@ fn shape(record: &Value, ours: Shape, at: &str) {
         Shape::Parabolic => "PARABOLIC",
         Shape::Haack => "HAACK",
         Shape::Power => "POWER",
+        _ => panic!("{at}: a shape this test doesn't know"),
     };
     assert_eq!(record["Shape"], name, "{at}");
 }
@@ -76,12 +90,17 @@ fn thickness(departures: &mut Departures, record: &Value, ours: Option<f64>, at:
     }
 }
 
-/// The material against OpenRocket's; `volume_m3` is the part's solid volume where it is simple
-/// enough to check a derived density with.
+/// The material named under `key` against OpenRocket's. `index` is its place in the record's
+/// `DensitiesWithoutMass`; `volume_m3` is the part's volume where it is a simple solid.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one call per material, each argument a different fact about it"
+)]
 fn material(
     departures: &mut Departures,
     record: &Value,
     key: &str,
+    index: usize,
     ours: &MaterialRef,
     part: &Part,
     volume_m3: Option<f64>,
@@ -93,33 +112,53 @@ fn material(
         MaterialKind::Bulk => "BULK",
         MaterialKind::Surface => "SURFACE",
         MaterialKind::Line => "LINE",
+        _ => panic!("{at}: a kind this test doesn't know"),
     };
     assert_eq!(theirs["kind"], kind, "{at}: {key}");
     let density = number(theirs, "density");
-    match ours.density {
-        None => {
-            assert_eq!(density, 0.0, "{at}: {key}");
-            departures.undefined += 1;
-        }
-        Some(value) if ours.kind == MaterialKind::Bulk && part.mass_kg.is_some() => {
-            // OpenRocket gives the part its stated mass by changing the density.
-            assert_ne!(value, density, "{at}: {key}");
-            departures.derived_densities += 1;
-            if let Some(volume) = volume_m3 {
-                // Against OpenRocket's own reading of the mass, in its ounce where stated in one.
-                let theirs_kg = density * volume;
-                let stated = number(record, "Mass");
-                assert!(
-                    ((theirs_kg - stated) / stated).abs() < 1e-12,
-                    "{at}: {theirs_kg} kg against {stated} kg"
-                );
-                departures.derived_checked += 1;
-            }
-        }
-        Some(value) => {
-            assert_eq!(value, density, "{at}: {key}");
-            departures.equal += 1;
-        }
+    // The probes' records have no reading without the mass: only the bundled files' do.
+    let unweighed = record.get("DensitiesWithoutMass").map(|densities| {
+        densities[index]
+            .as_f64()
+            .unwrap_or_else(|| panic!("{at}: {key}'s density without the mass"))
+    });
+    let Some(value) = ours.density else {
+        assert_eq!(density, 0.0, "{at}: {key}");
+        assert!(
+            unweighed.is_none_or(|unweighed| unweighed == 0.0),
+            "{at}: {key}"
+        );
+        departures.undefined += 1;
+        return;
+    };
+    // With the stated masses taken out, OpenRocket's density is hpr's, every time.
+    if let Some(unweighed) = unweighed {
+        assert_eq!(value, unweighed, "{at}: {key} without the mass");
+        departures.unweighed_equal += 1;
+    }
+    // With them, it differs exactly where a solid part states its mass: the cause, both ways.
+    let derives = ours.kind == MaterialKind::Bulk && part.mass_kg.is_some();
+    assert_eq!(
+        value != density,
+        derives,
+        "{at}: {key}: {value} against {density}"
+    );
+    if !derives {
+        departures.equal += 1;
+        return;
+    }
+    departures.derived_densities += 1;
+    if let Some(volume) = volume_m3 {
+        // Against OpenRocket's own reading of the mass, in its ounce where stated in one. The
+        // largest gap measured is 2.2e-15 of the mass,
+        // ten steps of the last digit: the volume's terms add in another order.
+        let theirs_kg = density * volume;
+        let stated = number(record, "Mass");
+        assert!(
+            ((theirs_kg - stated) / stated).abs() < 4e-15,
+            "{at}: {theirs_kg} kg against {stated} kg"
+        );
+        departures.derived_checked += 1;
     }
 }
 
@@ -139,6 +178,10 @@ fn every_part_reads_as_openrocket_reads_it() {
     let mut departures = Departures::default();
     let mut parts = 0;
     for ((name, text), file) in BUNDLED_FILES.iter().zip(files) {
+        // The file OpenRocket read is the one bundled, byte for byte.
+        let digest = sha2::Sha256::digest(text.as_bytes());
+        let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+        assert_eq!(file["sha256"], hex.as_str(), "{name}");
         let read = read(text, name).expect("every bundled file reads");
         let records = file["parts"].as_array().expect("parts");
         assert_eq!(read.catalog.parts.len(), records.len(), "{name}");
@@ -149,7 +192,13 @@ fn every_part_reads_as_openrocket_reads_it() {
         }
     }
     assert_eq!(parts, 3449);
-    println!("{departures:#?}");
+    println!(
+        "{departures:#?}\nnumbers compared: {}",
+        departures.numbers()
+    );
+    // The counts the guide's format page and ADR-132 give.
+    assert_eq!(departures.equal, 17_911);
+    assert_eq!(departures.numbers(), 18_306);
     assert_eq!(departures.ounce_masses, 185);
     assert_eq!(
         departures.makers,
@@ -168,13 +217,54 @@ fn every_part_reads_as_openrocket_reads_it() {
         ])
     );
     assert_eq!(departures.derived_densities, 207);
-    assert_eq!(departures.derived_checked, 11);
+    assert_eq!(departures.derived_checked, 54);
     assert_eq!(departures.undefined, 3);
+    assert_eq!(departures.unweighed_equal, 3594 - 3);
+}
+
+/// The keys OpenRocket holds for a part of `kind`, all of which `compare` compares.
+fn keys(kind: &str) -> &'static [&'static str] {
+    match kind {
+        "BODY_TUBE" | "TUBE_COUPLER" | "ENGINE_BLOCK" | "CENTERING_RING" | "LAUNCH_LUG" => {
+            &["OuterDiameter", "InnerDiameter", "Length", "Thickness"]
+        }
+        "BULK_HEAD" => &["OuterDiameter", "Length", "Filled"],
+        "NOSE_CONE" => &[
+            "Shape",
+            "Length",
+            "AftOuterDiameter",
+            "AftShoulderDiameter",
+            "AftShoulderLength",
+            "Filled",
+            "Thickness",
+        ],
+        "TRANSITION" => &[
+            "Shape",
+            "Length",
+            "ForeOuterDiameter",
+            "ForeShoulderDiameter",
+            "ForeShoulderLength",
+            "AftOuterDiameter",
+            "AftShoulderDiameter",
+            "AftShoulderLength",
+            "Filled",
+            "Thickness",
+        ],
+        "PARACHUTE" => &[
+            "Diameter",
+            "Sides",
+            "LineCount",
+            "LineLength",
+            "LineMaterial",
+        ],
+        "STREAMER" => &["Length", "Width", "Thickness"],
+        other => panic!("OpenRocket's kind `{other}`"),
+    }
 }
 
 fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
-    // Every key OpenRocket holds is one this compares.
-    let compared = [
+    // Every key OpenRocket holds for the part's kind is one compared below.
+    let common = [
         "Type",
         "Legacy",
         "Manufacturer",
@@ -182,29 +272,13 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
         "Description",
         "Mass",
         "Material",
-        "LineMaterial",
-        "OuterDiameter",
-        "InnerDiameter",
-        "Length",
-        "Thickness",
-        "Filled",
-        "Shape",
-        "AftOuterDiameter",
-        "AftShoulderDiameter",
-        "AftShoulderLength",
-        "ForeOuterDiameter",
-        "ForeShoulderDiameter",
-        "ForeShoulderLength",
-        "Diameter",
-        "Sides",
-        "LineCount",
-        "LineLength",
-        "Width",
+        "DensitiesWithoutMass",
     ];
+    let kind = record["Type"].as_str().expect("a kind");
     for key in record.as_object().expect("a part is an object").keys() {
         assert!(
-            compared.contains(&key.as_str()),
-            "{at}: OpenRocket's `{key}`"
+            common.contains(&key.as_str()) || keys(kind).contains(&key.as_str()),
+            "{at}: OpenRocket's `{key}` on a {kind}"
         );
     }
     assert_eq!(record["Legacy"], false, "{at}");
@@ -231,8 +305,7 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
         }
         (ours, theirs) => panic!("{at}: mass {ours:?} against {theirs:?}"),
     }
-    let tube_volume =
-        |outer: f64, inner: f64, length: f64| PI / 4.0 * (outer * outer - inner * inner) * length;
+    let cylinder = |diameter: f64, length: f64| PI / 4.0 * diameter * diameter * length;
     match &part.kind {
         PartKind::BodyTube(tube)
         | PartKind::TubeCoupler(tube)
@@ -263,12 +336,15 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             );
             same(departures, record, "Length", tube.length_m, at);
             same(departures, record, "Thickness", tube.thickness_m(), at);
-            let volume = tube_volume(tube.outer_diameter_m, tube.inner_diameter_m, tube.length_m);
+            let volume = cylinder(tube.outer_diameter_m, tube.length_m)
+                - cylinder(tube.inner_diameter_m, tube.length_m);
+            let material_ref = &tube.material;
             material(
                 departures,
                 record,
                 "Material",
-                &tube.material,
+                0,
+                material_ref,
                 part,
                 Some(volume),
                 at,
@@ -285,12 +361,14 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             );
             same(departures, record, "Length", bulkhead.length_m, at);
             filled(record, bulkhead.filled, at);
-            let volume = tube_volume(bulkhead.outer_diameter_m, 0.0, bulkhead.length_m);
+            let volume = cylinder(bulkhead.outer_diameter_m, bulkhead.length_m);
+            let material_ref = &bulkhead.material;
             material(
                 departures,
                 record,
                 "Material",
-                &bulkhead.material,
+                0,
+                material_ref,
                 part,
                 Some(volume),
                 at,
@@ -323,13 +401,19 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             );
             filled(record, nose.filled, at);
             thickness(departures, record, nose.thickness_m, at);
+            // A filled cone and a solid shoulder: πr²L/3 + πr_s²L_s.
+            let volume = (nose.shape == Shape::Conical && nose.filled == Some(true)).then(|| {
+                cylinder(nose.outer_diameter_m, nose.length_m) / 3.0
+                    + cylinder(nose.shoulder_diameter_m, nose.shoulder_length_m)
+            });
             material(
                 departures,
                 record,
                 "Material",
+                0,
                 &nose.material,
                 part,
-                None,
+                volume,
                 at,
             );
         }
@@ -381,13 +465,32 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             );
             filled(record, transition.filled, at);
             thickness(departures, record, transition.thickness_m, at);
+            // A filled frustum, πL(R₁² + R₁R₂ + R₂²)/3, and two solid shoulders.
+            let solid = transition.shape == Shape::Conical && transition.filled == Some(true);
+            let volume = solid.then(|| {
+                let (fore, aft) = (
+                    transition.fore_outer_diameter_m / 2.0,
+                    transition.aft_outer_diameter_m / 2.0,
+                );
+                PI * transition.length_m * (fore * fore + fore * aft + aft * aft) / 3.0
+                    + cylinder(
+                        transition.fore_shoulder_diameter_m,
+                        transition.fore_shoulder_length_m,
+                    )
+                    + cylinder(
+                        transition.aft_shoulder_diameter_m,
+                        transition.aft_shoulder_length_m,
+                    )
+            });
+            let material_ref = &transition.material;
             material(
                 departures,
                 record,
                 "Material",
-                &transition.material,
+                0,
+                material_ref,
                 part,
-                None,
+                volume,
                 at,
             );
         }
@@ -403,18 +506,11 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             );
             assert_eq!(record["Sides"], parachute.sides, "{at}");
             assert_eq!(record["LineCount"], parachute.line_count, "{at}");
-            material(
-                departures,
-                record,
-                "Material",
-                &parachute.material,
-                part,
-                None,
-                at,
-            );
+            let canopy = &parachute.material;
+            material(departures, record, "Material", 0, canopy, part, None, at);
             match &parachute.line_material {
                 Some(line) => {
-                    material(departures, record, "LineMaterial", line, part, None, at);
+                    material(departures, record, "LineMaterial", 1, line, part, None, at);
                 }
                 None => assert!(record.get("LineMaterial").is_none(), "{at}"),
             }
@@ -424,16 +520,10 @@ fn compare(departures: &mut Departures, part: &Part, record: &Value, at: &str) {
             same(departures, record, "Length", streamer.length_m, at);
             same(departures, record, "Width", streamer.width_m, at);
             same(departures, record, "Thickness", streamer.thickness_m, at);
-            material(
-                departures,
-                record,
-                "Material",
-                &streamer.material,
-                part,
-                None,
-                at,
-            );
+            let fabric = &streamer.material;
+            material(departures, record, "Material", 0, fabric, part, None, at);
         }
+        _ => panic!("{at}: a kind this test doesn't know"),
     }
 }
 
@@ -444,8 +534,8 @@ enum Probe {
     /// The same, but for one value in a unit whose factor OpenRocket rounds: hpr's is the exact
     /// definition, within 1e-8 of OpenRocket's and not equal to it.
     Rounded(&'static str),
-    /// OpenRocket reads the one part (as inches, or with a density of zero); hpr leaves it out
-    /// with a warning.
+    /// OpenRocket reads the one part (`in/64` as inches, `ten` as zero, a material of the wrong
+    /// kind with a density of zero); hpr leaves it out with a warning.
     LeftOut,
     /// OpenRocket refuses the whole file; hpr leaves the one part out with a warning.
     Refused,
@@ -490,6 +580,7 @@ fn probes_read_as_openrocket_reads_them() {
         ("unknown field", Probe::Same),
         ("unknown part", Probe::Same),
         ("no length", Probe::Refused),
+        ("unreadable length", Probe::LeftOut),
         ("unknown shape", Probe::Refused),
     ];
     let probes = fixture["probes"].as_array().expect("probes");
@@ -505,7 +596,7 @@ fn probes_read_as_openrocket_reads_them() {
             tally(|probe| matches!(probe, Probe::Refused | Probe::MaterialRefused)),
             tally(|probe| matches!(probe, Probe::LeftOut)),
         ],
-        [20, 6, 4, 2]
+        [20, 6, 4, 3]
     );
     for (probe, (name, expectation)) in probes.iter().zip(&expected) {
         let text = probe["text"].as_str().expect("a probe's text");
@@ -550,7 +641,8 @@ fn probes_read_as_openrocket_reads_them() {
                 }
                 .unwrap_or_else(|| panic!("{name}: a value"));
                 assert_ne!(ours, theirs_value, "{name}");
-                assert!(((ours - theirs_value) / ours).abs() < 1e-8, "{name}");
+                // The largest gap measured is 1.6e-9.
+                assert!(((ours - theirs_value) / ours).abs() < 2e-9, "{name}");
             }
             Probe::MaterialRefused => {
                 assert!(theirs.is_none(), "{name}: {probe}");
@@ -558,7 +650,7 @@ fn probes_read_as_openrocket_reads_them() {
                 assert_eq!(
                     messages,
                     [
-                        "`oz/in` is not a unit of line density the format has; it was left out",
+                        "`oz/in` is not a unit of line density this reads; it was left out",
                         "its material `L` is not defined in this file, so it has no density",
                     ],
                     "{name}"
@@ -575,6 +667,15 @@ fn probes_read_as_openrocket_reads_them() {
                 );
             }
             Probe::LeftOut | Probe::Refused => {
+                // What OpenRocket made of the sizes hpr won't read.
+                let length = theirs
+                    .and_then(|parts| parts.first())
+                    .and_then(|part| part["Length"].as_f64());
+                match *name {
+                    "length in/64" => assert_eq!(length, Some(3.0 * 0.0254), "{name}"),
+                    "unreadable length" => assert_eq!(length, Some(0.0), "{name}"),
+                    _ => {}
+                }
                 match expectation {
                     Probe::Refused => assert!(theirs.is_none(), "{name}: {probe}"),
                     _ => assert_eq!(theirs.map(Vec::len), Some(1), "{name}"),

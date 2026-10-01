@@ -5,7 +5,11 @@ byte for byte: the script checks each against the copy bundled in
 `crates/hpr-io/data/openrocket-database/` before reading it. Each file is read by OpenRocket's
 own preset loader, `OpenRocketComponentLoader.load`, and every value of every part it returns is
 recorded: the part's kind, maker and part number, each number in SI as OpenRocket holds it, and
-each material's name, kind and density. hpr's test `crates/hpr-io/tests/orc_openrocket.rs` reads
+each material's name, kind and density (every key of `ComponentPreset.ORDERED_KEY_LIST`; the
+script stops if a part holds any other). Each file is then read again with every `<Mass>` taken
+out, and each part's material densities from that reading are recorded too, as
+`DensitiesWithoutMass`: where OpenRocket changes a density to give a part its stated mass, the
+test holds hpr's to this one. hpr's test `crates/hpr-io/tests/orc_openrocket.rs` reads
 the same files and holds hpr's reading to these, part by part.
 
 It also reads small probe catalogues written here, each asking one question about the format:
@@ -27,6 +31,7 @@ The fixture is written to the path given, not to standard output, which OpenRock
 
 import hashlib
 import json
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -39,7 +44,10 @@ import automatic_radius  # noqa: E402 - the JVM start and the jar's path
 GENERATED = "2026-10-01"
 
 BUNDLED = Path("crates/hpr-io/data/openrocket-database")
+PINNED = Path("refs/openrocket-database/orc")
 IN_JAR = "datafiles/components/database/"
+# Every stated mass, so a file can be read again without them.
+MASS = re.compile(rb"<Mass[^>]*>[^<]*</Mass>")
 
 
 def probe(materials, parts):
@@ -106,6 +114,7 @@ def probes():
     found.append(("unknown field", probe(bulk, tube("unknown field", extra="<Colour>red</Colour>"))))
     found.append(("unknown part", probe(bulk, "<Widget><Manufacturer>Probe</Manufacturer><PartNumber>w</PartNumber></Widget>" + tube("after"))))
     found.append(("no length", probe(bulk, tube("no length", length=""))))
+    found.append(("unreadable length", probe(bulk, tube("unreadable", length="<Length>ten</Length>"))))
     nose = (
         "<NoseCone><Manufacturer>Probe</Manufacturer><PartNumber>n</PartNumber><Description>probe"
         '</Description><Material Type="BULK">M</Material><Shape>BULLET</Shape>'
@@ -126,11 +135,27 @@ def reading(data, name):
         presets = OpenRocketComponentLoader().load(ByteArrayInputStream(data), name)
     except Exception as error:  # noqa: BLE001 - the refusal is the measurement
         return None, str(error).splitlines()[0]
+    from info.openrocket.core.preset import TypedKey
+
+    ordered = list(ComponentPreset.ORDERED_KEY_LIST)
+    # The preset's other keys (an image, a drag coefficient, packed sizes...) but its kind, which
+    # `getType` gives: none may be set,
+    # or the record below would leave out a value OpenRocket holds.
+    others = [
+        field.get(None)
+        for field in ComponentPreset.class_.getFields()
+        if TypedKey.class_.isAssignableFrom(field.getType())
+        and field.get(None) not in ordered
+        and field.get(None) != ComponentPreset.TYPE
+    ]
     parts = []
     for preset in presets:
+        unlisted = [str(key.getName()) for key in others if preset.has(key)]
+        if unlisted:
+            sys.exit(f"{name}: {preset.getPartNo()} holds {unlisted}, not in ORDERED_KEY_LIST")
         # The part's kind is not among the ordered keys; `getType` gives it.
         values = {"Type": str(preset.getType().name())}
-        for key in ComponentPreset.ORDERED_KEY_LIST:
+        for key in ordered:
             if preset.has(key):
                 values[str(key.getName())] = value(preset.get(key))
         parts.append(values)
@@ -178,9 +203,20 @@ def main():
             data = jar.read(IN_JAR + name)
             if (BUNDLED / name).read_bytes() != data:
                 sys.exit(f"{name}: the jar's copy is not the bundled one")
+            if PINNED.is_dir() and (PINNED / name).read_bytes() != data:
+                sys.exit(f"{name}: the jar's copy is not the pinned one in {PINNED}")
             parts, error = reading(data, name)
             if error is not None:
                 sys.exit(f"{name}: OpenRocket refused it: {error}")
+            # The same file with every stated mass taken out: each part's material densities
+            # then, so a density OpenRocket changes for a stated mass can be held to the file's.
+            unweighed, error = reading(MASS.sub(b"", data), name)
+            if error is not None or len(unweighed) != len(parts):
+                sys.exit(f"{name}: OpenRocket read it differently without masses: {error}")
+            for part, bare in zip(parts, unweighed):
+                part["DensitiesWithoutMass"] = [
+                    bare[key]["density"] for key in ("Material", "LineMaterial") if key in bare
+                ]
             files.append(
                 {"file": name, "sha256": hashlib.sha256(data).hexdigest(), "parts": parts}
             )

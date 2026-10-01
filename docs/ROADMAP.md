@@ -738,9 +738,10 @@
 - [x] **M5.1 Online layer and cache.** `hpr-net`: HTTP client (rustls), on-disk cache (platform
   dirs), TTLs, an explicit offline mode, attribution strings. *Done when:* tests run against
   recorded fixtures (no live network in CI); offline mode never touches the network (asserted by
-  test). Split into a and b. Met: M5.1a an offline fetch never calls the transport and serves a
-  stale entry marked stale, `tests/offline.rs` (ADR-117); M5.1b a loopback server replaying a
-  recording fills the cache, `cargo deny` passes, `tests/http.rs` (ADR-118).
+  test). Split into a and b. Met: M5.1a an offline fetch never calls the transport (one that fails
+  if called) and serves a stale entry marked stale, in recorded-fixture tests, `tests/offline.rs`
+  (ADR-117); M5.1b a loopback server replaying a recorded fixture fills the cache, `cargo deny`
+  passes, `tests/http.rs` (ADR-118).
   - [x] **M5.1a Cache and offline mode** (TTLs, `Mode::Offline`, attribution).
   - [x] **M5.1b HTTP.** `ureq` with rustls behind feature `http`, the platform cache directory.
 
@@ -789,8 +790,7 @@
   `vendors`, and per-motor endpoints), joined with ThrustCurve curves; offline snapshot; `hpr
   motors search --in-stock --class L --max-price 150`. *Done when:* recorded-fixture tests pass;
   the designation to ThrustCurve id mapping covers at least 95% of in-stock motors, with a report
-  of the misses; attribution is displayed as the API asks. Split a to c (ADR-129). *Result:* met
-  by M5.4a to c.
+  of the misses; attribution is displayed as the API asks. Split a to c (ADR-129), each met.
   - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`), its five files via the cache.
     *Done when:* recorded-fixture tests read each endpoint's answer to the values in it, a second
     read works offline, and every answer carries the credit the API asks for. *Result:* met
@@ -811,8 +811,8 @@
   - [x] **M5.5a The `.orc` reader** (`hpr_io::orc`), the 16 files OpenRocket 24.12 ships bundled.
     *Done when:* every bundled file reads, every part OpenRocket's preset loader returns (the
     oracle) with each value equal to its reading bar named, counted departures; parts are found
-    by maker and part number. *Result:* met (ADR-132): 3,449 parts, 17,911 values to the bit; 185
-    ounces, 252 makers' names, 207 densities from a stated mass, 3 undefined materials.
+    by maker and part number. *Result:* met (ADR-132): 3,449 parts; 17,911 of 18,306 numbers to
+    the bit, the rest 185 ounces, 207 densities from a stated mass, 3 undefined materials.
   - [ ] **M5.5b Catalog parts in the builder.** *Done when:* a rocket built from catalog parts
     flies through the builder; each part's mass as built is held to OpenRocket's for its preset.
 ## Phase 3: Uncertainty, optimization, challenges

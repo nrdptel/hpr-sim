@@ -1,7 +1,8 @@
 3449 parts from 16 makers
 
 LOC Precision PNC-3.00: Nose cone, polypropylene, PNC-3.00, ogive, 12.5"
-  Ogive, 285.8 mm long, 78.7 mm across, wall 1.96 mm
+  Ogive, 285.8 mm long, 78.7 mm across
+  wall 1.96 mm
   shoulder 95.2 mm long, 75.9 mm across
   Polypropylene, bulk, 946 kg/m³
 

@@ -10820,10 +10820,11 @@ numbers naming two parts; no shape parameters.
 3. **OpenRocket's own reading is the oracle.** `validation/oracles/openrocket/orc_presets.py`
    runs OpenRocket 24.12's public `OpenRocketComponentLoader.load` on each file (run, never read)
    and records every value of every preset (`ComponentPreset.ORDERED_KEY_LIST`) to
-   `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (1.3 MB, one part a line).
+   `crates/hpr-io/tests/fixtures/orc/openrocket-presets.json` (1.5 MB, one part a line), with each
+   part's densities as OpenRocket reads the file with every `<Mass>` removed.
    `tests/orc_openrocket.rs` holds hpr's reading to it, part by part in order, every value to
    the bit. Where the two differ the test counts each departure and checks its cause. The script
-   also has OpenRocket read 32 probe catalogues, each asking one question (every documented
+   also has OpenRocket read 33 probe catalogues, each asking one question (every documented
    unit, values with no units, a part or file it can't read), and records each probe's text with
    OpenRocket's parts or refusal; the same test reads each probe and names what hpr does.
 4. **Units are their exact definitions** (NIST Handbook 44, Appendix C), so hpr departs from
@@ -10831,34 +10832,45 @@ numbers naming two parts; no shape parameters.
    (185 masses differ by 8.8e-10 of their value); the fixture's probes show `lb/ft³`, `oz/in²`, `oz/ft²`,
    `lb/ft²` and `oz/ft` rounded the same way, none used by the bundled files. Values with no
    `Unit` are SI, and a density with no `UnitsOfMeasure` is SI, as OpenRocket reads them
-   (probes). `g/m2` is read as written, as OpenRocket does, though the six Giant Leap canopies
-   labelled so are plainly kg/m² (0.067 g/m² is no fabric); those six parts state their mass.
+   (probes). `g/m2` is read as written, as OpenRocket does, though six ripstop nylons labelled so
+   (five in `generic_materials.orc`, unused; Giant Leap's, whose six canopies state their mass)
+   are plainly kg/m² (0.067 g/m² is no fabric); a surface density under 1 g/m² warns.
 5. **The file's values are kept.** The maker is the file's (OpenRocket shows "LOC Precision" as
    "LOC/Precision" and "Public Missiles" as "Public Missiles, Ltd.": 252 parts). A stated `Mass`
    is kept in `Part::mass_kg` and the material keeps the file's density; OpenRocket instead gives
-   a bulk part its stated mass by replacing the density (207 parts; on the 11 tubes and bulkheads
-   among them, the replaced density times the part's volume is the stated mass to 1e-12, so that
-   is the cause). M5.5b makes a built part's mass the stated one. A material the file doesn't
+   a bulk part its stated mass by replacing the density (207 parts). The cause is shown on all
+   207: with every `<Mass>` removed, OpenRocket's density equals hpr's on every part, and it
+   differs exactly on the bulk parts stating a mass; on the 54 simple solids among them (tube-like
+   parts, bulkheads, filled conical noses and transitions, shoulders as solid cylinders) the
+   replaced density times the closed-form volume is the stated mass to 4e-15 (largest 2.2e-15). M5.5b makes a built part's mass the stated one. A material the file doesn't
    define has no density (`None`) where OpenRocket gives it zero (3 parts). A field stated twice
    keeps the last, as OpenRocket does (3 descriptions).
 6. **Strict per part, lenient per file.** Only text that isn't XML or whose root isn't
    `<OpenRocketComponent>` is refused. A part with a missing or unreadable dimension, a unit or
    shape the format lacks, a material of the wrong kind or an unknown element is left out with a
-   warning; OpenRocket 24.12 throws on the whole file for the first three (probes). An unknown
-   field is ignored with a warning (OpenRocket ignores it silently): the 37 nose cones that state
-   an `InsideDiameter` read that way. `in/64` is refused: OpenRocket reads it as inches.
+   warning. OpenRocket 24.12 throws on the whole file for a missing dimension, an unknown unit or
+   shape (probes); it reads an unreadable number (`ten`) as zero and a material of the wrong kind
+   with a density of zero. An unknown field is ignored with a warning (OpenRocket ignores it
+   silently): the 37 nose cones that state an `InsideDiameter` read that way. `in/64` is refused:
+   OpenRocket reads it as inches. Text nested past `MAX_DEPTH` (16) is refused before it is parsed
+   (`OrcError::TooDeep`); a second list, a material defined twice with another density (the first
+   is kept), and implausible values read as written (inside diameter not under the outside, a
+   fabric under 1 g/m²) warn. Warnings carry a `WarningKind` and stop at `MAX_WARNINGS` (1,000)
+   with a count of the rest; `read` returns a `CatalogFile`.
 7. **Lookup.** `Catalog::find(maker, number)` matches the whole part number exactly and the maker
-   in any case, both trimmed, and returns every match (21 numbers name two parts). Numbers are
+   in any case, both trimmed, and returns every match (21 numbers name two parts, 3 pairs
+   identical). Numbers are
    often several in one (`BT-20, 30316`); pieces are ambiguous (`White` names five parts), so
    `Catalog::search` matches text in numbers and descriptions instead.
 
 **Consequences.** M5.5a is met: the 16 bundled files read; every part OpenRocket reads is read, in
 its order, 3,449 parts; 17,911 values equal OpenRocket's to the bit, and the departures are
-exactly 185 ounce masses, 252 makers' names, 207 derived densities and 3 undefined materials. The
-reader's warnings on the bundled files are 43: 37 nose cones' inside diameters, 3 doubled
-descriptions and 3 undefined materials. Changing the inch by one unit in the last place fails the
-oracle test. Of the 32 probes, hpr reads 20 as OpenRocket does to the bit, 6 within 1e-8 by
-its exact units, and leaves out what OpenRocket can't read (4 it refuses whole, `oz/in` among
-them, which hpr reads with the cord's density undefined) or reads oddly (`in/64`, a material of
-the wrong kind). Nothing flies a catalogue part yet (M5.5b), and no shape parameter or shoulder wall
+exactly 185 ounce masses, 252 makers' names, 207 derived densities and 3 undefined materials, of
+18,306 numbers compared. The reader's warnings on the bundled files are 52: 37 nose cones' inside
+diameters, 3 doubled descriptions, 3 undefined materials, 3 tube-like parts no narrower inside
+than out and 6 fabrics under 1 g/m². Moving the inch one float step fails the oracle test. Of the
+33 probes, hpr reads 20 as OpenRocket does to the bit, 6 within 2e-9 by its exact units, and
+leaves out what OpenRocket can't read (4 it refuses whole, `oz/in` among them, which hpr reads
+with the cord's density undefined) or reads oddly (3: `in/64`, `ten`, a material of the wrong
+kind). Nothing flies a catalogue part yet (M5.5b), and no shape parameter or shoulder wall
 is chosen for one: the file gives neither.

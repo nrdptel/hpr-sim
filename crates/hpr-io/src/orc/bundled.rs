@@ -77,7 +77,8 @@ pub const BUNDLED_FILES: &[(&str, &str)] = &[
 ];
 
 /// Every part of [`BUNDLED_FILES`], file by file in their order: 3,449 parts. Read once, on the
-/// first call.
+/// first call. The files' 52 warnings are dropped here; [`read`] each of [`BUNDLED_FILES`] to see
+/// them.
 #[must_use]
 pub fn bundled() -> &'static Catalog {
     static CATALOG: OnceLock<Catalog> = OnceLock::new();
@@ -85,10 +86,12 @@ pub fn bundled() -> &'static Catalog {
         let mut catalog = Catalog::default();
         for (name, text) in BUNDLED_FILES {
             // Invariant: the bundled files are fixed when this crate is built, and the test
-            // `every_bundled_file_reads` reads each of them, with no part left out. A file that
-            // didn't read would add no parts rather than stop the program.
-            if let Ok(read) = read(text, name) {
-                catalog.extend(read.catalog);
+            // `every_bundled_file_reads_with_only_the_known_warnings` reads each of them. A file
+            // that didn't read would add no parts rather than stop the program.
+            let file = read(text, name);
+            debug_assert!(file.is_ok(), "{name} reads");
+            if let Ok(file) = file {
+                catalog.extend(file.catalog);
             }
         }
         catalog

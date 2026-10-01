@@ -27,7 +27,7 @@ fn body_tube(number: &str, material: &str, extra: &str) -> String {
     )
 }
 
-fn read_ok(text: &str) -> Read {
+fn read_ok(text: &str) -> CatalogFile {
     match read(text, "test.orc") {
         Ok(read) => read,
         Err(error) => panic!("the test file should read: {error}"),
@@ -56,24 +56,56 @@ fn every_bundled_file_reads_with_only_the_known_warnings() {
     assert_eq!(parts, 3449);
     assert_eq!(bundled().parts.len(), 3449);
     // The warnings are the database's own slips, each counted: 37 nose cones state an inside
-    // diameter (no nose cone field), three parts state their description twice, and three name a
-    // material their file doesn't define.
-    let count = |needle: &str| {
+    // diameter (no nose cone field), three parts state their description twice, three name a
+    // material their file doesn't define, three tube-like parts are wider inside than out, and
+    // six ripstop nylons are labelled `g/m2` (five in `generic_materials.orc`, which no part
+    // uses, and Giant Leap's, whose six canopies state their mass).
+    let count = |kind: WarningKind, needle: &str| {
         warnings
             .iter()
-            .filter(|(_, warning)| warning.message.contains(needle))
+            .filter(|(_, warning)| warning.kind == kind && warning.message.contains(needle))
             .count()
     };
     assert_eq!(
-        count("<InsideDiameter> is not a field of a <NoseCone> OpenRocket reads"),
+        count(
+            WarningKind::Ignored,
+            "<InsideDiameter> is not a field of a <NoseCone> OpenRocket reads"
+        ),
         37
     );
-    assert_eq!(count("<Description> is stated 2 times"), 3);
     assert_eq!(
-        count("is not defined in this file, so it has no density"),
+        count(WarningKind::Repeated, "<Description> is stated 2 times"),
         3
     );
-    assert_eq!(warnings.len(), 37 + 3 + 3, "{warnings:#?}");
+    assert_eq!(count(WarningKind::MaterialUndefined, ""), 3);
+    assert_eq!(count(WarningKind::Implausible, "its inside diameter"), 3);
+    assert_eq!(count(WarningKind::Implausible, "g/m2 is"), 6);
+    let fabrics: Vec<_> = warnings
+        .iter()
+        .filter(|(_, warning)| warning.message.contains("g/m2 is"))
+        .map(|(name, _)| *name)
+        .collect();
+    assert_eq!(
+        fabrics,
+        [
+            "generic_materials.orc",
+            "generic_materials.orc",
+            "generic_materials.orc",
+            "generic_materials.orc",
+            "generic_materials.orc",
+            "giantleaprocketry.orc"
+        ]
+    );
+    let walls: Vec<_> = warnings
+        .iter()
+        .filter(|(_, warning)| warning.message.contains("its inside diameter"))
+        .map(|(_, warning)| warning.at.as_str())
+        .collect();
+    assert_eq!(
+        walls,
+        ["Quest CR2924, Q14022", "SEMROC HTC-11", "SEMROC RA-55-70"]
+    );
+    assert_eq!(warnings.len(), 37 + 3 + 3 + 3 + 6, "{warnings:#?}");
     let undefined: Vec<_> = bundled()
         .parts
         .iter()
@@ -411,7 +443,7 @@ fn a_part_that_cant_be_read_is_left_out_with_why() {
         left_out(&body_tube("1", "Kraft", "").replace("Unit=\"in\">10", "Unit=\"furlong\">10"));
     assert_eq!(
         message,
-        "<Length>'s unit `furlong` is not one the format has; the part was left out"
+        "<Length>'s unit `furlong` is not one this reads; the part was left out"
     );
     let message = left_out(&body_tube("1", "Kraft", "").replace(">10<", ">ten<"));
     assert_eq!(
@@ -488,8 +520,8 @@ fn odd_fields_are_reported_and_the_part_kept() {
     assert_eq!(
         messages,
         [
+            "<Colour> is not a field of a <BodyTube> OpenRocket reads; ignored",
             "<Description> is stated 2 times; the last was read, as OpenRocket reads it",
-            "<Colour> is not a field of a <BodyTube> OpenRocket reads; it was ignored",
         ]
     );
     assert!(read.warnings.iter().all(|w| w.at == "Acme 1"));
@@ -524,7 +556,7 @@ fn materials_that_cant_be_read_are_left_out() {
     assert_eq!(
         messages,
         [
-            "`kg/m2` is not a unit of bulk density the format has; it was left out",
+            "`kg/m2` is not a unit of bulk density this reads; it was left out",
             "its <Type> is not BULK, SURFACE or LINE; it was left out",
             "its <Density> is missing or not a number; it was left out",
             "<Stuff> is not a material; it was left out",
@@ -562,4 +594,223 @@ fn parts_are_found_by_maker_and_number() {
     let makers = catalog.manufacturers();
     assert_eq!(makers.len(), 16, "{makers:?}");
     assert_eq!(makers[0], "BalsaMachining");
+}
+
+#[test]
+fn text_nested_too_deep_is_refused_before_it_is_parsed() {
+    // Deep enough to exhaust the parser's stack if it were handed the text.
+    let depth = 100_000;
+    let text = format!(
+        "<OpenRocketComponent><Components>{}{}</Components></OpenRocketComponent>",
+        "<a>".repeat(depth),
+        "</a>".repeat(depth)
+    );
+    assert_eq!(
+        read(&text, "deep.orc"),
+        Err(OrcError::TooDeep {
+            limit: MAX_DEPTH,
+            depth: depth + 2
+        })
+    );
+    // A file nested just to the limit reads.
+    let text = format!(
+        "<OpenRocketComponent><Components>{}{}</Components></OpenRocketComponent>",
+        "<a>".repeat(MAX_DEPTH - 2),
+        "</a>".repeat(MAX_DEPTH - 2)
+    );
+    assert!(read(&text, "deep.orc").is_ok());
+}
+
+#[test]
+fn warnings_stop_at_the_limit_and_count_the_rest() {
+    let parts = "<Widget/>".repeat(MAX_WARNINGS + 7);
+    let read = read_ok(&file("", &parts));
+    assert_eq!(read.warnings.len(), MAX_WARNINGS + 1);
+    let last = &read.warnings[MAX_WARNINGS];
+    assert_eq!(last.kind, WarningKind::TooMany);
+    assert_eq!(last.at, "test.orc");
+    assert_eq!(last.message, "7 more warnings were not listed");
+}
+
+#[test]
+fn many_unknown_fields_make_one_warning() {
+    let fields: String = (0..20_000).map(|i| format!("<F{i}/>")).collect();
+    let read = read_ok(&file(
+        &bulk("Kraft", "800", "kg/m3"),
+        &body_tube("1", "Kraft", &fields),
+    ));
+    assert_eq!(read.catalog.parts.len(), 1);
+    assert_eq!(read.warnings.len(), 1);
+    assert_eq!(read.warnings[0].kind, WarningKind::Ignored);
+    // The first five by name, and a count of the rest.
+    assert_eq!(
+        read.warnings[0].message,
+        "<F0>, <F1>, <F10>, <F100>, <F1000> and 19995 more are not a field of a <BodyTube> \
+         OpenRocket reads; ignored"
+    );
+}
+
+#[test]
+fn an_element_inside_a_value_leaves_the_part_out() {
+    let message = left_out(&body_tube("1", "Kraft", "").replace(">10<", ">1<b>0</b><"));
+    assert_eq!(
+        message,
+        "<Length> holds an element, not a value; the part was left out"
+    );
+}
+
+#[test]
+fn lists_beside_the_first_are_ignored_with_a_warning() {
+    let text = format!(
+        "<OpenRocketComponent><Version>0.1</Version><Materials>{}</Materials>\
+         <Components>{}</Components><Components>{}</Components><Extra/></OpenRocketComponent>",
+        bulk("Kraft", "800", "kg/m3"),
+        body_tube("1", "Kraft", ""),
+        body_tube("2", "Kraft", "")
+    );
+    let read = read_ok(&text);
+    let numbers: Vec<_> = read
+        .catalog
+        .parts
+        .iter()
+        .map(|part| part.part_number.as_str())
+        .collect();
+    assert_eq!(numbers, ["1"]);
+    assert_eq!(read.warnings.len(), 1);
+    assert_eq!(read.warnings[0].kind, WarningKind::Ignored);
+    assert_eq!(
+        read.warnings[0].message,
+        "a second <Components>, <Extra> beside the catalogue's lists were ignored"
+    );
+}
+
+#[test]
+fn a_material_defined_twice_differently_keeps_the_first() {
+    let materials = [
+        bulk("Kraft", "800", "kg/m3"),
+        bulk("Kraft", "0.9", "g/cm3"),
+        bulk("Kraft", "800", "kg/m3"),
+    ]
+    .concat();
+    let read = read_ok(&file(&materials, &body_tube("1", "Kraft", "")));
+    let PartKind::BodyTube(tube) = &read.catalog.parts[0].kind else {
+        panic!("a body tube")
+    };
+    assert_eq!(tube.material.density, Some(800.0));
+    // One warning, for the definition that differs; the identical one is not a conflict.
+    assert_eq!(read.warnings.len(), 1, "{:?}", read.warnings);
+    assert_eq!(read.warnings[0].kind, WarningKind::MaterialRepeated);
+    assert_eq!(
+        read.warnings[0].message,
+        "it is defined again with another density, 900 against 800; parts take the first"
+    );
+}
+
+#[test]
+fn implausible_values_are_read_as_written_with_a_warning() {
+    // A canopy fabric labelled g/m² whose number is plainly kg/m², as in the bundled files.
+    let text = file(
+        "<Material UnitsOfMeasure=\"g/m2\"><Name>Nylon</Name><Density>0.067</Density>\
+         <Type>SURFACE</Type></Material>",
+        "",
+    );
+    let read = read_ok(&text);
+    assert_eq!(read.materials[0].density, 0.067 * 0.001);
+    assert_eq!(read.warnings.len(), 1);
+    assert_eq!(read.warnings[0].kind, WarningKind::Implausible);
+    assert!(
+        read.warnings[0]
+            .message
+            .starts_with("0.067 g/m2 is 0.000067")
+    );
+    // 1 g/m² and up reads with no warning.
+    let text = file(
+        "<Material UnitsOfMeasure=\"g/m2\"><Name>Film</Name><Density>1</Density>\
+         <Type>SURFACE</Type></Material>",
+        "",
+    );
+    assert!(read_ok(&text).warnings.is_empty());
+    // A ring wider inside than out: its wall is negative.
+    let ring = body_tube("1", "Kraft", "").replace(">1.0<", ">1.2<");
+    let read = read_ok(&file(&bulk("Kraft", "800", "kg/m3"), &ring));
+    assert_eq!(read.catalog.parts.len(), 1);
+    let tube = read.catalog.parts[0].kind.tube().expect("tube-like");
+    assert!(tube.thickness_m() < 0.0);
+    assert_eq!(read.warnings.len(), 1);
+    assert_eq!(read.warnings[0].kind, WarningKind::Implausible);
+    let message = &read.warnings[0].message;
+    assert_eq!(
+        message,
+        "its inside diameter, 0.030479999999999997 m, is not less than its outside diameter, \
+         0.02794 m, so its wall is -0.0012699999999999986 m; read as written, as OpenRocket reads it"
+    );
+}
+
+#[test]
+fn the_counts_the_guide_gives_hold() {
+    // docs/format/orc.md quotes each of these.
+    let mut versions = std::collections::BTreeMap::new();
+    let mut materials = 0;
+    for (name, text) in BUNDLED_FILES {
+        let read = read(text, name).expect("every bundled file reads");
+        *versions
+            .entry(read.version.unwrap_or_default())
+            .or_insert(0) += 1;
+        materials += read.materials.len();
+    }
+    assert_eq!(
+        versions,
+        std::collections::BTreeMap::from([("0.1".to_owned(), 15), ("1.0".to_owned(), 1)])
+    );
+    assert_eq!(materials, 402);
+    let parts = &bundled().parts;
+    let kinds = |want: fn(&PartKind) -> bool| parts.iter().filter(|part| want(&part.kind)).count();
+    assert_eq!(
+        [
+            kinds(|kind| matches!(kind, PartKind::BodyTube(_))),
+            kinds(|kind| matches!(kind, PartKind::TubeCoupler(_))),
+            kinds(|kind| matches!(kind, PartKind::EngineBlock(_))),
+            kinds(|kind| matches!(kind, PartKind::CenteringRing(_))),
+            kinds(|kind| matches!(kind, PartKind::LaunchLug(_))),
+            kinds(|kind| matches!(kind, PartKind::Bulkhead(_))),
+            kinds(|kind| matches!(kind, PartKind::NoseCone(_))),
+            kinds(|kind| matches!(kind, PartKind::Transition(_))),
+            kinds(|kind| matches!(kind, PartKind::Parachute(_))),
+            kinds(|kind| matches!(kind, PartKind::Streamer(_))),
+        ],
+        [1089, 237, 38, 499, 59, 115, 855, 360, 151, 46]
+    );
+    assert_eq!(
+        parts.iter().filter(|part| part.mass_kg.is_some()).count(),
+        229
+    );
+    let both = |part: &&Part| match &part.kind {
+        PartKind::NoseCone(nose) => nose.filled.is_some() && nose.thickness_m.is_some(),
+        PartKind::Transition(transition) => {
+            transition.filled.is_some() && transition.thickness_m.is_some()
+        }
+        _ => false,
+    };
+    let noses = parts
+        .iter()
+        .filter(both)
+        .filter(|part| matches!(part.kind, PartKind::NoseCone(_)))
+        .count();
+    assert_eq!((noses, parts.iter().filter(both).count() - noses), (8, 2));
+    // Part numbers naming two parts: 21, each pair of one kind, 3 pairs identical.
+    let mut pairs = Vec::new();
+    for (index, part) in parts.iter().enumerate() {
+        for other in &parts[index + 1..] {
+            if part.manufacturer == other.manufacturer && part.part_number == other.part_number {
+                pairs.push((part, other));
+            }
+        }
+    }
+    assert_eq!(pairs.len(), 21);
+    assert!(
+        pairs
+            .iter()
+            .all(|(a, b)| std::mem::discriminant(&a.kind) == std::mem::discriminant(&b.kind))
+    );
+    assert_eq!(pairs.iter().filter(|(a, b)| a == b).count(), 3);
 }

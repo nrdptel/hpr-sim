@@ -34,12 +34,17 @@ fn main() {
         );
         if let PartKind::NoseCone(nose) = &part.kind {
             println!(
-                "  {:?}, {:.1} mm long, {:.1} mm across, wall {:.2} mm",
+                "  {:?}, {:.1} mm long, {:.1} mm across",
                 nose.shape,
                 nose.length_m * 1e3,
                 nose.outer_diameter_m * 1e3,
-                nose.thickness_m.unwrap_or_default() * 1e3,
             );
+            // A nose is hollow with a wall, or filled; the file may say either.
+            match (nose.filled, nose.thickness_m) {
+                (Some(true), _) => println!("  filled"),
+                (_, Some(wall_m)) => println!("  wall {:.2} mm", wall_m * 1e3),
+                _ => println!("  wall not given"),
+            }
             println!(
                 "  shoulder {:.1} mm long, {:.1} mm across",
                 nose.shoulder_length_m * 1e3,

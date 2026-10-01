@@ -10,8 +10,9 @@
 //! Status: pre-alpha. An OpenRocket `.ork` file reads into a design, its motors and recovery
 //! ([`ork`]); the other design formats are [M3.2][roadmap] to [M3.6][roadmap]. OpenRocket's
 //! `.orc` parts catalogues read into parts by maker and part number, and the 16 files OpenRocket
-//! 24.12 ships are built in ([`orc`], [M5.5a][roadmap], [parts catalogues][guide-orc]). An ERA5 pressure-level file gives the atmosphere over a launch site
-//! ([`era5`], [ERA5 weather files][guide-era5]), read by the netCDF classic reader
+//! 24.12 ships are built in ([`orc`], [M5.5a][roadmap], [parts catalogues][guide-orc]). An ERA5
+//! pressure-level file gives the atmosphere over a launch site ([`era5`], [ERA5 weather
+//! files][guide-era5]), read by the netCDF classic reader
 //! ([`netcdf`]). [`grib2`] decodes the GRIB2 fields NOAA's NOMADS cuts from its GFS and RAP
 //! forecasts ([M5.2c][roadmap]) and whole GFS files' complex packing ([M5.2d2][roadmap]) and
 //! JPEG 2000 ([M5.2d3][roadmap]). [`geotiff`] reads a launch site's height from a GeoTIFF
