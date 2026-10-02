@@ -825,15 +825,15 @@
   design problem is solved with the result validated by re-simulation. Split a to e (ADR-138).
   - [x] **M6.2a CMA-ES, continuous variables**: four test functions' minima from 20 seeds (Rosenbrock 17), within
     5% of pycma's evaluations; 3,048 m and 2.2 cal in 300 flights, re-flown. Met (ADR-138).
-  - [x] **M6.2b Discrete variables and constraints**, split b1, b2 (ADR-139). Met: b1, Deb's rules, three
-    problems to 1e-10 from 20 seeds; b2, a motor and part chosen for 3,048 m, re-checked (ADR-140).
+  - [x] **M6.2b Discrete variables and constraints**, split b1, b2 (ADR-139). Met.
+    - [x] **M6.2b1 Constraints** (Deb's rules): three problems to 1e-10 from 20 seeds. Met.
+    - [x] **M6.2b2 Discrete choices**: a motor and part chosen for 3,048 m, re-checked. Met (ADR-140).
   - [x] **M6.2c NSGA-II.** *Done when:* ZDT1 to ZDT3 fronts within a stated generational distance;
     a two-goal rocket problem gives a front. Met (ADR-141).
   - [ ] **M6.2d EGO.** *Done when:* Branin and Hartmann reach their minima in a stated budget. Split d1, d2 (ADR-142).
-    - [x] **M6.2d1 Branin and Hartmann 3.** *Done when:* each within 1% of its minimum in 50
-      evaluations from 20 seeds. Met (ADR-142): worst 0.12% on both.
+    - [x] **M6.2d1 Branin and Hartmann 3.** *Done when:* each within 1% of its minimum in 50 evaluations from 20 seeds. Met (ADR-142): worst 0.12%.
     - [ ] **M6.2d2 Hartmann 6.** *Done when:* within 1% of its minimum in a stated budget from 20
-      seeds (d1's EGO ends 6 runs of 10 at its −3.20 local minimum after 100).
+      seeds (d1's EGO ends 7 runs of 10 at its −3.20 local minimum after 100).
   - [ ] **M6.2e Robust mode.** *Done when:* a Monte Carlo statistic is optimized with common random
     numbers, the winner checked by a fresh Monte Carlo run.
 

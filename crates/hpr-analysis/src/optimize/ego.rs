@@ -15,9 +15,9 @@
 //! 2. Fit a *kriging* surrogate (a Gaussian process): the model's values are taken as a
 //!    constant mean `μ` plus a correlated deviation of variance `σ²`, the correlation of two
 //!    points `x`, `x'` being `exp(−Σₖ θₖ (xₖ − x'ₖ)²)` with the variables scaled to `[0, 1]`
-//!    (Jones et al. eq. (1) with `pₖ = 2`). `μ`, `σ²` and each `θₖ` are those of most
-//!    likelihood (eqs. (2)–(4)): `μ` and `σ²` in closed form, the `θₖ` by [`cmaes`](super::cmaes)
-//!    over `log₁₀ θₖ` in `[−3, 3]`.
+//!    (Jones et al. eq. (1) with `pₖ = 2`, as they use on their test functions). `μ`, `σ²` and
+//!    each `θₖ` are those of most likelihood (eq. (4)): `μ` and `σ²` in closed form (eqs. (5),
+//!    (6)), the `θₖ` by [`cmaes`](super::cmaes) over `log₁₀ θₖ` in `[−3, 3]`.
 //! 3. The surrogate predicts the model at a point, `ŷ`, with a standard error `s` (eqs. (7),
 //!    (9)), zero at an evaluated point and growing away from them. The *expected improvement*
 //!    over the best value so far `f_min` is (eq. (15))
@@ -29,7 +29,14 @@
 //! 4. Evaluate the model where the expected improvement is largest, found by CMA-ES started
 //!    from the best of [`SEARCH_POINTS`] random points per variable and from the best point so
 //!    far, refit, and repeat until the budget is spent, the target is met, or the largest
-//!    expected improvement falls below a tolerance.
+//!    expected improvement falls below a tolerance. Jones et al. maximize it exactly, by branch
+//!    and bound; a multistart search, as here, may miss the largest.
+//!
+//! Departures from the paper: the search of step 4; no diagnostic tests of the surrogate and no
+//! transformation of the values (Jones et al. take `−ln(−y)` on Hartmann 6); and a value of
+//! `+∞`, a failed evaluation, which is fitted as the largest finite value so far. Where the
+//! surrogate can't be fitted (every value equal, say), the next point is drawn uniformly from
+//! the box instead.
 //!
 //! The values are standardized (their mean taken off, divided by their standard deviation)
 //! before fitting, which changes neither the predictions nor where the improvement is largest.
@@ -46,7 +53,7 @@ use hpr_core::random::SeededRng;
 use serde::{Deserialize, Serialize};
 
 use super::cmaes::Cmaes;
-use super::{MAX_VARIABLES, Variable, normal};
+use super::{Variable, normal};
 use crate::error::AnalysisError;
 
 /// How many Latin hypercube designs are drawn for the initial design; the most spread out is
@@ -61,11 +68,21 @@ pub const SEARCH_POINTS: usize = 200;
 /// `10⁻⁴`, the smallest relative scatter the surrogate is allowed to see between two values.
 pub const NUGGET: f64 = 1e-8;
 
+/// The most points a run may evaluate, the initial design's included: a fit factorizes an
+/// `m × m` matrix, `O(m³)` work, a hundred times per variable per step.
+pub const MAX_POINTS: usize = 1000;
+
+/// The most variables EGO takes: 10 points each for the initial design stay within
+/// [`MAX_POINTS`]. It is checked on two and three only.
+pub const MAX_EGO_VARIABLES: usize = 50;
+
 /// The range of `log₁₀ θₖ` the likelihood is maximized over: correlation lengths from about
 /// 0.03 to 30 times a variable's range.
 const LOG_THETA: (f64, f64) = (-3.0, 3.0);
 
-/// The optimizer's settings: the variables, the initial design's size, and when to stop.
+/// The optimizer's settings: the variables, the initial design's size, and when to stop. It
+/// serializes as its fields, and reads back through the same checks as [`Ego::new`] and its
+/// `with_` methods.
 ///
 /// Branin's function from seed 1, in 50 evaluations, the initial design's 20 included:
 ///
@@ -83,13 +100,40 @@ const LOG_THETA: (f64, f64) = (-3.0, 3.0);
 /// assert!(optimum.value < 1.01 * BRANIN_MINIMUM);
 /// # Ok::<(), hpr_analysis::AnalysisError>(())
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "EgoData")]
 pub struct Ego {
     variables: Vec<Variable>,
     initial: usize,
     max_evaluations: usize,
     target: Option<f64>,
     tolerance_improvement: f64,
+}
+
+/// The serialized form of an [`Ego`].
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EgoData {
+    variables: Vec<Variable>,
+    initial: usize,
+    max_evaluations: usize,
+    target: Option<f64>,
+    tolerance_improvement: f64,
+}
+
+impl TryFrom<EgoData> for Ego {
+    type Error = AnalysisError;
+
+    fn try_from(data: EgoData) -> Result<Self, AnalysisError> {
+        let ego = Ego::new(data.variables)?
+            .with_initial(data.initial)?
+            .with_max_evaluations(data.max_evaluations)?
+            .with_tolerance_improvement(data.tolerance_improvement)?;
+        match data.target {
+            Some(target) => ego.with_target(target),
+            None => Ok(ego),
+        }
+    }
 }
 
 /// Why a run stopped.
@@ -100,7 +144,8 @@ pub enum Stop {
     Target,
     /// The evaluations allowed were used up.
     Evaluations,
-    /// The largest expected improvement fell below the tolerance.
+    /// The largest expected improvement fell below the tolerance
+    /// ([`Ego::with_tolerance_improvement`]).
     Improvement,
 }
 
@@ -110,7 +155,9 @@ pub enum Stop {
 pub struct Optimum {
     /// The best point evaluated, one value per variable, in the variables' order.
     pub point: Vec<f64>,
-    /// The model's value there.
+    /// The model's value there: `+∞` if every evaluation failed (serialized as none, a JSON
+    /// `null`).
+    #[serde(with = "super::cmaes::infinity_as_none")]
     pub value: f64,
     /// Which evaluation found it, counted from 1.
     pub evaluation: usize,
@@ -118,6 +165,18 @@ pub struct Optimum {
     pub evaluations: usize,
     /// Why it stopped.
     pub stop: Stop,
+}
+
+/// Checks a count of points against [`MAX_POINTS`].
+fn check_points(what: &'static str, count: usize) -> Result<usize, AnalysisError> {
+    if count > MAX_POINTS {
+        return Err(AnalysisError::Count {
+            what,
+            count,
+            limit: MAX_POINTS,
+        });
+    }
+    Ok(count)
 }
 
 impl Ego {
@@ -128,7 +187,7 @@ impl Ego {
     /// # Errors
     ///
     /// [`AnalysisError::TooFew`] for no variables, [`AnalysisError::Count`] for more than
-    /// [`MAX_VARIABLES`], and [`AnalysisError::Domain`] for a variable with an infinite bound or
+    /// [`MAX_EGO_VARIABLES`], and [`AnalysisError::Domain`] for a variable with an infinite bound or
     /// an integer one.
     pub fn new(variables: Vec<Variable>) -> Result<Self, AnalysisError> {
         if variables.is_empty() {
@@ -138,11 +197,11 @@ impl Ego {
                 minimum: 1,
             });
         }
-        if variables.len() > MAX_VARIABLES {
+        if variables.len() > MAX_EGO_VARIABLES {
             return Err(AnalysisError::Count {
-                what: "variables",
+                what: "EGO variables",
                 count: variables.len(),
-                limit: MAX_VARIABLES,
+                limit: MAX_EGO_VARIABLES,
             });
         }
         for v in &variables {
@@ -173,8 +232,10 @@ impl Ego {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::TooFew`] for fewer than 2, as the likelihood needs a spread of values.
+    /// [`AnalysisError::TooFew`] for fewer than 2, as the likelihood needs a spread of values,
+    /// and [`AnalysisError::Count`] for more than [`MAX_POINTS`].
     pub fn with_initial(mut self, points: usize) -> Result<Self, AnalysisError> {
+        check_points("initial design's points", points)?;
         if points < 2 {
             return Err(AnalysisError::TooFew {
                 what: "initial design's points",
@@ -187,12 +248,15 @@ impl Ego {
     }
 
     /// The same, stopping once `max` evaluations have been made, the initial design's included.
-    /// A budget smaller than the initial design evaluates the design whole and stops.
+    /// A budget smaller than the initial design shrinks the design to the budget, and the run
+    /// stops after it.
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::TooFew`] for none.
+    /// [`AnalysisError::TooFew`] for none, and [`AnalysisError::Count`] for more than
+    /// [`MAX_POINTS`].
     pub fn with_max_evaluations(mut self, max: usize) -> Result<Self, AnalysisError> {
+        check_points("evaluations", max)?;
         if max == 0 {
             return Err(AnalysisError::TooFew {
                 what: "evaluations",
@@ -220,9 +284,10 @@ impl Ego {
         Ok(self)
     }
 
-    /// The same, stopping once the largest expected improvement found is below `tolerance`, in
-    /// the model's units. Jones et al. stop at 1% of the best value's size. Zero, the default,
-    /// turns the test off.
+    /// The same, stopping once the largest expected improvement found is below `tolerance`, an
+    /// amount in the model's units. Jones et al. stop at 1% of the best value's size, which may
+    /// end a run before it is within 1% of the minimum; for a model whose least value is near
+    /// zero (a miss), state an amount. Zero, the default, turns the test off.
     ///
     /// # Errors
     ///
@@ -245,10 +310,13 @@ impl Ego {
 
     /// Minimizes `model` from `seed`, evaluating one point at a time.
     ///
+    /// A value of `+∞` is a failed evaluation: the surrogate is fitted to the largest finite
+    /// value so far in its place.
+    ///
     /// # Errors
     ///
-    /// [`AnalysisError::Output`] for a value that isn't finite (the surrogate can't take it),
-    /// with the evaluation's index counted from 0, and [`cmaes`](super::cmaes)'s errors from the
+    /// [`AnalysisError::Output`] for a NaN or `−∞`, with the evaluation's index counted from 0,
+    /// and [`cmaes`](super::cmaes)'s errors from the
     /// fits and searches.
     pub fn minimize(
         &self,
@@ -265,7 +333,7 @@ impl Ego {
                             best: &mut Option<usize>|
          -> Result<(), AnalysisError> {
             let value = model(&self.to_variables(&unit));
-            if !value.is_finite() {
+            if value.is_nan() || value == f64::NEG_INFINITY {
                 return Err(AnalysisError::Output {
                     index: values.len(),
                     value,
@@ -287,7 +355,7 @@ impl Ego {
         };
 
         let mut rng = SeededRng::for_stream(seed, &[0]);
-        for unit in latin_hypercube(self.initial, n, &mut rng) {
+        for unit in latin_hypercube(self.initial.min(self.max_evaluations), n, &mut rng) {
             evaluate(unit, &mut points, &mut values, &mut best)?;
             let b = best.unwrap_or(0);
             if self.target.is_some_and(|t| values[b] <= t) {
@@ -303,19 +371,34 @@ impl Ego {
             // Invariant: the initial design has at least 2 points, all evaluated.
             let b = best.unwrap_or(0);
             let mut rng = SeededRng::for_stream(seed, &[1, values.len() as u64]);
-            let (mean, sd) = mean_and_sd(&values);
-            let standard: Vec<f64> = values.iter().map(|v| (v - mean) / sd).collect();
+            // A failed evaluation is fitted as the largest finite value (0 if none is).
+            let worst = values
+                .iter()
+                .copied()
+                .filter(|v| v.is_finite())
+                .fold(f64::NEG_INFINITY, f64::max);
+            let worst = if worst.is_finite() { worst } else { 0.0 };
+            let fitted: Vec<f64> = values
+                .iter()
+                .map(|v| if v.is_finite() { *v } else { worst })
+                .collect();
+            let (mean, sd) = mean_and_sd(&fitted);
+            let standard: Vec<f64> = fitted.iter().map(|v| (v - mean) / sd).collect();
             log_theta = fit_log_theta(&points, &standard, &log_theta, rng.next_u64())?;
             let theta: Vec<f64> = log_theta.iter().map(|l| 10f64.powf(*l)).collect();
-            let Some(kriging) = Kriging::fit(&points, &standard, &theta) else {
-                // No factorization even at the nugget: points coincide beyond its help.
-                return Ok(finish(&points, &values, b, Stop::Improvement));
+            let next = match Kriging::fit(&points, &standard, &theta) {
+                Some(kriging) => {
+                    let f_min = standard[b];
+                    let (next, improvement) =
+                        kriging.most_improving(f_min, &points[b], &mut rng)?;
+                    if improvement * sd < self.tolerance_improvement {
+                        return Ok(finish(&points, &values, b, Stop::Improvement));
+                    }
+                    next
+                }
+                // No fit (every value equal, or points too close for the nugget): explore.
+                None => (0..n).map(|_| rng.uniform()).collect(),
             };
-            let f_min = standard[b];
-            let (next, improvement) = kriging.most_improving(f_min, &points[b], &mut rng)?;
-            if improvement * sd < self.tolerance_improvement {
-                return Ok(finish(&points, &values, b, Stop::Improvement));
-            }
             evaluate(next, &mut points, &mut values, &mut best)?;
             let b = best.unwrap_or(0);
             if self.target.is_some_and(|t| values[b] <= t) {
@@ -665,6 +748,76 @@ mod tests {
         assert!((kriging.sigma2 - sigma2).abs() < 1e-14 * sigma2);
         let expected = -sigma2.ln() - 0.5 * determinant.ln();
         assert!((kriging.log_likelihood - expected).abs() < 1e-14);
+    }
+
+    /// `μ̂`, `σ̂²`, `ŷ` and `s` on three unevenly spaced points with uneven values, against
+    /// `R⁻¹` by the adjugate (Jones et al. eqs. (5), (6), (7), (9)).
+    #[test]
+    #[allow(
+        clippy::needless_range_loop,
+        reason = "the adjugate's indices, as written by hand"
+    )]
+    fn kriging_three_points_by_hand() {
+        let points = vec![vec![0.0], vec![0.3], vec![1.0]];
+        let values = [2.0, -1.0, 0.5];
+        let theta = [1.7];
+        let kriging = Kriging::fit(&points, &values, &theta).unwrap();
+        let c = |a: f64, b: f64| (-1.7 * (a - b) * (a - b)).exp();
+        let x = [0.0, 0.3, 1.0];
+        let mut r = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                r[i][j] = if i == j { 1.0 + NUGGET } else { c(x[i], x[j]) };
+            }
+        }
+        let det = r[0][0] * (r[1][1] * r[2][2] - r[1][2] * r[2][1])
+            - r[0][1] * (r[1][0] * r[2][2] - r[1][2] * r[2][0])
+            + r[0][2] * (r[1][0] * r[2][1] - r[1][1] * r[2][0]);
+        let mut inv = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                // The cofactor of (j, i), over the determinant.
+                let (a, b) = ((j + 1) % 3, (j + 2) % 3);
+                let (p, q) = ((i + 1) % 3, (i + 2) % 3);
+                inv[i][j] = (r[a][p] * r[b][q] - r[a][q] * r[b][p]) / det;
+            }
+        }
+        let times = |v: &[f64; 3]| -> [f64; 3] {
+            [0, 1, 2].map(|i| (0..3).map(|j| inv[i][j] * v[j]).sum())
+        };
+        let ones = times(&[1.0; 3]);
+        let ones_ones: f64 = ones.iter().sum();
+        let inv_y = times(&values);
+        let mu = inv_y.iter().sum::<f64>() / ones_ones;
+        let centred = values.map(|v| v - mu);
+        let weights = times(&centred);
+        let sigma2 = (0..3).map(|i| centred[i] * weights[i]).sum::<f64>() / 3.0;
+        assert!(
+            (kriging.mu - mu).abs() < 1e-9,
+            "{} against {mu}",
+            kriging.mu
+        );
+        assert!((kriging.sigma2 - sigma2).abs() < 1e-9 * sigma2);
+        let at = 1.8;
+        let rv = x.map(|xi| c(at, xi));
+        let prediction = mu + (0..3).map(|i| rv[i] * weights[i]).sum::<f64>();
+        let inv_r = times(&rv);
+        let r_inv_r: f64 = (0..3).map(|i| rv[i] * inv_r[i]).sum();
+        let ones_r: f64 = (0..3).map(|i| ones[i] * rv[i]).sum();
+        let variance = sigma2 * (1.0 - r_inv_r + (1.0 - ones_r) * (1.0 - ones_r) / ones_ones);
+        let (got, error) = kriging.predict(&[at]);
+        assert!(
+            (got - prediction).abs() < 1e-9,
+            "{got} against {prediction}"
+        );
+        assert!(
+            (error - variance.sqrt()).abs() < 1e-9,
+            "{error} against {}",
+            variance.sqrt()
+        );
+        // The third term matters here: without it the error would be smaller.
+        assert!((1.0 - ones_r).powi(2) / ones_ones > 1e-3);
+        assert!(mu.abs() > 0.1);
     }
 
     /// `E[I]` at `d = 0` is `s φ(0)`; far below, `d`; far above, nearly 0.

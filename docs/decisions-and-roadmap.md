@@ -376,7 +376,7 @@ missing or its status disagrees.
 | <a id="m6-2c"></a>[M6.2c][phase-3] | Several goals at once: NSGA-II finds a Pareto front; held to the known fronts of three standard test problems (ZDT1 to ZDT3) and to an outside implementation (pymoo), and a rocket's trade-off between apogee and static margin, flown again and checked against CMA-ES ([ADR-141][adr-141], [Optimization](optimization.md#trade-offs-a-pareto-front)) | done |
 | <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights, split d1, d2 ([ADR-142][adr-142]) | not yet done |
 | <a id="m6-2d1"></a>[M6.2d1][phase-3] | EGO: a surrogate (kriging) fitted to the designs tried, and the next design where it expects the most improvement; Branin's and Hartmann 3's minima within 1% in 50 evaluations from 20 seeds ([ADR-142][adr-142], [Optimization](optimization.md#few-evaluations-ego)) | done |
-| <a id="m6-2d2"></a>[M6.2d2][phase-3] | EGO on Hartmann 6, a six-variable test function whose local minimum traps the first version | not yet done |
+| <a id="m6-2d2"></a>[M6.2d2][phase-3] | EGO on Hartmann 6, a six-variable test function whose local minimum traps [M6.2d1](#m6-2d1)'s EGO in 7 runs of 10 ([ADR-142][adr-142], [Optimization](optimization.md#few-evaluations-ego)) | not yet done |
 | <a id="m6-2e"></a>[M6.2e][phase-3] | Robust designs: a Monte Carlo run inside the optimizer | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
 | <a id="m6-4"></a>[M6.4][phase-3] | Airbrakes, with a controller that aims for a target apogee | not yet done |

@@ -37,7 +37,8 @@
 //!
 //! # Left out
 //!
-//! EGO on six or more variables, and optimizing a Monte Carlo run's statistics, are later increments of [M6.2, the optimization milestone][roadmap].
+//! EGO is checked on two and three variables only (on six it often stops at a local minimum),
+//! and optimizing a Monte Carlo run's statistics is a later increment of [M6.2, the optimization milestone][roadmap].
 //!
 //! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 

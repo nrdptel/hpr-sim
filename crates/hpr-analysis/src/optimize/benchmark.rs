@@ -214,10 +214,13 @@ pub mod mixed {
 /// Test functions for global optimization with few evaluations, for [`ego`](super::ego): the
 /// Branin and Hartmann functions of L. C. W. Dixon and G. P. Szegö, "The global optimisation
 /// problem: an introduction", in *Towards Global Optimisation 2*, North-Holland, 1–15 (1978),
-/// as D. R. Jones, M. Schonlau and W. J. Welch, "Efficient global optimization of expensive
-/// black-box functions", *Journal of Global Optimization* 13, 455–492 (1998),
-/// <https://doi.org/10.1023/A:1008306431147>, print them in their Table 1 and run EGO on them.
-/// Each has several local minima.
+/// on which D. R. Jones, M. Schonlau and W. J. Welch, "Efficient global optimization of
+/// expensive black-box functions", *Journal of Global Optimization* 13, 455–492 (1998),
+/// <https://doi.org/10.1023/A:1008306431147>, run EGO (their Table 1). The constants are as
+/// S. Surjanovic and D. Bingham's Virtual Library of Simulation Experiments lists them,
+/// <https://www.sfu.ca/~ssurjano/optimization.html>. Branin has three minima, all of the same
+/// value; the Hartmann functions have local minima above their least value. A missing variable
+/// is taken as 0.
 ///
 /// | Function | Variables | Minimum |
 /// |---|---|---|
@@ -239,8 +242,12 @@ pub mod global {
     /// `r = 6`, `s = 10` and `t = 1/(8π)`.
     pub fn branin(x: &[f64]) -> f64 {
         let (b, c, r, s, t) = (5.1 / (4.0 * PI * PI), 5.0 / PI, 6.0, 10.0, 1.0 / (8.0 * PI));
-        let square = x[1] - b * x[0] * x[0] + c * x[0] - r;
-        square * square + s * (1.0 - t) * x[0].cos() + s
+        let (x0, x1) = (
+            x.first().copied().unwrap_or(0.0),
+            x.get(1).copied().unwrap_or(0.0),
+        );
+        let square = x1 - b * x0 * x0 + c * x0 - r;
+        square * square + s * (1.0 - t) * x0.cos() + s
     }
 
     /// The Hartmann 3 function's least value, as printed to six figures.
@@ -257,7 +264,10 @@ pub mod global {
         -(0..4)
             .map(|i| {
                 let exponent: f64 = (0..N)
-                    .map(|j| a[i][j] * (x[j] - p[i][j]) * (x[j] - p[i][j]))
+                    .map(|j| {
+                        let d = x.get(j).copied().unwrap_or(0.0) - p[i][j];
+                        a[i][j] * d * d
+                    })
                     .sum();
                 ALPHA[i] * (-exponent).exp()
             })
@@ -265,8 +275,10 @@ pub mod global {
     }
 
     /// The Hartmann 3 function, each variable in `[0, 1]`; its least value is about −3.86278,
-    /// near `(0.114614, 0.555649, 0.852547)`. `p₃₀` is 0.0381 here; some listings print 0.03815,
-    /// which is far from the minimum and doesn't move it.
+    /// near `(0.114614, 0.555649, 0.852547)`. The last centre's first coordinate is 0.0381 here,
+    /// as the library lists it; some listings print 0.03815, the value that quoted point belongs
+    /// to. The two least values differ by about 2×10⁻⁶ (both −3.86278 to six figures), as that
+    /// coordinate's weight, 0.1, is small.
     pub fn hartmann3(x: &[f64]) -> f64 {
         const A: [[f64; 3]; 4] = [
             [3.0, 10.0, 30.0],
