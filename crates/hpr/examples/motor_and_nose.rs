@@ -328,7 +328,7 @@ impl Flyer {
     /// Flies `design` on `motor` from a 3 m rail, 85° above the horizon, into 5 m/s of wind from
     /// the west. The least flight margin is searched for inside steps; the most of each margin is
     /// taken at the steps' ends, where the flight keeps them. A margin that isn't defined at some
-    /// step's end fails the design: the rocket is unstable there, or its parts' normal forces
+    /// step's end fails the design: its net normal-force slope isn't positive there, or its parts'
     /// cancel too nearly for a margin to mean anything.
     fn fly(&mut self, motor: &Motor, design: &Design) -> Result<Flown, Box<dyn Error>> {
         let rocket = design.rocket(motor)?;

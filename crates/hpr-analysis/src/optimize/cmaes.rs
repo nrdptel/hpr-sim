@@ -1570,6 +1570,12 @@ mod tests {
         }
         assert!(stepped > 0, "no spread rounded outward");
 
+        // A mean just above −0.5 stands for 0: its lower side is lifted, and it stays above.
+        let mut run = fresh();
+        (run.mean[1], run.sigma) = (-0.499_999_999_999_999_94, 0.05);
+        run.correct_margin();
+        assert!(run.mean[1] > -0.5 && run.a[1] > 1.0, "{}", run.mean[1]);
+
         // Both sides above α/2, or an end mean already near its threshold: nothing moves.
         for (m, sigma) in [(2.3, 1.0), (-9.6, 0.1)] {
             let mut run = fresh();

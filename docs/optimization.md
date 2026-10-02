@@ -349,7 +349,8 @@ things:
 
 The goal is the squared miss from 3,048 m. The limits come from the International Rocket
 Engineering Competition's rules (its *Design, Test & Evaluation Guide*, 2025), and hold over the
-whole ascent, from the rail exit to apogee:
+whole ascent, from the rail exit to apogee (§10.3.1 says "from launch"; on the rail, the rail
+holds the rocket):
 
 - a [stability margin](glossary.md#stability-margin) of at least 1.5
   [calibres](glossary.md#calibre-caliber) in flight (§10.3.1 asks for a "dynamic" margin; the
@@ -465,7 +466,7 @@ would take minutes. The example shows how to share the table, in its `Flyer::fly
 
 The winning plastic nose cone gets no table at all. The catalogue lists it 0.05 mm narrower than
 the tube (2.638 in against 2.640 in), and the method behind the table doesn't yet take a step in
-the body's outline, however small ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
+the body's outline larger than a millionth of its area ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
 So for the short stretch of its flight past Mach 1.2 (its top speed is Mach 1.23) hpr-sim falls
 back on slender-body theory for the body's normal force, its lift at an angle ([Bodies faster than
 sound](physics/aero.md#bodies-faster-than-sound)). How much that moves the apogee hasn't been

@@ -81,9 +81,9 @@ fn check_whole(low: f64, high: f64) -> Result<(), AnalysisError> {
 }
 
 /// A number the optimizer may change: its name, where it starts, the size of its first steps,
-/// the range it must stay in, and whether it takes only whole numbers. It serializes as its fields
-/// (an unbounded side as `null`; `integer` only when true, and read as `false` when absent), and reads back
-/// through [`Variable::new`], [`Variable::within`] and [`Variable::integer`]'s checks.
+/// the range it must stay in, and whether it takes only whole numbers. It serializes as its
+/// fields (an unbounded side as `null`; `integer` only when true, and read as `false` when
+/// absent), and reads back through [`Variable::new`], [`Variable::within`] and [`Variable::integer`]'s checks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "VariableData", into = "VariableData")]
 pub struct Variable {
@@ -228,7 +228,8 @@ impl Variable {
     /// The value the model is given for a draw `x`: `x` itself, or for an integer variable the
     /// whole number nearest `x`, a draw halfway between two going to the lower, clamped to the
     /// bounds. These are the *encoding* of R. Hamano et al., "CMA-ES with Margin", GECCO 2022
-    /// (arXiv:2205.13482, §4.1, p. 5), with thresholds halfway between neighbouring values.
+    /// (arXiv:2205.13482, §4.1, p. 5), with thresholds halfway between neighbouring values. NaN
+    /// stays NaN (a run stops before it would draw one).
     pub fn encode(&self, x: f64) -> f64 {
         if self.integer {
             // `+ 0.0` turns a bound written −0 into 0.
@@ -544,14 +545,19 @@ mod tests {
         ] {
             assert_eq!(wide.encode(x), value, "{x}");
         }
-        assert!(
-            Variable::new("k", 0.0, 1.0)
+        for high in [MAX_WHOLE + 1.0, 2.0 * MAX_WHOLE] {
+            let err = Variable::new("k", 0.0, 1.0)
                 .unwrap()
-                .within(0.0, 2.0 * MAX_WHOLE)
+                .within(0.0, high)
                 .unwrap()
                 .integer()
-                .is_err()
-        );
+                .unwrap_err();
+            let AnalysisError::Domain { what, value } = err else {
+                panic!("{high}: {err:?}");
+            };
+            assert!(what.starts_with("integer variable's high bound"), "{what}");
+            assert_eq!(value, high);
+        }
         let x = Variable::new("x", 0.0, 1.0).unwrap();
         assert_eq!(x.encode(0.7), 0.7);
     }
