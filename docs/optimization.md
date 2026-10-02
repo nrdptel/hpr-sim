@@ -8,12 +8,13 @@ it learns to choose better ones, until it finds the best it can. This page shows
 optimizer, [CMA-ES](glossary.md#cma-es). It runs on test functions whose answers are known, then
 finds the nose ballast and body length that send a rocket to 3,048 m with a chosen stability
 margin. Then it chooses a motor and a catalogue nose cone as well, within a competition's limits
-on stability and speed off the rail. Last, a second optimizer, [NSGA-II](glossary.md#nsga-ii),
+on stability and speed off the rail. Then a second optimizer, [NSGA-II](glossary.md#nsga-ii),
 weighs two goals against each other: how much apogee each extra [calibre](glossary.md#calibre-caliber)
-of stability costs. It needs some Rust.
+of stability costs. A third, [EGO](#few-evaluations-ego), is for models so slow that only tens
+of evaluations can be afforded. It needs some Rust.
 
-> **How far to trust it.** Both optimizers are tested against answers known exactly, and against
-> outside implementations. On a rocket, their answers are only as good as hpr-sim's
+> **How far to trust it.** All three optimizers are tested against answers known exactly; CMA-ES
+> and NSGA-II also against outside implementations, EGO not yet. On a rocket, their answers are only as good as hpr-sim's
 > flight models, which are not yet validated against real flights ([Accuracy](accuracy.md)).
 >
 > - **Tested:** four standard test functions of ten variables are run from 20 seeds each. Every
@@ -53,8 +54,14 @@ of stability costs. It needs some Rust.
 >   example's front designs are flown again and give the same apogee and margin to the bit:
 >   that shows the result repeats, not that it is right. At 2.5 calibres the front is within
 >   0.5% of the apogee CMA-ES finds alone (the example's check).
+> - **Few evaluations** (EGO): from 20 seeds each, two standard test functions with several
+>   local minima, Branin's (two variables) and Hartmann's (three), end within 1% of their known
+>   minima in 50 evaluations (the test's bound; measured, within 0.12%). It is checked on two and
+>   three variables only: on Hartmann's six-variable function it stopped at a local minimum in
+>   7 runs of 10 (a probe, not yet a test): not yet fixed
+>   ([Few evaluations](#few-evaluations-ego)).
 > - **Left out, for now:** optimizing a [Monte Carlo](glossary.md#monte-carlo) run's statistics,
->   Bayesian optimization for designs that are slow to evaluate, and a rule that stops NSGA-II
+>   EGO beyond three variables, and a rule that stops NSGA-II
 >   when its front has settled (it runs the generations it is given). They are the next steps of
 >   [M6.2](decisions-and-roadmap.md#m6-2), the optimization milestone. There is no command-line
 >   or Python front end yet.
@@ -709,6 +716,89 @@ their ends ([`benchmark.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates
 They agree with pymoo's to its ten digits, except where pymoo prints the second piece's start as
 0.182228780, a digit short of 0.1822287280.
 
+## Few evaluations: EGO
+
+CMA-ES and NSGA-II spend hundreds of flights. That is fine when a flight takes a tenth of a
+second, but not when one evaluation is a long Monte Carlo run, or a slow outside program. *EGO*
+(efficient global optimization; D. R. Jones, M. Schonlau and W. J. Welch, 1998), a form of
+Bayesian optimization, is built for that case. It spends its effort thinking between evaluations, so it needs only tens of them.
+
+It works like this:
+
+1. It evaluates an *initial design*: 10 points per variable, spread evenly over the box the
+   variables' bounds make. The design is a *Latin hypercube*: each variable's range is cut into
+   as many equal slices as there are points, and each slice gets one point.
+2. It fits a *surrogate*: a smooth guess at the model, drawn through every point evaluated so
+   far. The surrogate is *kriging* (a Gaussian process). Besides its guess `ŷ` at any point, it
+   gives a standard error `s`: zero at the points already evaluated, and growing away from them.
+3. It asks where an evaluation is most worth making. The *expected improvement* at a point is
+   the average amount by which an evaluation there would beat the best value so far, outcomes
+   that don't beat it counting as zero. It is large where the guess is low, and where the guess
+   is unsure.
+4. It evaluates the point of largest expected improvement, refits, and repeats.
+
+Each variable needs a low and a high bound, as for NSGA-II; its start and step are not used.
+By default a run stops after 20 evaluations per variable. [`Ego::with_max_evaluations`] sets
+the budget, [`Ego::with_target`] stops at a good enough value, and
+[`Ego::with_tolerance_improvement`] stops once no point is expected to gain more than a set
+amount, in the model's units; it is off by default. Jones and co-authors stop at 1% of the best
+value's size. That can end a run well short of 1% from the minimum: on Hartmann's
+three-variable function, 8 of 20 runs (seeds 1 to 20) stopped more than 1% away, the worst
+4.7% (a reviewer's measurement). Use a smaller amount (the paper suggests 0.1%) where it
+matters. It never fires for a goal near zero (a miss): there, give an amount. A model that fails at a design returns `+∞`;
+EGO fits it as the worst value so far and goes on.
+
+A worked example, on Branin's function of two variables: its least value is
+`5/(4π) ≈ 0.397887`, at three points. The initial design is 20 points, and 30 more follow. The
+`1` is the [seed](glossary.md#seed); a variable's start and step are required by
+`Variable::new` but EGO doesn't use them. This is the example on [`Ego`]'s API page, which
+runs as a test from seed 1; `tests/ego.rs` runs seeds 1 to 20:
+
+```rust,ignore
+use hpr_analysis::optimize::Variable;
+use hpr_analysis::optimize::benchmark::global::{BRANIN_MINIMUM, branin};
+use hpr_analysis::optimize::ego::Ego;
+
+let variables = vec![
+    Variable::new("x0", 2.5, 3.0)?.within(-5.0, 10.0)?,
+    Variable::new("x1", 7.5, 3.0)?.within(0.0, 15.0)?,
+];
+let optimum = Ego::new(variables)?.with_max_evaluations(50)?.minimize(1, branin)?;
+assert_eq!(optimum.evaluations, 50);
+assert!(optimum.value < 1.01 * BRANIN_MINIMUM);
+```
+
+### Checked against
+
+[`tests/ego.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/ego.rs)
+runs EGO from seeds 1 to 20 on two test functions: Branin's, with three minima of one value,
+and Hartmann's, with local minima above its least. The rule is Jones and co-authors' measure of
+success: the best value within 1% of the minimum's size. The budget was set from a probe on
+seeds 1 to 10 at 40 evaluations, where Branin's worst run missed by 1.03%; at 50 the 20 seeds
+gave the gaps below (macOS debug build; print them with
+`cargo test -p hpr-analysis --test ego -- --nocapture`).
+
+| Function | Variables | Minimum | Budget | Worst of 20 runs |
+|---|---|---|---|---|
+| Branin | 2 | 0.397887 | 50 evaluations | 0.118% above |
+| Hartmann 3 | 3 | −3.86278 | 50 evaluations | 0.124% above |
+
+Branin's minimum is exact. Hartmann's is the value printed to six figures, and the test checks
+it by polishing with CMA-ES from the printed point. Unit tests in
+[`optimize/ego.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/ego.rs)
+check that the surrogate passes through its points, its fit, guess and standard error on three
+points against the formulas worked by hand, the expected improvement's limits, and that the
+initial design fills every slice. Unlike CMA-ES and NSGA-II, EGO isn't compared with an outside
+implementation: the minima are known exactly, which is what the milestone asks for.
+
+**Not yet:** on Hartmann's six-variable function, 7 of 10 runs (seeds 1 to 10, measured in a
+probe not yet committed) end at its local minimum, −3.20, after 100 evaluations, and one run
+takes over half a minute in a debug build. Jones and co-authors needed 121 evaluations there,
+after transforming the values. That is the next increment,
+[M6.2d2](decisions-and-roadmap.md#m6-2d2) (EGO on six variables).
+EGO takes no limits, whole-number variables or noisy outputs yet
+([ADR-142](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-142-few-evaluations-by-ego-2026-10-02)).
+
 ## Left out
 
 - A choice is a whole number in a list you order. There is no separate handling for choices with
@@ -716,7 +806,8 @@ They agree with pymoo's to its ten digits, except where pymoo prints the second 
 - Limits are inequalities only. For an equality `h = 0`, write `|h| − ε ≤ 0` with a small `ε`.
 - NSGA-II takes only continuous variables with two bounds: no choices from a list yet. It
   runs the generations it is given, with no test of when its front has settled.
-- No Bayesian optimization, for designs too slow to fly thousands of times.
+- EGO is checked on two and three variables only, doesn't yet find Hartmann's six-variable
+  minimum reliably, and takes no limits, whole-number variables or noisy outputs.
 - No optimizing of a Monte Carlo run's statistics, such as the chance of landing within a
   distance.
 - No command-line or Python front end yet.
@@ -727,6 +818,10 @@ The API reference is
 [`Variable`]: api/hpr_analysis/optimize/struct.Variable.html
 [`Variable::integer`]: api/hpr_analysis/optimize/struct.Variable.html#method.integer
 [`Evaluation`]: api/hpr_analysis/optimize/struct.Evaluation.html
+[`Ego`]: api/hpr_analysis/optimize/ego/struct.Ego.html
+[`Ego::with_max_evaluations`]: api/hpr_analysis/optimize/ego/struct.Ego.html#method.with_max_evaluations
+[`Ego::with_target`]: api/hpr_analysis/optimize/ego/struct.Ego.html#method.with_target
+[`Ego::with_tolerance_improvement`]: api/hpr_analysis/optimize/ego/struct.Ego.html#method.with_tolerance_improvement
 [adr-139]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-139-optimization-constraints-by-debs-feasibility-rules-2026-10-01
 [`Stop`]: api/hpr_analysis/optimize/cmaes/enum.Stop.html
 [`Optimum`]: api/hpr_analysis/optimize/cmaes/struct.Optimum.html

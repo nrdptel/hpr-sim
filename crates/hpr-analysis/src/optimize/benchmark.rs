@@ -211,6 +211,109 @@ pub mod mixed {
     }
 }
 
+/// Test functions for global optimization with few evaluations, for [`ego`](super::ego): the
+/// Branin and Hartmann functions of L. C. W. Dixon and G. P. Szegö, "The global optimisation
+/// problem: an introduction", in *Towards Global Optimisation 2*, North-Holland, 1–15 (1978),
+/// on which D. R. Jones, M. Schonlau and W. J. Welch, "Efficient global optimization of
+/// expensive black-box functions", *Journal of Global Optimization* 13, 455–492 (1998),
+/// <https://doi.org/10.1023/A:1008306431147>, run EGO (their Table 1). The constants are as
+/// S. Surjanovic and D. Bingham's Virtual Library of Simulation Experiments lists them,
+/// <https://www.sfu.ca/~ssurjano/optimization.html>. Branin has three minima, all of the same
+/// value; the Hartmann functions have local minima above their least value. A missing variable
+/// is taken as 0.
+///
+/// | Function | Variables | Minimum |
+/// |---|---|---|
+/// | [`branin`](global::branin) | `x₀` in `[−5, 10]`, `x₁` in `[0, 15]` | `5/(4π) ≈ 0.397887` at three points ([`BRANIN_MINIMA`](global::BRANIN_MINIMA)) |
+/// | [`hartmann3`](global::hartmann3) | 3, each in `[0, 1]` | `≈ −3.86278` ([`HARTMANN3_MINIMUM`](global::HARTMANN3_MINIMUM)) |
+/// | [`hartmann6`](global::hartmann6) | 6, each in `[0, 1]` | `≈ −3.32237` ([`HARTMANN6_MINIMUM`](global::HARTMANN6_MINIMUM)) |
+pub mod global {
+    use std::f64::consts::PI;
+
+    /// Branin's minimum, `s t = 10/(8π) = 5/(4π)`: the squared term vanishes and `cos x₀ = −1`.
+    pub const BRANIN_MINIMUM: f64 = 5.0 / (4.0 * PI);
+
+    /// Branin's three minima: `x₀ = −π, π, 3π`, where `cos x₀ = −1`, and `x₁` the root of its
+    /// squared term, `b x₀² − c x₀ + r` (12.275, 2.275 and 2.475).
+    pub const BRANIN_MINIMA: [[f64; 2]; 3] = [[-PI, 12.275], [PI, 2.275], [3.0 * PI, 2.475]];
+
+    /// Branin's function of two variables, `x₀` in `[−5, 10]` and `x₁` in `[0, 15]`:
+    /// `f = (x₁ − b x₀² + c x₀ − r)² + s (1 − t) cos x₀ + s`, with `b = 5.1/(4π²)`, `c = 5/π`,
+    /// `r = 6`, `s = 10` and `t = 1/(8π)`.
+    pub fn branin(x: &[f64]) -> f64 {
+        let (b, c, r, s, t) = (5.1 / (4.0 * PI * PI), 5.0 / PI, 6.0, 10.0, 1.0 / (8.0 * PI));
+        let (x0, x1) = (
+            x.first().copied().unwrap_or(0.0),
+            x.get(1).copied().unwrap_or(0.0),
+        );
+        let square = x1 - b * x0 * x0 + c * x0 - r;
+        square * square + s * (1.0 - t) * x0.cos() + s
+    }
+
+    /// The Hartmann 3 function's least value, as printed to six figures.
+    pub const HARTMANN3_MINIMUM: f64 = -3.86278;
+
+    /// The Hartmann 6 function's least value, as printed to six figures.
+    pub const HARTMANN6_MINIMUM: f64 = -3.32237;
+
+    /// The Hartmann functions' weights `αᵢ`.
+    const ALPHA: [f64; 4] = [1.0, 1.2, 3.0, 3.2];
+
+    /// `f = −Σᵢ αᵢ exp(−Σⱼ aᵢⱼ (xⱼ − pᵢⱼ)²)`, the Hartmann functions' form.
+    fn hartmann<const N: usize>(x: &[f64], a: &[[f64; N]; 4], p: &[[f64; N]; 4]) -> f64 {
+        -(0..4)
+            .map(|i| {
+                let exponent: f64 = (0..N)
+                    .map(|j| {
+                        let d = x.get(j).copied().unwrap_or(0.0) - p[i][j];
+                        a[i][j] * d * d
+                    })
+                    .sum();
+                ALPHA[i] * (-exponent).exp()
+            })
+            .sum::<f64>()
+    }
+
+    /// The Hartmann 3 function, each variable in `[0, 1]`; its least value is about −3.86278,
+    /// near `(0.114614, 0.555649, 0.852547)`. The last centre's first coordinate is 0.0381 here,
+    /// as the library lists it; some listings print 0.03815, the value that quoted point belongs
+    /// to. The two least values differ by about 2×10⁻⁶ (both −3.86278 to six figures), as that
+    /// coordinate's weight, 0.1, is small.
+    pub fn hartmann3(x: &[f64]) -> f64 {
+        const A: [[f64; 3]; 4] = [
+            [3.0, 10.0, 30.0],
+            [0.1, 10.0, 35.0],
+            [3.0, 10.0, 30.0],
+            [0.1, 10.0, 35.0],
+        ];
+        const P: [[f64; 3]; 4] = [
+            [0.3689, 0.1170, 0.2673],
+            [0.4699, 0.4387, 0.7470],
+            [0.1091, 0.8732, 0.5547],
+            [0.0381, 0.5743, 0.8828],
+        ];
+        hartmann(x, &A, &P)
+    }
+
+    /// The Hartmann 6 function, each variable in `[0, 1]`; its least value is about −3.32237,
+    /// near `(0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573)`.
+    pub fn hartmann6(x: &[f64]) -> f64 {
+        const A: [[f64; 6]; 4] = [
+            [10.0, 3.0, 17.0, 3.5, 1.7, 8.0],
+            [0.05, 10.0, 17.0, 0.1, 8.0, 14.0],
+            [3.0, 3.5, 1.7, 10.0, 17.0, 8.0],
+            [17.0, 8.0, 0.05, 10.0, 0.1, 14.0],
+        ];
+        const P: [[f64; 6]; 4] = [
+            [0.1312, 0.1696, 0.5569, 0.0124, 0.8283, 0.5886],
+            [0.2329, 0.4135, 0.8307, 0.3736, 0.1004, 0.9991],
+            [0.2348, 0.1451, 0.3522, 0.2883, 0.3047, 0.6650],
+            [0.4047, 0.8828, 0.8732, 0.5743, 0.1091, 0.0381],
+        ];
+        hartmann(x, &A, &P)
+    }
+}
+
 /// Two-goal test problems with known Pareto fronts, for [`nsga2`](super::nsga2): ZDT1, ZDT2 and
 /// ZDT3 of E. Zitzler, K. Deb and L. Thiele, "Comparison of multiobjective evolutionary
 /// algorithms: empirical results", *Evolutionary Computation* 8(2), 173–195 (2000),

@@ -88,8 +88,8 @@ Check each one on crates.io before adding it, and record any change in an ADR.
 - **Cache and platform:** plain files for the cache (ADR-117); platform paths written by hand,
   since `directories` pulls in MPL-2.0 (ADR-118).
 - **Testing:** `proptest`, `insta`, `criterion`, `approx`, `cargo-nextest`, `cargo-deny`.
-- **Optimization:** `argmin`, `egobox` (Bayesian/EGO). Implement CMA-ES and NSGA-II in-house if
-  the crates are stale; the `cmaes` crate has low activity.
+- **Optimization:** CMA-ES, NSGA-II and EGO in-house (ADR-138, 141, 142); `egobox` not used
+  (ADR-142: a large linear-algebra tree for a few hundred lines).
 - **Avoid:** `serde_yaml`/`serde_yml`, `hdf5` (abandoned; use `hdf5-metno` only if netCDF4 is
   truly needed), and GPL crates.
 

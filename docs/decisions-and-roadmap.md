@@ -374,7 +374,9 @@ missing or its status disagrees.
 | <a id="m6-2b1"></a>[M6.2b1][phase-3] | Limits on a design, such as a minimum stability margin: candidates that break one rank below those that don't (Deb's rules); held to three test problems whose limited minima are known | done |
 | <a id="m6-2b2"></a>[M6.2b2][phase-3] | Discrete choices (a motor, a catalogue part) as whole-number variables, by CMA-ES with margin; held to three mixed test functions' known minima and to an outside implementation; a motor and a Madcow nose cone chosen for a 3,048 m apogee under margin and rail-exit limits, and checked by flying the winner again ([ADR-140][adr-140], [Optimization](optimization.md#choices-a-motor-a-catalogue-part)) | done |
 | <a id="m6-2c"></a>[M6.2c][phase-3] | Several goals at once: NSGA-II finds a Pareto front; held to the known fronts of three standard test problems (ZDT1 to ZDT3) and to an outside implementation (pymoo), and a rocket's trade-off between apogee and static margin, flown again and checked against CMA-ES ([ADR-141][adr-141], [Optimization](optimization.md#trade-offs-a-pareto-front)) | done |
-| <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights | not yet done |
+| <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights, split d1, d2 ([ADR-142][adr-142]) | not yet done |
+| <a id="m6-2d1"></a>[M6.2d1][phase-3] | EGO: a surrogate (kriging) fitted to the designs tried, and the next design where it expects the most improvement; Branin's and Hartmann 3's minima within 1% in 50 evaluations from 20 seeds ([ADR-142][adr-142], [Optimization](optimization.md#few-evaluations-ego)) | done |
+| <a id="m6-2d2"></a>[M6.2d2][phase-3] | EGO on Hartmann 6, a six-variable test function whose local minimum traps [M6.2d1](#m6-2d1)'s EGO in 7 runs of 10 ([ADR-142][adr-142], [Optimization](optimization.md#few-evaluations-ego)) | not yet done |
 | <a id="m6-2e"></a>[M6.2e][phase-3] | Robust designs: a Monte Carlo run inside the optimizer | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
 | <a id="m6-4"></a>[M6.4][phase-3] | Airbrakes, with a controller that aims for a target apogee | not yet done |
@@ -630,6 +632,7 @@ is the milestone that added or will add that test.
 [adr-139]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-139-optimization-constraints-by-debs-feasibility-rules-2026-10-01
 [adr-140]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-140-discrete-choices-by-cma-es-with-margin-2026-10-02
 [adr-141]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-141-several-goals-by-nsga-ii-2026-10-02
+[adr-142]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-142-few-evaluations-by-ego-2026-10-02
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
