@@ -185,9 +185,9 @@ pub mod constrained {
 ///
 /// | Function | Integer variables | Minimum |
 /// |---|---|---|
-/// | [`sphere_int`] | from −10 to 10 | 0 at `x = 0` |
-/// | [`ellipsoid_int`] | from −10 to 10, with the largest coefficients | 0 at `x = 0` |
-/// | [`sphere_one_max`] | 0 or 1 | 0 at continuous 0, integer 1 |
+/// | [`sphere_int`](mixed::sphere_int) | from −10 to 10 | 0 at `x = 0` |
+/// | [`ellipsoid_int`](mixed::ellipsoid_int) | from −10 to 10, with the largest coefficients | 0 at `x = 0` |
+/// | [`sphere_one_max`](mixed::sphere_one_max) | 0 or 1 | 0 at continuous 0, integer 1 |
 pub mod mixed {
     use super::{ellipsoid, sphere};
 

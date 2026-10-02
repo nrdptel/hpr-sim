@@ -11,7 +11,12 @@
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
+    clippy::panic,
     reason = "the helpers stop at the failure, as `#[test]` functions may (clippy.toml)"
+)]
+#![allow(
+    clippy::print_stdout,
+    reason = "each case prints the medians the guide quotes, shown by `--nocapture`"
 )]
 
 use std::collections::BTreeMap;
