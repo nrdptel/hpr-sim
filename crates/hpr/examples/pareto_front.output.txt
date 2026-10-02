@@ -1,0 +1,14 @@
+A 66 mm rocket on a J760: how much apogee each calibre of static margin costs, over
+its nose ballast (0 to 0.8 kg) and fin span (4 to 10 cm), with a margin of at least
+1.5 calibres at launch mass, at Mach 0.3
+Not yet validated: see the Accuracy page before trusting these numbers.
+NSGA-II: 20 designs a generation, 25 generations, 500 flights (seed 2026)
+The front: 20 designs, each flown again to the same apogee and margin
+
+margin (cal)   apogee on the front (m), interpolated between the two designs either side
+         2.0       3100
+         2.5       3050
+         3.0       2990
+         3.5       2940
+
+At 2.5 calibres, CMA-ES alone (200 flights): apogee 3050 m; the front within 0.5%: yes

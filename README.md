@@ -35,7 +35,8 @@ Planned:
   reproducible) and [sensitivity analysis](https://nrdptel.github.io/hpr-sim/sensitivity.html)
   (Morris screening and Sobol' indices), and [optimization](https://nrdptel.github.io/hpr-sim/optimization.html)
   of design numbers and choices (a motor, a catalogue part) by CMA-ES, under limits such as a
-  stability margin, in the library today; competition challenges next.
+  stability margin, and of trade-offs between goals (a Pareto front, by NSGA-II), in the library
+  today; competition challenges next.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.
 - Later: a modern desktop/web/mobile UI with 3D flight replay.
 

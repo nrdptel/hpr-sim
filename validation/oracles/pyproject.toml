@@ -40,6 +40,10 @@ dependencies = [
     # CMA-ES with margin for integer and binary variables (MIT), run as the outside mixed-integer
     # optimizer hpr's is checked against (`validation/oracles/cmawm/cmawm_runs.py`).
     "cmaes==0.13.1",
+    # NSGA-II and the ZDT problems (Apache-2.0), run as the outside multi-objective optimizer
+    # `hpr_analysis::optimize::nsga2` is checked against (`validation/oracles/nsga2/pymoo_runs.py`).
+    # It pulls in moocore (LGPL-2.1-or-later), run only, never linked or ported.
+    "pymoo==0.6.2",
 ]
 
 [tool.uv]

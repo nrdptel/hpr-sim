@@ -2,7 +2,8 @@
 //!
 //! **Guide:** [Optimization][guide] runs the optimizer on test functions whose minima are known,
 //! then finds the ballast and body length that send a rocket to 3,048 m, chooses a motor and a
-//! catalogue nose cone for it, and says how far to trust it.
+//! catalogue nose cone for it, traces a rocket's trade-off between apogee and stability, and says
+//! how far to trust it.
 //!
 //! [guide]: https://nrdptel.github.io/hpr-sim/optimization.html
 //!
@@ -13,24 +14,27 @@
 //!   candidates around a mean, keeps the better half, and learns from them which way, and how
 //!   far, to step next. It needs only the output's ranking, no derivatives, so it suits flights,
 //!   whose outputs are noisy in their last digits.
+//! - [`nsga2`]: NSGA-II, a genetic algorithm for two or more goals at once (apogee against
+//!   stability, say), which finds the *Pareto front*: the designs where one goal can only be
+//!   bettered by giving up another.
 //! - [`Evaluation`]: a value and a constraint violation, for a model with constraints, ranked
 //!   by Deb's feasibility rules ([`cmaes::Run::tell_constrained`]).
-//! - [`benchmark`]: test functions with known minima, which the tests hold the optimizer to.
+//! - [`benchmark`]: test functions with known minima, and test problems with known fronts, which
+//!   the tests hold the optimizers to.
 //!
 //! A model is minimized; to maximize an output, minimize its negative. To hit a target, minimize
 //! the squared miss, as the guide's example does.
 //!
 //! # Reproducibility
 //!
-//! A run is drawn from a seed. Each candidate has its own random stream
+//! A run is drawn from a seed. Each CMA-ES candidate has its own random stream
 //! ([`SeededRng::for_stream`](hpr_core::random::SeededRng::for_stream)), keyed by the seed, its
-//! generation and its place in the generation, so a run is bit for bit the same every time on
-//! one platform, however its candidates are evaluated.
+//! generation and its place in the generation, and each NSGA-II generation has one stream, so a run is bit
+//! for bit the same every time on one platform, however its candidates are evaluated.
 //!
 //! # Left out
 //!
-//! Several objectives at once, Bayesian optimization and optimizing a Monte Carlo run's statistics
-//! are later increments of [M6.2, the optimization milestone][roadmap].
+//! Bayesian optimization and optimizing a Monte Carlo run's statistics are later increments of [M6.2, the optimization milestone][roadmap].
 //!
 //! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 
@@ -38,6 +42,7 @@ pub mod benchmark;
 pub mod cmaes;
 mod eigen;
 mod normal;
+pub mod nsga2;
 
 use std::collections::BTreeSet;
 

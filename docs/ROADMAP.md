@@ -831,8 +831,8 @@
     - [x] **M6.2b2 Discrete choices.** *Done when:* a catalogue motor and part are chosen with
       continuous variables under stability-margin and rail-exit constraints; "hit 3,048 m" with
       the motor free, each constraint re-checked on the winner by re-simulation. Met (ADR-140).
-  - [ ] **M6.2c NSGA-II.** *Done when:* ZDT1 to ZDT3 fronts within a stated generational distance;
-    a two-goal rocket problem gives a front.
+  - [x] **M6.2c NSGA-II.** *Done when:* ZDT1 to ZDT3 fronts within a stated generational distance;
+    a two-goal rocket problem gives a front. Met (ADR-141).
   - [ ] **M6.2d EGO.** *Done when:* Branin and Hartmann reach their minima in a stated budget.
   - [ ] **M6.2e Robust mode.** *Done when:* a Monte Carlo statistic is optimized with common random
     numbers, the winner checked by a fresh Monte Carlo run.
