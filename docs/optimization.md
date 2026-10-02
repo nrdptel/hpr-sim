@@ -13,7 +13,7 @@ weighs two goals against each other: how much apogee each extra [calibre](glossa
 of stability costs. It needs some Rust.
 
 > **How far to trust it.** Both optimizers are tested against answers known exactly, and against
-> outside implementations. On a rocket, its answer is only as good as hpr-sim's
+> outside implementations. On a rocket, their answers are only as good as hpr-sim's
 > flight models, which are not yet validated against real flights ([Accuracy](accuracy.md)).
 >
 > - **Tested:** four standard test functions of ten variables are run from 20 seeds each. Every
@@ -49,7 +49,7 @@ of stability costs. It needs some Rust.
 >   outside implementation run with the same settings. Every run's front lies within twice
 >   pymoo's worst distance from the true front (the test's bound). At the median, hpr-sim's
 >   fronts lie 1% to 8% closer to the true front than pymoo's, and cover it as evenly, within 3%
->   (the test allows 25% either way; [Trade-offs](#trade-offs-a-pareto-front)). The third
+>   (the test allows a factor of 1.25 either way; [Trade-offs](#trade-offs-a-pareto-front)). The third
 >   example's front designs are flown again and give the same apogee and margin to the bit:
 >   that shows the result repeats, not that it is right. At 2.5 calibres the front is within
 >   0.5% of the apogee CMA-ES finds alone (the example's check).
@@ -279,9 +279,10 @@ next. It returns the result once the run stops.
   population ([`Cmaes::with_population`]) searches more widely, at more flights per generation.
 - **Seed:** a different seed gives a different run. Rerun with two or three seeds if the answer
   matters: if they agree, the answer is not luck.
-- **NSGA-II's population and generations:** the flights are their product. The defaults, 100
-  designs for 250 generations, are 25,000 flights, sized for 30 variables; the third example's
-  two variables settled with 20 designs for 25 generations, 500 flights. The population is also
+- **NSGA-II's population and generations:** the number of flights is the population times the
+  generations. The defaults, 100 designs for 250 generations, are 25,000 flights, sized for 30
+  variables; the third example's two variables needed 20 designs for 25 generations, 500
+  flights, to pass its 0.5% check. The population is also
   how many designs the front can hold. Compare the fronts from two seeds before trusting one.
 
 ## Limits on a design
@@ -543,7 +544,8 @@ generation:
 1. breeds as many children as there are parents. Each pair of parents is chosen by two
    tournaments: of two designs picked at random, the one on a better front wins, or, on the same
    front, the one further from its neighbours (its *crowding distance*: the gaps between its two
-   neighbours' values of each goal, added up). Every design plays two tournaments a generation.
+   neighbours' values of each goal, each as a share of that goal's range in the front, added
+   up). Every design plays two tournaments a generation.
    A pair's children mix their parents' values
    (*crossover*), then a few values are nudged at random (*mutation*);
 2. flies the children;
@@ -622,14 +624,16 @@ whose margins bracket it. Two checks back the front up:
 - Every one of its 20 designs is flown again from a fresh build and gives the same apogee and
   margin to the last bit. That shows the result repeats; it doesn't show it is right.
 - At 2.5 calibres, CMA-ES alone, told to find the highest apogee with at least that margin, gets
-  the same 3,050 m in 200 flights: the front is within 0.5% of it, the example's check.
+  the same 3,050 m (to the nearest 10 m) in 200 flights: the front is within 0.5% of it, the
+  example's check.
 
 How much that depends on the seed was measured once, on the development machine, and isn't
 checked in CI. From each of the 26 seeds 2020 to 2045, the front came within the 0.5%, from 0.46%
 below CMA-ES's apogee to 0.18% above (CMA-ES's own answer in 200 flights varies by 0.24% over
-those seeds). An earlier version of the example missed the check: 24 designs for 15 generations,
-over wider ranges, spread the front from 1.5 to 5.3 calibres, too thinly. The ranges were
-narrowed and the generations raised; the 0.5% was not changed
+those seeds). An earlier version of the example missed the check: with 20 designs for 12
+generations its front fell 0.66% short, and the generations were raised to 25. (Before that, 24
+designs over wider ranges spread the front from 1.5 to 5.3 calibres, too thinly, and the ranges
+were narrowed.) The 0.5% was not changed
 ([ADR-141](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-141-several-goals-by-nsga-ii-2026-10-02)).
 
 ### Checked against
@@ -661,9 +665,10 @@ as the paper describes, from seeds 1 to 20
 Both sets of columns below are scored by hpr-sim's measures; the pymoo columns are pymoo's
 fronts. The rules were set from pymoo's runs before hpr-sim's were measured: every hpr-sim run
 within twice pymoo's worst, and hpr-sim's median at most 25% above pymoo's, the margin CMA-ES's
-tests allow against pycma. Review added the other side, at most 25% below: on these problems
-every variable but the first is best at its low bound, so an operator that leans toward the
-bounds would look better than pymoo, not worse. Measured:
+tests allow against pycma. A second rule was added before the final runs: the median at most
+20% below pymoo's, a factor of 1.25 either way. On these problems the best designs sit at the
+variables' lower bounds, and an optimizer that drifts toward its bounds would score better than
+pymoo without being better. Measured:
 
 | Problem | Measure | hpr-sim median | hpr-sim worst | pymoo median | pymoo worst | Bound on every run |
 |---|---|---|---|---|---|---|
@@ -675,7 +680,8 @@ bounds would look better than pymoo, not worse. Measured:
 | ZDT3 | IGD | 5.38e-3 | 3.40e-2 | 5.51e-3 | 3.39e-2 | 6.78e-2 |
 
 At the median, hpr-sim's fronts lie 1% to 8% closer to the true front than pymoo's, and cover it
-as evenly (IGD 1% to 2% smaller). Every hpr-sim run is 1.9 to 2.1 times inside its bound. The
+as evenly (IGD 1% to 3% smaller). Each problem's worst hpr-sim run is 1.9 to 2.1 times inside
+its bound. The
 worst ZDT3 run of each has an IGD six times its median: it missed part of the front, a known
 hazard on a front in pieces. The per-run bound on ZDT3's IGD is loose for the same reason, set by
 pymoo's one such run; the median rule is what holds ZDT3's coverage. These come from
@@ -685,8 +691,8 @@ The same test checks hpr-sim's [`generational_distance`] against pymoo's own, on
 and 500 reference points, to 10⁻¹².
 
 Deb and co-authors' own runs (their Table II) report a mean distance of 0.033, 0.072 and 0.115
-on these three problems, measured to 500 points of the true front: 30 to 90 times pymoo's here,
-to the same 500 points (about 0.001). Why the paper's are so much larger was not investigated.
+on these three problems, measured to 500 points of the true front: 18 to 87 times pymoo's mean
+here, to the same 500 points (0.0013 to 0.0019). Why the paper's are so much larger was not investigated.
 
 Unit tests check the pieces by hand
 ([`optimize/nsga2.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/nsga2.rs)):

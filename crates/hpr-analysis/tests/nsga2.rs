@@ -17,8 +17,9 @@
 //! The rules were set from pymoo's runs before hpr's were measured: every one of hpr's 20 runs
 //! within twice pymoo's worst, and hpr's median no more than 25% above pymoo's (the bound
 //! ADR-138 set on CMA-ES's evaluations against pycma's). Review then made the median rule
-//! two-sided, no more than 25% below pymoo's either: on ZDT every variable but the first is best
-//! at its low bound, so an operator biased toward the bounds passes a one-sided rule.
+//! two-sided, within a factor of 1.25 either way (at most 20% below): on ZDT every variable but
+//! the first is best at its low bound, so an operator biased toward the bounds passes a
+//! one-sided rule.
 
 #![allow(
     clippy::unwrap_used,
@@ -166,7 +167,7 @@ fn check(name: &str, problem: Zdt) {
         let (ours, theirs) = (median(hpr.clone()), median(pymoo.clone()));
         assert!(
             ours <= 1.25 * theirs && ours >= theirs / 1.25,
-            "{name}: median {what} {ours:.3e} not within 25% of pymoo's {theirs:.3e}"
+            "{name}: median {what} {ours:.3e} not within a factor of 1.25 of pymoo's {theirs:.3e}"
         );
     }
 }

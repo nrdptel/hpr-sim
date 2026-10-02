@@ -73,9 +73,14 @@ use super::{Variable, check_variables};
 use crate::error::AnalysisError;
 
 /// The largest population a run takes, 2¹². The sort of parents and children together keeps, for
-/// each design, the list of designs it dominates: up to about `(2N)²/2` indices, some 130 MB at
-/// this size, and four times as much for each doubling.
+/// each design, the list of designs it dominates: up to about `(2N)²/2` indices, some 270 MB on a
+/// 64-bit machine at this size (more while the lists grow), and four times as much for each
+/// doubling.
 pub const MAX_POPULATION: usize = 1 << 12;
+
+/// The largest bound a variable may have, in size: `f64::MAX/4`, so that crossover's sums and
+/// spreads stay finite.
+pub const MAX_BOUND: f64 = f64::MAX / 4.0;
 
 /// The most goals a run takes.
 pub const MAX_OBJECTIVES: usize = 16;
@@ -270,8 +275,8 @@ impl Nsga2 {
     /// [`AnalysisError::TooFew`] or [`AnalysisError::Count`] for no variables or more than
     /// [`MAX_VARIABLES`](super::MAX_VARIABLES), or no goals or more than [`MAX_OBJECTIVES`];
     /// [`AnalysisError::DuplicateVariable`] for two variables of one name;
-    /// [`AnalysisError::Domain`] for a variable without two finite bounds, or whose range
-    /// overflows; and
+    /// [`AnalysisError::Domain`] for a variable without two finite bounds, or with one beyond
+    /// [`MAX_BOUND`]; and
     /// [`AnalysisError::Unsupported`] for an integer variable.
     pub fn new(variables: Vec<Variable>, objectives: usize) -> Result<Self, AnalysisError> {
         check_variables(&variables)?;
@@ -302,11 +307,14 @@ impl Nsga2 {
                     value: v.high(),
                 });
             }
-            if !(v.high() - v.low()).is_finite() {
-                return Err(AnalysisError::Domain {
-                    what: "variable's range, high minus low (NSGA-II needs it finite)",
-                    value: v.high() - v.low(),
-                });
+            // Within ±f64::MAX/4, crossover's sums and spreads can't overflow.
+            for bound in [v.low(), v.high()] {
+                if bound.abs() > MAX_BOUND {
+                    return Err(AnalysisError::Domain {
+                        what: "variable's bound (NSGA-II takes bounds within ±f64::MAX/4)",
+                        value: bound,
+                    });
+                }
             }
             if v.is_integer() {
                 return Err(AnalysisError::Unsupported(format!(
@@ -628,16 +636,7 @@ impl Run {
         let s = &self.settings;
         // Cast: a generation count fits in u64.
         let mut rng = SeededRng::for_stream(self.seed, &[self.generation as u64]);
-        let n = self.members.len();
-        let mut contestants: Vec<usize> = Vec::with_capacity(2 * n);
-        for _ in 0..2 {
-            let mut shuffle: Vec<usize> = (0..n).collect();
-            // Fisher–Yates, from the end.
-            for i in (1..n).rev() {
-                shuffle.swap(i, draw_index(&mut rng, i + 1));
-            }
-            contestants.extend(shuffle);
-        }
+        let contestants = contestants(&mut rng, self.members.len());
         let parents: Vec<&[f64]> = contestants
             .as_chunks::<2>()
             .0
@@ -694,10 +693,24 @@ impl Run {
     }
 }
 
+/// The tournaments' contestants for a population of `n`: two shuffles of `0..n` (Fisher–Yates,
+/// from the end) laid end to end, to be taken two at a time.
+fn contestants(rng: &mut SeededRng, n: usize) -> Vec<usize> {
+    let mut contestants = Vec::with_capacity(2 * n);
+    for _ in 0..2 {
+        let mut shuffle: Vec<usize> = (0..n).collect();
+        for i in (1..n).rev() {
+            shuffle.swap(i, draw_index(rng, i + 1));
+        }
+        contestants.extend(shuffle);
+    }
+    contestants
+}
+
 /// A uniform index below `n` (`n ≥ 1`): `⌊u n⌋` for a uniform `u` on `[0, 1)`, held below `n`.
 /// Its bias is at most `n/2⁵³`.
 fn draw_index(rng: &mut SeededRng, n: usize) -> usize {
-    // Casts: n ≤ 2¹⁷, exact in f64, and ⌊u n⌋ < n converts back exactly.
+    // Casts: n ≤ 2¹², exact in f64, and ⌊u n⌋ < n converts back exactly.
     let k = (rng.uniform() * n as f64).floor() as usize;
     k.min(n - 1)
 }
@@ -1070,6 +1083,9 @@ mod tests {
             let (c1, c2) = sbx(0.001, 0.3, 0.0, 1.0, 20.0, &mut rng);
             assert!((0.0..=1.0).contains(&c1) && (0.0..=1.0).contains(&c2));
             at_bound += usize::from(c1 == 0.0 || c2 == 0.0);
+            let (c1, c2) = sbx(0.7, 0.999, 0.0, 1.0, 20.0, &mut rng);
+            assert!((0.0..=1.0).contains(&c1) && (0.0..=1.0).contains(&c2));
+            at_bound += usize::from(c1 == 1.0 || c2 == 1.0);
             let y = polynomial_mutation(0.999, 0.0, 1.0, 20.0, &mut rng);
             assert!((0.0..=1.0).contains(&y));
             at_bound += usize::from(y == 1.0);
@@ -1115,44 +1131,119 @@ mod tests {
         }
     }
 
-    /// Near its low bound, SBX's lower child has spread `β = (y₁ + y₂ − 2c) / (y₂ − y₁)` cut at
-    /// `β_b = 1 + 2(y₁ − low)/(y₂ − y₁)` and scaled by `1/α`, `α = 2 − β_b^−(η+1)`:
-    /// `P(β ≤ b) = b^(η+1)/α` for `b ≤ 1`, and `(2 − b^−(η+1))/α` from 1 to `β_b`. The children
-    /// come out in either order with equal chance.
+    /// Near both bounds, each SBX child's spread is cut at its own bound: the lower child's
+    /// `β = (y₁ + y₂ − 2c)/(y₂ − y₁)` at `β_b = 1 + 2(y₁ − low)/(y₂ − y₁)`, the upper child's
+    /// `β = (2c − y₁ − y₂)/(y₂ − y₁)` at `β_b = 1 + 2(high − y₂)/(y₂ − y₁)`, each scaled by `1/α`,
+    /// `α = 2 − β_b^−(η+1)`: `P(β ≤ b) = b^(η+1)/α` for `b ≤ 1`, and `(2 − b^−(η+1))/α` from 1 to
+    /// `β_b`. Here the two cuts differ, 1.4 below and 1.8 above. The children come out in either
+    /// order with equal chance.
     #[test]
-    fn sbx_spread_is_cut_at_the_bound() {
+    fn sbx_spread_is_cut_at_each_bound() {
         let (eta, draws) = (2.0_f64, 100_000);
-        let (y1, y2, low, high) = (0.05_f64, 0.3_f64, 0.0_f64, 100.0_f64);
-        let beta_b = 1.0 + 2.0 * (y1 - low) / (y2 - y1);
-        let alpha = 2.0 - beta_b.powf(-(eta + 1.0));
+        let (y1, y2, low, high) = (0.05_f64, 0.3_f64, 0.0_f64, 0.4_f64);
+        let gap = y2 - y1;
         let mut rng = SeededRng::seed_from_u64(4);
         let mut lower_first = 0;
-        let betas: Vec<f64> = (0..draws)
-            .map(|_| {
-                let (c1, c2) = sbx(y1, y2, low, high, eta, &mut rng);
-                lower_first += usize::from(c1 < c2);
-                (y1 + y2 - 2.0 * c1.min(c2)) / (y2 - y1)
-            })
-            .collect();
-        for b in [0.5_f64, 0.9, 0.94, 0.96, 0.98, 1.0, 1.1, 1.3, 1.39] {
-            let expected = if b <= 1.0 {
-                b.powf(eta + 1.0) / alpha
-            } else {
-                (2.0 - b.powf(-(eta + 1.0))) / alpha
-            };
-            let share = betas.iter().filter(|&&x| x <= b).count() as f64 / draws as f64;
-            let sigma = (expected * (1.0 - expected) / draws as f64).sqrt();
-            assert!(
-                (share - expected).abs() <= 5.0 * sigma + 1e-6,
-                "P(β ≤ {b}) {share} against {expected}"
-            );
+        let (mut lower, mut upper) = (Vec::new(), Vec::new());
+        for _ in 0..draws {
+            let (c1, c2) = sbx(y1, y2, low, high, eta, &mut rng);
+            lower_first += usize::from(c1 < c2);
+            lower.push((y1 + y2 - 2.0 * c1.min(c2)) / gap);
+            upper.push((2.0 * c1.max(c2) - y1 - y2) / gap);
         }
-        assert!(betas.iter().all(|&b| b <= beta_b * (1.0 + 1e-12)));
+        for (betas, beta_b, side) in [
+            (&lower, 1.0 + 2.0 * (y1 - low) / gap, "lower"),
+            (&upper, 1.0 + 2.0 * (high - y2) / gap, "upper"),
+        ] {
+            let alpha = 2.0 - beta_b.powf(-(eta + 1.0));
+            for b in [
+                0.5, 0.9, 0.94, 0.945, 0.96, 0.98, 1.0, 1.1, 1.3, 1.39, 1.6, 1.79,
+            ] {
+                if b > beta_b {
+                    continue;
+                }
+                let expected = if b <= 1.0 {
+                    b.powf(eta + 1.0) / alpha
+                } else {
+                    (2.0 - b.powf(-(eta + 1.0))) / alpha
+                };
+                let share = betas.iter().filter(|&&x| x <= b).count() as f64 / draws as f64;
+                let sigma = (expected * (1.0 - expected) / draws as f64).sqrt();
+                assert!(
+                    (share - expected).abs() <= 5.0 * sigma + 1e-6,
+                    "{side} child: P(β ≤ {b}) {share} against {expected}"
+                );
+            }
+            assert!(betas.iter().all(|&b| b <= beta_b * (1.0 + 1e-12)));
+        }
         let half = lower_first as f64 / draws as f64;
         assert!(
             (half - 0.5).abs() <= 5.0 * (0.25 / draws as f64).sqrt(),
             "{half}"
         );
+    }
+
+    /// Two shuffles end to end: every design plays exactly two tournaments, never against itself.
+    #[test]
+    fn every_design_plays_two_tournaments() {
+        for n in [4, 6, 20, 100] {
+            for seed in 0..20 {
+                let mut rng = SeededRng::seed_from_u64(seed);
+                let c = contestants(&mut rng, n);
+                assert_eq!(c.len(), 2 * n);
+                for i in 0..n {
+                    assert_eq!(c.iter().filter(|&&k| k == i).count(), 2);
+                }
+                assert!(c.as_chunks::<2>().0.iter().all(|[a, b]| a != b));
+            }
+        }
+        // Each shuffle is uniform: over many, each design is first a quarter of the time (n = 4).
+        let mut rng = SeededRng::seed_from_u64(9);
+        let mut first = [0_usize; 4];
+        for _ in 0..40_000 {
+            first[contestants(&mut rng, 4)[0]] += 1;
+        }
+        for count in first {
+            let share = count as f64 / 40_000.0;
+            assert!(
+                (share - 0.25).abs() <= 5.0 * (0.1875_f64 / 40_000.0).sqrt(),
+                "{first:?}"
+            );
+        }
+    }
+
+    /// A design with a goal of +∞ fails: violation +∞, behind even a design that breaks a limit;
+    /// a generation of only such designs leaves no feasible front.
+    #[test]
+    fn infinite_goals_fail() {
+        let n = Nsga2::new(vec![unit("x")], 2)
+            .unwrap()
+            .with_population(4)
+            .unwrap()
+            .with_generations(1)
+            .unwrap();
+        let mut run = n.start(1);
+        let goals = vec![
+            Goals::feasible(vec![f64::INFINITY, -100.0]),
+            Goals::constrained(vec![1.0, 1.0], &[0.5]),
+            Goals::feasible(vec![2.0, 2.0]),
+            Goals::feasible(vec![3.0, 1.0]),
+        ];
+        let front = run.tell_constrained(&goals).unwrap().unwrap();
+        let members = run.members();
+        assert_eq!(members.len(), 4);
+        let infinite = members
+            .iter()
+            .find(|m| m.violation == f64::INFINITY)
+            .unwrap();
+        let broken = members.iter().find(|m| m.violation == 0.5).unwrap();
+        assert_eq!(infinite.objectives, vec![f64::INFINITY; 2]);
+        assert!(infinite.rank > broken.rank);
+        assert!(front.is_feasible() && front.members.len() == 2);
+        let mut run = n.start(2);
+        let all = vec![vec![f64::INFINITY, 0.0]; 4];
+        let front = run.tell(&all).unwrap().unwrap();
+        assert!(!front.is_feasible());
     }
 
     #[test]
@@ -1201,7 +1292,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             Nsga2::new(vec![wide], 2),
-            Err(AnalysisError::Domain { what, .. }) if what.contains("range")
+            Err(AnalysisError::Domain { what, .. }) if what.contains("MAX/4")
         ));
         assert!(n.clone().with_generations(0).is_err());
         assert!(n.clone().with_crossover(1.1, 20.0).is_err());
@@ -1272,19 +1363,8 @@ mod tests {
             run.tell(&nan),
             Err(AnalysisError::Output { index: 7, .. })
         ));
-        // A goal of +∞ fails the design, behind every finite one.
-        let mut infinite = ok.clone();
-        infinite[1] = vec![f64::INFINITY, -100.0];
-        let front = run.tell(&infinite).unwrap().unwrap();
+        let front = run.tell(&ok).unwrap().unwrap();
         assert_eq!((front.evaluations, front.generations), (8, 2));
-        assert!(front.members.iter().all(|m| m.objectives[0].is_finite()));
-        assert!(
-            front
-                .population
-                .iter()
-                .filter(|m| m.violation == f64::INFINITY)
-                .all(|m| m.objectives == vec![f64::INFINITY; 2])
-        );
         assert!(run.candidates().is_empty());
         assert!(matches!(run.tell(&ok), Err(AnalysisError::Length { .. })));
         // The front round-trips through JSON, its infinite crowding distances as null.

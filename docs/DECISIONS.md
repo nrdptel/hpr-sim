@@ -146,7 +146,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-138 | M6.2 split a to e; M6.2a: CMA-ES (Hansen's tutorial, Table 1, positive weights only) over continuous variables, worked in each variable divided by its step, with optional bounds by resampling, ask-and-tell (`Run::tell`), Jacobi eigen-decomposition each generation; held to four test functions' minima, to pycma 4.5.0's evaluation counts (medians within 25%) and to a dense recomputation of every generation; the 3,048 m problem re-flown from a fresh build and at 100× tighter tolerances | accepted |
 | ADR-139 | M6.2b split b1, b2; M6.2b1: constraints for CMA-ES by Deb's (2000) feasibility rules (`Evaluation`, `Run::tell_constrained`), no penalty weight; infeasible candidates ranked, not redrawn; a target and TolFun count only feasible points; held to the sphere with `x₀ ≥ 1`, the tangent problem and CEC 2006 g06 from 20 seeds | accepted |
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
-| ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within 25% either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
+| ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 
 ---
 
@@ -11488,17 +11488,19 @@ trade-off needs the set nothing dominates.
    probability on each side, as Deb's code does. These equations appear in no paper we could
    reach; pymoo 0.6.2's `sbx.py` and `pm.py` (Apache-2.0) print them, were read, and hpr's
    comments derive them again (SBX: the unbounded inverse at `u′ = uα/2`; mutation: each half
-   truncated). Unit tests hold SBX's spread to its density far from the bounds and cut at one,
-   the children's order to ½, and mutation's step at an asymmetric point to each side's cut
+   truncated). Unit tests hold SBX's spread to its density far from the bounds and cut at
+   each (both children, with different cuts), the children's order to ½, and mutation's step at an asymmetric point to each side's cut
    distribution, within five standard errors over 100,000 draws. Three wrong versions the
    reviewers found passing the first tests (`u ≤ ½` for `u ≤ 1/α`, no swap, `δ₂` for `δ₁`) now
-   fail them. Deb and Deb (2014) give a different bounded mutation, not used. The defaults are
+   fail them, as do two wrong upper-child cuts found on re-review. A test checks that every design
+   plays exactly two tournaments, never against itself. Deb and Deb (2014) give a different bounded mutation, not used. The defaults are
    the paper's (p. 187): 100 designs, 250 generations, `p_c = 0.9`, `η_c = η_m = 20`,
    `p_m = 1/n`. A generation draws from one stream, `for_stream(seed, [generation])`, before its
    children are flown. Every variable needs finite bounds whose difference is finite (the first
    population is uniform between them); integer variables are refused for now. The population is
-   at most 2¹²: the sort keeps each design's dominated list, `O(N²)` memory, about 130 MB there
-   (2¹⁶, the first cap, would need tens of GB; review).
+   at most 2¹²: the sort keeps each design's dominated list, `O(N²)` memory, about 270 MB of
+   indices there on a 64-bit machine (2¹⁶, the first cap, would need tens of GB; review). Bounds
+   are held within ±`f64::MAX/4` so crossover's sums can't overflow.
 3. **The stated distance.** GD is Deb's Υ (§IV-B, p. 188: mean distance from each front design
    to the true front) taken to the curve itself, not to `H = 500` points: a window of `f₁ ± d₀`
    searched on a 400-step grid and refined by golden section (`Zdt::distance_to_front`, checked
@@ -11508,16 +11510,19 @@ trade-off needs the set nothing dominates.
    removal), ran seeds 1 to 20. The bounds were fixed from its runs before hpr's were measured:
    each hpr run within twice pymoo's worst, a guard against gross failure; and hpr's median at
    most 25% above pymoo's, the margin ADR-138 allowed CMA-ES against pycma. Review made the
-   median rule two-sided (at most 25% below too): on ZDT every variable but the first is best at
-   its low bound, so the three wrong operators above beat pymoo by 50%. The bound on every run is
+   median rule two-sided, within a factor of 1.25 either way (at most 20% below): on ZDT every
+   variable but the first is best at its low bound, and two of the three wrong operators above
+   (no swap, `δ₂` for `δ₁`) put hpr's median GD 55% to 68% below pymoo's; the third (`u ≤ ½`)
+   stays within 1% to 9% and only its unit test catches it (reviewers' measurements, not
+   committed). The bound on every run is
    GD 2.92e-3 (ZDT1), 2.82e-3 (ZDT2), 1.31e-3 (ZDT3). Measured, with the pairing of item 1:
-   hpr's median GD 1% to 8% below pymoo's (ZDT1 1.07e-3 against 1.10e-3), IGD 1% to 2% below,
-   every run 1.9 to 2.1 times inside its bound. The per-run IGD bound on ZDT3, 6.78e-2, is set by
+   hpr's median GD 1% to 8% below pymoo's (ZDT1 1.07e-3 against 1.10e-3), IGD 1% to 3% below,
+   each problem's worst run 1.9 to 2.1 times inside its bound. The per-run IGD bound on ZDT3, 6.78e-2, is set by
    pymoo's one run that missed part of the front and is 12 times the median; the median rule is
    what holds ZDT3's coverage. hpr's `generational_distance` gives pymoo's own GD
    (`pymoo.indicators.gd`, its 500 points) to 10⁻¹². Deb et al.'s Table II reports a mean Υ of
-   0.033, 0.072 and 0.115 on these problems, 30 to 90 times pymoo's to the same 500 points
-   (about 0.001); why was not investigated. pymoo's non-dominated sorting runs on moocore
+   0.033, 0.072 and 0.115 on these problems, 18 to 87 times pymoo's mean to the same 500 points
+   (0.0013 to 0.0019); why was not investigated. pymoo's non-dominated sorting runs on moocore
    (LGPL-2.1-or-later), installed as its dependency in the oracles' environment only: run-only,
    like the OpenRocket jar, never linked or ported; its IGD is not used. Recorded in the notices.
 4. **ZDT3's pieces** were solved to 40 digits (mpmath `findroot`): each ends where the curve's
@@ -11534,8 +11539,9 @@ trade-off needs the set nothing dominates.
    either side, gives 3,051.3 m, 0.05% apart, the example's check being 0.5%. Over seeds 2020 to
    2045 (release build, development machine, not committed) all 26 pass, from −0.46% to +0.18%;
    CMA-ES's own 200-flight answer varies by 0.24% over them. A first try with 24 designs for 15
-   generations and wider ranges spread its front from 1.5 to 5.3 calibres; with 12 generations it
-   fell 0.66% short; the ranges were narrowed and the generations raised, the 0.5% unchanged.
+   generations over wider ranges spread its front from 1.5 to 5.3 calibres, and the ranges were
+   narrowed; then 20 designs for 12 generations fell 0.66% short, and the generations were raised
+   to 25, the 0.5% unchanged.
    The output was the same from a release build and with the flight's relative tolerance moved
    by four ulps (neither committed), its nearest printed value 0.69 m from a rounding edge, so it
    is expected to match on every platform.
