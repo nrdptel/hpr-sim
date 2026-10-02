@@ -34,7 +34,8 @@ Planned:
 - [Monte Carlo dispersion](https://nrdptel.github.io/hpr-sim/monte-carlo.html) (seeded and
   reproducible) and [sensitivity analysis](https://nrdptel.github.io/hpr-sim/sensitivity.html)
   (Morris screening and Sobol' indices), and [optimization](https://nrdptel.github.io/hpr-sim/optimization.html)
-  of continuous design numbers by CMA-ES, in the library today; competition challenges next.
+  of design numbers and choices (a motor, a catalogue part) by CMA-ES, under limits such as a
+  stability margin, in the library today; competition challenges next.
 - Flight-log import, comparison with the simulation, and diagnosis of what went wrong.
 - Later: a modern desktop/web/mobile UI with 3D flight replay.
 

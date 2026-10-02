@@ -15,6 +15,7 @@
 //! | [`rosenbrock`] | following a long, curved valley | 0 at `x = 1` |
 //!
 //! [`constrained`] holds three problems whose minima lie on their constraints' edges.
+//! [`mixed`] holds three whose second half of variables take only whole numbers.
 
 /// The ellipsoid's condition number: the ratio of its largest curvature to its smallest.
 pub const ELLIPSOID_CONDITION: f64 = 1e6;
@@ -172,5 +173,40 @@ pub mod constrained {
     /// g06's minimum's second coordinate, `x₁* = 5 − √(100 − (x₀* − 5)²)`.
     pub fn g06_x1() -> f64 {
         5.0 - (100.0 - (G06_X0 - 5.0).powi(2)).sqrt()
+    }
+}
+
+/// Test functions of continuous and integer variables together: those of R. Hamano, S. Saito,
+/// M. Nomura and S. Shirakawa, "CMA-ES with Margin: Lower-Bounding Marginal Probability for
+/// Mixed-Integer Black-Box Optimization", GECCO 2022, <https://arxiv.org/abs/2205.13482>, §5.1
+/// (p. 7). The first `⌊n/2⌋` variables are continuous and the rest integer
+/// ([`Variable::integer`](super::Variable::integer)); each function is given the values the
+/// optimizer encodes, whole numbers in the integer variables.
+///
+/// | Function | Integer variables | Minimum |
+/// |---|---|---|
+/// | [`sphere_int`](mixed::sphere_int) | from −10 to 10 | 0 at `x = 0` |
+/// | [`ellipsoid_int`](mixed::ellipsoid_int) | from −10 to 10, with the largest coefficients | 0 at `x = 0` |
+/// | [`sphere_one_max`](mixed::sphere_one_max) | 0 or 1 | 0 at continuous 0, integer 1 |
+pub mod mixed {
+    use super::{ellipsoid, sphere};
+
+    /// SphereInt, `f(x) = Σ xᵢ²` over every variable: [`sphere`].
+    pub fn sphere_int(x: &[f64]) -> f64 {
+        sphere(x)
+    }
+
+    /// EllipsoidInt, `f(x) = Σ (1000^(i/(n − 1)) xᵢ)²`: [`ellipsoid`], whose coefficients are the
+    /// same, so the integer variables, the last, have the largest.
+    pub fn ellipsoid_int(x: &[f64]) -> f64 {
+        ellipsoid(x)
+    }
+
+    /// SphereOneMax, `f(x) = Σ xᵢ² + n_b − Σ x_k`, the first sum over the first `⌊n/2⌋`
+    /// variables (continuous) and the second over the `n_b` others (0 or 1).
+    pub fn sphere_one_max(x: &[f64]) -> f64 {
+        let (continuous, binary) = x.split_at(x.len() / 2);
+        // Cast: at most 200 variables.
+        sphere(continuous) + binary.len() as f64 - binary.iter().sum::<f64>()
     }
 }

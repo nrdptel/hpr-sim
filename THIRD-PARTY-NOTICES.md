@@ -212,6 +212,10 @@ adds a source.
 
 ## Ported
 
+- **CPython** (PSF License 2.0), `Lib/statistics.py`'s `_normal_dist_inv_cdf`: only the 45
+  coefficients of M. J. Wichura's AS 241 (1988), constants the paper publishes, were transcribed
+  from CPython's listing into `hpr_analysis::optimize::normal` and checked against the paper's hash
+  sums. No code was taken; the code around them is written from the paper's algorithm.
 - **RocketPy** (MIT), `rocketpy/motors/solid_motor.py` at v1.13.0: the BATES grain regression
   geometry and the grain-stack inertia, re-derived in closed form in `hpr_motor::grains`, and the
   constant-exhaust-velocity consumption in `hpr_motor::motor`. Its technical documentation
@@ -399,6 +403,9 @@ same license and mode.
 | `kidwell-2001-streamer-duration` | C. Kidwell, Streamer Duration Optimization: Material and Length-to-Width Ratio, NAR R&D, NARAM-43, 2001 | unknown terms | fetched | NARHAMS library copy with no licence stated; its drop-test masses and descent rates are cited as measurements, its text never copied |
 | `wgs84-nga-stnd-0036` | NGA.STND.0036_1.0.0_WGS84, Department of Defense World Geodetic System 1984, Its Definition and Relationships with Local Geodetic Systems, 2014 | US government work | fetched | cited for the ellipsoid, geodetic conversion and normal gravity (M1.1); no text copied |
 | `karney-2011-geodesics` | C. F. F. Karney, Geodesics on an ellipsoid of revolution, arXiv:1102.1215v1, 2011 | arXiv non-exclusive license | fetched | appendix B cited for the ECEF-to-geodetic conversion (M1.1); no text copied |
+| `hamano-2022-cmawm` | R. Hamano, S. Saito, M. Nomura and S. Shirakawa, CMA-ES with Margin: Lower-Bounding Marginal Probability for Mixed-Integer Black-Box Optimization, GECCO 2022 (arXiv:2205.13482v2) | arXiv non-exclusive license | fetched | §4, eqs. (12) to (24) and Algorithm 1 implemented for the optimizer's integer variables (M6.2b2); its §5.1 test functions in `hpr_analysis::optimize::benchmark::mixed`; no text copied |
+| `hamano-2024-cmawm-telo` | R. Hamano, S. Saito, M. Nomura and S. Shirakawa, Marginal Probability-Based Integer Handling for CMA-ES Tackling Single- and Multi-Objective Mixed-Integer Black-Box Optimization, ACM TELO 4(2), 2024 (arXiv:2212.09260v2) | arXiv non-exclusive license | fetched | the journal version, read to confirm the margin's default and Algorithm 2 (M6.2b2); no text copied |
+| `irec-dteg-2025` | Experimental Sounding Rocket Association, International Rocket Engineering Competition Design, Test, & Evaluation Guide, v1.1.4, 2025-02-01 | CC 4.0 International (variant not stated) | fetched | §10.2.1, §10.3.1 and §10.4.1 cited for the optimization example's rail-exit and margin limits (M6.2b2); no text copied |
 | `karney-2013-algorithms-for-geodesics` | C. F. F. Karney, Algorithms for geodesics, J. Geodesy 87 (2013) 43-55, arXiv:1109.4448v2 | arXiv non-exclusive license | fetched | cited for the geodesics' method and their 15 nm bound (M5.3c1); no text copied |
 | `karney-geodtest` | C. F. F. Karney, Test set for geodesics, GeodTest.dat, Zenodo, doi:10.5281/zenodo.32156 | CC0 1.0 | fetched | the oracle for `hpr_core::geodesic` (M5.3c1); every 500th line and the 21 mirror lines are committed, and the whole set is checked where fetched |
 | `ogc-19-008r4-geotiff` | OGC GeoTIFF Standard, version 1.1, OGC 19-008r4, E. Devys, T. Habermann, C. Heazel, R. Lott, E. Rouault (eds.), 2019 | OGC Document License | fetched | cited for the GeoKeys and the raster-to-model tags `hpr_io::geotiff` reads (M5.3c2); no text copied |
@@ -449,6 +456,7 @@ Nothing here is bundled.
 | `xarray` 2026.7.0 | Apache-2.0 | run-only | runs the guide's conversion of a netCDF-4 ERA5 file to the classic format (`validation/oracles/netcdf/era5.py`) |
 | `rasterio` 1.5.2 | BSD-3-Clause; its wheel bundles GDAL 3.12.2 (MIT) and the libraries GDAL links | run-only | writes the GeoTIFF fixtures and records the reading `hpr_io::geotiff` is checked against (`validation/oracles/geotiff/`) |
 | `cma` 4.5.0 (pycma) | BSD-3-Clause | run-only | N. Hansen's CMA-ES, run on four test functions as the reference `hpr_analysis::optimize::cmaes` is held to (`validation/oracles/cmaes/pycma_runs.py`); none of its code is ported |
+| `cmaes` 0.13.1 (CyberAgent) | MIT | run-only | its `CMAwM`, CMA-ES with margin, run on three mixed-integer test functions as the reference hpr's integer variables are held to (`validation/oracles/cmawm/cmawm_runs.py`); its `_cmawm.py` was read to check the paper's equations against, none of its code is ported |
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
 | a Java 17 runtime (for example `brew install openjdk@17`) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 

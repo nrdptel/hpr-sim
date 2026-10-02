@@ -1,13 +1,14 @@
 //! Optimization: the design variables that make a model's output as small as it can be.
 //!
 //! **Guide:** [Optimization][guide] runs the optimizer on test functions whose minima are known,
-//! then finds the ballast and body length that send a rocket to 3,048 m, and says how far to
-//! trust it.
+//! then finds the ballast and body length that send a rocket to 3,048 m, chooses a motor and a
+//! catalogue nose cone for it, and says how far to trust it.
 //!
 //! [guide]: https://nrdptel.github.io/hpr-sim/optimization.html
 //!
 //! - [`Variable`]: one number the optimizer may change, with where it starts, the size of its
-//!   first steps, and optional bounds.
+//!   first steps, and optional bounds. An integer variable ([`Variable::integer`]) takes whole
+//!   numbers only: a count, or a choice from a list, such as a motor or a catalogue part.
 //! - [`cmaes`]: the covariance matrix adaptation evolution strategy (CMA-ES), which samples
 //!   candidates around a mean, keeps the better half, and learns from them which way, and how
 //!   far, to step next. It needs only the output's ranking, no derivatives, so it suits flights,
@@ -28,14 +29,15 @@
 //!
 //! # Left out
 //!
-//! Variables are continuous. Discrete choices (a motor, a catalogue part), several objectives at
-//! once, Bayesian optimization and optimizing a Monte Carlo run's statistics are later increments of [M6.2, the optimization milestone][roadmap].
+//! Several objectives at once, Bayesian optimization and optimizing a Monte Carlo run's statistics
+//! are later increments of [M6.2, the optimization milestone][roadmap].
 //!
 //! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 
 pub mod benchmark;
 pub mod cmaes;
 mod eigen;
+mod normal;
 
 use std::collections::BTreeSet;
 
@@ -47,9 +49,41 @@ use crate::error::AnalysisError;
 /// each generation, `O(n³)` work; 200 variables is far more than a rocket design has.
 pub const MAX_VARIABLES: usize = 200;
 
+/// The largest whole number an integer variable's bound may be, `2⁵²`: every whole number up to
+/// it, and every threshold halfway between two, is an `f64`.
+const MAX_WHOLE: f64 = 4_503_599_627_370_496.0;
+
+/// The whole number nearest `x`, a tie going to the lower, and 0 rather than −0. Exact: below
+/// 2⁵² `⌊x⌋ + 0.5` is an `f64`, and from there on `x` is whole (`x − 0.5` or `x − ⌊x⌋` would
+/// round).
+pub(crate) fn nearest_whole(x: f64) -> f64 {
+    let floor = x.floor();
+    let nearest = if x > floor + 0.5 { floor + 1.0 } else { floor };
+    nearest + 0.0
+}
+
+/// Checks an integer variable's bounds: whole numbers within `±2⁵²`.
+fn check_whole(low: f64, high: f64) -> Result<(), AnalysisError> {
+    let whole = |x: f64| x.fract() == 0.0 && x.abs() <= MAX_WHOLE;
+    if !whole(low) {
+        return Err(AnalysisError::Domain {
+            what: "integer variable's low bound (a whole number within ±2⁵²)",
+            value: low,
+        });
+    }
+    if !whole(high) {
+        return Err(AnalysisError::Domain {
+            what: "integer variable's high bound (a whole number within ±2⁵²)",
+            value: high,
+        });
+    }
+    Ok(())
+}
+
 /// A number the optimizer may change: its name, where it starts, the size of its first steps,
-/// and the range it must stay in. It serializes as its five fields (an unbounded side as
-/// `null`), and reads back through [`Variable::new`] and [`Variable::within`]'s checks.
+/// the range it must stay in, and whether it takes only whole numbers. It serializes as its
+/// fields (an unbounded side as `null`; `integer` only when true, and read as `false` when
+/// absent), and reads back through [`Variable::new`], [`Variable::within`] and [`Variable::integer`]'s checks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "VariableData", into = "VariableData")]
 pub struct Variable {
@@ -58,6 +92,7 @@ pub struct Variable {
     step: f64,
     low: f64,
     high: f64,
+    integer: bool,
 }
 
 /// The serialized form of a [`Variable`].
@@ -69,16 +104,23 @@ struct VariableData {
     step: f64,
     low: Option<f64>,
     high: Option<f64>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    integer: bool,
 }
 
 impl TryFrom<VariableData> for Variable {
     type Error = AnalysisError;
 
     fn try_from(data: VariableData) -> Result<Self, AnalysisError> {
-        Self::new(data.name, data.start, data.step)?.within(
+        let variable = Self::new(data.name, data.start, data.step)?.within(
             data.low.unwrap_or(f64::NEG_INFINITY),
             data.high.unwrap_or(f64::INFINITY),
-        )
+        )?;
+        if data.integer {
+            variable.integer()
+        } else {
+            Ok(variable)
+        }
     }
 }
 
@@ -90,6 +132,7 @@ impl From<Variable> for VariableData {
             step: v.step,
             low: v.low.is_finite().then_some(v.low),
             high: v.high.is_finite().then_some(v.high),
+            integer: v.integer,
         }
     }
 }
@@ -122,6 +165,7 @@ impl Variable {
             step,
             low: f64::NEG_INFINITY,
             high: f64::INFINITY,
+            integer: false,
         })
     }
 
@@ -129,8 +173,8 @@ impl Variable {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::Domain`] for a NaN bound, a `high` not above `low`, or a start outside
-    /// the range.
+    /// [`AnalysisError::Domain`] for a NaN bound, a `high` not above `low`, a start outside
+    /// the range, or for an integer variable bounds that aren't whole numbers within `±2⁵²`.
     pub fn within(mut self, low: f64, high: f64) -> Result<Self, AnalysisError> {
         if low.is_nan() || low == f64::INFINITY {
             return Err(AnalysisError::Domain {
@@ -150,9 +194,49 @@ impl Variable {
                 value: self.start,
             });
         }
+        if self.integer {
+            check_whole(low, high)?;
+        }
         self.low = low;
         self.high = high;
         Ok(self)
+    }
+
+    /// The same variable, taking only the whole numbers from its low bound to its high one: a
+    /// count, or the place of a choice in a list (a motor, a catalogue part). The optimizer still
+    /// draws it as a real number, and the model is given the whole number nearest the draw,
+    /// clamped to the bounds ([`Variable::encode`]); [`cmaes`] keeps every value within reach by
+    /// the *margin* of CMA-ES with margin. Its step is the size of the first steps, in whole
+    /// numbers: 1 is a good start for a handful of choices. Its start may lie between two whole
+    /// numbers, as the draws are centred on it.
+    ///
+    /// # Errors
+    ///
+    /// [`AnalysisError::Domain`] for bounds that aren't whole numbers within `±2⁵²`: set them
+    /// first with [`Variable::within`], which checks them again if called after.
+    pub fn integer(mut self) -> Result<Self, AnalysisError> {
+        check_whole(self.low, self.high)?;
+        self.integer = true;
+        Ok(self)
+    }
+
+    /// Whether it takes only whole numbers ([`Variable::integer`]).
+    pub fn is_integer(&self) -> bool {
+        self.integer
+    }
+
+    /// The value the model is given for a draw `x`: `x` itself, or for an integer variable the
+    /// whole number nearest `x`, a draw halfway between two going to the lower, clamped to the
+    /// bounds. These are the *encoding* of R. Hamano et al., "CMA-ES with Margin", GECCO 2022
+    /// (arXiv:2205.13482, §4.1, p. 5), with thresholds halfway between neighbouring values. NaN
+    /// stays NaN (a run stops before it would draw one).
+    pub fn encode(&self, x: f64) -> f64 {
+        if self.integer {
+            // `+ 0.0` turns a bound written −0 into 0.
+            nearest_whole(x).clamp(self.low, self.high) + 0.0
+        } else {
+            x
+        }
     }
 
     /// Its name.
@@ -356,8 +440,126 @@ mod tests {
             r#"{"name":"ballast","start":0.2,"step":0.1,"low":0.0,"high":null}"#
         );
         assert_eq!(serde_json::from_str::<Variable>(&json).unwrap(), x);
+        // `integer` is written only when true, and may be written false.
+        let explicit =
+            r#"{"name":"ballast","start":0.2,"step":0.1,"low":0.0,"high":null,"integer":false}"#;
+        assert_eq!(serde_json::from_str::<Variable>(explicit).unwrap(), x);
         let bad = r#"{"name":"x","start":2.0,"step":0.1,"low":0.0,"high":1.0}"#;
         assert!(serde_json::from_str::<Variable>(bad).is_err());
+        let motor = Variable::new("motor", 2.0, 1.0)
+            .unwrap()
+            .within(0.0, 4.0)
+            .unwrap()
+            .integer()
+            .unwrap();
+        let json = serde_json::to_string(&motor).unwrap();
+        assert_eq!(
+            json,
+            r#"{"name":"motor","start":2.0,"step":1.0,"low":0.0,"high":4.0,"integer":true}"#
+        );
+        assert_eq!(serde_json::from_str::<Variable>(&json).unwrap(), motor);
+        // An integer variable's bounds are checked on reading too.
+        let bad = r#"{"name":"k","start":0.0,"step":1.0,"low":-0.5,"high":3.0,"integer":true}"#;
+        assert!(serde_json::from_str::<Variable>(bad).is_err());
+    }
+
+    #[test]
+    fn integer_variables_need_whole_bounds() {
+        let k = Variable::new("k", 1.5, 1.0).unwrap();
+        for (low, high) in [
+            (f64::NEG_INFINITY, 4.0),
+            (0.0, f64::INFINITY),
+            (0.5, 4.0),
+            (0.0, 3.5),
+            (-1e16, 4.0),
+        ] {
+            let err = k.clone().within(low, high).unwrap().integer().unwrap_err();
+            let AnalysisError::Domain { what, .. } = err else {
+                panic!("{low}, {high}: {err:?}");
+            };
+            assert!(what.starts_with("integer variable's"), "{what}");
+            // Bounds set after `integer` are checked too.
+            let err = k
+                .clone()
+                .within(0.0, 4.0)
+                .unwrap()
+                .integer()
+                .unwrap()
+                .within(low, high)
+                .unwrap_err();
+            let AnalysisError::Domain { what, .. } = err else {
+                panic!("{low}, {high} after: {err:?}");
+            };
+            assert!(what.starts_with("integer variable's"), "{what}");
+        }
+        // A start between two whole numbers is allowed: the draws are centred on it.
+        let k = k.within(0.0, 4.0).unwrap().integer().unwrap();
+        assert!(k.is_integer() && !Variable::new("x", 0.0, 1.0).unwrap().is_integer());
+    }
+
+    /// The nearest whole number, halfway going to the lower, clamped to the bounds; a continuous
+    /// variable's draw is its own value.
+    #[test]
+    fn integer_draws_encode_to_the_nearest_value() {
+        let k = Variable::new("k", 0.0, 1.0)
+            .unwrap()
+            .within(-2.0, 3.0)
+            .unwrap()
+            .integer()
+            .unwrap();
+        for (x, value) in [
+            (0.0, 0.0_f64),
+            (0.5, 0.0),
+            (0.500_000_000_000_1, 1.0),
+            (-0.5, -1.0),
+            (-0.499_999_999_999_9, 0.0),
+            (1e-300, 0.0),
+            (2.5, 2.0),
+            (2.6, 3.0),
+            (40.0, 3.0),
+            (-1.5, -2.0),
+            (-7.2, -2.0),
+            (f64::MAX, 3.0),
+            (-0.0, 0.0),
+            (-0.3, 0.0),
+            // `x + 1` would round to 0.5 here, a tie.
+            (-0.499_999_999_999_999_94, 0.0),
+            (0.499_999_999_999_999_94, 0.0),
+        ] {
+            // Bits, so that −0 isn't taken for 0.
+            assert_eq!(k.encode(x).to_bits(), value.to_bits(), "{x}");
+        }
+        // Up to 2⁵², where `x − 0.5` would round to an even neighbour; past it, clamped.
+        let wide = Variable::new("k", 0.0, 1.0)
+            .unwrap()
+            .within(-MAX_WHOLE, MAX_WHOLE)
+            .unwrap()
+            .integer()
+            .unwrap();
+        for (x, value) in [
+            (MAX_WHOLE - 1.0, MAX_WHOLE - 1.0),
+            (MAX_WHOLE - 0.5, MAX_WHOLE - 1.0),
+            (MAX_WHOLE, MAX_WHOLE),
+            (MAX_WHOLE + 1.0, MAX_WHOLE),
+            (-MAX_WHOLE + 0.5, -MAX_WHOLE),
+        ] {
+            assert_eq!(wide.encode(x), value, "{x}");
+        }
+        for high in [MAX_WHOLE + 1.0, 2.0 * MAX_WHOLE] {
+            let err = Variable::new("k", 0.0, 1.0)
+                .unwrap()
+                .within(0.0, high)
+                .unwrap()
+                .integer()
+                .unwrap_err();
+            let AnalysisError::Domain { what, value } = err else {
+                panic!("{high}: {err:?}");
+            };
+            assert!(what.starts_with("integer variable's high bound"), "{what}");
+            assert_eq!(value, high);
+        }
+        let x = Variable::new("x", 0.0, 1.0).unwrap();
+        assert_eq!(x.encode(0.7), 0.7);
     }
 
     #[test]

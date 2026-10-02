@@ -7,7 +7,8 @@ stable. An *optimizer* searches for that design. It tries designs, flies each on
 it learns to choose better ones, until it finds the best it can. This page shows hpr-sim's
 optimizer, [CMA-ES](glossary.md#cma-es). It runs on test functions whose answers are known, then
 finds the nose ballast and body length that send a rocket to 3,048 m with a chosen stability
-margin. It needs some Rust.
+margin. Last, it chooses a motor and a catalogue nose cone as well, within a competition's limits
+on stability and speed off the rail. It needs some Rust.
 
 > **How far to trust it.** The optimizer is tested against answers known exactly, and against the
 > reference implementation by its author. On a rocket, its answer is only as good as hpr-sim's
@@ -24,19 +25,27 @@ margin. It needs some Rust.
 >   ([`tests/optimize.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/optimize.rs)).
 >   A run is repeated bit for bit from its [seed](glossary.md#seed) (`a_seed_fixes_the_run` in
 >   [`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
-> - **Checked by re-flying:** the rocket design the example finds is flown again from scratch,
+> - **Checked by re-flying:** the rocket design each example finds is flown again from scratch,
 >   and again with the flight's numerical integration 100 times stricter
->   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (within
->   2 mm, measured).
+>   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (the
+>   first example's within 2 mm, measured).
 > - **Limits** (a minimum stability margin, say): held to three test problems whose answers on
 >   their limits are known exactly, from 20 seeds each, to 10⁻¹⁰
 >   ([`tests/constrained.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/constrained.rs)).
->   No rocket limit is checked yet ([Limits on a design](#limits-on-a-design)).
-> - **Left out, for now:** discrete choices (which motor, which catalogue part), trade-offs between goals (several
->   goals can only be folded into one number, as the example does), and optimizing
->   a [Monte Carlo](glossary.md#monte-carlo) run's statistics. They are the next steps of
->   [M6.2](decisions-and-roadmap.md#m6-2), the optimization milestone. There is no command-line or
->   Python front end yet.
+>   The second example's winner is flown again and keeps its margin limits over the whole
+>   ascent and its rail-exit limit.
+> - **Choices** (which motor, which catalogue part): held to three test functions mixing
+>   continuous and whole-number variables, at two sizes, from 20 seeds each. Every run reaches
+>   the known minimum, with every whole number exactly right, and the median evaluations are
+>   within 25% of an outside implementation's (the test's bound; measured, within 5%;
+>   [`tests/mixed.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/mixed.rs)).
+>   The second example chooses a motor and a nose cone that hit 3,048 m, checked by flying them
+>   again ([Choices](#choices-a-motor-a-catalogue-part)). It finds *a* design that does; it
+>   doesn't promise the best of several that would.
+> - **Left out, for now:** trade-offs between goals (several goals can only be folded into one
+>   number, as the first example does), and optimizing a [Monte Carlo](glossary.md#monte-carlo)
+>   run's statistics. They are the next steps of [M6.2](decisions-and-roadmap.md#m6-2), the
+>   optimization milestone. There is no command-line or Python front end yet.
 
 ## What the optimizer does
 
@@ -235,7 +244,7 @@ Flown again, tolerances 100 times tighter: apogee 3048.0 m
 The rocket started 81 m too high, with a margin of 1.79 calibres. The optimizer found the design
 in 300 flights on the development machine, about 50 generations. Flown again with tighter
 tolerances, its apogee moves by 1.4 mm. Limits on other things, such as the rail-exit speed, are
-not handled yet: check those yourself, or add them to the number you minimize.
+the subject of [Limits on a design](#limits-on-a-design), and the second example uses them.
 
 ## Evaluating designs your own way
 
@@ -251,8 +260,9 @@ next. It returns the result once the run stops.
   step.
 - **Target:** for a target apogee, the squared miss you accept: `0.1 * 0.1` for 0.1 m. Without a
   target, a run goes on until it converges, which can take many more flights than a hit needs.
-- **Evaluations:** a cap on flights, 10,000 by default. The example's two variables needed 300
-  flights; the ten-variable test functions take 1,600 to 6,500 evaluations to converge.
+- **Evaluations:** a cap on flights, 10,000 by default. The first example's two variables needed
+  300 flights, the second example's four variables 360; the ten-variable test functions take 1,600 to 6,500
+  evaluations to converge.
 - **Population:** leave it at the default unless the output has many local minima. Then a larger
   population ([`Cmaes::with_population`]) searches more widely, at more flights per generation.
 - **Seed:** a different seed gives a different run. Rerun with two or three seeds if the answer
@@ -296,14 +306,215 @@ The tests hold this to three problems whose answers on their limits are known ex
 | g06 of the CEC 2006 benchmark, 2 variables | inside one circle, outside another | −6961.81388, where the circles cross |
 
 From each of 20 seeds the run reaches the answer to 10⁻¹⁰ of its size and to within 10⁻⁴ of the
-point, also when it starts where the limit is broken. These are test problems; no rocket limit
-is checked yet. That comes with [M6.2b2](decisions-and-roadmap.md#m6-2b2).
+point, also when it starts where the limit is broken. The next section's example puts limits on a
+rocket: its stability margin and its speed off the rail.
+
+## Choices: a motor, a catalogue part
+
+Some variables are choices from a list rather than amounts: which motor, which nose cone from a
+maker's catalogue. Make each one an *integer variable* ([`Variable::integer`]). It takes only the
+whole numbers from its low bound to its high one, and your model uses the number as a place in
+your list: 0 for the first motor, 1 for the second, and so on.
+
+The optimizer still draws a real number for the variable, and gives your model the nearest whole
+number. Left at that, the cloud would shrink in that variable until every draw rounded to the same
+number, and the choice would freeze, even with a better one next to it. *CMA-ES with margin*
+(R. Hamano, S. Saito, M. Nomura and S. Shirakawa, GECCO 2022,
+[arXiv:2205.13482](https://arxiv.org/abs/2205.13482)) prevents that. After each generation it
+keeps at least a small chance, the *margin* (nothing to do with a stability margin), that a draw
+lands on another value. It does so by
+moving the cloud's centre towards the edge between two values, or by widening the cloud in that
+variable. The margin is `1/(n λ)`, for `n` variables and `λ` designs a generation: 1 in 32 for the
+example below. So a choice is never final: its neighbours keep being tried.
+
+Put the list in an order where neighbours are alike, such as motors by total impulse. The
+optimizer steps between neighbouring numbers, so in that order a step up means a little more
+motor. A list in no order still works, but the search has less to go on.
+
+### The example
+
+The example program
+[`crates/hpr/examples/motor_and_nose.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/motor_and_nose.rs)
+builds a 2.6 in rocket from Madcow Rocketry's parts in the built-in
+[catalogue](the-builder.md#parts-from-a-catalogue): a 1.0 m fiberglass body tube, an 18 in motor tube and three
+fiberglass fins. It flies it from a 3 m rail at 85° into 5 m/s of wind. The optimizer chooses four
+things:
+
+| Variable | Kind | Range |
+|---|---|---|
+| the motor | integer | the five 54 mm motors of the built-in catalogue that fit, by total impulse |
+| the nose cone | integer | four Madcow nose cones for 2.6 in, shortest first |
+| the nose ballast | continuous | 0 to 1.5 kg |
+| the fins' span | continuous | 3 to 15 cm |
+
+The goal is the squared miss from 3,048 m. The limits come from the International Rocket
+Engineering Competition's rules (its *Design, Test & Evaluation Guide*, 2025), and hold over the
+whole ascent, from the rail exit to apogee (§10.3.1 says "from launch"; on the rail, the rail
+holds the rocket):
+
+- a [stability margin](glossary.md#stability-margin) of at least 1.5
+  [calibres](glossary.md#calibre-caliber) in flight (§10.3.1 asks for a "dynamic" margin; the
+  example takes the *flight margin*, the margin at the flight's own Mach number, as the
+  [flight metrics](physics/metrics.md) define it);
+- a *static* margin, the one at Mach 0, of at most 4 calibres, and a flight margin of at most 6,
+  so the rocket isn't over-stable (§10.4.1);
+- at least 30 m/s off the rail (§10.2.1).
+
+The margins change through the flight: the centre of mass moves forward as the motor burns, so
+the margin grows, and the flight margin changes with speed as well. For the lower limit the
+example uses the least flight margin of the ascent, which the flight finds inside its steps, not
+only at their ends. For the upper limits it uses the largest static and flight margins seen at
+the end of each integration step. The static margin only grows during the burn and stays put
+after it, so its largest is exact. A peak of the flight margin between two step ends could be
+missed; the winner's largest, 4.83 calibres, is well under its limit of 6.
+
+The heart of it, abridged from the example. A choice is an integer variable: set its bounds with
+`within`, then mark it `integer`, and use the whole number your model is given as a place in your
+list. With limits, use the run's steps yourself ([`Run`]) and give `tell_constrained` an
+[`Evaluation`] per design:
+
+```rust,ignore
+let variables = vec![
+    Variable::new("motor", 2.0, 1.0)?.within(0.0, 4.0)?.integer()?, // a place in the motor list
+    Variable::new("nose", 1.0, 1.0)?.within(0.0, 3.0)?.integer()?,  // a place in the nose list
+    Variable::new("nose ballast (kg)", 0.4, 0.15)?.within(0.0, 1.5)?,
+    Variable::new("fin span (m)", 0.07, 0.015)?.within(0.03, 0.15)?,
+];
+let mut run = Cmaes::new(variables)?.with_target(1e-4)?.with_max_evaluations(3_000)?.start(seed)?;
+let optimum = loop {
+    let mut evaluations = Vec::new();
+    for x in run.candidates() {
+        // x[0] and x[1] are whole numbers within their bounds
+        let (motor, nose) = (x[0] as usize, x[1] as usize);
+        let design = Design { nose, ballast_kg: x[2], fin_span_m: x[3] };
+        evaluations.push(match flyer.fly(&motors[motor], &design) {
+            Ok(flown) => {
+                let miss = flown.apogee_m - 3048.0;
+                Evaluation::constrained(miss * miss, &flown.limits()) // each limit g ≤ 0
+            }
+            Err(_) => Evaluation::failed(), // a design that can't fly ranks last
+        });
+    }
+    if let Some(optimum) = run.tell_constrained(&evaluations)? {
+        break optimum;
+    }
+};
+```
+
+`Design`, `Flyer::fly` and `limits` are the example's own: they build the rocket, fly it, and
+write each limit as a number `g` that must not be above zero, as [Limits on a
+design](#limits-on-a-design) describes. A draw for an integer variable outside its bounds is
+clamped to the nearest end, not drawn again. Run it from a copy of the repository with:
+
+```text
+cargo run --example motor_and_nose -p hpr
+```
+
+It takes about half a minute in a debug build. It prints:
+
+<!-- quote: crates/hpr/examples/motor_and_nose.output.txt -->
+```text
+A 2.6 in rocket of Madcow Rocketry's parts: choose the motor, the nose cone, the nose
+ballast and the fin span for a 3,048 m apogee, with margins over the ascent of at
+least 1.5 calibres (flight), at most 4 (static) and 6 (flight), and at least 30 m/s off a 3 m rail
+Not yet validated: see the Accuracy page before trusting these numbers.
+motor    total impulse (N·s)   designs flown   nearest apogee within the limits
+J450DM                1061.6               3   2648 m
+J300LR                1212.8               6   none
+J760                  1267.3              25   3057 m
+K400C                 1307.3             307   3048 m
+K940                  1636.1              19   3150 m
+Found: the K400C with the PNC26K-W nose (3:1 ogive, plastic), 0.35 kg of ballast, fins 8.9 cm in span
+(stopped: Target, after 360 flights)
+Flown again: apogee 3048.0 m, top speed Mach 1.23, rail exit 33.8 m/s, liftoff mass 2.60 kg;
+margins over the ascent: flight 3.04 to 4.83 calibres, static at most 3.88
+Flown again, tolerances 100 times tighter: apogee 3048.0 m, rail exit 33.8 m/s
+Both flights within 0.1 m of 3,048 m and within every limit: yes
+```
+
+The table counts the designs the run flew with each motor; the total impulse is from the motor's
+thrust curve. The last column is the apogee nearest 3,048 m among the designs that kept every
+limit. The run tried every motor. Its few J450DM designs that kept the limits fell well short.
+None of its J300LR designs kept them all. It settled on the K400C and stopped once it was within a
+centimetre of the target. Flown again, with the integrator's tolerances as set and then 100 times
+tighter, the winner is within 0.1 m of 3,048 m, and keeps every limit over the whole ascent.
+
+Read the table as what this one run saw, not as what each motor can do: a few designs, or a few
+dozen, say little about a motor. The answer is not unique. A scan of every motor and nose over the ballast
+and the fin span, run once on the development machine and not kept, found that the J760, the
+K400C and the K940 can each hit 3,048 m within the limits, with any of the four noses. A hit with
+any of them scores the same, so another seed may well settle on another. To prefer one, say so in
+the goal. A small cost for liftoff mass is one way.
+
+Unlike the first example's counts, this run's come out the same on all three operating systems:
+CI checks the output on macOS, Linux and Windows, whose last bits of `ln` and `exp` differ. On
+the development machine the run was also tried with every flight perturbed (the integrator's
+tolerance changed by up to 1%) and with the step size moved by a few bits each generation, and
+neither changed a line of the output; those trials are not kept. Your own runs repeat bit for bit
+on one machine from the same seed, but on another machine a run can take another path.
+
+A goal that changes only when the choice changes, such as "the smallest motor that can do it",
+gives the search nothing to follow between choices. For that question, run the optimizer once
+for each motor, the motor fixed, and compare. The continuous search then only has to find a
+design that keeps the limits.
+
+The body tube's length is fixed on purpose. Past Mach 1.2 a flight needs a table of the body's
+supersonic pressures, which takes a fifth of a second or more to build. Designs with the same
+outside shape can share one table, so with the length fixed the example builds at most three,
+one per fiberglass nose cone (the next paragraph says why the plastic one has none). With the length a variable, every design would build its own, and the run
+would take minutes. The example shows how to share the table, in its `Flyer::fly`.
+
+The winning plastic nose cone gets no table at all. The catalogue lists it 0.05 mm narrower than
+the tube (2.638 in against 2.640 in), and the method behind the table doesn't yet take a step in
+the body's outline larger than a millionth of its area ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
+So for the short stretch of its flight past Mach 1.2 (its top speed is Mach 1.23) hpr-sim falls
+back on slender-body theory for the body's normal force, its lift at an angle ([Bodies faster than
+sound](physics/aero.md#bodies-faster-than-sound)). How much that moves the apogee hasn't been
+measured; the flight spends only a moment above Mach 1.2.
+
+### Checked against
+
+Three test functions of Hamano and co-authors (§5.1 of their paper), each with half its variables
+continuous and half whole numbers
+([`benchmark::mixed`](api/hpr_analysis/optimize/benchmark/mixed/index.html)):
+
+| Function | Whole-number variables | Minimum |
+|---|---|---|
+| SphereInt, `Σ xᵢ²` | −10 to 10 | 0 at `x = 0` |
+| EllipsoidInt, the ellipsoid above | −10 to 10, with the largest coefficients | 0 at `x = 0` |
+| SphereOneMax, `Σ xᵢ²` + the number of zeros | 0 or 1 | 0 at continuous 0, every whole number 1 |
+
+Each runs with 10 and with 20 variables, from 20 seeds, to a value of 10⁻¹⁰. The starts and
+settings are those of
+[`validation/oracles/cmawm/cmawm_runs.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/cmawm/cmawm_runs.py),
+which runs the same functions with `cmaes` 0.13.1, an outside implementation (MIT) adapted from
+the method's authors' code, with its active weights off as hpr-sim's are. Every run of every case
+reaches the minimum, with each whole number exactly right. The median evaluations are within the
+test's 25% of the outside implementation's, and measured within 5%:
+
+| Function | Variables | hpr-sim | `cmaes` 0.13.1 |
+|---|---|---|---|
+| SphereInt | 10 | 1,855 | 1,850 |
+| SphereInt | 20 | 3,870 | 3,798 |
+| EllipsoidInt | 10 | 3,460 | 3,625 |
+| EllipsoidInt | 20 | 9,246 | 9,372 |
+| SphereOneMax | 10 | 1,925 | 1,955 |
+| SphereOneMax | 20 | 3,828 | 3,726 |
+
+A unit test checks the margin itself after every generation of a mixed run, with each kind of
+whole-number variable (`integer_draws_keep_the_margin` in
+[`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
+Another sets up a run's state by hand and checks one correction of each kind against the paper's
+equations worked out to 40 digits (`margin_correction_matches_the_equations`).
+With the margin taken out, three of the six cases fail: some runs stall with a whole number
+stuck on a wrong value. That was a one-off check, recorded in
+[ADR-140](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-140-discrete-choices-by-cma-es-with-margin-2026-10-02),
+not run in CI.
 
 ## Left out
 
-- Variables are continuous. Discrete choices (a motor, a catalogue part) come next, in
-  [M6.2b2](decisions-and-roadmap.md#m6-2b2). Until then, run the optimizer once for each motor you
-  are considering and compare the results.
+- A choice is a whole number in a list you order. There is no separate handling for choices with
+  no order, beyond putting alike ones next to each other.
 - Limits are inequalities only. For an equality `h = 0`, write `|h| − ε ≤ 0` with a small `ε`.
 - No trade-offs between goals (a Pareto front): several goals can only be folded into one
   number, as the example does.
@@ -315,6 +526,7 @@ The API reference is
 [`hpr_analysis::optimize`](api/hpr_analysis/optimize/index.html).
 
 [`Variable`]: api/hpr_analysis/optimize/struct.Variable.html
+[`Variable::integer`]: api/hpr_analysis/optimize/struct.Variable.html#method.integer
 [`Evaluation`]: api/hpr_analysis/optimize/struct.Evaluation.html
 [adr-139]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-139-optimization-constraints-by-debs-feasibility-rules-2026-10-01
 [`Stop`]: api/hpr_analysis/optimize/cmaes/enum.Stop.html
