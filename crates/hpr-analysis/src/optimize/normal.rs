@@ -5,7 +5,9 @@
 //! FreeBSD's), which keeps the lower tail's relative accuracy where `1 − erf` would cancel.
 //! `Φ⁻¹` is M. J. Wichura's algorithm AS 241, "The Percentage Points of the Normal
 //! Distribution", *Applied Statistics* 37(3), 477–484 (1988), <https://doi.org/10.2307/2347330>:
-//! its `PPND16`, three rational functions of degree 7, accurate to about 1 part in 10¹⁶.
+//! its `PPND16`, three rational functions of degree 7, accurate to about 1 part in 10¹⁶. The
+//! coefficients were transcribed from the listing in CPython's `statistics` module (PSF License),
+//! which prints the paper's 20 digits; the paper's own hash sums check the transcription.
 
 /// `Φ(x)`, the chance that a standard normal draw is at most `x`.
 pub(crate) fn cdf(x: f64) -> f64 {
@@ -152,12 +154,13 @@ mod tests {
             (&TAIL, 47.525_833_175_492_896_716_3),
         ] {
             let got = sum(function);
-            assert!((got - hash).abs() <= 1e-13 * hash, "{got} against {hash}");
+            assert!((got - hash).abs() <= 1e-15 * hash, "{got} against {hash}");
         }
     }
 
-    /// Quantiles to 17 digits, solved for in 40-digit arithmetic (mpmath's `findroot` on
-    /// `ncdf`) at the `f64` nearest each `p`.
+    /// Quantiles to 17 digits, in 50-digit arithmetic (mpmath's `√2 erfinv(2p − 1)`, or
+    /// `findroot` on `ncdf` for 10⁻³⁰⁰) at the `f64` nearest each `p`; within 2 parts in 10¹⁵,
+    /// a few rounding steps.
     #[test]
     #[expect(
         clippy::excessive_precision,
@@ -168,14 +171,14 @@ mod tests {
             (0.5, 0.0),
             (0.975, 1.959_963_984_540_053_9),
             (0.025, -1.959_963_984_540_054_2),
-            (0.841_344_746_068_542_9, 0.999_999_999_999_999_8),
+            (0.841_344_746_068_542_9, 0.999_999_999_999_999_9),
             (1e-10, -6.361_340_902_404_056_2),
             (1e-300, -37.047_096_299_361_199),
-            (0.999, 3.090_232_306_167_813_5),
+            (0.999, 3.090_232_306_167_813_3),
         ] {
             let got = quantile(p);
             assert!(
-                (got - x).abs() <= 1e-14 * x.abs().max(1.0),
+                (got - x).abs() <= 2e-15 * x.abs().max(1.0),
                 "Φ⁻¹({p}) = {got}, not {x}"
             );
         }

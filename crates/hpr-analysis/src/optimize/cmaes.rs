@@ -211,11 +211,14 @@ pub struct Optimum {
     pub evaluations: usize,
     /// How many generations it ran.
     pub generations: usize,
-    /// The distribution's final mean.
+    /// The distribution's final mean, not encoded: an integer variable's may lie between whole
+    /// numbers ([`Variable::encode`] gives the value it stands for).
     pub mean: Vec<f64>,
     /// The distribution's largest standard deviation in any one variable, in that variable's
     /// units: the largest `σ √Cᵢᵢ` times the variable's step and its margin scale `Aᵢ`; `+∞`
-    /// once the step size has overflowed (serialized as none, a JSON `null`).
+    /// once the step size has overflowed (serialized as none, a JSON `null`). With integer
+    /// variables it stays large enough to keep their margin, so it doesn't shrink to zero as a
+    /// continuous run's does.
     #[serde(with = "infinity_as_none")]
     pub spread: f64,
     /// Why it stopped.
@@ -620,7 +623,7 @@ impl Run {
     /// The margin `α = 1/(n λ)`: the least chance, each generation, that an integer variable's
     /// draw falls on a value other than the one its mean is nearest (at least `α/2` on each side
     /// when the mean's value has neighbours on both).
-    pub fn margin(&self) -> f64 {
+    pub fn integer_margin(&self) -> f64 {
         self.alpha
     }
 
@@ -811,9 +814,21 @@ impl Run {
                 // Φ⁻¹(1 − α) spreads of the threshold, so the far side keeps a chance α. A is
                 // unchanged, eq. (14).
                 let threshold = if m <= first { first } else { last };
-                let reach = normal::quantile(1.0 - alpha) * spread;
-                let gap = (m - threshold).abs().min(reach);
-                self.mean[j] = threshold + gap.copysign(m - threshold);
+                // `−Φ⁻¹(α)`: `1 − α` would round first.
+                let reach = -normal::quantile(alpha) * spread;
+                if (m - threshold).abs() <= reach {
+                    continue;
+                }
+                let mut mean = threshold + reach.copysign(m - threshold);
+                // The sum rounds; never land farther from the threshold than `reach`.
+                if (mean - threshold).abs() > reach {
+                    mean = if mean > threshold {
+                        mean.next_down()
+                    } else {
+                        mean.next_up()
+                    };
+                }
+                self.mean[j] = mean;
                 continue;
             }
             // Inside, eqs. (15) to (24): the thresholds either side of the mean.
@@ -821,9 +836,13 @@ impl Run {
             let (low, up) = (value - 0.5, value + 0.5);
             let p_low = normal::cdf((low - m) / spread);
             let p_up = normal::cdf((m - up) / spread);
+            let half = alpha / 2.0;
+            if p_low >= half && p_up >= half {
+                // Eqs. (20) to (24) would give back the same mean and A.
+                continue;
+            }
             let p_mid = 1.0 - p_low - p_up;
             // Eqs. (20) to (23): each side at least α/2, the excess taken back in proportion.
-            let half = alpha / 2.0;
             let (q_low, q_up) = (p_low.max(half), p_up.max(half));
             let excess = 1.0 - q_low - q_up - p_mid;
             let share = q_low + q_up + p_mid - 3.0 * half;
@@ -1423,7 +1442,7 @@ mod tests {
         };
         let mut run = Cmaes::new(variables).unwrap().start(3).unwrap();
         let n = 5;
-        let alpha = run.margin();
+        let alpha = run.integer_margin();
         assert_eq!(alpha, 1.0 / (5.0 * 8.0));
         let mut generations = 0;
         let mut corrected = 0;
@@ -1444,8 +1463,9 @@ mod tests {
                     run.sigma() * run.margin_scale()[j] * step * run.covariance()[j * n + j].sqrt();
                 let m = run.mean()[j];
                 let (first, last) = (low + 0.5, high - 0.5);
-                // A relative 10⁻⁹ for rounding in Φ and Φ⁻¹.
-                let floor = |p: f64| p * (1.0 - 1e-9);
+                // Φ and Φ⁻¹ are good to a few parts in 10¹⁶, and a relative error `δ` in a
+                // tail's `x` moves the tail by about `x² δ` of itself; `x` here is under 3.
+                let floor = |p: f64| p * (1.0 - 1e-13);
                 if m <= first || m > last {
                     let threshold = if m <= first { first } else { last };
                     let far = normal::cdf(-(m - threshold).abs() / spread);
@@ -1475,6 +1495,66 @@ mod tests {
         // The run went long enough for the margin to bind: σ shrank and A grew.
         assert!(generations > 50, "{generations}");
         assert!(corrected > 0);
+    }
+
+    /// The correction at a set state against the paper's equations evaluated in 40-digit
+    /// arithmetic (mpmath's `ncdf` and `erfinv`), with `n = 2`, `λ = 6`, so `α = 1/12`: an inner
+    /// mean whose lower side has less than `α/2` and upper side more, an end-value mean too far
+    /// from its threshold, and an inner mean with both sides above `α/2`, which is left alone.
+    #[test]
+    #[expect(
+        clippy::excessive_precision,
+        reason = "17 digits of each 40-digit reference, which round to the nearest f64"
+    )]
+    fn margin_correction_matches_the_equations() {
+        let variables = vec![
+            Variable::new("x", 0.0, 1.0).unwrap(),
+            Variable::new("k", 0.0, 1.0)
+                .unwrap()
+                .within(-10.0, 10.0)
+                .unwrap()
+                .integer()
+                .unwrap(),
+        ];
+        let fresh = || {
+            let mut run = Cmaes::new(variables.clone()).unwrap().start(1).unwrap();
+            run.c = vec![1.0, 0.0, 0.0, 1.0];
+            run
+        };
+        assert_eq!(fresh().integer_margin(), 1.0 / 12.0);
+        let close = |got: f64, want: f64| (got - want).abs() <= 1e-14 * want.abs();
+
+        // Inside, eqs. (17) to (24): spread 2 × 0.125, `P(below 1.5) = 6.9e-4`,
+        // `P(above 2.5) = 0.212`; the lower side is lifted to α/2 and the upper gives way.
+        let mut run = fresh();
+        (run.mean[1], run.sigma, run.a[1]) = (2.3, 0.125, 2.0);
+        run.correct_margin();
+        assert!(
+            close(run.mean[1], 2.176_899_187_754_804_1),
+            "{}",
+            run.mean[1]
+        );
+        assert!(close(run.a[1], 3.127_161_079_343_547_5), "{}", run.a[1]);
+        assert_eq!((run.mean[0], run.a[0]), (0.0, 1.0));
+
+        // At the low end, eq. (13): the mean is drawn to `Φ⁻¹(1 − α)` spreads of −9.5.
+        let mut run = fresh();
+        (run.mean[1], run.sigma) = (-9.8, 0.1);
+        run.correct_margin();
+        assert!(
+            close(run.mean[1], -9.638_299_412_710_063_8),
+            "{}",
+            run.mean[1]
+        );
+        assert_eq!(run.a[1], 1.0);
+
+        // Both sides above α/2, or an end mean already near its threshold: nothing moves.
+        for (m, sigma) in [(2.3, 1.0), (-9.6, 0.1)] {
+            let mut run = fresh();
+            (run.mean[1], run.sigma) = (m, sigma);
+            run.correct_margin();
+            assert_eq!((run.mean[1], run.a[1]), (m, 1.0));
+        }
     }
 
     /// An integer variable's draws are encoded before the model sees them; the best point is

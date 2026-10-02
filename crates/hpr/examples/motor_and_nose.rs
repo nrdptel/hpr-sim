@@ -35,11 +35,13 @@ const TARGET_M: f64 = 3048.0;
 /// How close counts as a hit when the winner is flown again, m.
 const HIT_M: f64 = 0.1;
 
-/// The static margin's limits, calibres: at least 1.5 (stable), at most 4 (not over-stable), as
-/// the International Rocket Engineering Competition's rules set them (Design, Test & Evaluation
-/// Guide, 2025, §10.3.1 and §10.4.1). Its 1.5 is a dynamic margin through the flight; this
-/// example holds the static margin at launch to it.
-const MARGIN_CAL: [f64; 2] = [1.5, 4.0];
+/// The margins' limits over the ascent, calibres, as the International Rocket Engineering
+/// Competition's rules set them (Design, Test & Evaluation Guide, 2025, §10.3.1 and §10.4.1): a
+/// dynamic margin of at least 1.5, a static margin of at most 4 and a dynamic one of at most 6.
+/// The dynamic margin is read as the flight margin, at the flight's Mach number.
+const LEAST_FLIGHT_CAL: f64 = 1.5;
+const MOST_STATIC_CAL: f64 = 4.0;
+const MOST_FLIGHT_CAL: f64 = 6.0;
 
 /// The least speed off the rail, m/s: the same rules' 100 ft/s (§10.2.1).
 const RAIL_EXIT_M_S: f64 = 30.0;
@@ -80,10 +82,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "A 2.6 in rocket of Madcow Rocketry's parts: choose the motor, the nose cone, the nose"
     );
-    println!("ballast and the fin span for a 3,048 m apogee,");
+    println!("ballast and the fin span for a 3,048 m apogee, with margins over the ascent of at");
     println!(
-        "with a static margin of {:.1} to {:.0} calibres and at least {RAIL_EXIT_M_S:.0} m/s off a {RAIL_M:.0} m rail",
-        MARGIN_CAL[0], MARGIN_CAL[1]
+        "least {LEAST_FLIGHT_CAL} calibres (flight), at most {MOST_STATIC_CAL} (static) and {MOST_FLIGHT_CAL} (flight), and at least {RAIL_EXIT_M_S} m/s off a {RAIL_M} m rail"
     );
     println!("Not yet validated: see the Accuracy page before trusting these numbers.");
 
@@ -104,8 +105,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_max_evaluations(3_000)?
         .start(seed)?;
     // Per motor: the designs flown, and the apogee nearest the target of those within the limits.
-    let mut flown = [0_usize; 5];
-    let mut nearest: [Option<f64>; 5] = [None; 5];
+    let mut flown = [0_usize; MOTORS.len()];
+    let mut nearest: [Option<f64>; MOTORS.len()] = [None; MOTORS.len()];
     let optimum = loop {
         let mut evaluations = Vec::new();
         for x in run.candidates() {
@@ -171,8 +172,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     // the flight's, not the integrator's.
     let again = Flyer::default().fly(&motors[motor].1, &winner)?;
     println!(
-        "Flown again: apogee {:.1} m, margin {:.2} calibres, rail exit {:.1} m/s, liftoff mass {:.2} kg",
-        again.apogee_m, again.margin_cal, again.rail_exit_m_s, again.mass_kg
+        "Flown again: apogee {:.1} m, top speed Mach {:.2}, rail exit {:.1} m/s, liftoff mass {:.2} kg;",
+        again.apogee_m, again.max_mach, again.rail_exit_m_s, again.mass_kg
+    );
+    println!(
+        "margins over the ascent: flight {:.2} to {:.2} calibres, static at most {:.2}",
+        again.least_flight_cal, again.most_flight_cal, again.most_static_cal
     );
     let tight = FlightSettings {
         method: Method::DormandPrince54(Adaptive {
@@ -280,25 +285,29 @@ impl Design {
 #[derive(Default)]
 struct Flyer {
     settings: FlightSettings,
-    shapes: [Option<AeroModel>; 4],
+    shapes: [Option<AeroModel>; NOSES.len()],
 }
 
-/// What a design does: its flight's apogee and speed off the rail, its static margin and its
-/// mass at launch.
+/// What a design does: its flight's apogee, speed off the rail and top Mach number, its margins
+/// over the ascent (from the rail exit to apogee) and its mass at launch.
 struct Flown {
     apogee_m: f64,
     rail_exit_m_s: f64,
-    margin_cal: f64,
+    least_flight_cal: f64,
+    most_static_cal: f64,
+    most_flight_cal: f64,
     mass_kg: f64,
+    max_mach: f64,
 }
 
 impl Flown {
-    /// The limits as constraints `g ≤ 0`, each in a unit that makes them count alike: the margin
+    /// The limits as constraints `g ≤ 0`, each in a unit that makes them count alike: the margins
     /// in hundredths of a calibre, the rail-exit speed in tenths of a m/s.
-    fn limits(&self) -> [f64; 3] {
+    fn limits(&self) -> [f64; 4] {
         [
-            (MARGIN_CAL[0] - self.margin_cal) / 0.01,
-            (self.margin_cal - MARGIN_CAL[1]) / 0.01,
+            (LEAST_FLIGHT_CAL - self.least_flight_cal) / 0.01,
+            (self.most_static_cal - MOST_STATIC_CAL) / 0.01,
+            (self.most_flight_cal - MOST_FLIGHT_CAL) / 0.01,
             (RAIL_EXIT_M_S - self.rail_exit_m_s) / 0.1,
         ]
     }
@@ -311,7 +320,9 @@ impl Flown {
 
 impl Flyer {
     /// Flies `design` on `motor` from a 3 m rail, 85° above the horizon, into 5 m/s of wind from
-    /// the west; the static margin is at launch mass, at Mach 0.3.
+    /// the west. The least flight margin is searched for inside steps; the most of each margin is
+    /// taken at the steps' ends, where the flight keeps them. A margin that isn't defined at some
+    /// step (the rocket unstable there) fails the design.
     fn fly(&mut self, motor: &Motor, design: &Design) -> Result<Flown, Box<dyn Error>> {
         let rocket = design.rocket(motor)?;
         let environment =
@@ -321,21 +332,32 @@ impl Flyer {
             .heading_deg(270.0)
             .settings(self.settings)
             .simulation()?;
-        // The flight is the same, bit for bit, on a shared table as on its own.
+        // The flight is the same, bit for bit, on a shared table as on its own. A nose the
+        // shock-expansion method doesn't cover (a blunt tip) has no table to share, and keeps
+        // slender-body theory past Mach 1.2.
         match &self.shapes[design.nose] {
             Some(shape) => {
-                simulation.share_supersonic_table(shape);
+                let _shared = simulation.share_supersonic_table(shape);
             }
             None => self.shapes[design.nose] = Some(simulation.aero().clone()),
         }
         let mut metrics = FlightMetrics::new();
         let result = simulation.run(&mut metrics)?;
         let summary = metrics.summary(&result, environment.sim())?;
+        let (mut most_static_cal, mut most_flight_cal) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+        for at in metrics.stability() {
+            let undefined = "a margin undefined during the ascent";
+            most_static_cal = most_static_cal.max(at.static_margin.margin_cal.ok_or(undefined)?);
+            most_flight_cal = most_flight_cal.max(at.flight_margin.margin_cal.ok_or(undefined)?);
+        }
         Ok(Flown {
             apogee_m: summary.apogee.ok_or("no apogee")?.height_above_ground_m,
             rail_exit_m_s: summary.rail_exit_speed_m_s.ok_or("no rail exit")?.value,
-            margin_cal: rocket.static_margin_cal(0.0, 0.3)?.ok_or("no margin")?,
+            least_flight_cal: summary.min_flight_margin_cal.ok_or("no margin")?.value,
+            most_static_cal,
+            most_flight_cal,
             mass_kg: rocket.mass_properties(0.0)?.mass_kg,
+            max_mach: summary.max_mach.ok_or("no top speed")?.value,
         })
     }
 }

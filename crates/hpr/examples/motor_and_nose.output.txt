@@ -1,15 +1,16 @@
 A 2.6 in rocket of Madcow Rocketry's parts: choose the motor, the nose cone, the nose
-ballast and the fin span for a 3,048 m apogee,
-with a static margin of 1.5 to 4 calibres and at least 30 m/s off a 3 m rail
+ballast and the fin span for a 3,048 m apogee, with margins over the ascent of at
+least 1.5 calibres (flight), at most 4 (static) and 6 (flight), and at least 30 m/s off a 3 m rail
 Not yet validated: see the Accuracy page before trusting these numbers.
 motor    total impulse (N·s)   designs flown   nearest apogee within the limits
-J450DM                1061.6               4   2648 m
+J450DM                1061.6               3   2648 m
 J300LR                1212.8               6   none
-J760                  1267.3              14   3057 m
-K400C                 1307.3              46   3039 m
-K940                  1636.1             554   3048 m
-Found: the K940 with the PNC26K-W nose (3:1 ogive, plastic), 0.31 kg of ballast, fins 12.3 cm in span
-(stopped: Target, after 624 flights)
-Flown again: apogee 3048.0 m, margin 3.52 calibres, rail exit 45.7 m/s, liftoff mass 2.79 kg
-Flown again, tolerances 100 times tighter: apogee 3048.0 m, rail exit 45.7 m/s
+J760                  1267.3              25   3057 m
+K400C                 1307.3             307   3048 m
+K940                  1636.1              19   3150 m
+Found: the K400C with the PNC26K-W nose (3:1 ogive, plastic), 0.35 kg of ballast, fins 8.9 cm in span
+(stopped: Target, after 360 flights)
+Flown again: apogee 3048.0 m, top speed Mach 1.23, rail exit 33.8 m/s, liftoff mass 2.60 kg;
+margins over the ascent: flight 3.04 to 4.83 calibres, static at most 3.88
+Flown again, tolerances 100 times tighter: apogee 3048.0 m, rail exit 33.8 m/s
 Both flights within 0.1 m of 3,048 m and within every limit: yes

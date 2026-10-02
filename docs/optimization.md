@@ -25,14 +25,15 @@ on stability and speed off the rail. It needs some Rust.
 >   ([`tests/optimize.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/optimize.rs)).
 >   A run is repeated bit for bit from its [seed](glossary.md#seed) (`a_seed_fixes_the_run` in
 >   [`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
-> - **Checked by re-flying:** the rocket design the example finds is flown again from scratch,
+> - **Checked by re-flying:** the rocket design each example finds is flown again from scratch,
 >   and again with the flight's numerical integration 100 times stricter
->   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (within
->   2 mm, measured).
+>   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m; for the
+>   first example, within 2 mm, measured.
 > - **Limits** (a minimum stability margin, say): held to three test problems whose answers on
 >   their limits are known exactly, from 20 seeds each, to 10⁻¹⁰
 >   ([`tests/constrained.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/constrained.rs)).
->   The second example's winner is flown again and keeps its margin and rail-exit limits.
+>   The second example's winner is flown again and keeps its margin limits over the whole
+>   ascent and its rail-exit limit.
 > - **Choices** (which motor, which catalogue part): held to three test functions mixing
 >   continuous and whole-number variables, at two sizes, from 20 seeds each. Every run reaches
 >   the known minimum, with every whole number exactly right, and the median evaluations are
@@ -260,7 +261,7 @@ next. It returns the result once the run stops.
 - **Target:** for a target apogee, the squared miss you accept: `0.1 * 0.1` for 0.1 m. Without a
   target, a run goes on until it converges, which can take many more flights than a hit needs.
 - **Evaluations:** a cap on flights, 10,000 by default. The first example's two variables needed
-  300 flights, the second's four 624; the ten-variable test functions take 1,600 to 6,500
+  300 flights, the second's four 360; the ten-variable test functions take 1,600 to 6,500
   evaluations to converge.
 - **Population:** leave it at the default unless the output has many local minima. Then a larger
   population ([`Cmaes::with_population`]) searches more widely, at more flights per generation.
@@ -320,7 +321,8 @@ number. Left at that, the cloud would shrink in that variable until every draw r
 number, and the choice would freeze, even with a better one next to it. *CMA-ES with margin*
 (R. Hamano, S. Saito, M. Nomura and S. Shirakawa, GECCO 2022,
 [arXiv:2205.13482](https://arxiv.org/abs/2205.13482)) prevents that. After each generation it
-keeps at least a small chance, the *margin*, that a draw lands on another value. It does so by
+keeps at least a small chance, the *margin* (nothing to do with a stability margin), that a draw
+lands on another value. It does so by
 moving the cloud's centre towards the edge between two values, or by widening the cloud in that
 variable. The margin is `1/(n λ)`, for `n` variables and `λ` designs a generation: 1 in 32 for the
 example below. So a choice is never final: its neighbours keep being tried.
@@ -346,45 +348,104 @@ things:
 | the fins' span | continuous | 3 to 15 cm |
 
 The goal is the squared miss from 3,048 m. The limits come from the International Rocket
-Engineering Competition's rules (its *Design, Test & Evaluation Guide*, 2025):
+Engineering Competition's rules (its *Design, Test & Evaluation Guide*, 2025), and hold over the
+whole ascent, from the rail exit to apogee:
 
-- a static margin of at least 1.5 calibres (§10.3.1, where it is a dynamic margin through the
-  whole flight; the example holds the margin at launch to it);
-- a static margin of at most 4 calibres, so the rocket isn't over-stable (§10.4.1);
+- a [stability margin](glossary.md#stability-margin) of at least 1.5
+  [calibres](glossary.md#calibre-caliber) in flight (§10.3.1 asks for a "dynamic" margin; the
+  example takes the *flight margin*, the margin at the flight's own Mach number, as the
+  [flight metrics](physics/metrics.md) define it);
+- a *static* margin, the one at Mach 0, of at most 4 calibres, and a flight margin of at most 6,
+  so the rocket isn't over-stable (§10.4.1);
 - at least 30 m/s off the rail (§10.2.1).
 
-It prints:
+The margins change through the flight: the centre of mass moves forward as the motor burns, so
+the margin grows, and the flight margin changes with speed as well. The example takes the least
+flight margin of the ascent, which the flight searches for inside its steps, and the largest of
+each margin at the end of every integration step.
+
+The heart of it, abridged from the example. A choice is an integer variable: set its bounds with
+`within`, then mark it `integer`, and use the whole number your model is given as a place in your
+list. With limits, use the run's steps yourself ([`Run`]) and give `tell_constrained` an
+[`Evaluation`] per design:
+
+```rust,ignore
+let variables = vec![
+    Variable::new("motor", 2.0, 1.0)?.within(0.0, 4.0)?.integer()?, // a place in the motor list
+    Variable::new("nose", 1.0, 1.0)?.within(0.0, 3.0)?.integer()?,  // a place in the nose list
+    Variable::new("nose ballast (kg)", 0.4, 0.15)?.within(0.0, 1.5)?,
+    Variable::new("fin span (m)", 0.07, 0.015)?.within(0.03, 0.15)?,
+];
+let mut run = Cmaes::new(variables)?.with_target(1e-4)?.with_max_evaluations(3_000)?.start(seed)?;
+let optimum = loop {
+    let mut evaluations = Vec::new();
+    for x in run.candidates() {
+        // x[0] and x[1] are whole numbers within their bounds
+        let (motor, nose) = (x[0] as usize, x[1] as usize);
+        let design = Design { nose, ballast_kg: x[2], fin_span_m: x[3] };
+        evaluations.push(match flyer.fly(&motors[motor], &design) {
+            Ok(flown) => {
+                let miss = flown.apogee_m - 3048.0;
+                Evaluation::constrained(miss * miss, &flown.limits()) // each limit g ≤ 0
+            }
+            Err(_) => Evaluation::failed(), // a design that can't fly ranks last
+        });
+    }
+    if let Some(optimum) = run.tell_constrained(&evaluations)? {
+        break optimum;
+    }
+};
+```
+
+`Design`, `Flyer::fly` and `limits` are the example's own: they build the rocket, fly it, and
+write each limit as a number `g` that must not be above zero, as [Limits on a
+design](#limits-on-a-design) describes. A draw for an integer variable outside its bounds is
+clamped to the nearest end, not drawn again. Run it from a copy of the repository with:
 
 ```text
+cargo run --example motor_and_nose -p hpr
+```
+
+It takes about half a minute in a debug build. It prints:
+
+<!-- quote: crates/hpr/examples/motor_and_nose.output.txt -->
+```text
 A 2.6 in rocket of Madcow Rocketry's parts: choose the motor, the nose cone, the nose
-ballast and the fin span for a 3,048 m apogee,
-with a static margin of 1.5 to 4 calibres and at least 30 m/s off a 3 m rail
+ballast and the fin span for a 3,048 m apogee, with margins over the ascent of at
+least 1.5 calibres (flight), at most 4 (static) and 6 (flight), and at least 30 m/s off a 3 m rail
 Not yet validated: see the Accuracy page before trusting these numbers.
 motor    total impulse (N·s)   designs flown   nearest apogee within the limits
-J450DM                1061.6               4   2648 m
+J450DM                1061.6               3   2648 m
 J300LR                1212.8               6   none
-J760                  1267.3              14   3057 m
-K400C                 1307.3              46   3039 m
-K940                  1636.1             554   3048 m
-Found: the K940 with the PNC26K-W nose (3:1 ogive, plastic), 0.31 kg of ballast, fins 12.3 cm in span
-(stopped: Target, after 624 flights)
-Flown again: apogee 3048.0 m, margin 3.52 calibres, rail exit 45.7 m/s, liftoff mass 2.79 kg
-Flown again, tolerances 100 times tighter: apogee 3048.0 m, rail exit 45.7 m/s
+J760                  1267.3              25   3057 m
+K400C                 1307.3             307   3048 m
+K940                  1636.1              19   3150 m
+Found: the K400C with the PNC26K-W nose (3:1 ogive, plastic), 0.35 kg of ballast, fins 8.9 cm in span
+(stopped: Target, after 360 flights)
+Flown again: apogee 3048.0 m, top speed Mach 1.23, rail exit 33.8 m/s, liftoff mass 2.60 kg;
+margins over the ascent: flight 3.04 to 4.83 calibres, static at most 3.88
+Flown again, tolerances 100 times tighter: apogee 3048.0 m, rail exit 33.8 m/s
 Both flights within 0.1 m of 3,048 m and within every limit: yes
 ```
 
-The table counts the designs the run flew with each motor. The last column is the apogee nearest
-3,048 m among them that kept every limit. The run tried every motor. Its few J450DM designs that
-kept the limits fell well short. None of its J300LR designs left the rail at 30 m/s. It settled on
-the K940 and stopped once it was within a centimetre of the target. Flown again, with the
-integrator's tolerances as set and then 100 times tighter, the winner is within 0.1 m of
-3,048 m, with its margin and its rail-exit speed inside the limits.
+The table counts the designs the run flew with each motor; the total impulse is from the motor's
+thrust curve. The last column is the apogee nearest 3,048 m among the designs that kept every
+limit. The run tried every motor. Its few J450DM designs that kept the limits fell well short.
+None of its J300LR designs kept them all. It settled on the K400C and stopped once it was within a
+centimetre of the target. Flown again, with the integrator's tolerances as set and then 100 times
+tighter, the winner is within 0.1 m of 3,048 m, and keeps every limit over the whole ascent.
 
-Read the table as what this one run saw, not as what each motor can do: a dozen designs say
-little about a motor. The goal here is only to hit 3,048 m, and other motors may well do that
-too: this run came within 10 m with the J760 and the K400C. A hit with either would score the
-same as the K940's, so another seed may settle on one of them. To prefer one, say so in the goal.
-Adding a small cost for liftoff mass is one way.
+Read the table as what this one run saw, not as what each motor can do: a few dozen designs say
+little about a motor. The answer is not unique. A scan of every motor and nose over the ballast
+and the fin span, run once on the development machine and not kept, found that the J760, the
+K400C and the K940 can each hit 3,048 m within the limits, with any of the four noses. A hit with
+any of them scores the same, so another seed may well settle on another. To prefer one, say so in
+the goal. A small cost for liftoff mass is one way.
+
+The counts and the design are this run's. CI checks the output on macOS, Linux and Windows,
+whose last bits of `ln` and `exp` differ. The run was also checked on the development machine with
+every flight perturbed (the integrator's tolerance changed by up to 1%) and with the step size
+moved by a few bits each generation; neither changed a line of the output.
 
 A goal that changes only when the choice changes, such as "the smallest motor that can do it",
 gives the search nothing to follow between choices. For that question, run the optimizer once
@@ -395,7 +456,10 @@ The body tube's length is fixed on purpose. Past Mach 1.2 a flight needs a table
 supersonic pressures, which takes a fifth of a second or more to build. Designs with the same
 outside shape can share one table, so with the length fixed the example builds at most four,
 one per nose cone. With the length a variable, every design would build its own, and the run
-would take minutes. The example shows how to share the table (`Flyer::fly`).
+would take minutes. The example shows how to share the table, in its `Flyer::fly`. The winning
+plastic nose cone is one whose supersonic pressures the method behind the table doesn't cover, so
+for the short stretch of its flight past Mach 1.2 (its top speed is Mach 1.23) hpr-sim falls back
+on slender-body theory ([Bodies faster than sound](physics/aero.md#bodies-faster-than-sound)).
 
 ### Checked against
 
@@ -429,6 +493,8 @@ test's 25% of the outside implementation's, and measured within 5%:
 A unit test checks the margin itself after every generation of a mixed run, with each kind of
 whole-number variable (`integer_draws_keep_the_margin` in
 [`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
+Another sets up a run's state by hand and checks one correction of each kind against the paper's
+equations worked out to 40 digits (`margin_correction_matches_the_equations`).
 With the margin taken out, three of the six cases fail: some runs stall with a whole number
 stuck on a wrong value. That was a one-off check, recorded in
 [ADR-140](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-140-discrete-choices-by-cma-es-with-margin-2026-10-02),

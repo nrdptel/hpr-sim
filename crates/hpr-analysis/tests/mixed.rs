@@ -31,7 +31,22 @@ const TARGET: f64 = 1e-10;
 #[derive(Deserialize)]
 struct Fixture {
     settings: Settings,
+    pins: BTreeMap<String, String>,
+    parameters: BTreeMap<String, Parameters>,
     cases: BTreeMap<String, Case>,
+}
+
+/// The oracle's settings for one dimension, as `cmaes.CMAwM` derived them.
+#[derive(Deserialize)]
+struct Parameters {
+    lambda: usize,
+    mu: usize,
+    margin: f64,
+    weights: Vec<f64>,
+    mu_eff: f64,
+    c1: f64,
+    cc: f64,
+    cmu_table_1: f64,
 }
 
 #[derive(Deserialize)]
@@ -165,6 +180,43 @@ fn check(name: &str) {
         (ours - theirs).abs() <= 0.25 * theirs,
         "{name}: median evaluations {ours}, cmaes.CMAwM's {theirs}"
     );
+}
+
+/// The oracle ran the population, margin and Table 1 parameters these runs use: `λ`,
+/// `α = 1/(n λ)`, the positive weights, `μ_eff`, `c₁`, `c_c`, and `c_μ` as Table 1 gives it
+/// (`cmaes` takes a larger `c_μ` with its active weights, recorded beside it).
+#[test]
+fn parameters_agree_with_the_oracles() {
+    let fixture = fixture();
+    assert_eq!(fixture.pins["cmaes"], "0.13.1");
+    let close = |a: f64, b: f64| (a / b - 1.0).abs() <= 1e-15;
+    for (n, theirs) in &fixture.parameters {
+        let n: usize = n.parse().unwrap();
+        let variables = (0..n)
+            .map(|i| Variable::new(format!("x{i}"), 0.0, 1.0).unwrap())
+            .collect();
+        let cmaes = Cmaes::new(variables).unwrap();
+        assert_eq!(cmaes.population(), theirs.lambda, "n = {n}");
+        let run = cmaes.start(0).unwrap();
+        assert!(close(run.integer_margin(), theirs.margin), "n = {n}");
+        let ours = run.parameters();
+        assert_eq!(ours.mu, theirs.mu);
+        for (a, b) in ours.weights.iter().zip(&theirs.weights[..theirs.mu]) {
+            assert!(close(*a, *b), "n = {n}: weight {a} vs {b}");
+        }
+        assert!(
+            close(ours.mu_eff, theirs.mu_eff),
+            "n = {n}: {}",
+            ours.mu_eff
+        );
+        assert!(close(ours.c_1, theirs.c1), "n = {n}: {}", ours.c_1);
+        assert!(close(ours.c_c, theirs.cc), "n = {n}: {}", ours.c_c);
+        assert!(
+            close(ours.c_mu, theirs.cmu_table_1),
+            "n = {n}: {}",
+            ours.c_mu
+        );
+    }
 }
 
 #[test]
