@@ -639,12 +639,13 @@ impl Run {
             contestants.extend(shuffle);
         }
         let parents: Vec<&[f64]> = contestants
-            .chunks_exact(2)
-            .map(|pair| self.tournament(pair[0], pair[1], &mut rng))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&[i, j]| self.tournament(i, j, &mut rng))
             .collect();
         let mut children = Vec::with_capacity(s.population);
-        for pair in parents.chunks_exact(2) {
-            let (a, b) = (pair[0], pair[1]);
+        for &[a, b] in parents.as_chunks::<2>().0 {
             let (mut c1, mut c2) = (a.to_vec(), b.to_vec());
             if rng.uniform() < s.crossover_probability {
                 for (i, v) in s.variables.iter().enumerate() {
