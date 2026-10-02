@@ -29,7 +29,7 @@
 //!
 //! A run is drawn from a seed. Each CMA-ES candidate has its own random stream
 //! ([`SeededRng::for_stream`](hpr_core::random::SeededRng::for_stream)), keyed by the seed, its
-//! generation and its place in the generation, and each NSGA-II generation one, so a run is bit
+//! generation and its place in the generation, and each NSGA-II generation has one stream, so a run is bit
 //! for bit the same every time on one platform, however its candidates are evaluated.
 //!
 //! # Left out

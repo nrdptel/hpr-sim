@@ -214,7 +214,7 @@ pub mod mixed {
 /// Two-goal test problems with known Pareto fronts, for [`nsga2`](super::nsga2): ZDT1, ZDT2 and
 /// ZDT3 of E. Zitzler, K. Deb and L. Thiele, "Comparison of multiobjective evolutionary
 /// algorithms: empirical results", *Evolutionary Computation* 8(2), 173–195 (2000),
-/// <https://doi.org/10.1162/106365600568202>, §3 (p. 177), each of `n` variables in `[0, 1]`
+/// <https://doi.org/10.1162/106365600568202>, §4, eqs. (7)–(9) (pp. 177–178), each of `n` variables in `[0, 1]`
 /// (the paper's `n = 30`):
 ///
 /// `f₁ = x₀`, `g = 1 + 9 Σᵢ₌₁ⁿ⁻¹ xᵢ / (n − 1)`, `f₂ = g h(f₁, g)`.
@@ -228,7 +228,8 @@ pub mod mixed {
 /// | ZDT3 | `1 − √(f₁/g) − (f₁/g) sin(10π f₁)` | five separate pieces of `f₂ = 1 − √f₁ − f₁ sin(10π f₁)` ([`zdt::ZDT3_PIECES`]) |
 pub mod zdt {
     /// One of the three problems.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    #[non_exhaustive]
     pub enum Zdt {
         /// ZDT1: a convex front.
         One,

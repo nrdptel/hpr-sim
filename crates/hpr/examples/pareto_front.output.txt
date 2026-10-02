@@ -5,8 +5,8 @@ Not yet validated: see the Accuracy page before trusting these numbers.
 NSGA-II: 20 designs a generation, 25 generations, 500 flights (seed 2026)
 The front: 20 designs, each flown again to the same apogee and margin
 
-margin (cal)   apogee on the front (m, between the designs either side)
-         2.0       3110
+margin (cal)   apogee on the front (m), interpolated between the two designs either side
+         2.0       3100
          2.5       3050
          3.0       2990
          3.5       2940

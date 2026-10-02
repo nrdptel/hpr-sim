@@ -1,6 +1,6 @@
 //! Two goals at once: NSGA-II traces the trade-off between a rocket's apogee and its static
 //! margin, over its nose ballast and fin span, and the front it finds is checked twice: each
-//! design flown again, and the best apogee at two margins found again by CMA-ES alone.
+//! design flown again, and the best apogee at 2.5 calibres found again by CMA-ES alone.
 //!
 //! ```text
 //! cargo run --example pareto_front -p hpr
@@ -91,7 +91,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         members.len()
     );
     println!();
-    println!("margin (cal)   apogee on the front (m, between the designs either side)");
+    println!(
+        "margin (cal)   apogee on the front (m), interpolated between the two designs either side"
+    );
     for margin in SHOWN_CAL {
         let apogee = front_apogee(&members, margin).ok_or("the front doesn't reach a margin")?;
         println!("{margin:>12.1}   {:>8}", round_to_ten(apogee));

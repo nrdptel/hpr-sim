@@ -4,9 +4,9 @@
 //! A design *dominates* another when it is no worse in any goal and better in at least one. The
 //! designs no other design dominates are the Pareto front: along it, one goal can only be
 //! improved by giving up another. NSGA-II keeps a population of designs, breeds a new generation
-//! from them, and keeps the best half of parents and children together, ranked first by how many
-//! fronts deep they lie and then, within a front, by how far they are from their neighbours, so
-//! that the front it finds is spread out along the true one rather than bunched at one place.
+//! from them, and keeps the best half of parents and children together. They are ranked first by
+//! how many fronts deep they lie, then, within a front, by how far they are from their
+//! neighbours, so the front it finds spreads along the true one instead of bunching at one place.
 //!
 //! The method is K. Deb, A. Pratap, S. Agarwal and T. Meyarivan, "A fast and elitist
 //! multiobjective genetic algorithm: NSGA-II", *IEEE Transactions on Evolutionary Computation*
@@ -28,7 +28,7 @@
 //!   do and `i` dominates `j`.
 //!
 //! Children come from parents chosen by binary tournaments with the crowded comparison, two at a
-//! time, by the paper's real-coded operators (§V, p. 188):
+//! time, by the paper's real-coded operators (§IV, p. 187):
 //!
 //! - **Simulated binary crossover** (SBX; K. Deb and R. B. Agrawal, "Simulated binary crossover
 //!   for continuous search space", *Complex Systems* 9(2), 115–148 (1995)): a child's spread
@@ -40,16 +40,17 @@
 //! - **Polynomial mutation** (K. Deb and M. Goyal, "A combined genetic adaptive search (GeneAS)
 //!   for engineering design", *Computer Science and Informatics* 26(4), 30–45 (1996)).
 //!
-//! Both are cut at the variable's bounds as Deb and Agrawal propose (p. 143): the density beyond
-//! a bound is dropped and the rest scaled up to a whole, so no child is placed outside and none
-//! piles up on the bound. The equations of that cut, given with each function below, are the
-//! ones of Deb's NSGA-II code as pymoo 0.6.2 (Apache-2.0) prints them, in its
+//! Both are cut at the variable's bounds, so no child is placed outside and none piles up on
+//! the bound. SBX drops the density beyond the bound and scales the rest up to a whole, as Deb
+//! and Agrawal propose (p. 143). Mutation cuts each side of the value at its own bound and keeps
+//! half the probability on each side. The equations of both cuts, given with each function
+//! below, are those of Deb's NSGA-II code as pymoo 0.6.2 (Apache-2.0) prints them, in its
 //! `operators/crossover/sbx.py` and `operators/mutation/pm.py`; no paper we could reach prints
 //! them, so each is derived again in its function's comment.
 //!
-//! The defaults are the paper's real-coded settings (p. 188): crossover probability 0.9,
+//! The defaults are the paper's real-coded settings (p. 187): crossover probability 0.9,
 //! mutation probability `1/n` per variable, distribution indices `η_c = η_m = 20`; the
-//! population of 100 and 250 generations are its runs on the ZDT problems (pp. 186, 188).
+//! population of 100 and 250 generations are its runs on the ZDT problems (p. 187).
 //!
 //! # Variables
 //!
@@ -71,8 +72,10 @@ use hpr_core::random::SeededRng;
 use super::{Variable, check_variables};
 use crate::error::AnalysisError;
 
-/// The largest population a run takes.
-pub const MAX_POPULATION: usize = 1 << 16;
+/// The largest population a run takes, 2¹². The sort of parents and children together keeps, for
+/// each design, the list of designs it dominates: up to about `(2N)²/2` indices, some 130 MB at
+/// this size, and four times as much for each doubling.
+pub const MAX_POPULATION: usize = 1 << 12;
 
 /// The most goals a run takes.
 pub const MAX_OBJECTIVES: usize = 16;
@@ -267,7 +270,8 @@ impl Nsga2 {
     /// [`AnalysisError::TooFew`] or [`AnalysisError::Count`] for no variables or more than
     /// [`MAX_VARIABLES`](super::MAX_VARIABLES), or no goals or more than [`MAX_OBJECTIVES`];
     /// [`AnalysisError::DuplicateVariable`] for two variables of one name;
-    /// [`AnalysisError::Domain`] for a variable without two finite bounds; and
+    /// [`AnalysisError::Domain`] for a variable without two finite bounds, or whose range
+    /// overflows; and
     /// [`AnalysisError::Unsupported`] for an integer variable.
     pub fn new(variables: Vec<Variable>, objectives: usize) -> Result<Self, AnalysisError> {
         check_variables(&variables)?;
@@ -298,6 +302,12 @@ impl Nsga2 {
                     value: v.high(),
                 });
             }
+            if !(v.high() - v.low()).is_finite() {
+                return Err(AnalysisError::Domain {
+                    what: "variable's range, high minus low (NSGA-II needs it finite)",
+                    value: v.high() - v.low(),
+                });
+            }
             if v.is_integer() {
                 return Err(AnalysisError::Unsupported(format!(
                     "integer variable {:?} in NSGA-II",
@@ -324,12 +334,27 @@ impl Nsga2 {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::Domain`] for an odd size or one out of range.
+    /// [`AnalysisError::TooFew`] below 4, [`AnalysisError::Count`] above [`MAX_POPULATION`],
+    /// and [`AnalysisError::Domain`] for an odd size.
     pub fn with_population(mut self, size: usize) -> Result<Self, AnalysisError> {
-        if !size.is_multiple_of(2) || !(4..=MAX_POPULATION).contains(&size) {
+        if size < 4 {
+            return Err(AnalysisError::TooFew {
+                what: "population",
+                count: size,
+                minimum: 4,
+            });
+        }
+        if size > MAX_POPULATION {
+            return Err(AnalysisError::Count {
+                what: "population",
+                count: size,
+                limit: MAX_POPULATION,
+            });
+        }
+        if !size.is_multiple_of(2) {
             return Err(AnalysisError::Domain {
-                what: "population (even, from 4 to 2¹⁶)",
-                // Cast: at most 2⁶⁴, shown approximately in the error.
+                what: "population (an even number)",
+                // Cast: at most 2¹², exact in f64.
                 value: size as f64,
             });
         }
@@ -486,13 +511,14 @@ impl Run {
     }
 
     /// The population as it stands, ranked: empty before the first generation is told.
-    pub fn population(&self) -> &[Member] {
+    pub fn members(&self) -> &[Member] {
         &self.members
     }
 
     /// Takes the goals of the candidates, in their order, with no constraints: the population
     /// is updated, and once the last generation is told the run's [`Front`] is returned. A
-    /// goal of `+∞` is allowed, and is beaten by any finite one.
+    /// design with a goal of `+∞` counts as failed ([`Goals::failed`]): every design whose goals
+    /// are all finite dominates it.
     ///
     /// # Errors
     ///
@@ -504,7 +530,8 @@ impl Run {
 
     /// [`Run::tell`] with each candidate's constraint violation: designs are sorted by
     /// constrained domination. A failed design ([`Goals::failed`]) may have any number of goals,
-    /// as they are set aside: each counts as `+∞`.
+    /// as they are set aside: each counts as `+∞`. A design with a goal of `+∞` fails too, its
+    /// violation taken as `+∞`.
     ///
     /// # Errors
     ///
@@ -531,9 +558,10 @@ impl Run {
                     value: g.violation,
                 });
             }
-            let objectives = if g.violation == f64::INFINITY {
-                vec![f64::INFINITY; m]
-            } else {
+            // A failed design's goals are set aside; any other's are checked, and one with a goal
+            // of +∞ fails.
+            let mut failed = g.violation == f64::INFINITY;
+            if !failed {
                 if g.objectives.len() != m {
                     return Err(AnalysisError::Length {
                         what: "a design's goals",
@@ -551,12 +579,17 @@ impl Run {
                         value,
                     });
                 }
+                failed = g.objectives.contains(&f64::INFINITY);
+            }
+            let objectives = if failed {
+                vec![f64::INFINITY; m]
+            } else {
                 g.objectives.clone()
             };
             children.push(Member {
                 point: point.clone(),
                 objectives,
-                violation: g.violation,
+                violation: if failed { f64::INFINITY } else { g.violation },
                 rank: 0,
                 crowding: 0.0,
             });
@@ -586,14 +619,32 @@ impl Run {
 
     /// The next generation's children: parents by binary tournaments, crossed in pairs by SBX,
     /// then mutated.
+    ///
+    /// The tournaments' contestants are two shuffles of the population laid end to end and taken
+    /// two at a time, so every design plays exactly two tournaments, as in Deb's NSGA-II code and
+    /// pymoo; the paper gives no pairing. The population is even, so no tournament pits a design
+    /// against itself. Winners are paired in turn: the first two, the next two, and so on.
     fn breed(&self) -> Vec<Vec<f64>> {
         let s = &self.settings;
         // Cast: a generation count fits in u64.
         let mut rng = SeededRng::for_stream(self.seed, &[self.generation as u64]);
+        let n = self.members.len();
+        let mut contestants: Vec<usize> = Vec::with_capacity(2 * n);
+        for _ in 0..2 {
+            let mut shuffle: Vec<usize> = (0..n).collect();
+            // Fisher–Yates, from the end.
+            for i in (1..n).rev() {
+                shuffle.swap(i, draw_index(&mut rng, i + 1));
+            }
+            contestants.extend(shuffle);
+        }
+        let parents: Vec<&[f64]> = contestants
+            .chunks_exact(2)
+            .map(|pair| self.tournament(pair[0], pair[1], &mut rng))
+            .collect();
         let mut children = Vec::with_capacity(s.population);
-        while children.len() < s.population {
-            let a = self.tournament(&mut rng);
-            let b = self.tournament(&mut rng);
+        for pair in parents.chunks_exact(2) {
+            let (a, b) = (pair[0], pair[1]);
             let (mut c1, mut c2) = (a.to_vec(), b.to_vec());
             if rng.uniform() < s.crossover_probability {
                 for (i, v) in s.variables.iter().enumerate() {
@@ -623,12 +674,9 @@ impl Run {
         children
     }
 
-    /// A binary tournament: two different members drawn at random, the winner by the crowded
-    /// comparison, a tie to either with equal chance.
-    fn tournament(&self, rng: &mut SeededRng) -> &[f64] {
-        let n = self.members.len();
-        let i = draw_index(rng, n);
-        let j = (i + 1 + draw_index(rng, n - 1)) % n;
+    /// A binary tournament between members `i` and `j`: the winner by the crowded comparison, a
+    /// tie to either with equal chance.
+    fn tournament(&self, i: usize, j: usize, rng: &mut SeededRng) -> &[f64] {
         let (a, b) = (&self.members[i], &self.members[j]);
         let winner = match crowded_comparison(a, b) {
             std::cmp::Ordering::Less => a,
@@ -660,7 +708,8 @@ fn crowded_comparison(a: &Member, b: &Member) -> std::cmp::Ordering {
         .then_with(|| b.crowding.total_cmp(&a.crowding))
 }
 
-/// Whether `a`'s goals dominate `b`'s: no worse in any, better in at least one.
+/// Whether `a`'s goals dominate `b`'s: no worse in any, better in at least one. The two should
+/// be the same length; only as many goals as the shorter has are compared.
 pub fn dominates(a: &[f64], b: &[f64]) -> bool {
     a.iter().zip(b).all(|(x, y)| x <= y) && a.iter().zip(b).any(|(x, y)| x < y)
 }
@@ -841,7 +890,7 @@ fn polynomial_mutation(y: f64, low: f64, high: f64, eta: f64, rng: &mut SeededRn
 
 /// The generational distance of `set` from `reference`: the mean, over the points of `set`, of
 /// the Euclidean distance to the nearest point of `reference`. It is Deb et al.'s (2002)
-/// convergence metric Υ (§V-A, p. 187), and pymoo's `GD`: zero when every point lies on the
+/// convergence metric Υ (§IV-B, p. 188), and pymoo's `GD`: zero when every point lies on the
 /// reference. NaN for an empty `set` or `reference`.
 pub fn generational_distance(set: &[Vec<f64>], reference: &[Vec<f64>]) -> f64 {
     mean_nearest(set, reference)
@@ -1010,8 +1059,8 @@ mod tests {
         }
     }
 
-    /// Near a bound, SBX's children stay within it, and their spread is cut, not piled at it:
-    /// no child lands on the bound unless a parent is there.
+    /// Near a bound, SBX's children and mutated values stay within it, and their spread is cut,
+    /// not piled at it: none lands on the bound.
     #[test]
     fn sbx_and_mutation_stay_within_bounds() {
         let mut rng = SeededRng::seed_from_u64(2);
@@ -1022,36 +1071,87 @@ mod tests {
             at_bound += usize::from(c1 == 0.0 || c2 == 0.0);
             let y = polynomial_mutation(0.999, 0.0, 1.0, 20.0, &mut rng);
             assert!((0.0..=1.0).contains(&y));
+            at_bound += usize::from(y == 1.0);
+            let y = polynomial_mutation(0.001, 0.0, 1.0, 20.0, &mut rng);
+            assert!((0.0..=1.0).contains(&y));
+            at_bound += usize::from(y == 0.0);
         }
         assert_eq!(at_bound, 0);
         // Parents within 1e-14 are copied.
         assert_eq!(sbx(0.3, 0.3, 0.0, 1.0, 20.0, &mut rng), (0.3, 0.3));
     }
 
-    /// Polynomial mutation's step `δ_q` far from the bounds follows its density, half each way:
-    /// `P(|δ_q| ≤ d) = 1 − (1 − d)^(η+1)`.
+    /// Polynomial mutation's step `δ_q`, cut at each side's own bound, follows its distribution:
+    /// at `y = 0.2` in `[0, 1]`, `δ₁ = 0.2` below and `δ₂ = 0.8` above, and with
+    /// `tᵢ = (1 − δᵢ)^(η+1)`, `P(δ_q ≤ −d) = ((1 − d)^(η+1) − t₁) / (2 (1 − t₁))` for `d ≤ δ₁`, and
+    /// `P(δ_q ≥ d) = ((1 − d)^(η+1) − t₂) / (2 (1 − t₂))` for `d ≤ δ₂`; half the steps each way.
     #[test]
-    fn mutation_step_follows_its_density() {
-        let eta = 5.0;
+    fn mutation_step_follows_its_distribution() {
         let draws = 100_000;
-        let mut rng = SeededRng::seed_from_u64(3);
-        // y = 0 in [−1, 1]: δ₁ = δ₂ = 1/2, so with t = (1/2)^(η+1), for 0 ≤ d ≤ 1/2,
-        // P(δ_q ≤ −d) = ((1 − d)^(η+1) − t) / (2 (1 − t)), from the branch u ≤ 1/2.
-        let steps: Vec<f64> = (0..draws)
-            .map(|_| polynomial_mutation(0.0, -1.0, 1.0, eta, &mut rng) / 2.0)
+        for eta in [5.0_f64, 20.0] {
+            let mut rng = SeededRng::seed_from_u64(3);
+            let steps: Vec<f64> = (0..draws)
+                .map(|_| polynomial_mutation(0.2, 0.0, 1.0, eta, &mut rng) - 0.2)
+                .collect();
+            let share = |f: &dyn Fn(f64) -> bool| {
+                steps.iter().filter(|&&x| f(x)).count() as f64 / draws as f64
+            };
+            let check = |measured: f64, expected: f64, what: &str| {
+                let sigma = (expected * (1.0 - expected) / draws as f64).sqrt();
+                assert!(
+                    (measured - expected).abs() <= 5.0 * sigma + 1e-6,
+                    "η = {eta}, {what}: {measured} against {expected}"
+                );
+            };
+            let (t1, t2) = (0.8_f64.powf(eta + 1.0), 0.2_f64.powf(eta + 1.0));
+            for d in [0.01_f64, 0.03, 0.1, 0.19] {
+                let below = ((1.0 - d).powf(eta + 1.0) - t1) / (2.0 * (1.0 - t1));
+                check(share(&|x| x <= -d), below, &format!("P(δ ≤ −{d})"));
+                let above = ((1.0 - d).powf(eta + 1.0) - t2) / (2.0 * (1.0 - t2));
+                check(share(&|x| x >= d), above, &format!("P(δ ≥ {d})"));
+            }
+            check(share(&|x| x < 0.0), 0.5, "P(δ < 0)");
+        }
+    }
+
+    /// Near its low bound, SBX's lower child has spread `β = (y₁ + y₂ − 2c) / (y₂ − y₁)` cut at
+    /// `β_b = 1 + 2(y₁ − low)/(y₂ − y₁)` and scaled by `1/α`, `α = 2 − β_b^−(η+1)`:
+    /// `P(β ≤ b) = b^(η+1)/α` for `b ≤ 1`, and `(2 − b^−(η+1))/α` from 1 to `β_b`. The children
+    /// come out in either order with equal chance.
+    #[test]
+    fn sbx_spread_is_cut_at_the_bound() {
+        let (eta, draws) = (2.0_f64, 100_000);
+        let (y1, y2, low, high) = (0.05_f64, 0.3_f64, 0.0_f64, 100.0_f64);
+        let beta_b = 1.0 + 2.0 * (y1 - low) / (y2 - y1);
+        let alpha = 2.0 - beta_b.powf(-(eta + 1.0));
+        let mut rng = SeededRng::seed_from_u64(4);
+        let mut lower_first = 0;
+        let betas: Vec<f64> = (0..draws)
+            .map(|_| {
+                let (c1, c2) = sbx(y1, y2, low, high, eta, &mut rng);
+                lower_first += usize::from(c1 < c2);
+                (y1 + y2 - 2.0 * c1.min(c2)) / (y2 - y1)
+            })
             .collect();
-        let tail = 0.5_f64.powf(eta + 1.0);
-        for d in [0.05_f64, 0.1, 0.2, 0.3, 0.5] {
-            let expected = ((1.0 - d).powf(eta + 1.0) - tail) / (2.0 * (1.0 - tail));
-            let share = steps.iter().filter(|&&x| x <= -d).count() as f64 / draws as f64;
+        for b in [0.5_f64, 0.9, 0.94, 0.96, 0.98, 1.0, 1.1, 1.3, 1.39] {
+            let expected = if b <= 1.0 {
+                b.powf(eta + 1.0) / alpha
+            } else {
+                (2.0 - b.powf(-(eta + 1.0))) / alpha
+            };
+            let share = betas.iter().filter(|&&x| x <= b).count() as f64 / draws as f64;
             let sigma = (expected * (1.0 - expected) / draws as f64).sqrt();
             assert!(
                 (share - expected).abs() <= 5.0 * sigma + 1e-6,
-                "P(δ ≤ −{d}) {share} against {expected}"
+                "P(β ≤ {b}) {share} against {expected}"
             );
         }
-        let left = steps.iter().filter(|&&x| x < 0.0).count() as f64 / draws as f64;
-        assert!((left - 0.5).abs() <= 5.0 * (0.25 / draws as f64).sqrt());
+        assert!(betas.iter().all(|&b| b <= beta_b * (1.0 + 1e-12)));
+        let half = lower_first as f64 / draws as f64;
+        assert!(
+            (half - 0.5).abs() <= 5.0 * (0.25 / draws as f64).sqrt(),
+            "{half}"
+        );
     }
 
     #[test]
@@ -1081,9 +1181,27 @@ mod tests {
             Err(AnalysisError::Unsupported(_))
         ));
         let n = Nsga2::new(x(), 2).unwrap();
-        assert!(n.clone().with_population(5).is_err());
-        assert!(n.clone().with_population(2).is_err());
-        assert!(n.clone().with_population(MAX_POPULATION + 2).is_err());
+        assert!(matches!(
+            n.clone().with_population(5),
+            Err(AnalysisError::Domain { .. })
+        ));
+        assert!(matches!(
+            n.clone().with_population(2),
+            Err(AnalysisError::TooFew { .. })
+        ));
+        assert!(matches!(
+            n.clone().with_population(MAX_POPULATION + 2),
+            Err(AnalysisError::Count { .. })
+        ));
+        assert!(n.clone().with_population(MAX_POPULATION).is_ok());
+        let wide = Variable::new("x", 0.0, 1.0)
+            .unwrap()
+            .within(-f64::MAX, f64::MAX)
+            .unwrap();
+        assert!(matches!(
+            Nsga2::new(vec![wide], 2),
+            Err(AnalysisError::Domain { what, .. }) if what.contains("range")
+        ));
         assert!(n.clone().with_generations(0).is_err());
         assert!(n.clone().with_crossover(1.1, 20.0).is_err());
         assert!(n.clone().with_crossover(f64::NAN, 20.0).is_err());
@@ -1148,13 +1266,24 @@ mod tests {
         goals[0] = Goals::failed();
         assert_eq!(run.tell_constrained(&goals).unwrap(), None);
         assert_eq!(run.generation(), 1);
-        assert_eq!(run.population().last().unwrap().violation, f64::INFINITY);
+        assert_eq!(run.members().last().unwrap().violation, f64::INFINITY);
         assert!(matches!(
             run.tell(&nan),
             Err(AnalysisError::Output { index: 7, .. })
         ));
-        let front = run.tell(&ok).unwrap().unwrap();
+        // A goal of +∞ fails the design, behind every finite one.
+        let mut infinite = ok.clone();
+        infinite[1] = vec![f64::INFINITY, -100.0];
+        let front = run.tell(&infinite).unwrap().unwrap();
         assert_eq!((front.evaluations, front.generations), (8, 2));
+        assert!(front.members.iter().all(|m| m.objectives[0].is_finite()));
+        assert!(
+            front
+                .population
+                .iter()
+                .filter(|m| m.violation == f64::INFINITY)
+                .all(|m| m.objectives == vec![f64::INFINITY; 2])
+        );
         assert!(run.candidates().is_empty());
         assert!(matches!(run.tell(&ok), Err(AnalysisError::Length { .. })));
         // The front round-trips through JSON, its infinite crowding distances as null.

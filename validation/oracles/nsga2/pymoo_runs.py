@@ -19,8 +19,9 @@ Each problem has 30 variables in [0, 1] (pymoo's `get_problem("zdt1")` and so on
 uses one of seeds 1 to 20. For each run it records the final population's first front (`res.F`),
 every value written as Python's shortest round-trip repr, and pymoo's own generational distance
 (`pymoo.indicators.gd.GD`, the mean distance to the nearest of the reference points, p = 1) of that
-front from `problem.pareto_front(500)`, Deb's H = 500 points, which it records too. Its IGD is not
-used: it goes through moocore (LGPL), so hpr computes IGD itself.
+front from `problem.pareto_front(500)`, Deb's H = 500 points, which it records too. pymoo's
+non-dominated sorting, and its IGD, run on moocore (LGPL-2.1-or-later), installed with pymoo: it
+is run here as part of the oracle, never linked or ported. hpr computes IGD itself.
 
 Run from the repository root (the oracle environment has pymoo); it writes the fixture itself:
 
@@ -93,7 +94,7 @@ def main():
             "runs": runs,
         }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(fixture, indent=1) + "\n")
+    OUTPUT.write_text(json.dumps(fixture, separators=(",", ":")) + "\n")
 
 
 if __name__ == "__main__":

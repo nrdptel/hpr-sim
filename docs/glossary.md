@@ -879,7 +879,7 @@ and yaw. hpr uses its tensor form to add up the inertias of a rocket's parts. Se
 
 ## Pareto front
 
-The designs that trade two or more goals off against each other: for each, one goal can only be bettered by giving up some of another. A design *dominates* another when it is no worse in any goal and better in at least one; the front is the designs nothing dominates. Higher apogee against a larger stability margin is one such trade-off. See [Trade-offs](optimization.md#trade-offs-a-pareto-front).
+The designs that trade two or more goals off against each other: no design on the front can improve one goal without giving up some of another. A design *dominates* another when it is no worse in any goal and better in at least one; the front is the designs nothing dominates. Higher apogee against a larger stability margin is one such trade-off. See [Trade-offs](optimization.md#trade-offs-a-pareto-front).
 
 ## Parquet data page
 

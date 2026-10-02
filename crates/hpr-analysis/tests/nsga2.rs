@@ -10,11 +10,15 @@
 //!
 //! - the generational distance (GD), the mean over a run's front of each design's distance to
 //!   the true front, the curve itself ([`Zdt::distance_to_front`]): how close the front lies;
-//! - the inverted generational distance (IGD), the mean over 1,000 points of the true front of
-//!   the distance to the nearest design: how close, and how evenly the front covers it.
+//! - the inverted generational distance (IGD), the mean over points of the true front of the
+//!   distance to the nearest design: how close, and how evenly the front covers it. The points
+//!   are at 1,000 evenly spaced `f₁`, those off ZDT3's five pieces left out (265 remain).
 //!
 //! The rules were set from pymoo's runs before hpr's were measured: every one of hpr's 20 runs
-//! within twice pymoo's worst, and hpr's median no more than 25% above pymoo's.
+//! within twice pymoo's worst, and hpr's median no more than 25% above pymoo's (the bound
+//! ADR-138 set on CMA-ES's evaluations against pycma's). Review then made the median rule
+//! two-sided, no more than 25% below pymoo's either: on ZDT every variable but the first is best
+//! at its low bound, so an operator biased toward the bounds passes a one-sided rule.
 
 #![allow(
     clippy::unwrap_used,
@@ -139,7 +143,7 @@ fn check(name: &str, problem: Zdt) {
     }
     let report = |what: &str, hpr: &[f64], pymoo: &[f64]| {
         eprintln!(
-            "{name} {what}: hpr median {:.3e}, largest {:.3e}; pymoo median {:.3e}, largest {:.3e}",
+            "{name} {what}: hpr median {:.5e}, largest {:.5e}; pymoo median {:.5e}, largest {:.5e}",
             median(hpr.to_vec()),
             largest(hpr),
             median(pymoo.to_vec()),
@@ -156,10 +160,13 @@ fn check(name: &str, problem: Zdt) {
                 "{name} seed {seed}: {what} {value:.3e} above twice pymoo's worst, {bound:.3e}"
             );
         }
+        // Two-sided: a front much closer than pymoo's is as suspect as one much further, as on
+        // these problems every variable but the first is best at its low bound, and an operator
+        // biased toward the bounds would look better than it is.
         let (ours, theirs) = (median(hpr.clone()), median(pymoo.clone()));
         assert!(
-            ours <= 1.25 * theirs,
-            "{name}: median {what} {ours:.3e} more than 25% above pymoo's {theirs:.3e}"
+            ours <= 1.25 * theirs && ours >= theirs / 1.25,
+            "{name}: median {what} {ours:.3e} not within 25% of pymoo's {theirs:.3e}"
         );
     }
 }
