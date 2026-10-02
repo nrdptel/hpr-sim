@@ -212,13 +212,13 @@ pub struct Optimum {
     /// How many generations it ran.
     pub generations: usize,
     /// The distribution's final mean, not encoded: an integer variable's may lie between whole
-    /// numbers ([`Variable::encode`] gives the value it stands for).
+    /// numbers or outside its bounds ([`Variable::encode`] gives the value it stands for).
     pub mean: Vec<f64>,
     /// The distribution's largest standard deviation in any one variable, in that variable's
     /// units: the largest `σ √Cᵢᵢ` times the variable's step and its margin scale `Aᵢ`; `+∞`
-    /// once the step size has overflowed (serialized as none, a JSON `null`). With integer
-    /// variables it stays large enough to keep their margin, so it doesn't shrink to zero as a
-    /// continuous run's does.
+    /// once the step size has overflowed (serialized as none, a JSON `null`). An integer variable
+    /// at an inner value keeps it large enough for the margin (its `Aᵢ` grows), so then it
+    /// doesn't shrink to zero; at an end value only the mean moves, and it may.
     #[serde(with = "infinity_as_none")]
     pub spread: f64,
     /// Why it stopped.
@@ -832,7 +832,7 @@ impl Run {
                 continue;
             }
             // Inside, eqs. (15) to (24): the thresholds either side of the mean.
-            let value = (m - 0.5).ceil();
+            let value = super::nearest_whole(m);
             let (low, up) = (value - 0.5, value + 0.5);
             let p_low = normal::cdf((low - m) / spread);
             let p_up = normal::cdf((m - up) / spread);
@@ -849,8 +849,9 @@ impl Run {
             let r_low = q_low + excess * (q_low - half) / share;
             let r_up = q_up + excess * (q_up - half) / share;
             // Eq. (24): the mean and A that give the sides these chances.
-            let chi_low = normal::quantile(1.0 - r_low);
-            let chi_up = normal::quantile(1.0 - r_up);
+            // `Φ⁻¹(1 − r) = −Φ⁻¹(r)`, without rounding `1 − r` first.
+            let chi_low = -normal::quantile(r_low);
+            let chi_up = -normal::quantile(r_up);
             let mean = (low * chi_up + up * chi_low) / (chi_low + chi_up);
             let a = (up - low) / ((chi_low + chi_up) * spread_unit);
             if mean.is_finite() && a.is_finite() && a > 0.0 {
@@ -1474,7 +1475,7 @@ mod tests {
                         "gen {generations} x{j}: {far} < {alpha}"
                     );
                 } else {
-                    let value = (m - 0.5).ceil();
+                    let value = crate::optimize::nearest_whole(m);
                     let below = normal::cdf((value - 0.5 - m) / spread);
                     let above = normal::cdf((m - value - 0.5) / spread);
                     assert!(
@@ -1547,6 +1548,27 @@ mod tests {
             run.mean[1]
         );
         assert_eq!(run.a[1], 1.0);
+
+        // An end mean never lands farther from its threshold than the reach, though
+        // `threshold ± reach` rounds outward for some spreads: those are stepped back an ulp.
+        let reach_per_spread = -normal::quantile(1.0 / 12.0);
+        let mut stepped = 0;
+        for k in 0..2000 {
+            let sigma = 0.01 + 1e-4 * f64::from(k);
+            for (m, threshold) in [(-9.9, -9.5), (9.9, 9.5)] {
+                let mut run = fresh();
+                (run.mean[1], run.sigma) = (m, sigma);
+                run.correct_margin();
+                let reach = reach_per_spread * sigma;
+                let gap = (run.mean[1] - threshold).abs();
+                assert!(gap <= reach, "σ = {sigma}: {gap} > {reach}");
+                assert!(reach - gap <= 4.0 * f64::EPSILON * 10.0, "σ = {sigma}");
+                if (threshold + reach.copysign(m - threshold) - threshold).abs() > reach {
+                    stepped += 1;
+                }
+            }
+        }
+        assert!(stepped > 0, "no spread rounded outward");
 
         // Both sides above α/2, or an end mean already near its threshold: nothing moves.
         for (m, sigma) in [(2.3, 1.0), (-9.6, 0.1)] {

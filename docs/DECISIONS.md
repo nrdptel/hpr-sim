@@ -11400,15 +11400,19 @@ re-checked on the winner by flying it again. CMA-ES (ADR-138) draws real numbers
    threshold, or both sides of an inner one at `α/2` or more) the mean and `A` are left as they
    are, which eqs. (13) and (17) to (24) would return up to rounding; a moved end mean that rounds
    past its reach is stepped one ulp back. The encoding is exact rounding, `⌊x⌋` or `⌊x⌋ + 1`, as
-   `⌈x − 0.5⌉` rounds past 2⁵², and gives 0, not −0. `Φ` is `erfc` from `libm` (MIT OR Apache-2.0, already in the tree), `Φ⁻¹`
-   Wichura's AS 241 (1988), its coefficients checked against the paper's hash sums.
+   `⌈x − 0.5⌉` and `x − ⌊x⌋` can round, and gives 0, not −0; the correction finds the mean's value
+   the same way. Integer bounds are whole numbers within ±2⁵², where every threshold `k ± 0.5` is
+   an `f64`; `within` checks them again when called after `integer`. `Φ` is `erfc` from `libm` (MIT OR Apache-2.0, already in the tree), `Φ⁻¹`
+   Wichura's AS 241 (1988), its coefficients checked against the paper's hash sums. They were
+   transcribed from the listing in CPython's `statistics` module (PSF License 2.0); only the
+   paper's published constants were taken, and the code around them follows the paper.
 3. **Held to** SphereInt, EllipsoidInt and SphereOneMax (§5.1), half the variables integer, at 10
    and 20 variables, from the 20 starts `validation/oracles/cmawm/cmawm_runs.py` records: every run
    reaches `f ≤ 10⁻¹⁰` with every integer exact, and the median evaluations are within 25% of
    `cmaes.CMAwM`'s with its negative weights zeroed (ours have none), the bound ADR-138 set
    against pycma. Measured: −4.6% to +2.7%. `cmaes` takes `c_μ` without Table 1's 1/4 (11 to 14%
-   smaller; `tests/mixed.rs` checks `λ`, `α`, the weights, `μ_eff`, `c₁`, `c_c` and Table 1's `c_μ`
-   against the fixture's) and counts `h_σ`'s generation one later; both stay, as ADR-138's parameters are the
+   smaller; `tests/mixed.rs` checks `λ`, `α`, the weights, `μ_eff`, `c₁`, `c_c`, `c_σ`, `d_σ`, `E‖N(0, I)‖`
+   and Table 1's `c_μ` against the fixture's) and counts `h_σ`'s generation one later; both stay, as ADR-138's parameters are the
    tutorial's. A unit test checks the margin after every generation of a run with a binary, an
    integer at an end value and one inside, and another checks one correction of each kind at a
    set state against the equations in 40-digit arithmetic; it fails with `α` for `α/2`, with `A`
@@ -11420,17 +11424,20 @@ re-checked on the winner by flying it again. CMA-ES (ADR-138) draws real numbers
    Evaluation Guide 2025 over the whole ascent, rail exit to apogee: a flight ("dynamic") margin
    of at least 1.5 calibres (§10.3.1, read as ADR-077's flight margin), a static margin of at most
    4 and a flight margin of at most 6 (§10.4.1), and 30 m/s off a 3 m rail (§10.2.1). The least
-   flight margin is the flight's searched least; the most of each is taken at step ends. A first
-   version held only the static margin at launch to 1.5 to 4; its winner rose past 4 after
-   burnout (physics review), so the limits now cover the ascent as the rules word them. Seed 2026
+   flight margin is the flight's searched least; the most of each is taken at step ends (exact for
+   the static margin, which grows through the burn and then holds; a flight-margin peak between
+   step ends could be missed). They run from the rail exit, where the flight metrics start
+   (ADR-077), where §10.3.1 says "from launch". A first version held only the static margin at
+   launch to 1.5 to 4; its winner rose past 4 after burnout (physics review), so the limits now
+   cover the ascent. Seed 2026
    picks the K400C with the plastic 3:1 ogive in 360 flights; flown again, default and
    100-times-tighter tolerances, it is within 0.1 m with every limit kept. Its answer is not
    unique: a scan of every motor and nose over ballast and fin span (development machine, not
    committed) found the J760, K400C and K940 each able to hit 3,048 m within the limits with any
    of the four noses. So the printed choice is the run's, not the problem's; perturbing every
    flight by changing the integrator's relative tolerance by up to 1% left the run's 360 flights
-   and its point unchanged, so the output is expected to match on every platform, and CI checks
-   it on three. Two other goals were
+   and its point unchanged, as did moving `σ` by one to three ulps each generation (neither trial
+   committed), so the output is expected to match on every platform, and CI checks it on three. Two other goals were
    tried first and dropped, measured on the development machine and not committed: the lightest
    rocket that hits (with the body length free) settled on four different noses from four seeds,
    its optima 1% apart, as an apogee band makes every nose change infeasible; the smallest motor
@@ -11441,8 +11448,10 @@ re-checked on the winner by flying it again. CMA-ES (ADR-138) draws real numbers
    past it builds its shape's supersonic table (0.2 to 0.3 s in release). A free length makes
    every design a new shape; fixed, the example shares one table per nose
    (`Simulation::share_supersonic_table`) and runs in 3.5 s in release and 32 s in debug, where CI
-   runs it. The winning plastic nose is one the shock-expansion method doesn't take, so its
-   flight, which tops out at Mach 1.23, uses slender-body theory past Mach 1.2.
+   runs it. The winning plastic nose gets no table: the catalogue lists it 0.05 mm narrower than
+   the tube, and the march refuses any step in the outline above 1e-6 of the area (#87), so its
+   flight, which tops out at Mach 1.23, uses slender-body theory past Mach 1.2. Its effect on the
+   apogee is not measured.
 
 **Consequences.** Any continuous problem runs bit for bit as before (`A` stays 1; the CMA-ES tests
 pass unchanged). `Variable` writes an `integer` field only when true, and reads it as `false`

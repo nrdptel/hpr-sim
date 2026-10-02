@@ -212,10 +212,10 @@ adds a source.
 
 ## Ported
 
-- **CPython** (PSF License 2.0), `Lib/statistics.py`'s `_normal_dist_inv_cdf`: the 45
-  coefficients of M. J. Wichura's AS 241 (1988), the paper's published numbers, transcribed into
-  `hpr_analysis::optimize::normal` and checked against the paper's hash sums. The code around them
-  is written from the paper's algorithm.
+- **CPython** (PSF License 2.0), `Lib/statistics.py`'s `_normal_dist_inv_cdf`: only the 45
+  coefficients of M. J. Wichura's AS 241 (1988), constants the paper publishes, were transcribed
+  from its listing into `hpr_analysis::optimize::normal` and checked against the paper's hash
+  sums. No code was taken; the code around them is written from the paper's algorithm.
 - **RocketPy** (MIT), `rocketpy/motors/solid_motor.py` at v1.13.0: the BATES grain regression
   geometry and the grain-stack inertia, re-derived in closed form in `hpr_motor::grains`, and the
   constant-exhaust-velocity consumption in `hpr_motor::motor`. Its technical documentation

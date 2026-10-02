@@ -47,6 +47,9 @@ struct Parameters {
     c1: f64,
     cc: f64,
     cmu_table_1: f64,
+    c_sigma: f64,
+    d_sigma: f64,
+    chi_n: f64,
 }
 
 #[derive(Deserialize)]
@@ -182,9 +185,15 @@ fn check(name: &str) {
     );
 }
 
-/// The oracle ran the population, margin and Table 1 parameters these runs use: `λ`,
-/// `α = 1/(n λ)`, the positive weights, `μ_eff`, `c₁`, `c_c`, and `c_μ` as Table 1 gives it
-/// (`cmaes` takes a larger `c_μ` with its active weights, recorded beside it).
+/// The oracle ran the population, margin and parameters these runs use: `λ`, `α = 1/(n λ)`, the
+/// positive weights, `μ_eff`, `c₁`, `c_c`, `c_σ`, `d_σ` and `E‖N(0, I)‖`. Its own `c_μ` is 11 to
+/// 14% smaller than Table 1's, which ours is: the fixture records Table 1's formula at the
+/// oracle's `μ_eff` beside it (`cmu_table_1`, worked out by `cmawm_runs.py`).
+///
+/// The weights `ln((λ + 1)/2) − ln i` cancel: the last of 5 or 6 is about a twentieth of the
+/// logarithms it is the difference of. A last-bit difference in `ln` between the fixture's
+/// platform and this one moves it by up to about 20 × 2.2e-16, so the weights are held to 1e-14;
+/// the rest, without such a difference, to 1e-15.
 #[test]
 fn parameters_agree_with_the_oracles() {
     let fixture = fixture();
@@ -202,7 +211,7 @@ fn parameters_agree_with_the_oracles() {
         let ours = run.parameters();
         assert_eq!(ours.mu, theirs.mu);
         for (a, b) in ours.weights.iter().zip(&theirs.weights[..theirs.mu]) {
-            assert!(close(*a, *b), "n = {n}: weight {a} vs {b}");
+            assert!((a / b - 1.0).abs() <= 1e-14, "n = {n}: weight {a} vs {b}");
         }
         assert!(
             close(ours.mu_eff, theirs.mu_eff),
@@ -211,6 +220,17 @@ fn parameters_agree_with_the_oracles() {
         );
         assert!(close(ours.c_1, theirs.c1), "n = {n}: {}", ours.c_1);
         assert!(close(ours.c_c, theirs.cc), "n = {n}: {}", ours.c_c);
+        assert!(
+            close(ours.c_sigma, theirs.c_sigma),
+            "n = {n}: {}",
+            ours.c_sigma
+        );
+        assert!(
+            close(ours.d_sigma, theirs.d_sigma),
+            "n = {n}: {}",
+            ours.d_sigma
+        );
+        assert!(close(ours.chi_n, theirs.chi_n), "n = {n}: {}", ours.chi_n);
         assert!(
             close(ours.c_mu, theirs.cmu_table_1),
             "n = {n}: {}",

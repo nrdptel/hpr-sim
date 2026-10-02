@@ -91,10 +91,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // From the middle motor and nose, a step of one choice.
     let variables = vec![
         Variable::new("motor", 2.0, 1.0)?
-            .within(0.0, 4.0)?
+            .within(0.0, last(MOTORS.len()))?
             .integer()?,
         Variable::new("nose", 1.0, 1.0)?
-            .within(0.0, 3.0)?
+            .within(0.0, last(NOSES.len()))?
             .integer()?,
         Variable::new("nose ballast (kg)", 0.4, 0.15)?.within(0.0, 1.5)?,
         Variable::new("fin span (m)", 0.07, 0.015)?.within(0.03, 0.15)?,
@@ -210,8 +210,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 /// The place a choice's encoded value names in its list.
 fn choice(x: f64) -> usize {
-    // Cast: an integer variable's value is a whole number within its bounds, here 0 to 4.
+    // Cast: an integer variable's value is a whole number within its bounds, 0 to a list's last.
     x as usize
+}
+
+/// The last place in a list of `len` choices, as a variable's high bound.
+fn last(len: usize) -> f64 {
+    // Cast: a handful of choices.
+    (len - 1) as f64
 }
 
 /// The one part in the bundled catalogue that Madcow Rocketry numbers `number`.
@@ -322,7 +328,8 @@ impl Flyer {
     /// Flies `design` on `motor` from a 3 m rail, 85° above the horizon, into 5 m/s of wind from
     /// the west. The least flight margin is searched for inside steps; the most of each margin is
     /// taken at the steps' ends, where the flight keeps them. A margin that isn't defined at some
-    /// step (the rocket unstable there) fails the design.
+    /// step's end fails the design: the rocket is unstable there, or its parts' normal forces
+    /// cancel too nearly for a margin to mean anything.
     fn fly(&mut self, motor: &Motor, design: &Design) -> Result<Flown, Box<dyn Error>> {
         let rocket = design.rocket(motor)?;
         let environment =
@@ -332,9 +339,9 @@ impl Flyer {
             .heading_deg(270.0)
             .settings(self.settings)
             .simulation()?;
-        // The flight is the same, bit for bit, on a shared table as on its own. A nose the
-        // shock-expansion method doesn't cover (a blunt tip) has no table to share, and keeps
-        // slender-body theory past Mach 1.2.
+        // The flight is the same, bit for bit, on a shared table as on its own. A shape with no
+        // table keeps slender-body theory past Mach 1.2, and has none to share: the PNC26K-W is
+        // 0.05 mm narrower than the tube, a step at the joint the table's method doesn't take.
         match &self.shapes[design.nose] {
             Some(shape) => {
                 let _shared = simulation.share_supersonic_table(shape);

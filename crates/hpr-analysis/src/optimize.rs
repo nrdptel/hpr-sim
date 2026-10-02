@@ -49,22 +49,31 @@ use crate::error::AnalysisError;
 /// each generation, `O(n³)` work; 200 variables is far more than a rocket design has.
 pub const MAX_VARIABLES: usize = 200;
 
-/// The largest whole number an integer variable's bound may be, `2⁵³`: every whole number up to
-/// it is an `f64`.
-const MAX_WHOLE: f64 = 9_007_199_254_740_992.0;
+/// The largest whole number an integer variable's bound may be, `2⁵²`: every whole number up to
+/// it, and every threshold halfway between two, is an `f64`.
+const MAX_WHOLE: f64 = 4_503_599_627_370_496.0;
 
-/// Checks an integer variable's bounds: whole numbers within `±2⁵³`.
+/// The whole number nearest `x`, a tie going to the lower, and 0 rather than −0. Exact: below
+/// 2⁵² `⌊x⌋ + 0.5` is an `f64`, and from there on `x` is whole (`x − 0.5` or `x − ⌊x⌋` would
+/// round).
+pub(crate) fn nearest_whole(x: f64) -> f64 {
+    let floor = x.floor();
+    let nearest = if x > floor + 0.5 { floor + 1.0 } else { floor };
+    nearest + 0.0
+}
+
+/// Checks an integer variable's bounds: whole numbers within `±2⁵²`.
 fn check_whole(low: f64, high: f64) -> Result<(), AnalysisError> {
     let whole = |x: f64| x.fract() == 0.0 && x.abs() <= MAX_WHOLE;
     if !whole(low) {
         return Err(AnalysisError::Domain {
-            what: "integer variable's low bound (a whole number within ±2⁵³)",
+            what: "integer variable's low bound (a whole number within ±2⁵²)",
             value: low,
         });
     }
     if !whole(high) {
         return Err(AnalysisError::Domain {
-            what: "integer variable's high bound (a whole number within ±2⁵³)",
+            what: "integer variable's high bound (a whole number within ±2⁵²)",
             value: high,
         });
     }
@@ -72,8 +81,8 @@ fn check_whole(low: f64, high: f64) -> Result<(), AnalysisError> {
 }
 
 /// A number the optimizer may change: its name, where it starts, the size of its first steps,
-/// the range it must stay in, and whether it takes only whole numbers. It serializes as its six
-/// fields (an unbounded side as `null`; `integer` may be left out, for `false`), and reads back
+/// the range it must stay in, and whether it takes only whole numbers. It serializes as its fields
+/// (an unbounded side as `null`; `integer` only when true, and read as `false` when absent), and reads back
 /// through [`Variable::new`], [`Variable::within`] and [`Variable::integer`]'s checks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "VariableData", into = "VariableData")]
@@ -165,7 +174,7 @@ impl Variable {
     /// # Errors
     ///
     /// [`AnalysisError::Domain`] for a NaN bound, a `high` not above `low`, a start outside
-    /// the range, or for an integer variable bounds that aren't whole numbers within `±2⁵³`.
+    /// the range, or for an integer variable bounds that aren't whole numbers within `±2⁵²`.
     pub fn within(mut self, low: f64, high: f64) -> Result<Self, AnalysisError> {
         if low.is_nan() || low == f64::INFINITY {
             return Err(AnalysisError::Domain {
@@ -203,8 +212,8 @@ impl Variable {
     ///
     /// # Errors
     ///
-    /// [`AnalysisError::Domain`] for bounds that aren't whole numbers within `±2⁵³` (set them
-    /// with [`Variable::within`], before or after).
+    /// [`AnalysisError::Domain`] for bounds that aren't whole numbers within `±2⁵²`: set them
+    /// first with [`Variable::within`], which checks them again if called after.
     pub fn integer(mut self) -> Result<Self, AnalysisError> {
         check_whole(self.low, self.high)?;
         self.integer = true;
@@ -222,10 +231,8 @@ impl Variable {
     /// (arXiv:2205.13482, §4.1, p. 5), with thresholds halfway between neighbouring values.
     pub fn encode(&self, x: f64) -> f64 {
         if self.integer {
-            // `x − ⌊x⌋` is exact, where `x − 0.5` would round past 2⁵²; `+ 0.0` turns −0 into 0.
-            let floor = x.floor();
-            let nearest = if x - floor > 0.5 { floor + 1.0 } else { floor };
-            nearest.clamp(self.low, self.high) + 0.0
+            // `+ 0.0` turns a bound written −0 into 0.
+            nearest_whole(x).clamp(self.low, self.high) + 0.0
         } else {
             x
         }
@@ -514,20 +521,37 @@ mod tests {
             (f64::MAX, 3.0),
             (-0.0, 0.0),
             (-0.3, 0.0),
+            // `x + 1` would round to 0.5 here, a tie.
+            (-0.499_999_999_999_999_94, 0.0),
+            (0.499_999_999_999_999_94, 0.0),
         ] {
             // Bits, so that −0 isn't taken for 0.
             assert_eq!(k.encode(x).to_bits(), value.to_bits(), "{x}");
         }
-        // Past 2⁵², where `x − 0.5` would round to an even neighbour.
-        let big = 4_503_599_627_370_497.0; // 2⁵² + 1
+        // Up to 2⁵², where `x − 0.5` would round to an even neighbour; past it, clamped.
         let wide = Variable::new("k", 0.0, 1.0)
             .unwrap()
             .within(-MAX_WHOLE, MAX_WHOLE)
             .unwrap()
             .integer()
             .unwrap();
-        assert_eq!(wide.encode(big), big);
-        assert_eq!(wide.encode(MAX_WHOLE - 1.0), MAX_WHOLE - 1.0);
+        for (x, value) in [
+            (MAX_WHOLE - 1.0, MAX_WHOLE - 1.0),
+            (MAX_WHOLE - 0.5, MAX_WHOLE - 1.0),
+            (MAX_WHOLE, MAX_WHOLE),
+            (MAX_WHOLE + 1.0, MAX_WHOLE),
+            (-MAX_WHOLE + 0.5, -MAX_WHOLE),
+        ] {
+            assert_eq!(wide.encode(x), value, "{x}");
+        }
+        assert!(
+            Variable::new("k", 0.0, 1.0)
+                .unwrap()
+                .within(0.0, 2.0 * MAX_WHOLE)
+                .unwrap()
+                .integer()
+                .is_err()
+        );
         let x = Variable::new("x", 0.0, 1.0).unwrap();
         assert_eq!(x.encode(0.7), 0.7);
     }

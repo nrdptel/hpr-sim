@@ -27,8 +27,8 @@ on stability and speed off the rail. It needs some Rust.
 >   [`optimize/cmaes.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/cmaes.rs)).
 > - **Checked by re-flying:** the rocket design each example finds is flown again from scratch,
 >   and again with the flight's numerical integration 100 times stricter
->   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m; for the
->   first example, within 2 mm, measured.
+>   ([tolerances](glossary.md#tolerance)). Both reach apogee within 0.1 m of 3,048 m (the
+>   first example's within 2 mm, measured).
 > - **Limits** (a minimum stability margin, say): held to three test problems whose answers on
 >   their limits are known exactly, from 20 seeds each, to 10⁻¹⁰
 >   ([`tests/constrained.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/constrained.rs)).
@@ -261,7 +261,7 @@ next. It returns the result once the run stops.
 - **Target:** for a target apogee, the squared miss you accept: `0.1 * 0.1` for 0.1 m. Without a
   target, a run goes on until it converges, which can take many more flights than a hit needs.
 - **Evaluations:** a cap on flights, 10,000 by default. The first example's two variables needed
-  300 flights, the second's four 360; the ten-variable test functions take 1,600 to 6,500
+  300 flights, the second example's four variables 360; the ten-variable test functions take 1,600 to 6,500
   evaluations to converge.
 - **Population:** leave it at the default unless the output has many local minima. Then a larger
   population ([`Cmaes::with_population`]) searches more widely, at more flights per generation.
@@ -360,9 +360,12 @@ whole ascent, from the rail exit to apogee:
 - at least 30 m/s off the rail (§10.2.1).
 
 The margins change through the flight: the centre of mass moves forward as the motor burns, so
-the margin grows, and the flight margin changes with speed as well. The example takes the least
-flight margin of the ascent, which the flight searches for inside its steps, and the largest of
-each margin at the end of every integration step.
+the margin grows, and the flight margin changes with speed as well. For the lower limit the
+example uses the least flight margin of the ascent, which the flight finds inside its steps, not
+only at their ends. For the upper limits it uses the largest static and flight margins seen at
+the end of each integration step. The static margin only grows during the burn and stays put
+after it, so its largest is exact. A peak of the flight margin between two step ends could be
+missed; the winner's largest, 4.83 calibres, is well under its limit of 6.
 
 The heart of it, abridged from the example. A choice is an integer variable: set its bounds with
 `within`, then mark it `integer`, and use the whole number your model is given as a place in your
@@ -435,17 +438,19 @@ None of its J300LR designs kept them all. It settled on the K400C and stopped on
 centimetre of the target. Flown again, with the integrator's tolerances as set and then 100 times
 tighter, the winner is within 0.1 m of 3,048 m, and keeps every limit over the whole ascent.
 
-Read the table as what this one run saw, not as what each motor can do: a few dozen designs say
-little about a motor. The answer is not unique. A scan of every motor and nose over the ballast
+Read the table as what this one run saw, not as what each motor can do: a few designs, or a few
+dozen, say little about a motor. The answer is not unique. A scan of every motor and nose over the ballast
 and the fin span, run once on the development machine and not kept, found that the J760, the
 K400C and the K940 can each hit 3,048 m within the limits, with any of the four noses. A hit with
 any of them scores the same, so another seed may well settle on another. To prefer one, say so in
 the goal. A small cost for liftoff mass is one way.
 
-The counts and the design are this run's. CI checks the output on macOS, Linux and Windows,
-whose last bits of `ln` and `exp` differ. The run was also checked on the development machine with
-every flight perturbed (the integrator's tolerance changed by up to 1%) and with the step size
-moved by a few bits each generation; neither changed a line of the output.
+Unlike the first example's counts, this run's come out the same on all three operating systems:
+CI checks the output on macOS, Linux and Windows, whose last bits of `ln` and `exp` differ. On
+the development machine the run was also tried with every flight perturbed (the integrator's
+tolerance changed by up to 1%) and with the step size moved by a few bits each generation, and
+neither changed a line of the output; those trials are not kept. Your own runs repeat bit for bit
+on one machine from the same seed, but on another machine a run can take another path.
 
 A goal that changes only when the choice changes, such as "the smallest motor that can do it",
 gives the search nothing to follow between choices. For that question, run the optimizer once
@@ -454,12 +459,17 @@ design that keeps the limits.
 
 The body tube's length is fixed on purpose. Past Mach 1.2 a flight needs a table of the body's
 supersonic pressures, which takes a fifth of a second or more to build. Designs with the same
-outside shape can share one table, so with the length fixed the example builds at most four,
-one per nose cone. With the length a variable, every design would build its own, and the run
-would take minutes. The example shows how to share the table, in its `Flyer::fly`. The winning
-plastic nose cone is one whose supersonic pressures the method behind the table doesn't cover, so
-for the short stretch of its flight past Mach 1.2 (its top speed is Mach 1.23) hpr-sim falls back
-on slender-body theory ([Bodies faster than sound](physics/aero.md#bodies-faster-than-sound)).
+outside shape can share one table, so with the length fixed the example builds at most three,
+one per fiberglass nose cone (the next paragraph says why the plastic one has none). With the length a variable, every design would build its own, and the run
+would take minutes. The example shows how to share the table, in its `Flyer::fly`.
+
+The winning plastic nose cone gets no table at all. The catalogue lists it 0.05 mm narrower than
+the tube (2.638 in against 2.640 in), and the method behind the table doesn't yet take a step in
+the body's outline, however small ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
+So for the short stretch of its flight past Mach 1.2 (its top speed is Mach 1.23) hpr-sim falls
+back on slender-body theory for the body's normal force, its lift at an angle ([Bodies faster than
+sound](physics/aero.md#bodies-faster-than-sound)). How much that moves the apogee hasn't been
+measured; the flight spends only a moment above Mach 1.2.
 
 ### Checked against
 
