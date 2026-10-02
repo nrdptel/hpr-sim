@@ -146,6 +146,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-138 | M6.2 split a to e; M6.2a: CMA-ES (Hansen's tutorial, Table 1, positive weights only) over continuous variables, worked in each variable divided by its step, with optional bounds by resampling, ask-and-tell (`Run::tell`), Jacobi eigen-decomposition each generation; held to four test functions' minima, to pycma 4.5.0's evaluation counts (medians within 25%) and to a dense recomputation of every generation; the 3,048 m problem re-flown from a fresh build and at 100× tighter tolerances | accepted |
 | ADR-139 | M6.2b split b1, b2; M6.2b1: constraints for CMA-ES by Deb's (2000) feasibility rules (`Evaluation`, `Run::tell_constrained`), no penalty weight; infeasible candidates ranked, not redrawn; a target and TolFun count only feasible points; held to the sphere with `x₀ ≥ 1`, the tangent problem and CEC 2006 g06 from 20 seeds | accepted |
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
+| ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within 25%); a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 
 ---
 
@@ -11458,3 +11459,71 @@ pass unchanged). `Variable` writes an `integer` field only when true, and reads 
 when absent. Left out:
 categorical choices, the margin as a setting, and a guarantee of the best of several feasible
 choices; NSGA-II (M6.2c) is next.
+
+## ADR-141: Several goals by NSGA-II (2026-10-02)
+
+**Context.** M6.2c asks for NSGA-II: ZDT1 to ZDT3 fronts within a stated generational distance,
+and a two-goal rocket problem that gives a front. CMA-ES (ADR-138 to 140) finds one design; a
+trade-off needs the set nothing dominates.
+
+**Decision.**
+
+1. **NSGA-II as published** (K. Deb, A. Pratap, S. Agarwal, T. Meyarivan, IEEE TEC 6(2),
+   182–197, 2002): fast non-dominated sorting (p. 184), crowding distance with infinite ends and
+   each goal's range taken over the front (p. 185; the paper doesn't say front or population;
+   pymoo takes the front), the crowded comparison in binary tournaments, and the `2N` survival
+   with the split front cut by crowding, largest first (p. 186). A goal of zero or infinite range
+   in a front adds nothing between its ends. Constrained domination (§VI, p. 192) handles limits
+   and failures: a failed design is violation `+∞`, its goals set aside as `+∞`. Ties keep the
+   parents-then-children order (stable sorts), and a tournament tie is a coin toss. Tournament
+   pairs are drawn uniformly, two different designs each; the paper gives no pairing.
+2. **Operators**: SBX (Deb and Agrawal 1995) with each variable crossed with probability ½ (Deb
+   and Beyer 1999, p. 8) and the children swapped with probability ½; polynomial mutation (Deb
+   and Goyal 1996). Both are cut at the bounds by renormalising the density inside them, Deb and
+   Agrawal's rule (p. 143). Its equations appear in no paper we could reach; pymoo 0.6.2's
+   `sbx.py` and `pm.py` (Apache-2.0) print them, were read, and hpr's comments derive them again
+   (SBX: the unbounded inverse at `u′ = uα/2`; mutation: each half truncated, keeping mass ½).
+   Unit tests hold the spread and step distributions to the closed forms within five standard
+   errors over 100,000 draws. Deb and Deb (2014) give a different bounded mutation, not used.
+   The defaults are the paper's: 100 designs, 250 generations, `p_c = 0.9`, `η_c = η_m = 20`,
+   `p_m = 1/n`. A generation draws from one stream, `for_stream(seed, [generation])`, before its
+   children are flown. Every variable needs finite bounds (the first population is uniform
+   between them); integer variables are refused for now.
+3. **The stated distance.** GD is Deb's Υ (mean distance from each front design to the true
+   front) taken to the curve itself, not to `H = 500` points: a window of `f₁ ± d₀` searched on
+   a 400-step grid and refined by golden section (`Zdt::distance_to_front`, checked against a
+   10⁶-point scan). IGD is the mean distance from 1,000 points of the true front (`f₁` evenly
+   spaced) to the nearest design. pymoo 0.6.2, set to the paper's settings (rank-and-crowding
+   tournaments, which aren't its default, no duplicate removal), ran seeds 1 to 20; the bounds
+   were fixed from its runs before hpr's were measured: each hpr run within twice pymoo's worst,
+   and hpr's median at most 25% above pymoo's, for GD and IGD. The bound on every run is GD
+   2.92e-3 (ZDT1), 2.82e-3 (ZDT2), 1.31e-3 (ZDT3). Measured: hpr's median GD 5% to 15% above
+   pymoo's (ZDT1 1.22e-3 against 1.10e-3), IGD within 3%, the worst runs 1.7 to 2.1 times inside
+   the bounds. hpr's `generational_distance` gives pymoo's own GD (`pymoo.indicators.gd`, its 500
+   points) to 10⁻¹². Deb et al.'s Table II reports a mean Υ of 0.033, 0.072 and 0.115 on these
+   problems, far above both codes' here (about 0.001); why was not investigated. pymoo's IGD goes through
+   moocore (LGPL-2.1-or-later), so it is not used. moocore is installed as pymoo's dependency in
+   the oracles' environment only, run-only like the OpenRocket jar; recorded in the notices.
+4. **ZDT3's pieces** were solved to 40 digits (mpmath `findroot`): each ends where the curve's
+   slope is zero, and the next starts where it falls below that end. Tests check both equations
+   and a 200,001-point scan of which points are undominated. pymoo prints the second start as
+   0.182228780, a digit short of 0.1822287280.
+5. **The rocket problem** (`crates/hpr/examples/pareto_front.rs`): ADR-138's 66 mm J760 rocket,
+   its body fixed at 1.0 m so every design shares one supersonic table, nose ballast 0 to 0.8 kg
+   and fin span 4 to 10 cm free, goals the apogee and the static margin at launch mass at Mach
+   0.3 (both maximized), at least 1.5 calibres. 20 designs for 25 generations, 500 flights, 54 s
+   in debug. Its 20 front designs are flown again from fresh builds, each with its own table, to
+   the bit. CMA-ES alone at 2.5 calibres (200 flights, a fixed count so the run doesn't depend on
+   a tolerance's last bits) reaches 3,052.9 m; the front, read straight between its designs
+   either side, gives 3,049.6 m, 0.11% apart, the example's check being 0.5%. A first try with
+   24 designs for 15 generations and wider ranges spread its front from 1.5 to 5.3 calibres and
+   fell 0.66% short of CMA-ES at 2.5 calibres with 12 generations; the ranges were narrowed and
+   the generations raised. The output was the same from a release build and with the flight's
+   relative tolerance moved by four ulps (neither committed), so it is expected to match on every
+   platform.
+
+**Consequences.** `hpr_analysis::optimize::nsga2` (`Nsga2`, `Run`, `Goals`, `Member`, `Front`,
+`dominates`, `generational_distance`, `inverted_generational_distance`) and
+`benchmark::zdt`; `tests/nsga2.rs` with `tests/fixtures/nsga2/pymoo.json`. Left out: integer
+variables in NSGA-II, reference problems of three or more goals (DTLZ), and a hypervolume
+measure. EGO (M6.2d) is next.

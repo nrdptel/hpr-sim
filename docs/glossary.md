@@ -826,6 +826,10 @@ fin set has its own, and the rocket's is their sum; a pointed nose cone's is 2. 
 slopes as weights. See [Aerodynamics](physics/aero.md#conventions).
 
 
+## NSGA-II
+
+The non-dominated sorting genetic algorithm II, K. Deb and co-authors' [optimization](#optimization) method for several goals at once. It breeds a population of designs, sorts parents and children into fronts by which designs beat which, and keeps the best half, spread out along the front. It finds a [Pareto front](#pareto-front) rather than one design. See [Trade-offs](optimization.md#trade-offs-a-pareto-front).
+
 ## Octave band
 
 A range of frequencies, or of wavelengths, whose top is twice its bottom. The turbulence test splits the gust spectrum into octave bands and checks each against the Dryden formula. See [Turbulence](physics/turbulence.md#tests-that-pin-this).
@@ -872,6 +876,10 @@ parallel axis: add the part's mass times the square of the perpendicular distanc
 axes. A part on the rocket's centre line adds nothing to the roll inertia this way, only to pitch
 and yaw. hpr uses its tensor form to add up the inertias of a rocket's parts. See
 [Mass properties](physics/mass.md#frames-and-conventions).
+
+## Pareto front
+
+The designs that trade two or more goals off against each other: for each, one goal can only be bettered by giving up some of another. A design *dominates* another when it is no worse in any goal and better in at least one; the front is the designs nothing dominates. Higher apogee against a larger stability margin is one such trade-off. See [Trade-offs](optimization.md#trade-offs-a-pareto-front).
 
 ## Parquet data page
 

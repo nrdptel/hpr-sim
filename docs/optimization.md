@@ -7,8 +7,10 @@ stable. An *optimizer* searches for that design. It tries designs, flies each on
 it learns to choose better ones, until it finds the best it can. This page shows hpr-sim's
 optimizer, [CMA-ES](glossary.md#cma-es). It runs on test functions whose answers are known, then
 finds the nose ballast and body length that send a rocket to 3,048 m with a chosen stability
-margin. Last, it chooses a motor and a catalogue nose cone as well, within a competition's limits
-on stability and speed off the rail. It needs some Rust.
+margin. Then it chooses a motor and a catalogue nose cone as well, within a competition's limits
+on stability and speed off the rail. Last, a second optimizer, [NSGA-II](glossary.md#nsga-ii),
+weighs two goals against each other: how much apogee each extra calibre of stability costs. It
+needs some Rust.
 
 > **How far to trust it.** The optimizer is tested against answers known exactly, and against the
 > reference implementation by its author. On a rocket, its answer is only as good as hpr-sim's
@@ -42,10 +44,17 @@ on stability and speed off the rail. It needs some Rust.
 >   The second example chooses a motor and a nose cone that hit 3,048 m, checked by flying them
 >   again ([Choices](#choices-a-motor-a-catalogue-part)). It finds *a* design that does; it
 >   doesn't promise the best of several that would.
-> - **Left out, for now:** trade-offs between goals (several goals can only be folded into one
->   number, as the first example does), and optimizing a [Monte Carlo](glossary.md#monte-carlo)
->   run's statistics. They are the next steps of [M6.2](decisions-and-roadmap.md#m6-2), the
->   optimization milestone. There is no command-line or Python front end yet.
+> - **Trade-offs** between goals (a [Pareto front](glossary.md#pareto-front)): NSGA-II is held to
+>   three test problems whose fronts are known exactly, from 20 seeds each, and to pymoo, an
+>   outside implementation run with the same settings. Every run's front lies within twice
+>   pymoo's worst distance from the true front (the test's bound), and the median distance is
+>   5% to 15% above pymoo's (the test allows 25%;
+>   [Trade-offs](#trade-offs-a-pareto-front)). The third example's front is flown again design by
+>   design, and at one margin it is within 0.11% of the apogee CMA-ES finds alone.
+> - **Left out, for now:** optimizing a [Monte Carlo](glossary.md#monte-carlo) run's statistics,
+>   and Bayesian optimization for designs that are slow to evaluate. They are the next steps of
+>   [M6.2](decisions-and-roadmap.md#m6-2), the optimization milestone. There is no command-line
+>   or Python front end yet.
 
 ## What the optimizer does
 
@@ -511,13 +520,166 @@ stuck on a wrong value. That was a one-off check, recorded in
 [ADR-140](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-140-discrete-choices-by-cma-es-with-margin-2026-10-02),
 not run in CI.
 
+## Trade-offs: a Pareto front
+
+Often two goals pull against each other. Bigger fins or more nose weight make a rocket more
+stable, and both cost apogee. There is no single best design then. Instead there is a set of
+designs where one goal can only be bettered by giving up some of the other: the [Pareto
+front](glossary.md#pareto-front). A design *dominates* another when it is no worse in either goal
+and better in at least one; the front is the designs nothing dominates. Knowing the front shows
+what each extra calibre of stability costs, before you pick one design from it.
+
+CMA-ES finds one design. For a front, hpr-sim has [NSGA-II](glossary.md#nsga-ii), a genetic
+algorithm by K. Deb and co-authors (2002). It keeps a population of designs and, each
+generation:
+
+1. breeds as many children as there are parents. Each pair of parents is chosen by two
+   tournaments: of two designs picked at random, the one on a better front wins, or, on the same
+   front, the one further from its neighbours. A pair's children mix their parents' values
+   (*crossover*), then a few values are nudged at random (*mutation*);
+2. flies the children;
+3. sorts parents and children together into fronts: the designs nothing dominates, then those
+   only the first front dominates, and so on;
+4. keeps the best half, front by front. The front that doesn't fit whole keeps its designs with
+   the most room around them, so the front stays spread out instead of bunching up.
+
+Each variable needs a low and a high bound: the first generation is drawn evenly between them,
+and the variable's start and step are not used. The defaults are the paper's: 100 designs, 250
+generations, crossover of 90% of pairs and mutation of one variable in `n` on average
+([`Nsga2`]). Goals are made as small as they can be, so give the negative of a goal to maximize.
+Limits work as they do for CMA-ES: [`Goals::constrained`] takes each limit as a number `g ≤ 0`,
+and a design that keeps every limit beats one that doesn't. A design that can't be flown is
+[`Goals::failed`], behind every other.
+
+### The example
+
+The example program
+[`crates/hpr/examples/pareto_front.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr/examples/pareto_front.rs)
+takes the 66 mm rocket on a J760 from [An example](#an-example), with its body fixed at 1.0 m. It
+varies two things, the nose ballast (0 to 0.8 kg) and the fins' span (4 to 10 cm), for two goals:
+the highest apogee, and the largest static margin at launch mass, at Mach 0.3. Every design must
+keep at least 1.5 calibres. The heart of it, abridged:
+
+```rust,ignore
+let variables = vec![
+    Variable::new("nose ballast (kg)", 0.3, 0.15)?.within(0.0, 0.8)?,
+    Variable::new("fin span (m)", 0.06, 0.015)?.within(0.04, 0.10)?,
+];
+let optimizer = Nsga2::new(variables, 2)?.with_population(20)?.with_generations(25)?;
+let front = optimizer.minimize_constrained(seed, |x| match flyer.design(x[0], x[1]) {
+    // Both goals as large as they can be: their negatives as small.
+    Ok((apogee, margin)) => Goals::constrained(vec![-apogee, -margin], &[1.5 - margin]),
+    Err(_) => Goals::failed(), // a design that can't fly ranks last
+})?;
+for member in &front.members {
+    // member.point: ballast and span; member.objectives: −apogee and −margin
+}
+```
+
+`flyer.design` is the example's own: it builds the rocket, works out its margin and flies it. Run
+it from a copy of the repository with:
+
+```text
+cargo run --example pareto_front -p hpr
+```
+
+It takes about a minute in a debug build. It prints:
+
+<!-- quote: crates/hpr/examples/pareto_front.output.txt -->
+```text
+A 66 mm rocket on a J760: how much apogee each calibre of static margin costs, over
+its nose ballast (0 to 0.8 kg) and fin span (4 to 10 cm), with a margin of at least
+1.5 calibres at launch mass, at Mach 0.3
+Not yet validated: see the Accuracy page before trusting these numbers.
+NSGA-II: 20 designs a generation, 25 generations, 500 flights (seed 2026)
+The front: 20 designs, each flown again to the same apogee and margin
+
+margin (cal)   apogee on the front (m, between the designs either side)
+         2.0       3110
+         2.5       3050
+         3.0       2990
+         3.5       2940
+
+At 2.5 calibres, CMA-ES alone (200 flights): apogee 3050 m; the front within 0.5%: yes
+```
+
+Between 2 and 3.5 calibres, each extra half calibre of margin costs this rocket 50 to 60 m of
+apogee. The table reads the front between its two designs either side of each margin, along a
+straight line. Two checks back the front up. Every one of its 20 designs is flown again from a
+fresh build and gives the same apogee and margin to the last bit. And at 2.5 calibres, CMA-ES
+alone, told to find the highest apogee with at least that margin, reaches 3,052.9 m in 200
+flights, against the front's 3,049.6 m there: 0.11% apart (both measured on this example, not
+printed).
+
+Look at the designs and the front splits in two. Up to about 3 calibres, the best designs add
+nose ballast and keep the fins small. Past it, the ballast sits at its 0.8 kg limit and only the
+fins grow. Widen the ballast's range and that part of the front would move.
+
+### Checked against
+
+Three test problems of E. Zitzler, K. Deb and L. Thiele (2000), with 30 variables from 0 to 1
+each, whose fronts are known exactly
+([`benchmark::zdt`](api/hpr_analysis/optimize/benchmark/zdt/index.html)):
+
+| Problem | The front | What it tests |
+|---|---|---|
+| ZDT1 | `f₂ = 1 − √f₁`, `f₁` from 0 to 1 | a convex front |
+| ZDT2 | `f₂ = 1 − f₁²` | a concave front |
+| ZDT3 | `f₂ = 1 − √f₁ − f₁ sin(10π f₁)`, in five separate pieces | a broken front |
+
+Each is run from 20 seeds with the paper's settings: 100 designs for 250 generations, 25,000
+evaluations. Two numbers measure a run's front against the true one:
+
+- the **generational distance** (GD): the mean, over the front's designs, of each one's distance
+  to the true front. Small when the front lies on the true one.
+- the **inverted generational distance** (IGD): the mean, over 1,000 points spread along the
+  true front, of each one's distance to the nearest design. Small only if the front also covers
+  all of the true one, evenly.
+
+hpr-sim measures GD to the true front's curve itself, not to points along it. The same problems
+are run with pymoo 0.6.2, an outside implementation (Apache-2.0) by J. Blank and K. Deb, set up
+as the paper describes, from seeds 1 to 20
+([`pymoo_runs.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/nsga2/pymoo_runs.py)).
+The rules were set from pymoo's runs before hpr-sim's were measured: every hpr-sim run within
+twice pymoo's worst, and hpr-sim's median at most 25% above pymoo's. Measured:
+
+| Problem | Measure | hpr-sim median | hpr-sim worst | pymoo median | pymoo worst | Bound on every run |
+|---|---|---|---|---|---|---|
+| ZDT1 | GD | 1.22e-3 | 1.73e-3 | 1.10e-3 | 1.46e-3 | 2.92e-3 |
+| ZDT1 | IGD | 5.06e-3 | 5.46e-3 | 4.96e-3 | 5.48e-3 | 1.10e-2 |
+| ZDT2 | GD | 1.13e-3 | 1.32e-3 | 9.85e-4 | 1.41e-3 | 2.82e-3 |
+| ZDT2 | IGD | 4.95e-3 | 5.23e-3 | 5.08e-3 | 5.36e-3 | 1.07e-2 |
+| ZDT3 | GD | 4.74e-4 | 6.43e-4 | 4.50e-4 | 6.53e-4 | 1.31e-3 |
+| ZDT3 | IGD | 5.54e-3 | 3.41e-2 | 5.51e-3 | 3.39e-2 | 6.78e-2 |
+
+hpr-sim's fronts lie 5% to 15% further from the true front than pymoo's, at the median, and
+cover it as well (IGD within 3%). One run in 20 of each, on ZDT3, loses one of the five pieces,
+which is why its worst IGD is six times its median. These come from
+`cargo test -p hpr-analysis --test nsga2 -- --nocapture`
+([`tests/nsga2.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/tests/nsga2.rs)).
+The same test checks hpr-sim's [`generational_distance`] against pymoo's own, on pymoo's fronts
+and 500 reference points, to 10⁻¹².
+
+Unit tests check the pieces by hand
+([`optimize/nsga2.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/nsga2.rs)):
+
+- fronts and crowding distances of small sets worked out on paper;
+- that crossover spreads children by the distribution its authors give, and mutation steps
+  likewise, each within five standard errors over 100,000 draws;
+- that children never leave a variable's bounds;
+- that a failed design, or one breaking a limit, ranks behind every design that keeps them.
+
+ZDT3's five pieces were solved to 40 digits and are checked against the equations that define
+their ends ([`benchmark.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-analysis/src/optimize/benchmark.rs)).
+They agree with pymoo's to its ten digits, except where pymoo prints the second piece's start as
+0.182228780, a digit short of 0.1822287280.
+
 ## Left out
 
 - A choice is a whole number in a list you order. There is no separate handling for choices with
   no order, beyond putting alike ones next to each other.
 - Limits are inequalities only. For an equality `h = 0`, write `|h| − ε ≤ 0` with a small `ε`.
-- No trade-offs between goals (a Pareto front): several goals can only be folded into one
-  number, as the example does.
+- NSGA-II takes only continuous variables with two bounds: no choices from a list yet.
 - No optimizing of a Monte Carlo run's statistics, such as the chance of landing within a
   distance.
 - No command-line or Python front end yet.
@@ -533,3 +695,7 @@ The API reference is
 [`Optimum`]: api/hpr_analysis/optimize/cmaes/struct.Optimum.html
 [`Run`]: api/hpr_analysis/optimize/cmaes/struct.Run.html
 [`Cmaes::with_population`]: api/hpr_analysis/optimize/cmaes/struct.Cmaes.html#method.with_population
+[`Nsga2`]: api/hpr_analysis/optimize/nsga2/struct.Nsga2.html
+[`Goals::constrained`]: api/hpr_analysis/optimize/nsga2/struct.Goals.html#method.constrained
+[`Goals::failed`]: api/hpr_analysis/optimize/nsga2/struct.Goals.html#method.failed
+[`generational_distance`]: api/hpr_analysis/optimize/nsga2/fn.generational_distance.html

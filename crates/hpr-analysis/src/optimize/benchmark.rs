@@ -210,3 +210,303 @@ pub mod mixed {
         sphere(continuous) + binary.len() as f64 - binary.iter().sum::<f64>()
     }
 }
+
+/// Two-goal test problems with known Pareto fronts, for [`nsga2`](super::nsga2): ZDT1, ZDT2 and
+/// ZDT3 of E. Zitzler, K. Deb and L. Thiele, "Comparison of multiobjective evolutionary
+/// algorithms: empirical results", *Evolutionary Computation* 8(2), 173–195 (2000),
+/// <https://doi.org/10.1162/106365600568202>, §3 (p. 177), each of `n` variables in `[0, 1]`
+/// (the paper's `n = 30`):
+///
+/// `f₁ = x₀`, `g = 1 + 9 Σᵢ₌₁ⁿ⁻¹ xᵢ / (n − 1)`, `f₂ = g h(f₁, g)`.
+///
+/// The front is `g = 1`, every variable but the first zero, where `f₂ = h(f₁, 1)`:
+///
+/// | Problem | `h(f₁, g)` | The front |
+/// |---|---|---|
+/// | ZDT1 | `1 − √(f₁/g)` | `f₂ = 1 − √f₁`, convex, `f₁` from 0 to 1 |
+/// | ZDT2 | `1 − (f₁/g)²` | `f₂ = 1 − f₁²`, concave |
+/// | ZDT3 | `1 − √(f₁/g) − (f₁/g) sin(10π f₁)` | five separate pieces of `f₂ = 1 − √f₁ − f₁ sin(10π f₁)` ([`zdt::ZDT3_PIECES`]) |
+pub mod zdt {
+    /// One of the three problems.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Zdt {
+        /// ZDT1: a convex front.
+        One,
+        /// ZDT2: a concave front.
+        Two,
+        /// ZDT3: a front in five pieces.
+        Three,
+    }
+
+    /// The `f₁` ranges of ZDT3's five pieces of front. Along `f₂ = 1 − √f₁ − f₁ sin(10π f₁)`,
+    /// a point is on the front only if `f₂` is below its value at every smaller `f₁`: each piece
+    /// ends at a local minimum of the curve (where its slope is zero), and the next starts where
+    /// the curve, falling again, first drops below that minimum. These were solved to 40 digits
+    /// (mpmath 1.3.0's `findroot`) and agree with the ten-digit ranges published for ZDT3; the
+    /// tests check each end's equation.
+    pub const ZDT3_PIECES: [(f64, f64); 5] = [
+        (0.0, 0.083_001_534_926_911_632_733),
+        (0.182_228_728_029_399_779_82, 0.257_762_363_387_830_221_57),
+        (0.409_313_674_808_656_841_7, 0.453_882_104_088_830_165_79),
+        (0.618_396_794_439_265_792_95, 0.652_511_703_804_662_519_04),
+        (0.823_331_798_326_632_738_07, 0.851_832_865_436_413_895_85),
+    ];
+
+    /// The whole range of `f₁`, ZDT1's and ZDT2's one piece of front.
+    const WHOLE: [(f64, f64); 1] = [(0.0, 1.0)];
+
+    /// `g = 1 + 9 Σᵢ₌₁ⁿ⁻¹ xᵢ / (n − 1)`; 1 for a single variable.
+    fn g(x: &[f64]) -> f64 {
+        let rest = x.get(1..).unwrap_or(&[]);
+        if rest.is_empty() {
+            return 1.0;
+        }
+        // Cast: at most 200 variables.
+        1.0 + 9.0 * rest.iter().sum::<f64>() / rest.len() as f64
+    }
+
+    impl Zdt {
+        /// `h(f₁, g)`.
+        fn h(self, f1: f64, g: f64) -> f64 {
+            let r = f1 / g;
+            match self {
+                Self::One => 1.0 - r.sqrt(),
+                Self::Two => 1.0 - r * r,
+                Self::Three => 1.0 - r.sqrt() - r * (10.0 * std::f64::consts::PI * f1).sin(),
+            }
+        }
+
+        /// The problem's two goals at `x`, `[f₁, f₂]`; `x₀` is taken as 0 if `x` is empty.
+        pub fn evaluate(self, x: &[f64]) -> Vec<f64> {
+            let f1 = x.first().copied().unwrap_or(0.0);
+            let g = g(x);
+            vec![f1, g * self.h(f1, g)]
+        }
+
+        /// The curve the front lies on, `f₂ = h(f₁, 1)`, at `f₁`.
+        pub fn front_f2(self, f1: f64) -> f64 {
+            self.h(f1, 1.0)
+        }
+
+        /// The `f₁` ranges of the front's pieces: one for ZDT1 and ZDT2, five for ZDT3.
+        pub fn pieces(self) -> &'static [(f64, f64)] {
+            match self {
+                Self::One | Self::Two => &WHOLE,
+                Self::Three => &ZDT3_PIECES,
+            }
+        }
+
+        /// `points` points of the front, `f₁` evenly spaced from 0 to 1, those outside ZDT3's
+        /// pieces left out: a reference for
+        /// [`inverted_generational_distance`](crate::optimize::nsga2::inverted_generational_distance).
+        pub fn reference(self, points: usize) -> Vec<Vec<f64>> {
+            // Cast: a count of points, exact in f64 below 2⁵³.
+            let last = points.saturating_sub(1).max(1) as f64;
+            (0..points)
+                .map(|i| i as f64 / last)
+                .filter(|&f1| {
+                    self.pieces()
+                        .iter()
+                        .any(|&(lo, hi)| (lo..=hi).contains(&f1))
+                })
+                .map(|f1| vec![f1, self.front_f2(f1)])
+                .collect()
+        }
+
+        /// The Euclidean distance from goals `f = [f₁, f₂]` to the front, the curve itself
+        /// rather than points along it.
+        ///
+        /// Any point of the front bounds it, so the nearest point lies within `f₁ ± d₀` of `f₁`,
+        /// where `d₀` is the distance to the front at `f₁` itself (or a piece's nearer end):
+        /// that window of each piece is searched on a grid of 400 steps in `s` (`f₁ = s²` for
+        /// ZDT1 and ZDT3, whose slope is infinite at 0; `f₁ = s` for ZDT2), and the best step
+        /// refined by golden-section search over its two neighbours.
+        pub fn distance_to_front(self, f: &[f64]) -> f64 {
+            const STEPS: usize = 400;
+            let (a, b) = (
+                f.first().copied().unwrap_or(0.0),
+                f.get(1).copied().unwrap_or(0.0),
+            );
+            let distance = |f1: f64| (a - f1).hypot(b - self.front_f2(f1));
+            let squared = self != Self::Two;
+            let to_f1 = |s: f64| if squared { s * s } else { s };
+            let to_s = |f1: f64| if squared { f1.sqrt() } else { f1 };
+            let d0 = self
+                .pieces()
+                .iter()
+                .map(|&(lo, hi)| distance(a.clamp(lo, hi)))
+                .fold(f64::INFINITY, f64::min);
+            let mut best = d0;
+            for &(lo, hi) in self.pieces() {
+                let (left, right) = ((a - d0).max(lo), (a + d0).min(hi));
+                if left > right {
+                    continue;
+                }
+                let (s0, s1) = (to_s(left), to_s(right));
+                // Cast: STEPS is small and exact in f64.
+                let at = |k: usize| s0 + (s1 - s0) * k as f64 / STEPS as f64;
+                let on = |s: f64| distance(to_f1(s));
+                let (mut k_best, mut d_best) = (0, f64::INFINITY);
+                for k in 0..=STEPS {
+                    let d = on(at(k));
+                    if d < d_best {
+                        (k_best, d_best) = (k, d);
+                    }
+                }
+                let (mut lo_s, mut hi_s) =
+                    (at(k_best.saturating_sub(1)), at((k_best + 1).min(STEPS)));
+                let ratio = (5.0_f64.sqrt() - 1.0) / 2.0;
+                for _ in 0..100 {
+                    let p = hi_s - ratio * (hi_s - lo_s);
+                    let q = lo_s + ratio * (hi_s - lo_s);
+                    if on(p) <= on(q) {
+                        hi_s = q;
+                    } else {
+                        lo_s = p;
+                    }
+                }
+                best = best.min(d_best).min(on(0.5 * (lo_s + hi_s)));
+            }
+            best
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        use std::f64::consts::PI;
+
+        /// The slope of ZDT3's front curve, `dh/df₁ = −1/(2√f₁) − sin(10π f₁) − 10π f₁ cos(10π f₁)`.
+        fn slope(f1: f64) -> f64 {
+            -0.5 / f1.sqrt() - (10.0 * PI * f1).sin() - 10.0 * PI * f1 * (10.0 * PI * f1).cos()
+        }
+
+        /// Each piece of ZDT3's front ends where the curve's slope is zero, and the next starts
+        /// at the same height, to rounding; the ends agree with the ten-digit ranges pymoo
+        /// 0.6.2's `zdt.py` prints, but for its second start, 0.182228780, a digit short of
+        /// 0.1822287280.
+        #[test]
+        fn zdt3_pieces_meet_their_equations() {
+            let h = |f1| Zdt::Three.front_f2(f1);
+            for (k, &(lo, hi)) in ZDT3_PIECES.iter().enumerate() {
+                assert!(
+                    slope(hi).abs() <= 1e-12,
+                    "piece {k} end: slope {}",
+                    slope(hi)
+                );
+                if k > 0 {
+                    let previous = ZDT3_PIECES[k - 1].1;
+                    assert!((h(lo) - h(previous)).abs() <= 1e-15, "piece {k} start");
+                    assert!(slope(lo) < 0.0);
+                }
+            }
+            let published = [
+                (0.0, 0.083_001_534_9),
+                (0.182_228_728_0, 0.257_762_363_4),
+                (0.409_313_674_8, 0.453_882_104_1),
+                (0.618_396_794_4, 0.652_511_703_8),
+                (0.823_331_798_3, 0.851_832_865_4),
+            ];
+            for (&(lo, hi), (plo, phi)) in ZDT3_PIECES.iter().zip(published) {
+                assert!((lo - plo).abs() <= 5e-11 && (hi - phi).abs() <= 5e-11);
+            }
+        }
+
+        /// On a scan of 200,001 points of the curve and the pieces' ends, a point is a new
+        /// lowest `f₂` exactly when it is inside a piece. (A piece's start ties the previous end's
+        /// `f₂`, so is itself dominated: the ends only set the lowest.)
+        #[test]
+        fn zdt3_pieces_are_the_curves_undominated_points() {
+            let ends: Vec<f64> = ZDT3_PIECES.iter().flat_map(|&(lo, hi)| [lo, hi]).collect();
+            let mut scan: Vec<f64> = (0..=200_000).map(|i| f64::from(i) / 200_000.0).collect();
+            scan.extend(&ends);
+            scan.sort_by(f64::total_cmp);
+            let mut lowest = f64::INFINITY;
+            for f1 in scan {
+                let f2 = Zdt::Three.front_f2(f1);
+                if !ends.contains(&f1) {
+                    let inside = ZDT3_PIECES.iter().any(|&(lo, hi)| (lo..=hi).contains(&f1));
+                    assert_eq!(f2 < lowest, inside, "f₁ = {f1}");
+                }
+                lowest = lowest.min(f2);
+            }
+        }
+
+        #[test]
+        fn the_front_is_g_equal_to_one() {
+            let mut x = vec![0.0; 30];
+            for f1 in [0.0, 0.04, 0.2, 0.5, 0.83, 1.0] {
+                x[0] = f1;
+                for p in [Zdt::One, Zdt::Two, Zdt::Three] {
+                    let f = p.evaluate(&x);
+                    assert_eq!(f, vec![f1, p.front_f2(f1)]);
+                }
+            }
+            x[5] = 0.29;
+            // g = 1 + 9 × 0.29 / 29 = 1.09.
+            let f = Zdt::Two.evaluate(&x);
+            let r = 1.0 / 1.09;
+            assert!((f[1] - 1.09 * (1.0 - r * r)).abs() <= 1e-15);
+        }
+
+        /// The distance to the front: zero on it; by hand for a point straight out from ZDT2's
+        /// curve along its normal; and never more than a brute-force scan of 10⁶ points of it,
+        /// nor less than that scan by more than its spacing could hide.
+        #[test]
+        fn distance_to_the_front() {
+            for p in [Zdt::One, Zdt::Two, Zdt::Three] {
+                for f1 in [0.0, 0.01, 0.25, 0.42, 0.65, 0.83] {
+                    if p.pieces().iter().any(|&(lo, hi)| (lo..=hi).contains(&f1)) {
+                        assert!(p.distance_to_front(&[f1, p.front_f2(f1)]) <= 1e-15);
+                    }
+                }
+            }
+            // ZDT2 at f₁ = 0.5: the curve's normal is (2 f₁, 1)/√(1 + 4 f₁²) = (1, 1)/√2.
+            let d = 0.01;
+            let out = [0.5 + d / 2f64.sqrt(), 0.75 + d / 2f64.sqrt()];
+            assert!((Zdt::Two.distance_to_front(&out) - d).abs() <= 1e-12);
+            let points = [
+                [0.3, 0.5],
+                [0.001, 1.2],
+                [0.12, 0.9],
+                [0.3, 0.3],
+                [0.55, -0.1],
+                [0.9, -0.5],
+                [1.2, 0.1],
+                [-0.1, 1.1],
+            ];
+            for p in [Zdt::One, Zdt::Two, Zdt::Three] {
+                for f in points {
+                    let mut scan = f64::INFINITY;
+                    for &(lo, hi) in p.pieces() {
+                        for i in 0..=1_000_000 {
+                            let f1 = lo + (hi - lo) * f64::from(i) / 1e6;
+                            scan = scan.min((f[0] - f1).hypot(f[1] - p.front_f2(f1)));
+                        }
+                    }
+                    let d = p.distance_to_front(&f);
+                    assert!(
+                        d <= scan + 1e-15,
+                        "{p:?} {f:?}: {d} above the scan's {scan}"
+                    );
+                    assert!(
+                        scan - d <= 1e-6,
+                        "{p:?} {f:?}: {d} far below the scan's {scan}"
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn reference_points_lie_on_the_front() {
+            let r = Zdt::One.reference(1001);
+            assert_eq!(r.len(), 1001);
+            assert_eq!(r[500], vec![0.5, 1.0 - 0.5f64.sqrt()]);
+            let r3 = Zdt::Three.reference(1001);
+            assert!(r3.iter().all(|f| Zdt::Three.distance_to_front(f) <= 1e-15));
+            // The pieces' f₁ lengths sum to 0.2657, so about a quarter of the points.
+            assert_eq!(r3.len(), 265);
+        }
+    }
+}
