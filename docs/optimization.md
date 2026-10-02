@@ -742,8 +742,10 @@ By default a run stops after 20 evaluations per variable. [`Ego::with_max_evalua
 the budget, [`Ego::with_target`] stops at a good enough value, and
 [`Ego::with_tolerance_improvement`] stops once no point is expected to gain more than a set
 amount, in the model's units; it is off by default. Jones and co-authors stop at 1% of the best
-value's size, which can end a run a little short of 1% from the minimum, and never fires for a
-goal near zero (a miss): there, give an amount. A model that fails at a design returns `+∞`;
+value's size. That can end a run well short of 1% from the minimum: on Hartmann's
+three-variable function, 8 of 20 runs (seeds 1 to 20) stopped more than 1% away, the worst
+4.7% (a reviewer's measurement). Use a smaller amount (the paper suggests 0.1%) where it
+matters. It never fires for a goal near zero (a miss): there, give an amount. A model that fails at a design returns `+∞`;
 EGO fits it as the worst value so far and goes on.
 
 A worked example, on Branin's function of two variables: its least value is

@@ -11588,7 +11588,8 @@ per evaluation needs tens.
    Set from a probe on seeds 1 to 10 at 40 evaluations (Branin's worst 1.03%, so 50), which
    overlap the test's seeds; measured on 20 seeds: worst 1.18e-3 (Branin) and 1.24e-3
    (Hartmann 3) of the minimum (macOS debug). With Jones's stop at 1% of the best value, a run
-   may end short of 1% (a reviewer measured up to 3.3% on Hartmann 3).
+   may end well short of 1%: on Hartmann 3 a reviewer measured 8 of 20 runs (seeds 1 to 20)
+   stopping more than 1% away, the worst 4.7% (Jones et al.'s Table 1: 1.7%).
 4. **Split d1, d2.** On Hartmann 6, 7 of 10 runs (seeds 1 to 10, a probe not committed) end at
    its local minimum −3.20 after 100 evaluations, and a run takes 37 s in a debug build. Jones
    et al. needed 121 evaluations there, with the `−ln(−y)` transform. M6.2d2 holds Hartmann 6

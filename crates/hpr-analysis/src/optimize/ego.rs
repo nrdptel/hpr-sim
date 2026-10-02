@@ -286,7 +286,8 @@ impl Ego {
 
     /// The same, stopping once the largest expected improvement found is below `tolerance`, an
     /// amount in the model's units. Jones et al. stop at 1% of the best value's size, which may
-    /// end a run before it is within 1% of the minimum; for a model whose least value is near
+    /// end a run well before it is within 1% of the minimum (on Hartmann 3, 8 runs of 20 ended
+    /// more than 1% away, the worst 4.7%); for a model whose least value is near
     /// zero (a miss), state an amount. Zero, the default, turns the test off.
     ///
     /// # Errors
