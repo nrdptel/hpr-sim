@@ -326,7 +326,7 @@ impl Nsga2 {
     ///
     /// [`AnalysisError::Domain`] for an odd size or one out of range.
     pub fn with_population(mut self, size: usize) -> Result<Self, AnalysisError> {
-        if size % 2 != 0 || !(4..=MAX_POPULATION).contains(&size) {
+        if !size.is_multiple_of(2) || !(4..=MAX_POPULATION).contains(&size) {
             return Err(AnalysisError::Domain {
                 what: "population (even, from 4 to 2¹⁶)",
                 // Cast: at most 2⁶⁴, shown approximately in the error.
@@ -720,6 +720,10 @@ fn crowding(front: &[&[f64]]) -> Vec<f64> {
     let Some(first) = front.first() else {
         return distance;
     };
+    #[allow(
+        clippy::needless_range_loop,
+        reason = "`m` indexes each design's goals, not `front`"
+    )]
     for m in 0..first.len() {
         let value = |k: usize| front[k][m];
         let mut order: Vec<usize> = (0..l).collect();

@@ -242,14 +242,14 @@ pub mod zdt {
     /// a point is on the front only if `f₂` is below its value at every smaller `f₁`: each piece
     /// ends at a local minimum of the curve (where its slope is zero), and the next starts where
     /// the curve, falling again, first drops below that minimum. These were solved to 40 digits
-    /// (mpmath 1.3.0's `findroot`) and agree with the ten-digit ranges published for ZDT3; the
-    /// tests check each end's equation.
+    /// (mpmath 1.3.0's `findroot`), here rounded to the nearest `f64`, and agree with the
+    /// ten-digit ranges published for ZDT3; the tests check each end's equation.
     pub const ZDT3_PIECES: [(f64, f64); 5] = [
-        (0.0, 0.083_001_534_926_911_632_733),
-        (0.182_228_728_029_399_779_82, 0.257_762_363_387_830_221_57),
-        (0.409_313_674_808_656_841_7, 0.453_882_104_088_830_165_79),
-        (0.618_396_794_439_265_792_95, 0.652_511_703_804_662_519_04),
-        (0.823_331_798_326_632_738_07, 0.851_832_865_436_413_895_85),
+        (0.0, 0.083_001_534_926_911_63),
+        (0.182_228_728_029_399_77, 0.257_762_363_387_830_2),
+        (0.409_313_674_808_656_8, 0.453_882_104_088_830_2),
+        (0.618_396_794_439_265_8, 0.652_511_703_804_662_5),
+        (0.823_331_798_326_632_7, 0.851_832_865_436_413_9),
     ];
 
     /// The whole range of `f₁`, ZDT1's and ZDT2's one piece of front.

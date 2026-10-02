@@ -21,6 +21,10 @@
     clippy::expect_used,
     reason = "the helpers stop at the failure, as `#[test]` functions may (clippy.toml)"
 )]
+#![allow(
+    clippy::print_stderr,
+    reason = "the medians and worst distances the guide quotes, shown with `--nocapture`"
+)]
 
 use std::collections::BTreeMap;
 
