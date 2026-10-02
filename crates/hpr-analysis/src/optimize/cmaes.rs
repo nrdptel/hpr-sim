@@ -53,6 +53,35 @@
 //! bound is reached only slowly this way; for a bound that binds, leave the variable unbounded on
 //! that side and write the bound as a constraint.
 //!
+//! # Integer variables
+//!
+//! An integer variable ([`Variable::integer`]) is drawn as a real number like the others, and the
+//! model is given the whole number nearest the draw, clamped to its bounds
+//! ([`Variable::encode`]); the update learns from the real draws. Left at that, the spread in an
+//! integer variable would shrink until every draw gave the same whole number and that variable
+//! stopped moving, wherever it was. CMA-ES with margin (R. Hamano, S. Saito, M. Nomura and
+//! S. Shirakawa, "CMA-ES with Margin: Lower-Bounding Marginal Probability for Mixed-Integer
+//! Black-Box Optimization", GECCO 2022, <https://arxiv.org/abs/2205.13482>, §4 and Algorithm 1,
+//! pp. 5–6 and 10) prevents it: after each update it keeps at least a chance `α = 1/(n λ)` that a
+//! draw lands on another value, by moving the mean towards a threshold or by stretching that
+//! variable's draws by a factor `A` ([`Run::margin_scale`]):
+//!
+//! ```text
+//! xₖ = m + σ S A yₖ                                    (S the steps, A diagonal, 1 if continuous)
+//! s = σ A S √C_jj                                       (variable j's spread)
+//! at an end value, threshold ℓ:  m ← ℓ + sign(m − ℓ) min(|m − ℓ|, Φ⁻¹(1 − α) s)      eq. (13)
+//! inside, thresholds ℓ₋ < m ≤ ℓ₊:
+//!   p₋ = Φ((ℓ₋ − m)/s),  p₊ = Φ((m − ℓ₊)/s),  p₀ = 1 − p₋ − p₊                  eqs. (17)–(19)
+//!   p′ = max(α/2, p),  p″ = p′ + (1 − p′₋ − p′₊ − p₀)(p′ − α/2)/(p′₋ + p′₊ + p₀ − 3α/2)
+//!   χ = Φ⁻¹(1 − p″):  m ← (ℓ₋ χ₊ + ℓ₊ χ₋)/(χ₋ + χ₊),  A ← (ℓ₊ − ℓ₋)/((χ₋ + χ₊) σ S √C_jj)   (24)
+//! ```
+//!
+//! The thresholds lie halfway between neighbouring whole numbers; the mean, `σ` and `C` are the
+//! updated ones and `A` the old one in `s`. The paths and `C` never see the correction. An
+//! integer variable's draws are never redrawn for its bounds, which its encoding enforces. The
+//! paper's α is the default here; its Figure 4 (p. 7) finds the method works across a range
+//! about it. `Φ` is the standard normal distribution function.
+//!
 //! # Constraints
 //!
 //! Other constraints go through [`Run::tell_constrained`], which ranks candidates by Deb's
@@ -86,7 +115,7 @@ use serde::{Deserialize, Serialize};
 use hpr_core::random::SeededRng;
 
 use super::eigen::symmetric_eigen;
-use super::{Evaluation, Variable, check_variables};
+use super::{Evaluation, Variable, check_variables, normal};
 use crate::error::AnalysisError;
 
 /// The most times one candidate is drawn again to fall inside the bounds.
@@ -164,7 +193,8 @@ pub enum Stop {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Optimum {
-    /// The best point evaluated, one value per variable, in the variables' order.
+    /// The best point evaluated, one value per variable, in the variables' order, as the model
+    /// was given it (an integer variable's value encoded).
     pub point: Vec<f64>,
     /// The model's value there: `+∞` if no candidate gave a finite value (serialized as none, a
     /// JSON `null`).
@@ -184,8 +214,8 @@ pub struct Optimum {
     /// The distribution's final mean.
     pub mean: Vec<f64>,
     /// The distribution's largest standard deviation in any one variable, in that variable's
-    /// units: the largest `σ √Cᵢᵢ` times the variable's step; `+∞` once the step size has
-    /// overflowed (serialized as none, a JSON `null`).
+    /// units: the largest `σ √Cᵢᵢ` times the variable's step and its margin scale `Aᵢ`; `+∞`
+    /// once the step size has overflowed (serialized as none, a JSON `null`).
     #[serde(with = "infinity_as_none")]
     pub spread: f64,
     /// Why it stopped.
@@ -490,6 +520,12 @@ pub struct Run {
     b: Vec<f64>,
     /// `D`, the square roots of `C`'s eigenvalues.
     d: Vec<f64>,
+    /// The margin's diagonal `A`: each candidate's draw is `m + σ S A y`. 1 for a continuous
+    /// variable, always.
+    a: Vec<f64>,
+    /// The margin `α = 1/(n λ)`: the least chance an integer variable's draw has of falling on a
+    /// value next to its mean's.
+    alpha: f64,
     generation: usize,
     evaluations: usize,
     candidates: Vec<Vec<f64>>,
@@ -525,6 +561,9 @@ impl Run {
             c: identity.clone(),
             b: identity,
             d: vec![1.0; n],
+            a: vec![1.0; n],
+            // Casts: n ≤ 200 and λ ≤ 2¹⁶, exact in f64.
+            alpha: 1.0 / (n as f64 * cmaes.population as f64),
             generation: 0,
             evaluations: 0,
             candidates: Vec::new(),
@@ -541,8 +580,9 @@ impl Run {
         &self.p
     }
 
-    /// The current generation's candidates, `λ` points, each one value per variable. Empty once
-    /// the run has stopped.
+    /// The current generation's candidates, `λ` points, each one value per variable, as the model
+    /// is to be given them: an integer variable's value is encoded, a whole number within its
+    /// bounds. Empty once the run has stopped.
     pub fn candidates(&self) -> &[Vec<f64>] {
         &self.candidates
     }
@@ -552,7 +592,8 @@ impl Run {
         self.generation
     }
 
-    /// The distribution's mean.
+    /// The distribution's mean. An integer variable's is a real number, not encoded, and may lie
+    /// outside its bounds.
     pub fn mean(&self) -> &[f64] {
         &self.mean
     }
@@ -563,9 +604,24 @@ impl Run {
     }
 
     /// The covariance `C`, row-major, of the variables divided by their steps: the distribution
-    /// of candidates about the mean has covariance `σ² S C S`, with `S` the steps on a diagonal.
+    /// of draws about the mean has covariance `σ² S A C A S`, with `S` the steps and `A`
+    /// [`Run::margin_scale`] on diagonals.
     pub fn covariance(&self) -> &[f64] {
         &self.c
+    }
+
+    /// The margin's diagonal `A`, one entry per variable: an integer variable's draws spread
+    /// `A` times as far as `σ` and `C` alone would spread them ([`Variable::integer`]). 1 for
+    /// every continuous variable.
+    pub fn margin_scale(&self) -> &[f64] {
+        &self.a
+    }
+
+    /// The margin `α = 1/(n λ)`: the least chance, each generation, that an integer variable's
+    /// draw falls on a value other than the one its mean is nearest (at least `α/2` on each side
+    /// when the mean's value has neighbours on both).
+    pub fn margin(&self) -> f64 {
+        self.alpha
     }
 
     /// Why the run stopped, or `None` while it runs.
@@ -723,6 +779,66 @@ impl Run {
         let (values, vectors) = symmetric_eigen(&self.c, n);
         self.b = vectors;
         self.d = values.iter().map(|v| v.max(0.0).sqrt()).collect();
+        self.correct_margin();
+    }
+
+    /// The margin of CMA-ES with margin (R. Hamano, S. Saito, M. Nomura, S. Shirakawa, GECCO
+    /// 2022, arXiv:2205.13482, §4.2 to 4.4, eqs. (12) to (24), pp. 5–6, and Algorithm 1, p. 10):
+    /// for each integer variable, moves the mean and stretches `A` so that a draw keeps at least
+    /// a chance `α` of leaving the mean's value, after the update of `m`, `σ` and `C`, and before
+    /// the next draw. The paths and `C` never see it.
+    fn correct_margin(&mut self) {
+        let n = self.n;
+        let alpha = self.alpha;
+        for j in 0..n {
+            let variable = &self.variables[j];
+            if !variable.is_integer() {
+                continue;
+            }
+            // The draw's spread in this variable, in its own units.
+            let spread_unit = self.sigma * self.scale[j] * self.c[j * n + j].sqrt();
+            let spread = self.a[j] * spread_unit;
+            if !(spread > 0.0 && spread.is_finite()) {
+                // σ or C has collapsed or overflowed: the run stops at `Stop::Condition`.
+                continue;
+            }
+            let m = self.mean[j];
+            // The thresholds sit halfway between neighbouring values.
+            let first = variable.low() + 0.5;
+            let last = variable.high() - 0.5;
+            if m <= first || m > last {
+                // At an end value (and always for two values), eq. (13): keep the mean within
+                // Φ⁻¹(1 − α) spreads of the threshold, so the far side keeps a chance α. A is
+                // unchanged, eq. (14).
+                let threshold = if m <= first { first } else { last };
+                let reach = normal::quantile(1.0 - alpha) * spread;
+                let gap = (m - threshold).abs().min(reach);
+                self.mean[j] = threshold + gap.copysign(m - threshold);
+                continue;
+            }
+            // Inside, eqs. (15) to (24): the thresholds either side of the mean.
+            let value = (m - 0.5).ceil();
+            let (low, up) = (value - 0.5, value + 0.5);
+            let p_low = normal::cdf((low - m) / spread);
+            let p_up = normal::cdf((m - up) / spread);
+            let p_mid = 1.0 - p_low - p_up;
+            // Eqs. (20) to (23): each side at least α/2, the excess taken back in proportion.
+            let half = alpha / 2.0;
+            let (q_low, q_up) = (p_low.max(half), p_up.max(half));
+            let excess = 1.0 - q_low - q_up - p_mid;
+            let share = q_low + q_up + p_mid - 3.0 * half;
+            let r_low = q_low + excess * (q_low - half) / share;
+            let r_up = q_up + excess * (q_up - half) / share;
+            // Eq. (24): the mean and A that give the sides these chances.
+            let chi_low = normal::quantile(1.0 - r_low);
+            let chi_up = normal::quantile(1.0 - r_up);
+            let mean = (low * chi_up + up * chi_low) / (chi_low + chi_up);
+            let a = (up - low) / ((chi_low + chi_up) * spread_unit);
+            if mean.is_finite() && a.is_finite() && a > 0.0 {
+                self.mean[j] = mean;
+                self.a[j] = a;
+            }
+        }
     }
 
     /// Why the run should stop now, if it should; `values` are this generation's feasible ones.
@@ -742,7 +858,7 @@ impl Run {
         // Written so that a NaN in D or σ stops the run too.
         // And in the variables' own units, where a step above 1 overflows first.
         let finite = (0..n).all(|i| {
-            (self.sigma * self.c[i * n + i].sqrt() * self.scale[i]).is_finite()
+            (self.sigma * self.c[i * n + i].sqrt() * self.scale[i] * self.a[i]).is_finite()
                 && self.mean[i].is_finite()
         });
         if !(d_min > 0.0
@@ -805,15 +921,24 @@ impl Run {
                     *yi = row.iter().zip(&z).map(|(a, b)| a * b).sum();
                 }
                 for i in 0..n {
-                    x[i] = self.mean[i] + self.sigma * self.scale[i] * y[i];
+                    x[i] = self.mean[i] + self.sigma * self.scale[i] * self.a[i] * y[i];
                 }
                 if !x.iter().all(|xi| xi.is_finite()) {
                     drawn = Some(Stop::Condition);
                     break;
                 }
-                if x.iter().zip(&self.variables).all(|(xi, v)| v.contains(*xi)) {
+                // An integer variable's draw is never outside: its encoding clamps it.
+                if x.iter()
+                    .zip(&self.variables)
+                    .all(|(xi, v)| v.is_integer() || v.contains(*xi))
+                {
                     drawn = None;
-                    self.candidates.push(x.clone());
+                    self.candidates.push(
+                        x.iter()
+                            .zip(&self.variables)
+                            .map(|(xi, v)| v.encode(*xi))
+                            .collect(),
+                    );
                     self.steps.push(y.clone());
                     break;
                 }
@@ -836,7 +961,7 @@ impl Run {
         // A NaN here can only come of an overflowed σ times a zero: count it as infinite, as
         // `f64::max` would drop it.
         let spread = (0..n)
-            .map(|i| self.sigma * self.c[i * n + i].sqrt() * self.scale[i])
+            .map(|i| self.sigma * self.c[i * n + i].sqrt() * self.scale[i] * self.a[i])
             .map(|t| if t.is_nan() { f64::INFINITY } else { t })
             .fold(0.0, f64::max);
         // A run is only told after a generation is evaluated, so there is a best point; the
@@ -1262,5 +1387,116 @@ mod tests {
             error,
             AnalysisError::Domain { what, .. } if what.starts_with("first candidate")
         ));
+    }
+
+    /// After every generation, each integer variable's next draw keeps the margin: at least `α`
+    /// of falling past the threshold nearest an end value's mean (eq. (13)), and at least `α/2`
+    /// on each side of an inner value (eqs. (20), (21)), with the spread `σ A s √C_jj` the draw
+    /// uses. The run mixes an end-bound binary, an integer from −10 to 10 driven to an end, one
+    /// driven to the middle, and two continuous variables.
+    #[test]
+    fn integer_draws_keep_the_margin() {
+        let variables = vec![
+            Variable::new("x0", 1.0, 0.5).unwrap(),
+            Variable::new("x1", -2.0, 0.5).unwrap(),
+            Variable::new("binary", 0.5, 1.0)
+                .unwrap()
+                .within(0.0, 1.0)
+                .unwrap()
+                .integer()
+                .unwrap(),
+            Variable::new("to an end", 3.0, 1.0)
+                .unwrap()
+                .within(-10.0, 10.0)
+                .unwrap()
+                .integer()
+                .unwrap(),
+            Variable::new("inner", -4.0, 2.0)
+                .unwrap()
+                .within(-10.0, 10.0)
+                .unwrap()
+                .integer()
+                .unwrap(),
+        ];
+        let f = |x: &[f64]| {
+            x[0] * x[0] + x[1] * x[1] + (1.0 - x[2]) + (x[3] - 10.0).abs() + (x[4] - 2.0).powi(2)
+        };
+        let mut run = Cmaes::new(variables).unwrap().start(3).unwrap();
+        let n = 5;
+        let alpha = run.margin();
+        assert_eq!(alpha, 1.0 / (5.0 * 8.0));
+        let mut generations = 0;
+        let mut corrected = 0;
+        loop {
+            let values: Vec<f64> = run.candidates().iter().map(|x| f(x)).collect();
+            for x in run.candidates() {
+                assert!(x[2] == 0.0 || x[2] == 1.0);
+                assert!(x[3].fract() == 0.0 && (-10.0..=10.0).contains(&x[3]));
+            }
+            let done = run.tell(&values).unwrap();
+            if done.is_some() {
+                break;
+            }
+            generations += 1;
+            for (j, (low, high)) in [(2, (0.0, 1.0)), (3, (-10.0, 10.0)), (4, (-10.0, 10.0))] {
+                let step = run.variables[j].step();
+                let spread =
+                    run.sigma() * run.margin_scale()[j] * step * run.covariance()[j * n + j].sqrt();
+                let m = run.mean()[j];
+                let (first, last) = (low + 0.5, high - 0.5);
+                // A relative 10⁻⁹ for rounding in Φ and Φ⁻¹.
+                let floor = |p: f64| p * (1.0 - 1e-9);
+                if m <= first || m > last {
+                    let threshold = if m <= first { first } else { last };
+                    let far = normal::cdf(-(m - threshold).abs() / spread);
+                    assert!(
+                        far >= floor(alpha),
+                        "gen {generations} x{j}: {far} < {alpha}"
+                    );
+                } else {
+                    let value = (m - 0.5).ceil();
+                    let below = normal::cdf((value - 0.5 - m) / spread);
+                    let above = normal::cdf((m - value - 0.5) / spread);
+                    assert!(
+                        below >= floor(alpha / 2.0),
+                        "gen {generations} x{j}: {below}"
+                    );
+                    assert!(
+                        above >= floor(alpha / 2.0),
+                        "gen {generations} x{j}: {above}"
+                    );
+                }
+                if run.margin_scale()[j] != 1.0 {
+                    corrected += 1;
+                }
+            }
+            assert_eq!(&run.margin_scale()[..2], &[1.0, 1.0]);
+        }
+        // The run went long enough for the margin to bind: σ shrank and A grew.
+        assert!(generations > 50, "{generations}");
+        assert!(corrected > 0);
+    }
+
+    /// An integer variable's draws are encoded before the model sees them; the best point is
+    /// encoded too, and the run ends at the integer minimum exactly.
+    #[test]
+    fn integer_runs_reach_whole_minima() {
+        let variables = vec![
+            Variable::new("x", 2.5, 1.0).unwrap(),
+            Variable::new("k", 2.3, 1.0)
+                .unwrap()
+                .within(-10.0, 10.0)
+                .unwrap()
+                .integer()
+                .unwrap(),
+        ];
+        let optimum = Cmaes::new(variables)
+            .unwrap()
+            .with_target(1e-12)
+            .unwrap()
+            .minimize(5, |x| x[0] * x[0] + (x[1] - 3.0).powi(2))
+            .unwrap();
+        assert_eq!(optimum.stop, Stop::Target);
+        assert_eq!(optimum.point[1], 3.0);
     }
 }

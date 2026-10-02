@@ -22,6 +22,7 @@ hpr-core.workspace = true
 hpr-design.workspace = true
 hpr-motor.workspace = true
 hpr-sim.workspace = true
+libm.workspace = true
 rayon = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true

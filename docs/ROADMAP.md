@@ -825,12 +825,12 @@
   design problem is solved with the result validated by re-simulation. Split a to e (ADR-138).
   - [x] **M6.2a CMA-ES, continuous variables**: four test functions' minima from 20 seeds (Rosenbrock 17), within
     5% of pycma's evaluations; 3,048 m and 2.2 cal in 300 flights, re-flown. Met (ADR-138).
-  - [ ] **M6.2b Discrete variables and constraints**, split b1, b2 (ADR-139).
+  - [x] **M6.2b Discrete variables and constraints**, split b1, b2 (ADR-139). Met.
     - [x] **M6.2b1 Constraints** (Deb's rules). *Done when:* the sphere with `x₀ ≥ 1`, the tangent
       problem (10 variables) and CEC 2006 g06 reach their minima to 1e-10 from 20 seeds. Met.
-    - [ ] **M6.2b2 Discrete choices.** *Done when:* a catalogue motor and part are chosen with
+    - [x] **M6.2b2 Discrete choices.** *Done when:* a catalogue motor and part are chosen with
       continuous variables under stability-margin and rail-exit constraints; "hit 3,048 m" with
-      the motor free, each constraint re-checked on the winner by re-simulation.
+      the motor free, each constraint re-checked on the winner by re-simulation. Met (ADR-140).
   - [ ] **M6.2c NSGA-II.** *Done when:* ZDT1 to ZDT3 fronts within a stated generational distance;
     a two-goal rocket problem gives a front.
   - [ ] **M6.2d EGO.** *Done when:* Branin and Hartmann reach their minima in a stated budget.

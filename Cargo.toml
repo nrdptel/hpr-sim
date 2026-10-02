@@ -47,6 +47,9 @@ glam = { version = "0.33.7", default-features = false, features = ["f64", "serde
 # Geodesics on an ellipsoid: georust's port of Karney's GeographicLib (MIT). No default features,
 # so not the `accurate` crate (polygon areas only); `libm` is its one dependency.
 geographiclib-rs = { version = "0.2.7", default-features = false }
+# `erfc` for the normal distribution in the optimizer's integer margin: the rust-lang port of
+# musl's libm (MIT OR Apache-2.0), already in the tree through geographiclib-rs.
+libm = "0.2.16"
 # `.ork` designs are gzip streams, and the entries inside their zip container are deflated. The
 # pure-Rust backend (miniz_oxide) keeps `hpr-io` building for wasm32 and links no C.
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }

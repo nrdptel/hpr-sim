@@ -190,6 +190,33 @@ dest = "refs/papers/naca-tn-2114.pdf"
 license = "US government work"
 mode = "fetched"
 
+[[file]]
+name = "hamano-2022-cmawm"
+title = "R. Hamano, S. Saito, M. Nomura and S. Shirakawa, CMA-ES with Margin: Lower-Bounding Marginal Probability for Mixed-Integer Black-Box Optimization, GECCO 2022 (arXiv:2205.13482v2)"
+url = "https://arxiv.org/pdf/2205.13482v2"
+sha256 = "676471ed230c4bb89faeab62b457287b907b502ab5d46aba17774fee0500e031"
+dest = "refs/papers/hamano-2022-cmawm-arxiv-2205.13482v2.pdf"
+license = "arXiv non-exclusive license"
+mode = "fetched"
+
+[[file]]
+name = "hamano-2024-cmawm-telo"
+title = "R. Hamano, S. Saito, M. Nomura and S. Shirakawa, Marginal Probability-Based Integer Handling for CMA-ES Tackling Single- and Multi-Objective Mixed-Integer Black-Box Optimization, ACM TELO 4(2), 2024 (arXiv:2212.09260v2)"
+url = "https://arxiv.org/pdf/2212.09260v2"
+sha256 = "50e0710b5515863106ca68ca400ab32054320fa6a9405e5e88963a027fa401b5"
+dest = "refs/papers/hamano-2024-cmawm-telo-arxiv-2212.09260v2.pdf"
+license = "arXiv non-exclusive license"
+mode = "fetched"
+
+[[file]]
+name = "irec-dteg-2025"
+title = "Experimental Sounding Rocket Association, International Rocket Engineering Competition Design, Test, & Evaluation Guide, v1.1.4, 2025-02-01"
+url = "https://www.soundingrocket.org/uploads/9/0/6/4/9064598/2025-irec_dteg_v1.1.4_02-01-25.pdf"
+sha256 = "67ea51826f943305066d3eb1d56659a012efddf4739f67c2361c09c26cfd47b2"
+dest = "refs/papers/irec-dteg-2025-v1.1.4.pdf"
+license = "CC 4.0 International (variant not stated)"
+mode = "fetched"
+
 # RASAero II's aerodynamics for Calisto, as RocketPy's first commit shipped them: C_D, C_Nα and CP
 # against Mach 0.01 to 25 at angles of attack 0, 2 and 4 degrees. RocketPy's current checkout keeps
 # only the C_D column to Mach 2 (data/rockets/calisto/powerOffDragCurve.csv).

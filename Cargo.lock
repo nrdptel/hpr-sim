@@ -740,6 +740,7 @@ dependencies = [
  "hpr-design",
  "hpr-motor",
  "hpr-sim",
+ "libm",
  "proptest",
  "rayon",
  "serde",

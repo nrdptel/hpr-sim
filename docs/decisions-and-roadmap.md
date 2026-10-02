@@ -370,9 +370,9 @@ missing or its status disagrees.
 | <a id="m6-1d"></a>[M6.1d][phase-3] | 10,000 flights of a Level 2 rocket (one on a J, K or L motor) in 10 s or less, timed and recorded: 3.0 s for Valetudo, 9.4 s for a rocket past Mach 1.6, a run's flights sharing one layout and one supersonic table ([ADR-137][adr-137], [How long a run takes](monte-carlo.md#how-long-a-run-takes)) | done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization; split in five ([ADR-138][adr-138]) | not yet done |
 | <a id="m6-2a"></a>[M6.2a][phase-3] | CMA-ES over continuous design variables, held to four test functions' known minima and to pycma, its author's implementation; a rocket's ballast and body length found for a 3,048 m apogee and a 2.2-calibre margin, and checked by flying it again ([ADR-138][adr-138], [Optimization](optimization.md)) | done |
-| <a id="m6-2b"></a>[M6.2b][phase-3] | Discrete choices (a motor, a catalogue part) and limits such as a minimum stability margin ; split in two ([ADR-139][adr-139]) | not yet done |
+| <a id="m6-2b"></a>[M6.2b][phase-3] | Discrete choices (a motor, a catalogue part) and limits such as a minimum stability margin; split in two ([ADR-139][adr-139]) | done |
 | <a id="m6-2b1"></a>[M6.2b1][phase-3] | Limits on a design, such as a minimum stability margin: candidates that break one rank below those that don't (Deb's rules); held to three test problems whose limited minima are known | done |
-| <a id="m6-2b2"></a>[M6.2b2][phase-3] | Discrete choices (a motor, a catalogue part) and the 3,048 m problem with the motor free, under margin and rail-exit limits | not yet done |
+| <a id="m6-2b2"></a>[M6.2b2][phase-3] | Discrete choices (a motor, a catalogue part) as whole-number variables, by CMA-ES with margin; held to three mixed test functions' known minima and to an outside implementation; a motor and a Madcow nose cone chosen for a 3,048 m apogee under margin and rail-exit limits, and checked by flying the winner again ([ADR-140][adr-140], [Optimization](optimization.md#choices-a-motor-a-catalogue-part)) | done |
 | <a id="m6-2c"></a>[M6.2c][phase-3] | Several goals at once: NSGA-II and a Pareto front | not yet done |
 | <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights | not yet done |
 | <a id="m6-2e"></a>[M6.2e][phase-3] | Robust designs: a Monte Carlo run inside the optimizer | not yet done |
@@ -628,6 +628,7 @@ is the milestone that added or will add that test.
 [adr-137]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-137-ten-thousand-flights-a-runs-flights-share-the-nominals-layout-and-supersonic-table-2026-10-01
 [adr-138]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-138-optimization-cma-es-first-held-to-test-functions-and-to-pycma-2026-10-01
 [adr-139]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-139-optimization-constraints-by-debs-feasibility-rules-2026-10-01
+[adr-140]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-140-discrete-choices-by-cma-es-with-margin-2026-10-02
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
