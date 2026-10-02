@@ -1197,19 +1197,27 @@ mod tests {
                 assert!(c.as_chunks::<2>().0.iter().all(|[a, b]| a != b));
             }
         }
-        // Each shuffle is uniform: over many, each design is first a quarter of the time (n = 4).
+        // Each shuffle starts with each design a quarter of the time (n = 4), and the two are
+        // independent: the second starts where the first does a quarter of the time too, not
+        // always (one shuffle twice) or never.
         let mut rng = SeededRng::seed_from_u64(9);
-        let mut first = [0_usize; 4];
-        for _ in 0..40_000 {
-            first[contestants(&mut rng, 4)[0]] += 1;
+        let (mut first, mut second, mut same) = ([0_usize; 4], [0_usize; 4], 0_usize);
+        let draws = 40_000;
+        for _ in 0..draws {
+            let c = contestants(&mut rng, 4);
+            first[c[0]] += 1;
+            second[c[4]] += 1;
+            same += usize::from(c[0] == c[4]);
         }
-        for count in first {
-            let share = count as f64 / 40_000.0;
-            assert!(
-                (share - 0.25).abs() <= 5.0 * (0.1875_f64 / 40_000.0).sqrt(),
-                "{first:?}"
-            );
-        }
+        let near_quarter = |count: usize| {
+            let share = count as f64 / draws as f64;
+            (share - 0.25).abs() <= 5.0 * (0.1875 / draws as f64).sqrt()
+        };
+        assert!(
+            first.into_iter().chain(second).all(near_quarter),
+            "{first:?} {second:?}"
+        );
+        assert!(near_quarter(same), "{same}");
     }
 
     /// A design with a goal of +∞ fails: violation +∞, behind even a design that breaks a limit;
@@ -1241,7 +1249,12 @@ mod tests {
         assert!(infinite.rank > broken.rank);
         assert!(front.is_feasible() && front.members.len() == 2);
         let mut run = n.start(2);
-        let all = vec![vec![f64::INFINITY, 0.0]; 4];
+        let all = vec![
+            vec![f64::INFINITY, 0.0],
+            vec![-100.0, f64::INFINITY],
+            vec![f64::INFINITY, 0.0],
+            vec![-100.0, f64::INFINITY],
+        ];
         let front = run.tell(&all).unwrap().unwrap();
         assert!(!front.is_feasible());
     }
@@ -1294,6 +1307,26 @@ mod tests {
             Nsga2::new(vec![wide], 2),
             Err(AnalysisError::Domain { what, .. }) if what.contains("MAX/4")
         ));
+        let edge = |high: f64| {
+            Variable::new("x", 0.0, 1.0)
+                .unwrap()
+                .within(-MAX_BOUND, high)
+        };
+        assert!(Nsga2::new(vec![edge(MAX_BOUND).unwrap()], 2).is_ok());
+        assert!(Nsga2::new(vec![edge(MAX_BOUND.next_up()).unwrap()], 2).is_err());
+        // At the largest bounds, SBX's cuts still hold: nothing lands on a bound.
+        let mut rng = SeededRng::seed_from_u64(6);
+        for _ in 0..20_000 {
+            let (c1, c2) = sbx(
+                0.9 * MAX_BOUND,
+                0.99 * MAX_BOUND,
+                -MAX_BOUND,
+                MAX_BOUND,
+                20.0,
+                &mut rng,
+            );
+            assert!(c1.abs() < MAX_BOUND && c2.abs() < MAX_BOUND);
+        }
         assert!(n.clone().with_generations(0).is_err());
         assert!(n.clone().with_crossover(1.1, 20.0).is_err());
         assert!(n.clone().with_crossover(f64::NAN, 20.0).is_err());

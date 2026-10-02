@@ -665,10 +665,10 @@ as the paper describes, from seeds 1 to 20
 Both sets of columns below are scored by hpr-sim's measures; the pymoo columns are pymoo's
 fronts. The rules were set from pymoo's runs before hpr-sim's were measured: every hpr-sim run
 within twice pymoo's worst, and hpr-sim's median at most 25% above pymoo's, the margin CMA-ES's
-tests allow against pycma. A second rule was added before the final runs: the median at most
-20% below pymoo's, a factor of 1.25 either way. On these problems the best designs sit at the
-variables' lower bounds, and an optimizer that drifts toward its bounds would score better than
-pymoo without being better. Measured:
+tests allow against pycma. Review of the first results added a second rule: the median at most
+20% below pymoo's, a factor of 1.25 either way. On these problems every variable but the first
+is best at its lower bound, and an optimizer that drifts toward its bounds would score better
+than pymoo without being better. Measured:
 
 | Problem | Measure | hpr-sim median | hpr-sim worst | pymoo median | pymoo worst | Bound on every run |
 |---|---|---|---|---|---|---|
@@ -680,7 +680,7 @@ pymoo without being better. Measured:
 | ZDT3 | IGD | 5.38e-3 | 3.40e-2 | 5.51e-3 | 3.39e-2 | 6.78e-2 |
 
 At the median, hpr-sim's fronts lie 1% to 8% closer to the true front than pymoo's, and cover it
-as evenly (IGD 1% to 3% smaller). Each problem's worst hpr-sim run is 1.9 to 2.1 times inside
+as evenly (IGD 1.3% to 2.3% smaller). Each problem's worst hpr-sim run is 1.9 to 2.1 times inside
 its bound. The
 worst ZDT3 run of each has an IGD six times its median: it missed part of the front, a known
 hazard on a front in pieces. The per-run bound on ZDT3's IGD is loose for the same reason, set by

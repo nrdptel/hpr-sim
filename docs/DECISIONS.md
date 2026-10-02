@@ -11512,11 +11512,11 @@ trade-off needs the set nothing dominates.
    most 25% above pymoo's, the margin ADR-138 allowed CMA-ES against pycma. Review made the
    median rule two-sided, within a factor of 1.25 either way (at most 20% below): on ZDT every
    variable but the first is best at its low bound, and two of the three wrong operators above
-   (no swap, `δ₂` for `δ₁`) put hpr's median GD 55% to 68% below pymoo's; the third (`u ≤ ½`)
+   (no swap, `δ₂` for `δ₁`) put hpr's median GD more than half below pymoo's; the third (`u ≤ ½`)
    stays within 1% to 9% and only its unit test catches it (reviewers' measurements, not
    committed). The bound on every run is
    GD 2.92e-3 (ZDT1), 2.82e-3 (ZDT2), 1.31e-3 (ZDT3). Measured, with the pairing of item 1:
-   hpr's median GD 1% to 8% below pymoo's (ZDT1 1.07e-3 against 1.10e-3), IGD 1% to 3% below,
+   hpr's median GD 1% to 8% below pymoo's (ZDT1 1.07e-3 against 1.10e-3), IGD 1.3% to 2.3% below,
    each problem's worst run 1.9 to 2.1 times inside its bound. The per-run IGD bound on ZDT3, 6.78e-2, is set by
    pymoo's one run that missed part of the front and is 12 times the median; the median rule is
    what holds ZDT3's coverage. hpr's `generational_distance` gives pymoo's own GD
