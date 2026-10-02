@@ -147,6 +147,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-139 | M6.2b split b1, b2; M6.2b1: constraints for CMA-ES by Deb's (2000) feasibility rules (`Evaluation`, `Run::tell_constrained`), no penalty weight; infeasible candidates ranked, not redrawn; a target and TolFun count only feasible points; held to the sphere with `x₀ ≥ 1`, the tangent problem and CEC 2006 g06 from 20 seeds | accepted |
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
 | ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
+| ADR-142 | M6.2d: EGO (Jones, Schonlau and Welch 1998) with a kriging surrogate fitted by likelihood and the expected improvement searched by CMA-ES; M6.2d split d1 (Branin, Hartmann 3: within 1% of the minimum in 50 evaluations from 20 seeds, worst 0.12%) and d2 (Hartmann 6, which d1's version leaves at a local minimum) | accepted |
 
 ---
 
@@ -11551,3 +11552,44 @@ trade-off needs the set nothing dominates.
 `benchmark::zdt`; `tests/nsga2.rs` with `tests/fixtures/nsga2/pymoo.json`. Left out: integer
 variables in NSGA-II, a stopping rule (it runs its generations), reference problems of three or
 more goals (DTLZ), and a hypervolume measure. EGO (M6.2d) is next.
+
+## ADR-142: Few evaluations by EGO (2026-10-02)
+
+**Context.** M6.2d asks for Bayesian optimization (EGO): Branin and Hartmann reach their minima
+in a stated budget. CMA-ES and NSGA-II spend hundreds of flights; a model that takes minutes
+per evaluation needs tens.
+
+**Decision.**
+
+1. **EGO as published** (D. R. Jones, M. Schonlau, W. J. Welch, *J. Global Optim.* 13,
+   455–492, 1998): a kriging surrogate with a constant mean and the correlation
+   `exp(−Σ θₖ |Δxₖ|²)` (eq. (1), `pₖ = 2`), `μ`, `σ²` and `θ` of most likelihood (eqs. (2)–(4)),
+   predictions and errors by eqs. (7) and (9), and the next point where the expected
+   improvement, eq. (15), is largest. Variables are scaled to `[0, 1]`; values are standardized
+   before each fit. `log₁₀ θₖ` is fitted in `[−3, 3]` by CMA-ES (100 evaluations per variable,
+   started from the last fit); the expected improvement is maximized by CMA-ES from the best of
+   200 random points per variable and from the best point so far. A nugget of 10⁻⁸ on the
+   correlation's diagonal keeps its Cholesky factor defined as points crowd near a minimum. The
+   `pₖ` are fixed at 2 (Jones et al. fit them too); a smoother kernel (Matérn) is not used.
+2. **Initial design**: a Latin hypercube of 10 points per variable (Loeppky, Sacks and Welch
+   2009), the most spread out (maximin) of 100 drawn. Variables need two finite bounds;
+   integer variables are refused for now.
+3. **Stated budget and rule**: the best value within 1% of the minimum's size, Jones et al.'s
+   measure of success, in 50 evaluations (the design's 20 or 30 included), from seeds 1 to 20.
+   Set from a first 10-seed probe (Branin's worst 1.03% at 40 evaluations, so 50); measured on
+   20 seeds: worst 1.18e-3 (Branin) and 1.24e-3 (Hartmann 3) of the minimum.
+4. **Split d1, d2.** On Hartmann 6, 6 of 10 runs end at its local minimum −3.20 after 100
+   evaluations, and a run takes 37 s in a debug build. M6.2d2 holds Hartmann 6 to the same rule;
+   the likely levers are the fitted `pₖ` or a cap on `θ`, and a faster likelihood fit. The gap
+   is visible in the guide and the roadmap.
+5. **The minima.** Branin's is `5/(4π)` in closed form at three points, checked to 10⁻¹⁴.
+   Hartmann's are the printed −3.86278 and −3.32237, each checked by polishing with CMA-ES from
+   the printed point to within 5×10⁻⁶. The constants are Dixon and Szegö's (1978) as Jones et
+   al. list them; Hartmann 3's `p₃₀` is 0.0381 (some listings print 0.03815, away from the
+   minimum).
+
+**Consequences.** `hpr_analysis::optimize::ego` (`Ego`, `Optimum`, `Stop`) and
+`benchmark::global` (`branin`, `hartmann3`, `hartmann6`); `tests/ego.rs`. No outside
+implementation is run as an oracle: the minima are known, which is what the milestone states.
+Left out: Hartmann 6 (M6.2d2), noisy outputs (a nugget fitted to the noise), batches of points
+per step, constraints and integer variables.

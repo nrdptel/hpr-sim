@@ -17,6 +17,9 @@
 //! - [`nsga2`]: NSGA-II, a genetic algorithm for two or more goals at once (apogee against
 //!   stability, say), which finds the *Pareto front*: the designs where one goal can only be
 //!   bettered by giving up another.
+//! - [`ego`]: efficient global optimization (EGO), for a model so slow that only tens of
+//!   evaluations can be afforded: it fits a surrogate to the points evaluated so far and
+//!   evaluates next where the surrogate expects the most improvement.
 //! - [`Evaluation`]: a value and a constraint violation, for a model with constraints, ranked
 //!   by Deb's feasibility rules ([`cmaes::Run::tell_constrained`]).
 //! - [`benchmark`]: test functions with known minima, and test problems with known fronts, which
@@ -34,12 +37,13 @@
 //!
 //! # Left out
 //!
-//! Bayesian optimization and optimizing a Monte Carlo run's statistics are later increments of [M6.2, the optimization milestone][roadmap].
+//! EGO on six or more variables, and optimizing a Monte Carlo run's statistics, are later increments of [M6.2, the optimization milestone][roadmap].
 //!
 //! [roadmap]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m6-2
 
 pub mod benchmark;
 pub mod cmaes;
+pub mod ego;
 mod eigen;
 mod normal;
 pub mod nsga2;
