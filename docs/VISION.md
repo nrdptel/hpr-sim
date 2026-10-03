@@ -76,6 +76,13 @@ Neer at his first check-in, verbatim (2026-10-03):
 He then said "add all" to three further research passes of ideas. They are in
 `docs/research/ideas.md`, each tiered; the roadmap takes only the ones that feed queued work.
 
+Later the same day, verbatim (now M8.3, CAD interop):
+
+> this may already be covered by the new ideas. no worries if so. it would be great to export
+> design or parts to stl, step, free, drawings. for freecad parameters and feature trees would be
+> cool. it would also be cool to import any of those formats as a solid and add it to the design
+> for custom parts. for example like custom fins, nosecone, camera canister, payload bump, etc.
+
 **Operating envelope** (ADR-143): accuracy work goes first to the core band, Mach 0–2.5 and angle
 of attack up to 15°; Mach 2.5–3.5 is supported, and beyond that flights fly with a warning. It
 orders the work, it is not a ceiling. An accuracy milestone stops after two increments in a row
@@ -123,6 +130,7 @@ Decisions Neer confirmed at kickoff:
 | V30 | Club operations: RSO and LCO checks, flight-line planning, day-of kits (`docs/research/ideas-competitions-and-clubs.md`) | later |
 | V31 | Developer ecosystem: MCP server, notebooks, plugins, schemas, interchange exports (`docs/research/ideas-ecosystem-and-ui.md`) | later |
 | V32 | UI and AI, with every number grounded in the engine: AI never writes numbers or makes safety calls (`docs/research/ideas-ecosystem-and-ui.md`) | M9.x |
+| V33 | CAD interop: export a part or the design to STL, STEP, drawings and a parametric FreeCAD tree; import any of those as a solid custom part (fins, nose cone, camera canister, payload bump) | M8.3 |
 
 ## North stars
 

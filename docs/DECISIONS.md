@@ -149,7 +149,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 | ADR-142 | M6.2d: EGO (Jones, Schonlau and Welch 1998) with a kriging surrogate fitted by likelihood and the expected improvement searched by CMA-ES; M6.2d split d1 (Branin, Hartmann 3: within 1% of the minimum in 50 evaluations from 20 seeds, worst 0.12%) and d2 (Hartmann 6, which d1's version leaves at a local minimum in 7 runs of 10) | accepted |
 | ADR-143 | The operating envelope (core Mach 0–2.5 and 15°, extended to 3.5, beyond deferred) orders accuracy work; the stop rule (two increments that move no measured number end a milestone); M1.8 closed with its misses, its Cd bullet moved to M1.14; M1.8e16 and #108 deferred | accepted |
-| ADR-144 | The 2026-10-03 check-in: M0.5 leaner bookkeeping first, then M6.2d2 (one attempt), M4.5, M1.14, M6.3 on; issue labels and P-critical first; a writing standard; guardrails; licensing records settled | accepted |
+| ADR-144 | The 2026-10-03 check-in: M0.5 leaner bookkeeping first, then M6.2d2 (one attempt), M4.5, M1.14, M6.2e, M6.3 on; M8.3 CAD interop added; issue labels and P-critical first; a writing standard; guardrails; licensing records settled | accepted |
 
 ---
 
@@ -11677,8 +11677,9 @@ and finishing a milestone hand-edits up to 8 mirrored places.
    STATUS with a byte budget, generated mirrors, reviews while CI runs, refs checks in the gate,
    and doc guards rewritten, never deleted. The ADR bar becomes: decisions hard to reverse or that
    constrain later work (Nygard, Fowler, MADR).
-2. **The queue after M0.5:** M6.2d2 (one attempt), M4.5 *Fly my .ork*, M1.14, then M6.3 onward
-   in file order. Until M0.5 teaches the guard that order, STATUS names M0.5.
+2. **The queue after M0.5:** M6.2d2 (one attempt), M4.5 *Fly my .ork*, M1.14, M6.2e (robust
+   optimization, kept open), then M6.3 onward in file order. Until M0.5 teaches the guard that
+   order, STATUS names M0.5.
 3. **M6.2d2 gets one attempt:** Jones et al.'s own approach on Hartmann 6, the `−ln(−y)`
    transform. If it misses 1%, an ADR records the measured result and the queue moves on.
 4. **Issues.** Priority labels `P-critical`, `P-high`, `P-low`; envelope labels (ADR-143); area
@@ -11728,4 +11729,8 @@ in a few lines, until M0.5 trims it. `docs/research/ideas.md` and its theme note
 from the check-in, each tiered NEXT, SOON, LATER or NEEDS NEER; the roadmap takes only the NEXT
 ones, already in M4.5 and M1.14. Scope questions the ideas raise (thrust vector control and
 active fins, GPS-steered parachutes, rocket gliders) conflict with the vision's "steering to a
-target point stays out", so they wait for Neer under *Needs Neer*.
+target point stays out", so they wait for Neer under *Needs Neer*. Neer's own idea from the same
+day, CAD interop (export to STL, STEP, drawings and a parametric FreeCAD tree; import a mesh or a
+STEP solid as a custom part), becomes M8.3 in Phase 6, interop through files only. Its STEP
+import needs a B-rep reader; OpenCascade is LGPL, so that step is a licensing call for Neer if no
+permissive reader suffices.

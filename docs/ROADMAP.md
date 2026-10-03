@@ -60,8 +60,8 @@
   Baseline, cycles 131–151: $21.70 a cycle at list prices, 99 min, about 1 PR; 65% of wall time in
   reviews (31%), the gate (24%) and CI waits (20%); about 23% of written characters in bookkeeping;
   `DECISIONS.md` 917 KB, 143 ADRs; a finished milestone hand-edits up to 8 mirrors. It adds an
-  explicit queue order that the guard follows: after M0.5, M6.2d2 (one attempt), M4.5, M1.14, then
-  M6.3 onward in file order. *Done when:*
+  explicit queue order that the guard follows: after M0.5, M6.2d2 (one attempt), M4.5, M1.14,
+  M6.2e, then M6.3 onward in file order. *Done when:*
   - a. One file per ADR (`docs/decisions/NNNN-slug.md`), a one-line-per-ADR index, old links
     working (link checks pass). ADRs only for decisions hard to reverse or that constrain later
     work (Nygard, Fowler, MADR); increment details go on the physics page or the roadmap entry.
@@ -191,12 +191,11 @@
     a tumbling body's descent rates match the terminal velocity of their cited drag models (analytic
     tests). *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's
     flat streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
-  - [x] **M1.7c Separated bodies:** separation, with every body flown to its own landing and its
-    own mass properties and drag. *Done when:* a separation gives every body a landing, and the
-    bodies' masses sum to the rocket's. *Result (ADR-014):* met. A `Separation` splits the stack at
-    a stage boundary, each body a point mass under its devices; on the two-stage test design both
-    land (2.11 m/s under a canopy, 16.74 m/s tumbling), masses to 1e-12, momenta to 1e-9. Every
-    body carries a device.
+  - [x] **M1.7c Separated bodies:** every body flown to its own landing with its own mass
+    properties and drag. Met (ADR-014), bars kept (every body lands; masses sum to the rocket's): a
+    `Separation` splits the stack at a stage boundary, each body a point mass under its devices; on
+    the two-stage test design both land (2.11 m/s under a canopy, 16.74 m/s tumbling), masses to
+    1e-12, momenta to 1e-9. Every body carries a device.
 - [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** The first end-to-end
   milestone: `hpr-validate` and `cargo xtask validate [--fast]`, TOML cases and reference JSON with
   provenance, Markdown and JSON reports, oracle scripts in `validation/oracles/rocketpy/`. At least
@@ -252,57 +251,43 @@
   Split into M1.8a to M1.8e. The measured reference throughout is NASA's Arcas Robin wind-tunnel
   model: TN D-4013 (Mach 0.6–1.2) and TN D-4014 (Mach 1.5–4.63).
   - [x] **M1.8a Normal force and centre of pressure through Mach 1:** fin slope through the
-    transonic region to supersonic linear theory, and the fin CP shift with Mach. The normal force
-    accepts Mach numbers past 1, so a flight on a drag table flies through Mach 1. Loft lesson L7.
-    *Done when:* L7's test passes (the fin slope and CP are Barrowman's at Mach 0 and change with
-    Mach); a committed fixture, pinned by a test, holds hpr's `C_Nα` and CP against the Arcas Robin
-    measurements at every Mach they give and RASAero II's Calisto export from Mach 0.1 to 2.0,
-    against targets set before measuring — CP within 0.5 calibers, `C_Nα` within 15% — with every
-    miss explained; and the same-drag Prometheus 2022 case flies through Mach 1 and passes.
-    *Result (ADR-027):* met. Linear theory from `M_s`, a join from Mach 0.8. L7 passes; 37 rows
-    pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
-    0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010. Since
-    M1.8e6's body lift (ADR-037): 17 outside; Mach 1.5–2.96 −16.3% to +1.4%, CP within 0.47.
+    transonic region to supersonic linear theory, the fin CP shift with Mach, a normal force past
+    Mach 1 (L7). Met (ADR-027), bars kept (L7's test; the Arcas Robin and RASAero II's Calisto
+    pinned against targets set first, CP within 0.5 cal, `C_Nα` within 15%, every miss explained;
+    same-drag Prometheus 2022 passes): linear theory from `M_s`, a join from Mach 0.8; 37 rows, 16
+    outside, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within 0.42 cal; past Mach 3,
+    17–25% low (M1.8e). Prometheus flies through Mach 1.010. Since M1.8e6's body lift (ADR-037):
+    17 outside; Mach 1.5–2.96 −16.3% to +1.4%, CP within 0.47.
   - [x] **M1.8b Transonic and supersonic drag.** Every drag term's transonic and supersonic branch,
     and nose wave drag. Loft lessons L17 and L18. *Done when:* M1.8's Cd bullet is met or an ADR
     records why not, with the gap in the report; the Arcas Robin's measured axial force is compared;
     the predicted Prometheus case flies. Split below into M1.8b1 to M1.8b3, which carry these
     bullets between them.
-    - [x] **M1.8b1 The drag buildup through Mach 1.**
-      - Nose, shoulder and step pressure drag through Mach 1 (Niskanen eq. 3.87 and appendix B,
-        Stoney's fineness-3 curves); the buildup accepts Mach 0 to 5. Loft lesson L17.
-      *Done when:* L17's test passes; the predicted Prometheus case flies; the Arcas Robin's
-      measured axial force is compared: a committed fixture, pinned by a test, holds hpr's
-      forebody drag against TN D-4013's and TN D-4014's at every Mach they give, fins on and off.
-      *Result (ADR-028):* met. L17's test passes; `drag_against_mach` pins 44 rows, 8 within 10%
-      (misses: blunt fin edges, the base lip, the boattail rule). Predicted Prometheus flies.
+    - [x] **M1.8b1 The drag buildup through Mach 1** (L17): nose, shoulder and step pressure drag
+      (Niskanen eq. 3.87 and appendix B, Stoney's fineness-3 curves), Mach 0 to 5. Met (ADR-028),
+      bars kept (L17's test; predicted Prometheus flies; forebody drag pinned against TN D-4013 and
+      D-4014, fins on and off): 44 rows, 8 within 10% (misses: blunt fin edges, the base lip, the
+      boattail rule).
     - [x] **M1.8b2 Drag against RASAero through Mach 2.** Cd against Mach from RocketPy's RASAero
       CSVs, per band (L18). *Done when:* M1.8's Cd bullet is met or an ADR records why not. *Result
       (ADR-029):* not met, recorded. Calisto's export: 15/15 subsonic, 2/7 transonic, 0/17
       supersonic within 10%; no fin input is within 10% subsonic and supersonic both. MIL-HDBK-762's
       worked example: 6/12, the body 6–10% low past Mach 1.6. Boattail a candidate.
-    - [x] **M1.8b3 The boattail and base faster than sound.**
-      - A conical boattail's supersonic wave drag (MIL-HDBK-762 Fig. 5-122), the base behind it,
-        and a lip in its wake.
-      *Done when* (targets set before measuring; or an ADR records why not): the Arcas Robin's 11
-      fins-off rows from Mach 1.5 within 10%, the 2 now within staying; Calisto's 17 supersonic
-      rows against RASAero II within 10%; each row's change reported (ADR-029).
-      *Result (ADR-030):* not met, recorded. Boattails of 3° to 10° from Mach 1.2: −21.9% to
-      +28.3%; Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (#72); Calisto: 8 of
-      17, −14.9% to −5.1%.
+    - [x] **M1.8b3 The boattail and base faster than sound:** a conical boattail's wave drag
+      (MIL-HDBK-762 Fig. 5-122), the base behind it, a lip in its wake. Not met, recorded (ADR-030),
+      bars kept (targets set first: the Arcas Robin's 11 fins-off rows from Mach 1.5 and Calisto's
+      17 supersonic rows within 10%): boattails of 3° to 10° from Mach 1.2, −21.9% to +28.3%; Arcas
+      Robin 0 of 11, +13.5% to +24.1% (#72); Calisto 8 of 17, −14.9% to −5.1%.
   - [x] **M1.8c Roll and damping.** Roll forcing from fin cant and roll damping; pitch and yaw keep
-    hpr's local-flow damping (ADR-011). *Done when:* M1.8's roll bullet is met, and hpr's roll
-    forcing is compared with the Arcas Robin's measured roll effectiveness (TN D-4014). *Result
-    (ADR-031):* met. Barrowman's strip theory with his body factors. Valetudo canted 1° at 100 m/s
-    settles on the closed-form balance, −16.948 rad/s, within 1e-11. Against TN D-4014: from Mach
-    2.3, 8 of 8 within 5.3%; at Mach 1.5 and 1.8, +14.3% to +47.8%. Damping against the Basic
-    Finner: −5.9% to −16.2%.
+    hpr's local-flow damping (ADR-011). Met (ADR-031), bars kept (M1.8's roll bullet; TN D-4014's
+    roll effectiveness compared): Barrowman's strip theory, his body factors; Valetudo canted 1° at
+    100 m/s settles at −16.948 rad/s, the closed form to 1e-11. TN D-4014: from Mach 2.3, 8 of 8
+    within 5.3%; Mach 1.5, 1.8: +14.3% to +47.8%. Basic Finner damping: −5.9% to −16.2%.
   - [x] **M1.8d Normal-force overrides.** `C_Nα` and CP tables against Mach and angle of attack from
-    a RASAero II export. *Done when:* its `C_Nα` and CP columns replace hpr's in a flight, and the
-    reading is tested on the Calisto export. *Result (ADR-032):* met. The table's force at the
-    centre of mass's flow, hpr's damping kept. Calisto's export (0°, 2°, 4°): 4,999 rows re-read
-    with `refs/`, M1.8a's 30 values in CI; Calisto flies on it; a table's pitch period within 4e-6
-    of linear theory, pitch and yaw.
+    a RASAero II export. Met (ADR-032), bars kept (the columns replace hpr's in a flight, tested on
+    Calisto's export): the force at the centre of mass's flow, hpr's damping kept; 4,999 rows (0°,
+    2°, 4°) re-read with `refs/`, M1.8a's 30 in CI; Calisto flies on it; a table's pitch and yaw
+    period within 4e-6 of linear theory.
   - [x] **M1.8e The body's supersonic normal force.** M1.8a measured the gap: past Mach 3 the
     Arcas Robin's body alone lifts 3.9 to 4.6 per rad, where slender-body theory gives 2.3 to 2.8
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
@@ -568,11 +553,9 @@
 - [x] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
   - Loft lessons: L84, L85, L86, L88.
-  *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
-  The failing run is linked from the real PR's description, and the throwaway PR is closed with
-  `gh pr close --delete-branch`.
-  *Result (ADR-084):* 648 rows; 2% more skin friction on #199 failed validate on all three OSes
-  (74 rows, 17 worse; run 36267483063); #199 closed. Linux's reproduction miss there is #200.
+  Met (ADR-084), bars kept (a perturbed drag on a throwaway draft PR fails CI, the run linked, the
+  PR closed): 648 rows; 2% more skin friction on #199 failed validate on all three OSes (74 rows,
+  17 worse; run 36267483063); #199 closed. Linux's reproduction miss there is #200.
 - [x] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17). A
   separation at any joint, not only a stage boundary (ADR-014): an ejected nose cone, a body
   section, or a payload carried inside, each flown to its own landing under its own recovery
@@ -762,14 +745,12 @@
   notices). Lookup by vendor and part number; parts can be used from the design API. *Done when:*
   all `.orc` files parse, and a design built from catalog parts simulates. Split a and b (ADR-132).
   - [x] **M5.5a The `.orc` reader** (`hpr_io::orc`), the 16 files OpenRocket 24.12 ships bundled.
-    *Done when:* every bundled file reads, every part OpenRocket's preset loader returns (the
-    oracle) with each value equal to its reading bar named, counted departures; parts are found
-    by maker and part number. *Result:* met (ADR-132): 3,449 parts; 17,911 of 18,306 numbers to
-    the bit, the rest 185 ounces, 207 stated-mass densities, 3 undefined; 252 makers' names.
-  - [x] **M5.5b Catalog parts in the builder.** *Done when:* a rocket built from catalog parts
-    flies through the builder; each part's mass as built is held to OpenRocket's for its preset.
-    *Result:* met (ADR-133): 3,445 built, 4 refused; each held to OpenRocket or its gap counted
-    with its cause: hollow shoulders (OR's weigh nothing), two wall definitions, ounces, a streamer.
+    Met (ADR-132), bars kept (every file reads; each part equal to OR's preset loader bar named,
+    counted departures; found by maker and part number): 3,449 parts; 17,911 of 18,306 numbers
+    to the bit, the rest 185 ounces, 207 stated-mass densities, 3 undefined; 252 makers' names.
+  - [x] **M5.5b Catalog parts in the builder.** Met (ADR-133), bars kept (a catalogue rocket flies;
+    each part's built mass held to OR's preset): 3,445 built, 4 refused; each held to OR or its gap
+    counted: hollow shoulders (OR's weigh nothing), two wall definitions, ounces, a streamer.
 - [ ] **M4.5 Fly my .ork.** Added at the 2026-10-03 check-in (ADR-144). None of OpenRocket's 17
   example `.ork` files flies as saved in `hpr sim` (12 lack motors, 2 hybrids, the rest staging,
   freeform fins or parallel stages); recovery from a `.ork` never flies (#240); `hpr sim` never
@@ -967,6 +948,24 @@ up in `docs/research/`.
 
   *Done when:* property tests show undo/redo is a round trip, and re-simulation after an edit is
   measured.
+
+- [ ] **M8.3 CAD interop.** Added by Neer on 2026-10-03 (VISION V33). Parts and designs out to
+  meshes, drawings, FreeCAD and STEP; meshes and STEP in as custom parts. Files only: FreeCAD and
+  its Rocket Workbench are copyleft, never read; FreeCAD may run as an external oracle.
+  *Done when:* a part exported to FreeCAD and re-imported keeps its mass properties within a
+  stated tolerance, and an imported fin or nose flies the same aero as its native equivalent.
+  - [ ] **M8.3a Mesh export** (STL, 3MF, OBJ) of any part or the whole design: watertight, mm.
+  - [ ] **M8.3b Drawings** (SVG, DXF, PDF): fins with bevels, rings, nose profiles, tube cut lists.
+  - [ ] **M8.3c FreeCAD:** a generated Python script rebuilds the design as a parametric feature
+    tree, a spreadsheet of design parameters driving the sketches, revolves and pads.
+  - [ ] **M8.3d STEP export** as B-rep solids through a permissive kernel (truck, Apache-2.0;
+    licence and maturity to check).
+  - [ ] **M8.3e Mesh import** (STL, OBJ, 3MF) as a custom part: mass properties exact from the
+    closed mesh and a material (Mirtich 1996, polyhedral mass properties); aero by recognition
+    (axisymmetric: a body profile, such as a nose or canister; flat: a fin planform; small and
+    attached: a protuberance); otherwise mass only, flagged "aero not modelled".
+  - [ ] **M8.3f STEP import** needs a B-rep reader. OpenCascade is LGPL, which `cargo deny`
+    rejects, so it is a Neer licensing call if no permissive reader suffices.
 ## Phase 7: UI, 3D, web, mobile (only after the phases above)
 
 - [ ] **M9.0 UI architecture ADR plus a spike.** Compare the leading option (web UI plus WASM core,

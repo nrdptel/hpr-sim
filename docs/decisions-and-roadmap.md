@@ -142,7 +142,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-123: Complex packing, and a whole GFS file][adr-123] | hpr's GRIB2 decoder reads the tighter packing of NOAA's whole GFS files, and totals over a time span (such as accumulated rain; read, not used in a profile). Every value of one whole file was checked against ecCodes by a script, run once outside CI; CI checks eight of its messages and a recorded cut ecCodes packed the same way. A whole file's profile is its NOMADS cut's to 1.04e-7, with the levels above 10 hPa as well | [A whole GFS file](nomads.md#a-whole-gfs-file) |
 | [ADR-124: JPEG 2000 packing, through `hayro-jpeg2000`][adr-124] | hpr's GRIB2 decoder reads fields stored as JPEG 2000 images, as NOAA's whole RAP files are, using a JPEG 2000 decoder written in Rust rather than one of its own. Only lossless images of up to 21 bits a value, coded as NCEP codes them, are read, which its 32-bit floats keep exact; the rest are refused by name. CI checks four public RAP fields against ecCodes | [Files in JPEG 2000](nomads.md#files-in-jpeg-2000) |
 | [ADR-143: The operating envelope and a stop rule for accuracy work][adr-143] | Accuracy work goes to the core band first: Mach 0 to 2.5 and an angle of attack up to 15°, where nearly all commercial-motor flights are. Mach 2.5 to 3.5 is supported, and faster or steeper flights still fly, with a warning. An accuracy milestone stops after two steps in a row that move no measured number. [M1.8](#m1-8) closes with its drag target missed, and that target moves to [M1.14](#m1-14) | [Validation plan: the operating envelope](VALIDATION.md#operating-envelope) |
-| [ADR-144: The 2026-10-03 check-in][adr-144] | What runs next ([M0.5](#m0-5), leaner bookkeeping, then [M6.2d2](#m6-2d2), [M4.5](#m4-5) and [M1.14](#m1-14)), how issues are labelled and ordered, the writing standard for these pages, guardrails on safety-relevant numbers, and licensing questions settled | [Writing these pages](writing.md) |
+| [ADR-144: The 2026-10-03 check-in][adr-144] | What runs next ([M0.5](#m0-5), leaner bookkeeping, then [M6.2d2](#m6-2d2), [M4.5](#m4-5), [M1.14](#m1-14) and [M6.2e](#m6-2e)), CAD interop added as [M8.3](#m8-3), how issues are labelled and ordered, the writing standard for these pages, guardrails on safety-relevant numbers, and licensing questions settled | [Writing these pages](writing.md) |
 
 ## The roadmap
 
@@ -410,6 +410,13 @@ missing or its status disagrees.
 | <a id="m7-4"></a>[M7.4][phase-5] | Diagnosing what went wrong in a flight | not yet done |
 | <a id="m8-1"></a>[M8.1][phase-6] | A design assistant | not yet done |
 | <a id="m8-2"></a>[M8.2][phase-6] | An editing model for apps: commands, undo and stable ids | not yet done |
+| <a id="m8-3"></a>[M8.3][phase-6] | CAD interop: parts and designs out to meshes, drawings, FreeCAD and STEP, and meshes or STEP solids in as custom parts, through files only ([ADR-144][adr-144]) | not yet done |
+| <a id="m8-3a"></a>[M8.3a][phase-6] | Any part or the whole design written as a watertight mesh in millimetres: STL, 3MF or OBJ | not yet done |
+| <a id="m8-3b"></a>[M8.3b][phase-6] | Dimensioned drawings (SVG, DXF, PDF): fins with bevels, rings, nose profiles and tube cut lists | not yet done |
+| <a id="m8-3c"></a>[M8.3c][phase-6] | A generated FreeCAD script that rebuilds the design as a parametric feature tree, driven by a spreadsheet of its dimensions | not yet done |
+| <a id="m8-3d"></a>[M8.3d][phase-6] | STEP export as solids, through a permissively licensed geometry kernel | not yet done |
+| <a id="m8-3e"></a>[M8.3e][phase-6] | A mesh read in as a custom part: its mass properties computed exactly from the closed mesh and a material, its aerodynamics recognised as a body profile, a fin or a protuberance, or else marked as not modelled | not yet done |
+| <a id="m8-3f"></a>[M8.3f][phase-6] | STEP solids read in as custom parts, once a reader with a suitable licence is found | not yet done |
 | <a id="m9-0"></a>[M9.0][phase-7] | Choosing how the app is built, with trial builds | not yet done |
 | <a id="m9-1"></a>[M9.1][phase-7] | A desktop app | not yet done |
 | <a id="m9-2"></a>[M9.2][phase-7] | 3D flight replay, the real flight beside the simulated one | not yet done |

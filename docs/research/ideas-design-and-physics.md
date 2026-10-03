@@ -11,10 +11,10 @@ Part of the [ideas backlog](ideas.md) (2026-10-03). One line each, with its tier
 - LATER: evolutionary fin shapes.
 - LATER: freeform fins traced from an image.
 - SOON: a fabrication pack: DXF and SVG fins and rings, printable templates and marking guides,
-  STL nose cones, fin jigs.
-- LATER: STEP export.
+  STL nose cones, fin jigs. Meshes and drawings promoted to M8.3 (a, b).
+- Promoted to M8.3d: STEP export.
 - LATER: live Onshape and Fusion parametric add-ins.
-- LATER: import the outer shape from CAD or STL.
+- Promoted to M8.3e, f: import a shape from CAD or STL as a custom part.
 - SOON: per-part drag coefficient against Mach sweeps.
 - SOON: custom expressions.
 - SOON: external aerodynamic tables per component, against angle of attack and Reynolds number
