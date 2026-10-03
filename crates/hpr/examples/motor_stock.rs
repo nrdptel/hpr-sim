@@ -14,8 +14,12 @@
 //! still agree (`cargo xtask examples --check`).
 //!
 //! It never uses the network: a stand-in transport answers with the files recorded from the
-//! motor finder's API on 1 October 2026, at 07:07 UTC, and from ThrustCurve.org's at 08:22 UTC.
-//! Stock and prices change by the hour.
+//! motor finder's API on 1 October 2026, at 07:07 UTC, and J450DM's file recorded from
+//! ThrustCurve.org's at 08:22 UTC. ThrustCurve.org grants no licence for its motor records, so the
+//! three searches are stand-ins in its API's shape: five invented motors per maker, and a record
+//! of each motor in the finder's in-stock list carrying only that list's values (ThrustCurve.org's
+//! published figures, as the finder relays them under CC BY 4.0), with an invented id and file
+//! count. Stock and prices change by the hour.
 
 #![allow(
     clippy::disallowed_methods,
@@ -159,16 +163,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    // 4. ThrustCurve.org: every record of the three makers, one search each, and the motors in
-    //    stock matched to them by maker and designation.
+    // 4. ThrustCurve.org: the records of the three makers, one search each (here the stand-ins
+    //    in its shape), and the motors in stock matched to them by maker and designation.
     let (records, from_tc) = thrustcurve::fetch_finder_records(&online, now_s)?;
     let join = thrustcurve::join(&in_stock.motors, &records);
     let (mapped, total) = join.coverage();
+    let invented = records
+        .iter()
+        .filter(|r| r.designation.ends_with("-INVENTED"))
+        .count();
     println!();
     println!("{}", from_tc[0].attribution);
     println!(
-        "{} records of the three makers; {mapped} of {total} motors in stock matched to one each, {} missed",
+        "{} records of the three makers in stand-in searches: {invented} invented, {} with the motor finder's copy of ThrustCurve.org's figures; {mapped} of {total} motors in stock matched to one each, {} missed",
         records.len(),
+        records.len() - invented,
         join.misses.len()
     );
 
@@ -196,18 +205,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     let figure = |value: Option<f64>| value.map_or_else(|| "?".to_owned(), |v| v.to_string());
     println!(
-        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, peak thrust {:>6} N",
+        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, average thrust {:>6} N",
         "the file:",
         format!("{:.1}", curve.total_impulse_ns()),
         format!("{:.2}", curve.burn_time_s()),
-        format!("{:.1}", curve.peak_thrust_n())
+        format!("{:.1}", curve.average_thrust_n())
     );
     println!(
-        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, peak thrust {:>6} N",
+        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, average thrust {:>6} N",
         "record:",
         figure(record.total_impulse_ns),
         figure(record.burn_time_s),
-        figure(record.max_thrust_n)
+        figure(record.avg_thrust_n)
     );
     std::fs::remove_dir_all(&folder).ok();
     Ok(())

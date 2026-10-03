@@ -777,7 +777,7 @@
   motors search --in-stock --class L --max-price 150`. *Done when:* recorded-fixture tests pass;
   the designation to ThrustCurve id mapping covers at least 95% of in-stock motors, with a report
   of the misses; attribution is displayed as the API asks. Split a to c (ADR-129). Met: M5.4a 8 answers read back and offline, the credit on each (ADR-129); M5.4b 282 of 282
-  mapped, J450DM's file read (ADR-130); M5.4c none at $150 on the recording, the one on an edited
+  mapped, J450DM's file read (ADR-130; stand-in searches since, ADR-145); M5.4c none at $150 on the recording, the one on an edited
   copy, offline too (ADR-131).
   - [x] **M5.4a The motor finder's API** (`hpr_net::motor_finder`).
   - [x] **M5.4b ThrustCurve.** `hpr_net::thrustcurve`.

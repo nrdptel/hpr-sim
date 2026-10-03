@@ -15,17 +15,18 @@ price ([Motors you can buy](cli.md#motors-you-can-buy)); a Rust program calls th
 below.
 
 **How far to trust it.** hpr gives back the site's values unchanged, and the saved copy gives them
-back offline. That is checked on thirteen recorded answers, below: eight from
-motor.fusionspace.co and five from ThrustCurve.org. Whether a vendor really has a motor,
-at that price, is the vendor's to say. The site's data is up to about an hour old when it is built,
+back offline. That is checked on recorded answers, below: eight from motor.fusionspace.co and two
+curve files from ThrustCurve.org, beside three stand-in searches in ThrustCurve.org's shape, since
+ThrustCurve.org grants no licence for its motor records (its site reads "All rights under
+copyright reserved"). Whether a vendor really has a motor, at that price, is the vendor's to say. The site's data is up to about an hour old when it is built,
 and hpr counts its saved copy as fresh for another hour, so a fresh answer can be two hours behind
 the vendor's page; a stale copy is as old as its date says. (ThrustCurve.org's answers count as
 fresh for a day.) The site's terms ask you to check stock
 and price on the vendor's own page before relying on them. Prices are in U.S. dollars.
 
-The match is by name. On the recorded answers, all 282 motors in stock matched exactly one
-ThrustCurve.org record ([below](#matching-motors-to-thrustcurveorg)), and each matched record's
-size, impulse, average thrust and burn time equal the motor finder's. A curve is the file someone
+The match is by name. On ThrustCurve.org's answers of 1 October 2026, all 282 motors in stock
+matched exactly one ThrustCurve.org record ([below](#matching-motors-to-thrustcurveorg)), and each
+matched record's size, impulse, average thrust and burn time equal the motor finder's. A curve is the file someone
 uploaded to ThrustCurve.org, read by the same readers as a motor file on your disk.
 
 The tests replay saved answers, and CI never contacts either live site. Both were contacted by
@@ -129,7 +130,8 @@ and the code call a matched motor *mapped*.) `thrustcurve::fetch_finder_records`
 fetches the records the match needs, one search for each of the three makers the finder reads,
 and `thrustcurve::join` matches them.
 
-On the recorded answers, every motor in stock matched:
+On ThrustCurve.org's answers of 1 October 2026, every motor in stock matched
+([ADR-130: ThrustCurve.org and the match](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01)):
 
 | Maker | Motors in stock | Matched | Missed | ThrustCurve.org records searched |
 |---|---:|---:|---:|---:|
@@ -138,15 +140,32 @@ On the recorded answers, every motor in stock matched:
 | Loki Research | 30 | 30 | 0 | 60 |
 | **All** | **282** | **282** | **0** | **663** |
 
-Every matched record lists at least one data file, in some format. The motor finder copies
-ThrustCurve.org's names and figures, so a full match is expected; the match is there to catch
-drift. The tests also check that for every match, the diameter, total impulse, average thrust and
-burn time are the same on both sides, so each match is the right motor by more than its name.
-The table is written by the tests into
+Every matched record listed at least one data file, in some format, and for every match the
+diameter, total impulse, average thrust and burn time were the same on both sides, so each match
+was the right motor by more than its name. The motor finder copies ThrustCurve.org's names and
+figures, so a full match is expected; the match is there to catch drift.
+
+ThrustCurve.org grants no licence for its motor records; its site reads "All rights under
+copyright reserved". So the repository no longer keeps those three answers, and the tests replay
+stand-ins in the same shape instead
+([ADR-145: the recordings' licences](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)). They hold
+297 records:
+
+- 15 wholly invented, five per maker, with designations ending `-INVENTED`;
+- 282, one for each motor in the finder's in-stock list. Each carries only the values that list
+  states, which are ThrustCurve.org's published figures as the finder relays them under CC BY 4.0,
+  plus an invented id and an invented count of data files. J450DM and F27R/L keep their real ids,
+  those of the two public-domain downloads, so the match leads to a committed file. The fields
+  only ThrustCurve.org states (length, weights, peak thrust, certifying body, dates, links) are
+  left out.
+
+On them, too, all 282 motors match. The tests write the match's report into
 [`validation/reports/thrustcurve-join.md`](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/thrustcurve-join.md),
-and checked against the match on every run. The milestone's goal
-([M5.4b](decisions-and-roadmap.md#m5-4b)) was 95% of the motors in stock; the test asserts that
-too.
+and check it against the match on every run. So the committed tests show that the code keeps the
+rule; the full match on ThrustCurve.org's own records is the measurement of 1 October 2026 above,
+which last ran at commit [5150e0d](https://github.com/nrdptel/hpr-sim/commit/5150e0d) (the test was added by [PR #277](https://github.com/nrdptel/hpr-sim/pull/277)).
+The milestone's goal ([M5.4b](decisions-and-roadmap.md#m5-4b)) was 95% of the motors in stock;
+the test asserts that too.
 
 **The curve.** A download's file is read by the same readers as a motor file on your disk
 ([Solid motors](physics/motor.md)): `.eng` by `hpr_motor::eng`, `.rse` by `hpr_motor::rse`.
@@ -204,7 +223,7 @@ Run it from a copy of the repository with
 
 <!-- quote: crates/hpr/examples/motor_stock.output.txt -->
 ```text
-Motor stock and prices from motor.fusionspace.co, aggregated from public vendor listings and ThrustCurve.org; provided as is, with no warranty: check stock and price on the vendor's own page before relying on them
+Motor stock data from motor.fusionspace.co, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); aggregated from public vendor listings and ThrustCurve.org; provided as is, with no warranty: check stock and price on the vendor's own page before relying on them
 built 2026-10-01T07:07:29+00:00: 598 motors listed, 282 in stock, from 12 vendors
 first read: Fetched; offline two hours later: Stale, the same list: true
 
@@ -217,10 +236,10 @@ Cesaroni Technology  3683L851-P          75         3683.2     $290.39  Animal M
 AeroTech             L1150R              75         3517.0     $324.99  Animal Motor Works             1
 
 Motor data and thrust curves courtesy of ThrustCurve.org, https://www.thrustcurve.org/
-663 records of the three makers; 282 of 282 motors in stock matched to one each, 0 missed
+297 records of the three makers in stand-in searches: 15 invented, 282 with the motor finder's copy of ThrustCurve.org's figures; 282 of 282 motors in stock matched to one each, 0 missed
 AeroTech J450DM: id 5f4294d2000231000000044f, a RASP file from source cert, licence PD, 37 points from ignition
-the file:  total impulse   1061.6 N·s, burn time  2.28 s, peak thrust  541.4 N
-record:    total impulse     1055 N·s, burn time  2.27 s, peak thrust    558 N
+the file:  total impulse   1061.6 N·s, burn time  2.28 s, average thrust  465.6 N
+record:    total impulse     1055 N·s, burn time  2.27 s, average thrust    465 N
 ```
 
 CI checks that it still prints this (`cargo xtask examples --check`). The first line is the credit
@@ -230,26 +249,31 @@ the site asks for, with its caution; show it wherever a price or stock is shown.
 vendors had the motor in stock. On that morning no L motor in stock cost $150 or less: the
 cheapest was $260.99.
 
-The last lines come from ThrustCurve.org, under its own credit line. J450DM's file is the
-certification test's curve (`source cert`), public domain, and the very file hpr already carries
-for J450DM ([Solid motors](physics/motor.md)). Its curve starts at zero thrust at ignition, then
-follows the file's 36 points. hpr works its figures out from those points, so they differ from
-the published figures on the ThrustCurve.org record:
+The last lines come from ThrustCurve.org, under its own credit line, except the records: the 297
+are the stand-in searches ([above](#matching-motors-to-thrustcurveorg)), so the count is theirs,
+and the match runs on the finder's own copy of ThrustCurve.org's figures. J450DM's file is a real
+answer: the certification test's curve (`source cert`), public domain, and the very file hpr
+already carries for J450DM ([Solid motors](physics/motor.md)). Its curve starts at zero thrust at
+ignition, then follows the file's 36 points. hpr works its figures out from those points, so they
+differ from the published figures on the record (here the motor finder's copy of them):
 
 | | from the file | on the record | difference |
 |---|---:|---:|---:|
 | total impulse | 1,061.6 N·s | 1,055 N·s | +0.6% |
 | burn time | 2.28 s | 2.27 s | +0.4% |
-| peak thrust | 541.4 N | 558 N | −3.0% |
+| average thrust | 465.6 N | 465 N | +0.1% |
 
-541.4 N is the file's highest sampled point.
+The average thrust is the total impulse over the burn time.
 
 ## Credit and terms
 
 ### motor.fusionspace.co
 
-The site's terms: "Free to use; attribution to motor.fusionspace.co is appreciated." The data is
-gathered from public vendor listings and from ThrustCurve.org, and comes as is, with no warranty.
+The site licenses its API's answers under Creative Commons Attribution 4.0 (CC BY 4.0), with the
+credit "Motor stock data from motor.fusionspace.co", and allows keeping recorded answers, such as
+the test recordings below ([its API page](https://motor.fusionspace.co/api), "Data licence"). The
+data is gathered from public vendor listings and from ThrustCurve.org, and comes as is, with no
+warranty.
 hpr puts its credit line, `motor_finder::ATTRIBUTION`, on every answer, fetched or saved; the
 example above prints it first, and `hpr motors search` prints it at the top of every list, in
 text and in JSON, with ThrustCurve.org's below it. The site asks programs to use its files rather
@@ -258,7 +282,7 @@ counts as fresh for an hour, as often as the site rebuilds.
 
 ### ThrustCurve.org
 
-ThrustCurve.org's API states no terms for its data, and asks for no particular credit. hpr puts
+ThrustCurve.org grants no licence for its motor records; its site reads "All rights under copyright reserved", and its API asks for no particular credit. hpr puts
 `thrustcurve::ATTRIBUTION`, "Motor data and thrust curves courtesy of ThrustCurve.org", on every
 answer, as it credits the 32 curves it carries. Each data file has its own licence, set by whoever
 uploaded it: check it before passing a file on. hpr's saved copy counts as fresh for a day, so a
@@ -298,16 +322,16 @@ sticker price over the pack, the cheapest offer is the lowest-priced listing in 
 in stock exactly when one of its listings is, and the vendor counts count distinct vendors.
 
 The tests in [`crates/hpr-net/tests/thrustcurve.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-net/tests/thrustcurve.rs)
-replay five answers recorded from ThrustCurve.org on 1 October 2026 at 08:22 UTC: the three makers'
-searches, AeroTech J450DM's `.eng` file and AeroTech F27R/L's `.rse` file, both public domain. They
-check that:
+replay two answers recorded from ThrustCurve.org on 1 October 2026 at 08:22 UTC, AeroTech J450DM's
+`.eng` file and AeroTech F27R/L's `.rse` file, both public domain, and the three stand-in searches
+described [above](#matching-motors-to-thrustcurveorg). They check that:
 
 - each answer, read and written back out, holds exactly the recording's fields and values, carries
   ThrustCurve.org's credit, comes from the saved copy on a second read, and works offline, fresh
   for a day and stale after;
-- the test builds its own name-to-id table straight from the recorded JSON, and the match agrees
-  for all 282 motors; each match's diameter, impulse, average thrust and burn time equal the
-  finder's; and the report is the committed one;
+- the test builds its own name-to-id table straight from the stand-ins' JSON, and the match
+  agrees for all 282 motors; each match's diameter, impulse, average thrust and burn time equal
+  the finder's; and the report is the committed one;
 - a motor renamed, two records of one name, or a designation in another case is a miss with its
   reason, and the report lists it with its counts; the same record given twice counts once, and
   another maker's record of the same designation doesn't disturb the match;

@@ -837,15 +837,15 @@ dest = "refs/snapshots/thrustcurve/info/simulators.html"
 license = "unstated terms"
 mode = "fetched"
 
-# motor.fusionspace.co API v1 (US stock and prices). "Free to use; attribution to
-# motor.fusionspace.co is appreciated."
+# motor.fusionspace.co API v1 (US stock and prices). CC BY 4.0, credit "Motor stock data from
+# motor.fusionspace.co" (https://motor.fusionspace.co/api, "Data licence", fetched 2026-10-03).
 [[snapshot]]
 name = "motor-finder-meta"
 url = "https://motor.fusionspace.co/api/v1/meta.json"
 sha256 = "fb1a68c3904b7238515b7144d5d4cece537e15f3064e24df4cebac8a222a4a66"
 captured = "2026-09-17"
 dest = "refs/snapshots/motor-finder/meta.json"
-license = "free to use, attribution appreciated"
+license = "CC-BY-4.0"
 mode = "fetched"
 
 [[snapshot]]
@@ -854,7 +854,7 @@ url = "https://motor.fusionspace.co/api/v1/motors.json"
 sha256 = "58f30191f8475521b01d280886c4e45cb6014d1e2e54940dbbb1d5fea6f0e3b5"
 captured = "2026-09-17"
 dest = "refs/snapshots/motor-finder/motors.json"
-license = "free to use, attribution appreciated"
+license = "CC-BY-4.0"
 mode = "fetched"
 
 [[snapshot]]
@@ -863,7 +863,7 @@ url = "https://motor.fusionspace.co/api/v1/in-stock.json"
 sha256 = "644181c9ac6f88ce360a2b3ae5dd5aeba4eebf2ee23e9e80b7ec9d896cbf0cc7"
 captured = "2026-09-17"
 dest = "refs/snapshots/motor-finder/in-stock.json"
-license = "free to use, attribution appreciated"
+license = "CC-BY-4.0"
 mode = "fetched"
 
 [[snapshot]]
@@ -872,7 +872,7 @@ url = "https://motor.fusionspace.co/api/v1/vendors.json"
 sha256 = "9b6ebd163eaccfed2bfb9c11a37a03df1860fd05425850b39aa6f32a85177fca"
 captured = "2026-09-17"
 dest = "refs/snapshots/motor-finder/vendors.json"
-license = "free to use, attribution appreciated"
+license = "CC-BY-4.0"
 mode = "fetched"
 
 [[snapshot]]

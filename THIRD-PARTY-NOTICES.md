@@ -129,25 +129,41 @@ adds a source.
   `crates/hpr-net/tests/fixtures/replay/motor-finder-meta.json`, `motor-finder-motors.json`,
   `motor-finder-in-stock.json`, `motor-finder-vendors.json` and the four `motor-finder-<maker>-<motor>.json`
   files are eight answers recorded unchanged from one build of the site's public API, 2026-10-01
-  07:07:29 UTC (one file renamed: the site's `F27R~L.json` is stored as `F27R_L`). The site is
-  the project owner's; its terms read "Free to use; attribution to motor.fusionspace.co is
-  appreciated", the data gathered from public vendor listings and ThrustCurve.org and provided as
-  is, with no warranty. The motor figures in it are ThrustCurve.org's published values (credit
-  above, under the bundled curves)
+  07:07:29 UTC (one file renamed: the site's `F27R~L.json` is stored as `F27R_L`). Motor stock
+  data from motor.fusionspace.co, licensed under Creative Commons Attribution 4.0 International
+  (CC BY 4.0, <https://creativecommons.org/licenses/by/4.0/>); the site's API page
+  (<https://motor.fusionspace.co/api>, "Data licence", checked 2026-10-03) licenses its responses,
+  and the compilation of motor, listing, stock and price data in them, under CC BY 4.0, asks for
+  the credit "Motor stock data from motor.fusionspace.co", and permits storing recorded responses
+  as software test fixtures. The recordings (2026-09-17 under `refs/`, 2026-10-01 here) predate
+  that licence statement; the site's owner licenses them under CC BY 4.0 too (live page, fetched
+  2026-10-03). The files are unchanged but for the one rename. The site is the
+  project owner's; the data is gathered from public vendor listings and ThrustCurve.org and
+  provided as is, with no warranty. The motor figures in it are ThrustCurve.org's published
+  values (credit above, under the bundled curves)
   ([ADR-129](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-129-m54-split-and-m54a-the-motor-finders-api-through-the-cache-2026-10-01)).
   The example `crates/hpr/examples/motor_stock.rs` reads the build and in-stock files.
   `hpr_net::motor_finder` also fetches such answers at run time, when a program asks, and caches
   them on the user's disk; each answer carries the credit for the program to show.
 - **ThrustCurve.org API answers** (<https://www.thrustcurve.org/info/api.html>):
-  `crates/hpr-net/tests/fixtures/replay/thrustcurve-search-aerotech.json`,
-  `thrustcurve-search-cesaroni.json` and `thrustcurve-search-loki.json` are the API's search
-  answers for every AeroTech, Cesaroni Technology and Loki Research motor, and
-  `thrustcurve-download-J450DM.json` and `thrustcurve-download-F27R_L-rocksim.json` two download
-  answers, each holding one data file that ThrustCurve.org marks public domain (license `PD`), all
-  recorded unchanged on 2026-10-01 08:22 UTC. The API states no terms for its data; the records
-  are published motor statistics (factual values, used with attribution, as for the bundled
-  curves above). Data courtesy of ThrustCurve.org, https://www.thrustcurve.org/
+  `crates/hpr-net/tests/fixtures/replay/thrustcurve-download-J450DM.json` and
+  `thrustcurve-download-F27R_L-rocksim.json` are two download answers recorded unchanged on
+  2026-10-01 08:22 UTC, each holding one data file that ThrustCurve.org marks public domain
+  (license `PD`). Data courtesy of ThrustCurve.org, https://www.thrustcurve.org/
   ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01)).
+  `thrustcurve-search-aerotech.json`, `thrustcurve-search-cesaroni.json` and
+  `thrustcurve-search-loki.json` are not ThrustCurve.org's answers: ThrustCurve.org grants no
+  licence for its motor records; its site reads "All rights under copyright reserved", so the
+  searches recorded on 2026-10-01 were replaced on 2026-10-03 by stand-ins in the API's shape. Each holds five invented
+  motors (designations ending `-INVENTED`, every value invented) and one record for each of that
+  maker's motors in `motor-finder-in-stock.json`, carrying only that answer's values (Motor stock
+  data from motor.fusionspace.co, CC BY 4.0, above: ThrustCurve.org's published figures as the
+  finder relays them), with an invented id, bar the two ids of the download answers above, and
+  an invented count of data files; the fields only ThrustCurve.org states are left out, and the
+  answers' counts are invented.
+  The searches recorded on 2026-10-01 remain in the repository's history before 2026-10-03, which
+  is not rewritten
+  ([ADR-145](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)).
   The example `crates/hpr/examples/motor_stock.rs` reads the searches and the J450DM answer.
   `hpr_net::thrustcurve` also fetches such answers at run time, when a program asks, and caches
   them on the user's disk; each answer carries the credit for the program to show.
@@ -436,10 +452,10 @@ same license and mode.
 | `unidata-netcdf-attribute-conventions` | Unidata, netCDF Users Guide, Attribute Conventions (netCDF-C documentation) | unstated terms | fetched | the packing, fill and valid-range conventions `hpr_io::netcdf` applies (M2.3a) |
 | `copernicus-era5-pressure-levels` | Copernicus Climate Data Store catalogue record of "ERA5 hourly data on pressure levels from 1940 to present" (licence, DOI) | CC-BY-4.0 | fetched | the licence and citation of the committed ERA5 extracts (M2.3a) |
 | `ecmwf-era5-geometric-height` | ECMWF Knowledge Base, "ERA5: compute pressure and geopotential on model levels, geopotential height and geometric height" | unstated terms | fetched | cited for ERA5's fixed `g₀` and its suggested geometric height (M2.3a, `hpr_io::era5`) |
-| `motor-finder-meta` | motor.fusionspace.co API v1 `meta.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
-| `motor-finder-motors` | motor.fusionspace.co API v1 `motors.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
-| `motor-finder-in-stock` | motor.fusionspace.co API v1 `in-stock.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
-| `motor-finder-vendors` | motor.fusionspace.co API v1 `vendors.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
+| `motor-finder-meta` | motor.fusionspace.co API v1 `meta.json` | CC-BY-4.0 | fetched | credit "Motor stock data from motor.fusionspace.co" wherever the data is shown |
+| `motor-finder-motors` | motor.fusionspace.co API v1 `motors.json` | CC-BY-4.0 | fetched | credit "Motor stock data from motor.fusionspace.co" wherever the data is shown |
+| `motor-finder-in-stock` | motor.fusionspace.co API v1 `in-stock.json` | CC-BY-4.0 | fetched | credit "Motor stock data from motor.fusionspace.co" wherever the data is shown |
+| `motor-finder-vendors` | motor.fusionspace.co API v1 `vendors.json` | CC-BY-4.0 | fetched | credit "Motor stock data from motor.fusionspace.co" wherever the data is shown |
 
 ## Oracle environment (`validation/oracles/uv.lock`)
 

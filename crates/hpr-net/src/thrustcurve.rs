@@ -20,11 +20,12 @@
 //! reads.
 //!
 //! **How far to trust it:** a value is the answer's, unchanged (`tests/thrustcurve.rs` reads every
-//! field of every recorded answer back). A curve is the file a contributor uploaded, as
+//! field of every committed answer back: two recorded downloads, and three stand-in searches in
+//! the API's shape, as ThrustCurve grants no licence for its records). A curve is the file a contributor uploaded, as
 //! ThrustCurve serves it, read by the same readers as a file on disk. The join is by name only: it
 //! doesn't compare impulse or diameter, so a finder motor whose designation ThrustCurve spells
-//! differently is a miss, not a wrong match. On the recorded answers of 2026-10-01, 282 of the
-//! finder's 282 motors in stock mapped, each to one record.
+//! differently is a miss, not a wrong match. On ThrustCurve's answers of 2026-10-01 (recorded
+//! then, no longer committed), 282 of the finder's 282 motors in stock mapped, each to one record.
 //!
 //! ```
 //! use hpr_net::thrustcurve;

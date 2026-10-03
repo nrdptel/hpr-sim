@@ -17,8 +17,9 @@
 //! [`Client`] for the file, so the answer comes from the cache when it can, and offline from the
 //! cache only; an answer that doesn't parse is never cached. Stock moves by the hour, so a copy
 //! stays fresh for [`TTL_S`], an hour. Show [`ATTRIBUTION`] (it is on every [`Fetched`]) wherever
-//! a price or stock is shown: the API's terms ask for credit to motor.fusionspace.co, and say to
-//! check stock and price on the vendor's own page before relying on them.
+//! a price or stock is shown: the API's data licence, CC BY 4.0, asks for the credit "Motor stock
+//! data from motor.fusionspace.co", and its terms say to check stock and price on the vendor's
+//! own page before relying on them.
 //!
 //! **How far to trust it:** a value is the answer's, unchanged, bar a listing status the API adds
 //! later (`tests/motor_finder.rs` reads every field of every recorded answer back). Whether a vendor really has a motor, at that price,
@@ -56,8 +57,11 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// How long a cached answer counts as fresh, s: an hour, as often as the site rebuilds the files.
 pub const TTL_S: u64 = 3_600;
 
-/// The credit the API's terms ask for, with their caution about stock and price.
-pub const ATTRIBUTION: &str = "Motor stock and prices from motor.fusionspace.co, aggregated from \
+/// The credit the API's data licence asks for, in its words ("Motor stock data from
+/// motor.fusionspace.co"), with the licence, CC BY 4.0, and the API's caution about stock and
+/// price.
+pub const ATTRIBUTION: &str = "Motor stock data from motor.fusionspace.co, licensed CC BY 4.0 \
+                               (https://creativecommons.org/licenses/by/4.0/); aggregated from \
                                public vendor listings and ThrustCurve.org; provided as is, with \
                                no warranty: check stock and price on the vendor's own page \
                                before relying on them";

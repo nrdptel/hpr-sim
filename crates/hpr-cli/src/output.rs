@@ -75,9 +75,9 @@ pub enum MotorKind {
 /// prices.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
 pub struct MotorSearch {
-    /// The credits, shown with every list: motor.fusionspace.co's, as its terms ask, with their
-    /// caution to check stock and price on the vendor's own page; then ThrustCurve.org's, whose
-    /// figures the site repeats.
+    /// The credits, shown with every list: motor.fusionspace.co's, as its data licence (CC BY
+    /// 4.0) asks, with its caution to check stock and price on the vendor's own page; then
+    /// ThrustCurve.org's, whose figures the site repeats.
     pub attribution: Vec<String>,
     /// Where the list was read from.
     pub read_from: ReadFrom,
