@@ -644,12 +644,12 @@
       lug-pod design within 2.2% of OR.
     - [x] **M1.13c2 A pod design against OpenRocket** (ADR-093): six probes, apogee +0.41% to
       +0.81%, speed to +1.24%, the pods' change within 0.32 points.
-- [ ] **M1.14 Accuracy inside the envelope** (ADR-143 §6). The core band (Mach 0–2.5, angle of
-  attack to 15°) first, then the extended band in M1.14h; each names its band. *Done when:* real
+- [ ] **M1.14 Accuracy inside the envelope** (ADR-143 §6). The core band (Mach 0–2.5) first, then
+  the extended band in M1.14h; angle of attack ≤ 15°, high angles M1.14e's. *Done when:* real
   flights meet the 5% mean apogee target, hpr is at least as accurate as OpenRocket on the same
   real flights, and M1.8's Cd bullet is met or its gap re-measured in an ADR.
-  - [ ] **M1.14a Envelope warnings,** three tiers (ADR-143 §1). *Done when:* beyond the validated
-    range, outside the core band and beyond the envelope each warn, tested at the band edges.
+  - [ ] **M1.14a Warnings,** four flags (ADR-143 §1). *Done when:* beyond the validated range, high
+    angle of attack, outside the core band, beyond the envelope: each warns, tested at its edge.
   - [ ] **M1.14b References, Mach 1.5–2.5.** *Done when:* each in ADR-143 §6b reported or refused.
   - [ ] **M1.14c Transonic, Mach 0.8–1.2.** *Done when:* the stop rule ends it, gaps re-measured.
   - [ ] **M1.14d Supersonic, Mach 1.2–2.5.** First the switches that fall back to slender-body

@@ -148,7 +148,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
 | ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 | ADR-142 | M6.2d: EGO (Jones, Schonlau and Welch 1998) with a kriging surrogate fitted by likelihood and the expected improvement searched by CMA-ES; M6.2d split d1 (Branin, Hartmann 3: within 1% of the minimum in 50 evaluations from 20 seeds, worst 0.12%) and d2 (Hartmann 6, which d1's version leaves at a local minimum in 7 runs of 10) | accepted |
-| ADR-143 | The operating envelope (core band Mach 0–2.5 and 15°, extended band to 3.5, beyond the envelope deferred) orders accuracy work, with three tiers of warning; the stop rule (two increments in a row that neither shrink a measured error nor add a reference end a milestone); M1.8 closed with its misses, its Cd bullet an M1.14 input; four slender-body switches (#87, #120, #121, the vertical tip) first in M1.14d, M1.14h above Mach 2.5; only #108's Mach 4 part and M1.8e16 deferred | accepted |
+| ADR-143 | The operating envelope orders accuracy work: bands by Mach only (core 0–2.5, extended to 3.5, beyond the envelope deferred), angle of attack a separate condition (accuracy assumes ≤ 15°), four warning flags; the stop rule (two increments in a row that neither shrink a measured error nor add a reference end a milestone); M1.8 closed with its misses, its Cd bullet an M1.14 input; four slender-body switches (#87, #120, #121, the vertical tip) first in M1.14d, M1.14h above Mach 2.5; only #108's Mach 4 part and M1.8e16 deferred | accepted |
 | ADR-144 | The 2026-10-03 check-in: M0.5 leaner bookkeeping first, then M6.2d2 (one attempt), M4.5, M1.14, M6.2e, M6.3 on; M4.5 and M8.3 CAD interop added; issue labels and P-critical first; a writing standard; guardrails; licensing records | accepted |
 
 ---
@@ -11633,29 +11633,32 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
 
 **Decision.**
 
-1. **The operating envelope** sets the order of work, not a ceiling. The envelope and its bands
-   are defined by Mach number alone; the 15° limit bounds only the core band. One set of terms:
-   - the *core band*: Mach 0 to 2.5, angle of attack at most 15°; accuracy work goes here first;
-   - the *extended band*: Mach 2.5 to 3.5, record-class COTS flights; hpr flies it, and its
-     accuracy is checked less than the core band's; fidelity work there is welcome once the core
-     band has validated whole-flight references;
-   - the *envelope*: the two together, Mach 0 to 3.5;
-   - *beyond the envelope*: past Mach 3.5; deferred, not dropped.
+1. **The operating envelope** sets the order of work, not a ceiling. Mach number and angle of
+   attack are two separate axes.
+   - **Bands, by Mach number only.** The *core band* is Mach 0 to 2.5; accuracy work goes here
+     first. The *extended band* is Mach 2.5 to 3.5, record-class COTS flights: hpr flies it, and
+     its accuracy is checked less than the core band's; fidelity work there is welcome once the
+     core band has validated whole-flight references. The *envelope* is Mach 0 to 3.5, at any
+     angle of attack. *Beyond the envelope* is past Mach 3.5: deferred, not dropped.
+   - **Angle of attack, a separate condition.** Accuracy work assumes an angle of attack of at
+     most 15°. A flight above 15° more than 1 s after rail clearance is *at high angle of attack*,
+     at any Mach number. The first second off the rail is the expected transient (16° to 30° at
+     the legal wind limit, above); this is what "for more than a moment" means, and it makes the
+     edge testable. The 1 s was chosen, not measured: M1.14e measures the transient and studies
+     high angles.
 
-   Every flight still flies. M1.14a will warn in three tiers:
-   - *beyond the validated range*: faster than the fastest public whole-flight reference, that is,
-     any committed comparison of a public flight against an independent reference, gated or not.
-     Today that is OpenRocket's example at Mach 1.147. The threshold is read from the committed
-     reports, not hard-coded, and rises as M1.14b adds references. Private flights never set it
-     (hard rule 4).
-   - *outside the core band*: past Mach 2.5, or, at any Mach number, an angle of attack above 15°
-     later than 1 s after rail clearance. The first second off the rail is the expected transient
-     (16° to 30° at the legal wind limit, above); this is what "for more than a moment" means, and
-     it makes the edge testable. The 1 s was chosen, not measured: M1.14e measures how long the
-     transient lasts and revisits it.
-   - *beyond the envelope*: past Mach 3.5.
-2. **Each accuracy increment names the band it serves.** Work outside the core band needs a
-   stated reason. Accuracy issues carry `env-core`, `env-extended` or `env-deferred`.
+   Every flight still flies. M1.14a will raise four flags, each tested at its edge:
+   - (i) *beyond the validated range*: faster than the fastest public whole-flight reference, that
+     is, any committed comparison of a public flight against an independent reference, gated or
+     not. Today that is OpenRocket's example at Mach 1.147. The threshold is read from the
+     committed reports, not hard-coded, and rises as M1.14b adds references. Private flights never
+     set it (hard rule 4).
+   - (ii) *at high angle of attack*: above 15° more than 1 s after rail clearance.
+   - (iii) *outside the core band*: past Mach 2.5.
+   - (iv) *beyond the envelope*: past Mach 3.5.
+2. **Each accuracy increment names the Mach band it serves.** Work outside the core band needs a
+   stated reason. An accuracy issue carries the label of its Mach band, `env-core`,
+   `env-extended` or `env-deferred`; a high-angle issue says so in its text and belongs to M1.14e.
 3. **The stop rule** replaces any cap on increments. An accuracy increment makes progress when it
    shrinks a measured error against an independent reference, or adds a reference that will.
    Either counts as progress; two increments in a row that do neither end the milestone, gaps
@@ -11694,9 +11697,9 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
    M1.8's Cd bullet is met or its gap re-measured in an ADR. Inputs: the switches above; M1.8's
    Cd bullet and M1.8e's body-alone misses; the core-band issues #67, #68, #70, #73, #172, #219
    and #222. Increments, in order:
-   - a. Warnings in the three tiers of §1 (*beyond the validated range*, *outside the core band*,
-     *beyond the envelope*), tested at the band edges; the aero page split by Mach band, each
-     band page short with detail beneath.
+   - a. Warnings: the four flags of §1 (*beyond the validated range*, *at high angle of attack*,
+     *outside the core band*, *beyond the envelope*), each tested at its edge; the aero page split
+     by Mach band, each band page short with detail beneath.
    - b. Validation from Mach 1.5 to 2.5 and new references: the Duke Rocket Flight Database
      (CC BY 4.0; 28 flights, Mach 0.54 to 7.22, apogees with RASAero II and OpenRocket-Plus
      predictions; https://github.com/AidanSYu/rocket-flight-database,
@@ -11711,7 +11714,8 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
      against RASAero II; #222) and M1.8e's body-alone misses in the core band (Mach 1.5 to 2.3).
    - e. Large angles of attack: measure the cost at the 20 mph legal limit; past 1% on apogee or
      drift, a high-angle model (Jorgensen's non-linear body lift; the report cached). It also
-     measures how long the post-rail transient lasts, and revisits §1's chosen 1 s.
+     measures how long the post-rail transient lasts, revisits §1's chosen 1 s, and takes the
+     high-angle issues.
    - f. The audit's physics gaps, ranked: asymmetries (thrust and fin misalignment, a lateral CG
      offset; as inputs and in Monte Carlo, RocketPy the oracle); airframe drag in recovery;
      power-on base drag validated (the rule moves one supersonic flight about 24 points); gusts

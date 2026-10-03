@@ -85,12 +85,13 @@ At the start of every session, read these in order. They are short on purpose; k
 
 ## Priorities and guardrails (Neer's 2026-10-03 check-in: ADR-143, ADR-144)
 
-- **Envelope first.** Accuracy work serves the core band (Mach 0–2.5, AoA ≤ 15°) first, then the
-  extended band (Mach 2.5–3.5; the two together are the envelope, set by Mach alone; past 15°
-  after the first second off the rail is outside the core band at any Mach); each accuracy
-  increment names its band. Stop rule: an increment shrinks a measured error against an independent reference, or
-  adds a reference that will. Either counts as progress; two increments in a row that do neither
-  end the milestone, gaps written down.
+- **Envelope first.** Bands are by Mach only: the core band (Mach 0–2.5) first, then the extended
+  band (2.5–3.5); the envelope is Mach 0–3.5 at any angle. Accuracy work assumes AoA ≤ 15°; above
+  15° more than 1 s after the rail is "high angle of attack" (M1.14e), at any Mach. Each accuracy
+  increment names its Mach band; its issue carries that band's `env-*` label. Stop rule: an
+  increment shrinks a measured error against an independent reference, or adds a reference that
+  will. Either counts as progress; two increments in a row that do neither end the milestone, gaps
+  written down.
 - **Issues.** `P-critical` (hangs, panics, silent wrong numbers in shipped core-band physics,
   safety-relevant numbers, hostile-input holes) comes before milestone work. Every 4th autopilot
   cycle works the issue queue, `P-high` and `ready` first. Search for duplicates before filing.
