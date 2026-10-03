@@ -141,6 +141,8 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-122: `hpr weather`, and M5.2d split][adr-122] | The command line fetches a launch day's weather from any of the sources, one subcommand each, through the same cache as the library. `--offline` answers from the cache alone, and `--from` reads an answer saved earlier, held to the same checks as a fetched one. The profile is written as the library's own sounding type, which reads it back with its checks. NOAA's whole files, with their other compressions, follow in two more steps | [The command line](cli.md#hpr-weather) |
 | [ADR-123: Complex packing, and a whole GFS file][adr-123] | hpr's GRIB2 decoder reads the tighter packing of NOAA's whole GFS files, and totals over a time span (such as accumulated rain; read, not used in a profile). Every value of one whole file was checked against ecCodes by a script, run once outside CI; CI checks eight of its messages and a recorded cut ecCodes packed the same way. A whole file's profile is its NOMADS cut's to 1.04e-7, with the levels above 10 hPa as well | [A whole GFS file](nomads.md#a-whole-gfs-file) |
 | [ADR-124: JPEG 2000 packing, through `hayro-jpeg2000`][adr-124] | hpr's GRIB2 decoder reads fields stored as JPEG 2000 images, as NOAA's whole RAP files are, using a JPEG 2000 decoder written in Rust rather than one of its own. Only lossless images of up to 21 bits a value, coded as NCEP codes them, are read, which its 32-bit floats keep exact; the rest are refused by name. CI checks four public RAP fields against ecCodes | [Files in JPEG 2000](nomads.md#files-in-jpeg-2000) |
+| [ADR-143: The operating envelope and a stop rule for accuracy work][adr-143] | Accuracy work goes to the core band first: Mach 0 to 2.5 and an angle of attack up to 15°, where nearly all commercial-motor flights are. Mach 2.5 to 3.5 is supported, and faster or steeper flights still fly, with a warning. An accuracy milestone stops after two steps in a row that move no measured number. [M1.8](#m1-8) closes with its drag target missed, and that target moves to [M1.14](#m1-14) | [Validation plan: the operating envelope](VALIDATION.md#operating-envelope) |
+| [ADR-144: The 2026-10-03 check-in][adr-144] | What runs next ([M0.5](#m0-5), leaner bookkeeping, then [M6.2d2](#m6-2d2), [M4.5](#m4-5) and [M1.14](#m1-14)), how issues are labelled and ordered, the writing standard for these pages, guardrails on safety-relevant numbers, and licensing questions settled | [Writing these pages](writing.md) |
 
 ## The roadmap
 
@@ -194,6 +196,7 @@ missing or its status disagrees.
 | <a id="m0-4c"></a>[M0.4c][phase-0] | Getting started, and How a flight is simulated | done |
 | <a id="m0-4d"></a>[M0.4d][phase-0] | Publishing the site and the API reference on the web | done |
 | <a id="m0-4e"></a>[M0.4e][phase-0] | A new reader answers ten questions from the site alone, and what they find unclear is fixed | done |
+| <a id="m0-5"></a>[M0.5][phase-0] | Leaner bookkeeping: one file per decision record, a roadmap of open work in queue order, shorter status notes, these tables generated rather than hand-edited, and reviews while CI runs ([ADR-144][adr-144]) | not yet done |
 | <a id="m1-1"></a>[M1.1][phase-1] | Vectors and rotations, frames, the Earth's shape and gravity | done |
 | <a id="m1-2"></a>[M1.2][phase-1] | The atmosphere and wind | done |
 | <a id="m1-3"></a>[M1.3][phase-1] | Solid motors: thrust curves, motor files, and mass through the burn | done |
@@ -222,7 +225,7 @@ missing or its status disagrees.
 | <a id="m2-1d1"></a>[M2.1d1][phase-1] | Each whole flight's height and speed, compared over time with RocketPy's | done |
 | <a id="m2-1d2"></a>[M2.1d2][phase-1] | Juno III, Calisto and Bella Lui in still air, as committed cases to measure the wind against ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50), why hpr turned into the wind less) | done |
 | <a id="m2-1d3"></a>[M2.1d3][phase-1] | Why hpr turned into the wind less than RocketPy ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)): RocketPy's equations, corrected, and hpr's body lift | done |
-| <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
+| <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics; closed with its drag target missed, which moves to [M1.14](#m1-14) ([ADR-143][adr-143]) | done |
 | <a id="m1-8a"></a>[M1.8a][phase-1] | The normal force and centre of pressure through Mach 1 | done |
 | <a id="m1-8b"></a>[M1.8b][phase-1] | Drag through Mach 1: the transonic rise and supersonic wave drag | done |
 | <a id="m1-8b1"></a>[M1.8b1][phase-1] | The drag of noses, shoulders and steps through Mach 1, against NASA's Arcas Robin wind tunnel | done |
@@ -230,7 +233,7 @@ missing or its status disagrees.
 | <a id="m1-8b3"></a>[M1.8b3][phase-1] | The drag of a boattail faster than sound, and the base behind it | done |
 | <a id="m1-8c"></a>[M1.8c][phase-1] | Roll from canted fins, roll damping, and pitch and yaw damping (kept as each part's local-flow damping) | done |
 | <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | done |
-| <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
+| <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3; closed with its 15% target missed for the body alone ([ADR-040][adr-040], [ADR-143][adr-143]) | done |
 | <a id="m1-8e1"></a>[M1.8e1][phase-1] | The second-order shock-expansion method: the lift a body's cylinder carries behind its nose faster than sound, checked against its report's tables | done |
 | <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight: the nose and its cylinder, joined to the subsonic model | done |
 | <a id="m1-8e3"></a>[M1.8e3][phase-1] | Faster than sound: the blend into the shock-expansion method now starts at the exact Mach where the method starts to hold, not rounded to a 0.05 step | done |
@@ -249,7 +252,7 @@ missing or its status disagrees.
 | <a id="m1-8e18"></a>[M1.8e18][phase-1] | NASA TN D-4865 model 2's readings committed, and what a marched flare is worth (the third of the three the old [M1.8e14](#m1-8e14) splits into) | done |
 | <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | done |
 | <a id="m1-8e19"></a>[M1.8e19][phase-1] | The band of near-flat flares the march used to refuse, which took the whole body off the method as a shape crossed it (found by [M1.8e17](#m1-8e17)); now read by the generalized method | done |
-| <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids). Blocked on [issue #108](https://github.com/nrdptel/hpr-sim/issues/108): the loading through a tangent-cone crossing has no reading that settles as the nose is cut finer | blocked |
+| <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids). Deferred as outside the operating envelope, above Mach 4 ([ADR-143][adr-143]); [issue #108](https://github.com/nrdptel/hpr-sim/issues/108) stays open: the loading through a tangent-cone crossing has no reading that settles as the nose is cut finer | blocked |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | done |
 | <a id="m3-1a"></a>[M3.1a][phase-1] | The container a `.ork` arrives in, and its design document read whole | done |
 | <a id="m3-1b"></a>[M3.1b][phase-1] | The component tree: parts, shapes, materials, finishes and overrides into a design | done |
@@ -320,6 +323,14 @@ missing or its status disagrees.
 | <a id="m1-13c"></a>[M1.13c][phase-1] | Pod aerodynamics from a cited source, and a pod design against OpenRocket | done |
 | <a id="m1-13c1"></a>[M1.13c1][phase-1] | Pods fly: each pod's parts with Barrowman's normal force and their own drag, once per pod ([ADR-092][adr-092], [aerodynamics: Pods](physics/aero.md#pods)) | done |
 | <a id="m1-13c2"></a>[M1.13c2][phase-1] | A pod design with bodies and fins against OpenRocket, the limits of both codes' pod models stated ([ADR-093][adr-093], [aerodynamics: Pods](physics/aero.md#pods)) | done |
+| <a id="m1-14"></a>[M1.14][phase-1] | Accuracy inside the operating envelope (Mach 0 to 2.5, angle of attack up to 15°): real flights within the 5% apogee target, and at least as accurate as OpenRocket on the same flights ([ADR-143][adr-143]) | not yet done |
+| <a id="m1-14a"></a>[M1.14a][phase-1] | A warning on every flight that leaves the core band, and the aerodynamics page split by Mach band | not yet done |
+| <a id="m1-14b"></a>[M1.14b][phase-1] | New references from Mach 1.5 to 2.5: a public database of flights with simulator predictions, free-flight and measured supersonic coefficients, NASA's six-degree-of-freedom check cases, and the validation uncertainty of each real flight | not yet done |
+| <a id="m1-14c"></a>[M1.14c][phase-1] | The normal force and drag near Mach 1, from 0.8 to 1.2 | not yet done |
+| <a id="m1-14d"></a>[M1.14d][phase-1] | Faster than sound, Mach 1.2 to 2.5: first a step in a body's radius, which takes the body off its supersonic normal-force method and overstates stability ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)); then drag, where hpr reads 5.1% to 14.9% below RASAero II on RocketPy's Calisto rocket | not yet done |
+| <a id="m1-14e"></a>[M1.14e][phase-1] | Large angles of attack: what the legal 20 mph wind costs, and a high-angle model if it costs more than 1% | not yet done |
+| <a id="m1-14f"></a>[M1.14f][phase-1] | Missing physics, ranked: misalignments, airframe drag under a parachute, base drag with the motor burning, gusts, parachute opening loads and more | not yet done |
+| <a id="m1-14g"></a>[M1.14g][phase-1] | Generated figures on every accuracy and aerodynamics page, each with its reference and the error shown | not yet done |
 | <a id="m4-1"></a>[M4.1][phase-2] | A simpler interface, with a builder for environments, motors, rockets and flights | done |
 | <a id="m4-1a"></a>[M4.1a][phase-2] | The builder: environments, motors, rockets part by part, and flights, over the crates' own types ([ADR-103][adr-103], [The builder](the-builder.md)) | done |
 | <a id="m4-1b"></a>[M4.1b][phase-2] | Models of your own: a drag model the flight calls in place of hpr's, through a trait, with a guide in the API reference ([ADR-104][adr-104], [Models of your own](custom-models.md)) | done |
@@ -363,6 +374,14 @@ missing or its status disagrees.
 | <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts: OpenRocket's parts files, looked up by maker and part number, and parts from them in a design; split in two ([ADR-132][adr-132]) | done |
 | <a id="m5-5a"></a>[M5.5a][phase-2] | The 16 `.orc` parts files OpenRocket ships, bundled and read, every part held to OpenRocket's own reading: 3,449 parts, 17,911 values to the bit, the rest counted with their causes ([ADR-132][adr-132], [OpenRocket `.orc` parts catalogues](format/orc.md)) | done |
 | <a id="m5-5b"></a>[M5.5b][phase-2] | Catalogue parts in the builder, and a rocket of them flown: all 3,449 parts built and held to what OpenRocket builds, the departures counted with their causes ([ADR-133][adr-133], [parts from a catalogue](the-builder.md#parts-from-a-catalogue)) | done |
+| <a id="m4-5"></a>[M4.5][phase-2] | Fly my `.ork`: OpenRocket's example designs fly as saved in `hpr sim`, with their recovery, offline after one motor download ([ADR-144][adr-144]) | not yet done |
+| <a id="m4-5a"></a>[M4.5a][phase-2] | Parachutes and streamers from a `.ork` flown, with their triggers ([issue #240](https://github.com/nrdptel/hpr-sim/issues/240)) | not yet done |
+| <a id="m4-5b"></a>[M4.5b][phase-2] | A missing motor fetched from ThrustCurve and kept, and the exact command to fetch it printed when offline | not yet done |
+| <a id="m4-5c"></a>[M4.5c][phase-2] | Design checks that warn, with a cited tolerance, on fits builders make every day, and refuse only impossible ones | not yet done |
+| <a id="m4-5d"></a>[M4.5d][phase-2] | Output a person reads: configurations by name, results in sentences, the summary led by margin, apogee and rail exit speed | not yet done |
+| <a id="m4-5e"></a>[M4.5e][phase-2] | `hpr sim --plot`: a flight's altitude, speed and acceleration drawn as an SVG figure | not yet done |
+| <a id="m4-5f"></a>[M4.5f][phase-2] | How-to guides: fly your `.ork`, pick a motor, check stability for a certification flight | not yet done |
+| <a id="m4-5g"></a>[M4.5g][phase-2] | Then unpowered separations, freeform fins and several separations, in order of how many designs each holds back | not yet done |
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity; split in four ([ADR-134][adr-134]) | done |
 | <a id="m6-1a"></a>[M6.1a][phase-3] | Seeded dispersion of mass, centre of mass, drag, motor, wind, rail and recovery delays; each flight the same whatever the run's size or thread count; failed flights counted; the apogee's spread ([ADR-134][adr-134], [Monte Carlo dispersion](monte-carlo.md)) | done |
 | <a id="m6-1b"></a>[M6.1b][phase-3] | Landing ellipses holding a chosen share of the landings, checked against normal spreads with known answers; the next flight's ellipse; the landings each holds counted ([ADR-135][adr-135], [Landing ellipses](monte-carlo.md#landing-ellipses)) | done |
@@ -376,7 +395,7 @@ missing or its status disagrees.
 | <a id="m6-2c"></a>[M6.2c][phase-3] | Several goals at once: NSGA-II finds a Pareto front; held to the known fronts of three standard test problems (ZDT1 to ZDT3) and to an outside implementation (pymoo), and a rocket's trade-off between apogee and static margin, flown again and checked against CMA-ES ([ADR-141][adr-141], [Optimization](optimization.md#trade-offs-a-pareto-front)) | done |
 | <a id="m6-2d"></a>[M6.2d][phase-3] | Bayesian optimization (EGO) for costly flights, split d1, d2 ([ADR-142][adr-142]) | not yet done |
 | <a id="m6-2d1"></a>[M6.2d1][phase-3] | EGO: a surrogate (kriging) fitted to the designs tried, and the next design where it expects the most improvement; Branin's and Hartmann 3's minima within 1% in 50 evaluations from 20 seeds ([ADR-142][adr-142], [Optimization](optimization.md#few-evaluations-ego)) | done |
-| <a id="m6-2d2"></a>[M6.2d2][phase-3] | EGO on Hartmann 6, a six-variable test function whose local minimum traps [M6.2d1](#m6-2d1)'s EGO in 7 runs of 10 ([ADR-142][adr-142], [Optimization](optimization.md#few-evaluations-ego)) | not yet done |
+| <a id="m6-2d2"></a>[M6.2d2][phase-3] | EGO on Hartmann 6, a six-variable test function whose local minimum traps [M6.2d1](#m6-2d1)'s EGO in 7 runs of 10; one attempt ([ADR-142][adr-142], [ADR-144][adr-144], [Optimization](optimization.md#few-evaluations-ego)) | not yet done |
 | <a id="m6-2e"></a>[M6.2e][phase-3] | Robust designs: a Monte Carlo run inside the optimizer | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
 | <a id="m6-4"></a>[M6.4][phase-3] | Airbrakes, with a controller that aims for a target apogee | not yet done |
@@ -633,6 +652,8 @@ is the milestone that added or will add that test.
 [adr-140]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-140-discrete-choices-by-cma-es-with-margin-2026-10-02
 [adr-141]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-141-several-goals-by-nsga-ii-2026-10-02
 [adr-142]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-142-few-evaluations-by-ego-2026-10-02
+[adr-143]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-the-operating-envelope-and-a-stop-rule-for-accuracy-work-m18-closed-with-its-misses-2026-10-03
+[adr-144]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-144-the-2026-10-03-check-in-leaner-bookkeeping-issues-writing-guardrails-and-licensing-records-2026-10-03
 [adr-122]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-122-hpr-weather-and-m52d-split-2026-09-30
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
