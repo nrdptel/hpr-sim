@@ -15,7 +15,7 @@
 //!
 //! It never uses the network: a stand-in transport answers with the files recorded from the
 //! motor finder's API on 1 October 2026, at 07:07 UTC, and J450DM's file recorded from
-//! ThrustCurve.org's at 08:22 UTC. ThrustCurve.org states no terms for its motor records, so the
+//! ThrustCurve.org's at 08:22 UTC. ThrustCurve.org grants no licence for its motor records, so the
 //! three searches are stand-ins in its API's shape: five invented motors per maker, and a record
 //! of each motor in the finder's in-stock list carrying that list's own figures. Stock and prices
 //! change by the hour.
@@ -162,15 +162,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    // 4. ThrustCurve.org: every record of the three makers, one search each, and the motors in
-    //    stock matched to them by maker and designation.
+    // 4. ThrustCurve.org: the records of the three makers, one search each (here the stand-ins
+    //    in its shape, not its data), and the motors in stock matched to them by maker and
+    //    designation.
     let (records, from_tc) = thrustcurve::fetch_finder_records(&online, now_s)?;
     let join = thrustcurve::join(&in_stock.motors, &records);
     let (mapped, total) = join.coverage();
     println!();
     println!("{}", from_tc[0].attribution);
     println!(
-        "{} records of the three makers; {mapped} of {total} motors in stock matched to one each, {} missed",
+        "{} stand-in records of the three makers, in ThrustCurve.org's shape but not its data; {mapped} of {total} motors in stock matched to one each, {} missed",
         records.len(),
         join.misses.len()
     );

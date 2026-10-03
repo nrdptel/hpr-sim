@@ -135,7 +135,9 @@ adds a source.
   (<https://motor.fusionspace.co/api>, "Data licence", checked 2026-10-03) licenses its responses,
   and the compilation of motor, listing, stock and price data in them, under CC BY 4.0, asks for
   the credit "Motor stock data from motor.fusionspace.co", and permits storing recorded responses
-  as software test fixtures. The files are unchanged but for the one rename. The site is the
+  as software test fixtures. The recordings (2026-09-17 under `refs/`, 2026-10-01 here) predate
+  that licence statement; the site's owner licenses them under CC BY 4.0 too (live page, fetched
+  2026-10-03). The files are unchanged but for the one rename. The site is the
   project owner's; the data is gathered from public vendor listings and ThrustCurve.org and
   provided as is, with no warranty. The motor figures in it are ThrustCurve.org's published
   values (credit above, under the bundled curves)
@@ -150,14 +152,16 @@ adds a source.
   (license `PD`). Data courtesy of ThrustCurve.org, https://www.thrustcurve.org/
   ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01)).
   `thrustcurve-search-aerotech.json`, `thrustcurve-search-cesaroni.json` and
-  `thrustcurve-search-loki.json` are not ThrustCurve.org's answers: its site states no terms for
-  its motor records ("All rights under copyright reserved"), so the searches recorded on
-  2026-10-01 were replaced on 2026-10-03 by stand-ins in the API's shape. Each holds five invented
+  `thrustcurve-search-loki.json` are not ThrustCurve.org's answers: ThrustCurve.org grants no
+  licence for its motor records; its site reads "All rights under copyright reserved", so the
+  searches recorded on 2026-10-01 were replaced on 2026-10-03 by stand-ins in the API's shape. Each holds five invented
   motors (designations ending `-INVENTED`, every value invented) and one record for each of that
   maker's motors in `motor-finder-in-stock.json`, carrying that answer's own values (Motor stock
   data from motor.fusionspace.co, CC BY 4.0, above) with an invented id, bar the two ids of the
-  download answers above; the counts and the other fields are invented
-  ([ADR-143](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)).
+  download answers above, and an invented count of data files; the answers' counts are invented.
+  The searches recorded on 2026-10-01 remain in the repository's history before 2026-10-03, which
+  is not rewritten
+  ([ADR-145](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)).
   The example `crates/hpr/examples/motor_stock.rs` reads the searches and the J450DM answer.
   `hpr_net::thrustcurve` also fetches such answers at run time, when a program asks, and caches
   them on the user's disk; each answer carries the credit for the program to show.

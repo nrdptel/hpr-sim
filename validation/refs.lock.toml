@@ -837,8 +837,8 @@ dest = "refs/snapshots/thrustcurve/info/simulators.html"
 license = "unstated terms"
 mode = "fetched"
 
-# motor.fusionspace.co API v1 (US stock and prices). "Free to use; attribution to
-# motor.fusionspace.co is appreciated."
+# motor.fusionspace.co API v1 (US stock and prices). CC BY 4.0, credit "Motor stock data from
+# motor.fusionspace.co" (https://motor.fusionspace.co/api, "Data licence", fetched 2026-10-03).
 [[snapshot]]
 name = "motor-finder-meta"
 url = "https://motor.fusionspace.co/api/v1/meta.json"

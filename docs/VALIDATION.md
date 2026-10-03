@@ -286,7 +286,7 @@ as heights instead, the mean is 6.63%.
   `validation/reports/thrustcurve-join.md` holds the in-stock motors' match to the stand-ins
   ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01),
   why the match is by name only;
-  [ADR-143](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03),
+  [ADR-145](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03),
   why the searches are stand-ins).
 - **OpenRocket's parts catalogue** (pinned as `openrocket-database`, Apache-2.0): its 16 `.orc`
   files, bundled in `crates/hpr-io/data/openrocket-database/`, and OpenRocket 24.12's reading of

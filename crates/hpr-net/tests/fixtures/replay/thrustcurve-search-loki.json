@@ -21,7 +21,7 @@
       "commonName": "G75",
       "impulseClass": "G",
       "diameter": 29,
-      "length": 127,
+      "length": 134,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 75,
@@ -33,7 +33,7 @@
       "propWeightG": 72,
       "delays": "6,8,10",
       "delayAdjustable": false,
-      "caseInfo": "29/140",
+      "caseInfo": "Example-29/140",
       "propInfo": "Invented Blue",
       "sparky": false,
       "updatedOn": "2019-10-10",
@@ -48,7 +48,7 @@
       "commonName": "H150",
       "impulseClass": "H",
       "diameter": 38,
-      "length": 190,
+      "length": 197,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 150,
@@ -61,7 +61,7 @@
       "propWeightG": 131,
       "delays": "5,8,10,13,17",
       "delayAdjustable": false,
-      "caseInfo": "38/240",
+      "caseInfo": "Example-38/240",
       "propInfo": "Invented Red",
       "sparky": false,
       "updatedOn": "2020-07-04",
@@ -87,7 +87,7 @@
       "propWeightG": 560,
       "delays": "8,10,12,14",
       "delayAdjustable": false,
-      "caseInfo": "54/1050",
+      "caseInfo": "Example-54/1050",
       "sparky": false,
       "updatedOn": "2018-03-15",
       "availability": "OOP",
@@ -113,7 +113,7 @@
       "propWeightG": 1150,
       "delays": "P",
       "delayAdjustable": false,
-      "caseInfo": "54/2100",
+      "caseInfo": "Example-54/2100",
       "propInfo": "Invented Green",
       "sparky": true,
       "updatedOn": "2022-05-29",
@@ -140,7 +140,7 @@
       "propWeightG": 2050,
       "delays": "P",
       "delayAdjustable": false,
-      "caseInfo": "75/3900",
+      "caseInfo": "Example-75/3900",
       "propInfo": "Invented Red",
       "sparky": false,
       "updatedOn": "2023-09-12",
@@ -150,7 +150,6 @@
     {
       "motorId": "e0000000000000000000010a",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "G66-LR",
       "commonName": "G66",
       "impulseClass": "G",
@@ -169,7 +168,6 @@
     {
       "motorId": "e0000000000000000000010b",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "G70-CT",
       "commonName": "G70",
       "impulseClass": "G",
@@ -189,7 +187,6 @@
     {
       "motorId": "e0000000000000000000010c",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "G80-LW",
       "commonName": "G80",
       "impulseClass": "G",
@@ -209,7 +206,6 @@
     {
       "motorId": "e0000000000000000000010d",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "HP-G69-SF",
       "commonName": "G69",
       "impulseClass": "G",
@@ -229,7 +225,6 @@
     {
       "motorId": "e0000000000000000000010e",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "HP-G94-IB",
       "commonName": "G94",
       "impulseClass": "G",
@@ -249,7 +244,6 @@
     {
       "motorId": "e0000000000000000000010f",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "H100-SF",
       "commonName": "H100",
       "impulseClass": "H",
@@ -269,7 +263,6 @@
     {
       "motorId": "e00000000000000000000110",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "H125-CT",
       "commonName": "H125",
       "impulseClass": "H",
@@ -289,7 +282,6 @@
     {
       "motorId": "e00000000000000000000111",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "H144-LW",
       "commonName": "H144",
       "impulseClass": "H",
@@ -309,7 +301,6 @@
     {
       "motorId": "e00000000000000000000112",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "H90-LR",
       "commonName": "H90",
       "impulseClass": "H",
@@ -329,7 +320,6 @@
     {
       "motorId": "e00000000000000000000113",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "I210-LR",
       "commonName": "I210",
       "impulseClass": "I",
@@ -349,7 +339,6 @@
     {
       "motorId": "e00000000000000000000114",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "I316-SF",
       "commonName": "I316",
       "impulseClass": "I",
@@ -369,7 +358,6 @@
     {
       "motorId": "e00000000000000000000115",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "I377-CT",
       "commonName": "I377",
       "impulseClass": "I",
@@ -389,7 +377,6 @@
     {
       "motorId": "e00000000000000000000116",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "I405-LW",
       "commonName": "I405",
       "impulseClass": "I",
@@ -409,7 +396,6 @@
     {
       "motorId": "e00000000000000000000117",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "I426LB",
       "commonName": "I426",
       "impulseClass": "I",
@@ -429,7 +415,6 @@
     {
       "motorId": "e00000000000000000000118",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J-326-LR",
       "commonName": "J326",
       "impulseClass": "J",
@@ -449,7 +434,6 @@
     {
       "motorId": "e00000000000000000000119",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J1000-LW",
       "commonName": "J1000",
       "impulseClass": "J",
@@ -469,7 +453,6 @@
     {
       "motorId": "e0000000000000000000011a",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J1026CT",
       "commonName": "J1026",
       "impulseClass": "J",
@@ -489,7 +472,6 @@
     {
       "motorId": "e0000000000000000000011b",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J350-SF",
       "commonName": "J350",
       "impulseClass": "J",
@@ -509,7 +491,6 @@
     {
       "motorId": "e0000000000000000000011c",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J396-SF",
       "commonName": "J396",
       "impulseClass": "J",
@@ -529,7 +510,6 @@
     {
       "motorId": "e0000000000000000000011d",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J474-CT",
       "commonName": "J474",
       "impulseClass": "J",
@@ -549,7 +529,6 @@
     {
       "motorId": "e0000000000000000000011e",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J525-LW",
       "commonName": "J525",
       "impulseClass": "J",
@@ -569,7 +548,6 @@
     {
       "motorId": "e0000000000000000000011f",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J528-LW",
       "commonName": "J528",
       "impulseClass": "J",
@@ -589,7 +567,6 @@
     {
       "motorId": "e00000000000000000000120",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "J820-LW",
       "commonName": "J820",
       "impulseClass": "J",
@@ -609,7 +586,6 @@
     {
       "motorId": "e00000000000000000000121",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "K1127-LB",
       "commonName": "K1127",
       "impulseClass": "K",
@@ -629,7 +605,6 @@
     {
       "motorId": "e00000000000000000000122",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "K350-LW",
       "commonName": "K350",
       "impulseClass": "K",
@@ -649,7 +624,6 @@
     {
       "motorId": "e00000000000000000000123",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "K527LR",
       "commonName": "K527",
       "impulseClass": "K",
@@ -669,7 +643,6 @@
     {
       "motorId": "e00000000000000000000124",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "K627LR",
       "commonName": "K627",
       "impulseClass": "K",
@@ -689,7 +662,6 @@
     {
       "motorId": "e00000000000000000000125",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "K830-SF",
       "commonName": "K830",
       "impulseClass": "K",
@@ -709,7 +681,6 @@
     {
       "motorId": "e00000000000000000000126",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "M1200-SF",
       "commonName": "M1200",
       "impulseClass": "M",
@@ -729,7 +700,6 @@
     {
       "motorId": "e00000000000000000000127",
       "manufacturer": "Loki Research",
-      "manufacturerAbbrev": "Loki",
       "designation": "N3800-LW",
       "commonName": "N3800",
       "impulseClass": "N",

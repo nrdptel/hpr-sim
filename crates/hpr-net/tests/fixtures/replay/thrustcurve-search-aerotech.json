@@ -21,7 +21,7 @@
       "commonName": "G40",
       "impulseClass": "G",
       "diameter": 29,
-      "length": 124,
+      "length": 131,
       "type": "SU",
       "certOrg": "Example Certification Board",
       "avgThrustN": 40.5,
@@ -48,7 +48,7 @@
       "commonName": "H210",
       "impulseClass": "H",
       "diameter": 38,
-      "length": 156,
+      "length": 163,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 210,
@@ -73,7 +73,7 @@
       "commonName": "K700",
       "impulseClass": "K",
       "diameter": 54,
-      "length": 402,
+      "length": 409,
       "type": "hybrid",
       "certOrg": "Example Certification Board",
       "avgThrustN": 700,
@@ -99,7 +99,7 @@
       "commonName": "L1100",
       "impulseClass": "L",
       "diameter": 75,
-      "length": 530,
+      "length": 537,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 1100,
@@ -122,17 +122,17 @@
       "motorId": "e00000000000000000000005",
       "manufacturer": "AeroTech",
       "manufacturerAbbrev": "AeroTech",
-      "designation": "M1600-INVENTED",
-      "commonName": "M1600",
+      "designation": "M1550-INVENTED",
+      "commonName": "M1550",
       "impulseClass": "M",
       "diameter": 98,
       "length": 752,
       "type": "reload",
       "certOrg": "Example Certification Board",
-      "avgThrustN": 1600,
+      "avgThrustN": 1550,
       "maxThrustN": 2210,
-      "totImpulseNs": 6400,
-      "burnTimeS": 4.0,
+      "totImpulseNs": 6432.5,
+      "burnTimeS": 4.15,
       "dataFiles": 1,
       "totalWeightG": 6900,
       "propWeightG": 3550,
@@ -143,12 +143,11 @@
       "sparky": false,
       "updatedOn": "2023-01-07",
       "availability": "regular",
-      "source_url": "https://example.test/motors/AeroTech/M1600-INVENTED/"
+      "source_url": "https://example.test/motors/AeroTech/M1550-INVENTED/"
     },
     {
       "motorId": "e00000000000000000000006",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D13W",
       "commonName": "D13",
       "impulseClass": "D",
@@ -168,7 +167,6 @@
     {
       "motorId": "e00000000000000000000007",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D15T",
       "commonName": "D15",
       "impulseClass": "D",
@@ -188,7 +186,6 @@
     {
       "motorId": "e00000000000000000000008",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D21T",
       "commonName": "D21",
       "impulseClass": "D",
@@ -207,7 +204,6 @@
     {
       "motorId": "e00000000000000000000009",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D22W",
       "commonName": "D22",
       "impulseClass": "D",
@@ -226,7 +222,6 @@
     {
       "motorId": "e0000000000000000000000a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D24T",
       "commonName": "D24",
       "impulseClass": "D",
@@ -246,7 +241,6 @@
     {
       "motorId": "e0000000000000000000000b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D7-RCT",
       "commonName": "D7",
       "impulseClass": "D",
@@ -266,7 +260,6 @@
     {
       "motorId": "e0000000000000000000000c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "D9W",
       "commonName": "D9",
       "impulseClass": "D",
@@ -286,7 +279,6 @@
     {
       "motorId": "e0000000000000000000000d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E15W",
       "commonName": "E15",
       "impulseClass": "E",
@@ -305,7 +297,6 @@
     {
       "motorId": "e0000000000000000000000e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E16W",
       "commonName": "E16",
       "impulseClass": "E",
@@ -325,7 +316,6 @@
     {
       "motorId": "e0000000000000000000000f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E18W",
       "commonName": "E18",
       "impulseClass": "E",
@@ -345,7 +335,6 @@
     {
       "motorId": "e00000000000000000000010",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E20W",
       "commonName": "E20",
       "impulseClass": "E",
@@ -364,7 +353,6 @@
     {
       "motorId": "e00000000000000000000011",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E23T",
       "commonName": "E23",
       "impulseClass": "E",
@@ -384,7 +372,6 @@
     {
       "motorId": "e00000000000000000000012",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E24C",
       "commonName": "E24",
       "impulseClass": "E",
@@ -403,7 +390,6 @@
     {
       "motorId": "e00000000000000000000013",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E26W",
       "commonName": "E26",
       "impulseClass": "E",
@@ -422,7 +408,6 @@
     {
       "motorId": "e00000000000000000000014",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E28T",
       "commonName": "E28",
       "impulseClass": "E",
@@ -442,7 +427,6 @@
     {
       "motorId": "e00000000000000000000015",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E30T",
       "commonName": "E30",
       "impulseClass": "E",
@@ -461,7 +445,6 @@
     {
       "motorId": "e00000000000000000000016",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "E7-RCT",
       "commonName": "E7",
       "impulseClass": "E",
@@ -481,7 +464,6 @@
     {
       "motorId": "e00000000000000000000017",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F115SN-12A",
       "commonName": "F115",
       "impulseClass": "F",
@@ -500,7 +482,6 @@
     {
       "motorId": "e00000000000000000000018",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F12J",
       "commonName": "F12",
       "impulseClass": "F",
@@ -520,7 +501,6 @@
     {
       "motorId": "e00000000000000000000019",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F13-RCT",
       "commonName": "F13",
       "impulseClass": "F",
@@ -540,7 +520,6 @@
     {
       "motorId": "e0000000000000000000001a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F16-RCJ",
       "commonName": "F16",
       "impulseClass": "F",
@@ -560,7 +539,6 @@
     {
       "motorId": "e0000000000000000000001b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F20W/L",
       "commonName": "F20",
       "impulseClass": "F",
@@ -579,7 +557,6 @@
     {
       "motorId": "e0000000000000000000001c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F22J",
       "commonName": "F22",
       "impulseClass": "F",
@@ -599,7 +576,6 @@
     {
       "motorId": "e0000000000000000000001d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F23-RCW-SK",
       "commonName": "F23",
       "impulseClass": "F",
@@ -619,7 +595,6 @@
     {
       "motorId": "e0000000000000000000001e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F23FJ",
       "commonName": "F23",
       "impulseClass": "F",
@@ -638,7 +613,6 @@
     {
       "motorId": "e0000000000000000000001f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F24W",
       "commonName": "F24",
       "impulseClass": "F",
@@ -658,7 +632,6 @@
     {
       "motorId": "e00000000000000000000020",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F25W",
       "commonName": "F25",
       "impulseClass": "F",
@@ -677,7 +650,6 @@
     {
       "motorId": "e00000000000000000000021",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F26FJ",
       "commonName": "F26",
       "impulseClass": "F",
@@ -696,7 +668,6 @@
     {
       "motorId": "5f4294d200023100000001d4",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F27R/L",
       "commonName": "F27",
       "impulseClass": "F",
@@ -715,7 +686,6 @@
     {
       "motorId": "e00000000000000000000022",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F30FJ",
       "commonName": "F30",
       "impulseClass": "F",
@@ -734,7 +704,6 @@
     {
       "motorId": "e00000000000000000000023",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F32T",
       "commonName": "F32",
       "impulseClass": "F",
@@ -753,7 +722,6 @@
     {
       "motorId": "e00000000000000000000024",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F35W",
       "commonName": "F35",
       "impulseClass": "F",
@@ -773,7 +741,6 @@
     {
       "motorId": "e00000000000000000000025",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F39T",
       "commonName": "F39",
       "impulseClass": "F",
@@ -793,7 +760,6 @@
     {
       "motorId": "e00000000000000000000026",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F40W",
       "commonName": "F40",
       "impulseClass": "F",
@@ -813,7 +779,6 @@
     {
       "motorId": "e00000000000000000000027",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F42T/L",
       "commonName": "F42",
       "impulseClass": "F",
@@ -832,7 +797,6 @@
     {
       "motorId": "e00000000000000000000028",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F44W",
       "commonName": "F44",
       "impulseClass": "F",
@@ -851,7 +815,6 @@
     {
       "motorId": "e00000000000000000000029",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F50T",
       "commonName": "F50",
       "impulseClass": "F",
@@ -870,7 +833,6 @@
     {
       "motorId": "e0000000000000000000002a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F51NT",
       "commonName": "F51",
       "impulseClass": "F",
@@ -890,7 +852,6 @@
     {
       "motorId": "e0000000000000000000002b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F52C",
       "commonName": "F52",
       "impulseClass": "F",
@@ -909,7 +870,6 @@
     {
       "motorId": "e0000000000000000000002c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F52T",
       "commonName": "F52",
       "impulseClass": "F",
@@ -929,7 +889,6 @@
     {
       "motorId": "e0000000000000000000002d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F62FJ",
       "commonName": "F62",
       "impulseClass": "F",
@@ -949,7 +908,6 @@
     {
       "motorId": "e0000000000000000000002e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F62T",
       "commonName": "F62",
       "impulseClass": "F",
@@ -969,7 +927,6 @@
     {
       "motorId": "e0000000000000000000002f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F63R",
       "commonName": "F63",
       "impulseClass": "F",
@@ -989,7 +946,6 @@
     {
       "motorId": "e00000000000000000000030",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F67C",
       "commonName": "F67",
       "impulseClass": "F",
@@ -1008,7 +964,6 @@
     {
       "motorId": "e00000000000000000000031",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "F67W",
       "commonName": "F67",
       "impulseClass": "F",
@@ -1027,7 +982,6 @@
     {
       "motorId": "e00000000000000000000032",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G104T",
       "commonName": "G104",
       "impulseClass": "G",
@@ -1047,7 +1001,6 @@
     {
       "motorId": "e00000000000000000000033",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G12-RCT",
       "commonName": "G12",
       "impulseClass": "G",
@@ -1067,7 +1020,6 @@
     {
       "motorId": "e00000000000000000000034",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G125T",
       "commonName": "G125",
       "impulseClass": "G",
@@ -1086,7 +1038,6 @@
     {
       "motorId": "e00000000000000000000035",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G12ST",
       "commonName": "G12",
       "impulseClass": "G",
@@ -1105,7 +1056,6 @@
     {
       "motorId": "e00000000000000000000036",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G25W",
       "commonName": "G25",
       "impulseClass": "G",
@@ -1125,7 +1075,6 @@
     {
       "motorId": "e00000000000000000000037",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G38FJ",
       "commonName": "G38",
       "impulseClass": "G",
@@ -1144,7 +1093,6 @@
     {
       "motorId": "e00000000000000000000038",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G40W",
       "commonName": "G40",
       "impulseClass": "G",
@@ -1163,7 +1111,6 @@
     {
       "motorId": "e00000000000000000000039",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G53FJ",
       "commonName": "G53",
       "impulseClass": "G",
@@ -1183,7 +1130,6 @@
     {
       "motorId": "e0000000000000000000003a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G54W",
       "commonName": "G54",
       "impulseClass": "G",
@@ -1203,7 +1149,6 @@
     {
       "motorId": "e0000000000000000000003b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G61W",
       "commonName": "G61",
       "impulseClass": "G",
@@ -1223,7 +1168,6 @@
     {
       "motorId": "e0000000000000000000003c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G64W",
       "commonName": "G64",
       "impulseClass": "G",
@@ -1243,7 +1187,6 @@
     {
       "motorId": "e0000000000000000000003d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G67R",
       "commonName": "G67",
       "impulseClass": "G",
@@ -1263,7 +1206,6 @@
     {
       "motorId": "e0000000000000000000003e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G72DM-14A",
       "commonName": "G72",
       "impulseClass": "G",
@@ -1282,7 +1224,6 @@
     {
       "motorId": "e0000000000000000000003f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G73C",
       "commonName": "G73",
       "impulseClass": "G",
@@ -1301,7 +1242,6 @@
     {
       "motorId": "e00000000000000000000040",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G74W",
       "commonName": "G74",
       "impulseClass": "G",
@@ -1320,7 +1260,6 @@
     {
       "motorId": "e00000000000000000000041",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G75J",
       "commonName": "G75",
       "impulseClass": "G",
@@ -1340,7 +1279,6 @@
     {
       "motorId": "e00000000000000000000042",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G76G",
       "commonName": "G76",
       "impulseClass": "G",
@@ -1360,7 +1298,6 @@
     {
       "motorId": "e00000000000000000000043",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G77R",
       "commonName": "G77",
       "impulseClass": "G",
@@ -1380,7 +1317,6 @@
     {
       "motorId": "e00000000000000000000044",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G78G/L",
       "commonName": "G78",
       "impulseClass": "G",
@@ -1399,7 +1335,6 @@
     {
       "motorId": "e00000000000000000000045",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G79W",
       "commonName": "G79",
       "impulseClass": "G",
@@ -1419,7 +1354,6 @@
     {
       "motorId": "e00000000000000000000046",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "G80T",
       "commonName": "G80",
       "impulseClass": "G",
@@ -1438,7 +1372,6 @@
     {
       "motorId": "e00000000000000000000047",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "HP-G138T",
       "commonName": "G138",
       "impulseClass": "G",
@@ -1458,7 +1391,6 @@
     {
       "motorId": "e00000000000000000000048",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H123W",
       "commonName": "H123",
       "impulseClass": "H",
@@ -1478,7 +1410,6 @@
     {
       "motorId": "e00000000000000000000049",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H128W",
       "commonName": "H128",
       "impulseClass": "H",
@@ -1498,7 +1429,6 @@
     {
       "motorId": "e0000000000000000000004a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H130W",
       "commonName": "H130",
       "impulseClass": "H",
@@ -1518,7 +1448,6 @@
     {
       "motorId": "e0000000000000000000004b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H13ST",
       "commonName": "H13",
       "impulseClass": "H",
@@ -1537,7 +1466,6 @@
     {
       "motorId": "e0000000000000000000004c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H148R",
       "commonName": "H148",
       "impulseClass": "H",
@@ -1557,7 +1485,6 @@
     {
       "motorId": "e0000000000000000000004d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H14ST",
       "commonName": "H14",
       "impulseClass": "H",
@@ -1576,7 +1503,6 @@
     {
       "motorId": "e0000000000000000000004e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H165R",
       "commonName": "H165",
       "impulseClass": "H",
@@ -1596,7 +1522,6 @@
     {
       "motorId": "e0000000000000000000004f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H180W",
       "commonName": "H180",
       "impulseClass": "H",
@@ -1616,7 +1541,6 @@
     {
       "motorId": "e00000000000000000000050",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H210R",
       "commonName": "H210",
       "impulseClass": "H",
@@ -1636,7 +1560,6 @@
     {
       "motorId": "e00000000000000000000051",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H220T",
       "commonName": "H220",
       "impulseClass": "H",
@@ -1656,7 +1579,6 @@
     {
       "motorId": "e00000000000000000000052",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H238T",
       "commonName": "H238",
       "impulseClass": "H",
@@ -1676,7 +1598,6 @@
     {
       "motorId": "e00000000000000000000053",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H242T",
       "commonName": "H242",
       "impulseClass": "H",
@@ -1696,7 +1617,6 @@
     {
       "motorId": "e00000000000000000000054",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H250G",
       "commonName": "H250",
       "impulseClass": "H",
@@ -1716,7 +1636,6 @@
     {
       "motorId": "e00000000000000000000055",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H73J",
       "commonName": "H73",
       "impulseClass": "H",
@@ -1736,7 +1655,6 @@
     {
       "motorId": "e00000000000000000000056",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "H97J",
       "commonName": "H97",
       "impulseClass": "H",
@@ -1756,7 +1674,6 @@
     {
       "motorId": "e00000000000000000000057",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "HP-H45W",
       "commonName": "H45",
       "impulseClass": "H",
@@ -1775,7 +1692,6 @@
     {
       "motorId": "e00000000000000000000058",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "HP-I140W",
       "commonName": "I140",
       "impulseClass": "I",
@@ -1794,7 +1710,6 @@
     {
       "motorId": "e00000000000000000000059",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "HP-I205W",
       "commonName": "I205",
       "impulseClass": "I",
@@ -1813,7 +1728,6 @@
     {
       "motorId": "e0000000000000000000005a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "HP-I65W",
       "commonName": "I65",
       "impulseClass": "I",
@@ -1832,7 +1746,6 @@
     {
       "motorId": "e0000000000000000000005b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I115W",
       "commonName": "I115",
       "impulseClass": "I",
@@ -1852,7 +1765,6 @@
     {
       "motorId": "e0000000000000000000005c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I1299N",
       "commonName": "I1299",
       "impulseClass": "I",
@@ -1872,7 +1784,6 @@
     {
       "motorId": "e0000000000000000000005d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I161W",
       "commonName": "I161",
       "impulseClass": "I",
@@ -1892,7 +1803,6 @@
     {
       "motorId": "e0000000000000000000005e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I170G",
       "commonName": "I170",
       "impulseClass": "I",
@@ -1912,7 +1822,6 @@
     {
       "motorId": "e0000000000000000000005f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I175WS",
       "commonName": "I175",
       "impulseClass": "I",
@@ -1931,7 +1840,6 @@
     {
       "motorId": "e00000000000000000000060",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I180W",
       "commonName": "I180",
       "impulseClass": "I",
@@ -1951,7 +1859,6 @@
     {
       "motorId": "e00000000000000000000061",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I211W",
       "commonName": "I211",
       "impulseClass": "I",
@@ -1971,7 +1878,6 @@
     {
       "motorId": "e00000000000000000000062",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I215R",
       "commonName": "I215",
       "impulseClass": "I",
@@ -1991,7 +1897,6 @@
     {
       "motorId": "e00000000000000000000063",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I218R",
       "commonName": "I218",
       "impulseClass": "I",
@@ -2011,7 +1916,6 @@
     {
       "motorId": "e00000000000000000000064",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I229T",
       "commonName": "I229",
       "impulseClass": "I",
@@ -2031,7 +1935,6 @@
     {
       "motorId": "e00000000000000000000065",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I245G",
       "commonName": "I245",
       "impulseClass": "I",
@@ -2051,7 +1954,6 @@
     {
       "motorId": "e00000000000000000000066",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I284W",
       "commonName": "I284",
       "impulseClass": "I",
@@ -2071,7 +1973,6 @@
     {
       "motorId": "e00000000000000000000067",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I285R",
       "commonName": "I285",
       "impulseClass": "I",
@@ -2091,7 +1992,6 @@
     {
       "motorId": "e00000000000000000000068",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I300T",
       "commonName": "I300",
       "impulseClass": "I",
@@ -2111,7 +2011,6 @@
     {
       "motorId": "e00000000000000000000069",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I327DM",
       "commonName": "I327",
       "impulseClass": "I",
@@ -2131,7 +2030,6 @@
     {
       "motorId": "e0000000000000000000006a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I357T",
       "commonName": "I357",
       "impulseClass": "I",
@@ -2151,7 +2049,6 @@
     {
       "motorId": "e0000000000000000000006b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I364FJ",
       "commonName": "I364",
       "impulseClass": "I",
@@ -2171,7 +2068,6 @@
     {
       "motorId": "e0000000000000000000006c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I366R",
       "commonName": "I366",
       "impulseClass": "I",
@@ -2191,7 +2087,6 @@
     {
       "motorId": "e0000000000000000000006d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I40N-P",
       "commonName": "I40",
       "impulseClass": "I",
@@ -2210,7 +2105,6 @@
     {
       "motorId": "e0000000000000000000006e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I599N",
       "commonName": "I599",
       "impulseClass": "I",
@@ -2230,7 +2124,6 @@
     {
       "motorId": "e0000000000000000000006f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "I59WN",
       "commonName": "I59",
       "impulseClass": "I",
@@ -2250,7 +2143,6 @@
     {
       "motorId": "e00000000000000000000070",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J1299N",
       "commonName": "J1299",
       "impulseClass": "J",
@@ -2270,7 +2162,6 @@
     {
       "motorId": "e00000000000000000000071",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J135W",
       "commonName": "J135",
       "impulseClass": "J",
@@ -2290,7 +2181,6 @@
     {
       "motorId": "e00000000000000000000072",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J250W",
       "commonName": "J250",
       "impulseClass": "J",
@@ -2310,7 +2200,6 @@
     {
       "motorId": "e00000000000000000000073",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J340M",
       "commonName": "J340",
       "impulseClass": "J",
@@ -2330,7 +2219,6 @@
     {
       "motorId": "5f4294d2000231000000044f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J450DM",
       "commonName": "J450",
       "impulseClass": "J",
@@ -2339,7 +2227,7 @@
       "avgThrustN": 465,
       "totImpulseNs": 1055,
       "burnTimeS": 2.27,
-      "dataFiles": 2,
+      "dataFiles": 3,
       "delays": "6,8,10,12,14",
       "delayAdjustable": true,
       "propInfo": "Dark Matter",
@@ -2349,7 +2237,6 @@
     {
       "motorId": "e00000000000000000000074",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J550ST-14",
       "commonName": "J550",
       "impulseClass": "J",
@@ -2369,7 +2256,6 @@
     {
       "motorId": "e00000000000000000000075",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J570W",
       "commonName": "J570",
       "impulseClass": "J",
@@ -2389,7 +2275,6 @@
     {
       "motorId": "e00000000000000000000076",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "J90W",
       "commonName": "J90",
       "impulseClass": "J",
@@ -2409,7 +2294,6 @@
     {
       "motorId": "e00000000000000000000077",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K1000T",
       "commonName": "K1000",
       "impulseClass": "K",
@@ -2429,7 +2313,6 @@
     {
       "motorId": "e00000000000000000000078",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K1100T",
       "commonName": "K1100",
       "impulseClass": "K",
@@ -2449,7 +2332,6 @@
     {
       "motorId": "e00000000000000000000079",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K1275R",
       "commonName": "K1275",
       "impulseClass": "K",
@@ -2469,7 +2351,6 @@
     {
       "motorId": "e0000000000000000000007a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K1800ST-P",
       "commonName": "K1800",
       "impulseClass": "K",
@@ -2489,7 +2370,6 @@
     {
       "motorId": "e0000000000000000000007b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K185W",
       "commonName": "K185",
       "impulseClass": "K",
@@ -2509,7 +2389,6 @@
     {
       "motorId": "e0000000000000000000007c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K1999N",
       "commonName": "K1999",
       "impulseClass": "K",
@@ -2529,7 +2408,6 @@
     {
       "motorId": "e0000000000000000000007d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K400C",
       "commonName": "K400",
       "impulseClass": "K",
@@ -2548,7 +2426,6 @@
     {
       "motorId": "e0000000000000000000007e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K480W",
       "commonName": "K480",
       "impulseClass": "K",
@@ -2568,7 +2445,6 @@
     {
       "motorId": "e0000000000000000000007f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K560W",
       "commonName": "K560",
       "impulseClass": "K",
@@ -2588,7 +2464,6 @@
     {
       "motorId": "e00000000000000000000080",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K700W",
       "commonName": "K700",
       "impulseClass": "K",
@@ -2608,7 +2483,6 @@
     {
       "motorId": "e00000000000000000000081",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K750ST",
       "commonName": "K750",
       "impulseClass": "K",
@@ -2628,7 +2502,6 @@
     {
       "motorId": "e00000000000000000000082",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K780R",
       "commonName": "K780",
       "impulseClass": "K",
@@ -2648,7 +2521,6 @@
     {
       "motorId": "e00000000000000000000083",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K850DM",
       "commonName": "K850",
       "impulseClass": "K",
@@ -2667,7 +2539,6 @@
     {
       "motorId": "e00000000000000000000084",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "K990DM",
       "commonName": "K990",
       "impulseClass": "K",
@@ -2687,7 +2558,6 @@
     {
       "motorId": "e00000000000000000000085",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L1150R",
       "commonName": "L1150",
       "impulseClass": "L",
@@ -2707,7 +2577,6 @@
     {
       "motorId": "e00000000000000000000086",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L1250DM",
       "commonName": "L1250",
       "impulseClass": "L",
@@ -2727,7 +2596,6 @@
     {
       "motorId": "e00000000000000000000087",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L1420R",
       "commonName": "L1420",
       "impulseClass": "L",
@@ -2747,7 +2615,6 @@
     {
       "motorId": "e00000000000000000000088",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L1520T",
       "commonName": "L1520",
       "impulseClass": "L",
@@ -2767,7 +2634,6 @@
     {
       "motorId": "e00000000000000000000089",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L1940X",
       "commonName": "L1940",
       "impulseClass": "L",
@@ -2787,7 +2653,6 @@
     {
       "motorId": "e0000000000000000000008a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L2200G",
       "commonName": "L2200",
       "impulseClass": "L",
@@ -2807,7 +2672,6 @@
     {
       "motorId": "e0000000000000000000008b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L850W",
       "commonName": "L850",
       "impulseClass": "L",
@@ -2827,7 +2691,6 @@
     {
       "motorId": "e0000000000000000000008c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L875DM",
       "commonName": "L875",
       "impulseClass": "L",
@@ -2847,7 +2710,6 @@
     {
       "motorId": "e0000000000000000000008d",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "L900DM",
       "commonName": "L900",
       "impulseClass": "L",
@@ -2867,7 +2729,6 @@
     {
       "motorId": "e0000000000000000000008e",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1075DM",
       "commonName": "M1075",
       "impulseClass": "M",
@@ -2887,7 +2748,6 @@
     {
       "motorId": "e0000000000000000000008f",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1315W",
       "commonName": "M1315",
       "impulseClass": "M",
@@ -2907,7 +2767,6 @@
     {
       "motorId": "e00000000000000000000090",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1350W",
       "commonName": "M1350",
       "impulseClass": "M",
@@ -2926,7 +2785,6 @@
     {
       "motorId": "e00000000000000000000091",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1419W",
       "commonName": "M1419",
       "impulseClass": "M",
@@ -2946,7 +2804,6 @@
     {
       "motorId": "e00000000000000000000092",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1500G",
       "commonName": "M1500",
       "impulseClass": "M",
@@ -2966,7 +2823,6 @@
     {
       "motorId": "e00000000000000000000093",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1550R",
       "commonName": "M1550",
       "impulseClass": "M",
@@ -2986,7 +2842,6 @@
     {
       "motorId": "e00000000000000000000094",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1780NT",
       "commonName": "M1780",
       "impulseClass": "M",
@@ -3006,7 +2861,6 @@
     {
       "motorId": "e00000000000000000000095",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1800FJ",
       "commonName": "M1800",
       "impulseClass": "M",
@@ -3026,7 +2880,6 @@
     {
       "motorId": "e00000000000000000000096",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1845NT",
       "commonName": "M1845",
       "impulseClass": "M",
@@ -3046,7 +2899,6 @@
     {
       "motorId": "e00000000000000000000097",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1850W",
       "commonName": "M1850",
       "impulseClass": "M",
@@ -3066,7 +2918,6 @@
     {
       "motorId": "e00000000000000000000098",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M1939W",
       "commonName": "M1939",
       "impulseClass": "M",
@@ -3086,7 +2937,6 @@
     {
       "motorId": "e00000000000000000000099",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M2500T",
       "commonName": "M2500",
       "impulseClass": "M",
@@ -3106,7 +2956,6 @@
     {
       "motorId": "e0000000000000000000009a",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "M650W",
       "commonName": "M650",
       "impulseClass": "M",
@@ -3126,7 +2975,6 @@
     {
       "motorId": "e0000000000000000000009b",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "N2220DM",
       "commonName": "N2220",
       "impulseClass": "N",
@@ -3146,7 +2994,6 @@
     {
       "motorId": "e0000000000000000000009c",
       "manufacturer": "AeroTech",
-      "manufacturerAbbrev": "AeroTech",
       "designation": "N4000W-PS",
       "commonName": "N4000",
       "impulseClass": "N",

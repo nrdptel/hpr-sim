@@ -17,17 +17,17 @@
       "motorId": "e0000000000000000000009d",
       "manufacturer": "Cesaroni Technology",
       "manufacturerAbbrev": "Cesaroni",
-      "designation": "110G60-INVENTED",
+      "designation": "112G60-INVENTED",
       "commonName": "G60",
       "impulseClass": "G",
       "diameter": 29,
-      "length": 152,
+      "length": 149,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 60,
       "maxThrustN": 91.5,
-      "totImpulseNs": 110,
-      "burnTimeS": 1.83,
+      "totImpulseNs": 112,
+      "burnTimeS": 1.87,
       "dataFiles": 1,
       "totalWeightG": 170,
       "propWeightG": 61,
@@ -38,7 +38,7 @@
       "sparky": false,
       "updatedOn": "2018-06-11",
       "availability": "regular",
-      "source_url": "https://example.test/motors/Cesaroni/110G60-INVENTED/"
+      "source_url": "https://example.test/motors/Cesaroni/112G60-INVENTED/"
     },
     {
       "motorId": "e0000000000000000000009e",
@@ -48,7 +48,7 @@
       "commonName": "H130",
       "impulseClass": "H",
       "diameter": 38,
-      "length": 203,
+      "length": 211,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 130,
@@ -75,7 +75,7 @@
       "commonName": "K480",
       "impulseClass": "K",
       "diameter": 54,
-      "length": 488,
+      "length": 493,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 480,
@@ -101,7 +101,7 @@
       "commonName": "L900",
       "impulseClass": "L",
       "diameter": 75,
-      "length": 621,
+      "length": 617,
       "type": "reload",
       "certOrg": "Example Certification Board",
       "avgThrustN": 900,
@@ -127,7 +127,7 @@
       "commonName": "M1800",
       "impulseClass": "M",
       "diameter": 98,
-      "length": 702,
+      "length": 713,
       "type": "SU",
       "certOrg": "Example Certification Board",
       "avgThrustN": 1800,
@@ -148,7 +148,6 @@
     {
       "motorId": "e000000000000000000000a2",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "24E22-13A",
       "commonName": "E22",
       "impulseClass": "E",
@@ -168,7 +167,6 @@
     {
       "motorId": "e000000000000000000000a3",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "26E31-15A",
       "commonName": "E31",
       "impulseClass": "E",
@@ -188,7 +186,6 @@
     {
       "motorId": "e000000000000000000000a4",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "41F36-11A",
       "commonName": "F36",
       "impulseClass": "F",
@@ -208,7 +205,6 @@
     {
       "motorId": "e000000000000000000000a5",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "50F51-13A",
       "commonName": "F51",
       "impulseClass": "F",
@@ -228,7 +224,6 @@
     {
       "motorId": "e000000000000000000000a6",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "51F36-14A",
       "commonName": "F36",
       "impulseClass": "F",
@@ -248,7 +243,6 @@
     {
       "motorId": "e000000000000000000000a7",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "53F32-12A",
       "commonName": "F32",
       "impulseClass": "F",
@@ -268,7 +262,6 @@
     {
       "motorId": "e000000000000000000000a8",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "68F79-13A",
       "commonName": "F79",
       "impulseClass": "F",
@@ -288,7 +281,6 @@
     {
       "motorId": "e000000000000000000000a9",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "114G100-14A",
       "commonName": "G100",
       "impulseClass": "G",
@@ -308,7 +300,6 @@
     {
       "motorId": "e000000000000000000000aa",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "125G131-14A",
       "commonName": "G131",
       "impulseClass": "G",
@@ -328,7 +319,6 @@
     {
       "motorId": "e000000000000000000000ab",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "127G46-11A",
       "commonName": "G46",
       "impulseClass": "G",
@@ -348,7 +338,6 @@
     {
       "motorId": "e000000000000000000000ac",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "128G185-12A",
       "commonName": "G185",
       "impulseClass": "G",
@@ -368,7 +357,6 @@
     {
       "motorId": "e000000000000000000000ad",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "137G58-13A",
       "commonName": "G58",
       "impulseClass": "G",
@@ -388,7 +376,6 @@
     {
       "motorId": "e000000000000000000000ae",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "141G115-13A",
       "commonName": "G115",
       "impulseClass": "G",
@@ -408,7 +395,6 @@
     {
       "motorId": "e000000000000000000000af",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "150G50-15A",
       "commonName": "G50",
       "impulseClass": "G",
@@ -428,7 +414,6 @@
     {
       "motorId": "e000000000000000000000b0",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "159G118-15A",
       "commonName": "G118",
       "impulseClass": "G",
@@ -448,7 +433,6 @@
     {
       "motorId": "e000000000000000000000b1",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "159G125-14A",
       "commonName": "G125",
       "impulseClass": "G",
@@ -468,7 +452,6 @@
     {
       "motorId": "e000000000000000000000b2",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "163H133-14A",
       "commonName": "H133",
       "impulseClass": "H",
@@ -488,7 +471,6 @@
     {
       "motorId": "e000000000000000000000b3",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "164H90-12A",
       "commonName": "H90",
       "impulseClass": "H",
@@ -508,7 +490,6 @@
     {
       "motorId": "e000000000000000000000b4",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "166H163-14A",
       "commonName": "H163",
       "impulseClass": "H",
@@ -528,7 +509,6 @@
     {
       "motorId": "e000000000000000000000b5",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "166H175-14A",
       "commonName": "H175",
       "impulseClass": "H",
@@ -548,7 +528,6 @@
     {
       "motorId": "e000000000000000000000b6",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "206H237-13A",
       "commonName": "H237",
       "impulseClass": "H",
@@ -568,7 +547,6 @@
     {
       "motorId": "e000000000000000000000b7",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "216H118-12A",
       "commonName": "H118",
       "impulseClass": "H",
@@ -588,7 +566,6 @@
     {
       "motorId": "e000000000000000000000b8",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "232H123-14A",
       "commonName": "H123",
       "impulseClass": "H",
@@ -608,7 +585,6 @@
     {
       "motorId": "e000000000000000000000b9",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "234H53-12A",
       "commonName": "H53",
       "impulseClass": "H",
@@ -628,7 +604,6 @@
     {
       "motorId": "e000000000000000000000ba",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "247H143-13A",
       "commonName": "H143",
       "impulseClass": "H",
@@ -648,7 +623,6 @@
     {
       "motorId": "e000000000000000000000bb",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "261H200-14A",
       "commonName": "H200",
       "impulseClass": "H",
@@ -668,7 +642,6 @@
     {
       "motorId": "e000000000000000000000bc",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "266H125-12A",
       "commonName": "H125",
       "impulseClass": "H",
@@ -688,7 +661,6 @@
     {
       "motorId": "e000000000000000000000bd",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "269H110-14A",
       "commonName": "H110",
       "impulseClass": "H",
@@ -708,7 +680,6 @@
     {
       "motorId": "e000000000000000000000be",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "305H226-14A",
       "commonName": "H226",
       "impulseClass": "H",
@@ -728,7 +699,6 @@
     {
       "motorId": "e000000000000000000000bf",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "364I212-14A",
       "commonName": "I212",
       "impulseClass": "I",
@@ -748,7 +718,6 @@
     {
       "motorId": "e000000000000000000000c0",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "382I170-14A",
       "commonName": "I170",
       "impulseClass": "I",
@@ -768,7 +737,6 @@
     {
       "motorId": "e000000000000000000000c1",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "395I55-9A",
       "commonName": "I55",
       "impulseClass": "I",
@@ -788,7 +756,6 @@
     {
       "motorId": "e000000000000000000000c2",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "411I175-14A",
       "commonName": "I175",
       "impulseClass": "I",
@@ -808,7 +775,6 @@
     {
       "motorId": "e000000000000000000000c3",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "465I150-11A",
       "commonName": "I150",
       "impulseClass": "I",
@@ -828,7 +794,6 @@
     {
       "motorId": "e000000000000000000000c4",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "475I445-16A",
       "commonName": "I445",
       "impulseClass": "I",
@@ -848,7 +813,6 @@
     {
       "motorId": "e000000000000000000000c5",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "486I287-15A",
       "commonName": "I287",
       "impulseClass": "I",
@@ -868,7 +832,6 @@
     {
       "motorId": "e000000000000000000000c6",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "512I285-15A",
       "commonName": "I285",
       "impulseClass": "I",
@@ -888,7 +851,6 @@
     {
       "motorId": "e000000000000000000000c7",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "518I165-17A",
       "commonName": "I165",
       "impulseClass": "I",
@@ -908,7 +870,6 @@
     {
       "motorId": "e000000000000000000000c8",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "540I470-15A",
       "commonName": "I470",
       "impulseClass": "I",
@@ -928,7 +889,6 @@
     {
       "motorId": "e000000000000000000000c9",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "548I242-15A",
       "commonName": "I242",
       "impulseClass": "I",
@@ -948,7 +908,6 @@
     {
       "motorId": "e000000000000000000000ca",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "601I350-16A",
       "commonName": "I350",
       "impulseClass": "I",
@@ -968,7 +927,6 @@
     {
       "motorId": "e000000000000000000000cb",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "634I540-16A",
       "commonName": "I540",
       "impulseClass": "I",
@@ -988,7 +946,6 @@
     {
       "motorId": "e000000000000000000000cc",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1008J420-15A",
       "commonName": "J420",
       "impulseClass": "J",
@@ -1008,7 +965,6 @@
     {
       "motorId": "e000000000000000000000cd",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1013J453-16A",
       "commonName": "J453",
       "impulseClass": "J",
@@ -1028,7 +984,6 @@
     {
       "motorId": "e000000000000000000000ce",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1043J380-16A",
       "commonName": "J380",
       "impulseClass": "J",
@@ -1048,7 +1003,6 @@
     {
       "motorId": "e000000000000000000000cf",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1261J449-15A",
       "commonName": "J449",
       "impulseClass": "J",
@@ -1068,7 +1022,6 @@
     {
       "motorId": "e000000000000000000000d0",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "648J285-15A",
       "commonName": "J285",
       "impulseClass": "J",
@@ -1088,7 +1041,6 @@
     {
       "motorId": "e000000000000000000000d1",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "649J335-15A",
       "commonName": "J335",
       "impulseClass": "J",
@@ -1108,7 +1060,6 @@
     {
       "motorId": "e000000000000000000000d2",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "684J290-15A",
       "commonName": "J290",
       "impulseClass": "J",
@@ -1128,7 +1079,6 @@
     {
       "motorId": "e000000000000000000000d3",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "716J280-16A",
       "commonName": "J280",
       "impulseClass": "J",
@@ -1148,7 +1098,6 @@
     {
       "motorId": "e000000000000000000000d4",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "806J240-16A",
       "commonName": "J240",
       "impulseClass": "J",
@@ -1168,7 +1117,6 @@
     {
       "motorId": "e000000000000000000000d5",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "821J430-18A",
       "commonName": "J430",
       "impulseClass": "J",
@@ -1188,7 +1136,6 @@
     {
       "motorId": "e000000000000000000000d6",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "838J293-13A",
       "commonName": "J293",
       "impulseClass": "J",
@@ -1208,7 +1155,6 @@
     {
       "motorId": "e000000000000000000000d7",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "848J520-16A",
       "commonName": "J520",
       "impulseClass": "J",
@@ -1228,7 +1174,6 @@
     {
       "motorId": "e000000000000000000000d8",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "867J244-14A",
       "commonName": "J244",
       "impulseClass": "J",
@@ -1248,7 +1193,6 @@
     {
       "motorId": "e000000000000000000000d9",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "896J580-17A",
       "commonName": "J580",
       "impulseClass": "J",
@@ -1268,7 +1212,6 @@
     {
       "motorId": "e000000000000000000000da",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "949J150-P",
       "commonName": "J150",
       "impulseClass": "J",
@@ -1288,7 +1231,6 @@
     {
       "motorId": "e000000000000000000000db",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1412K530-16A",
       "commonName": "K530",
       "impulseClass": "K",
@@ -1308,7 +1250,6 @@
     {
       "motorId": "e000000000000000000000dc",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1596K500-18A",
       "commonName": "K500",
       "impulseClass": "K",
@@ -1328,7 +1269,6 @@
     {
       "motorId": "e000000000000000000000dd",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1654K515-16A",
       "commonName": "K515",
       "impulseClass": "K",
@@ -1348,7 +1288,6 @@
     {
       "motorId": "e000000000000000000000de",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1750K650-16A",
       "commonName": "K650",
       "impulseClass": "K",
@@ -1368,7 +1307,6 @@
     {
       "motorId": "e000000000000000000000df",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "1874K740-18A",
       "commonName": "K740",
       "impulseClass": "K",
@@ -1388,7 +1326,6 @@
     {
       "motorId": "e000000000000000000000e0",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "2021K261-P",
       "commonName": "K261",
       "impulseClass": "K",
@@ -1408,7 +1345,6 @@
     {
       "motorId": "e000000000000000000000e1",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "2377K711-18A",
       "commonName": "K711",
       "impulseClass": "K",
@@ -1428,7 +1364,6 @@
     {
       "motorId": "e000000000000000000000e2",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "2406K555-P",
       "commonName": "K555",
       "impulseClass": "K",
@@ -1448,7 +1383,6 @@
     {
       "motorId": "e000000000000000000000e3",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "2430K661-P",
       "commonName": "K661",
       "impulseClass": "K",
@@ -1468,7 +1402,6 @@
     {
       "motorId": "e000000000000000000000e4",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "2486K510-P",
       "commonName": "K510",
       "impulseClass": "K",
@@ -1488,7 +1421,6 @@
     {
       "motorId": "e000000000000000000000e5",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "2653L585-P",
       "commonName": "L585",
       "impulseClass": "L",
@@ -1508,7 +1440,6 @@
     {
       "motorId": "e000000000000000000000e6",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "3419L645-P",
       "commonName": "L645",
       "impulseClass": "L",
@@ -1528,7 +1459,6 @@
     {
       "motorId": "e000000000000000000000e7",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "3683L851-P",
       "commonName": "L851",
       "impulseClass": "L",
@@ -1548,7 +1478,6 @@
     {
       "motorId": "e000000000000000000000e8",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "3757L800-P",
       "commonName": "L800",
       "impulseClass": "L",
@@ -1568,7 +1497,6 @@
     {
       "motorId": "e000000000000000000000e9",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "4025L1355-P",
       "commonName": "L1355",
       "impulseClass": "L",
@@ -1588,7 +1516,6 @@
     {
       "motorId": "e000000000000000000000ea",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "4263L1350-P",
       "commonName": "L1350",
       "impulseClass": "L",
@@ -1608,7 +1535,6 @@
     {
       "motorId": "e000000000000000000000eb",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "4828L1410-P",
       "commonName": "L1410",
       "impulseClass": "L",
@@ -1628,7 +1554,6 @@
     {
       "motorId": "e000000000000000000000ec",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "4895L1395-P",
       "commonName": "L1395",
       "impulseClass": "L",
@@ -1648,7 +1573,6 @@
     {
       "motorId": "e000000000000000000000ed",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "4937L395-P",
       "commonName": "L395",
       "impulseClass": "L",
@@ -1668,7 +1592,6 @@
     {
       "motorId": "e000000000000000000000ee",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "5015L1115-P",
       "commonName": "L1115",
       "impulseClass": "L",
@@ -1688,7 +1611,6 @@
     {
       "motorId": "e000000000000000000000ef",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "5069L1685-P",
       "commonName": "L1685",
       "impulseClass": "L",
@@ -1708,7 +1630,6 @@
     {
       "motorId": "e000000000000000000000f0",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "10133M795-P",
       "commonName": "M795",
       "impulseClass": "M",
@@ -1728,7 +1649,6 @@
     {
       "motorId": "e000000000000000000000f1",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "5198M1101-P",
       "commonName": "M1101",
       "impulseClass": "M",
@@ -1748,7 +1668,6 @@
     {
       "motorId": "e000000000000000000000f2",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "5506M1230-P",
       "commonName": "M1230",
       "impulseClass": "M",
@@ -1768,7 +1687,6 @@
     {
       "motorId": "e000000000000000000000f3",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "5604M1830-P",
       "commonName": "M1830",
       "impulseClass": "M",
@@ -1788,7 +1706,6 @@
     {
       "motorId": "e000000000000000000000f4",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "6268M1401-P",
       "commonName": "M1401",
       "impulseClass": "M",
@@ -1808,7 +1725,6 @@
     {
       "motorId": "e000000000000000000000f5",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "6287M2075-P",
       "commonName": "M2075",
       "impulseClass": "M",
@@ -1828,7 +1744,6 @@
     {
       "motorId": "e000000000000000000000f6",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "7441M1060-P",
       "commonName": "M1060",
       "impulseClass": "M",
@@ -1848,7 +1763,6 @@
     {
       "motorId": "e000000000000000000000f7",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "7579M1520-P",
       "commonName": "M1520",
       "impulseClass": "M",
@@ -1868,7 +1782,6 @@
     {
       "motorId": "e000000000000000000000f8",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "8088M1790-P",
       "commonName": "M1790",
       "impulseClass": "M",
@@ -1888,7 +1801,6 @@
     {
       "motorId": "e000000000000000000000f9",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "9870M1800-P",
       "commonName": "M1800",
       "impulseClass": "M",
@@ -1908,7 +1820,6 @@
     {
       "motorId": "e000000000000000000000fa",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "9876M1890-P",
       "commonName": "M1890",
       "impulseClass": "M",
@@ -1928,7 +1839,6 @@
     {
       "motorId": "e000000000000000000000fb",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "9977M2245-P",
       "commonName": "M2245",
       "impulseClass": "M",
@@ -1948,7 +1858,6 @@
     {
       "motorId": "e000000000000000000000fc",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "16803N1560-P",
       "commonName": "N1560",
       "impulseClass": "N",
@@ -1968,7 +1877,6 @@
     {
       "motorId": "e000000000000000000000fd",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "17613N2900-P",
       "commonName": "N2900",
       "impulseClass": "N",
@@ -1988,7 +1896,6 @@
     {
       "motorId": "e000000000000000000000fe",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "17631N3800-P",
       "commonName": "N3800",
       "impulseClass": "N",
@@ -2008,7 +1915,6 @@
     {
       "motorId": "e000000000000000000000ff",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "17790N4100-P",
       "commonName": "N4100",
       "impulseClass": "N",
@@ -2028,7 +1934,6 @@
     {
       "motorId": "e00000000000000000000100",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "19318N3301-P",
       "commonName": "N3301",
       "impulseClass": "N",
@@ -2048,7 +1953,6 @@
     {
       "motorId": "e00000000000000000000101",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "29920O3700-P",
       "commonName": "O3700",
       "impulseClass": "O",
@@ -2068,7 +1972,6 @@
     {
       "motorId": "e00000000000000000000102",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "30600O5800-P",
       "commonName": "O5800",
       "impulseClass": "O",
@@ -2088,7 +1991,6 @@
     {
       "motorId": "e00000000000000000000103",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "30795O25000-P",
       "commonName": "O25000",
       "impulseClass": "O",
@@ -2108,7 +2010,6 @@
     {
       "motorId": "e00000000000000000000104",
       "manufacturer": "Cesaroni Technology",
-      "manufacturerAbbrev": "Cesaroni",
       "designation": "40960O8000-P",
       "commonName": "O8000",
       "impulseClass": "O",
