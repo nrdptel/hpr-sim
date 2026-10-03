@@ -134,8 +134,8 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-126 | M5.3b: Open-Meteo's elevation in `hpr_net::elevation`, up to 100 places a request, coordinates to 5 decimals in the URL, a year's TTL, heights refused outside −1,000 to 9,000 m, a surface model above the EGM2008 geoid with `N` left to the caller; no command yet | accepted |
 | ADR-127 | M5.3c split c1, c2; geodesics in `hpr_core::geodesic` through `geographiclib-rs`, flattening past 1/150 refused; Karney's 500,000-line test set within his 15 nm on five measures, either azimuth pair on its 21 mirror lines | accepted |
 | ADR-128 | M5.3c2: a user's GeoTIFF in `hpr_io::geotiff` over the `tiff` crate; geographic CRSs within a few metres of WGS 84 only, projections and far datums refused; the containing pixel placed as GDAL places it; GDAL's scale and offset, units the file states, else metres; held to rasterio 1.5.2 on seven fixtures and a whole USGS tile | accepted |
-| ADR-129 | M5.4 split a to c; M5.4a: motor.fusionspace.co's five files in `hpr_net::motor_finder` through the cache, an hour's TTL, its structural rules refused and its derived ones pinned on the recording; eight answers of one build committed as fixtures; the credit with the site's caution on every answer | accepted |
-| ADR-130 | M5.4b: ThrustCurve.org's search and download in `hpr_net::thrustcurve` through the cache, a day's TTL; the join by exact maker and designation, misses reported not guessed; three makers' searches and two public-domain files committed as fixtures; the join's report in `validation/reports/thrustcurve-join.md` | accepted |
+| ADR-129 | M5.4 split a to c; M5.4a: motor.fusionspace.co's five files in `hpr_net::motor_finder` through the cache, an hour's TTL, its structural rules refused and its derived ones pinned on the recording; eight answers of one build committed as fixtures; the credit with the site's caution on every answer | accepted; the credit's wording and the fixtures' licence (§6, §7) superseded by ADR-143 |
+| ADR-130 | M5.4b: ThrustCurve.org's search and download in `hpr_net::thrustcurve` through the cache, a day's TTL; the join by exact maker and designation, misses reported not guessed; three makers' searches and two public-domain files committed as fixtures; the join's report in `validation/reports/thrustcurve-join.md` | accepted; the three searches (§7) superseded by ADR-143 |
 | ADR-131 | M5.4c: `hpr motors search`, the finder's list from the network, the cache or a saved file; five filters, `--max-price` in exact cents on the cheapest in-stock offer; cheapest first; both credits on every list; the example tested on an edited copy, as the recording lists nothing at $150 | accepted |
 | ADR-132 | M5.5 split a and b; M5.5a: `hpr_io::orc` reads OpenRocket's `.orc` parts catalogues; the 16 files OpenRocket 24.12 ships bundled unchanged (Apache-2.0); held part by part to OpenRocket's preset loader, run as an oracle; exact unit definitions, the file's makers' names and densities kept, a stated mass kept beside them; unreadable parts left out with a warning, not the file | accepted |
 | ADR-133 | M5.5b: catalogue parts in the builder (`from_catalog` on `Nose`, `Tube`, `Transition`, `MotorTube`, and the new `Fitting`); what the file leaves unsaid as OpenRocket 24.12 builds it, but a hollow part's shoulder takes its wall; a stated mass scales the part's density; a part with an undefined material refused; every part held to OpenRocket's built mass and centre, the two codes' hollow walls each checked | accepted |
@@ -148,6 +148,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
 | ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 | ADR-142 | M6.2d: EGO (Jones, Schonlau and Welch 1998) with a kriging surrogate fitted by likelihood and the expected improvement searched by CMA-ES; M6.2d split d1 (Branin, Hartmann 3: within 1% of the minimum in 50 evaluations from 20 seeds, worst 0.12%) and d2 (Hartmann 6, which d1's version leaves at a local minimum in 7 runs of 10) | accepted |
+| ADR-143 | Recorded answers and their licences: ThrustCurve.org's three searches replaced by stand-ins (five invented motors per maker, and the in-stock motors' records carrying the motor finder's CC BY 4.0 values); motor.fusionspace.co's answers under CC BY 4.0, credited "Motor stock data from motor.fusionspace.co" | accepted |
 
 ---
 
@@ -10638,7 +10639,9 @@ match exactly one ThrustCurve record on (manufacturer, designation), as all 598 
    stored as `F27R_L` for file systems). The site is Neer's own, its terms say free to use, and
    its listings are public vendor pages; the motor figures in them are ThrustCurve's published
    values, which the bundled catalogue already copies with attribution (ADR-005). Recorded under
-   "Needs Neer" as no action if fine.
+   "Needs Neer" as no action if fine. *Superseded by ADR-143 (2026-10-03):* the site now licenses
+   its answers under CC BY 4.0, permits recorded answers as test fixtures, and asks for the credit
+   "Motor stock data from motor.fusionspace.co", which `ATTRIBUTION` now opens with (§6).
 
 **Consequences.** M5.4a is met: `tests/motor_finder.rs` reads each of the eight answers, writes it
 back and finds exactly the recording's keys and values; reads it again from the cache without a
@@ -10715,7 +10718,9 @@ whether the maker was named in full or by its abbreviation.
    RockSim file (`user`, `PD`), requested by format so no file without a public-domain licence is
    recorded. The records are published motor figures, as the bundled catalogue already copies
    (ADR-005); ThrustCurve's whole `search.json` (1,156 records) stays under `refs/`, the three
-   makers' searches being enough for the join.
+   makers' searches being enough for the join. *Superseded by ADR-143 (2026-10-03):* the three
+   searches are no longer ThrustCurve's answers but stand-ins in their shape; the two downloads
+   stay. The measurements below were made on ThrustCurve's answers.
 8. **The report.** `validation/reports/thrustcurve-join.md` holds `Join::report` on the recordings,
    compared as text on every OS by `tests/thrustcurve.rs` (counts only, no float);
    `HPR_WRITE_THRUSTCURVE_JOIN=1` rewrites it.
@@ -11607,3 +11612,52 @@ per evaluation needs tens.
 implementation is run as an oracle: the minima are known, which is what the milestone states.
 Left out: Hartmann 6 (M6.2d2), noisy outputs (a nugget fitted to the noise), batches of points
 per step, constraints and integer variables.
+
+## ADR-143: Recorded answers and their licences: stand-in ThrustCurve searches, CC BY 4.0 for the motor finder (2026-10-03)
+
+**Context.** ADR-130 §7 committed five ThrustCurve.org answers as test fixtures: three makers'
+searches (250, 246 and 50 kB of ThrustCurve's motor records) and two downloads, each one data file
+ThrustCurve marks public domain (`PD`). ThrustCurve.org's API states no terms for its data, and
+its site reads "All rights under copyright reserved" (checked 2026-10-03). Facts are not
+copyrightable, but a compilation can be, and without a licence the records' status is unclear.
+Decided with Neer: replace the three searches with invented data in the same shape; keep the two
+public-domain files. Separately, motor.fusionspace.co's API page (<https://motor.fusionspace.co/api>,
+"Data licence", checked 2026-10-03) now licenses its responses, and the compilation in them, under
+CC BY 4.0, asks for the credit "Motor stock data from motor.fusionspace.co", and permits storing
+recorded responses as software test fixtures (ADR-129 §6, §7 predate it).
+
+**Decision.**
+
+1. **Stand-in searches.** `thrustcurve-search-{aerotech,cesaroni,loki}.json` keep the API's shape
+   (criteria, `matches`, `results`, `source_url`; each record's fields in the API's order) and
+   hold, per maker: five invented motors, every value invented (designations ending `-INVENTED`,
+   ids `e000…`, `example.test` links, a made-up certifying body), between them covering every
+   record field, a hybrid, out-of-production and zero-file records, and missing optional fields;
+   then one record per motor of that maker in the committed `motor-finder-in-stock.json` (153, 99
+   and 30), carrying that answer's own values (designation, common name, class, diameter, type,
+   total impulse, average thrust, burn time, delays, case, propellant, sparky; availability from
+   its `discontinued`), an invented id and one data file listed. J450DM and F27R/L keep the ids of
+   the two downloads, so the join still leads to a committed file; J450DM lists two files. The
+   records leave out what the finder doesn't state (length, weights, peak thrust, certifying body,
+   update date), as the API leaves out fields with no value, rather than pair real names with
+   invented figures. So the searches hold no fact beyond the CC BY 4.0 finder answers and the two
+   public-domain downloads. 158, 104 and 35 records, 0.17 MB in all, against 0.55 MB.
+2. **The tests keep their intent.** Every test of ADR-130 still runs, with its counts moved to the
+   stand-ins (158, 104 and 35 records; 297 in all). The join still maps 282 of 282 in-stock
+   motors, and its report's table is unchanged; the miss test's edits and counts are unchanged.
+   What changes is the evidence: the committed join now shows that the code keeps the rule on
+   records in ThrustCurve's shape, while the full match on ThrustCurve's own records is ADR-130's
+   measurement of 2026-10-01, kept in its text, `docs/motor-stock.md` and the report's preamble,
+   not re-run. The example `motor_stock` prints the record's average thrust beside the file's
+   (465 N against 465.6 N) instead of the peak thrust, which the stand-in record leaves out.
+3. **The motor finder's credit.** `motor_finder::ATTRIBUTION` opens with the licence's words,
+   "Motor stock data from motor.fusionspace.co", names CC BY 4.0 with its link, and keeps the
+   site's caution to check stock and price on the vendor's page. `hpr motors search`, the example
+   and the guide print it. `THIRD-PARTY-NOTICES.md` and `validation/refs.lock.toml` give the
+   finder's answers as CC-BY-4.0.
+
+**Consequences.** No ThrustCurve.org motor record is committed as a fixture; its two
+public-domain curve files are. The bundled catalogue (`crates/hpr-motor/data/thrustcurve/`,
+ADR-005) is unchanged: its 32 curve files are all marked `PD`, but `catalog.json` also copies each
+motor's published statistics from ThrustCurve's API, the same kind of record this ADR removes from
+the fixtures; that is left for its own decision.

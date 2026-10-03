@@ -1,4 +1,4 @@
-Motor stock and prices from motor.fusionspace.co, aggregated from public vendor listings and ThrustCurve.org; provided as is, with no warranty: check stock and price on the vendor's own page before relying on them
+Motor stock data from motor.fusionspace.co, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); aggregated from public vendor listings and ThrustCurve.org; provided as is, with no warranty: check stock and price on the vendor's own page before relying on them
 built 2026-10-01T07:07:29+00:00: 598 motors listed, 282 in stock, from 12 vendors
 first read: Fetched; offline two hours later: Stale, the same list: true
 
@@ -11,7 +11,7 @@ Cesaroni Technology  3683L851-P          75         3683.2     $290.39  Animal M
 AeroTech             L1150R              75         3517.0     $324.99  Animal Motor Works             1
 
 Motor data and thrust curves courtesy of ThrustCurve.org, https://www.thrustcurve.org/
-663 records of the three makers; 282 of 282 motors in stock matched to one each, 0 missed
+297 records of the three makers; 282 of 282 motors in stock matched to one each, 0 missed
 AeroTech J450DM: id 5f4294d2000231000000044f, a RASP file from source cert, licence PD, 37 points from ignition
-the file:  total impulse   1061.6 N·s, burn time  2.28 s, peak thrust  541.4 N
-record:    total impulse     1055 N·s, burn time  2.27 s, peak thrust    558 N
+the file:  total impulse   1061.6 N·s, burn time  2.28 s, average thrust  465.6 N
+record:    total impulse     1055 N·s, burn time  2.27 s, average thrust    465 N

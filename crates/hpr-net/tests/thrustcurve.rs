@@ -3,8 +3,12 @@
 //! misses, and a mapped motor's recorded curve reads with `hpr_motor`.
 //!
 //! The expected values are read from the recordings here, with `serde_json`, not through the
-//! code under test. The three searches and two downloads were recorded on 2026-10-01 at 08:22
-//! UTC; the motor finder's in-stock list is its build of 07:07:29 UTC that day (M5.4a).
+//! code under test. The two downloads were recorded on 2026-10-01 at 08:22 UTC; the motor
+//! finder's in-stock list is its build of 07:07:29 UTC that day (M5.4a). The three searches are
+//! stand-ins in the API's shape (ADR-143): ThrustCurve.org states no terms for its records, so
+//! each search holds five invented motors and one record for each of the maker's motors in the
+//! finder's in-stock list, carrying that list's own values (CC BY 4.0) and an invented id, bar
+//! J450DM's and F27R/L's, the ids of the two downloads.
 
 #![allow(
     clippy::disallowed_methods,
@@ -185,11 +189,12 @@ fn each_answer_reads_to_its_values_then_works_offline_from_the_cache() {
     assert_eq!(transport.calls(), 5);
 }
 
-/// The searches' counts and words, read from the recordings: every motor of each maker, with the
-/// maker's full name as the motor finder writes it.
+/// The searches' counts and words, read from the recordings: each answer whole (as many records
+/// as it says match), every record of one maker, with the maker's full name as the motor finder
+/// writes it.
 #[test]
 fn each_search_holds_one_makers_every_motor() {
-    for ((maker, file), count) in SEARCHES.into_iter().zip([307, 296, 60]) {
+    for ((maker, file), count) in SEARCHES.into_iter().zip([158, 104, 35]) {
         let answer = thrustcurve::parse_search(&fixture(file)).unwrap();
         let raw = recorded(file);
         assert_eq!(raw["matches"].as_u64(), Some(count), "{file}");
@@ -211,7 +216,8 @@ fn each_search_holds_one_makers_every_motor() {
         .find(|r| r.motor_id == J450DM_ID)
         .unwrap();
     assert_eq!(j450.designation, "J450DM");
-    // Two files: the RASP one recorded below, and one in another format.
+    // Two files, as the stand-in record lists: the RASP one recorded below, and one in another
+    // format.
     assert_eq!(j450.data_files, Some(2));
     // A DMS, AeroTech's single-use motor.
     assert_eq!(j450.motor_type.as_deref(), Some("SU"));
@@ -228,7 +234,7 @@ fn the_in_stock_motors_map_to_thrustcurve_ids_with_a_report_of_the_misses() {
     let client = Client::new(&transport, Cache::new(dir.path()), Mode::Online);
     let (in_stock, _) = motor_finder::fetch_in_stock(&client, NOW_S).unwrap();
     let (records, fetched) = thrustcurve::fetch_finder_records(&client, NOW_S).unwrap();
-    assert_eq!((records.len(), fetched.len()), (663, 3));
+    assert_eq!((records.len(), fetched.len()), (297, 3));
     assert!(fetched.iter().all(|f| f.attribution == ATTRIBUTION));
     let join = thrustcurve::join(&in_stock.motors, &records);
 
@@ -277,8 +283,9 @@ fn the_in_stock_motors_map_to_thrustcurve_ids_with_a_report_of_the_misses() {
     assert_eq!((hits, total), (282, 282));
     assert!(hits * 100 >= total * 95, "{hits} of {total}");
     assert!(join.mapped.iter().all(|m| m.record.data_files >= Some(1)));
-    // The finder copies ThrustCurve's figures as well as its names, so each match is the right
-    // motor by more than its name: diameter, total impulse, average thrust and burn time agree.
+    // Each stand-in record carries its finder motor's figures, so each match is the right record
+    // by more than its name: diameter, total impulse, average thrust and burn time agree. (On
+    // ThrustCurve.org's own records, recorded 2026-10-01, they agreed for all 282: ADR-130.)
     for m in &join.mapped {
         let motor = &in_stock.motors[m.finder_index];
         assert_eq!(
@@ -549,12 +556,12 @@ fn each_rule_refuses_an_answer_that_breaks_it() {
         thrustcurve::parse_search(&criterion_error),
         Err(ThrustCurveError::Api(e)) if e == "maxResults: Invalid maxResults value \"x\"."
     ));
-    let too_many = edited(search, |v| v["matches"] = 59.into());
+    let too_many = edited(search, |v| v["matches"] = 34.into());
     assert!(matches!(
         thrustcurve::parse_search(&too_many),
         Err(ThrustCurveError::Count {
-            matches: 59,
-            found: 60
+            matches: 34,
+            found: 35
         })
     ));
     let bad_id = edited(search, |v| v["results"][3]["motorId"] = "5f42".into());
@@ -698,7 +705,7 @@ fn an_answer_for_something_else_is_refused_and_not_cached() {
         panic!("{err}");
     };
     assert!(
-        reason.contains("matches 307 motors but returns only 20"),
+        reason.contains("matches 158 motors but returns only 20"),
         "{reason}"
     );
     assert!(matches!(

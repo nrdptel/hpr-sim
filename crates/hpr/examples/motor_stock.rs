@@ -14,8 +14,11 @@
 //! still agree (`cargo xtask examples --check`).
 //!
 //! It never uses the network: a stand-in transport answers with the files recorded from the
-//! motor finder's API on 1 October 2026, at 07:07 UTC, and from ThrustCurve.org's at 08:22 UTC.
-//! Stock and prices change by the hour.
+//! motor finder's API on 1 October 2026, at 07:07 UTC, and J450DM's file recorded from
+//! ThrustCurve.org's at 08:22 UTC. ThrustCurve.org states no terms for its motor records, so the
+//! three searches are stand-ins in its API's shape: five invented motors per maker, and a record
+//! of each motor in the finder's in-stock list carrying that list's own figures. Stock and prices
+//! change by the hour.
 
 #![allow(
     clippy::disallowed_methods,
@@ -196,18 +199,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     let figure = |value: Option<f64>| value.map_or_else(|| "?".to_owned(), |v| v.to_string());
     println!(
-        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, peak thrust {:>6} N",
+        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, average thrust {:>6} N",
         "the file:",
         format!("{:.1}", curve.total_impulse_ns()),
         format!("{:.2}", curve.burn_time_s()),
-        format!("{:.1}", curve.peak_thrust_n())
+        format!("{:.1}", curve.average_thrust_n())
     );
     println!(
-        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, peak thrust {:>6} N",
+        "{:<10} total impulse {:>8} N·s, burn time {:>5} s, average thrust {:>6} N",
         "record:",
         figure(record.total_impulse_ns),
         figure(record.burn_time_s),
-        figure(record.max_thrust_n)
+        figure(record.avg_thrust_n)
     );
     std::fs::remove_dir_all(&folder).ok();
     Ok(())

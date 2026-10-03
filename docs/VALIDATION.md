@@ -280,11 +280,14 @@ as heights instead, the mean is 6.63%.
   fixtures and whole-tile reading by rasterio 1.5.2 (GDAL 3.12.2), the outside reader, are in
   `crates/hpr-io/tests/fixtures/geotiff/` (`validation/oracles/geotiff/dem.py`;
   [ADR-128](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30), the reader's design).
-- **ThrustCurve.org's API** (<https://www.thrustcurve.org/info/api.html>): three makers' searches
-  and two public-domain curve files, recorded 2026-10-01, in `crates/hpr-net/tests/fixtures/replay/`;
-  `validation/reports/thrustcurve-join.md` holds the in-stock motors' match to its records
+- **ThrustCurve.org's API** (<https://www.thrustcurve.org/info/api.html>): two public-domain curve
+  files, recorded 2026-10-01, and three stand-in makers' searches in its shape (invented motors,
+  and records carrying the motor finder's in-stock values), in `crates/hpr-net/tests/fixtures/replay/`;
+  `validation/reports/thrustcurve-join.md` holds the in-stock motors' match to the stand-ins
   ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01),
-  why the match is by name only).
+  why the match is by name only;
+  [ADR-143](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03),
+  why the searches are stand-ins).
 - **OpenRocket's parts catalogue** (pinned as `openrocket-database`, Apache-2.0): its 16 `.orc`
   files, bundled in `crates/hpr-io/data/openrocket-database/`, and OpenRocket 24.12's reading of
   every part (and of each file with its stated masses removed) and of 37 probe files, in
@@ -408,7 +411,7 @@ excellent offline test fixtures for the weather-file readers.
 | RocketPy `Rocket` with a motor | total mass, centre of mass and inertia vs time for nine example rockets (Calisto at two motor positions) and Prometheus's `GenericMotor` | MIT (notebooks and tests only; Valkyrie's data-file inputs are left out) | `validation/oracles/rocketpy/rocket_mass.py` → `validation/fixtures/design/rocketpy-rocket-mass.json`: each example's own inputs, with the bundled public-domain curve nearest in impulse in place of its thrust file ([ADR-007 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17)). hpr's designs (`validation/designs/`) agree at RocketPy's LSODA knots within 8e-10 (grain propellant mass 2.4e-9), and between knots within 1.3e-5 in mass, 3.6e-6 of the length in centre and 2.6e-5 in inertia, RocketPy's resampling; dry values to 2e-16. Four examples whose motors have no dry mass are not cases; Cavour is, for its drag curve, and Genesis and Lince for their logged flights ([M2.3b milestone](decisions-and-roadmap.md#m2-3b)) ([M1.4b milestone](decisions-and-roadmap.md#m1-4b), [M1.5b milestone](decisions-and-roadmap.md#m1-5b), `docs/physics/design.md`) |
 | `broofa/thrustcurve-db` | JSON snapshot including thrust samples | ISC (code) | handy offline seed; check the data terms per curve |
 | openrocket/motor-database | weekly SQLite mirror | GPL-3.0 | run-only reference; don't bundle |
-| motor.fusionspace.co API v1 | live US stock and prices (AeroTech, Cesaroni, Loki) | free to use, attribution appreciated | `https://motor.fusionspace.co/api/v1/{meta,motors,in-stock,vendors}.json`, `/motors/{mfr}/{designation}.json` (`/` becomes `~`), `/openapi.json`. Refreshed hourly, CORS-open, no key. Prices are in integer cents. `schema_version` is 1. Docs: https://github.com/nrdptel/Hobby-Rocket-Motor-Finder/blob/main/docs/api.md |
+| motor.fusionspace.co API v1 | live US stock and prices (AeroTech, Cesaroni, Loki) | CC BY 4.0, credit "Motor stock data from motor.fusionspace.co" | `https://motor.fusionspace.co/api/v1/{meta,motors,in-stock,vendors}.json`, `/motors/{mfr}/{designation}.json` (`/` becomes `~`), `/openapi.json`. Refreshed hourly, CORS-open, no key. Prices are in integer cents. `schema_version` is 1. Docs: https://github.com/nrdptel/Hobby-Rocket-Motor-Finder/blob/main/docs/api.md |
 | Certification | `certOrg` field in ThrustCurve | — | no machine-readable NAR/TRA/CAR lists |
 
 ## Recovery
