@@ -62,6 +62,25 @@ Neer's ideas, verbatim (2026-09-20; the same elision):
 > u might already agree but i do want a user to be able to use this product as just a flight
 > analyzer as well if they would like.
 
+Neer at his first check-in, verbatim (2026-10-03):
+
+> one thing i wanna make clear is that if it takes a bit longer to develop, its worth it if improves
+> performance. like one of these reasons for this project is to develop a better performing, higher
+> fidelity product. saying all that, i agree it should be to a certain extent.
+
+> there will be no human feedback other than me until much later in the project. i trust you to spend
+> the right amount of effort and time that that is not needed.
+
+> i like all of these, add them. also add custom ejection charge sizing.
+
+He then said "add all" to three further research passes of ideas. They are in
+`docs/research/ideas.md`, each tiered; the roadmap takes only the ones that feed queued work.
+
+**Operating envelope** (ADR-143): accuracy work goes first to the core band, Mach 0–2.5 and angle
+of attack up to 15°; Mach 2.5–3.5 is supported, and beyond that flights fly with a warning. It
+orders the work, it is not a ceiling. An accuracy milestone stops after two increments in a row
+that move no measured number.
+
 Decisions Neer confirmed at kickoff:
 
 - **Name:** keep `hpr-sim` for now.
@@ -93,6 +112,17 @@ Decisions Neer confirmed at kickoff:
 | V18 | Payload mass that moves or is released during flight | M1.12 |
 | V19 | Multistage, transitions, clusters and side pods | M1.4 (transitions, done), M1.9, M1.13 |
 | V20 | Optional accounts that save designs and flights; paid hosting is acceptable if the project takes off, and the rest stays free and offline | M9.5 |
+| V22 | Fidelity first, within reason: accuracy inside the operating envelope (ADR-143) is worth extra time | M1.14 |
+| V23 | Fly a `.ork` as saved, with its recovery, and motors fetched on demand | M4.5 |
+| V24 | Pad and range tools: flight cards, delay and waiver odds, best launch hour, landing spread against the field (`docs/research/ideas-pad-and-recovery.md`) | later, from M6.x |
+| V25 | Recovery hardware: chute sizing, shock cord and shear pins, custom ejection charge sizing, always "ground test first" (`docs/research/ideas-pad-and-recovery.md`) | later |
+| V26 | Avionics: simulated sensor streams, controller-in-the-loop, altimeter settings and what the altimeter will read (`docs/research/ideas-avionics.md`) | later, with M6.4 |
+| V27 | Design and build: kits, fabrication packs, as-built mode, flutter as a spread (`docs/research/ideas-design-and-physics.md`) | later, M8.x |
+| V28 | Flight data: log health, system identification of drag and stability, wind from the log (`docs/research/ideas-flight-data.md`) | M7.x |
+| V29 | Competitions and certification: report packs, ballast solvers, declared apogee with uncertainty (`docs/research/ideas-competitions-and-clubs.md`) | M6.3 on |
+| V30 | Club operations: RSO and LCO checks, flight-line planning, day-of kits (`docs/research/ideas-competitions-and-clubs.md`) | later |
+| V31 | Developer ecosystem: MCP server, notebooks, plugins, schemas, interchange exports (`docs/research/ideas-ecosystem-and-ui.md`) | later |
+| V32 | UI and AI, with every number grounded in the engine: AI never writes numbers or makes safety calls (`docs/research/ideas-ecosystem-and-ui.md`) | M9.x |
 
 ## North stars
 
@@ -132,4 +162,8 @@ Decisions Neer confirmed at kickoff:
 
 - Hybrid, liquid and research (EX) motors.
 - Active control, until airbrakes (M6.4) and canards (M6.5). Steering to a target point stays out.
+- **Needs Neer's scope decision** (2026-10-03): thrust vector control and active fins with a
+  controller in the loop, GPS-steered gliding parachutes, and rocket-boosted gliders. Forums ask
+  for them, but they conflict with "steering to a target point stays out" and the
+  airbrakes-and-canards-only rule, so they wait for him (`STATUS.md`, *Needs Neer*).
 - Any GUI work before the core, validation and interop milestones are done (see `ROADMAP.md`).
