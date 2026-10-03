@@ -33,6 +33,35 @@ small extracted fixtures with a clear license are committed, each with its prove
   target in predicted mode, where neither code's drag is the truth ([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18)); a predicted miss is
   explained in its case file, and the set of misses is pinned by a test.
 
+## Operating envelope
+
+The operating envelope says which flights the accuracy work serves first. It sets the order of
+the work. It does not limit what hpr flies
+([ADR-143 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-the-operating-envelope-and-a-stop-rule-for-accuracy-work-m18-closed-with-its-misses-2026-10-03)).
+
+| band | Mach number | angle of attack | what it means |
+|---|---|---|---|
+| Core | 0 to 2.5 | up to 15° | Accuracy work goes here first. Nearly every flight on commercial motors is in it. |
+| Extended | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. Supported; fidelity work follows once the core band has whole-flight references. |
+| Beyond | past 3.5 | past 15°, sustained | Deferred, not dropped. These flights still fly, and will carry a warning ([M1.14a milestone](decisions-and-roadmap.md#m1-14a)). |
+
+Why these edges:
+
+- NASA Student Launch (4,000 to 6,000 ft) and the American Rocketry Challenge (750 ft) fly
+  below the speed of sound.
+- Spaceport America Cup teams in the 30,000 ft commercial-motor category fly Mach 1.6 to 2.1.
+- The fastest commercial-motor flights, minimum-diameter record builds, reach about Mach 3.5.
+- At the legal wind limit (20 mph, NFPA 1127), a rocket leaving the rail at 50 to 100 ft/s meets
+  the air at 10° to 30° for a moment. So 15° covers the climb, not the first instant off the rail.
+
+Today hpr's whole-flight comparisons reach only about Mach 1.15 and 4 km. Most of the core band
+is checked part by part, not as whole flights ([Accuracy](accuracy.md)).
+
+**The stop rule.** An accuracy milestone goes on while each step does one of two things: it moves
+a measured error against an independent reference, or it adds a reference that will. After two
+steps in a row that move no measured number, the milestone ships with its gaps written down. Each
+step names the band it serves, and work outside the core band needs a stated reason.
+
 ## The validation harness
 
 This section covers the [M2.1a validation-harness milestone](decisions-and-roadmap.md#m2-1a).

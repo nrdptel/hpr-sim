@@ -93,4 +93,5 @@
 - [Validation plan and reference inventory](VALIDATION.md)
 - [The API reference](api.md)
 - [Glossary](glossary.md)
+- [Writing these pages](writing.md)
 - [Decisions and the roadmap](decisions-and-roadmap.md)
