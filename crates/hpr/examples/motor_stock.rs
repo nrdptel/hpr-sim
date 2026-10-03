@@ -17,8 +17,9 @@
 //! motor finder's API on 1 October 2026, at 07:07 UTC, and J450DM's file recorded from
 //! ThrustCurve.org's at 08:22 UTC. ThrustCurve.org grants no licence for its motor records, so the
 //! three searches are stand-ins in its API's shape: five invented motors per maker, and a record
-//! of each motor in the finder's in-stock list carrying that list's own figures. Stock and prices
-//! change by the hour.
+//! of each motor in the finder's in-stock list carrying only that list's values (ThrustCurve.org's
+//! published figures, as the finder relays them under CC BY 4.0). Stock and prices change by the
+//! hour.
 
 #![allow(
     clippy::disallowed_methods,
@@ -163,16 +164,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // 4. ThrustCurve.org: the records of the three makers, one search each (here the stand-ins
-    //    in its shape, not its data), and the motors in stock matched to them by maker and
-    //    designation.
+    //    in its shape), and the motors in stock matched to them by maker and designation.
     let (records, from_tc) = thrustcurve::fetch_finder_records(&online, now_s)?;
     let join = thrustcurve::join(&in_stock.motors, &records);
     let (mapped, total) = join.coverage();
+    let invented = records
+        .iter()
+        .filter(|r| r.designation.ends_with("-INVENTED"))
+        .count();
     println!();
     println!("{}", from_tc[0].attribution);
     println!(
-        "{} stand-in records of the three makers, in ThrustCurve.org's shape but not its data; {mapped} of {total} motors in stock matched to one each, {} missed",
+        "{} records of the three makers in stand-in searches: {invented} invented, {} with the motor finder's copy of ThrustCurve.org's figures; {mapped} of {total} motors in stock matched to one each, {} missed",
         records.len(),
+        records.len() - invented,
         join.misses.len()
     );
 

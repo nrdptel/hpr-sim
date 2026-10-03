@@ -16,9 +16,9 @@ below.
 
 **How far to trust it.** hpr gives back the site's values unchanged, and the saved copy gives them
 back offline. That is checked on recorded answers, below: eight from motor.fusionspace.co and two
-curve files from ThrustCurve.org, beside three stand-in ThrustCurve.org searches (invented in the
-API's shape, since ThrustCurve.org grants no licence for its motor records; its site reads "All rights under copyright reserved"). Whether a vendor really has a motor,
-at that price, is the vendor's to say. The site's data is up to about an hour old when it is built,
+curve files from ThrustCurve.org, beside three stand-in searches in ThrustCurve.org's shape, since
+ThrustCurve.org grants no licence for its motor records (its site reads "All rights under
+copyright reserved"). Whether a vendor really has a motor, at that price, is the vendor's to say. The site's data is up to about an hour old when it is built,
 and hpr counts its saved copy as fresh for another hour, so a fresh answer can be two hours behind
 the vendor's page; a stale copy is as old as its date says. (ThrustCurve.org's answers count as
 fresh for a day.) The site's terms ask you to check stock
@@ -145,11 +145,19 @@ diameter, total impulse, average thrust and burn time were the same on both side
 was the right motor by more than its name. The motor finder copies ThrustCurve.org's names and
 figures, so a full match is expected; the match is there to catch drift.
 
-ThrustCurve.org grants no licence for its motor records; its site reads "All rights under copyright reserved", so the repository doesn't keep those three answers. The tests replay
+ThrustCurve.org grants no licence for its motor records; its site reads "All rights under
+copyright reserved". So the repository no longer keeps those three answers, and the tests replay
 stand-ins in the same shape instead
-([ADR-145: the recordings' licences](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)): each holds five invented motors, and one record
-for each of that maker's motors in the finder's in-stock list, carrying the list's own values,
-an invented id and an invented count of data files. On them, too, all 282 motors match. The tests write the match's report into
+([ADR-145: the recordings' licences](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)). They hold
+297 records:
+
+- 15 wholly invented, five per maker, with designations ending `-INVENTED`;
+- 282, one for each motor in the finder's in-stock list. Each carries only the values that list
+  states, which are ThrustCurve.org's published figures as the finder relays them under CC BY 4.0,
+  plus an invented id and an invented count of data files. The fields only ThrustCurve.org states
+  (length, weights, peak thrust, certifying body, dates, links) are left out.
+
+On them, too, all 282 motors match. The tests write the match's report into
 [`validation/reports/thrustcurve-join.md`](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/thrustcurve-join.md),
 and check it against the match on every run. So the committed tests show that the code keeps the
 rule; the full match on ThrustCurve.org's own records is the measurement of 1 October 2026 above,
@@ -226,7 +234,7 @@ Cesaroni Technology  3683L851-P          75         3683.2     $290.39  Animal M
 AeroTech             L1150R              75         3517.0     $324.99  Animal Motor Works             1
 
 Motor data and thrust curves courtesy of ThrustCurve.org, https://www.thrustcurve.org/
-297 stand-in records of the three makers, in ThrustCurve.org's shape but not its data; 282 of 282 motors in stock matched to one each, 0 missed
+297 records of the three makers in stand-in searches: 15 invented, 282 with the motor finder's copy of ThrustCurve.org's figures; 282 of 282 motors in stock matched to one each, 0 missed
 AeroTech J450DM: id 5f4294d2000231000000044f, a RASP file from source cert, licence PD, 37 points from ignition
 the file:  total impulse   1061.6 N·s, burn time  2.28 s, average thrust  465.6 N
 record:    total impulse     1055 N·s, burn time  2.27 s, average thrust    465 N
@@ -240,8 +248,8 @@ vendors had the motor in stock. On that morning no L motor in stock cost $150 or
 cheapest was $260.99.
 
 The last lines come from ThrustCurve.org, under its own credit line, except the records: the 297
-are the stand-in searches ([above](#matching-motors-to-thrustcurveorg)), so the count and the match
-on them are theirs, not ThrustCurve.org's. J450DM's file is a real
+are the stand-in searches ([above](#matching-motors-to-thrustcurveorg)), so the count is theirs,
+and the match runs on the finder's own copy of ThrustCurve.org's figures. J450DM's file is a real
 answer: the certification test's curve (`source cert`), public domain, and the very file hpr
 already carries for J450DM ([Solid motors](physics/motor.md)). Its curve starts at zero thrust at
 ignition, then follows the file's 36 points. hpr works its figures out from those points, so they

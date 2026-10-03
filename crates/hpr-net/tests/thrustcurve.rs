@@ -222,13 +222,43 @@ fn each_search_is_whole_and_of_one_maker() {
     assert_eq!(j450.motor_type.as_deref(), Some("SU"));
 }
 
-/// The stand-ins hold no fact beyond the committed answers (ADR-145): each record not named
-/// `-INVENTED` is a motor of the finder's in-stock answer, carries only fields that answer
-/// states, with its values (availability from its `discontinued`), and adds only an invented
-/// file count and an invented id (`e000…`), bar the ids of the two recorded downloads. Every
-/// motor in stock has one.
+/// The stand-ins hold what ADR-145 says they hold. Each record named `-INVENTED` (five per maker)
+/// is invented whole: an `e000…` id, the made-up certifying body, `Example-` cases and
+/// `example.test` links, and no field the API doesn't have. Each other record is a motor of the
+/// finder's in-stock answer and carries only fields that answer states, with its values
+/// (availability from its `discontinued`), plus an invented id (`e000…`, bar the ids of the two
+/// recorded downloads) and an invented file count (1; 3 for J450DM). Every motor in stock has one.
 #[test]
 fn each_stand_in_record_carries_only_the_finders_values() {
+    // Every field a ThrustCurve search record has.
+    const API_FIELDS: [&str; 26] = [
+        "motorId",
+        "manufacturer",
+        "manufacturerAbbrev",
+        "designation",
+        "commonName",
+        "impulseClass",
+        "diameter",
+        "length",
+        "type",
+        "certOrg",
+        "avgThrustN",
+        "maxThrustN",
+        "totImpulseNs",
+        "burnTimeS",
+        "dataFiles",
+        "infoUrl",
+        "totalWeightG",
+        "propWeightG",
+        "delays",
+        "delayAdjustable",
+        "caseInfo",
+        "propInfo",
+        "sparky",
+        "updatedOn",
+        "availability",
+        "source_url",
+    ];
     // A stand-in field, and the finder's field it copies.
     const COPIED: [(&str, &str); 14] = [
         ("manufacturer", "manufacturer"),
@@ -258,6 +288,7 @@ fn each_stand_in_record_carries_only_the_finders_values() {
         .collect();
     let searches: Vec<Value> = SEARCHES.iter().map(|(_, f)| recorded(f)).collect();
     let mut seen = std::collections::BTreeSet::new();
+    let mut invented = 0;
     for r in searches
         .iter()
         .flat_map(|s| s["results"].as_array().unwrap())
@@ -267,6 +298,25 @@ fn each_stand_in_record_carries_only_the_finders_values() {
             r["designation"].as_str().unwrap(),
         );
         if key.1.ends_with("-INVENTED") {
+            invented += 1;
+            let text = |k: &str| r[k].as_str().unwrap();
+            assert!(text("motorId").starts_with("e000"), "{key:?}");
+            assert_eq!(text("certOrg"), "Example Certification Board", "{key:?}");
+            assert!(
+                text("source_url").starts_with("https://example.test/"),
+                "{key:?}"
+            );
+            for (field, value) in r.as_object().unwrap() {
+                assert!(API_FIELDS.contains(&field.as_str()), "{key:?}: {field}");
+                match field.as_str() {
+                    "caseInfo" => assert!(text(field).starts_with("Example-"), "{key:?}"),
+                    "infoUrl" => {
+                        assert!(text(field).starts_with("https://example.test/"), "{key:?}")
+                    }
+                    _ => {}
+                }
+                assert!(!value.is_null(), "{key:?}: {field}");
+            }
             continue;
         }
         let m = finder
@@ -282,7 +332,10 @@ fn each_stand_in_record_carries_only_the_finders_values() {
                         _ => assert!(id.starts_with("e000"), "{key:?}: {id}"),
                     }
                 }
-                "dataFiles" => {}
+                "dataFiles" => {
+                    let files = if key.1 == "J450DM" { 3 } else { 1 };
+                    assert_eq!(value.as_u64(), Some(files), "{key:?}");
+                }
                 "availability" => {
                     let discontinued = m["discontinued"].as_bool().unwrap();
                     let expected = if discontinued { "OOP" } else { "regular" };
@@ -297,9 +350,10 @@ fn each_stand_in_record_carries_only_the_finders_values() {
                 }
             }
         }
+        assert!(r.get("dataFiles").is_some(), "{key:?}");
         assert!(seen.insert(key), "{key:?} twice");
     }
-    assert_eq!(seen.len(), finder.len());
+    assert_eq!((seen.len(), invented), (finder.len(), 15));
 }
 
 /// The done-when's first half: the designation to ThrustCurve id mapping covers at least 95% of
@@ -365,9 +419,10 @@ fn the_in_stock_motors_map_to_thrustcurve_ids_with_a_report_of_the_misses() {
     // the code only. That all 282 records list a file is the measurement on ThrustCurve's own
     // answers of 2026-10-01 (ADR-130), last run at commit 5150e0d.
     assert!(join.mapped.iter().all(|m| m.record.data_files >= Some(1)));
-    // Each stand-in record carries its finder motor's figures, so each match is the right record
-    // by more than its name: diameter, total impulse, average thrust and burn time agree. (On
-    // ThrustCurve.org's own records, recorded 2026-10-01, they agreed for all 282: ADR-130.)
+    // Diameter, total impulse, average thrust and burn time agree. On the stand-ins this holds by
+    // construction, as each record carries its finder motor's figures (ADR-145): it checks that
+    // the join pairs each motor with its own record. That ThrustCurve.org's own records agree
+    // for all 282 is the measurement of 2026-10-01 (ADR-130), last run at commit 5150e0d.
     for m in &join.mapped {
         let motor = &in_stock.motors[m.finder_index];
         assert_eq!(

@@ -10,8 +10,8 @@ with no such record, or several, is a miss. This is the join on the answers in
 and three stand-in searches of AeroTech, Cesaroni Technology and Loki Research in ThrustCurve.org's
 shape (158, 104 and 35 records). ThrustCurve.org grants no licence for its motor records; its site reads "All rights under copyright reserved", so the stand-ins replace its answers
 ([ADR-145](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)): each holds five invented motors, and one record for each of that maker's
-motors in the in-stock list, carrying the list's own values (CC BY 4.0), an invented id and an
-invented count of data files.
+motors in the in-stock list, carrying only the list's values (ThrustCurve.org's published figures
+as the finder relays them, CC BY 4.0), an invented id and an invented count of data files.
 
 So this table tests the code, not ThrustCurve.org's data. "Mapped, no data file listed" counts
 matched motors whose record gives 0 data files, or leaves the count out (the API leaves out a

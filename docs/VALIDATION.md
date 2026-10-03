@@ -281,8 +281,8 @@ as heights instead, the mean is 6.63%.
   `crates/hpr-io/tests/fixtures/geotiff/` (`validation/oracles/geotiff/dem.py`;
   [ADR-128](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-128-m53c2-a-sites-height-from-a-users-geotiff-held-to-rasterios-reading-2026-09-30), the reader's design).
 - **ThrustCurve.org's API** (<https://www.thrustcurve.org/info/api.html>): two public-domain curve
-  files, recorded 2026-10-01, and three stand-in makers' searches in its shape (invented motors,
-  and records carrying the motor finder's in-stock values), in `crates/hpr-net/tests/fixtures/replay/`;
+  files, recorded 2026-10-01, and three stand-in makers' searches in its shape (15 invented
+  motors, and 282 records carrying only the motor finder's CC BY 4.0 copy of its figures), in `crates/hpr-net/tests/fixtures/replay/`;
   `validation/reports/thrustcurve-join.md` holds the in-stock motors' match to the stand-ins
   ([ADR-130](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-130-m54b-thrustcurve-searches-and-curves-through-the-cache-and-the-in-stock-join-2026-10-01),
   why the match is by name only;

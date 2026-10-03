@@ -156,9 +156,11 @@ adds a source.
   licence for its motor records; its site reads "All rights under copyright reserved", so the
   searches recorded on 2026-10-01 were replaced on 2026-10-03 by stand-ins in the API's shape. Each holds five invented
   motors (designations ending `-INVENTED`, every value invented) and one record for each of that
-  maker's motors in `motor-finder-in-stock.json`, carrying that answer's own values (Motor stock
-  data from motor.fusionspace.co, CC BY 4.0, above) with an invented id, bar the two ids of the
-  download answers above, and an invented count of data files; the answers' counts are invented.
+  maker's motors in `motor-finder-in-stock.json`, carrying only that answer's values (Motor stock
+  data from motor.fusionspace.co, CC BY 4.0, above: ThrustCurve.org's published figures as the
+  finder relays them), with an invented id, bar the two ids of the download answers above, and
+  an invented count of data files; the fields only ThrustCurve.org states are left out, and the
+  answers' counts are invented.
   The searches recorded on 2026-10-01 remain in the repository's history before 2026-10-03, which
   is not rewritten
   ([ADR-145](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-145-recorded-answers-and-their-licences-stand-in-thrustcurve-searches-cc-by-40-for-the-motor-finder-2026-10-03)).
