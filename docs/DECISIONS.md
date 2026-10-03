@@ -11623,9 +11623,15 @@ motor.fusionspace.co's API page (<https://motor.fusionspace.co/api>, "Data licen
 2026-10-03) now licenses its responses, and the compilation in them, under CC BY 4.0, asks for the
 credit "Motor stock data from motor.fusionspace.co", and permits storing recorded responses as
 software test fixtures (ADR-129 §6, §7 predate it). The finder's answers relay ThrustCurve's
-published figures for each motor they list. Decided with Neer: stop committing ThrustCurve's
-search answers, and keep the tests on stand-ins in the same shape; keep the two public-domain
-files.
+published figures for each motor they list.
+
+On 2026-10-03 Neer approved the recommendation to "replace the three manufacturer records with
+invented motors in the same format, keeping the two public-domain curves". Wholly invented records
+can't exercise the join against the finder's 282 in-stock motors, whose names they would not
+carry, so the build kept 15 wholly invented motors plus 282 records carrying only the motor
+finder's CC BY 4.0 values (ThrustCurve.org's published figures as the finder relays them). Asked
+on 2026-10-03, "Do you sign off on the 282 records resting on your site's CC BY 4.0 license, plus
+their being published factual figures?", Neer answered: "yes".
 
 **Decision.**
 
@@ -11649,7 +11655,8 @@ files.
      leaves out fields with no value.
 
    So no ThrustCurve.org search answer is committed as such any more. The licensing basis of the
-   282 records is the finder's CC BY 4.0 grant, and that they are published factual figures.
+   282 records, as Neer signed off on 2026-10-03 (Context), is the finder's CC BY 4.0 grant, and
+   that they are published factual figures.
    `each_stand_in_record_carries_only_the_finders_values` checks both kinds, record by record.
 2. **The tests keep their intent.** Every test of ADR-130 still runs, with its counts moved to the
    stand-ins (158, 104 and 35 records; 297 in all). The join still maps 282 of 282 in-stock

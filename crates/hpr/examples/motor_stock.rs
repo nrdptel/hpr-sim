@@ -18,8 +18,8 @@
 //! ThrustCurve.org's at 08:22 UTC. ThrustCurve.org grants no licence for its motor records, so the
 //! three searches are stand-ins in its API's shape: five invented motors per maker, and a record
 //! of each motor in the finder's in-stock list carrying only that list's values (ThrustCurve.org's
-//! published figures, as the finder relays them under CC BY 4.0). Stock and prices change by the
-//! hour.
+//! published figures, as the finder relays them under CC BY 4.0), with an invented id and file
+//! count. Stock and prices change by the hour.
 
 #![allow(
     clippy::disallowed_methods,

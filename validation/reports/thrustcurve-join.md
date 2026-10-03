@@ -13,7 +13,7 @@ shape (158, 104 and 35 records). ThrustCurve.org grants no licence for its motor
 motors in the in-stock list, carrying only the list's values (ThrustCurve.org's published figures
 as the finder relays them, CC BY 4.0), an invented id and an invented count of data files.
 
-So this table tests the code, not ThrustCurve.org's data. "Mapped, no data file listed" counts
+So this table tests the code, not ThrustCurve.org's own answers. "Mapped, no data file listed" counts
 matched motors whose record gives 0 data files, or leaves the count out (the API leaves out a
 field with no value); on the stand-ins every count is invented and at least 1, so the column is 0
 by construction. Likewise the test's check that every matched record's diameter, total impulse,

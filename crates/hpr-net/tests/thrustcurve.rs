@@ -7,8 +7,8 @@
 //! finder's in-stock list is its build of 07:07:29 UTC that day (M5.4a). The three searches are
 //! stand-ins in the API's shape (ADR-145): ThrustCurve.org grants no licence for its records, so
 //! each search holds five invented motors and one record for each of the maker's motors in the
-//! finder's in-stock list, carrying that list's own values (CC BY 4.0) and an invented id, bar
-//! J450DM's and F27R/L's, the ids of the two downloads.
+//! finder's in-stock list, carrying that list's own values (CC BY 4.0), an invented count of
+//! data files and an invented id, bar J450DM's and F27R/L's, the ids of the two downloads.
 
 #![allow(
     clippy::disallowed_methods,
@@ -222,12 +222,14 @@ fn each_search_is_whole_and_of_one_maker() {
     assert_eq!(j450.motor_type.as_deref(), Some("SU"));
 }
 
-/// The stand-ins hold what ADR-145 says they hold. Each record named `-INVENTED` (five per maker)
-/// is invented whole: an `e000…` id, the made-up certifying body, `Example-` cases and
-/// `example.test` links, and no field the API doesn't have. Each other record is a motor of the
-/// finder's in-stock answer and carries only fields that answer states, with its values
-/// (availability from its `discontinued`), plus an invented id (`e000…`, bar the ids of the two
-/// recorded downloads) and an invented file count (1; 3 for J450DM). Every motor in stock has one.
+/// The stand-ins' shape as ADR-145 states it. Each maker has five records named `-INVENTED`, and
+/// each carries the invented markers (an `e000…` id, the made-up certifying body, `Example-`
+/// cases, `example.test` links), no field the API doesn't have, and a designation and common name
+/// that no motor of the committed finder answers has. (That their figures are invented is not
+/// something a test can show; ADR-145 records it.) Each other record is a motor of the finder's
+/// in-stock answer and carries only fields that answer states, with its values (availability from
+/// its `discontinued`), plus an invented id (`e000…`, bar the ids of the two recorded downloads)
+/// and an invented file count (1; 3 for J450DM). Every motor in stock has one.
 #[test]
 fn each_stand_in_record_carries_only_the_finders_values() {
     // Every field a ThrustCurve search record has.
@@ -288,7 +290,17 @@ fn each_stand_in_record_carries_only_the_finders_values() {
         .collect();
     let searches: Vec<Value> = SEARCHES.iter().map(|(_, f)| recorded(f)).collect();
     let mut seen = std::collections::BTreeSet::new();
-    let mut invented = 0;
+    let listed = recorded("motor-finder-motors.json");
+    let names = |k: &str| -> std::collections::BTreeSet<String> {
+        listed["motors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m[k].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let (designations, common_names) = (names("designation"), names("common_name"));
+    let mut invented: BTreeMap<&str, usize> = BTreeMap::new();
     for r in searches
         .iter()
         .flat_map(|s| s["results"].as_array().unwrap())
@@ -298,8 +310,10 @@ fn each_stand_in_record_carries_only_the_finders_values() {
             r["designation"].as_str().unwrap(),
         );
         if key.1.ends_with("-INVENTED") {
-            invented += 1;
+            *invented.entry(key.0).or_default() += 1;
             let text = |k: &str| r[k].as_str().unwrap();
+            assert!(!designations.contains(key.1), "{key:?}");
+            assert!(!common_names.contains(text("commonName")), "{key:?}");
             assert!(text("motorId").starts_with("e000"), "{key:?}");
             assert_eq!(text("certOrg"), "Example Certification Board", "{key:?}");
             assert!(
@@ -353,7 +367,11 @@ fn each_stand_in_record_carries_only_the_finders_values() {
         assert!(r.get("dataFiles").is_some(), "{key:?}");
         assert!(seen.insert(key), "{key:?} twice");
     }
-    assert_eq!((seen.len(), invented), (finder.len(), 15));
+    assert_eq!(seen.len(), finder.len());
+    for (maker, _) in SEARCHES {
+        assert_eq!(invented.get(maker), Some(&5), "{maker}");
+    }
+    assert_eq!(invented.len(), 3);
 }
 
 /// The done-when's first half: the designation to ThrustCurve id mapping covers at least 95% of

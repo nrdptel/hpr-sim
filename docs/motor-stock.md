@@ -154,8 +154,10 @@ stand-ins in the same shape instead
 - 15 wholly invented, five per maker, with designations ending `-INVENTED`;
 - 282, one for each motor in the finder's in-stock list. Each carries only the values that list
   states, which are ThrustCurve.org's published figures as the finder relays them under CC BY 4.0,
-  plus an invented id and an invented count of data files. The fields only ThrustCurve.org states
-  (length, weights, peak thrust, certifying body, dates, links) are left out.
+  plus an invented id and an invented count of data files. J450DM and F27R/L keep their real ids,
+  those of the two public-domain downloads, so the match leads to a committed file. The fields
+  only ThrustCurve.org states (length, weights, peak thrust, certifying body, dates, links) are
+  left out.
 
 On them, too, all 282 motors match. The tests write the match's report into
 [`validation/reports/thrustcurve-join.md`](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/thrustcurve-join.md),
