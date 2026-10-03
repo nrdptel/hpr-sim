@@ -5,29 +5,31 @@ never write numbers or make safety calls: every number comes from the engine.
 
 ## Developer ecosystem
 
-- SOON: an MCP server.
+- SOON: an MCP server (Model Context Protocol, the standard way for AI assistants to call tools).
 - SOON: notebook widgets.
 - SOON: a GitHub Action for design CI.
-- LATER: a sandboxed WASM plugin API, with Rhai for light scripting.
+- LATER: a sandboxed WebAssembly (WASM) plugin API, with Rhai (a small embedded scripting
+  language for Rust) for light scripting.
 - SOON: the JSON Schema on SchemaStore.
 - LATER: an editor extension and language server.
-- LATER: MCAP export (ROS 2, Foxglove).
+- LATER: MCAP export (an open log format for robotics data, read by ROS 2 and Foxglove).
 - LATER: oEmbed embeds.
-- LATER: FMU export.
-- LATER: CZML and animated glTF.
+- LATER: FMU export (a Functional Mock-up Unit, the FMI standard's packaged co-simulation model).
+- LATER: CZML (Cesium's format for time-dynamic 3D scenes) and animated glTF.
 - SOON: Arrow and Parquet batch output.
 - LATER: Grafana overlays.
-- LATER: Pyodide and JupyterLite.
+- LATER: Pyodide and JupyterLite (Python in the browser).
 - LATER: a Discord bot.
 - LATER: Excel functions.
 - SOON: a simulator-neutral conformance suite.
-- LATER: an OBS overlay.
+- LATER: an OBS (streaming software) overlay.
 - SOON: import on-site wind soundings.
 - LATER: the MCP server as an AI design benchmark (RocketBench, [arXiv 2504.19394](https://arxiv.org/abs/2504.19394)).
 
 ## UI and experience (the UI phase)
 
-- NEXT: plots and figures first (M4.5e, M1.14g).
+- NEXT: plots and figures first ([M4.5e, `hpr sim --plot`][m4-5e];
+  [M1.14g, figures on the accuracy pages][m1-14g]).
 - LATER: grounded number chips: each number links to where the engine computed it.
 - LATER: one time cursor across 3D, plots and video (Rerun-style timelines).
 - LATER: a scrubbable edit-history sparkline.
@@ -46,8 +48,9 @@ never write numbers or make safety calls: every number comes from the engine.
 - LATER: live force arrows in the replay.
 - LATER: stability modes against flight time.
 - LATER: shareable flight links.
-- LATER: local-first designs (CRDT, branches, comments).
-- LATER: a classroom mode and an NGSS data pack.
+- LATER: local-first designs: CRDTs (conflict-free replicated data types, which merge edits made
+  offline), branches, comments.
+- LATER: a classroom mode and a data pack for NGSS (the US Next Generation Science Standards).
 - LATER: leaderboards, closest-to-prediction included.
 - LATER: accessibility: screen-reader plots and sonification.
 - LATER: country regulation profiles (UK, Canada) and translations, French first.
@@ -65,4 +68,8 @@ never write numbers or make safety calls: every number comes from the engine.
 - LATER: motor scatter from certification data.
 - LATER: shared range winds.
 - LATER: sanctioned virtual events.
-- LATER: a curriculum partner (PhET style).
+- LATER: a curriculum partner, in the style of PhET (the University of Colorado's free
+  interactive science simulations).
+
+[m1-14g]: ../decisions-and-roadmap.md#m1-14g
+[m4-5e]: ../decisions-and-roadmap.md#m4-5e

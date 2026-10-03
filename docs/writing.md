@@ -23,10 +23,14 @@ reads a page once and knows what it says and how far to trust it.
    ([the documentation site decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-016-the-documentation-site-mdbook-over-docs-and-checks-for-links-labels-and-equations-2026-09-18)).
 7. **Words before equations.** Say in words what an equation does, give the equation, then work
    an example with real numbers.
+8. **Honesty comes first.** These standing rules still apply: a page opens by saying how far to
+   trust it; anything unvalidated says so in its first paragraph; example code runs in CI; and an
+   accuracy number comes from the committed validation report
+   ([Checking a claim](checking-a-claim.md)).
 
 ## Four kinds of page
 
-Pages follow Diátaxis, a common way to sort documentation by what the reader is doing. Each page
+Pages follow [Diátaxis](https://diataxis.fr/), a common way to sort documentation by what the reader is doing. Each page
 is one kind; a page that mixes them is split when it is next touched.
 
 | kind | the reader wants to | example on this site |
@@ -38,21 +42,23 @@ is one kind; a page that mixes them is split when it is next touched.
 
 ## Measured, not gated
 
-Readability is measured, not used to fail a build. A planned `cargo xtask` report will print, for
-each page, the average sentence length, the share of sentences over 25 words, and how many
-internal labels it holds per 100 words. The report shows where to look; a person decides what to
-change.
+Readability will be measured, not used to fail a build. A planned `cargo xtask` report will
+print, for each page, the average sentence length, the share of sentences over 25 words, and how many
+internal labels it holds per 100 words. The report will show where to look; a person decides
+what to change.
 
-There is one hard check, planned with the bookkeeping clean-up
-([M0.5 milestone](decisions-and-roadmap.md#m0-5)): a model page's *In short* box holds at most
-about 150 words and five bullets.
+One hard check is planned, and may land in the bookkeeping clean-up
+([M0.5 milestone](decisions-and-roadmap.md#m0-5)). A model page's *In short* box, the bulleted
+summary that opens it (what it models, its sources, how well it is validated, what it leaves
+out), will hold at most about 150 words and five bullets.
 
-The targets for user pages, measured at the next review of the project: at most 20 words a
-sentence on average, and fewer than 10% of sentences over 30 words.
+The targets for user pages, measured at Neer's next check-in: at most 20 words a sentence on
+average, and fewer than 10% of sentences over 25 words.
 
 ## Where this comes from
 
-The rules follow the UK Government Digital Service's style guide, and the sentence-length checks
-that Datadog and GitLab run with the Vale linter. The page kinds are Daniele Procida's Diátaxis
-framework. The decision to adopt them is in the
+The rules follow the UK Government Digital Service's
+[style guide](https://www.gov.uk/guidance/style-guide), and the sentence-length checks that
+Datadog and GitLab run with the [Vale](https://vale.sh/) linter. The page kinds are Daniele
+Procida's [Diátaxis](https://diataxis.fr/) framework. The decision to adopt them is in the
 [check-in decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-144-the-2026-10-03-check-in-leaner-bookkeeping-issues-writing-guardrails-and-licensing-records-2026-10-03).

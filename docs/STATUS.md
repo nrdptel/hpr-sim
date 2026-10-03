@@ -2,6 +2,15 @@
 
 Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
+## For Neer
+
+- **What happened:** your 2026-10-03 check-in is recorded: accuracy work now goes to the flights
+  most people fly first (up to Mach 2.5), with a rule for when to stop (ADR-143); M1.8 is closed.
+- **What runs next:** four urgent bug fixes, then leaner bookkeeping (M0.5), one more try at EGO
+  (M6.2d2), `.ork` files flying as saved (M4.5), accuracy (M1.14), then M6.2e and M6.3.
+- **What needs you:** your fixture branch of flight and design data, when ready; a yes or no on
+  thrust vector control, steered parachutes and gliders; the rest under *Needs Neer* can wait.
+
 ## Now
 
 - **Current milestone:** M0.5 Leaner bookkeeping, after the P-critical sweep (#255, #237, #10,
@@ -10,6 +19,30 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   M2.3c, M3.1-3, M4.1-3, M5.1-5, M6.1, M6.2a-c, M6.2d1.
 - **Neer, 2026-09-20:** Debrief sunset; a log analyzer usable **on its own** is in scope (ADR-046, V21).
 - **Last updated:** 2026-10-03, Neer's check-in (ADR-143, ADR-144, `docs/research/ideas.md`).
+
+## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
+- **M2.3c needs a design with its flight's log** (ADR-083: no private design is the rocket of a
+  logged flight). Neer is preparing a fixture branch of flight and design data (2026-10-03, due in
+  a few days) that may unblock it and add real-flight references: `refs/` only, under the
+  private-data rules, contents never committed. Else add one pair (design as flown, log, date,
+  site, motor) and the day's ERA5 file (Data Store account), or drop M2.3c.
+- **Scope** (ADR-144, VISION *Not now*): thrust vector control and active fins with a controller
+  in the loop, GPS-steered gliding parachutes, rocket-boosted gliders. Each conflicts with
+  "steering to a target point stays out". In or out? Until then they wait in the ideas notes.
+- **Outreach and money** (whenever; `docs/research/ideas.md`), one at a time:
+  - official-simulator bids to US competitions; a paid team workspace; university partners;
+  - disclosed buy links to motor.fusionspace.co; verified kit badges with kit makers;
+  - ThrustCurve's maintainer: a data-quality give-back, bundling common motors;
+  - a fiscal host or sponsors (NLnet says it is not interested in AI-generated projects);
+  - SparkyVT's logs (250+ flights to Mach 2.3); an orhelper migration layer (a GPL call);
+  - a release for prebuilt binaries (a PR may prepare the workflow).
+- Optional, no action needed if you are happy as things are:
+  - **Protect `main`** (optional, 2 minutes). Settings → Branches → rule for `main`: require `fmt`,
+    `clippy`, `doc`, `deny`, `wasm-check`, `site`, `types`, the three `test (...)` and
+    `validate (...)`; block force pushes; no approvals.
+  - **crates.io and PyPI names, `hpr-io`'s licence field:** not yet, by Neer's choice; at
+    publishing, `hpr-io` may need `(MIT OR Apache-2.0) AND Apache-2.0` (`.orc` data, ADR-132).
+  - **ThrustCurve fixtures:** being replaced by invented motors in PR #294 (ADR-145); drop on merge.
 
 ## Handoff (overwrite each session)
 
@@ -74,26 +107,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-10-01/02: M6.2d1 EGO (ADR-142): Branin and Hartmann 3 within 1% of their minima in 50 evaluations from 20 seeds (worst 0.118%, 0.124%); Hartmann 6 split to d2. M6.2c NSGA-II (ADR-141): ZDT1 to ZDT3 from 20 seeds, every run's GD (to the curve) and IGD within twice pymoo 0.6.2's worst, medians within a factor of 1.25 either way (measured 1% to 8% closer, IGD within 3%); a J760 rocket's apogee-against-margin front, 500 flights, re-flown to the bit, within 0.5% of CMA-ES at 2.5 calibres from 26 of 26 seeds. M6.2b2 integer variables (ADR-140): CMA-ES with margin; SphereInt, EllipsoidInt, SphereOneMax at 10 and 20 variables reach their minima from 20 seeds, integers exact, medians −4.6% to +2.7% of cmaes 0.13.1's; a 2.6 in rocket's motor (5), Madcow nose (4), ballast and fins hit 3,048 m (K400C, 360 flights) within IREC's margins over the ascent and rail-exit limit, re-flown within 0.1 m. M6.2b1 constraints (ADR-139): Deb's rules; sphere with x₀ ≥ 1, tangent, g06 to 1e-10 from 20 seeds. M6.2a CMA-ES (ADR-138): 4 test functions to 1e-10 from 20 seeds (Rosenbrock 17, the rest in its local minimum); medians within 5% of pycma 4.5.0's; 12 generations equal a dense recomputation to 1e-12; a J760 rocket's ballast and body for 3,048 m and 2.2 cal in 300 flights, re-flown to the bit. M6.2 split a to e. M6.1d 10,000 flights (ADR-137): Valetudo 3.00 s (4.59 before), a K940 rocket past Mach 1.6 9.43 s (264 s); samples on the nominal's layout and supersonic table, bit for bit as alone. M6.1c sensitivity (ADR-136): Morris and Sobol' (Saltelli, Jansen) within 4 standard errors of Ishigami's and g's closed forms; the errors calibrated over 500 to 1,000 seeds (15% too small fails); Morris's grid moments exact to 1e-12; the guide's 70-flight screening ranks impulse and drag for apogee, wind for landing. M6.1b landing ellipses (ADR-135): axes to 1e-14, a normal density's mass inside to 1e-12, 100,000 points' shares within 5σ, next-flight ellipses at their level; the guide's 95% ellipse holds 94.5%. M6.1a Monte Carlo dispersion (ADR-134): 11 inputs as independent normals, a stream per sample, input and copy; sample k the same over run lengths and 1, 2, 5 threads; zero dispersion flies the nominal flight bit for bit; impulse keeps `I/m_p`; failures counted, shares bounded; the guide's 200 flights. M5.5b catalogue parts in the builder (ADR-133): 3,445 built, 4 refused; held to OpenRocket's built mass and centre (revolved 6.3e-4 and 9.7e-4, the rest 1e-14; ounces apart), hollow shoulders taken out; OR's hollow walls follow r − t√(1+r′²), hpr's exact (113 integrals), 4 blunt ellipsoids apart; a stated mass scales the density; LOC 2.56 in from the catalogue flown to 1,119 m. M5.5a `.orc` reader (ADR-132): OpenRocket 24.12's 16 files bundled; 3,449 parts, 17,911 values equal to OR's preset loader to the bit; 185 ounce masses, 252 makers' names, 207 densities from a stated mass, 3 undefined materials counted with causes; 37 probes; 55 warnings.
 - 2026-09-30/10-01: M5.4c `hpr motors search` (ADR-131): none at $150 on the recording (cheapest L $260.99), the one edited to $149.99 on a copy; 7 searches equal the recording's JSON filtered apart; offline as from the file; both credits on every list. M5.4b ThrustCurve (ADR-130): 282 of 282 in stock mapped, misses reported; J450DM's recorded file reads, the bundled one to the byte. M5.4a motor finder (ADR-129): 8 answers read back, offline from the cache, the credit on each; M5.4 split a to c. M5.3c2 GeoTIFF (ADR-128): rasterio's reading of 7 fixtures and a USGS tile, 4,064 places' pixel and value. M5.3c1 geodesics (ADR-127): Karney's 500,000 within his 15 nm (11.18 nm distance); 21 mirror lines take either azimuth pair. M5.3b elevation (ADR-126): 2 Open-Meteo recordings, 4 heights exact, offline from the cache. M5.3a WMM2025 (ADR-125): the report's 12 test values to their printing, its Table 3b to 5e-11, the poles; NCEI's 100 to the last digit bar `X`'s 7.2e-4 nT residue. M5.2a Open-Meteo (ADR-119), M5.2b Wyoming (ADR-120), M5.2c GFS/RAP GRIB2 (ADR-121: 6,123 values to 2.2e-16 of ecCodes): every kept level to rounding. M5.2d1 `hpr weather` (ADR-122): 5 sources from a file, 4 from the cache offline, the library's profile to the bit. M5.2d2 complex packing (ADR-123): a whole GFS file's 746,770,303 values to 4.4e-16; its profile its cut's to 1.04e-7. M5.2d3 JPEG 2000 (ADR-124): 4 RAP fields, 182,443 points, ecCodes' sums and every 13th value.
 - 2026-09-26/30: M5.1 `hpr-net` (ADR-117, 118): TTL cache, offline never calls the transport, `ureq`+rustls. M4.1 builder (ADR-103, 104); M2.2 closed (ADR-094 to 102); M1.11-13; M4.3 Python (ADR-114 to 116); M3.3 `.hpr`, `.hprz`, types (ADR-111 to 113); M3.2 `.ork` writer (ADR-109, 110: OR flies 151 of 151 within 0.5%); M4.2 CLI (ADR-105 to 108).
-## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
-- **M2.3c needs a design with its flight's log** (ADR-083: no private design is the rocket of a
-  logged flight). Neer is preparing a fixture branch of flight and design data (2026-10-03, due in
-  a few days) that may unblock it and add real-flight references: `refs/` only, under the
-  private-data rules, contents never committed. Else add one pair (design as flown, log, date,
-  site, motor) and the day's ERA5 file (Data Store account), or drop M2.3c.
-- **Scope** (ADR-144, VISION *Not now*): thrust vector control and active fins with a controller
-  in the loop, GPS-steered gliding parachutes, rocket-boosted gliders. Each conflicts with
-  "steering to a target point stays out". In or out? Until then they wait in the ideas notes.
-- **Outreach and money** (whenever; `docs/research/ideas.md`): official-simulator bids; a paid
-  team workspace; university partners; disclosed motor.fusionspace.co buy links; kit badges;
-  ThrustCurve (data quality, bundling); a fiscal host (NLnet: not for AI-generated projects);
-  SparkyVT's logs (to Mach 2.3); an orhelper migration (GPL); a release for prebuilt binaries.
-- No action if fine:
-  - **Protect `main`** (2 minutes). Settings → Branches → rule for `main`: require `fmt`,
-    `clippy`, `doc`, `deny`, `wasm-check`, `site`, `types`, the three `test (...)` and
-    `validate (...)`; block force pushes; no approvals.
-  - **crates.io and PyPI names, `hpr-io`'s licence field:** not yet, by Neer's choice; at
-    publishing, `hpr-io` may need `(MIT OR Apache-2.0) AND Apache-2.0` (`.orc` data, ADR-132).
-  - **ThrustCurve fixtures:** replaced by invented motors in the fixtures PR; drop on merge.
 ## Decided without Neer (one line each; significant ones get an ADR)
 - **Decided at the 2026-10-03 check-in:** ADR-143, ADR-144. Licensing settled there (ADR-144
   §7): OpenRocket example outputs, the orhelper glance, RASAero values, Wyoming soundings,
@@ -101,24 +114,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-142 (M6.2d): EGO as published, `pₖ = 2`, Loeppky's 10 points per variable, Jones's 1% rule in 50 evaluations; M6.2d split d1 (Branin, Hartmann 3), d2 (Hartmann 6, a local minimum traps d1's version). ADR-141 (M6.2c): NSGA-II as published, bounded operators as pymoo prints them; pymoo's moocore dependency (LGPL) computes the oracle's non-dominated ranks, run-only, never linked or ported; tournaments paired as pymoo and Deb's code pair them. ADR-139 (M6.2b1): Deb's rules, no penalty weight; infeasible ranked, not redrawn. ADR-137 (M6.1d): a run's flights share the nominal's supersonic table where its segments and area are equal, and its layout where only stage overrides and motors differ; Valetudo is "an L2 design", a K940 rocket timed beside it; timed by a bench, not a test. ADR-135 (M6.1b): the normal ellipse by default, a next-flight one by Hotelling's `T²`, the landings inside counted, not a normality test. ADR-134 (M6.1a): dispersions independent normals about nominal, no motor presets (NFPA 1125's bounds and NAR's measured spreads in the guide); one stream per sample and input; impulse with propellant mass; drag scaled in the aero model; delays cut at zero, other impossible draws fail and count. ADR-133 (M5.5b): `from_catalog` per builder part and `Fitting`; the unsaid as OpenRocket builds it, but a hollow shoulder takes its part's wall; a stated mass scales the density; an undefined part material refused, undefined lines weightless.
 - ADR-132 (M5.5a): the 16 `.orc` files bundled unchanged (Apache-2.0), held to OR's loader; exact units, not OR's rounded ounce; the file's makers, densities and stated mass kept; a bad part left out with a warning, not the file; `find` by the whole number.
 - ADR-103 to 131 (M4.1 to M4.3, M3.2, M3.3, M5.1 to M5.4): `hpr motors search` cheapest first, `--max-price` on the cheapest in-stock offer in exact cents, both credits on every list, no curves in the command; ThrustCurve joined by exact name, misses reported not guessed, a day's TTL, licences passed through; the motor finder's answers committed (the owner's site), an hour's TTL, its derived rules tested not enforced; a GeoTIFF over `tiff`, near-WGS 84 geographic only, GDAL's pixel and scale, metres unless stated; geodesics by `geographiclib-rs`, not a port, held to Karney's set; WMM2025 in `hpr-core`, refused outside 2025 to 2030, NCEI's `X` held to its residue; GRIB2 in-house (`grib` is f32), its JPEG 2000 by `hayro-jpeg2000`, lossless to 21 bits (its f32 5/3 wavelet); Wyoming recordings committed (U.S. government works, no terms stated), FM 35 by default, rows from the longest chain fitting the hypsometric thickness, a same-pressure run's middle row, freshness by age; Open-Meteo's ground a level, heights geopotential; `ureq` not `reqwest`, the body limit on unpacked bytes, cache paths by hand (MPL-2.0 in `directories`); cache time passed in, stale beats none; Python drag `f(mach, thrusting)`, its exception raised as raised; Calisto's RocketPy metrics measured in the example, not the library; Python wraps the builder, unit-named, abi3-py310; TS and Python types by xtask, not a third-party generator; 0.2 renames `source_files`, records the airframe's reason; breaking changes migrate; `.hpr`/`.hprz`, unknown keys refused, `hpr-format` over `hpr-io`; OR flies the export, counts only, bar on designs OR opens; `.ork` written from the design, dropped values kept, UUID ids only; `.pf2` first, a running median not Debrief's Hampel, an invented log in CI; builder over crates' types; drag models `C_D0` only; CLI adds `weather`, one subcommand per source, `--from` held to a fetch's checks (ADR-122); `hpr sim` at 0°, 0°, 0 m; one check for xtask and `hpr validate`; `.rse` filled as RockSim's.
-- ADR-096 to 102 (M2.2e7 to f): fillets a section prism; a nose's `auto` bore; tube fins ring wings, 8 at most; L19 left unmet.
-- ADR-081 to ADR-095 (M2.3, M2.4, M1.11 to M1.13, M2.2e5, e6): netCDF classic by hand; real
-  flights read as a barometer; M2.3c blocked; the census a 0.1% two-way ratchet; tumble areas
-  integrated; a shift's cycloid; a release at `v_O + ω×c`; pods one stack repeated; OR's rod, flag.
-- ADR-077 to 080 (M1.10): dense-output peaks, no margin past κ = √10; flutter by TN 4197 eq. 18; exports as core text, GeoJSON on the ellipsoid, Parquet by hand.
-- ADR-051 to ADR-076 (M3.1, M2.2a to e4, M1.9): a `.ork` kept whole, unread parts in
-  `x-openrocket`; automatic dimensions keep both halves; angles in degrees; a radius with nothing
-  to take is OR's 25 mm; a motor's curve is its file's own first; only what lights at launch flies;
-  recovery read, not flown; no `orhelper`; a `.ork`'s unsaid is OR's; exact fin inertia; private
-  flights by id, differences only; a cause sized by OR flying without it; a motor per tube.
-- ADR-046: Debrief folded in; `hpr-flightdata` off `hpr-sim`, `hpr-forensics` added, Phase 5 re-cut, `hpr analyze` in M4.2.
-- ADR-027 to ADR-050 (M1.8): split a to e; fins' supersonic slope counts both faces; tangent-cone
-  march, handover capped at 24°; flares by NACA 1135's wedge limit; a step keeps its model.
-  **Gaps visible:** M1.8's drag bullet, M1.8a's miss, M1.8e's 15% for the body alone.
-- ADR-001 to ADR-026 (details in `DECISIONS.md`), among them: refs pinned by hash; body `+z` to the
-  nose; Niskanen's drag as printed at 20 µm; own DOPRI5; recovery in `hpr-sim`; the site's link,
-  label and number checks; 3% gates or a written reason. #11: `SolidMotor` refuses `c = I/m_p`
-  outside 200–5,000 m/s. M2.1b1: same-drag cases declare `C_D0(M)`.
+- ADR-001 to ADR-102: one line per record in `DECISIONS.md`'s index; seen at the check-in. Gaps
+  still visible: M1.8's drag bullet (now M1.14d's), L19 (tube fins' CP, ADR-102), M2.3c (ADR-083).
+
 ## Known issues and risks
 - Two M1.2 sources are pinned from third-party mirrors (MIL-F-8785C, WMO-No. 8). Dryden turbulence
   is an aircraft model, unvalidated for rockets, and no flight uses it (#39). Only 32 motor curves
@@ -134,6 +132,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   reads +51.5% and +50.4% at Mach 3.95 and 4.63; a near-flat flare leaves the crossing's pole —
   +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in radius takes the body
   off the method past 2.7e-11 m tube to tube or 1.3e-13 m at a boattail — −8.65% to −11.34% (#87).
+  Such switches (a step #87, a tip past 30° #121, a vertical tip past the cap) read more stable:
+  −7.0% to −8.7% and 0.64 to 1.03 calibres aft at Mach 3 (aero page); first in M1.14d.
 - `.ork` (M3.1): hpr alone flies 4 of 170 configurations (109 with OR's database, ADR-067), one
   powered split at most (#183); recovery read, not flown (`hpr sim` flies neither, #240); freeform fins, parallel stages left out; tube fins fly, drag likely low (#228); screw
   heads read simpler, warned; supersonic pressure drag twice OR's on `C06` (#222); `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).

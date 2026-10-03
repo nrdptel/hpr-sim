@@ -84,9 +84,10 @@ Later the same day, verbatim (now M8.3, CAD interop):
 > for custom parts. for example like custom fins, nosecone, camera canister, payload bump, etc.
 
 **Operating envelope** (ADR-143): accuracy work goes first to the core band, Mach 0–2.5 and angle
-of attack up to 15°; Mach 2.5–3.5 is supported, and beyond that flights fly with a warning. It
-orders the work, it is not a ceiling. An accuracy milestone stops after two increments in a row
-that move no measured number.
+of attack up to 15°. hpr flies Mach 2.5–3.5 too, with its accuracy checked less, and faster
+flights still fly; every flight that leaves the core band will carry a warning (M1.14a). The
+envelope orders the work; it is not a ceiling. An accuracy milestone stops after two increments in
+a row that move no measured error toward an independent reference.
 
 Decisions Neer confirmed at kickoff:
 

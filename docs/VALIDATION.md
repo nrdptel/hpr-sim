@@ -38,29 +38,46 @@ small extracted fixtures with a clear license are committed, each with its prove
 The operating envelope says which flights the accuracy work serves first. It sets the order of
 the work. It does not limit what hpr flies
 ([ADR-143 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-the-operating-envelope-and-a-stop-rule-for-accuracy-work-m18-closed-with-its-misses-2026-10-03)).
+The bands are set by the [Mach number](glossary.md#mach-number) and the
+[angle of attack](glossary.md#angle-of-attack).
 
 | band | Mach number | angle of attack | what it means |
 |---|---|---|---|
 | Core | 0 to 2.5 | up to 15° | Accuracy work goes here first. Nearly every flight on commercial motors is in it. |
-| Extended | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. Supported; fidelity work follows once the core band has whole-flight references. |
-| Beyond | past 3.5 | past 15°, sustained | Deferred, not dropped. These flights still fly, and will carry a warning ([M1.14a milestone](decisions-and-roadmap.md#m1-14a)). |
+| Extended | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
+| Beyond | past 3.5 | past 15° for more than a moment | Deferred, not dropped. These flights still fly. |
+
+Every flight that leaves the core band, into either of the other two, will carry a warning
+([M1.14a milestone](decisions-and-roadmap.md#m1-14a)). Today none does.
 
 Why these edges:
 
-- NASA Student Launch (4,000 to 6,000 ft) and the American Rocketry Challenge (750 ft) fly
-  below the speed of sound.
-- Spaceport America Cup teams in the 30,000 ft commercial-motor category fly Mach 1.6 to 2.1.
-- The fastest commercial-motor flights, minimum-diameter record builds, reach about Mach 3.5.
-- At the legal wind limit (20 mph, NFPA 1127), a rocket leaving the rail at 50 to 100 ft/s meets
-  the air at 10° to 30° for a moment. So 15° covers the climb, not the first instant off the rail.
+- NASA Student Launch (1,220 to 1,830 m, or 4,000 to 6,000 ft) and the American Rocketry
+  Challenge (229 m, or 750 ft, its 2026-season target) fly below the speed of sound.
+- Spaceport America Cup teams in the 9,144 m (30,000 ft) commercial-motor category fly Mach 1.6
+  to 2.1: Concordia's 2018 report gives Mach 1.64, and UC Aerospace's 2024 flight went "just over
+  Mach 2".
+- The fastest commercial-motor flights, minimum-diameter record builds such as CTI O3400 and
+  N5800 flights, reach about Mach 3.5. Tripoli's single-stage commercial altitude records were
+  13,885 m (45,554 ft) on an M motor, 15,614 m (51,228 ft) on an N and 20,040 m (65,748 ft) on an
+  O, in a 2016 snapshot.
+- At the legal wind limit (8.9 m/s, or 20 mph, in NFPA 1127), a rocket leaving the rail at 15 to
+  30 m/s (50 to 100 ft/s) meets the air at 16° (at 30 m/s) to 30° (at 15 m/s). So 15° covers the
+  climb, not the first instant off the rail.
 
-Today hpr's whole-flight comparisons reach only about Mach 1.15 and 4 km. Most of the core band
-is checked part by part, not as whole flights ([Accuracy](accuracy.md)).
+**What is checked today.** Code-to-code whole flights mostly stay below Mach 1.15 and 4 km; the
+fastest public one is OpenRocket's example at Mach 1.147
+([Accuracy: results by model](accuracy.md#results-by-model);
+[hpr's flights against OpenRocket's](format/ork.md#hprs-flights-against-openrockets)). One private flight is supersonic,
+and reads 13.60% high in apogee against OpenRocket. Real flights reach about Mach 1.0 and 3.9 km
+([Accuracy: real flights](accuracy.md#real-flights)). So most of the core band is checked part by
+part, not as whole flights.
 
 **The stop rule.** An accuracy milestone goes on while each step does one of two things: it moves
-a measured error against an independent reference, or it adds a reference that will. After two
-steps in a row that move no measured number, the milestone ships with its gaps written down. Each
-step names the band it serves, and work outside the core band needs a stated reason.
+a measured error toward an independent reference, so the error shrinks, or it adds a reference
+that will. After two steps in a row that shrink no measured error, the milestone ships with its
+gaps written down. Each step names the band it serves, and work outside the core band needs a
+stated reason.
 
 ## The validation harness
 
