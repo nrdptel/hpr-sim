@@ -6339,9 +6339,11 @@ mod tests {
         }
     }
 
-    /// The size of each switch issue #87 lists, measured on one rocket at Mach 3 and 4°: the
-    /// whole rocket's normal force and centre of pressure either side of the threshold, as a
-    /// share and in calibres. The lip's is gone since M1.8e10; these are what remain, and
+    /// The size of each switch issue #87 lists, measured at Mach 3 and 4° on two test bodies: the
+    /// flare behind a boattail on a finless body (`finned_rocket(4)` with its tail and fins cut
+    /// off, then a bare flare), so its share is of a body's normal force alone; the other three on
+    /// the straight rocket, which keeps its four fins. Each is the whole test body's normal force
+    /// and centre of pressure either side of the threshold, as a share and in calibres. The lip's is gone since M1.8e10; these are what remain, and
     /// ADR-041 and the guide quote them from here.
     #[test]
     fn issue_87s_switches_are_this_big() {

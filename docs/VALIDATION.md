@@ -33,6 +33,71 @@ small extracted fixtures with a clear license are committed, each with its prove
   target in predicted mode, where neither code's drag is the truth ([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18)); a predicted miss is
   explained in its case file, and the set of misses is pinned by a test.
 
+## Operating envelope
+
+The operating envelope says which flights the accuracy work serves first. It sets the order of
+the work. It does not limit what hpr flies
+([ADR-143 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-the-operating-envelope-and-a-stop-rule-for-accuracy-work-m18-closed-with-its-misses-2026-10-03)).
+The bands are set by the [Mach number](glossary.md#mach-number) alone:
+
+| term | Mach number | what it means |
+|---|---|---|
+| Core band | 0 to 2.5 | Accuracy work goes here first. Nearly every flight on commercial motors is in it. |
+| Extended band | 2.5 to 3.5 | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
+| The envelope | 0 to 3.5 | Every flight up to Mach 3.5, at any angle of attack. |
+| Beyond the envelope | past 3.5 | Deferred, not dropped. These flights still fly. |
+
+The [angle of attack](glossary.md#angle-of-attack) is a separate condition. Accuracy work assumes
+it stays at 15° or less. A flight above 15° more than 1 s after leaving the rail is *at high
+angle of attack*, at any Mach number. The first second does not count, as a rocket meets the air
+at a steep angle then, for a moment (below). That 1 s was chosen, not measured;
+[M1.14e](decisions-and-roadmap.md#m1-14e), on large angles of attack, measures how long the
+transient lasts and studies high angles.
+
+Warnings will come as four flags, each tested at its edge
+([M1.14a milestone](decisions-and-roadmap.md#m1-14a)):
+
+- *Beyond the validated range*: the flight goes faster than the fastest public whole-flight
+  reference, meaning any committed comparison of a public flight against an independent
+  reference, gated or not. Today that is OpenRocket's example at Mach 1.147. The threshold is read
+  from the committed reports, so it rises as references are added. Private flights never set it.
+- *At high angle of attack*: above 15° more than 1 s after leaving the rail.
+- *Outside the core band*: past Mach 2.5.
+- *Beyond the envelope*: past Mach 3.5.
+
+Today no flight carries one yet.
+
+Why these edges:
+
+- NASA Student Launch (1,220 to 1,830 m, or 4,000 to 6,000 ft) and the American Rocketry
+  Challenge (229 m, or 750 ft, its 2026-season target) fly below the speed of sound.
+- Spaceport America Cup teams in the 9,144 m (30,000 ft) commercial-motor category fly Mach 1.6
+  to 2.1: [Concordia's 2018 report](https://www.soundingrocket.org/uploads/9/0/6/4/9064598/79_project_report.pdf)
+  gives Mach 1.64, and [UC Aerospace's 2024 flight](https://www.aerospace.org.nz/news/uc-aerospace-victory-in-spaceport-america-cup-30k-cots-2024)
+  went "just over Mach 2".
+- The fastest commercial-motor flights, minimum-diameter record builds such as CTI O3400 and
+  N5800 flights, reach about Mach 3.5. Tripoli's single-stage commercial altitude records were
+  13,885 m (45,554 ft) on an M motor, 15,614 m (51,228 ft) on an N and 20,040 m (65,748 ft) on an
+  O, in a [2016 snapshot](https://www.realflightsystems.com/techpubs/data/TRA-Records/work/records/single.html).
+- At the legal wind limit (20 mph, or 8.9 m/s, in NFPA 1127), a rocket leaving the rail at 50 to
+  100 ft/s (15 to 30 m/s) meets the air at about 16° to 30°, the slower the steeper. So 15° covers
+  the climb, not the first instant off the rail.
+
+**What is checked today.** Code-to-code whole flights mostly stay below Mach 1.15 and 4 km; the
+fastest public one is OpenRocket's example at Mach 1.147
+([Accuracy: results by model](accuracy.md#results-by-model);
+[hpr's flights against OpenRocket's](format/ork.md#hprs-flights-against-openrockets)). One private flight is supersonic,
+and reads 13.60% high in apogee against OpenRocket. Real flights reach about Mach 1.0 and 3.9 km
+([Accuracy: real flights](accuracy.md#real-flights); hpr's peak Mach for each flight is the last
+column of the
+[real-flight report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
+So most of the core band is checked part by part, not as whole flights.
+
+**The stop rule.** An accuracy step makes progress when it shrinks a measured error against an
+independent reference, or adds a reference that will. Either counts as progress; two steps in a
+row that do neither end the milestone, gaps written down. Each step names the band it serves, and
+work outside the core band needs a stated reason.
+
 ## The validation harness
 
 This section covers the [M2.1a validation-harness milestone](decisions-and-roadmap.md#m2-1a).

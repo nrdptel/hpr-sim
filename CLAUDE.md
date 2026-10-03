@@ -34,6 +34,9 @@ At the start of every session, read these in order. They are short on purpose; k
    - `nrdptel/fusionspace-loft` and `nrdptel/fusionspace-debrief` are Neer's own MIT
      projects, both sunset. Port from them freely and note it.
    - `cargo deny` must reject copyleft dependencies.
+   - Never read `MadhavMandala/mudline` (its README says its aero transcribes RASAero II's
+     decompiled binary). AltOS/AltosUI and orhelper are GPL: interop through documented file
+     formats and published docs only.
 4. **Keep private data private.** `nrdptel/loft-fixtures` (design files) and
    `nrdptel/debrief-fixtures` (flight logs) are private repos of other people's data. Their
    contents live only under the gitignored `refs/` and must never be committed or quoted
@@ -79,6 +82,31 @@ At the start of every session, read these in order. They are short on purpose; k
    - Don't post anywhere except this repo's PRs and issues.
    - Pre-authorized: pushing feature branches, opening PRs, merging your own PRs on green CI,
      and closing your own PRs.
+
+## Priorities and guardrails (Neer's 2026-10-03 check-in: ADR-143, ADR-144)
+
+- **Envelope first.** Bands are by Mach only: the core band (Mach 0–2.5) first, then the extended
+  band (2.5–3.5); the envelope is Mach 0–3.5 at any angle. Accuracy work assumes AoA ≤ 15°; above
+  15° more than 1 s after the rail is "high angle of attack" (M1.14e), at any Mach. Each accuracy
+  increment names its Mach band; its issue carries that band's `env-*` label. Stop rule: an
+  increment shrinks a measured error against an independent reference, or adds a reference that
+  will. Either counts as progress; two increments in a row that do neither end the milestone, gaps
+  written down.
+- **Issues.** `P-critical` (hangs, panics, silent wrong numbers in shipped core-band physics,
+  safety-relevant numbers, hostile-input holes) comes before milestone work. Every 4th autopilot
+  cycle works the issue queue, `P-high` and `ready` first. Search for duplicates before filing.
+  Labels: `P-critical|P-high|P-low`, `env-core|env-extended|env-deferred`, `A-aero|A-ork|A-flight|
+  A-motor|A-format|A-net|A-docs|A-validation|A-infra`, `ready`. No auto-close.
+- **Writing:** new and touched docs follow [`docs/writing.md`](docs/writing.md).
+- **Guardrails:** ideas go to `docs/research/ideas.md`, promoted only with a named user, workflow
+  and done-when, at most 3 user-facing surfaces in progress; no verdicts (ranges and validity
+  limits; the RSO and safety code decide; charges say "ground test first"); a flattering-side
+  error (flutter speed or margin too high, apogee too low for a waiver, charge too small) is the
+  worst class, so each safety output gets a test pinning which way it errs plus a mutation probe;
+  rare-event odds carry Wilks/Clopper–Pearson bounds, failed runs counted; AI features never
+  write numbers or make safety calls; regulatory templates carry a source date, a stale-after date
+  and "not legal advice"; a known wrong number in shipped physics blocks new user-facing
+  surfaces; Neer uses every UI milestone before it counts as done.
 
 ## How work ships
 

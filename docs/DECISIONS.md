@@ -148,6 +148,8 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
 | ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 | ADR-142 | M6.2d: EGO (Jones, Schonlau and Welch 1998) with a kriging surrogate fitted by likelihood and the expected improvement searched by CMA-ES; M6.2d split d1 (Branin, Hartmann 3: within 1% of the minimum in 50 evaluations from 20 seeds, worst 0.12%) and d2 (Hartmann 6, which d1's version leaves at a local minimum in 7 runs of 10) | accepted |
+| ADR-143 | The operating envelope orders accuracy work: bands by Mach only (core 0–2.5, extended to 3.5, beyond the envelope deferred), angle of attack a separate condition (accuracy assumes ≤ 15°), four warning flags; the stop rule (two increments in a row that neither shrink a measured error nor add a reference end a milestone); M1.8 closed with its misses, its Cd bullet an M1.14 input; four slender-body switches (#87, #120, #121, the vertical tip) first in M1.14d, M1.14h above Mach 2.5; only #108's Mach 4 part and M1.8e16 deferred | accepted |
+| ADR-144 | The 2026-10-03 check-in: M0.5 leaner bookkeeping first, then M6.2d2 (one attempt), M4.5, M1.14, M6.2e, M6.3 on; M4.5 and M8.3 CAD interop added; issue labels and P-critical first; a writing standard; guardrails; licensing records | accepted |
 
 ---
 
@@ -11607,3 +11609,273 @@ per evaluation needs tens.
 implementation is run as an oracle: the minima are known, which is what the milestone states.
 Left out: Hartmann 6 (M6.2d2), noisy outputs (a nugget fitted to the noise), batches of points
 per step, constraints and integer variables.
+
+## ADR-143: The operating envelope and a stop rule for accuracy work; M1.8 closed with its misses (2026-10-03)
+
+**Context.** At the 2026-10-03 check-in Neer asked what the accuracy work should serve and when
+it should stop: "if it takes a bit longer to develop, its worth it if improves performance [...]
+saying all that, i agree it should be to a certain extent." Nothing ordered the work by flight
+regime. M1.8e has 18 increments done and e16 open, most of them on body lift past Mach 3. Yet
+code-to-code whole flights mostly stay below Mach 1.15 and 4 km (the fastest public one is
+OpenRocket's example at Mach 1.147; one private flight is supersonic), and real flights reach
+about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
+
+- The fastest reach about Mach 3.5: record builds, such as minimum-diameter CTI O3400 and N5800
+  flights. Tripoli's single-stage commercial altitude records were 13,885 m (45,554 ft) on an M,
+  15,614 m (51,228 ft) on an N and 20,040 m (65,748 ft) on an O, in a 2016 snapshot.
+- Spaceport America Cup teams in the 9,144 m (30,000 ft) COTS category fly Mach 1.6 to 2.1
+  (Concordia's 2018 report, Mach 1.64; UC Aerospace in 2024, "just over Mach 2").
+- NASA Student Launch (1,220 to 1,830 m, 4,000 to 6,000 ft) and the American Rocketry Challenge
+  (229 m, 750 ft, its 2026-season target) are subsonic.
+- The legal wind limit (NFPA 1127: 20 mph, 29.3 ft/s, 8.9 m/s) against a rail exit speed of 50 to
+  100 ft/s (15 to 30 m/s) gives an angle of attack of about 30° (at 50 ft/s) to 16° (at 100 ft/s)
+  just off the rail. So 15° covers the climb, not the first instant off the rail.
+
+**Decision.**
+
+1. **The operating envelope** sets the order of work, not a ceiling. Mach number and angle of
+   attack are two separate axes.
+   - **Bands, by Mach number only.** The *core band* is Mach 0 to 2.5; accuracy work goes here
+     first. The *extended band* is Mach 2.5 to 3.5, record-class COTS flights: hpr flies it, and
+     its accuracy is checked less than the core band's; fidelity work there is welcome once the
+     core band has validated whole-flight references. The *envelope* is Mach 0 to 3.5, at any
+     angle of attack. *Beyond the envelope* is past Mach 3.5: deferred, not dropped.
+   - **Angle of attack, a separate condition.** Accuracy work assumes an angle of attack of at
+     most 15°. A flight above 15° more than 1 s after rail clearance is *at high angle of attack*,
+     at any Mach number. The first second off the rail is the expected transient (16° to 30° at
+     the legal wind limit, above); this is what "for more than a moment" means, and it makes the
+     edge testable. The 1 s was chosen, not measured: M1.14e measures the transient and studies
+     high angles.
+
+   Every flight still flies. M1.14a will raise four flags, each tested at its edge:
+   - (i) *beyond the validated range*: faster than the fastest public whole-flight reference, that
+     is, any committed comparison of a public flight against an independent reference, gated or
+     not. Today that is OpenRocket's example at Mach 1.147. The threshold is read from the
+     committed reports, not hard-coded, and rises as M1.14b adds references. Private flights never
+     set it (hard rule 4).
+   - (ii) *at high angle of attack*: above 15° more than 1 s after rail clearance.
+   - (iii) *outside the core band*: past Mach 2.5.
+   - (iv) *beyond the envelope*: past Mach 3.5.
+2. **Each accuracy increment names the Mach band it serves.** Work outside the core band needs a
+   stated reason. An accuracy issue carries the label of its Mach band, `env-core`,
+   `env-extended` or `env-deferred`; a high-angle issue says so in its text and belongs to M1.14e.
+3. **The stop rule** replaces any cap on increments. An accuracy increment makes progress when it
+   shrinks a measured error against an independent reference, or adds a reference that will.
+   Either counts as progress; two increments in a row that do neither end the milestone, gaps
+   written down, and the queue moves on.
+4. **M1.8 closes with its recorded misses.** Its done-when is not rewritten (hard rule 2); this
+   record is the reason. Its Cd bullet (within 10% of RocketPy's RASAero II exports, Mach 0.1 to
+   2.0) is **not met**. Calisto's is the only real RASAero II export among them (ADR-029): within
+   10% at 15 of 15 subsonic rows, 3 of 7 transonic (2 when first measured) and 8 of 17 supersonic,
+   −14.9% to −5.1% (ADR-029, ADR-030). That bullet moves into M1.14 as an input, to be met or
+   re-measured (M1.14d). The same-drag supersonic case, Prometheus through Mach 1.010, passes
+   (ADR-027); the predicted one (Mach 1.06) is outside its 3% target on apogee (−7.280%) and several
+   other metrics, but predicted mode is a target, not a gate (ADR-023), and the case explains its
+   miss. The roll balance is met to 1e-11 (ADR-031). M1.8e closes too, its 15% bullet not met for
+   the body alone: six of eleven rows outside, Mach 1.5 to 2.96, five of them in the core band
+   (ADR-040). The core-band misses become M1.14d inputs, the Mach 2.96 one M1.14h's.
+5. **Only the part above Mach 4 is deferred.** Issue #108 (the loading through a tangent-cone
+   crossing, which moves with the mesh) bites at Mach 4.63 to 5 on the blunt tip's handover, and
+   M1.8e16 would move the 24° cap past it: both are deferred as beyond the envelope, not closed.
+   M1.8e16 stays `[blocked]` with this record as its reason, and #108 stays open, `env-deferred`
+   for that part. The rest moves into M1.14d, and above Mach 2.5 into M1.14h:
+   - **The vertical-tip switch.** The 24° cap binds from Mach 2.06 (ADR-043). A vertical-tip nose
+     steeper than the cap's handover all the way to its base keeps slender-body theory past Mach
+     1.2: on the tests' straight rocket (four fins) at Mach 3 and 4°, −7.0% in normal force with the
+     centre of pressure 0.64 calibres aft, so the rocket reads more stable than it is. Under
+     ADR-144's guardrail that is the worst class of error. With #87 (a step in radius: −8.65%, 1.03
+     calibres aft) and #121 (a pointed tip past the cone tables' 30°: −7.7%, 0.81 calibres aft),
+     both on the same rocket, and #120 (a flare behind a boattail, too long for its wake: −27.5%,
+     0.29 calibres aft, measured on a finless body, so a share of a body's normal force alone and
+     not comparable with the other three), it is one of four *switches that fall back to
+     slender-body theory and overstate stability*, ranked first among M1.14d's flattering-side
+     items. All four are sized at Mach 3.
+   - **#108's extended-band part**, now M1.14h's: the near-flat flare's crossing, which steps
+     −2.77% and 0.14 calibres between Mach 2.90 and 2.95 on a short-shouldered body.
+6. **M1.14 *Accuracy inside the envelope*** joins Phase 1. Done when: real flights meet the 5%
+   mean apogee target, hpr is at least as accurate as OpenRocket on the same real flights, and
+   M1.8's Cd bullet is met or its gap re-measured in an ADR. Inputs: the switches above; M1.8's
+   Cd bullet and M1.8e's body-alone misses; the core-band issues #67, #68, #70, #73, #172, #219
+   and #222. Increments, in order:
+   - a. Warnings: the four flags of §1 (*beyond the validated range*, *at high angle of attack*,
+     *outside the core band*, *beyond the envelope*), each tested at its edge; the aero page split
+     by Mach band, each band page short with detail beneath.
+   - b. Validation from Mach 1.5 to 2.5 and new references: the Duke Rocket Flight Database
+     (CC BY 4.0; 28 flights, Mach 0.54 to 7.22, apogees with RASAero II and OpenRocket-Plus
+     predictions; https://github.com/AidanSYu/rocket-flight-database,
+     https://zenodo.org/records/20531977); the Basic Finner's free-flight data (DREV-TM-9703) and
+     ARL-TN-1128's measured supersonic coefficients (HSARV); NASA NESC's 6-DOF check cases
+     (https://ntrs.nasa.gov/citations/20150001263); ASME V&V 20 validation uncertainty per real
+     flight; tip-off against RocketPy PR #920 (MIT); wind reconstructed from the GPS descent;
+     MAPLEAF (MIT) as another oracle; a Mach 2.45 tunnel drag point (doi 10.2478/tar-2024-0018,
+     licence to check).
+   - c. Transonic normal force and drag, Mach 0.8 to 1.2.
+   - d. Supersonic, Mach 1.2 to 2.5: the four switches first, then drag (Calisto −14.9% to −5.1%
+     against RASAero II; #222) and M1.8e's body-alone misses in the core band (Mach 1.5 to 2.3).
+   - e. Large angles of attack: measure the cost at the 20 mph legal limit; past 1% on apogee or
+     drift, a high-angle model (Jorgensen's non-linear body lift; the report cached). It also
+     measures how long the post-rail transient lasts, revisits §1's chosen 1 s, and takes the
+     high-angle issues.
+   - f. The audit's physics gaps, ranked: asymmetries (thrust and fin misalignment, a lateral CG
+     offset; as inputs and in Monte Carlo, RocketPy the oracle); airframe drag in recovery;
+     power-on base drag validated (the rule moves one supersonic flight about 24 points); gusts
+     in flight (Dryden, opt-in, in Monte Carlo); parachute opening loads (Knacke, about 1.7 to
+     1.8) and swing; laminar friction; interference and fillet drag; default nozzle exit sizes;
+     the separation charge's push; the grain's CG shift. Magnus checked: negligible, recorded.
+   - g. Figures: every accuracy and aero page gets generated plots, the reference overlaid and
+     the error shown, regenerated and checked in CI.
+   - h. The extended band, Mach 2.5 to 3.5, after the core-band increments. Its stated reason is the
+     flattering-side stability errors measured there. Done when each of these is fixed or
+     re-measured in an ADR: the four switches' errors as measured at Mach 3 (flattering: the centre
+     of pressure moves aft); #108's step at Mach 2.90 to 2.95 (−2.77% and 0.14 calibres; which way
+     it errs is not yet measured); and M1.8e's Mach 2.96 body-alone row, +16.9% in the body-alone
+     `C_Nα`, 77% of that gap hpr's own zero-α slope (ADR-040; `arcas-robin-body-gap.json`,
+     `zero_alpha_share_of_gap` 0.7736). On the finned rocket that errs conservative: at Mach 2.96
+     the finned Arcas Robin's centre of pressure reads 0.19 (short) and 0.43 (long) calibres forward
+     of the tunnel's (`normal-force-vs-mach.json`, `cp_error_calibers`).
+
+**Consequences.** The validation plan gains an *Operating envelope* section, and the aero page's
+switch table points the four switches at M1.14d, and at M1.14h above Mach 2.5. Nothing in the
+physics changes here; the next increments are ordered by band, flattering-side errors first, instead
+of by the largest error anywhere.
+
+## ADR-144: The 2026-10-03 check-in: leaner bookkeeping, issues, writing, guardrails and licensing records (2026-10-03)
+
+**Context.** Neer held his first interactive check-in on 2026-10-02 and 03. He said there will be
+no human feedback but his own until much later, and that he trusts the run to judge its effort.
+Measured over cycles 131 to 151: $21.70 a cycle at list prices, 99 min a cycle, about one PR a
+cycle; 65% of wall time in reviews (31%), the gate (24%) and CI waits (20%); about 23% of the
+written characters in bookkeeping files. `DECISIONS.md` is 917 KB with 143 records, `STATUS.md`
+sits at its 150-line cap with one line of 8,809 characters, `ROADMAP.md` at exactly 1,000 lines,
+and finishing a milestone hand-edits up to 8 mirrored places.
+
+**Decision.**
+
+1. **M0.5 *Leaner bookkeeping*** joins Phase 0 and runs first. Done when:
+   - a. One file per ADR under `docs/decisions/NNNN-slug.md`, with a one-line-per-ADR index;
+     existing links keep working (link checks pass). The ADR bar: decisions hard to reverse or
+     that constrain later work (Nygard, Fowler, MADR); increment details go on the physics page or
+     the roadmap entry.
+   - b. `ROADMAP.md` holds open milestones only, in queue order; done ones move to an archive
+     page, one line and a link each. The guards measure characters too, so long lines can't game a
+     cap. The roadmap gains an explicit queue order that the guard follows.
+   - c. `STATUS.md` opens with a plain-English "For Neer" section (about 10 lines); the handoff is
+     about 15 lines at most, with a per-line character limit; a byte budget of about 12 KB;
+     "Decided without Neer" lists only items since the last check-in; the done log holds 5
+     entries at most; "Needs Neer" lists real asks first, "no action if fine" items in a
+     sub-list; issues are referenced by a saved label query, not prose.
+   - d. `docs/decisions-and-roadmap.md` and similar mirrors are generated by `cargo xtask` from
+     the roadmap and the ADR files, not hand-edited. Finishing a milestone touches 3 places at
+     most (the roadmap entry, STATUS, the ADR if any) plus start-here's "what works" table.
+   - e. Reviews: gate, open the PR, then review while CI runs, not before. The physics and
+     validation reviews on every physics or validation diff; a code review on non-trivial code; a
+     docs review only when user-facing pages change. One full round, then only blocking-fix diffs
+     re-reviewed; non-blocking findings become issues or are dropped.
+   - f. A session starts from `STATUS.md` and the current roadmap section; `ARCHITECTURE.md` and
+     `VALIDATION.md` on demand. `CLAUDE.md` under 200 lines, operational detail moved to
+     on-demand docs. Notes that only explain retired mechanics are pruned.
+   - g. `scripts/gate.sh` runs the `refs/`-dependent checks (`ork-flights --check`, `--library
+     --check`, `real-flights --check`) when `refs/` is present and the diff touches a physics
+     crate (`hpr-aero`, `hpr-sim`, `hpr-motor`, `hpr-design`, `hpr-atmos`, `hpr-io`); CI is
+     unchanged, as they stay Mac-only.
+   - h. The doc-guard tests are rewritten to enforce the new rules, never deleted to get green.
+   - i. A report compares the first 20 cycles after M0.5 with the baseline, at the next
+     check-in.
+2. **The queue after M0.5:** M6.2d2 (one attempt), M4.5 *Fly my .ork*, M1.14, M6.2e (robust
+   optimization, kept open), then M6.3 onward in file order. Until M0.5 teaches the guard that
+   order, STATUS names M0.5.
+3. **M6.2d2 gets one attempt:** Jones et al.'s own approach on Hartmann 6, the `−ln(−y)`
+   transform. If it misses 1%, an ADR records the measured result and the queue moves on.
+4. **Issues.** Priority labels `P-critical`, `P-high`, `P-low`; envelope labels (ADR-143); area
+   labels `A-aero`, `A-ork`, `A-flight`, `A-motor`, `A-format`, `A-net`, `A-docs`,
+   `A-validation`, `A-infra`; `ready` for a self-contained issue with acceptance criteria.
+   P-critical (hangs, panics, silent wrong numbers in shipped core-band physics, safety-relevant
+   numbers, hostile-input holes) comes before any milestone work; the first sweep is #255, #237,
+   #10 and #253 (#141 is P-low: nothing reads that column, so no flight is affected). #87 is
+   P-high and `env-core`: a step in radius drops the body off the shock-expansion method and
+   overstates supersonic stability on common shapes, a flattering-side error, first in M1.14d.
+   Every 4th autopilot cycle works the queue, P-high and `ready` first; the target is an open
+   count that stops growing, measured at the next check-in. Search for duplicates before filing.
+   No stale bot and no auto-close: deferred issues stay open, labelled.
+5. **A writing standard** (`docs/writing.md`) for new and touched docs: the bottom line first, one
+   idea a sentence, about 20 words a sentence on average, a sentence over 25 words flagged,
+   paragraphs of 5 sentences at most, every number with its unit and what it is compared with,
+   one precision for one fact. Measured, not gated: `cargo xtask` will print a readability report;
+   the one hard check, *In short* boxes of at most about 150 words and 5 bullets, may land in
+   M0.5. Pages move to Diátaxis's four kinds as they are touched.
+6. **Guardrails.** Ideas live in `docs/research/ideas.md`, not the roadmap; one is promoted only
+   with a named user, the workflow it serves and a done-when, and at most 3 user-facing surfaces
+   are in progress at once. No verdicts: estimates with ranges and validity limits; safety outputs
+   say the range safety officer and the safety code decide; charge sizing always says "ground test
+   first". An error on the flattering side (flutter speed too high, margin too high, apogee too
+   low for a waiver check, a charge too small) is the most serious class: each safety-relevant
+   output gets a test pinning which way it errs, and a mutation probe. Rare-event probabilities
+   come with honest bounds (Wilks, Clopper–Pearson), failed runs counted. AI features never write
+   numbers or make safety calls. Regulatory templates carry a source date, a stale-after date and
+   "not legal advice". A known wrong number in shipped physics blocks new user-facing surfaces
+   until fixed. Neer uses every UI milestone before it counts as done. Clean room:
+   `MadhavMandala/mudline` is never read (its README says its aerodynamics transcribes RASAero
+   II's decompiled binary); AltOS, AltosUI and orhelper are GPL, so interop goes through
+   documented file formats and published docs only.
+7. **Licensing records** (reasoning, not legal advice). Settled and off Neer's list: OpenRocket's
+   example outputs in fixtures (a program's output is not covered by its GPL); the glance at
+   orhelper's signatures (about 15 lines, nothing derived; ADR-059 §5); RASAero II values from
+   RocketPy's MIT repository (facts); Wyoming soundings (NWS observations, US government works).
+   motor.fusionspace.co's API page now states CC BY 4.0, with the attribution "Motor stock data
+   from motor.fusionspace.co", and permits stored answers as test fixtures. The ThrustCurve
+   answers in fixtures are being replaced by invented motors in PR #294, whose record is ADR-145.
+   The first revisions of #186 and #210 were deleted by Neer, verified through GitHub's API on
+   2026-10-03. Still Neer's, by his choice ("not yet"): the crates.io and PyPI names, and
+   `hpr-io`'s licence field, `(MIT OR Apache-2.0) AND Apache-2.0`, at publishing time.
+8. **M4.5 *Fly my .ork*** joins Phase 2. Evidence: none of OpenRocket's 17 example `.ork` files
+   flies as saved in `hpr sim` (12 lack motors, 2 are hybrids, the rest need staging, freeform
+   fins or parallel stages); recovery from a `.ork` never flies (#240); the ThrustCurve client
+   exists but `hpr sim` never calls it; design checks refuse OpenRocket's own examples (a 0.45 mm
+   overlap; a nominal 29 mm motor in a 29 mm tube, #280); configurations print as UUIDs and errors
+   as JSON. The CLI flies 4 of 170 configurations of the private corpus (109 assemble in the
+   library with OpenRocket's motor database). Done when: every in-scope OpenRocket example flies
+   as saved with recovery, offline after one fetch, and the CLI's count on the private corpus is
+   published (up from 4 of 170). Increments:
+   - a. Recovery from a `.ork` (#240): parachutes and streamers; ejection, apogee and altitude
+     triggers; OpenRocket's "auto" Cd from a sourced value; held to OpenRocket's descents against
+     a target set before measuring.
+   - b. Motors on demand: `hpr sim` fetches a missing motor from ThrustCurve and caches it;
+     `hpr motors fetch <name>` pre-loads; offline and uncached, it prints the exact command. No
+     bulk bundling of ThrustCurve data (no data licence).
+   - c. Design checks that match reality: sub-millimetre overlaps and a nominal motor in its
+     matching tube warn, with a cited tolerance; physically impossible fits stay errors.
+   - d. Readable output: configuration names, not UUIDs; sentences, not JSON (JSON with
+     `--json`); the summary leads with margin, apogee, rail exit speed, delay and descent rate.
+   - e. `hpr sim --plot` writes an SVG (altitude, speed and acceleration against time, events
+     marked), a fixed figure set.
+   - f. How-to guides: "Fly your .ork", "Pick a motor", "Check stability for a certification
+     flight"; the README's "Install and first flight" section.
+   - g. Then by blocked count: unpowered separation (#184, 13 configurations), freeform fins (10),
+     multiple separations (#183, 6).
+9. **M8.3 *CAD interop*** joins Phase 6, from Neer's own idea the same day (VISION V33). Interop
+   through files only: FreeCAD and its Rocket Workbench are copyleft, so their source is never
+   read; FreeCAD may run as an external oracle. Done when: a part exported to FreeCAD and
+   re-imported keeps its mass properties within a stated tolerance, and an imported fin or nose
+   flies the same aerodynamics as its native equivalent. Increments:
+   - a. Mesh export (STL, 3MF, OBJ) of any part or the whole design: watertight, in millimetres.
+   - b. Dimensioned drawings (SVG, DXF, PDF) for fins with bevels, rings, nose profiles and tube
+     cut lists.
+   - c. A generated FreeCAD Python script that rebuilds the design as a parametric feature tree,
+     a spreadsheet of design parameters driving the sketches, revolves and pads.
+   - d. STEP export as B-rep solids through a permissive kernel (`truck`, Apache-2.0; its licence
+     and maturity to check).
+   - e. Import STL, OBJ or 3MF as a custom part. Mass properties come exactly from the closed mesh
+     and a material, by Mirtich's (1996) polyhedral mass properties. Aerodynamics by
+     recognition: an axisymmetric part becomes a body profile (a nose cone, a canister); a flat
+     part a fin planform; a small attached part a protuberance. An unrecognized part carries mass
+     only and is flagged "aero not modelled".
+   - f. STEP import needs a B-rep reader. OpenCascade is LGPL, which `cargo deny` rejects, so this
+     one is a licensing call for Neer if no permissive reader suffices.
+
+**Consequences.** `CLAUDE.md` gains the issue rules, the envelope's priority and the guardrails
+in a few lines, until M0.5 trims it. `docs/research/ideas.md` and its theme notes hold every idea
+from the check-in, each tiered NEXT, SOON, LATER, NEEDS NEER or PROMOTED; the roadmap takes only
+the NEXT ones, already in M4.5 and M1.14, and Neer's own CAD idea as M8.3. Scope questions the
+ideas raise (thrust vector control and active fins, GPS-steered parachutes, rocket gliders)
+conflict with the vision's "steering to a target point stays out", so they wait for Neer under
+*Needs Neer*.
