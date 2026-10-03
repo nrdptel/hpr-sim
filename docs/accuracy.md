@@ -844,6 +844,15 @@ rest.
   ([Aerodynamics](physics/aero.md#a-near-flat-flare)). On a body with a short shoulder that
   crossing is not near-flat at all — 0.7° to 4.6° — and the step reaches +4.3% of the body's
   normal force and 0.19 calibres; its exact size for any conical flare is on that page.
+- **Some shapes fall back to slender-body theory faster than sound, and read more stable.** Past
+  Mach 1.2, a body with a step in its radius
+  ([#87](https://github.com/nrdptel/hpr-sim/issues/87)), a pointed tip steeper than 30°
+  ([#121](https://github.com/nrdptel/hpr-sim/issues/121)) or a vertical tip steeper than its cap's
+  handover keeps slender-body theory for the whole body. On the tests' rocket at Mach 3 and 4° that
+  is −8.7%, −7.7% and −7.0% in normal force, with the centre of pressure 1.03, 0.81 and 0.64
+  calibres aft, so the rocket reads more stable than it is
+  ([Aerodynamics](physics/aero.md#the-body-faster-than-sound-in-a-flight)). These are first in
+  [M1.14d](decisions-and-roadmap.md#m1-14d), supersonic accuracy.
 - **The normal force near and far past Mach 1.** Against NASA's wind tunnel, between Mach 0.8
   and 1.2 hpr's slope runs up to +29.3% high and its centre of pressure up to 2.29
   [calibres](glossary.md#calibre-caliber) off. From Mach 1.5 up its slope holds to within 9.4%
