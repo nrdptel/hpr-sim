@@ -38,19 +38,21 @@ small extracted fixtures with a clear license are committed, each with its prove
 The operating envelope says which flights the accuracy work serves first. It sets the order of
 the work. It does not limit what hpr flies
 ([ADR-143 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-143-the-operating-envelope-and-a-stop-rule-for-accuracy-work-m18-closed-with-its-misses-2026-10-03)).
-The bands are set by the [Mach number](glossary.md#mach-number) and the
-[angle of attack](glossary.md#angle-of-attack).
+The envelope and its bands are set by the [Mach number](glossary.md#mach-number) alone; only the
+core band also bounds the [angle of attack](glossary.md#angle-of-attack).
 
 | term | Mach number | angle of attack | what it means |
 |---|---|---|---|
 | Core band | 0 to 2.5 | up to 15° | Accuracy work goes here first. Nearly every flight on commercial motors is in it. |
-| Extended band | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
-| The envelope | 0 to 3.5 | up to 15° | The core and extended bands together. |
-| Beyond the envelope | past 3.5 | any | Deferred, not dropped. These flights still fly. |
+| Extended band | 2.5 to 3.5 | — | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
+| The envelope | 0 to 3.5 | — | The core and extended bands together. |
+| Beyond the envelope | past 3.5 | — | Deferred, not dropped. These flights still fly. |
 
-The first second after the rocket leaves the rail does not count against the 15°: a rocket meets
-the air at a steep angle then, for a moment (below). Past that second, an angle above 15° is
-outside the core band at any speed.
+Past 15°, a flight is outside the core band at any Mach number. The first second after the
+rocket leaves the rail does not count, as a rocket meets the air at a steep angle then, for a
+moment (below). That 1 s was chosen, not measured;
+[M1.14e](decisions-and-roadmap.md#m1-14e), on large angles of attack, measures how long the
+transient lasts and revisits it.
 
 Warnings will come in three tiers ([M1.14a milestone](decisions-and-roadmap.md#m1-14a)):
 

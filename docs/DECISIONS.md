@@ -11633,7 +11633,8 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
 
 **Decision.**
 
-1. **The operating envelope** sets the order of work, not a ceiling. One set of terms:
+1. **The operating envelope** sets the order of work, not a ceiling. The envelope and its bands
+   are defined by Mach number alone; the 15° limit bounds only the core band. One set of terms:
    - the *core band*: Mach 0 to 2.5, angle of attack at most 15°; accuracy work goes here first;
    - the *extended band*: Mach 2.5 to 3.5, record-class COTS flights; hpr flies it, and its
      accuracy is checked less than the core band's; fidelity work there is welcome once the core
@@ -11647,10 +11648,11 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
      Today that is OpenRocket's example at Mach 1.147. The threshold is read from the committed
      reports, not hard-coded, and rises as M1.14b adds references. Private flights never set it
      (hard rule 4).
-   - *outside the core band*: past Mach 2.5, or an angle of attack above 15° later than 1 s after
-     rail clearance. The first second off the rail is the expected transient (16° to 30° at the
-     legal wind limit, above); this is what "for more than a moment" means, and it makes the edge
-     testable.
+   - *outside the core band*: past Mach 2.5, or, at any Mach number, an angle of attack above 15°
+     later than 1 s after rail clearance. The first second off the rail is the expected transient
+     (16° to 30° at the legal wind limit, above); this is what "for more than a moment" means, and
+     it makes the edge testable. The 1 s was chosen, not measured: M1.14e measures how long the
+     transient lasts and revisits it.
    - *beyond the envelope*: past Mach 3.5.
 2. **Each accuracy increment names the band it serves.** Work outside the core band needs a
    stated reason. Accuracy issues carry `env-core`, `env-extended` or `env-deferred`.
@@ -11676,13 +11678,15 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
    for that part. The rest moves into M1.14d, and above Mach 2.5 into M1.14h:
    - **The vertical-tip switch.** The 24° cap binds from Mach 2.06 (ADR-043). A vertical-tip nose
      steeper than the cap's handover all the way to its base keeps slender-body theory past Mach
-     1.2: on the tests' straight rocket at Mach 3 and 4°, −6.99% in normal force with the centre
-     of pressure 0.64 calibres aft, so the rocket reads more stable than it is. Under ADR-144's
-     guardrail that is the worst class of error. With #87 (a step in radius: −8.65%, 1.03 calibres
-     aft), #120 (a flare behind a boattail, too long for its wake: −27.49%, 0.29 calibres aft, on
-     a finned rocket with a flare) and #121 (a pointed tip past the cone tables' 30°: −7.70%, 0.81
-     calibres aft), it is one of four *switches that fall back to slender-body theory and overstate
-     stability*, ranked first among M1.14d's flattering-side items. All four are sized at Mach 3.
+     1.2: on the tests' straight rocket (four fins) at Mach 3 and 4°, −7.0% in normal force with the
+     centre of pressure 0.64 calibres aft, so the rocket reads more stable than it is. Under
+     ADR-144's guardrail that is the worst class of error. With #87 (a step in radius: −8.65%, 1.03
+     calibres aft) and #121 (a pointed tip past the cone tables' 30°: −7.7%, 0.81 calibres aft),
+     both on the same rocket, and #120 (a flare behind a boattail, too long for its wake: −27.5%,
+     0.29 calibres aft, measured on a finless body, so a share of a body's normal force alone and
+     not comparable with the other three), it is one of four *switches that fall back to
+     slender-body theory and overstate stability*, ranked first among M1.14d's flattering-side
+     items. All four are sized at Mach 3.
    - **#108's extended-band part**, now M1.14h's: the near-flat flare's crossing, which steps
      −2.77% and 0.14 calibres between Mach 2.90 and 2.95 on a short-shouldered body.
 6. **M1.14 *Accuracy inside the envelope*** joins Phase 1. Done when: real flights meet the 5%
@@ -11706,7 +11710,8 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
    - d. Supersonic, Mach 1.2 to 2.5: the four switches first, then drag (Calisto −14.9% to −5.1%
      against RASAero II; #222) and M1.8e's body-alone misses in the core band (Mach 1.5 to 2.3).
    - e. Large angles of attack: measure the cost at the 20 mph legal limit; past 1% on apogee or
-     drift, a high-angle model (Jorgensen's non-linear body lift; the report cached).
+     drift, a high-angle model (Jorgensen's non-linear body lift; the report cached). It also
+     measures how long the post-rail transient lasts, and revisits §1's chosen 1 s.
    - f. The audit's physics gaps, ranked: asymmetries (thrust and fin misalignment, a lateral CG
      offset; as inputs and in Monte Carlo, RocketPy the oracle); airframe drag in recovery;
      power-on base drag validated (the rule moves one supersonic flight about 24 points); gusts
@@ -11715,12 +11720,15 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
      the separation charge's push; the grain's CG shift. Magnus checked: negligible, recorded.
    - g. Figures: every accuracy and aero page gets generated plots, the reference overlaid and
      the error shown, regenerated and checked in CI.
-   - h. The extended band, Mach 2.5 to 3.5, after the core-band increments. Its stated reason is
-     the flattering-side stability errors measured there. Done when each of these is fixed or
-     re-measured in an ADR: the four switches' errors as measured at Mach 3 (flattering: the
-     centre of pressure moves aft); #108's step at Mach 2.90 to 2.95 (−2.77% and 0.14 calibres;
-     which way it errs is not yet measured); and M1.8e's Mach 2.96 body-alone row (+16.9% body
-     lift, which tends toward the conservative side on a finned rocket).
+   - h. The extended band, Mach 2.5 to 3.5, after the core-band increments. Its stated reason is the
+     flattering-side stability errors measured there. Done when each of these is fixed or
+     re-measured in an ADR: the four switches' errors as measured at Mach 3 (flattering: the centre
+     of pressure moves aft); #108's step at Mach 2.90 to 2.95 (−2.77% and 0.14 calibres; which way
+     it errs is not yet measured); and M1.8e's Mach 2.96 body-alone row, +16.9% in the body-alone
+     `C_Nα`, 77% of that gap hpr's own zero-α slope (ADR-040; `arcas-robin-body-gap.json`,
+     `zero_alpha_share_of_gap` 0.7736). On the finned rocket that errs conservative: at Mach 2.96
+     the finned Arcas Robin's centre of pressure reads 0.19 (short) and 0.43 (long) calibres forward
+     of the tunnel's (`normal-force-vs-mach.json`, `cp_error_calibers`).
 
 **Consequences.** The validation plan gains an *Operating envelope* section, and the aero page's
 switch table points the four switches at M1.14d, and at M1.14h above Mach 2.5. Nothing in the

@@ -167,7 +167,8 @@ out.
 ## How far to trust it
 
 [Accuracy](accuracy.md) gathers every result so far, gaps included. The accuracy work aims first
-at the flights most rocketeers make, the core band: up to Mach 2.5, at angles of attack up to 15°
+at the flights most rocketeers make, the core band: up to Mach 2.5, at angles of attack up to 15°.
+The wider envelope runs to Mach 3.5
 ([the operating envelope](VALIDATION.md#operating-envelope)). Whole flights are checked mostly
 below about Mach 1.15 so far. Faster flights still fly, unflagged for now;
 [M1.14a](decisions-and-roadmap.md#m1-14a) will flag any flight beyond the validated range,

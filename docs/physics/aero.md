@@ -635,8 +635,11 @@ every speed.
 
 **Where that choice still jumps.** It is one choice for the whole body, so wherever it turns on a
 threshold, a rocket either side of that threshold gets two different models — and the difference is
-the whole body's, not the part that changed. On the tests' rocket at Mach 3 and 4°, each remaining
-threshold is worth this much, and the last column says who owns it — *open* means an issue with no
+the whole body's, not the part that changed. At Mach 3 and 4°, each remaining threshold is worth
+this much. The first four rows are measured on two test bodies: the flare behind a boattail on a
+finless body, so its share is of a body's normal force alone, and the other three on the tests'
+straight rocket, which keeps its four fins, so the two kinds of share don't compare. The last
+column says who owns it — *open* means an issue with no
 milestone behind it, *queued* a milestone on the roadmap, and *no longer a switch* a threshold
 since removed, kept here because its size is the measured cost of the model it replaced
 (`issue_87s_switches_are_this_big` pins the first four,
@@ -646,9 +649,9 @@ since removed, kept here because its size is the measured cost of the model it r
 | drawing this | normal force | centre of pressure | who owns it |
 |---|---|---|---|
 | a step in radius, past a billionth of the local radius | −8.65% | 1.03 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #87: a step has no model of its own](https://github.com/nrdptel/hpr-sim/issues/87) |
-| a flare behind a boattail and too long for its wake, however small | −27.49% | 0.29 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
-| a pointed tip steeper than the cone tables' 30° | −7.70% | 0.81 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #121: a tip past the cone tables](https://github.com/nrdptel/hpr-sim/issues/121) |
-| a vertical tip steeper than the cap's handover to its base | −6.99% | 0.64 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5 |
+| a flare behind a boattail and too long for its wake, however small | −27.5% | 0.29 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
+| a pointed tip steeper than the cone tables' 30° | −7.7% | 0.81 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #121: a tip past the cone tables](https://github.com/nrdptel/hpr-sim/issues/121) |
+| a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5 |
 | a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres | no longer a switch: the rise is weighed, [ADR-041][adr-041] |
 | a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward | queued: [M1.14d: supersonic accuracy](../decisions-and-roadmap.md#m1-14d), after the four switches above, since it reads *less* stable; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
 | a near-flat flare, 0.03816° to 0.05882° at the table's top rows, which the march used to refuse | −8.3% | 1.16 calibres | no longer a switch: the element is read by the generalized method, [ADR-050][adr-050] |

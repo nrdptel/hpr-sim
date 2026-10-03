@@ -85,13 +85,14 @@ Later the same day, verbatim (now M8.3, CAD interop):
 
 **Operating envelope** (ADR-143): accuracy work goes first to the core band, Mach 0–2.5 and angle of
 attack up to 15°. hpr flies the extended band, Mach 2.5–3.5, with its accuracy checked less, and
-faster flights still fly; the two bands together are the envelope, Mach 0–3.5. M1.14a will flag any
-flight beyond the validated range (faster than the fastest public whole-flight reference,
-OpenRocket's example at Mach 1.147 today; private flights never set it), any outside the core band
-and any beyond the envelope. The envelope orders the work; it is not a ceiling. An accuracy
-increment shrinks a measured error against an independent reference, or adds a reference that will.
-Either counts as progress; two increments in a row that do neither end the milestone, gaps written
-down.
+faster flights still fly; the two bands together are the envelope, Mach 0–3.5. The bands are set by
+Mach alone: past 15°, more than 1 s after the rail, a flight is outside the core band at any Mach.
+M1.14a will flag any flight beyond the validated range (faster than the fastest public whole-flight
+reference, OpenRocket's example at Mach 1.147 today; private flights never set it), any outside the
+core band and any beyond the envelope. The envelope orders the work; it is not a ceiling. An
+accuracy increment shrinks a measured error against an independent reference, or adds a reference
+that will. Either counts as progress; two increments in a row that do neither end the milestone,
+gaps written down.
 
 Decisions Neer confirmed at kickoff:
 

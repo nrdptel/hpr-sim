@@ -661,7 +661,7 @@
   - [ ] **M1.14h Extended band, Mach 2.5–3.5,** after the core-band increments (ADR-143 §6h).
     *Done when:* each fixed or re-measured in an ADR: the four switches' errors at Mach 3 (CP aft,
     flattering); #108's Mach 2.90–2.95 step (sign not yet measured); M1.8e's Mach 2.96 body-alone
-    row (+16.9% body lift, tending conservative on a finned rocket).
+    row (+16.9% in the body-alone C_Nα; conservative on the finned rocket, CP forward).
 ## Phase 2: Library surfaces and interop
 
 - [x] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
