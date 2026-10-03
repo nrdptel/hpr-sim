@@ -11,7 +11,8 @@ rules templates carry a source date, a stale-after date and "not legal advice".
   Appendix A table and the expected score. A Level 3 certification packet. An FAA waiver packet,
   Class 3 impact areas included.
 - SOON: a ballast-to-target solver.
-- SOON: a declared apogee with its uncertainty (IREC's Barrowman award).
+- SOON: a declared apogee with its uncertainty, for IREC's Barrowman award (named for the author
+  of the Barrowman stability method, and given for flight prediction; check the current rules).
 - SOON: a payload environment report: peak g by phase, spin, the pressure and temperature
   timeline, vibration as gRMS (root-mean-square acceleration in g) scaled by Reynolds number
   ([doi 10.2514/1.A36444](https://doi.org/10.2514/1.A36444)).

@@ -86,8 +86,9 @@ At the start of every session, read these in order. They are short on purpose; k
 ## Priorities and guardrails (Neer's 2026-10-03 check-in: ADR-143, ADR-144)
 
 - **Envelope first.** Accuracy work serves the core band (Mach 0–2.5, AoA ≤ 15°) first; each
-  accuracy increment names its band. Stop rule: two increments in a row that move no measured
-  error toward an independent reference end the milestone, gaps written down.
+  accuracy increment names its band. Stop rule: an increment shrinks a measured error against an
+  independent reference, or adds a reference that will. Either counts as progress; two increments
+  in a row that do neither end the milestone, gaps written down.
 - **Issues.** `P-critical` (hangs, panics, silent wrong numbers in shipped core-band physics,
   safety-relevant numbers, hostile-input holes) comes before milestone work. Every 4th autopilot
   cycle works the issue queue, `P-high` and `ready` first. Search for duplicates before filing.

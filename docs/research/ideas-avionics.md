@@ -9,7 +9,9 @@ Part of the [ideas backlog](ideas.md) (2026-10-03). One line each, with its tier
 - SOON (with [M6.4][m6-4]): a controller-in-the-loop Python API and a scoring harness; about 30
   student teams have built their own airbrake simulations.
 - SOON: fault-injection Monte Carlo on deployment logic.
-- SOON: altimeter settings export, with each device's real setting steps, and a Mach-delay advisor.
+- SOON: altimeter settings export, with each device's real setting steps, and a Mach-delay
+  advisor (how long an altimeter should ignore its barometer near Mach 1, where the pressure it
+  reads jumps).
 - SOON (with [M7.1 to M7.4][m7-1]): re-run deployment logic on a real flight log.
 - SOON: sensor range checks: a barometer's ceiling (about 9,100 m, 30,000 ft, for the BMP280,
   BMP388 and BMP390) and accelerometer clipping.

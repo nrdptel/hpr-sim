@@ -47,37 +47,45 @@ The bands are set by the [Mach number](glossary.md#mach-number) and the
 | Extended | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
 | Beyond | past 3.5 | past 15° for more than a moment | Deferred, not dropped. These flights still fly. |
 
-Every flight that leaves the core band, into either of the other two, will carry a warning
-([M1.14a milestone](decisions-and-roadmap.md#m1-14a)). Today none does.
+Warnings will come in two tiers ([M1.14a milestone](decisions-and-roadmap.md#m1-14a)):
+
+- *Beyond the validated range*: the flight goes faster than the fastest whole-flight reference,
+  about Mach 1.15 today. The threshold is read from the committed reports, so it rises as new
+  references are added.
+- *Outside the envelope*: past Mach 2.5, or past 15° for more than a moment.
+
+Today no flight carries one yet.
 
 Why these edges:
 
 - NASA Student Launch (1,220 to 1,830 m, or 4,000 to 6,000 ft) and the American Rocketry
   Challenge (229 m, or 750 ft, its 2026-season target) fly below the speed of sound.
 - Spaceport America Cup teams in the 9,144 m (30,000 ft) commercial-motor category fly Mach 1.6
-  to 2.1: Concordia's 2018 report gives Mach 1.64, and UC Aerospace's 2024 flight went "just over
-  Mach 2".
+  to 2.1: [Concordia's 2018 report](https://www.soundingrocket.org/uploads/9/0/6/4/9064598/79_project_report.pdf)
+  gives Mach 1.64, and [UC Aerospace's 2024 flight](https://www.aerospace.org.nz/news/uc-aerospace-victory-in-spaceport-america-cup-30k-cots-2024)
+  went "just over Mach 2".
 - The fastest commercial-motor flights, minimum-diameter record builds such as CTI O3400 and
   N5800 flights, reach about Mach 3.5. Tripoli's single-stage commercial altitude records were
   13,885 m (45,554 ft) on an M motor, 15,614 m (51,228 ft) on an N and 20,040 m (65,748 ft) on an
-  O, in a 2016 snapshot.
-- At the legal wind limit (8.9 m/s, or 20 mph, in NFPA 1127), a rocket leaving the rail at 15 to
-  30 m/s (50 to 100 ft/s) meets the air at 16° (at 30 m/s) to 30° (at 15 m/s). So 15° covers the
-  climb, not the first instant off the rail.
+  O, in a [2016 snapshot](https://www.realflightsystems.com/techpubs/data/TRA-Records/work/records/single.html).
+- At the legal wind limit (20 mph, or 8.9 m/s, in NFPA 1127), a rocket leaving the rail at 50 to
+  100 ft/s (15 to 30 m/s) meets the air at about 16° to 30°, the slower the steeper. So 15° covers
+  the climb, not the first instant off the rail.
 
 **What is checked today.** Code-to-code whole flights mostly stay below Mach 1.15 and 4 km; the
 fastest public one is OpenRocket's example at Mach 1.147
 ([Accuracy: results by model](accuracy.md#results-by-model);
 [hpr's flights against OpenRocket's](format/ork.md#hprs-flights-against-openrockets)). One private flight is supersonic,
 and reads 13.60% high in apogee against OpenRocket. Real flights reach about Mach 1.0 and 3.9 km
-([Accuracy: real flights](accuracy.md#real-flights)). So most of the core band is checked part by
-part, not as whole flights.
+([Accuracy: real flights](accuracy.md#real-flights); hpr's peak Mach for each flight is the last
+column of the
+[real-flight report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/real-flights.md)).
+So most of the core band is checked part by part, not as whole flights.
 
-**The stop rule.** An accuracy milestone goes on while each step does one of two things: it moves
-a measured error toward an independent reference, so the error shrinks, or it adds a reference
-that will. After two steps in a row that shrink no measured error, the milestone ships with its
-gaps written down. Each step names the band it serves, and work outside the core band needs a
-stated reason.
+**The stop rule.** An accuracy step makes progress when it shrinks a measured error against an
+independent reference, or adds a reference that will. Either counts as progress; two steps in a
+row that do neither end the milestone, gaps written down. Each step names the band it serves, and
+work outside the core band needs a stated reason.
 
 ## The validation harness
 

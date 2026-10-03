@@ -20,7 +20,7 @@ reconstruction, a flight against its simulation, fault diagnosis).
 - SOON: video-to-log sync by sound, and a telemetry overlay.
 - SOON: event-aligned delta traces between flights.
 - SOON: a multi-flight workspace, in the style of MoTeC (motorsport data-analysis software).
-- SOON: record-ready KML.
+- SOON: record-ready KML (the map format Google Earth reads).
 - SOON: AltosUI CSV and Blue Raven text import (documented formats only; AltOS is GPL).
 - SOON: motor failure counts from MESS, NAR's Malfunctioning Engine Statistical Survey (cache
   only; the licence is unclear).

@@ -168,9 +168,10 @@ out.
 
 [Accuracy](accuracy.md) gathers every result so far, gaps included. The accuracy work aims first
 at the flights most rocketeers make: up to Mach 2.5, at angles of attack up to 15°
-([the operating envelope](VALIDATION.md#operating-envelope)). Whole flights are checked only to
-about Mach 1.15 so far. Faster flights still fly, with no warning yet
-([M1.14a](decisions-and-roadmap.md#m1-14a), envelope warnings). In brief:
+([the operating envelope](VALIDATION.md#operating-envelope)). Whole flights are checked mostly
+below about Mach 1.15 so far. Faster flights still fly, unflagged for now;
+[M1.14a](decisions-and-roadmap.md#m1-14a) will flag any flight beyond the validated range and any
+outside the envelope. In brief:
 
 - **Whole flights match RocketPy's in height, speed and time when both codes fly the same drag.**
   Six of RocketPy's example rockets agree within 3% on apogee, speeds, burnout and flight time

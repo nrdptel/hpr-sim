@@ -4,8 +4,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## For Neer
 
-- **What happened:** your 2026-10-03 check-in is recorded: accuracy work now goes to the flights
-  most people fly first (up to Mach 2.5), with a rule for when to stop (ADR-143); M1.8 is closed.
+- **What happened:** your 2026-10-03 check-in is recorded: accuracy first for flights to Mach 2.5,
+  with a stop rule (ADR-143); M1.8 is closed, with its drag target missed.
 - **What runs next:** four urgent bug fixes, then leaner bookkeeping (M0.5), one more try at EGO
   (M6.2d2), `.ork` files flying as saved (M4.5), accuracy (M1.14), then M6.2e and M6.3.
 - **What needs you:** your fixture branch of flight and design data, when ready; a yes or no on
@@ -132,8 +132,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   reads +51.5% and +50.4% at Mach 3.95 and 4.63; a near-flat flare leaves the crossing's pole —
   +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in radius takes the body
   off the method past 2.7e-11 m tube to tube or 1.3e-13 m at a boattail — −8.65% to −11.34% (#87).
-  Such switches (a step #87, a tip past 30° #121, a vertical tip past the cap) read more stable:
-  −7.0% to −8.7% and 0.64 to 1.03 calibres aft at Mach 3 (aero page); first in M1.14d.
+  Four switches (a step #87, a long flare behind a boattail #120, a tip past 30° #121, a vertical
+  tip past the cap) read more stable: −7.0% to −27.5%, 0.29 to 1.03 cal aft at Mach 3; M1.14d, h.
 - `.ork` (M3.1): hpr alone flies 4 of 170 configurations (109 with OR's database, ADR-067), one
   powered split at most (#183); recovery read, not flown (`hpr sim` flies neither, #240); freeform fins, parallel stages left out; tube fins fly, drag likely low (#228); screw
   heads read simpler, warned; supersonic pressure drag twice OR's on `C06` (#222); `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).

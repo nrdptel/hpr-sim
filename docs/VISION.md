@@ -85,9 +85,11 @@ Later the same day, verbatim (now M8.3, CAD interop):
 
 **Operating envelope** (ADR-143): accuracy work goes first to the core band, Mach 0–2.5 and angle
 of attack up to 15°. hpr flies Mach 2.5–3.5 too, with its accuracy checked less, and faster
-flights still fly; every flight that leaves the core band will carry a warning (M1.14a). The
-envelope orders the work; it is not a ceiling. An accuracy milestone stops after two increments in
-a row that move no measured error toward an independent reference.
+flights still fly. M1.14a will flag any flight beyond the validated range (about Mach 1.15 today)
+and any outside the envelope. The envelope orders the work; it is not a ceiling. An accuracy
+increment shrinks a measured error against an independent reference, or adds a reference that
+will. Either counts as progress; two increments in a row that do neither end the milestone, gaps
+written down.
 
 Decisions Neer confirmed at kickoff:
 

@@ -39,7 +39,7 @@ never write numbers or make safety calls: every number comes from the engine.
 - LATER: plain language to a competition spec to the optimizer.
 - LATER: a critique with previewable fixes.
 - LATER: ask-the-flight, answers citing time ranges.
-- LATER: a local LLM option.
+- LATER: a local large language model (LLM) option, running on the user's own machine.
 - LATER: linked user part components (Figma style).
 - LATER: pencil sketching (Shapr3D style).
 - LATER: shareable panel layouts.

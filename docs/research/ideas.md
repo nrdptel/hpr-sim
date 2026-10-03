@@ -13,7 +13,8 @@ questions; the ideas themselves are in the theme notes below, one line each.
   [M6.3, competition rules][m6-3], [M6.4, airbrakes][m6-4] or the flight-log milestones
   [M7.1][m7-1] to [M7.4][m7-4].
 - **LATER**: the UI phase, community features and moonshots.
-- **NEEDS NEER**: money, outreach, accounts or a change of scope. Listed below and in `STATUS.md`.
+- **NEEDS NEER**: money, outreach, accounts or a change of scope. Listed below and in
+  [STATUS](../STATUS.md), the run's working notes.
 - **PROMOTED**: moved into the roadmap, with the milestone named, such as
   [M8.3, CAD interop][m8-3] from Neer's own idea of the same day.
 
@@ -37,7 +38,7 @@ safety number has a test pinning which way it errs.
 ## NEEDS NEER (scope, money, outreach)
 
 - Thrust vector control (TVC) and active fins with a controller in the loop, and GPS-steered
-  gliding parachutes (forum threads of about 520 and 311 replies). Both conflict with VISION's
+  gliding parachutes (forum threads of about 520 and 311 replies). Both conflict with [VISION](../VISION.md)'s
   "steering to a target point stays out" and the airbrakes-and-canards-only rule: a scope
   decision.
 - Rocket-boosted gliders: where the scope line falls.
@@ -48,7 +49,8 @@ safety number has a test pinning which way it errs.
 - Verified kit badges, with kit makers.
 - ThrustCurve: a data-quality give-back, and asking its maintainer about bundling common motors.
 - A fiscal host or sponsor tiers (each funder's eligibility rules to be checked first).
-- Asking SparkyVT's author for logs (250+ flights, to Mach 2.3).
+- Asking SparkyVT (the author of an open-source high-power flight computer) for logs: 250+
+  flights, to Mach 2.3.
 - A migration layer for users of orhelper (a GPL-licensed Python bridge to OpenRocket): a
   licensing call.
 - Prebuilt binaries through a release: a PR may prepare the workflow; creating a release is

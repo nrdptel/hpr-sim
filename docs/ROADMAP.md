@@ -227,8 +227,9 @@
 
   Split into M1.8a to M1.8e. The measured reference throughout is NASA's Arcas Robin wind-tunnel
   model: TN D-4013 (Mach 0.6–1.2) and TN D-4014 (Mach 1.5–4.63).
-  *Result (ADR-143):* closed with its misses: the Cd bullet not met (ADR-029, ADR-030), moved to
-  M1.14 as its target; the same-drag supersonic case passes (ADR-027); roll met (ADR-031).
+  *Result (ADR-143):* closed with its misses: Cd bullet not met (ADR-029, ADR-030), now an M1.14
+  input (met or re-measured); same-drag supersonic case passes (ADR-027); the predicted one (Mach
+  1.06) misses its 3% target, a target not a gate (ADR-023), explained in its case; roll met.
   - [x] **M1.8a Normal force and centre of pressure through Mach 1:** fin slope through the
     transonic region to supersonic linear theory, and the fin CP shift with Mach. The normal force
     accepts Mach numbers past 1, so a flight on a drag table flies through Mach 1. Loft lesson L7.
@@ -647,15 +648,18 @@
   of attack to 15°); each increment names its band and follows the stop rule. *Done when:* real
   flights meet the 5% mean apogee target, hpr is at least as accurate as OpenRocket on the same
   real flights, and M1.8's Cd bullet is met or its gap re-measured in an ADR.
-  - [ ] **M1.14a Envelope warnings.** *Done when:* every flight leaving the core band warns, tested.
-  - [ ] **M1.14b References, Mach 1.5–2.5.** *Done when:* each one listed is reported or refused.
+  - [ ] **M1.14a Envelope warnings,** two tiers (ADR-143 §1). *Done when:* a flight past the
+    validated range and one outside the envelope each warn, tested at the band edges.
+  - [ ] **M1.14b References, Mach 1.5–2.5.** *Done when:* each in ADR-143 §6b reported or refused.
   - [ ] **M1.14c Transonic, Mach 0.8–1.2.** *Done when:* the stop rule ends it, gaps re-measured.
   - [ ] **M1.14d Supersonic, Mach 1.2–2.5.** First the switches that fall back to slender-body
-    theory and overstate stability (#87, #121, the vertical tip), then drag (#222) and M1.8e's
+    theory and overstate stability (#87, #120, #121, the vertical tip), then drag (#222) and M1.8e's
     body-alone misses. *Done when:* as M1.14c, with M1.8's Cd bullet met or re-measured.
   - [ ] **M1.14e Large angle of attack.** *Done when:* its cost measured; past 1%, a model built.
-  - [ ] **M1.14f The audit's physics gaps.** *Done when:* each modelled and tested, or negligible.
+  - [ ] **M1.14f Audit's physics gaps.** *Done when:* each cited and tested, or measured negligible.
   - [ ] **M1.14g Figures.** *Done when:* accuracy and aero pages show CI-checked plots with errors.
+  - [ ] **M1.14h Extended band, Mach 2.5–3.5,** after the core-band increments (ADR-143 §6h).
+    *Done when:* each flattering-side switch past Mach 2.5 fixed, or its gap re-measured in an ADR.
 ## Phase 2: Library surfaces and interop
 
 - [x] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
@@ -830,7 +834,7 @@
     - [x] **M6.2d1 Branin and Hartmann 3.** *Done when:* each within 1% of its minimum in 50 evaluations from 20 seeds. Met (ADR-142): worst 0.12%.
     - [ ] **M6.2d2 Hartmann 6.** *Done when:* within 1% of its minimum in a stated budget from 20
       seeds (d1's EGO ends 7 runs of 10 at its −3.20 local minimum after 100).
-      One attempt (ADR-144 §3): the `−ln(−y)` transform; a miss gets an ADR, and the queue moves on.
+      *Plan (ADR-144 §3):* one attempt, the `−ln(−y)` transform; a miss gets an ADR, then move on.
   - [ ] **M6.2e Robust mode.** *Done when:* a Monte Carlo statistic is optimized with common random
     numbers, the winner checked by a fresh Monte Carlo run.
 - [ ] **M6.3 Challenge specs and presets.**

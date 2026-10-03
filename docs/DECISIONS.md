@@ -148,7 +148,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-140 | M6.2b2: integer variables (`Variable::integer`) by CMA-ES with margin (Hamano et al., GECCO 2022), α = 1/(nλ); `Φ` by `libm::erfc`, `Φ⁻¹` by AS 241; held to SphereInt, EllipsoidInt and SphereOneMax at 10 and 20 variables and to `cmaes` 0.13.1's CMAwM; the rocket example hits 3,048 m with the motor and nose free, its body length fixed so designs share a supersonic table | accepted |
 | ADR-141 | M6.2c: several goals by NSGA-II (Deb et al. 2002) with bounded SBX and polynomial mutation, constrained domination; held to ZDT1 to ZDT3's exact fronts and to pymoo 0.6.2 (every run's GD and IGD within twice pymoo's worst, medians within a factor of 1.25 either way), tournaments paired as pymoo pairs them; a rocket's apogee against static margin, its front flown again and matched by CMA-ES at 2.5 calibres | accepted |
 | ADR-142 | M6.2d: EGO (Jones, Schonlau and Welch 1998) with a kriging surrogate fitted by likelihood and the expected improvement searched by CMA-ES; M6.2d split d1 (Branin, Hartmann 3: within 1% of the minimum in 50 evaluations from 20 seeds, worst 0.12%) and d2 (Hartmann 6, which d1's version leaves at a local minimum in 7 runs of 10) | accepted |
-| ADR-143 | The operating envelope (core Mach 0–2.5 and 15°, extended to 3.5, beyond deferred) orders accuracy work; the stop rule (two increments in a row that reduce no measured error end a milestone); M1.8 closed with its misses, its Cd bullet moved to M1.14; the slender-body switches (#87, #121, the vertical tip) first in M1.14d; only #108's Mach 4 part and M1.8e16 deferred | accepted |
+| ADR-143 | The operating envelope (core Mach 0–2.5 and 15°, extended to 3.5, beyond deferred) orders accuracy work, with two tiers of warning; the stop rule (two increments in a row that neither shrink a measured error nor add a reference end a milestone); M1.8 closed with its misses, its Cd bullet an M1.14 input; four slender-body switches (#87, #120, #121, the vertical tip) first in M1.14d, M1.14h above Mach 2.5; only #108's Mach 4 part and M1.8e16 deferred | accepted |
 | ADR-144 | The 2026-10-03 check-in: M0.5 leaner bookkeeping first, then M6.2d2 (one attempt), M4.5, M1.14, M6.2e, M6.3 on; M4.5 and M8.3 CAD interop added; issue labels and P-critical first; a writing standard; guardrails; licensing records | accepted |
 
 ---
@@ -11627,9 +11627,9 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
   (Concordia's 2018 report, Mach 1.64; UC Aerospace in 2024, "just over Mach 2").
 - NASA Student Launch (1,220 to 1,830 m, 4,000 to 6,000 ft) and the American Rocketry Challenge
   (229 m, 750 ft, its 2026-season target) are subsonic.
-- The legal wind limit (NFPA 1127: 8.9 m/s, 20 mph, 29.3 ft/s) against a rail exit speed of 15 to
-  30 m/s (50 to 100 ft/s) gives an angle of attack of 16° (at 30 m/s) to 30° (at 15 m/s) just off
-  the rail. So 15° covers the climb, not the first instant off the rail.
+- The legal wind limit (NFPA 1127: 20 mph, 29.3 ft/s, 8.9 m/s) against a rail exit speed of 50 to
+  100 ft/s (15 to 30 m/s) gives an angle of attack of about 30° (at 50 ft/s) to 16° (at 100 ft/s)
+  just off the rail. So 15° covers the climb, not the first instant off the rail.
 
 **Decision.**
 
@@ -11638,44 +11638,51 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
    record-class COTS flights: hpr flies it, and its accuracy is checked less than the core band's;
    fidelity work there is welcome once the core band has validated whole-flight references.
    *Beyond:* past Mach 3.5, or past 15° for more than a moment: deferred, not dropped. Such
-   flights still fly. Every flight that leaves the core band will carry a warning (M1.14a).
+   flights still fly. Warnings come in two tiers (M1.14a): *beyond validated range* when a flight
+   goes faster than the fastest whole-flight reference (about Mach 1.15 today; the threshold is
+   read from the committed reports, not hard-coded, and rises as M1.14b adds references), and
+   *outside the envelope* past Mach 2.5, or past 15° for more than a moment.
 2. **Each accuracy increment names the band it serves.** Work outside the core band needs a
    stated reason. Accuracy issues carry `env-core`, `env-extended` or `env-deferred`.
-3. **The stop rule** replaces any cap on increments. An accuracy milestone continues while each
-   increment either moves a measured error toward an independent reference (reduces it), or adds
-   a reference that will. After two increments in a row that reduce no measured error, it ships
-   with its gaps written down, and the queue moves on.
+3. **The stop rule** replaces any cap on increments. An accuracy increment makes progress when it
+   shrinks a measured error against an independent reference, or adds a reference that will.
+   Either counts as progress; two increments in a row that do neither end the milestone, gaps
+   written down, and the queue moves on.
 4. **M1.8 closes with its recorded misses.** Its done-when is not rewritten (hard rule 2); this
    record is the reason. Its Cd bullet (within 10% of RocketPy's RASAero II exports, Mach 0.1 to
    2.0) is **not met**. Calisto's is the only real RASAero II export among them (ADR-029): within
    10% at 15 of 15 subsonic rows, 3 of 7 transonic (2 when first measured) and 8 of 17 supersonic,
-   −14.9% to −5.1% (ADR-029, ADR-030). That bullet moves into M1.14 as its target (M1.14d). The
-   same-drag supersonic case, Prometheus through Mach 1.010, passes (ADR-027), and the roll balance
-   is met to 1e-11 (ADR-031). M1.8e closes too, its 15% bullet not met for the body alone: six of
-   eleven rows outside, Mach 1.5 to 2.96, five of them in the core band (ADR-040). Those misses
-   become M1.14d inputs.
+   −14.9% to −5.1% (ADR-029, ADR-030). That bullet moves into M1.14 as an input, to be met or
+   re-measured (M1.14d). The same-drag supersonic case, Prometheus through Mach 1.010, passes
+   (ADR-027); the predicted one (Mach 1.06) is outside its 3% target on apogee (−7.280%) and several
+   other metrics, but predicted mode is a target, not a gate (ADR-023), and the case explains its
+   miss. The roll balance is met to 1e-11 (ADR-031). M1.8e closes too, its 15% bullet not met for
+   the body alone: six of eleven rows outside, Mach 1.5 to 2.96, five of them in the core band
+   (ADR-040). The core-band misses become M1.14d inputs, the Mach 2.96 one M1.14h's.
 5. **Only the part above Mach 4 is deferred.** Issue #108 (the loading through a tangent-cone
    crossing, which moves with the mesh) bites at Mach 4.63 to 5 on the blunt tip's handover, and
    M1.8e16 would move the 24° cap past it: both are deferred as out of the envelope, not closed.
    M1.8e16 stays `[blocked]` with this record as its reason, and #108 stays open, `env-deferred`
-   for that part. The rest moves into M1.14d:
+   for that part. The rest moves into M1.14d, and above Mach 2.5 into M1.14h:
    - **The vertical-tip switch.** The 24° cap binds from Mach 2.06 (ADR-043). A vertical-tip nose
      steeper than the cap's handover all the way to its base keeps slender-body theory past Mach
      1.2: on the tests' rocket at Mach 3 and 4°, −7.0% in normal force with the centre of
      pressure 0.64 calibres aft, so the rocket reads more stable than it is. Under ADR-144's
-     guardrail that is the worst class of error. With #87 (a step in radius) and #121 (a pointed
-     tip past the cone tables' 30°), it is one of the *switches that fall back to slender-body
-     theory and overstate stability*, ranked first among M1.14d's flattering-side items.
-   - **#108's extended-band part**: the near-flat flare's crossing, which steps −2.77% and 0.14
-     calibres between Mach 2.90 and 2.95 on a short-shouldered body.
+     guardrail that is the worst class of error. With #87 (a step in radius: −8.65%, 1.03 calibres
+     aft), #120 (a flare behind a boattail, too long for its wake: −27.5%, 0.29 calibres aft,
+     pinned as (−0.2749, 0.2872)) and #121 (a pointed tip past the cone tables' 30°: −7.7%, 0.81
+     calibres aft), it is one of four *switches that fall back to slender-body theory and overstate
+     stability*, ranked first among M1.14d's flattering-side items. All four are sized at Mach 3.
+   - **#108's extended-band part**, now M1.14h's: the near-flat flare's crossing, which steps
+     −2.77% and 0.14 calibres between Mach 2.90 and 2.95 on a short-shouldered body.
 6. **M1.14 *Accuracy inside the envelope*** joins Phase 1. Done when: real flights meet the 5%
    mean apogee target, hpr is at least as accurate as OpenRocket on the same real flights, and
    M1.8's Cd bullet is met or its gap re-measured in an ADR. Inputs: the switches above; M1.8's
    Cd bullet and M1.8e's body-alone misses; the core-band issues #67, #68, #70, #73, #172, #219
    and #222. Increments, in order:
-   - a. Envelope warnings on every flight that leaves the core band (largest Mach, angle of attack
-     past 15°, extended or beyond); the aero page split by Mach band, each band page short with
-     detail beneath.
+   - a. Envelope warnings in the two tiers of §1, *beyond validated range* and *outside the
+     envelope* (largest Mach, angle of attack past 15° for more than a moment), tested at the
+     band edges; the aero page split by Mach band, each band page short with detail beneath.
    - b. Validation from Mach 1.5 to 2.5 and new references: the Duke Rocket Flight Database
      (CC BY 4.0; 28 flights, Mach 0.54 to 7.22, apogees with RASAero II and OpenRocket-Plus
      predictions; https://github.com/AidanSYu/rocket-flight-database,
@@ -11686,8 +11693,8 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
      MAPLEAF (MIT) as another oracle; a Mach 2.45 tunnel drag point (doi 10.2478/tar-2024-0018,
      licence to check).
    - c. Transonic normal force and drag, Mach 0.8 to 1.2.
-   - d. Supersonic, Mach 1.2 to 2.5: the switches first, then drag (Calisto −14.9% to −5.1%
-     against RASAero II; #222) and M1.8e's body-alone misses.
+   - d. Supersonic, Mach 1.2 to 2.5: the four switches first, then drag (Calisto −14.9% to −5.1%
+     against RASAero II; #222) and M1.8e's body-alone misses in the core band (Mach 1.5 to 2.3).
    - e. Large angles of attack: measure the cost at the 20 mph legal limit; past 1% on apogee or
      drift, a high-angle model (Jorgensen's non-linear body lift; the report cached).
    - f. The audit's physics gaps, ranked: asymmetries (thrust and fin misalignment, a lateral CG
@@ -11698,11 +11705,16 @@ about Mach 1.0 and 3.9 km. Where flights on commercial (COTS) motors go:
      the separation charge's push; the grain's CG shift. Magnus checked: negligible, recorded.
    - g. Figures: every accuracy and aero page gets generated plots, the reference overlaid and
      the error shown, regenerated and checked in CI.
+   - h. The extended band, Mach 2.5 to 3.5, after the core-band increments. Its stated reason is
+     flattering-side stability errors there: #108's flare crossing at Mach 2.90 to 2.95 (−2.77%,
+     0.14 calibres), the four switches' sizes measured at Mach 3, and M1.8e's body-alone miss at
+     Mach 2.96. Done when each flattering-side switch above Mach 2.5 is fixed, or its gap is
+     re-measured in an ADR.
 
 **Consequences.** The validation plan gains an *Operating envelope* section, and the aero page's
-switch table points the vertical tip at M1.14d. Nothing in the physics changes here; the next
-increments are ordered by band, flattering-side errors first, instead of by the largest error
-anywhere.
+switch table points the four switches at M1.14d, and at M1.14h above Mach 2.5. Nothing in the
+physics changes here; the next increments are ordered by band, flattering-side errors first, instead
+of by the largest error anywhere.
 
 ## ADR-144: The 2026-10-03 check-in: leaner bookkeeping, issues, writing, guardrails and licensing records (2026-10-03)
 

@@ -69,9 +69,9 @@ default nozzle exits, separation-charge push, grain CG shift. The rest:
   with 95% confidence) and a sample-size advisor.
 - SOON: a polynomial-chaos surrogate.
 - LATER: a learned fast surrogate for the web.
-- SOON: a mid-fidelity panel-method aerodynamics tier (Ironbark,
-  [doi 10.1016/j.ast.2026.111758](https://doi.org/10.1016/j.ast.2026.111758); PANAIR's licence to
-  check).
+- SOON: a mid-fidelity panel-method aerodynamics tier: see Ironbark, a published panel-method
+  code ([doi 10.1016/j.ast.2026.111758](https://doi.org/10.1016/j.ast.2026.111758)), and PANAIR,
+  NASA's supersonic panel code (its licence to check).
 - LATER: flexible-airframe dynamics.
 
 [m1-14f]: ../decisions-and-roadmap.md#m1-14f
