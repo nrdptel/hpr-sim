@@ -133,7 +133,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   +0.129% on the tests' rocket, +4.3% on a short shoulder (#108); a step in radius takes the body
   off the method past 2.7e-11 m tube to tube or 1.3e-13 m at a boattail — −8.65% to −11.34% (#87).
   Four switches (a step #87, a long flare behind a boattail #120, a tip past 30° #121, a vertical
-  tip past the cap) read more stable: −7.0% to −27.5%, 0.29 to 1.03 cal aft at Mach 3; M1.14d, h.
+  tip past the cap) read more stable: −6.99% to −27.49%, 0.29 to 1.03 cal aft at Mach 3; M1.14d, h.
 - `.ork` (M3.1): hpr alone flies 4 of 170 configurations (109 with OR's database, ADR-067), one
   powered split at most (#183); recovery read, not flown (`hpr sim` flies neither, #240); freeform fins, parallel stages left out; tube fins fly, drag likely low (#228); screw
   heads read simpler, warned; supersonic pressure drag twice OR's on `C06` (#222); `polished` 2 µm may be 0.5 µm in a newer OR (ADR-061).

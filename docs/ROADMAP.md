@@ -288,7 +288,7 @@
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
     why not with the gap in the report. Split below into M1.8e1 to e12; e9 judged this bullet.
-    *Result (ADR-040, ADR-143):* closed, not met for the body alone; misses carried to M1.14d.
+    *Result (ADR-040, ADR-143):* closed, unmet for the body alone: M1.14d (Mach 2.96 row: M1.14h).
     - [x] **M1.8e1 The second-order shock-expansion method** (NACA TN 3527, a pointed body at
       `α → 0`). *Done when* (targets set before): a pinned fixture holds every row of its Tables I
       and II within 0.05/rad and 0.1 cal of its values and ±0.2 of its measurements, misses
@@ -404,7 +404,7 @@
       read there, so both switches (−4.6%, −8.3%) go; a test pins the sizes on both sides.
     - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13,
       ADR-044; the next free number, so the flare and the step keep theirs). Deferred above Mach 4
-      with #108 (ADR-143); the vertical-tip switch's error below that moved to M1.14d.
+      with #108 (ADR-143); the vertical tip's error goes to M1.14d below Mach 2.5, M1.14h above.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
       together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
       whose answer settles as the nose is cut finer, on a body that crosses (the committed nose
@@ -644,12 +644,12 @@
       lug-pod design within 2.2% of OR.
     - [x] **M1.13c2 A pod design against OpenRocket** (ADR-093): six probes, apogee +0.41% to
       +0.81%, speed to +1.24%, the pods' change within 0.32 points.
-- [ ] **M1.14 Accuracy inside the envelope** (ADR-143 §6). The core band first (Mach 0–2.5, angle
-  of attack to 15°); each increment names its band and follows the stop rule. *Done when:* real
+- [ ] **M1.14 Accuracy inside the envelope** (ADR-143 §6). The core band (Mach 0–2.5, angle of
+  attack to 15°) first, then the extended band in M1.14h; each names its band. *Done when:* real
   flights meet the 5% mean apogee target, hpr is at least as accurate as OpenRocket on the same
   real flights, and M1.8's Cd bullet is met or its gap re-measured in an ADR.
-  - [ ] **M1.14a Envelope warnings,** two tiers (ADR-143 §1). *Done when:* a flight past the
-    validated range and one outside the envelope each warn, tested at the band edges.
+  - [ ] **M1.14a Envelope warnings,** three tiers (ADR-143 §1). *Done when:* beyond the validated
+    range, outside the core band and beyond the envelope each warn, tested at the band edges.
   - [ ] **M1.14b References, Mach 1.5–2.5.** *Done when:* each in ADR-143 §6b reported or refused.
   - [ ] **M1.14c Transonic, Mach 0.8–1.2.** *Done when:* the stop rule ends it, gaps re-measured.
   - [ ] **M1.14d Supersonic, Mach 1.2–2.5.** First the switches that fall back to slender-body
@@ -659,7 +659,9 @@
   - [ ] **M1.14f Audit's physics gaps.** *Done when:* each cited and tested, or measured negligible.
   - [ ] **M1.14g Figures.** *Done when:* accuracy and aero pages show CI-checked plots with errors.
   - [ ] **M1.14h Extended band, Mach 2.5–3.5,** after the core-band increments (ADR-143 §6h).
-    *Done when:* each flattering-side switch past Mach 2.5 fixed, or its gap re-measured in an ADR.
+    *Done when:* each fixed or re-measured in an ADR: the four switches' errors at Mach 3 (CP aft,
+    flattering); #108's Mach 2.90–2.95 step (sign not yet measured); M1.8e's Mach 2.96 body-alone
+    row (+16.9% body lift, tending conservative on a finned rocket).
 ## Phase 2: Library surfaces and interop
 
 - [x] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,

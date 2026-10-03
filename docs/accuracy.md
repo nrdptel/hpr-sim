@@ -849,9 +849,10 @@ rest.
   ([#87](https://github.com/nrdptel/hpr-sim/issues/87)), a flare behind a boattail too long for
   its wake ([#120](https://github.com/nrdptel/hpr-sim/issues/120)), a pointed tip steeper than 30°
   ([#121](https://github.com/nrdptel/hpr-sim/issues/121)) or a vertical tip steeper than its cap's
-  handover keeps slender-body theory for the whole body. The sizes are measured at Mach 3 and 4°,
-  on the tests' rocket: −8.7%, −27.5%, −7.7% and −7.0% in normal force, with the centre of
-  pressure 1.03, 0.29, 0.81 and 0.64 calibres aft, so the rocket reads more stable than it is
+  handover keeps slender-body theory for the whole body. The sizes are measured at Mach 3 and 4°
+  on two test rockets, the flare's on a finned rocket with a flare and the other three on a
+  straight rocket: −8.65%, −27.49%, −7.70% and −6.99% in normal force, with the centre of pressure
+  1.03, 0.29, 0.81 and 0.64 calibres aft, so the rocket reads more stable than it is
   ([Aerodynamics](physics/aero.md#the-body-faster-than-sound-in-a-flight)). No size inside the core
   band, below Mach 2.5, is pinned yet. They are first in
   [M1.14d](decisions-and-roadmap.md#m1-14d), supersonic accuracy, and in

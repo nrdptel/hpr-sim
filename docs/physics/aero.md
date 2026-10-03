@@ -645,12 +645,12 @@ since removed, kept here because its size is the measured cost of the model it r
 
 | drawing this | normal force | centre of pressure | who owns it |
 |---|---|---|---|
-| a step in radius, past a billionth of the local radius | −8.7% | 1.03 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #87: a step has no model of its own](https://github.com/nrdptel/hpr-sim/issues/87) |
-| a flare behind a boattail and too long for its wake, however small | −27.5% | 0.29 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
-| a pointed tip steeper than the cone tables' 30° | −7.7% | 0.81 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #121: a tip past the cone tables](https://github.com/nrdptel/hpr-sim/issues/121) |
-| a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5 |
+| a step in radius, past a billionth of the local radius | −8.65% | 1.03 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #87: a step has no model of its own](https://github.com/nrdptel/hpr-sim/issues/87) |
+| a flare behind a boattail and too long for its wake, however small | −27.49% | 0.29 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
+| a pointed tip steeper than the cone tables' 30° | −7.70% | 0.81 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #121: a tip past the cone tables](https://github.com/nrdptel/hpr-sim/issues/121) |
+| a vertical tip steeper than the cap's handover to its base | −6.99% | 0.64 calibres | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5 |
 | a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres | no longer a switch: the rise is weighed, [ADR-041][adr-041] |
-| a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward | queued: [M1.14d: supersonic accuracy, these switches first](../decisions-and-roadmap.md#m1-14d), and [M1.14h](../decisions-and-roadmap.md#m1-14h) above Mach 2.5; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
+| a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward | queued: [M1.14d: supersonic accuracy](../decisions-and-roadmap.md#m1-14d), after the four switches above, since it reads *less* stable; [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
 | a near-flat flare, 0.03816° to 0.05882° at the table's top rows, which the march used to refuse | −8.3% | 1.16 calibres | no longer a switch: the element is read by the generalized method, [ADR-050][adr-050] |
 
 In the first four rows the centre of pressure moves **aft** when the method is lost, so a rocket
@@ -2281,7 +2281,7 @@ bodies never cross, so this is a modelling decision rather than a measurement to
 4](https://github.com/nrdptel/hpr-sim/issues/108)). The milestone that would then move the
 cap, [M1.8e16, the blunt tip's handover past 24°](../decisions-and-roadmap.md#m1-8e16), waits on
 that ([ADR-044][adr-044], which records the measurement behind this section). Both are deferred
-as outside the [operating envelope](../VALIDATION.md#operating-envelope), since the crossing bites
+as beyond the [operating envelope](../VALIDATION.md#operating-envelope), since the crossing bites
 above Mach 4; the vertical-tip switch's error below that is part of
 [M1.14d: supersonic accuracy](../decisions-and-roadmap.md#m1-14d), and of
 [M1.14h: the extended band](../decisions-and-roadmap.md#m1-14h) above Mach 2.5

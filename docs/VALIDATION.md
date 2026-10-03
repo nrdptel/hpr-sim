@@ -41,18 +41,26 @@ the work. It does not limit what hpr flies
 The bands are set by the [Mach number](glossary.md#mach-number) and the
 [angle of attack](glossary.md#angle-of-attack).
 
-| band | Mach number | angle of attack | what it means |
+| term | Mach number | angle of attack | what it means |
 |---|---|---|---|
-| Core | 0 to 2.5 | up to 15° | Accuracy work goes here first. Nearly every flight on commercial motors is in it. |
-| Extended | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
-| Beyond | past 3.5 | past 15° for more than a moment | Deferred, not dropped. These flights still fly. |
+| Core band | 0 to 2.5 | up to 15° | Accuracy work goes here first. Nearly every flight on commercial motors is in it. |
+| Extended band | 2.5 to 3.5 | up to 15° | Record flights on the largest commercial motors. hpr flies it; its accuracy is checked less than the core band's. |
+| The envelope | 0 to 3.5 | up to 15° | The core and extended bands together. |
+| Beyond the envelope | past 3.5 | any | Deferred, not dropped. These flights still fly. |
 
-Warnings will come in two tiers ([M1.14a milestone](decisions-and-roadmap.md#m1-14a)):
+The first second after the rocket leaves the rail does not count against the 15°: a rocket meets
+the air at a steep angle then, for a moment (below). Past that second, an angle above 15° is
+outside the core band at any speed.
 
-- *Beyond the validated range*: the flight goes faster than the fastest whole-flight reference,
-  about Mach 1.15 today. The threshold is read from the committed reports, so it rises as new
-  references are added.
-- *Outside the envelope*: past Mach 2.5, or past 15° for more than a moment.
+Warnings will come in three tiers ([M1.14a milestone](decisions-and-roadmap.md#m1-14a)):
+
+- *Beyond the validated range*: the flight goes faster than the fastest public whole-flight
+  reference, meaning any committed comparison of a public flight against an independent
+  reference, gated or not. Today that is OpenRocket's example at Mach 1.147. The threshold is read
+  from the committed reports, so it rises as references are added. Private flights never set it.
+- *Outside the core band*: past Mach 2.5, or an angle of attack above 15° later than 1 s after
+  the rocket leaves the rail.
+- *Beyond the envelope*: past Mach 3.5.
 
 Today no flight carries one yet.
 
